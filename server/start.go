@@ -3,6 +3,7 @@ package server
 import (
 	"createmod/internal/migrate"
 	"fmt"
+	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
@@ -14,10 +15,11 @@ import (
 )
 
 type Config struct {
-	MysqlHost string
-	MysqlDB   string
-	MysqlUser string
-	MysqlPass string
+	MysqlHost   string
+	MysqlDB     string
+	MysqlUser   string
+	MysqlPass   string
+	AutoMigrate bool
 }
 
 type Server struct {
@@ -31,11 +33,16 @@ func New(conf Config) *Server {
 func (s *Server) Start() {
 	app := pocketbase.New()
 
+	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
+		// enable auto creation of migration files when making collection changes in the Admin UI
+		Automigrate: s.conf.AutoMigrate,
+	})
+
 	// serves static files from the provided public dir (if exists)
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		// MIGRATIONS
 
-		if s.conf.MysqlHost != "" {
+		if s.conf.MysqlDB != "" {
 			gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
 			if err == nil {
 				migrate.Run(app, gormdb)
