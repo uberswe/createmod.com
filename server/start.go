@@ -35,13 +35,14 @@ func (s *Server) Start() {
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		// MIGRATIONS
 
-		gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
-		if err == nil {
-			migrate.Run(app, gormdb)
-		} else {
-			log.Println("MIGRATION SKIPPED - No MySQL Connection")
+		if s.conf.MysqlHost != "" {
+			gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
+			if err == nil {
+				migrate.Run(app, gormdb)
+			} else {
+				log.Println("MIGRATION SKIPPED - No MySQL Connection")
+			}
 		}
-		return nil
 
 		// END MIGRATIONS
 

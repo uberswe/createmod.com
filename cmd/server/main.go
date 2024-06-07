@@ -3,6 +3,7 @@ package main
 import (
 	"createmod/server"
 	"github.com/joho/godotenv"
+	"log"
 )
 
 const (
@@ -16,7 +17,8 @@ func main() {
 	envFile, err := godotenv.Read(".env")
 
 	if err != nil {
-		panic(err)
+		// Continue without env but print error
+		log.Println(err)
 	}
 
 	s := server.New(server.Config{
