@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 
+	_ "createmod/migrations"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -20,6 +21,7 @@ type Config struct {
 	MysqlUser   string
 	MysqlPass   string
 	AutoMigrate bool
+	CreateAdmin bool
 }
 
 type Server struct {

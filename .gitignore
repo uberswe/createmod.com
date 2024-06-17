@@ -1,3 +1,5 @@
 .env
 .idea
 pb_data
+migration_data
+main

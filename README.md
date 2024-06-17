@@ -22,3 +22,34 @@ The build parameter should be used to rebuild the containers if you are making c
 ```
 docker-compose build --build
 ```
+
+## Environmental Variables
+
+### MySQL
+
+MySQL variables can be set if you need to migrate from an existing Wordpress database otherwise these can be left blank
+
+```
+MYSQL_HOST=localhost:3306
+MYSQL_DB=webapp
+MYSQL_USER=webapp
+MYSQL_PASS=root
+```
+
+### Auto Migrate
+
+Auto Migrate can be used to automatically generate database migration files when changes to the data structures are made.
+
+```
+AUTO_MIGRATE=true
+```
+
+### Create Admin
+
+If Create Admin is set to true a admin is generated. This is convenient for local development.
+
+```
+CREATE_ADMIN=true
+```
+
+The default credentials are `local@createmod.com` and `jfq.utb*jda2abg!WCR`. Do not use these credentials in a live environment.

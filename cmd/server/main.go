@@ -12,6 +12,7 @@ const (
 	MysqlUser   = "MYSQL_USER"
 	MysqlPass   = "MYSQL_PASS"
 	AutoMigrate = "AUTO_MIGRATE"
+	CreateAdmin = "CREATE_ADMIN"
 )
 
 func main() {
@@ -28,6 +29,7 @@ func main() {
 		MysqlUser:   envFile[MysqlUser],
 		MysqlPass:   envFile[MysqlPass],
 		AutoMigrate: envFile[AutoMigrate] == "true",
+		CreateAdmin: envFile[CreateAdmin] == "true",
 	})
 	s.Start()
 }
