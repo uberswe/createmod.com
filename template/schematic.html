@@ -1,0 +1,166 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row g-2 g-md-3">
+                    <div class="col-lg-7">
+                        <div class="row row-cards">
+                            <div class="col-sm-12 col-lg-12">
+                                <div class="card card-sm">
+                                    <a data-fslightbox="gallery"
+                                       href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
+                                        <img
+                                                src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}"
+                                                class="card-img-top">
+                                    </a>
+                                    <div class="card-body">
+                                        {{ if .Schematic.HasGallery}}
+                                        <div class="row row-cols-6 g-3 mb-2">
+                                            {{ range  .Schematic.Gallery }}
+                                            <div class="col">
+                                                <a data-fslightbox="gallery" href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
+                                                    <div class="img-responsive img-responsive-1x1 rounded border" style="background-image: url(/api/files/schematics/{{ $.Schematic.ID }}/{{ . }})"></div>
+                                                </a>
+                                            </div>
+                                            {{ end }}
+                                        </div>
+                                        {{ end }}
+                                        <div class="d-flex align-items-center">
+                                            <div>
+                                                <h3 class="card-title">Description</h3>
+                                                <div>{{ .Schematic.HTMLContent }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row row-cards">
+                            <div class="col-sm-12 col-lg-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Details</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="datagrid">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Mod Version</div>
+                                            <div class="datagrid-content">{{ .Schematic.CreatemodVersion }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Game Version</div>
+                                            <div class="datagrid-content">{{ .Schematic.MinecraftVersion }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Category</div>
+                                            <div class="datagrid-content">
+                                                <div class="avatar-list avatar-list-stacked">
+                                                    {{ range  .Schematic.Categories }}
+                                                    <a href="/schematics/category/{{ .Key }}">
+                                                        <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                    </a>
+                                                    {{ end }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Uploaded</div>
+                                            <div class="datagrid-content">{{ .Schematic.Created }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Author</div>
+                                            <div class="datagrid-content">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="avatar avatar-xs me-2 rounded" style="background-image: url(./static/avatars/000m.jpg)"></span>
+                                                    <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{ .Schematic.Author.Username }}</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Views</div>
+                                            <div class="datagrid-content">{{ .Schematic.Views }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Rating</div>
+                                            <div class="datagrid-content">
+                      <span class="status status-green">
+                        Active
+                      </span>
+                                            </div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Tags</div>
+                                            <div class="datagrid-content">
+                                                <div class="avatar-list avatar-list-stacked">
+                                                    {{ range  .Schematic.Tags }}
+                                                    <a href="/schematics/tag/{{ .Key }}">
+                                                        <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                    </a>
+                                                    {{ end }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {{ if .Schematic.HasDependencies }}
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Dependencies</div>
+                                            <div class="datagrid-content">
+                                                {{ .Schematic.HTMLDependencies }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        {{ if eq .Schematic.Video "" }}
+                        {{ else }}
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Video</h3>
+                                <div id="player-youtube" data-plyr-provider="youtube"
+                                     data-plyr-embed-id="{{ .Schematic.Video }}"></div>
+                            </div>
+                        </div>
+                        {{ end }}
+                        <div class="card">
+                            <a href="https://bisecthosting.com/SCHEMATIC">
+                                <img src="https://www.bisecthosting.com/partners/custom-banners/a18a4d46-d49b-4b1e-82d1-c75815722645.webp" class="card-img-top">
+                            </a>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Similar Schematics</h3>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">More From <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{ .Schematic.Author.Username }}</a></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="/dist/libs/fslightbox/index.js?1692870487" defer></script>
+        <script src="/dist/libs/plyr/dist/plyr.min.js?1692870487" defer></script>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}
+
+{{ if eq .Schematic.Video "" }}
+{{ else }}
+<script>
+    // @formatter:off
+    document.addEventListener("DOMContentLoaded", function () {
+        window.Plyr && (new Plyr('#player-youtube'));
+    });
+    // @formatter:on
+</script>
+{{ end }}

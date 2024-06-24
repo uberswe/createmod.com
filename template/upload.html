@@ -1,0 +1,86 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row row-cards">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row g-5">
+                                    <div class="col-xl-6">
+                                        <div class="row">
+                                            <div class="col-md-6 col-xl-12">
+                                                <div class="mb-3">
+                                                    <label class="form-label required">Title</label>
+                                                    <input type="text" class="form-control" name="title"
+                                                           placeholder="Schematic Title">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Description</label>
+                                                    <textarea id="tinymce-schematic">Hello, <b>World</b>!</textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <form class="dropzone" id="dropzone-gallery" action="/upload"
+                                                          autocomplete="off" novalidate>
+                                                        <div class="fallback">
+                                                            <input name="file" type="file"/>
+                                                        </div>
+                                                        <div class="dz-message">
+                                                            <h3 class="dropzone-msg-title">Gallery Images</h3>
+                                                            <span class="dropzone-msg-desc">Your custom description here</span>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="/dist/libs/dropzone/dist/dropzone-min.js?1692870487" defer></script>
+        <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script>
+    // @formatter:off
+    document.addEventListener("DOMContentLoaded", function () {
+        let options = {
+            selector: '#tinymce-schematic',
+            height: 300,
+            menubar: false,
+            statusbar: false,
+            plugins: [
+                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview', 'anchor',
+                'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+            ],
+            toolbar: 'undo redo | formatselect | ' +
+                'bold italic backcolor | alignleft aligncenter ' +
+                'alignright alignjustify | link | bullist numlist outdent indent | ' +
+                'removeformat',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
+        }
+        if (localStorage.getItem("tablerTheme") === 'dark') {
+            options.skin = 'oxide-dark';
+            options.content_css = 'dark';
+        }
+        tinyMCE.init(options);
+    })
+    // @formatter:on
+</script>
+
+<script>
+    // @formatter:off
+    document.addEventListener("DOMContentLoaded", function() {
+        new Dropzone("#dropzone-gallery")
+    })
+</script>
+{{template "foot.html" .}}

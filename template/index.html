@@ -1,0 +1,58 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row g-4">
+                    <div class="col-8">
+                        <div class="row row-cards">
+                            {{range  .Schematics}}
+                            <div class="col-lg-6">
+                                <div class="card card-sm">
+                                    <a href="/schematics/{{ .Name }}" class="d-block"><img
+                                            src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}"
+                                            class="card-img-top"></a>
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            {{ if eq .Author.Avatar "" }}
+                                            {{ else }}
+                                            <span class="avatar me-3 rounded"
+                                                  style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
+                                            {{ end }}
+                                            <div>
+                                                <div>{{ .Title }}</div>
+                                                <div class="text-secondary">some other text</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Tags</h3>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Trending</h3>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Highest Rated</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}

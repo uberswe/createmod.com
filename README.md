@@ -46,7 +46,7 @@ AUTO_MIGRATE=true
 
 ### Create Admin
 
-If Create Admin is set to true a admin is generated. This is convenient for local development.
+If Create Admin is set to true an admin is generated. This is convenient for local development.
 
 ```
 CREATE_ADMIN=true

@@ -2,17 +2,15 @@ package server
 
 import (
 	"createmod/internal/migrate"
+	"createmod/internal/router"
+	_ "createmod/migrations"
 	"fmt"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
-	"os"
-
-	_ "createmod/migrations"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
 )
 
 type Config struct {
@@ -40,7 +38,6 @@ func (s *Server) Start() {
 		Automigrate: s.conf.AutoMigrate,
 	})
 
-	// serves static files from the provided public dir (if exists)
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		// MIGRATIONS
 
@@ -57,7 +54,7 @@ func (s *Server) Start() {
 
 		// ROUTES
 
-		e.Router.GET("/*", apis.StaticDirectoryHandler(os.DirFS("./pb_public"), false))
+		router.Register(app, e.Router)
 
 		// END ROUTES
 		return nil
