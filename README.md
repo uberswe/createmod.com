@@ -53,3 +53,11 @@ CREATE_ADMIN=true
 ```
 
 The default credentials are `local@createmod.com` and `jfq.utb*jda2abg!WCR`. Do not use these credentials in a live environment.
+
+### Dummy data
+
+You can set the following to true to generate dummy data. Please note that it will only work when running the migrations for the first time. Delete the `pb_data` to reset. WARNING this deletes all data.
+
+```
+DUMMY_DATA=true
+```

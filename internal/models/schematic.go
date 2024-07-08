@@ -28,4 +28,7 @@ type Schematic struct {
 	CreatemodVersion string
 	MinecraftVersion string
 	Views            int
+	HasTags          bool
+	Rating           string
+	HasRating        bool
 }

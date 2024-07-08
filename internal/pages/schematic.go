@@ -2,6 +2,7 @@ package pages
 
 import (
 	"createmod/internal/models"
+	"fmt"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -58,7 +59,41 @@ func mapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Recor
 }
 
 func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (schematic models.Schematic) {
-	return models.Schematic{
+	views := 0
+	records, err := app.Dao().FindRecordsByFilter(
+		"schematic_views",
+		"period = 'total' && schematic = {:schematic}",
+		"-updated",
+		1,
+		0,
+		dbx.Params{"schematic": result.GetId()},
+	)
+
+	if err == nil && len(records) > 0 {
+		views = records[0].GetInt("count")
+	}
+
+	rating := float64(0)
+	totalRating := float64(0)
+
+	ratings, err := app.Dao().FindRecordsByFilter(
+		"schematic_ratings",
+		"schematic = {:schematic}",
+		"-updated",
+		1000,
+		0,
+		dbx.Params{"schematic": result.GetId()},
+	)
+	if err == nil {
+		for i := range ratings {
+			totalRating += ratings[i].GetFloat("rating")
+		}
+		if len(ratings) > 0 {
+			rating = totalRating / float64(len(ratings))
+		}
+	}
+
+	s := models.Schematic{
 		ID:               result.GetId(),
 		Created:          result.Created.Time(),
 		Author:           findUserFromID(app, result.GetString("author")),
@@ -80,8 +115,12 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		Tags:             findTagsFromIDs(app, result.GetStringSlice("tags")),
 		CreatemodVersion: result.GetString("createmod_version"),
 		MinecraftVersion: result.GetString("minecraft_version"),
-		Views:            result.GetInt("views"),
+		Views:            views,
+		Rating:           fmt.Sprintf("%.1f", rating),
 	}
+	s.HasTags = len(s.Tags) > 0
+	s.HasRating = s.Rating != ""
+	return s
 }
 
 func findTagsFromIDs(app *pocketbase.PocketBase, s []string) []models.SchematicTag {

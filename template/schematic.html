@@ -41,9 +41,6 @@
                         <div class="row row-cards">
                             <div class="col-sm-12 col-lg-12">
                             <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">Details</h3>
-                                </div>
                                 <div class="card-body">
                                     <div class="datagrid">
                                         <div class="datagrid-item">
@@ -83,14 +80,15 @@
                                             <div class="datagrid-title">Views</div>
                                             <div class="datagrid-content">{{ .Schematic.Views }}</div>
                                         </div>
+                                        {{ if .Schematic.HasRating }}
                                         <div class="datagrid-item">
                                             <div class="datagrid-title">Rating</div>
                                             <div class="datagrid-content">
-                      <span class="status status-green">
-                        Active
-                      </span>
+                                                {{ .Schematic.Rating }}
                                             </div>
                                         </div>
+                                        {{ end }}
+                                        {{ if .Schematic.HasTags }}
                                         <div class="datagrid-item">
                                             <div class="datagrid-title">Tags</div>
                                             <div class="datagrid-content">
@@ -103,6 +101,7 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        {{ end }}
                                         {{ if .Schematic.HasDependencies }}
                                         <div class="datagrid-item">
                                             <div class="datagrid-title">Dependencies</div>

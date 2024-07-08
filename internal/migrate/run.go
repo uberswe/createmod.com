@@ -26,6 +26,9 @@ type User struct {
 func Run(app *pocketbase.PocketBase, gormdb *gorm.DB) {
 	userOldId := migrateUsers(app, gormdb)
 	schematicOldId := migrateSchematics(app, gormdb, userOldId)
+	if len(userOldId) == 0 || len(schematicOldId) == 0 {
+		return
+	}
 	migrateRatings(app, gormdb, userOldId, schematicOldId)
 	migrateViews(app, gormdb, userOldId, schematicOldId)
 	migrateComments(app, gormdb, userOldId, schematicOldId)
