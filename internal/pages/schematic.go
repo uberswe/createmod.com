@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const schematicTemplate = "schematic.html"
@@ -43,11 +44,71 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
 
+		go countSchematicView(app, results[0])
 		err = c.Render(http.StatusOK, schematicTemplate, d)
 		if err != nil {
 			return err
 		}
 		return nil
+	}
+}
+
+func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) {
+	schematicViewsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_views")
+	if err != nil {
+		app.Logger().Error(err.Error())
+		return
+	}
+
+	now := time.Now()
+
+	year, week := now.ISOWeek()
+	month := now.Month()
+	day := now.Day()
+
+	types := map[int]string{
+		4: "total",
+		3: fmt.Sprintf("%d", year),
+		2: fmt.Sprintf("%d%02d", year, month),
+		1: fmt.Sprintf("%d%02d", year, week),
+		0: fmt.Sprintf("%d%02d%02d", year, month, day),
+	}
+
+	for t, p := range types {
+		viewsRes, err := app.Dao().FindRecordsByFilter(
+			schematicViewsCollection.Id,
+			"schematic = {:schematic} && type = {:type} && period = {:period}",
+			"-created",
+			1,
+			0,
+			dbx.Params{
+				"schematic": schematic.GetId(),
+				"type":      t,
+				"period":    p,
+			})
+
+		if err != nil || len(viewsRes) == 0 {
+			if err != nil {
+				app.Logger().Error(err.Error())
+			}
+			record := pbmodels.NewRecord(schematicViewsCollection)
+			record.Set("schematic", schematic.GetId())
+			record.Set("count", 1)
+			record.Set("type", t)
+			record.Set("period", p)
+
+			if err = app.Dao().SaveRecord(record); err != nil {
+				app.Logger().Error(err.Error())
+				return
+			}
+			continue
+		}
+
+		viewRecord := viewsRes[0]
+		viewRecord.Set("count", viewRecord.GetInt("count")+1)
+		if err = app.Dao().SaveRecord(viewRecord); err != nil {
+			app.Logger().Error(err.Error())
+		}
 	}
 }
 
