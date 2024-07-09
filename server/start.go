@@ -10,7 +10,6 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"log"
 )
 
 type Config struct {
@@ -46,7 +45,9 @@ func (s *Server) Start() {
 			if err == nil {
 				migrate.Run(app, gormdb)
 			} else {
-				log.Println("MIGRATION SKIPPED - No MySQL Connection")
+				app.Logger().Debug(
+					"MIGRATION SKIPPED - No MySQL Connection",
+				)
 			}
 		}
 
@@ -61,6 +62,6 @@ func (s *Server) Start() {
 	})
 
 	if err := app.Start(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }

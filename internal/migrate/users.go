@@ -8,7 +8,6 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gorm"
-	"log"
 )
 
 func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[int64]string) {
@@ -33,7 +32,10 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 				}).
 				One(&user)
 			if userErr == nil {
-				log.Println("Skipping user migration, record exists", user.OldID)
+				app.Logger().Debug(
+					"Skipping user migration, record exists",
+					"user-id", user.OldID,
+				)
 				break
 			}
 		}
