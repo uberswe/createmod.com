@@ -13,7 +13,6 @@ import (
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"gorm.io/gorm"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -68,7 +67,10 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			0,
 			dbx.Params{"old_id": s.ID})
 		if err != gorm.ErrRecordNotFound && len(filter) != 0 {
-			log.Println(err, len(filter))
+			app.Logger().Debug(
+				err.Error(),
+				"filter-len", len(filter),
+			)
 			continue
 		}
 
