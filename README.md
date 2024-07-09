@@ -20,7 +20,7 @@ The application will then be available at [http://127.0.0.1:8090](http://127.0.0
 The build parameter should be used to rebuild the containers if you are making changes in the Go code.
 
 ```
-docker-compose build --build
+docker-compose up --build
 ```
 
 ## Environmental Variables
