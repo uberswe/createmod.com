@@ -9,4 +9,5 @@ services:
       - "8090:8090"
     volumes:
       - ./pb_data:/app/pb_data
+      - ./web:/app/web
     restart: unless-stopped
