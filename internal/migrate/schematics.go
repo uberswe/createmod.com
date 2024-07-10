@@ -66,9 +66,9 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			1,
 			0,
 			dbx.Params{"old_id": s.ID})
-		if err != gorm.ErrRecordNotFound && len(filter) != 0 {
+		if !errors.Is(err, gorm.ErrRecordNotFound) && len(filter) != 0 {
 			app.Logger().Debug(
-				err.Error(),
+				fmt.Sprintf("Schematic found or error: %v", err),
 				"filter-len", len(filter),
 			)
 			continue
