@@ -1,4 +1,4 @@
-var url = "https://createmod.com"
+let url = "https://createmod.com"
 const host = window.location.host;
 if (host === "127.0.0.1:8090") {
     url = "http://127.0.0.1:8090"
@@ -34,10 +34,12 @@ function ignore(loggedIn) {
 let run = function () {
     if (isAuthenticated(ignore)) {
         let loginButton = document.getElementById("login-button")
-        loginButton.innerText = "Logout"
-        loginButton.onclick = (ev) => {
-            pb.authStore.clear();
-            location.href = '/login'
+        if (loginButton != null) {
+            loginButton.innerText = "Logout"
+            loginButton.onclick = (ev) => {
+                pb.authStore.clear();
+                location.href = '/login'
+            }
         }
     }
 
@@ -46,13 +48,11 @@ let run = function () {
     if (loginForm != null) {
         let username = document.getElementById("username");
         let password = document.getElementById("password");
-        let loginSuccess = document.getElementById("success");
-        let loginError = document.getElementById("error");
-        var errorDivs = [];
+        let errorDivs = [];
 
         loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            var errors = [];
+            let errors = [];
             errorDivs.forEach((ed) => {
                 ed.remove()
             })
@@ -78,7 +78,7 @@ let run = function () {
                     errors.push("Invalid password or the account does not exist.")
                 }).finally(() => {
                     errors.forEach((error) => {
-                        var div = document.createElement('div');
+                        let div = document.createElement('div');
                         div.classList.add("invalid-feedback")
                         div.innerText = error
                         password.parentNode.insertAdjacentElement("beforeend", div)
@@ -87,7 +87,7 @@ let run = function () {
                 })
             } else {
                 errors.forEach((error) => {
-                    var div = document.createElement('div');
+                    let div = document.createElement('div');
                     div.classList.add("invalid-feedback")
                     div.innerText = error
                     password.parentNode.insertAdjacentElement("beforeend", div)
@@ -105,11 +105,7 @@ let run = function () {
             await pb.collection('users').authWithOAuth2({provider: 'discord'}).then(() => {
                 location.href = '/'
             }).catch(() => {
-                let loginError = document.getElementById("error");
-                if (loginError != null) {
-                    loginError.classList.remove("hidden")
-                    loginError.classList.add("flex")
-                }
+                // Throw some error
             });
         })
     }
@@ -122,16 +118,10 @@ let run = function () {
             await pb.collection('users').authWithOAuth2({provider: 'github'}).then(() => {
                 location.href = '/'
             }).catch(() => {
-                let loginError = document.getElementById("error");
-                if (loginError != null) {
-                    loginError.classList.remove("hidden")
-                    loginError.classList.add("flex")
-                }
+                // Throw some error
             });
         })
     }
-
-    // TODO check everything below this
 
     // Signup Handler
     let signupForm = document.getElementById("signup-form");
@@ -139,59 +129,143 @@ let run = function () {
         let username = document.getElementById("username");
         let password = document.getElementById("password");
         let email = document.getElementById("email");
-        let signupSuccess = document.getElementById("success");
-        let signupError = document.getElementById("error");
+        let terms = document.getElementById("terms");
+        let errorDivs = [];
         signupForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            signupError.classList.remove("flex")
-            signupError.classList.add("hidden")
-            if (username.value === "" || password.value === "" || email.value === "") {
-                signupError.classList.remove("hidden")
-                signupError.classList.add("flex")
-            } else {
-                const data = {
-                    "username": username.value,
-                    "email": email.value,
-                    "emailVisibility": false,
-                    "password": password.value,
-                    "passwordConfirm": password.value
-                };
+                e.preventDefault();
+                let errors = [];
+                errorDivs.forEach((ed) => {
+                    ed.remove()
+                })
+                errorDivs = []
+                username.classList.remove("is-invalid")
+                password.classList.remove("is-invalid")
+                email.classList.remove("is-invalid")
+                terms.classList.remove("is-invalid")
+                if (username.value === "") {
+                    username.classList.add("is-invalid")
+                    errors.push("Invalid username")
+                }
+                if (password.value === "") {
+                    password.classList.add("is-invalid")
+                    errors.push("Invalid password")
 
-                pb.collection('users').create(data).then((record) => {
-                    signupSuccess.classList.remove("hidden")
-                    signupSuccess.classList.add("flex")
-                    pb.collection('users').requestVerification(email.value);
-                }).catch(() => {
-                    signupError.classList.remove("hidden")
-                    signupError.classList.add("flex")
+                }
+                if (email.value === "") {
+                    email.classList.add("is-invalid")
+                    errors.push("Invalid email")
+                }
+                if (!terms.checked) {
+                    terms.classList.add("is-invalid")
+                    errors.push("You must agree to the Terms Of Service")
+                }
+                if (errors.length === 0) {
+                    const data = {
+                        "username": username.value,
+                        "email": email.value,
+                        "emailVisibility": false,
+                        "password": password.value,
+                        "passwordConfirm": password.value,
+                        "terms": terms.checked
+                    };
+
+                    pb.collection('users').create(data).then((record) => {
+                        pb.collection('users').requestVerification(email.value);
+                        let successModal = new bootstrap.Modal(document.getElementById('modal-success'), {});
+                        successModal.show();
+                    }).catch((e) => {
+                        for (const [key, value] of Object.entries(e.data.data)) {
+                            let div = document.createElement('div');
+                            div.classList.add("invalid-feedback")
+                            div.innerText = value.message
+                            let element = document.getElementById(key);
+                            element.classList.add("is-invalid")
+                            element.parentNode.insertAdjacentElement("beforeend", div)
+                            errorDivs.push(div)
+                        }
+                    });
+                } else {
+                    errors.forEach((error) => {
+                        let div = document.createElement('div');
+                        div.classList.add("invalid-feedback")
+                        div.innerText = error
+                        password.parentNode.insertAdjacentElement("beforeend", div)
+                        errorDivs.push(div)
+                    });
+                }
+            }
+        )
+        ;
+    }
+
+// Forgot Password Handler
+    let forgotPasswordForm = document.getElementById("forgot-password-form");
+    if (forgotPasswordForm != null) {
+        let div = document.createElement('div');
+        let email = document.getElementById("email");
+        forgotPasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            div.remove()
+            if (email.value === "") {
+                email.classList.add("is-invalid")
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.innerText = "Invalid email"
+                email.parentNode.insertAdjacentElement("beforeend", div)
+            } else {
+                pb.collection('users').requestPasswordReset(email.value).then((record) => {
+                    let successModal = new bootstrap.Modal(document.getElementById('modal-success'), {});
+                    successModal.show();
+                }).catch((e) => {
+                    email.classList.add("is-invalid")
+                    div = document.createElement('div');
+                    div.classList.add("invalid-feedback")
+                    div.innerText = e.data.data.email.message
+                    email.parentNode.insertAdjacentElement("beforeend", div)
                 });
             }
         });
     }
 
-    // Forgot Password Handler
-    let forgotPasswordForm = document.getElementById("forgot-password-form");
-    if (forgotPasswordForm != null) {
-        let email = document.getElementById("email");
-        let forgotPasswordSuccess = document.getElementById("success");
-        let forgotPasswordError = document.getElementById("error");
-        forgotPasswordForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            forgotPasswordError.classList.remove("flex")
-            forgotPasswordError.classList.add("hidden")
-            if (email.value === "") {
-                forgotPasswordError.classList.remove("hidden")
-                forgotPasswordError.classList.add("flex")
-            } else {
-                pb.collection('users').requestPasswordReset(email.value).then((record) => {
-                    forgotPasswordSuccess.classList.remove("hidden")
-                    forgotPasswordSuccess.classList.add("flex")
-                }).catch(() => {
-                    forgotPasswordError.classList.remove("hidden")
-                    forgotPasswordError.classList.add("flex")
-                });
+    let logoutButtons = document.getElementsByClassName("logout-button");
+    if (logoutButtons != null) {
+
+        for (let i = 0; i < logoutButtons.length; i++) {
+            logoutButtons.item(i).addEventListener("click", async (e) => {
+                pb.authStore.clear();
+                location.href = '/'
+            })
+        }
+    }
+
+    let authDropdowns = document.getElementsByClassName("auth-dropdown")
+    function renderDropdown(isLoggedIn) {
+        if (isLoggedIn) {
+            let authAvatars = document.getElementsByClassName("auth-avatar")
+            let authUsernames = document.getElementsByClassName("auth-username")
+            if (authAvatars != null && authUsernames != null) {
+
+                for (let i = 0; i < authAvatars.length; i++) {
+                    if (pb.authStore.model.avatar === "") {
+                        // TODO a default icon could be added
+                        authAvatars.item(i).remove()
+                    } else {
+                        authAvatars.item(i).style.backgroundImage = "url('" + pb.authStore.model.avatar + "')"
+                    }
+                }
+                for (let i = 0; i < authUsernames.length; i++) {
+                    authUsernames.item(i).innerText = pb.authStore.model.username
+                }
             }
-        });
+        } else {
+            for (let i = 0; i < authDropdowns.length; i++) {
+                authDropdowns.item(i).innerHTML = "<a href=\"/login\" >Login</a>"
+            }
+        }
+    }
+
+    if (authDropdowns != null && authDropdowns.length !== 0) {
+        renderDropdown(isAuthenticated(renderDropdown))
     }
 }
 
