@@ -37,6 +37,11 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo) {
 	e.GET("/upload", pages.UploadHandler(app))
 	e.GET("/contact", pages.ContactHandler(app))
 	e.GET("/rules", pages.RulesHandler(app))
+	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app))
+	// Auth
+	e.GET("/login", pages.LoginHandler(app))
+	e.GET("/register", pages.RegisterHandler(app))
+	e.GET("/reset-password", pages.PasswordResetHandler(app))
 	// User
 	e.GET("/rules", pages.RulesHandler(app))
 	// News
@@ -61,6 +66,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo) {
 	e.GET("/search/:term", pages.SearchHandler(app))
 	// User
 	e.GET("/author/:username", pages.ProfileHandler(app))
+	e.GET("/profile", pages.ProfileHandler(app))
 	// Fallback
 	e.GET("/*", pages.FourOhFourHandler(app))
 
