@@ -24,6 +24,7 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 	q := query.Use(gormdb)
 	postRes, postErr := q.QeyKryWEpost.
 		Where(q.QeyKryWEpost.PostParent.Eq(0)).
+		Where(q.QeyKryWEpost.PostStatus.Eq("publish")).
 		Where(q.QeyKryWEpost.PostType.Eq("schematics")).
 		Find()
 	oldSchematicIDs := make(map[int64]string, len(postRes))

@@ -16,6 +16,7 @@ func RulesHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := RulesData{}
 		d.Title = "Rules"
+		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, rulesTemplate, d)
 		if err != nil {
 			return err

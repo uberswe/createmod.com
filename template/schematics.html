@@ -1,0 +1,47 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        <div class="page-header d-print-none">
+            <div class="container-xl">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">
+                            Create Mod Schematics
+                        </h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row row-cards">
+                    {{range .Schematics }}
+                    <div class="col-sm-12 col-md-6 col-lg-4">
+                        <div class="card card-sm">
+                            <a href="/schematics/{{ .Name }}" class="d-block"><img
+                                    src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}" class="card-img-top"></a>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    {{ if .Author }}
+                                    {{ if eq .Author.Avatar "" }}
+                                    {{ else }}
+                                    <span class="avatar me-3 rounded"
+                                          style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
+                                    {{ end }}
+                                    {{ end }}
+                                    <div>
+                                        <div>{{ .Title }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}

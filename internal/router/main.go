@@ -2,15 +2,19 @@ package router
 
 import (
 	"createmod/internal/pages"
+	"createmod/internal/search"
+	"fmt"
+	"github.com/gosimple/slug"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"html/template"
+	"net/http"
 	"os"
 	"strings"
 )
 
-func Register(app *pocketbase.PocketBase, e *echo.Echo) {
+func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Service) {
 	// HTML Template Renderer
 	templateBuilder := template.New("")
 
@@ -27,7 +31,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo) {
 	}
 
 	e.Renderer = t
-
+	e.Use(legacySearchCompat)
 	// Frontend routes
 	e.GET("/dist/*", apis.StaticDirectoryHandler(os.DirFS("./web/dist"), false))
 	e.GET("/static/*", apis.StaticDirectoryHandler(os.DirFS("./static/dist"), false))
@@ -36,6 +40,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo) {
 	e.GET("/about", pages.AboutHandler(app))
 	e.GET("/upload", pages.UploadHandler(app))
 	e.GET("/contact", pages.ContactHandler(app))
+	e.GET("/guide", pages.GuideHandler(app))
 	e.GET("/rules", pages.RulesHandler(app))
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app))
 	// Auth
@@ -62,12 +67,31 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo) {
 	// Needs to be backwards compatible with
 	// /?s=searchterm&id=95&post_type=schematics
 	// /?s=search+term+1+2+3&id=95&post_type=schematics
-	// TODO add middleware to handle old search
-	e.GET("/search/:term", pages.SearchHandler(app))
+	// legacySearchCompat middleware should handle this
+	e.GET("/search/:term", pages.SearchHandler(app, searchService))
+	e.POST("/search/:term", pages.SearchHandler(app, searchService))
+	e.GET("/search", pages.SearchHandler(app, searchService))
+	e.GET("/search/", pages.SearchHandler(app, searchService))
+	e.POST("/search/", pages.SearchHandler(app, searchService))
+	e.POST("/search", pages.SearchPostHandler(app))
 	// User
 	e.GET("/author/:username", pages.ProfileHandler(app))
 	e.GET("/profile", pages.ProfileHandler(app))
 	// Fallback
 	e.GET("/*", pages.FourOhFourHandler(app))
 
+}
+
+func legacySearchCompat(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		path := c.Request().URL.Path
+		query := c.Request().URL.Query()
+		fmt.Sprintln("should redirect", c.Request().URL.Path, c.Request().URL.Query())
+		if (path == "" || path == "/") && query.Has("s") && query.Get("s") != "" {
+			searchSlug := slug.Make(query.Get("s"))
+			return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/%s", searchSlug))
+		}
+
+		return next(c) // proceed with the request chain
+	}
 }

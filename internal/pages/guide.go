@@ -6,18 +6,18 @@ import (
 	"net/http"
 )
 
-const loginTemplate = "login.html"
+const guideTemplate = "guide.html"
 
-type LoginData struct {
+type GuideData struct {
 	DefaultData
 }
 
-func LoginHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
+func GuideHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
-		d := LoginData{}
-		d.Title = "Login"
+		d := GuideData{}
+		d.Title = "Guide"
 		d.Categories = allCategories(app)
-		err := c.Render(http.StatusOK, loginTemplate, d)
+		err := c.Render(http.StatusOK, guideTemplate, d)
 		if err != nil {
 			return err
 		}
