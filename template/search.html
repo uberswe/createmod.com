@@ -2,10 +2,147 @@
 <div class="page">
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
-        {{template "header.html" .}}
+        <div class="page-header d-print-none">
+            <div class="container-xl">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">
+                            Search results
+                        </h2>
+                        {{ if eq .SearchResultCount 0 }}
+                        <div class="text-secondary mt-1">No results found</div>
+                        {{ else }}
+                        <div class="text-secondary mt-1">About {{ .SearchResultCount }} results in {{ .SearchSpeed }} seconds</div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="page-body">
             <div class="container-xl">
-
+                <div class="row g-4">
+                    <div class="col-md-12 col-lg-3">
+                        <form action="/search" method="post" autocomplete="off" id="advanced-search-form" novalidate>
+                            <div class="subheader mb-2">Search term</div>
+                            <div class="input-icon mb-3">
+                    <span class="input-icon-addon">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                           stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                           stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path
+                              d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                    </span>
+                                <input id="advanced-search-field" name="advanced-search-term" type="text" value="{{ .Term }}" class="form-control" placeholder="Search…"
+                                       aria-label="Search CreateMod.com">
+                            </div>
+                            <div class="subheader mb-2">Order by</div>
+                            <div class="mb-3">
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="1" {{ if eq .Sort 1 }}checked{{ end }}>
+                                    <span class="form-check-label">Best match</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="2" {{ if eq .Sort 2 }}checked{{ end }}>
+                                    <span class="form-check-label">Newest</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="3" {{ if eq .Sort 3 }}checked{{ end }}>
+                                    <span class="form-check-label">Oldest</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="4" {{ if eq .Sort 4 }}checked{{ end }}>
+                                    <span class="form-check-label">Highest rating</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="5" {{ if eq .Sort 5 }}checked{{ end }}>
+                                    <span class="form-check-label">Lowest rating</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="6" {{ if eq .Sort 6 }}checked{{ end }}>
+                                    <span class="form-check-label">Most views</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="7" {{ if eq .Sort 7 }}checked{{ end }}>
+                                    <span class="form-check-label">Least views</span>
+                                </label>
+                            </div>
+                            <div class="subheader mb-2">Minimum Rating</div>
+                            <div class="mb-3">
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="-1" {{ if eq .Rating -1 }}checked{{ end }}>
+                                    <span class="form-check-label">Any rating</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="5" {{ if eq .Rating 5 }}checked{{ end }}>
+                                    <span class="form-check-label">5 stars</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="4" {{ if eq .Rating 4 }}checked{{ end }}>
+                                    <span class="form-check-label">4 stars</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="3" {{ if eq .Rating 3 }}checked{{ end }}>
+                                    <span class="form-check-label">3 stars</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="2" {{ if eq .Rating 2 }}checked{{ end }}>
+                                    <span class="form-check-label">2 stars</span>
+                                </label>
+                                <label class="form-check">
+                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="1" {{ if eq .Rating 1 }}checked{{ end }}>
+                                    <span class="form-check-label">1 star</span>
+                                </label>
+                            </div>
+                            <div class="subheader mb-2">Category</div>
+                            <div class="mb-3">
+                                <select name="advanced-search-category" class="form-select">
+                                    <option value="all" {{ if eq .Category "all" }}selected{{ end }}>All</option>
+                                    {{ range .Categories}}
+                                        <option value="{{ .Key }}" {{ if eq $.Category .Key }}selected{{ end }}>{{ .Name }}</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div class="subheader mb-2">Tag</div>
+                            <div class="mb-3">
+                                <select name="advanced-search-tag" class="form-select">
+                                    <option value="all" {{ if eq .Tag "all" }}selected{{ end }}>All</option>
+                                    {{ range .Tags }}
+                                    <option value="{{ .Key }}" {{ if eq $.Tag .Key }}selected{{ end }}>{{ .Name }}</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div class="mt-5">
+                                <button class="btn btn-primary w-100">
+                                    Search
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-12 col-lg-9">
+                        <div class="row row-cards">
+                            {{range .Schematics }}
+                            <div class="col-sm-12 col-md-6 col-lg-4">
+                                <div class="card card-sm">
+                                    <a href="/schematics/{{ .Name }}" class="d-block"><img src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}" class="card-img-top"></a>
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            {{ if .Author }}
+                                            {{ if eq .Author.Avatar "" }}
+                                            {{ else }}
+                                            <span class="avatar me-3 rounded"
+                                                  style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
+                                            {{ end }}
+                                            {{ end }}
+                                            <div>
+                                                <div>{{ .Title }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         {{template "footer.html" .}}

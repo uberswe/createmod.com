@@ -2,7 +2,9 @@ package server
 
 import (
 	"createmod/internal/migrate"
+	"createmod/internal/pages"
 	"createmod/internal/router"
+	"createmod/internal/search"
 	_ "createmod/migrations"
 	"fmt"
 	"github.com/pocketbase/pocketbase"
@@ -31,13 +33,36 @@ func New(conf Config) *Server {
 
 func (s *Server) Start() {
 	app := pocketbase.New()
+	var searchService *search.Service
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
 		// enable auto creation of migration files when making collection changes in the Admin UI
 		Automigrate: s.conf.AutoMigrate,
 	})
 
+	app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
+		// Rebuild the search index every time a schematic is created
+		schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+		if err != nil {
+			app.Logger().Warn(err.Error())
+			return err
+		}
+		searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
+		return nil
+	})
+
+	// END SEARCH
+
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		// SEARCH
+		schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+		if err != nil {
+			panic(err)
+		}
+		mappedSchematics := pages.MapResultsToSchematic(app, schematics)
+		app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
+		searchService = search.New(mappedSchematics, app.Logger())
+
 		// MIGRATIONS
 
 		if s.conf.MysqlDB != "" {
@@ -55,7 +80,7 @@ func (s *Server) Start() {
 
 		// ROUTES
 
-		router.Register(app, e.Router)
+		router.Register(app, e.Router, searchService)
 
 		// END ROUTES
 		return nil

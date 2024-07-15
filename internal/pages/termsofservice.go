@@ -16,6 +16,7 @@ func TermsOfServiceHandler(app *pocketbase.PocketBase) func(c echo.Context) erro
 	return func(c echo.Context) error {
 		d := TermsOfServiceData{}
 		d.Title = "Terms Of Service"
+		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, termsOfServiceTemplate, d)
 		if err != nil {
 			return err

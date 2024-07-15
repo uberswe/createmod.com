@@ -16,6 +16,7 @@ func NewsPostHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := NewsPostData{}
 		d.Title = ""
+		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, newsPostTemplate, d)
 		if err != nil {
 			return err

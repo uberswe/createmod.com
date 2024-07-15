@@ -28,9 +28,10 @@ func SchematicsHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			0)
 
 		d := SchematicsData{
-			Schematics: mapResultsToSchematic(app, results),
+			Schematics: MapResultsToSchematic(app, results),
 		}
 		d.Title = "Create Mod Schematics"
+		d.Categories = allCategories(app)
 
 		err = c.Render(http.StatusOK, schematicsTemplate, d)
 		if err != nil {

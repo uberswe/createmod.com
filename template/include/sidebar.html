@@ -162,6 +162,11 @@
                                 <a class="dropdown-item" href="/schematics">
                                     All
                                 </a>
+                                {{ range .Categories}}
+                                <a class="dropdown-item" href="/search?category={{ .Key }}">
+                                    {{ .Name }}
+                                </a>
+                                {{ end }}
                             </div>
                         </div>
                     </div>

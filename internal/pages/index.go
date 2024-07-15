@@ -29,10 +29,11 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			0)
 
 		d := IndexData{
-			Schematics: mapResultsToSchematic(app, results),
+			Schematics: MapResultsToSchematic(app, results),
 		}
 		d.Title = "Create Mod Schematics"
 		d.SubCategory = "Home"
+		d.Categories = allCategories(app)
 
 		err = c.Render(http.StatusOK, indexTemplate, d)
 		if err != nil {

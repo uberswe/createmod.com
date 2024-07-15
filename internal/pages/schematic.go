@@ -43,6 +43,7 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		}
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
+		d.Categories = allCategories(app)
 
 		go countSchematicView(app, results[0])
 		err = c.Render(http.StatusOK, schematicTemplate, d)
@@ -112,7 +113,7 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) 
 	}
 }
 
-func mapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Record) (schematics []models.Schematic) {
+func MapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Record) (schematics []models.Schematic) {
 	for i := range results {
 		schematics = append(schematics, mapResultToSchematic(app, results[i]))
 	}

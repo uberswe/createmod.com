@@ -16,6 +16,7 @@ func RegisterHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := registerData{}
 		d.Title = "Register"
+		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, registerTemplate, d)
 		if err != nil {
 			return err
