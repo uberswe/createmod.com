@@ -3,6 +3,7 @@ module createmod
 go 1.21
 
 require (
+	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/blevesearch/bleve v1.0.14
 	github.com/elliotchance/phpserialize v1.4.0
 	github.com/go-faker/faker/v4 v4.4.2
@@ -12,6 +13,7 @@ require (
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
 	github.com/pocketbase/dbx v1.10.1
 	github.com/pocketbase/pocketbase v0.22.14
+	golang.org/x/crypto v0.24.0
 	golang.org/x/text v0.16.0
 	gorm.io/driver/mysql v1.4.4
 	gorm.io/gen v0.3.26
@@ -95,7 +97,6 @@ require (
 	go.etcd.io/bbolt v1.3.5 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	gocloud.dev v0.37.0 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.26.0 // indirect

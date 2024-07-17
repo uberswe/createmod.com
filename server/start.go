@@ -7,9 +7,12 @@ import (
 	"createmod/internal/search"
 	_ "createmod/migrations"
 	"fmt"
+	"github.com/apokalyptik/phpass"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/models/schema"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -77,6 +80,26 @@ func (s *Server) Start() {
 		}
 
 		// END MIGRATIONS
+
+		// PASSWORD BACKWARDS COMPATIBILITY
+		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
+			if e.Record != nil && e.Record.GetString("old_password") != "" {
+				p := phpass.New(nil)
+				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
+					hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
+					if err != nil {
+						return err
+					}
+					e.Record.Set(schema.FieldNamePasswordHash, string(hashedPassword))
+					e.Record.Set("old_password", "")
+					if err = app.Dao().SaveRecord(e.Record); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		})
+		// END PASSWORD BACKWARDS COMPATIBILITY
 
 		// ROUTES
 
