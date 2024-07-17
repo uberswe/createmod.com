@@ -88,12 +88,14 @@ func (s *Server) Start() {
 				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
 					hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
 					if err != nil {
-						return err
+						app.Logger().Warn("old password failled to hash", "error", err.Error())
+						return nil
 					}
 					e.Record.Set(schema.FieldNamePasswordHash, string(hashedPassword))
 					e.Record.Set("old_password", "")
 					if err = app.Dao().SaveRecord(e.Record); err != nil {
-						return err
+						app.Logger().Warn("old password invalid", "error", err.Error())
+						return nil
 					}
 				}
 			}
