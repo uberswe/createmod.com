@@ -16,10 +16,12 @@
                                             class="card-img-top"></a>
                                     <div class="card-body">
                                         <div class="d-flex align-items-center">
+                                            {{ if .Author }}
                                             {{ if eq .Author.Avatar "" }}
                                             {{ else }}
                                             <span class="avatar me-3 rounded"
                                                   style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
+                                            {{ end }}
                                             {{ end }}
                                             <div>
                                                 <div>{{ .Title }}</div>

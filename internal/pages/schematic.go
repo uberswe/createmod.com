@@ -175,14 +175,30 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		HTMLDependencies: template.HTML(strings.ReplaceAll(template.HTMLEscapeString(result.GetString("dependencies")), "\n", "<br/>")),
 		Categories:       findCategoriesFromIDs(app, result.GetStringSlice("categories")),
 		Tags:             findTagsFromIDs(app, result.GetStringSlice("tags")),
-		CreatemodVersion: result.GetString("createmod_version"),
-		MinecraftVersion: result.GetString("minecraft_version"),
+		CreatemodVersion: findCreateModVersionFromID(app, result.GetString("createmod_version")),
+		MinecraftVersion: findMinecraftVersionFromID(app, result.GetString("minecraft_version")),
 		Views:            views,
 		Rating:           fmt.Sprintf("%.1f", rating),
 	}
 	s.HasTags = len(s.Tags) > 0
 	s.HasRating = s.Rating != ""
 	return s
+}
+
+func findMinecraftVersionFromID(app *pocketbase.PocketBase, id string) string {
+	record, err := app.Dao().FindRecordById("minecraft_versions", id)
+	if err != nil {
+		return ""
+	}
+	return record.GetString("version")
+}
+
+func findCreateModVersionFromID(app *pocketbase.PocketBase, id string) string {
+	record, err := app.Dao().FindRecordById("createmod_versions", id)
+	if err != nil {
+		return ""
+	}
+	return record.GetString("version")
 }
 
 func findTagsFromIDs(app *pocketbase.PocketBase, s []string) []models.SchematicTag {
