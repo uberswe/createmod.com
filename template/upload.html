@@ -2,37 +2,121 @@
 <div class="page">
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
-        {{template "header.html" .}}
         <div class="page-body">
             <div class="container-xl">
                 <div class="row row-cards">
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body">
-                                <div class="row g-5">
-                                    <div class="col-xl-6">
+                                <h3 class="card-title">Upload Schematic</h3>
+                                <div class="row">
+                                    <div class="col-md-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label required">Title</label>
+                                            <input type="text" id="schematic-title" class="form-control" name="title"
+                                                   placeholder="Schematic Title">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Description</label>
+                                            <textarea id="tinymce-schematic"
+                                                      placeholder="Describe your schematic and include any details on how to get it running."></textarea>
+                                        </div>
                                         <div class="row">
-                                            <div class="col-md-6 col-xl-12">
-                                                <div class="mb-3">
-                                                    <label class="form-label required">Title</label>
-                                                    <input type="text" class="form-control" name="title"
-                                                           placeholder="Schematic Title">
+                                            <div class="mb-3 col-md-12 col-lg-6">
+                                                <label class="form-label required">Category</label>
+                                                <select name="category" id="schematic-category" class="form-select">
+                                                    {{ range .Categories}}
+                                                    <option value="{{ .ID }}">{{ .Name }}</option>
+                                                    {{ end }}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3 col-md-12 col-lg-6">
+                                                <label class="form-label">Tags</label>
+                                                <select type="text" class="form-select" placeholder="Select tags" id="select-tags" value="" multiple>
+                                                    {{ range .Tags}}
+                                                    <option value="{{ .ID }}">{{ .Name }}</option>
+                                                    {{ end }}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="mb-3 col-md-12 col-lg-6">
+                                                <label class="form-label required">Create Version</label>
+                                                <select id="create-version" name="" class="form-select">
+                                                    {{ range .CreatemodVersions}}
+                                                    <option value="{{ .ID }}">{{ .Version }}</option>
+                                                    {{ end }}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3 col-md-12 col-lg-6">
+                                                <label class="form-label required">Minecraft Version</label>
+                                                <select id="minecraft-version" name="" class="form-select">
+                                                    {{ range .MinecraftVersions}}
+                                                    <option value="{{ .ID }}">{{ .Version }}</option>
+                                                    {{ end }}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Schematic Video</label>
+                                            <input id="video" type="text" class="form-control" name="video"
+                                                   placeholder="Schematic Video URL">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <form class="dropzone" id="dropzone-schematic" action="/upload"
+                                                  autocomplete="off" novalidate>
+                                                <div class="fallback">
+                                                    <input name="schematic-file" type="file"/>
                                                 </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Description</label>
-                                                    <textarea id="tinymce-schematic">Hello, <b>World</b>!</textarea>
+                                                <div class="dz-message">
+                                                    <h3 class="dropzone-msg-title">Schematic File</h3>
+                                                    <span class="dropzone-msg-desc">The .nbt schematic file</span>
                                                 </div>
-                                                <div class="mb-3">
-                                                    <form class="dropzone" id="dropzone-gallery" action="/upload"
-                                                          autocomplete="off" novalidate>
-                                                        <div class="fallback">
-                                                            <input name="file" type="file"/>
-                                                        </div>
-                                                        <div class="dz-message">
-                                                            <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                            <span class="dropzone-msg-desc">Your custom description here</span>
-                                                        </div>
-                                                    </form>
+                                            </form>
+                                        </div>
+                                        <div class="mb-3">
+                                            <form class="dropzone" id="dropzone-featured" action="/upload"
+                                                  autocomplete="off" novalidate>
+                                                <div class="fallback">
+                                                    <input name="featured-file" type="file"/>
+                                                </div>
+                                                <div class="dz-message">
+                                                    <h3 class="dropzone-msg-title">Featured Image</h3>
+                                                    <span class="dropzone-msg-desc">This must be a screenshot of your build in Minecraft</span>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="mb-3">
+                                            <form class="dropzone" id="dropzone-gallery" action="/upload"
+                                                  autocomplete="off" novalidate>
+                                                <div class="fallback">
+                                                    <input name="gallery-file" type="file"/>
+                                                </div>
+                                                <div class="dz-message">
+                                                    <h3 class="dropzone-msg-title">Gallery Images</h3>
+                                                    <span class="dropzone-msg-desc">Further images to showcase your schematic</span>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="mt-5">
+                                        <button class="btn btn-primary w-100" id="upload-schematic-btn">
+                                            Upload
+                                        </button>
+                                        <div id="progress-upload" style="display: none;" class="progress">
+                                            <div class="progress-bar progress-bar-indeterminate bg-green"></div>
+                                        </div>
+                                        <div id="upload-success" class="alert alert-important alert-success" style="display: none;" role="alert">
+                                            <div class="d-flex">
+                                                <div>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                </div>
+                                                <div>
+                                                    Schematic has been uploaded!
                                                 </div>
                                             </div>
                                         </div>
@@ -46,9 +130,42 @@
         </div>
         <script src="/dist/libs/dropzone/dist/dropzone-min.js?1692870487" defer></script>
         <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
+        <script src="/dist/libs/tom-select/dist/js/tom-select.base.min.js?1692870487" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
+<style>
+    .dz-progress {
+        /* progress bar covers file name */
+        display: none !important;
+    }
+</style>
+<script>
+    // @formatter:off
+    document.addEventListener("DOMContentLoaded", function () {
+        var el;
+        window.TomSelect && (new TomSelect(el = document.getElementById('select-tags'), {
+            copyClassesToDropdown: false,
+            dropdownParent: 'body',
+            controlInput: '<input>',
+            render:{
+                item: function(data,escape) {
+                    if( data.customProperties ){
+                        return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
+                    }
+                    return '<div>' + escape(data.text) + '</div>';
+                },
+                option: function(data,escape){
+                    if( data.customProperties ){
+                        return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
+                    }
+                    return '<div>' + escape(data.text) + '</div>';
+                },
+            },
+        }));
+    });
+    // @formatter:on
+</script>
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
@@ -80,7 +197,153 @@
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function() {
-        new Dropzone("#dropzone-gallery")
+        // based on https://stackoverflow.com/a/61357880/1260548
+        let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
+            url: "/files/upload",
+            method: "POST",
+            acceptedFiles: '.nbt',
+            thumbnailMethod: 'crop',
+            addRemoveLinks: true,
+            autoProcessQueue: false,
+            uploadMultiple: false,
+            parallelUploads: 1,
+            maxFiles: 1,
+        })
+        let dropzoneFeatured = new Dropzone("#dropzone-featured", {
+            acceptedFiles: 'image/*',
+            thumbnailMethod: 'crop',
+            addRemoveLinks: true,
+            autoProcessQueue: false,
+            uploadMultiple: false,
+            parallelUploads: 1,
+            maxFiles: 1,
+        })
+        let dropzoneGallery = new Dropzone("#dropzone-gallery", {
+            acceptedFiles: 'image/*',
+            thumbnailMethod: 'crop',
+            addRemoveLinks: true,
+            autoProcessQueue: false,
+            uploadMultiple: true,
+            parallelUploads: 10,
+            maxFiles: 10,
+        })
+
+        document.getElementById('upload-schematic-btn').addEventListener("click", async function (e) {
+            let titleElement = document.getElementById("schematic-title")
+            let descriptionElement = document.getElementById("tinymce-schematic")
+            document.getElementById("upload-schematic-btn").disabled = true
+
+            let errors = []
+
+            const formData = new FormData();
+            for (let file of dropzoneSchematic.files) {
+                formData.append("schematic_file", file)
+            }
+            for (let file of dropzoneFeatured.files) {
+                formData.append("featured_image", file)
+            }
+            for (let file of dropzoneGallery.files) {
+                formData.append("gallery", file)
+            }
+            formData.append("title", titleElement.value)
+            formData.append("description", tinyMCE.activeEditor.getContent())
+            formData.append("categories", document.getElementById("schematic-category").value)
+            let tagIDs = getSelectValues(document.getElementById("select-tags"))
+            for (const tid of tagIDs) {
+                formData.append("tags", tid)
+            }
+            formData.append("createmod_version", document.getElementById("create-version").value)
+            formData.append("minecraft_version", document.getElementById("minecraft-version").value)
+            formData.append("video", document.getElementById("video").value)
+            formData.append("author", pb.authStore.model.id)
+
+            if (titleElement.value === undefined || titleElement.value === "") {
+                titleElement.classList.add("is-invalid")
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.innerText = "A schematic must have a title"
+                errors.push("A schematic must have a title")
+                titleElement.parentNode.insertAdjacentElement("beforeend", div)
+            }
+            if (descriptionElement === undefined || tinyMCE.activeEditor === null || tinyMCE.activeEditor.getContent() === "") {
+                descriptionElement.classList.add("is-invalid")
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.innerText = "A schematic must have a description"
+                errors.push("A schematic must have a description")
+                descriptionElement.parentNode.insertAdjacentElement("beforeend", div)
+            }
+            if (dropzoneSchematic.files.length === 0) {
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.style.display = "block"
+                div.innerText = "A schematic must have a schematic file"
+                errors.push("A schematic must have a schematic file")
+                document.getElementById("dropzone-schematic").parentNode.insertAdjacentElement("beforeend", div)
+            }
+            if (dropzoneFeatured.files.length === 0) {
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.style.display = "block"
+                div.innerText = "A schematic must have a featured image"
+                errors.push("A schematic must have a featured image")
+                document.getElementById("dropzone-featured").parentNode.insertAdjacentElement("beforeend", div)
+            }
+
+            if (errors.length === 0) {
+                let progressBar = document.getElementById("progress-upload")
+                let successAlert = document.getElementById("upload-success")
+                try {
+                    progressBar.style.display = "block"
+                const createdRecord = await pb.collection('schematics').create(formData);
+                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                    div = document.createElement('div');
+                    div.classList.add("invalid-feedback")
+                    div.style.display = "block"
+                    div.innerText = "An unexpected error occurred, please try again"
+                    document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
+                    document.getElementById("upload-schematic-btn").disabled = false
+                    progressBar.display = "none"
+                } else {
+                    progressBar.style.display = "none"
+                    successAlert.style.display = "block"
+                }
+                } catch(e) {
+                    console.log(e)
+                    div = document.createElement('div');
+                    div.classList.add("invalid-feedback")
+                    div.style.display = "block"
+                    div.innerText = "An unexpected error occurred, please try again"
+                    document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
+                    document.getElementById("upload-schematic-btn").disabled = false
+                    progressBar.display = "none"
+                }
+            } else {
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.style.display = "block"
+                div.innerText = "There were errors, please check above"
+                document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
+                document.getElementById("upload-schematic-btn").disabled = false
+                progressBar.display = "none"
+            }
+
+        });
+
+        function getSelectValues(select) {
+            var result = [];
+            var options = select && select.options;
+            var opt;
+
+            for (var i=0, iLen=options.length; i<iLen; i++) {
+                opt = options[i];
+
+                if (opt.selected) {
+                    result.push(opt.value || opt.text);
+                }
+            }
+            return result;
+        }
     })
 </script>
 {{template "foot.html" .}}

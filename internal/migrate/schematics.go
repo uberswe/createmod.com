@@ -43,6 +43,14 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 	if err != nil {
 		panic(err)
 	}
+	minecraftVersionsCollection, err := app.Dao().FindCollectionByNameOrId("minecraft_versions")
+	if err != nil {
+		panic(err)
+	}
+	createmodVersionsCollection, err := app.Dao().FindCollectionByNameOrId("createmod_versions")
+	if err != nil {
+		panic(err)
+	}
 	for _, s := range postRes {
 		record := models.NewRecord(schematicsCollection)
 		record.RefreshId()
@@ -106,9 +114,9 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			case "schematicf_featured_image":
 				processSchematicFeaturedImage(m, q, record, form)
 			case "schematicf_game_version":
-				record.Set("minecraft_version", m.MetaValue)
+				processMinecraftVersion(app, m, record, minecraftVersionsCollection)
 			case "schematicf_mod_version":
-				record.Set("createmod_version", m.MetaValue)
+				processCreatemodVersion(app, m, record, createmodVersionsCollection)
 			case "schematicf_category":
 				processCategories(app, m, q, record, schematicCategoriesCollection)
 			case "schematicf_title":
@@ -166,6 +174,48 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 		fs.Close()
 	}
 	return oldSchematicIDs
+}
+
+func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *models.Record, collection *models.Collection) {
+	cmRecord := models.NewRecord(collection)
+	cmRes, err := app.Dao().FindRecordsByFilter(
+		collection.Id,
+		"version = {:version}",
+		"-created",
+		1,
+		0,
+		dbx.Params{"version": m.MetaValue})
+	if err != nil || len(cmRes) == 0 {
+		cmRecord.Set("version", m.MetaValue)
+		if err := app.Dao().SaveRecord(cmRecord); err != nil {
+			panic(err)
+		}
+	} else {
+		cmRecord = cmRes[0]
+	}
+
+	record.Set("createmod_version", []string{cmRecord.Id})
+}
+
+func processMinecraftVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *models.Record, collection *models.Collection) {
+	mcvRecord := models.NewRecord(collection)
+	mcvRes, err := app.Dao().FindRecordsByFilter(
+		collection.Id,
+		"version = {:version}",
+		"-created",
+		1,
+		0,
+		dbx.Params{"version": m.MetaValue})
+	if err != nil || len(mcvRes) == 0 {
+		mcvRecord.Set("version", m.MetaValue)
+		if err := app.Dao().SaveRecord(mcvRecord); err != nil {
+			panic(err)
+		}
+	} else {
+		mcvRecord = mcvRes[0]
+	}
+
+	record.Set("minecraft_version", []string{mcvRecord.Id})
 }
 
 func processSchematicFile(m *model.QeyKryWEpostmetum, q *query.Query, record *models.Record, form *forms.RecordUpsert) {
