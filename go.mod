@@ -13,6 +13,7 @@ require (
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
 	github.com/pocketbase/dbx v1.10.1
 	github.com/pocketbase/pocketbase v0.22.14
+	github.com/sym01/htmlsanitizer v1.1.0
 	golang.org/x/crypto v0.24.0
 	golang.org/x/text v0.16.0
 	gorm.io/driver/mysql v1.4.4
@@ -90,7 +91,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/steveyen/gtreap v0.1.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	github.com/sym01/htmlsanitizer v1.1.0 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
