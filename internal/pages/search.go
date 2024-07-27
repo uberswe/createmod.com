@@ -139,3 +139,35 @@ func allTags(app *pocketbase.PocketBase) []models.SchematicTag {
 	}
 	return mapResultToTags(records)
 }
+
+type schematicTags struct {
+	Tags string
+}
+
+func allTagsWithCount(app *pocketbase.PocketBase) []models.SchematicTagWithCount {
+	tags := allTags(app)
+	var schematics []schematicTags
+	err := app.Dao().DB().
+		Select("schematics.tags").
+		From("schematics").
+		All(&schematics)
+	if err != nil {
+		app.Logger().Debug("could not fetch tags with count", "error", err.Error())
+		return nil
+	}
+	tagsWithCount := make([]models.SchematicTagWithCount, len(tags))
+	for i := range tags {
+		tagsWithCount[i] = models.SchematicTagWithCount{
+			ID:    tags[i].ID,
+			Key:   tags[i].Key,
+			Name:  tags[i].Name,
+			Count: 0,
+		}
+		for x := range schematics {
+			if strings.Contains(schematics[x].Tags, tagsWithCount[i].ID) {
+				tagsWithCount[i].Count++
+			}
+		}
+	}
+	return tagsWithCount
+}

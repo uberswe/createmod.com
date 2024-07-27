@@ -158,6 +158,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 	s := models.Schematic{
 		ID:               result.GetId(),
 		Created:          result.Created.Time(),
+		CreatedFormatted: result.Created.Time().Format("2006-01-02"),
 		Author:           findUserFromID(app, result.GetString("author")),
 		CommentCount:     result.GetInt("comment_count"),
 		CommentStatus:    result.GetBool("comment_status"),

@@ -34,19 +34,75 @@
                         </div>
                     </div>
                     <div class="col-12 col-lg-4">
-                        <div class="card">
+                        <div class="card mb-5">
                             <div class="card-body">
                                 <h3 class="card-title">Tags</h3>
+                                {{range  .Tags}}
+                                <a href="/schematics/tag/{{ .Key }}">
+                                <span class="tag">
+                                    {{ .Name }}
+                                    <span class="badge badge-sm tag-badge">
+                                        {{ .Count }}
+                                    </span>
+                                </span>
+                                </a>
+                                {{end}}
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card mb-5">
                             <div class="card-body">
                                 <h3 class="card-title">Trending</h3>
+                                {{range  .Trending}}
+                                <div class="col-lg-12 mb-5">
+                                    <div class="card card-sm">
+                                        <a href="/schematics/{{ .Name }}" class="d-block"><img
+                                                src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}"
+                                                class="card-img-top"></a>
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center">
+                                                {{ if .Author }}
+                                                {{ if eq .Author.Avatar "" }}
+                                                {{ else }}
+                                                <span class="avatar me-3 rounded"
+                                                      style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
+                                                {{ end }}
+                                                {{ end }}
+                                                <div>
+                                                    <div>{{ .Title }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{end}}
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card mb-5">
                             <div class="card-body">
                                 <h3 class="card-title">Highest Rated</h3>
+                                {{range  .HighestRated}}
+                                <div class="col-lg-12 mb-5">
+                                    <div class="card card-sm">
+                                        <a href="/schematics/{{ .Name }}" class="d-block"><img
+                                                src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}"
+                                                class="card-img-top"></a>
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center">
+                                                {{ if .Author }}
+                                                {{ if eq .Author.Avatar "" }}
+                                                {{ else }}
+                                                <span class="avatar me-3 rounded"
+                                                      style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
+                                                {{ end }}
+                                                {{ end }}
+                                                <div>
+                                                    <div>{{ .Title }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{end}}
                             </div>
                         </div>
                     </div>

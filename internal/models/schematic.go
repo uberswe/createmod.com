@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"html/template"
 	"time"
 )
@@ -31,6 +32,7 @@ type Schematic struct {
 	HasTags          bool
 	Rating           string
 	HasRating        bool
+	CreatedFormatted string
 }
 
 type DatabaseSchematic struct {
@@ -55,10 +57,14 @@ type DatabaseSchematic struct {
 	HasTags          bool
 	Rating           string
 	HasRating        bool
+	AvgRating        *float64
 }
 
 func (d *DatabaseSchematic) ToSchematic() Schematic {
 	created, _ := time.Parse(time.RFC3339, d.Created)
+	if d.AvgRating != nil && *d.AvgRating > 0 {
+		d.Rating = fmt.Sprintf("%0.2f", *d.AvgRating)
+	}
 	return Schematic{
 		ID:               d.ID,
 		Created:          created,
