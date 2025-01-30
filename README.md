@@ -7,6 +7,14 @@ To run make sure you have go installed locally and run:
 go run ./cmd/server/main.go serve
 ```
 
+## Migration from Wordpress
+
+CreateMod.com was originally build as a Wordpress site and this project will migrate from that to a Go backend.
+
+migration_data folder should contain images and schematics from the base url path, so /wp-content/folder/image.png
+
+dbdata should contain a full database dump for testing the migration
+
 ## Docker
 
 [Docker](https://www.docker.com/) is provided to make local development easier. Use the following command after ensuring that [Docker](https://www.docker.com/) is installed:

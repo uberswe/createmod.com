@@ -2,6 +2,9 @@ package migrate
 
 import (
 	"createmod/query"
+	"errors"
+	"fmt"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gorm"
@@ -17,7 +20,7 @@ type viewMigration struct {
 }
 
 func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[int64]string, oldSchematicIDs map[int64]string) {
-	// TODO check if rating exists, if it does we skip
+	app.Logger().Info("Migrating ratings.")
 
 	// QeyKryWEmr_rating_item_entry
 	// user_id
@@ -61,6 +64,21 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 	}
 
 	for _, vm := range migrations {
+		filter, err := app.Dao().FindRecordsByFilter(
+			schematicRatingsCollection.Id,
+			"old_id = {:old_id}",
+			"-created",
+			1,
+			0,
+			dbx.Params{"old_id": vm.OldID})
+		if !errors.Is(err, gorm.ErrRecordNotFound) && len(filter) != 0 {
+			app.Logger().Debug(
+				fmt.Sprintf("Rating found or error: %v", err),
+				"filter-len", len(filter),
+			)
+			continue
+		}
+
 		newUserId := oldUserIDs[vm.OldUserId]
 		newSchematicId := oldSchematicIDs[vm.OldPostId]
 		record := models.NewRecord(schematicRatingsCollection)

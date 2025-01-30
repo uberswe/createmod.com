@@ -21,6 +21,7 @@ import (
 )
 
 func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId map[int64]string) map[int64]string {
+	app.Logger().Info("Migrating schematics.")
 	q := query.Use(gormdb)
 	postRes, postErr := q.QeyKryWEpost.
 		Where(q.QeyKryWEpost.PostParent.Eq(0)).
@@ -80,6 +81,9 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 				fmt.Sprintf("Schematic found or error: %v", err),
 				"filter-len", len(filter),
 			)
+			if len(filter) == 1 {
+				oldSchematicIDs[s.ID] = filter[0].Id
+			}
 			continue
 		}
 
@@ -169,9 +173,9 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			panic(err)
 		}
 
-		oldSchematicIDs[s.ID] = record.GetId()
-
 		fs.Close()
+
+		oldSchematicIDs[s.ID] = record.GetId()
 	}
 	return oldSchematicIDs
 }
