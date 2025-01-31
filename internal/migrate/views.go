@@ -10,10 +10,11 @@ import (
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gen"
 	"gorm.io/gorm"
+	"log"
 )
 
 func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[int64]string, oldSchematicIDs map[int64]string) {
-	app.Logger().Info("Migrating views.")
+	log.Println("Migrating views.")
 	// QeyKryWEpost_views
 	// id
 	// type
@@ -25,7 +26,7 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 		panic(err)
 	}
 	postViewRes := make([]*model.QeyKryWEpostView, 0)
-	postErr := q.QeyKryWEpostView.FindInBatches(&postViewRes, 5000, func(tx gen.Dao, batch int) error {
+	postErr := q.QeyKryWEpostView.FindInBatches(&postViewRes, 25000, func(tx gen.Dao, batch int) error {
 		for i := range postViewRes {
 			if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {
 				filter, err := app.Dao().FindRecordsByFilter(
@@ -44,7 +45,7 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 						"filter-len", len(filter),
 					)
 					if err != nil {
-						app.Logger().Info(err.Error())
+						log.Println(err)
 					}
 					continue
 				}

@@ -3,6 +3,7 @@ package migrate
 import (
 	"github.com/pocketbase/pocketbase"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -24,11 +25,11 @@ type User struct {
 
 // Run migrates the mysql Wordpress database to pb sqlite
 func Run(app *pocketbase.PocketBase, gormdb *gorm.DB) {
-	app.Logger().Info("Running migration from Wordpress")
+	log.Println("Running migration from Wordpress")
 	userOldId := migrateUsers(app, gormdb)
 	schematicOldId := migrateSchematics(app, gormdb, userOldId)
 	migrateRatings(app, gormdb, userOldId, schematicOldId)
 	migrateViews(app, gormdb, userOldId, schematicOldId)
 	migrateComments(app, gormdb, userOldId, schematicOldId)
-	app.Logger().Info("Migrations from Wordpress complete")
+	log.Println("Migrations from Wordpress complete")
 }

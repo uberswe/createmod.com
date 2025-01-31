@@ -8,6 +8,7 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gorm"
+	"log"
 )
 
 func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[int64]string) {
@@ -20,7 +21,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 	if err != nil {
 		panic(err)
 	}
-	app.Logger().Info("Migrating users.")
+	log.Println("Migrating users.")
 	userOldId = make(map[int64]string, len(res))
 	for _, u := range res {
 		var user User

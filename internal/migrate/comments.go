@@ -8,10 +8,11 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gorm"
+	"log"
 )
 
 func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[int64]string, oldSchematicIDs map[int64]string) {
-	app.Logger().Info("Migrating comments.")
+	log.Println("Migrating comments.")
 
 	// QeyKryWEcomments
 	q := query.Use(gormdb)

@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"log"
 	"math/rand"
 	"regexp"
 	"strings"
@@ -48,39 +49,21 @@ func New(conf Config) *Server {
 func (s *Server) Start() {
 	app := pocketbase.New()
 	var searchService *search.Service
-	app.Logger().Info("CreateMod.com Starting...")
+	log.Println("Launching...")
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
 		// enable auto creation of migration files when making collection changes in the Admin UI
 		Automigrate: s.conf.AutoMigrate,
 	})
 
-	app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
-		info := apis.RequestInfo(e.HttpContext)
-		if info.AuthRecord == nil {
-			return fmt.Errorf("user is not authenticated")
-		}
-		app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
-		e.Record.Set("author", info.AuthRecord.GetId())
-
-		if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
-			return err
-		}
-		return nil
-	})
-
-	app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
-		// Rebuild the search index every time a schematic is created
-		schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
-		if err != nil {
-			app.Logger().Warn(err.Error())
-			return err
-		}
-		searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
+	app.OnBeforeBootstrap().Add(func(e *core.BootstrapEvent) error {
+		log.Println("Bootstrapping...")
 		return nil
 	})
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		log.Println("Running Before Serve Logic")
+
 		// MIGRATIONS
 		if s.conf.MysqlDB != "" {
 			gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
@@ -96,7 +79,7 @@ func (s *Server) Start() {
 		// END MIGRATIONS
 
 		// SEARCH
-		app.Logger().Info("Starting Search Server")
+		log.Println("Starting Search Server")
 		schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 		if err != nil {
 			panic(err)
@@ -107,37 +90,64 @@ func (s *Server) Start() {
 
 		// END SEARCH
 
+		app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
+			info := apis.RequestInfo(e.HttpContext)
+			if info.AuthRecord == nil {
+				return fmt.Errorf("user is not authenticated")
+			}
+			app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
+			e.Record.Set("author", info.AuthRecord.GetId())
+
+			if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
+			// Rebuild the search index every time a schematic is created
+			schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+			if err != nil {
+				app.Logger().Warn(err.Error())
+				return err
+			}
+			searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
+			return nil
+		})
+
+		// PASSWORD BACKWARDS COMPATIBILITY
+		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
+			if e.Record != nil && e.Record.GetString("old_password") != "" {
+				p := phpass.New(nil)
+				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
+					hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
+					if err != nil {
+						app.Logger().Warn("old password failled to hash", "error", err.Error())
+						return nil
+					}
+					e.Record.Set(schema.FieldNamePasswordHash, string(hashedPassword))
+					e.Record.Set("old_password", "")
+					if err = app.Dao().SaveRecord(e.Record); err != nil {
+						app.Logger().Warn("old password invalid", "error", err.Error())
+						return nil
+					}
+				}
+			}
+			return nil
+		})
+		// END PASSWORD BACKWARDS COMPATIBILITY
+
 		// ROUTES
 
 		router.Register(app, e.Router, searchService)
 
 		// END ROUTES
 
+		log.Println("CreateMod.com Running!")
 		return nil
 	})
 
-	// PASSWORD BACKWARDS COMPATIBILITY
-	app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
-		if e.Record != nil && e.Record.GetString("old_password") != "" {
-			p := phpass.New(nil)
-			if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
-				hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
-				if err != nil {
-					app.Logger().Warn("old password failled to hash", "error", err.Error())
-					return nil
-				}
-				e.Record.Set(schema.FieldNamePasswordHash, string(hashedPassword))
-				e.Record.Set("old_password", "")
-				if err = app.Dao().SaveRecord(e.Record); err != nil {
-					app.Logger().Warn("old password invalid", "error", err.Error())
-					return nil
-				}
-			}
-		}
-		return nil
-	})
-	// END PASSWORD BACKWARDS COMPATIBILITY
-
+	log.Println("Initializing...")
 	if err := app.Start(); err != nil {
 		panic(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -20,7 +21,7 @@ type viewMigration struct {
 }
 
 func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[int64]string, oldSchematicIDs map[int64]string) {
-	app.Logger().Info("Migrating ratings.")
+	log.Println("Migrating ratings.")
 
 	// QeyKryWEmr_rating_item_entry
 	// user_id

@@ -13,6 +13,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"gorm.io/gorm"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ import (
 )
 
 func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId map[int64]string) map[int64]string {
-	app.Logger().Info("Migrating schematics.")
+	log.Println("Migrating schematics.")
 	q := query.Use(gormdb)
 	postRes, postErr := q.QeyKryWEpost.
 		Where(q.QeyKryWEpost.PostParent.Eq(0)).
