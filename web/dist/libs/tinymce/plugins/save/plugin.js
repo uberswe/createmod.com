@@ -1,5 +1,5 @@
 /**
- * TinyMCE version 6.4.2 (2023-04-26)
+ * TinyMCE version 7.6.0 (2024-12-11)
  */
 
 (function () {
@@ -93,7 +93,8 @@
         tooltip: 'Save',
         enabled: false,
         onAction: () => editor.execCommand('mceSave'),
-        onSetup: stateToggle(editor)
+        onSetup: stateToggle(editor),
+        shortcut: 'Meta+S'
       });
       editor.ui.registry.addButton('cancel', {
         icon: 'cancel',

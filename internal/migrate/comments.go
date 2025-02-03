@@ -26,6 +26,19 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		panic(err)
 	}
 
+	totalCount := res{}
+	countErr := app.Dao().DB().
+		NewQuery("SELECT COUNT(id) as c FROM comments").
+		One(&totalCount)
+	if countErr != nil {
+		panic(countErr)
+	}
+
+	if totalCount.C >= int64(len(commentsRes)) {
+		log.Println("Skipping comments, already migrated.")
+		return
+	}
+
 	for _, s := range commentsRes {
 		filter, err := app.Dao().FindRecordsByFilter(
 			schematicCommentsCollection.Id,

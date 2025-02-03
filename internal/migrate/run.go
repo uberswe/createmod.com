@@ -23,6 +23,10 @@ type User struct {
 	Status          string
 }
 
+type res struct {
+	C int64
+}
+
 // Run migrates the mysql Wordpress database to pb sqlite
 func Run(app *pocketbase.PocketBase, gormdb *gorm.DB) {
 	log.Println("Running migration from Wordpress")

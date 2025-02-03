@@ -64,56 +64,59 @@ func (s *Server) Start() {
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
 
-		// MIGRATIONS
-		if s.conf.MysqlDB != "" {
-			gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
-			if err == nil {
-				migrate.Run(app, gormdb)
-			} else {
-				app.Logger().Debug(
-					"MIGRATION SKIPPED - No MySQL Connection",
-				)
+		go func() {
+			// MIGRATIONS
+			if s.conf.MysqlDB != "" {
+				gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
+				if err == nil {
+					migrate.Run(app, gormdb)
+				} else {
+					app.Logger().Debug(
+						"MIGRATION SKIPPED - No MySQL Connection",
+					)
+				}
 			}
-		}
 
-		// END MIGRATIONS
+			// END MIGRATIONS
 
-		// SEARCH
-		log.Println("Starting Search Server")
-		schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
-		if err != nil {
-			panic(err)
-		}
-		mappedSchematics := pages.MapResultsToSchematic(app, schematics)
-		app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
-		searchService = search.New(mappedSchematics, app.Logger())
-
-		// END SEARCH
-
-		app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
-			info := apis.RequestInfo(e.HttpContext)
-			if info.AuthRecord == nil {
-				return fmt.Errorf("user is not authenticated")
-			}
-			app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
-			e.Record.Set("author", info.AuthRecord.GetId())
-
-			if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
-				return err
-			}
-			return nil
-		})
-
-		app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
-			// Rebuild the search index every time a schematic is created
+			// SEARCH
+			log.Println("Starting Search Server")
 			schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 			if err != nil {
-				app.Logger().Warn(err.Error())
-				return err
+				panic(err)
 			}
-			searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
-			return nil
-		})
+			mappedSchematics := pages.MapResultsToSchematic(app, schematics)
+			app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
+			searchService.BuildIndex(mappedSchematics)
+
+			// END SEARCH
+
+			app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
+				info := apis.RequestInfo(e.HttpContext)
+				if info.AuthRecord == nil {
+					return fmt.Errorf("user is not authenticated")
+				}
+				app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
+				e.Record.Set("author", info.AuthRecord.GetId())
+
+				if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
+					return err
+				}
+				return nil
+			})
+
+			app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
+				// Rebuild the search index every time a schematic is created
+				schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+				if err != nil {
+					app.Logger().Warn(err.Error())
+					return err
+				}
+				searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
+				return nil
+			})
+
+		}()
 
 		// PASSWORD BACKWARDS COMPATIBILITY
 		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
@@ -136,6 +139,8 @@ func (s *Server) Start() {
 			return nil
 		})
 		// END PASSWORD BACKWARDS COMPATIBILITY
+
+		searchService = search.New(nil, app.Logger())
 
 		// ROUTES
 

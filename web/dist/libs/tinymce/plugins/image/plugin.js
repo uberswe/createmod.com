@@ -1,5 +1,5 @@
 /**
- * TinyMCE version 6.4.2 (2023-04-26)
+ * TinyMCE version 7.6.0 (2024-12-11)
  */
 
 (function () {
@@ -992,7 +992,8 @@
         name: 'src',
         type: 'urlinput',
         filetype: 'image',
-        label: 'Source'
+        label: 'Source',
+        picker_text: 'Browse files'
       };
       const imageList = info.imageList.map(items => ({
         name: 'images',
@@ -1278,6 +1279,7 @@
           });
           api.showTab('general');
           changeSrc(helpers, info, state, api);
+          api.focus('src');
         };
         blobToDataUri(file).then(dataUrl => {
           const blobInfo = helpers.createBlobCache(file, blobUri, dataUrl);
@@ -1287,7 +1289,9 @@
               finalize();
             }).catch(err => {
               finalize();
-              helpers.alertErr(err);
+              helpers.alertErr(err, () => {
+                api.focus('fileinput');
+              });
             });
           } else {
             helpers.addToBlobCache(blobInfo);
@@ -1368,8 +1372,8 @@
     const addToBlobCache = editor => blobInfo => {
       editor.editorUpload.blobCache.add(blobInfo);
     };
-    const alertErr = editor => message => {
-      editor.windowManager.alert(message);
+    const alertErr = editor => (message, callback) => {
+      editor.windowManager.alert(message, callback);
     };
     const normalizeCss = editor => cssText => normalizeCss$1(editor, cssText);
     const parseStyle = editor => cssText => editor.dom.parseStyle(cssText);
@@ -1456,6 +1460,16 @@
       });
     };
 
+    const onSetupEditable = editor => api => {
+      const nodeChanged = () => {
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChanged);
+      nodeChanged();
+      return () => {
+        editor.off('NodeChange', nodeChanged);
+      };
+    };
     const register = editor => {
       editor.ui.registry.addToggleButton('image', {
         icon: 'image',
@@ -1463,15 +1477,21 @@
         onAction: Dialog(editor).open,
         onSetup: buttonApi => {
           buttonApi.setActive(isNonNullable(getSelectedImage(editor)));
-          return editor.selection.selectorChangedWithUnbind('img:not([data-mce-object]):not([data-mce-placeholder]),figure.image', buttonApi.setActive).unbind;
+          const unbindSelectorChanged = editor.selection.selectorChangedWithUnbind('img:not([data-mce-object]):not([data-mce-placeholder]),figure.image', buttonApi.setActive).unbind;
+          const unbindEditable = onSetupEditable(editor)(buttonApi);
+          return () => {
+            unbindSelectorChanged();
+            unbindEditable();
+          };
         }
       });
       editor.ui.registry.addMenuItem('image', {
         icon: 'image',
         text: 'Image...',
-        onAction: Dialog(editor).open
+        onAction: Dialog(editor).open,
+        onSetup: onSetupEditable(editor)
       });
-      editor.ui.registry.addContextMenu('image', { update: element => isFigure(element) || isImage(element) && !isPlaceholderImage(element) ? ['image'] : [] });
+      editor.ui.registry.addContextMenu('image', { update: element => editor.selection.isEditable() && (isFigure(element) || isImage(element) && !isPlaceholderImage(element)) ? ['image'] : [] });
     };
 
     var Plugin = () => {

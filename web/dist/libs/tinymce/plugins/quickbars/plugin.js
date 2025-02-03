@@ -1,11 +1,104 @@
 /**
- * TinyMCE version 6.4.2 (2023-04-26)
+ * TinyMCE version 7.6.0 (2024-12-11)
  */
 
 (function () {
     'use strict';
 
     var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
+
+    let unique = 0;
+    const generate = prefix => {
+      const date = new Date();
+      const time = date.getTime();
+      const random$1 = Math.floor(random() * 1000000000);
+      unique++;
+      return prefix + '_' + random$1 + unique + String(time);
+    };
+
+    const insertTable = (editor, columns, rows) => {
+      editor.execCommand('mceInsertTable', false, {
+        rows,
+        columns
+      });
+    };
+    const insertBlob = (editor, base64, blob) => {
+      const blobCache = editor.editorUpload.blobCache;
+      const blobInfo = blobCache.create(generate('mceu'), blob, base64);
+      blobCache.add(blobInfo);
+      editor.insertContent(editor.dom.createHTML('img', { src: blobInfo.blobUri() }));
+    };
+
+    const blobToBase64 = blob => {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result.split(',')[1]);
+        };
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Delay');
+
+    const pickFile = editor => new Promise(resolve => {
+      let resolved = false;
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.position = 'fixed';
+      fileInput.style.left = '0';
+      fileInput.style.top = '0';
+      fileInput.style.opacity = '0.001';
+      document.body.appendChild(fileInput);
+      const resolveFileInput = value => {
+        var _a;
+        if (!resolved) {
+          (_a = fileInput.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(fileInput);
+          resolved = true;
+          resolve(value);
+        }
+      };
+      const changeHandler = e => {
+        resolveFileInput(Array.prototype.slice.call(e.target.files));
+      };
+      fileInput.addEventListener('input', changeHandler);
+      fileInput.addEventListener('change', changeHandler);
+      const cancelHandler = e => {
+        const cleanup = () => {
+          resolveFileInput([]);
+        };
+        if (!resolved) {
+          if (e.type === 'focusin') {
+            global.setEditorTimeout(editor, cleanup, 1000);
+          } else {
+            cleanup();
+          }
+        }
+        editor.off('focusin remove', cancelHandler);
+      };
+      editor.on('focusin remove', cancelHandler);
+      fileInput.click();
+    });
+
+    const register$1 = editor => {
+      editor.on('PreInit', () => {
+        if (!editor.queryCommandSupported('QuickbarInsertImage')) {
+          editor.addCommand('QuickbarInsertImage', () => {
+            pickFile(editor).then(files => {
+              if (files.length > 0) {
+                const blob = files[0];
+                blobToBase64(blob).then(base64 => {
+                  insertBlob(editor, base64, blob);
+                });
+              }
+            });
+          });
+        }
+      });
+    };
 
     const hasProto = (v, constructor, predicate) => {
       var _a;
@@ -79,94 +172,11 @@
     const getInsertToolbarItems = option('quickbars_insert_toolbar');
     const getImageToolbarItems = option('quickbars_image_toolbar');
 
-    let unique = 0;
-    const generate = prefix => {
-      const date = new Date();
-      const time = date.getTime();
-      const random = Math.floor(Math.random() * 1000000000);
-      unique++;
-      return prefix + '_' + random + unique + String(time);
-    };
-
-    const insertTable = (editor, columns, rows) => {
-      editor.execCommand('mceInsertTable', false, {
-        rows,
-        columns
-      });
-    };
-    const insertBlob = (editor, base64, blob) => {
-      const blobCache = editor.editorUpload.blobCache;
-      const blobInfo = blobCache.create(generate('mceu'), blob, base64);
-      blobCache.add(blobInfo);
-      editor.insertContent(editor.dom.createHTML('img', { src: blobInfo.blobUri() }));
-    };
-
-    const blobToBase64 = blob => {
-      return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result.split(',')[1]);
-        };
-        reader.readAsDataURL(blob);
-      });
-    };
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Delay');
-
-    const pickFile = editor => new Promise(resolve => {
-      let resolved = false;
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/*';
-      fileInput.style.position = 'fixed';
-      fileInput.style.left = '0';
-      fileInput.style.top = '0';
-      fileInput.style.opacity = '0.001';
-      document.body.appendChild(fileInput);
-      const resolveFileInput = value => {
-        var _a;
-        if (!resolved) {
-          (_a = fileInput.parentNode) === null || _a === void 0 ? void 0 : _a.removeChild(fileInput);
-          resolved = true;
-          resolve(value);
-        }
-      };
-      const changeHandler = e => {
-        resolveFileInput(Array.prototype.slice.call(e.target.files));
-      };
-      fileInput.addEventListener('input', changeHandler);
-      fileInput.addEventListener('change', changeHandler);
-      const cancelHandler = e => {
-        const cleanup = () => {
-          resolveFileInput([]);
-        };
-        if (!resolved) {
-          if (e.type === 'focusin') {
-            global.setEditorTimeout(editor, cleanup, 1000);
-          } else {
-            cleanup();
-          }
-        }
-        editor.off('focusin remove', cancelHandler);
-      };
-      editor.on('focusin remove', cancelHandler);
-      fileInput.click();
-    });
-
     const setupButtons = editor => {
       editor.ui.registry.addButton('quickimage', {
         icon: 'image',
         tooltip: 'Insert image',
-        onAction: () => {
-          pickFile(editor).then(files => {
-            if (files.length > 0) {
-              const blob = files[0];
-              blobToBase64(blob).then(base64 => {
-                insertBlob(editor, base64, blob);
-              });
-            }
-          });
-        }
+        onAction: () => editor.execCommand('QuickbarInsertImage')
       });
       editor.ui.registry.addButton('quicktable', {
         icon: 'table',
@@ -286,7 +296,7 @@
       return r.toLowerCase();
     };
 
-    const has = (element, key) => {
+    const has$1 = (element, key) => {
       const dom = element.dom;
       return dom && dom.hasAttribute ? dom.hasAttribute(key) : false;
     };
@@ -392,7 +402,7 @@
             const sugarNode = SugarElement.fromDom(node);
             const textBlockElementsMap = editor.schema.getTextBlockElements();
             const isRoot = elem => elem.dom === editor.getBody();
-            return !has(sugarNode, 'data-mce-bogus') && closest(sugarNode, 'table,[data-mce-bogus="all"]', isRoot).fold(() => closest$1(sugarNode, elem => name(elem) in textBlockElementsMap && editor.dom.isEmpty(elem.dom), isRoot), never);
+            return !has$1(sugarNode, 'data-mce-bogus') && closest(sugarNode, 'table,[data-mce-bogus="all"]', isRoot).fold(() => closest$1(sugarNode, elem => name(elem) in textBlockElementsMap && editor.dom.isEmpty(elem.dom), isRoot), never);
           },
           items: insertToolbarItems,
           position: 'line',
@@ -401,9 +411,19 @@
       }
     };
 
+    const supports = element => element.dom.classList !== undefined;
+
+    const has = (element, clazz) => supports(element) && element.dom.classList.contains(clazz);
+
     const addToEditor = editor => {
-      const isEditable = node => editor.dom.getContentEditableParent(node) !== 'false';
-      const isImage = node => node.nodeName === 'IMG' || node.nodeName === 'FIGURE' && /image/i.test(node.className);
+      const isEditable = node => editor.dom.isEditable(node);
+      const isInEditableContext = el => isEditable(el.parentElement);
+      const isImage = node => {
+        const isImageFigure = node.nodeName === 'FIGURE' && /image/i.test(node.className);
+        const isImage = node.nodeName === 'IMG' || isImageFigure;
+        const isPagebreak = has(SugarElement.fromDom(node), 'mce-pagebreak');
+        return isImage && isInEditableContext(node) && !isPagebreak;
+      };
       const imageToolbarItems = getImageToolbarItems(editor);
       if (imageToolbarItems.length > 0) {
         editor.ui.registry.addContextToolbar('imageselection', {
@@ -426,6 +446,7 @@
     var Plugin = () => {
       global$1.add('quickbars', editor => {
         register(editor);
+        register$1(editor);
         setupButtons(editor);
         addToEditor$1(editor);
         addToEditor(editor);

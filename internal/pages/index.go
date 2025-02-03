@@ -7,9 +7,18 @@ import (
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 	"net/http"
+	"time"
 )
 
 const indexTemplate = "index.html"
+
+// TODO consider implementing a cache service which handles in-memory storage
+var (
+	trendingCacheTime      time.Time
+	trendingSchematics     []models.Schematic
+	highestRatedCacheTime  time.Time
+	highestRatedSchematics []models.Schematic
+)
 
 type IndexData struct {
 	DefaultData
@@ -29,7 +38,7 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			schematicsCollection.Id,
 			"1=1",
 			"-created",
-			30,
+			50,
 			0)
 
 		d := IndexData{
@@ -51,6 +60,9 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 }
 
 func getHighestRatedSchematics(app *pocketbase.PocketBase) []models.Schematic {
+	if len(highestRatedSchematics) > 0 && time.Now().Before(highestRatedCacheTime.Add(time.Hour*24)) {
+		return highestRatedSchematics
+	}
 	var schematics []models.DatabaseSchematic
 	err := app.Dao().DB().
 		Select("schematics.*", "avg(schematic_ratings.rating) as avg_rating", "count(schematic_ratings.rating) as total_rating").
@@ -65,10 +77,15 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase) []models.Schematic {
 		app.Logger().Debug("could not fetch highest rated", "error", err.Error())
 		return nil
 	}
-	return models.DatabaseSchematicsToSchematics(schematics)
+	highestRatedSchematics = models.DatabaseSchematicsToSchematics(schematics)
+	highestRatedCacheTime = time.Now()
+	return highestRatedSchematics
 }
 
 func getTrendingSchematics(app *pocketbase.PocketBase) []models.Schematic {
+	if len(trendingSchematics) > 0 && time.Now().Before(trendingCacheTime.Add(time.Hour*24)) {
+		return trendingSchematics
+	}
 	var schematics []models.DatabaseSchematic
 	err := app.Dao().DB().
 		Select("schematics.*", "avg(schematic_views.count) as avg_views").
@@ -84,7 +101,9 @@ func getTrendingSchematics(app *pocketbase.PocketBase) []models.Schematic {
 		app.Logger().Debug("could not fetch trending", "error", err.Error())
 		return nil
 	}
-	return models.DatabaseSchematicsToSchematics(schematics)
+	trendingSchematics = models.DatabaseSchematicsToSchematics(schematics)
+	trendingCacheTime = time.Now()
+	return trendingSchematics
 }
 
 func findUserFromID(app *pocketbase.PocketBase, userID string) *models.User {

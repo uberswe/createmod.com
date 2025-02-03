@@ -1,5 +1,5 @@
 /**
- * TinyMCE version 6.4.2 (2023-04-26)
+ * TinyMCE version 7.6.0 (2024-12-11)
  */
 
 (function () {
@@ -141,7 +141,8 @@
         const skinUrlBase = getSkinUrl(editor);
         const skinUrl = skinUrlBase ? editor.documentBaseURI.toAbsolute(skinUrlBase) : global$2.baseURL + '/skins/ui/' + skin;
         const contentSkinUrlPart = global$2.baseURL + '/skins/content/';
-        return href === skinUrl + '/content' + (editor.inline ? '.inline' : '') + '.min.css' || href.indexOf(contentSkinUrlPart) !== -1;
+        const suffix = editor.editorManager.suffix;
+        return href === skinUrl + '/content' + (editor.inline ? '.inline' : '') + `${ suffix }.css` || href.indexOf(contentSkinUrlPart) !== -1;
       }
       return false;
     };
@@ -177,7 +178,7 @@
         } catch (e) {
         }
         global.each(rules, cssRule => {
-          if (isCssImportRule(cssRule)) {
+          if (isCssImportRule(cssRule) && cssRule.styleSheet) {
             append(cssRule.styleSheet, true);
           } else if (isCssPageRule(cssRule)) {
             global.each(cssRule.selectorText.split(','), selector => {

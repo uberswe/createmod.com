@@ -4,9 +4,11 @@ import (
 	"createmod/internal/models"
 	"fmt"
 	"github.com/labstack/echo/v5"
+	"github.com/mergestat/timediff"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
+	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
 	"strings"
@@ -18,6 +20,7 @@ const schematicTemplate = "schematic.html"
 type SchematicData struct {
 	DefaultData
 	Schematic models.Schematic
+	Comments  []models.Comment
 }
 
 func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
@@ -44,6 +47,7 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
+		d.Comments = findSchematicComments(app, d.Schematic.ID)
 
 		go countSchematicView(app, results[0])
 		err = c.Render(http.StatusOK, schematicTemplate, d)
@@ -52,6 +56,78 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		}
 		return nil
 	}
+}
+
+func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comment {
+	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+	if err != nil {
+		return nil
+	}
+	results, err := app.Dao().FindRecordsByFilter(
+		schematicsCollection.Id,
+		"schematic = {:id} && approved = 1",
+		"+created",
+		100,
+		0,
+		dbx.Params{"id": id})
+
+	var comments []models.DatabaseComment
+
+	for _, result := range results {
+		comments = append(comments, models.DatabaseComment{
+			ID:        result.GetId(),
+			Created:   result.GetTime("created"),
+			Published: result.GetString("published"),
+			Author:    result.GetString("author"),
+			Schematic: result.GetString("schematic"),
+			Karma:     result.GetInt("karma"),
+			Approved:  result.GetBool("approved"),
+			Type:      result.GetString("type"),
+			ParentID:  result.GetString("parent"),
+			Content:   result.GetString("content"),
+		})
+	}
+	return MapResultsToComment(app, comments)
+}
+
+func MapResultsToComment(app *pocketbase.PocketBase, cs []models.DatabaseComment) []models.Comment {
+	var comments []models.Comment
+	for _, c := range cs {
+		comments = append(comments, mapResultToComment(app, c))
+	}
+	return comments
+}
+
+func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) models.Comment {
+	comment := models.Comment{
+		ID:       c.ID,
+		Approved: c.Approved,
+		ParentID: c.ParentID,
+	}
+
+	sanitizedHTML, err := htmlsanitizer.SanitizeString(c.Content)
+	if err != nil {
+		// Fallback legacy sanitizer
+		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(c.Content), "\n", "<br/>")
+	}
+
+	comment.Content = template.HTML(sanitizedHTML)
+
+	userRecord, err := app.Dao().FindRecordById("users", c.Author)
+	if err != nil {
+		return comment
+	}
+	comment.Author = userRecord.GetString("name")
+	comment.AuthorUsername = userRecord.GetString("username")
+
+	t, err := time.Parse("2006-01-02 15:04:05.999Z07:00", c.Published)
+	if err != nil {
+		t = c.Created
+	}
+	fmt.Println(c.Created)
+	comment.Created = timediff.TimeDiff(t)
+
+	return comment
 }
 
 func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) {
@@ -155,6 +231,12 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		}
 	}
 
+	sanitizedHTML, err := htmlsanitizer.SanitizeString(result.GetString("content"))
+	if err != nil {
+		// Fallback legacy sanitizer
+		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")
+	}
+
 	s := models.Schematic{
 		ID:               result.GetId(),
 		Created:          result.Created.Time(),
@@ -163,7 +245,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		CommentCount:     result.GetInt("comment_count"),
 		CommentStatus:    result.GetBool("comment_status"),
 		Content:          result.GetString("content"),
-		HTMLContent:      template.HTML(strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")),
+		HTMLContent:      template.HTML(sanitizedHTML),
 		Excerpt:          result.GetString("excerpt"),
 		FeaturedImage:    result.GetString("featured_image"),
 		Gallery:          result.GetStringSlice("gallery"),

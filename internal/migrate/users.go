@@ -23,6 +23,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 	}
 	log.Println("Migrating users.")
 	userOldId = make(map[int64]string, len(res))
+
 	for _, u := range res {
 		var user User
 		userErr := app.Dao().DB().

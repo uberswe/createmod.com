@@ -25,13 +25,27 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 	if err != nil {
 		panic(err)
 	}
+
+	totalCount := res{}
+	countErr := app.Dao().DB().
+		NewQuery("SELECT COUNT(id) as c FROM schematic_views").
+		One(&totalCount)
+	if countErr != nil {
+		panic(countErr)
+	}
+
+	if totalCount.C >= int64(100000) {
+		log.Println("Skipping views, already migrated.")
+		return
+	}
+
 	postViewRes := make([]*model.QeyKryWEpostView, 0)
 	postErr := q.QeyKryWEpostView.FindInBatches(&postViewRes, 25000, func(tx gen.Dao, batch int) error {
 		for i := range postViewRes {
 			if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {
 				filter, err := app.Dao().FindRecordsByFilter(
 					schematicViewsCollection.Id,
-					"old_id = {:old_id} && type = {:type}",
+					"old_schematic_id = {:old_schematic_id} && type = {:type}",
 					"-created",
 					1,
 					0,

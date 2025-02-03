@@ -50,6 +50,19 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 		panic(err)
 	}
 
+	totalCount := res{}
+	countErr := app.Dao().DB().
+		NewQuery("SELECT COUNT(id) as c FROM schematic_ratings").
+		One(&totalCount)
+	if countErr != nil {
+		panic(countErr)
+	}
+
+	if totalCount.C >= int64(len(ratingEntries)) {
+		log.Println("Skipping ratings, already migrated.")
+		return
+	}
+
 	for _, e := range ratingEntries {
 		for _, v := range valuesEntries {
 			if e.RatingItemEntryID == v.RatingItemEntryID {
