@@ -61,13 +61,13 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 }
 
 func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comment {
-	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+	commentsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
 	if err != nil {
 		return nil
 	}
 	// Limit comments to 1000 for now, will add pagination later
 	results, err := app.Dao().FindRecordsByFilter(
-		schematicsCollection.Id,
+		commentsCollection.Id,
 		"schematic = {:id} && approved = 1",
 		"-created",
 		1000,
@@ -97,18 +97,35 @@ func MapResultsToComment(app *pocketbase.PocketBase, cs []models.DatabaseComment
 	var comments []models.Comment
 	// comments that are replies should come last
 	sort.Slice(cs, func(i, j int) bool {
-		if cs[i].ParentID == "" {
+		if cs[i].ParentID != "" {
+			return false
+		} else if cs[j].ParentID != "" {
 			return true
 		}
-		return false
+		t1, err := time.Parse("2006-01-02 15:04:05.999Z07:00", cs[i].Published)
+		if err != nil {
+			t1 = cs[i].Created
+		}
+		t2, err := time.Parse("2006-01-02 15:04:05.999Z07:00", cs[j].Published)
+		if err != nil {
+			t2 = cs[j].Created
+		}
+		return t1.Before(t2)
 	})
 	for _, c := range cs {
 		if c.ParentID != "" {
 			for i := range comments {
 				if c.ParentID == comments[i].ID {
-					comments = slices.Insert(comments, i+1, mapResultToComment(app, c))
-					comments[i+1].Indent = 1
-					break
+					if i+1 == len(comments) {
+						com := mapResultToComment(app, c)
+						com.Indent = 1
+						comments = append(comments, com)
+						break
+					} else {
+						comments = slices.Insert(comments, i+1, mapResultToComment(app, c))
+						comments[i+1].Indent = 1
+						break
+					}
 				}
 			}
 		} else {
@@ -125,8 +142,10 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 		ParentID: c.ParentID,
 	}
 
-	sanitizedHTML, err := htmlsanitizer.SanitizeString(c.Content)
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	sanitizedHTML, err := sanitizer.SanitizeString(c.Content)
 	if err != nil {
+		app.Logger().Debug("Failed to sanitize", "string", c.Content, "error", err)
 		// Fallback legacy sanitizer
 		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(c.Content), "\n", "<br/>")
 	}
@@ -139,6 +158,13 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	}
 	comment.Author = userRecord.GetString("name")
 	comment.AuthorUsername = userRecord.GetString("username")
+	if comment.Author == "" {
+		comment.Author = comment.AuthorUsername
+	}
+	comment.AuthorAvatar = userRecord.GetString("avatar")
+	if comment.AuthorAvatar != "" {
+		comment.AuthorHasAvatar = true
+	}
 
 	t, err := time.Parse("2006-01-02 15:04:05.999Z07:00", c.Published)
 	if err != nil {
@@ -251,9 +277,10 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 			rating = totalRating / float64(len(ratings))
 		}
 	}
-
-	sanitizedHTML, err := htmlsanitizer.SanitizeString(result.GetString("content"))
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	sanitizedHTML, err := sanitizer.SanitizeString(result.GetString("content"))
 	if err != nil {
+		app.Logger().Debug("Failed to sanitize", "string", result.GetString("content"), "error", err)
 		// Fallback legacy sanitizer
 		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")
 	}

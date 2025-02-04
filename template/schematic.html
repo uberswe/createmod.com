@@ -108,15 +108,15 @@
                                                 </div>
                                             </div>
                                             {{ end }}
-                                            {{ if .Schematic.HasDependencies }}
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Dependencies</div>
-                                                <div class="datagrid-content">
-                                                    {{ .Schematic.HTMLDependencies }}
-                                                </div>
-                                            </div>
-                                            {{ end }}
                                         </div>
+                                        {{ if .Schematic.HasDependencies }}
+                                        <div class="col-sm-12 col-lg-12 mt-4">
+                                            <h3 class="card-title">Dependencies</h3>
+                                            <div>
+                                                {{ .Schematic.HTMLDependencies }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -208,6 +208,19 @@
                                                 <button class="btn btn-primary w-100" id="post-comment-btn">
                                                     Post Comment
                                                 </button>
+                                                <input type="hidden" name="parent" id="parent-comment" value="">
+                                            </div>
+                                            <div class="mb-12">
+                                                <div id="comment-success" class="alert alert-important alert-success" style="display: none;" role="alert">
+                                                    <div class="d-flex">
+                                                        <div>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                        </div>
+                                                        <div>
+                                                            Comment Posted!
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -220,11 +233,8 @@
                         {{ if eq .Schematic.Video "" }}
                         {{ else }}
                         <div class="card">
-                            <div class="card-body">
-                                <h3 class="card-title">Video</h3>
                                 <div id="player-youtube" data-plyr-provider="youtube"
                                      data-plyr-embed-id="{{ .Schematic.Video }}"></div>
-                            </div>
                         </div>
                         {{ end }}
                         <div class="card">
@@ -277,13 +287,13 @@
             menubar: false,
             statusbar: false,
             plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview', 'anchor',
+                'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
                 'searchreplace', 'visualblocks', 'code', 'fullscreen',
                 'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
             ],
             toolbar: 'undo redo | formatselect | ' +
-                'bold italic backcolor | alignleft aligncenter ' +
-                'alignright alignjustify | link | bullist numlist outdent indent | ' +
+                'bold italic | ' +
+                'link | bullist numlist outdent indent | ' +
                 'removeformat',
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
         }
@@ -305,6 +315,44 @@
         });
         leaveCommentLabel.innerHTML = "Reply to " + username
         postCommentButton.innerHTML = "Post Reply"
+        document.getElementById("parent-comment").value = id
         return false;
     }
+
+    document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById('post-comment-btn').addEventListener("click", async function (e) {
+        document.getElementById("post-comment-btn").disabled = true
+        const formData = new FormData();
+        formData.append("content", tinyMCE.activeEditor.getContent())
+        formData.append("author", pb.authStore.model.id)
+        formData.append("schematic", '{{ .Schematic.ID }}')
+        formData.append("parent", document.getElementById("parent-comment").value)
+
+            let successAlert = document.getElementById("comment-success")
+            try {
+                const createdRecord = await pb.collection('comments').create(formData);
+                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                    div = document.createElement('div');
+                    div.classList.add("invalid-feedback")
+                    div.style.display = "block"
+                    div.innerText = "An unexpected error occurred, please try again"
+                    document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
+                    document.getElementById("post-comment-btn").disabled = false
+                } else {
+                    successAlert.style.display = "block"
+                    setTimeout(function(){
+                        window.location.reload(1);
+                    }, 1000);
+                }
+            } catch(e) {
+                console.log(e)
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.style.display = "block"
+                div.innerText = "An unexpected error occurred, please try again"
+                document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
+                document.getElementById("post-comment-btn").disabled = false
+            }
+    });
+    });
 </script>

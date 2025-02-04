@@ -2,6 +2,8 @@ let url = "https://createmod.com"
 const host = window.location.host;
 if (host === "127.0.0.1:8090") {
     url = "http://127.0.0.1:8090"
+} else if (host === "0.0.0.0:8090") {
+    url = "http://0.0.0.0:8090"
 }
 const pb = new PocketBase(url)
 const acceptedCookies = getCookie("cookie_accept")

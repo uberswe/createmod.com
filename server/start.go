@@ -6,6 +6,7 @@ import (
 	"createmod/internal/router"
 	"createmod/internal/search"
 	_ "createmod/migrations"
+	"errors"
 	"fmt"
 	"github.com/apokalyptik/phpass"
 	"github.com/gosimple/slug"
@@ -17,12 +18,14 @@ import (
 	"github.com/pocketbase/pocketbase/models/schema"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
+	"github.com/pocketbase/pocketbase/tools/mailer"
 	"github.com/sym01/htmlsanitizer"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
 	"math/rand"
+	"net/mail"
 	"regexp"
 	"strings"
 	"time"
@@ -91,20 +94,6 @@ func (s *Server) Start() {
 
 			// END SEARCH
 
-			app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
-				info := apis.RequestInfo(e.HttpContext)
-				if info.AuthRecord == nil {
-					return fmt.Errorf("user is not authenticated")
-				}
-				app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
-				e.Record.Set("author", info.AuthRecord.GetId())
-
-				if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
-					return err
-				}
-				return nil
-			})
-
 			app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
 				// Rebuild the search index every time a schematic is created
 				schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
@@ -117,6 +106,34 @@ func (s *Server) Start() {
 			})
 
 		}()
+
+		app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
+			info := apis.RequestInfo(e.HttpContext)
+			if info.AuthRecord == nil {
+				return fmt.Errorf("user is not authenticated")
+			}
+			app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
+			e.Record.Set("author", info.AuthRecord.GetId())
+
+			if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		app.OnRecordBeforeCreateRequest("comments").Add(func(e *core.RecordCreateEvent) error {
+			info := apis.RequestInfo(e.HttpContext)
+			if info.AuthRecord == nil {
+				return fmt.Errorf("user is not authenticated")
+			}
+			app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
+			e.Record.Set("author", info.AuthRecord.GetId())
+
+			if err := validateAndSaveComment(app, e.Record, info.AuthRecord); err != nil {
+				return err
+			}
+			return nil
+		})
 
 		// PASSWORD BACKWARDS COMPATIBILITY
 		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
@@ -158,6 +175,104 @@ func (s *Server) Start() {
 	}
 }
 
+func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, authRecord *models.Record) error {
+	replyToUser := ""
+	if record.GetString("parent") != "" {
+		// Validate parent is a comment for the same schematic
+		commentsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+		if err != nil {
+			return nil
+		}
+		// Limit comments to 1000 for now, will add pagination later
+		results, err := app.Dao().FindRecordsByFilter(
+			commentsCollection.Id,
+			"schematic = {:id} && approved = 1",
+			"-created",
+			1000,
+			0,
+			dbx.Params{"id": record.GetString("schematic")})
+
+		for _, result := range results {
+			if result.GetString("id") == record.GetString("parent") {
+				replyToUser = result.GetString("author")
+			}
+		}
+		if replyToUser == "" {
+			return errors.New("Tried to reply to an invalid comment")
+		}
+	}
+
+	// Validate that schematic exists
+	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+	if err != nil {
+		return err
+	}
+	results, err := app.Dao().FindRecordsByFilter(
+		schematicsCollection.Id,
+		"id = {:id}",
+		"-created",
+		1,
+		0,
+		dbx.Params{"id": record.GetString("schematic")})
+
+	if len(results) != 1 {
+		return errors.New("Tried to comment on an invalid schematic")
+	}
+
+	// Sanitize content
+	content := record.GetString("content")
+	if content == "" {
+		return fmt.Errorf("comment can not be empty")
+	}
+	// Sanitize description
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	description, err := sanitizer.SanitizeString(content)
+	if err != nil {
+		return err
+	}
+	record.Set("content", description)
+	record.Set("published", time.Now().Format("2006-01-02 15:04:05.999Z07:00"))
+	record.Set("type", "comment")
+	record.Set("approved", true)
+
+	message := &mailer.Message{}
+
+	if replyToUser == "" {
+
+		u, err := app.Dao().FindRecordById("users", results[0].GetString("author"))
+		if err != nil {
+			return err
+		}
+
+		message = &mailer.Message{
+			From: mail.Address{
+				Address: app.Settings().Meta.SenderAddress,
+				Name:    app.Settings().Meta.SenderName,
+			},
+			To:      []mail.Address{{Address: u.Email()}},
+			Subject: fmt.Sprintf("New comment on %s", results[0].GetString("title")),
+			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a><p>", results[0].GetString("name"), results[0].GetString("name")),
+		}
+	} else {
+		u, err := app.Dao().FindRecordById("users", replyToUser)
+		if err != nil {
+			return err
+		}
+
+		message = &mailer.Message{
+			From: mail.Address{
+				Address: app.Settings().Meta.SenderAddress,
+				Name:    app.Settings().Meta.SenderName,
+			},
+			To:      []mail.Address{{Address: u.Email()}},
+			Subject: fmt.Sprintf("New reply on %s", results[0].GetString("title")),
+			HTML:    fmt.Sprintf("<p>A new reply has been posted to your comment on CreateMod.com: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a><p>", results[0].GetString("name"), results[0].GetString("name")),
+		}
+	}
+
+	return app.NewMailClient().Send(message)
+}
+
 func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) error {
 	// Title and slug
 	schematicSlug := slug.Make(record.GetString("title"))
@@ -178,20 +293,8 @@ func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *models.Rec
 		return fmt.Errorf("description can not be empty")
 	}
 	// Sanitize description
-	s := htmlsanitizer.NewHTMLSanitizer()
-	s.Tags = []*htmlsanitizer.Tag{
-		{"a", []string{"rel", "target", "referrerpolicy"}, []string{"href"}},
-		{Name: "p"},
-		{Name: "b"},
-		{Name: "i"},
-		{Name: "u"},
-		{Name: "br"},
-		{Name: "ul"},
-		{Name: "ol"},
-		{Name: "li"},
-	}
-
-	description, err := s.SanitizeString(description)
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	description, err := sanitizer.SanitizeString(description)
 	if err != nil {
 		return err
 	}

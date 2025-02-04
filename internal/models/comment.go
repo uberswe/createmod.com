@@ -6,15 +6,17 @@ import (
 )
 
 type Comment struct {
-	ID             string
-	Created        string
-	Published      string
-	Author         string
-	AuthorUsername string
-	Indent         int
-	Content        template.HTML
-	Approved       bool
-	ParentID       string
+	ID              string
+	Created         string
+	Published       string
+	Author          string
+	AuthorUsername  string
+	AuthorHasAvatar bool
+	AuthorAvatar    string
+	Indent          int
+	Content         template.HTML
+	Approved        bool
+	ParentID        string
 }
 
 type DatabaseComment struct {
