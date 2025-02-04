@@ -349,6 +349,27 @@
             },
             classNames: {}
         })
+        document.querySelector('.gl-star-rating--stars').addEventListener('click', async function (e) {
+            for (const span of this.children) {
+                if (span === e.target) {
+                    if (pb.authStore.model === null) {
+                        // TODO replace alert with modal or something
+                        alert("You need to be logged in to rate schematics")
+                    } else {
+                        const formData = new FormData();
+                        formData.append("schematic", '{{ .Schematic.ID }}')
+                        formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
+                        formData.append("user", pb.authStore.model.id)
+                        const createdRecord = await pb.collection('schematic_ratings').create(formData);
+                        if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                            alert("An unexpected error occurred")
+                        } else {
+                            alert("Your rating has been submitted")
+                        }
+                    }
+                }
+            }
+        });
     })
 </script>
 <script>
@@ -402,8 +423,10 @@
         });
 
         // Handle logged in
-        if (pb.authStore.model === null) {
-            document.getElementById('comment-section').innerHTML = '<h4>You must be logged in to post a comment.</h4>'
-        }
+        setTimeout(function () {
+            if (pb.authStore.model === null) {
+                document.getElementById('comment-section').innerHTML = '<h4>You must be logged in to post a comment.</h4>'
+            }
+        }, 3000);
     });
 </script>

@@ -135,6 +135,33 @@ func (s *Server) Start() {
 			return nil
 		})
 
+		app.OnRecordBeforeCreateRequest("schematic_ratings").Add(func(e *core.RecordCreateEvent) error {
+			info := apis.RequestInfo(e.HttpContext)
+			if info.AuthRecord == nil {
+				return fmt.Errorf("user is not authenticated")
+			}
+			schematicRatingsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_ratings")
+			if err != nil {
+				return err
+			}
+			results, err := app.Dao().FindRecordsByFilter(
+				schematicRatingsCollection.Id,
+				"schematic = {:schematic} && user = {:user}",
+				"-created",
+				1,
+				0,
+				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": info.AuthRecord.GetId()})
+			if err != nil {
+				return err
+			}
+			if len(results) > 0 {
+				// TODO allow updating ratings
+				return errors.New("you have already rated this schematic")
+			}
+			e.Record.Set("rated_at", time.Now())
+			return nil
+		})
+
 		// PASSWORD BACKWARDS COMPATIBILITY
 		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
 			if e.Record != nil && e.Record.GetString("old_password") != "" {
