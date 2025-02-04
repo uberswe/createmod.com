@@ -8,6 +8,7 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
 	"gorm.io/gorm"
+	"log"
 )
 
 func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[int64]string) {
@@ -20,24 +21,24 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 	if err != nil {
 		panic(err)
 	}
-	fmt.Print("Migrating users.")
+	log.Println("Migrating users.")
 	userOldId = make(map[int64]string, len(res))
-	for i, u := range res {
-		if i == 0 {
-			var user User
-			userErr := app.Dao().DB().
-				NewQuery("SELECT old_id FROM users WHERE old_id={:old_id}").
-				Bind(dbx.Params{
-					"old_id": u.ID,
-				}).
-				One(&user)
-			if userErr == nil {
-				app.Logger().Debug(
-					"Skipping user migration, record exists",
-					"user-id", user.OldID,
-				)
-				break
-			}
+
+	for _, u := range res {
+		var user User
+		userErr := app.Dao().DB().
+			NewQuery("SELECT id, old_id FROM users WHERE old_id={:old_id}").
+			Bind(dbx.Params{
+				"old_id": u.ID,
+			}).
+			One(&user)
+		if userErr == nil {
+			app.Logger().Debug(
+				"Skipping user migration, record exists",
+				"user-id", user.OldID,
+			)
+			userOldId[u.ID] = user.ID
+			continue
 		}
 
 		record := models.NewRecord(userCollection)
@@ -55,7 +56,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 		if err := app.Dao().SaveRecord(record); err != nil {
 			panic(err)
 		}
-		userOldId[u.ID] = record.Id
+		userOldId[u.ID] = record.GetId()
 	}
 	return userOldId
 }

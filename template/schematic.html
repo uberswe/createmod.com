@@ -19,10 +19,12 @@
                                     <div class="card-body">
                                         {{ if .Schematic.HasGallery}}
                                         <div class="row row-cols-6 g-3 mb-2">
-                                            {{ range  .Schematic.Gallery }}
+                                            {{ range .Schematic.Gallery }}
                                             <div class="col">
-                                                <a data-fslightbox="gallery" href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
-                                                    <div class="img-responsive img-responsive-1x1 rounded border" style="background-image: url(/api/files/schematics/{{ $.Schematic.ID }}/{{ . }})"></div>
+                                                <a data-fslightbox="gallery"
+                                                   href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
+                                                    <div class="img-responsive img-responsive-1x1 rounded border"
+                                                         style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}?thumb=150x150')"></div>
                                                 </a>
                                             </div>
                                             {{ end }}
@@ -40,72 +42,77 @@
                         </div>
                         <div class="row row-cards">
                             <div class="col-sm-12 col-lg-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="datagrid">
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Mod Version</div>
-                                            <div class="datagrid-content">{{ .Schematic.CreatemodVersion }}</div>
-                                        </div>
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Game Version</div>
-                                            <div class="datagrid-content">{{ .Schematic.MinecraftVersion }}</div>
-                                        </div>
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Category</div>
-                                            <div class="datagrid-content">
-                                                <div class="avatar-list avatar-list-stacked">
-                                                    {{ range  .Schematic.Categories }}
-                                                    <a href="/schematics/category/{{ .Key }}">
-                                                        <span class="badge badge-outline text-blue">{{ .Name }}</span>
-                                                    </a>
-                                                    {{ end }}
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="datagrid">
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Mod Version</div>
+                                                <div class="datagrid-content">{{ .Schematic.CreatemodVersion }}</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Game Version</div>
+                                                <div class="datagrid-content">{{ .Schematic.MinecraftVersion }}</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Category</div>
+                                                <div class="datagrid-content">
+                                                    <div class="avatar-list avatar-list-stacked">
+                                                        {{ range .Schematic.Categories }}
+                                                        <a href="/schematics/category/{{ .Key }}">
+                                                            <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                        </a>
+                                                        {{ end }}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Uploaded</div>
-                                            <div class="datagrid-content">{{ .Schematic.CreatedFormatted }}</div>
-                                        </div>
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Author</div>
-                                            <div class="datagrid-content">
-                                                <div class="d-flex align-items-center">
-                                                    <span class="avatar avatar-xs me-2 rounded" style="background-image: url(./static/avatars/000m.jpg)"></span>
-                                                    <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{ .Schematic.Author.Username }}</a>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Uploaded</div>
+                                                <div class="datagrid-content">{{ .Schematic.CreatedFormatted }}</div>
+                                            </div>
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Author</div>
+                                                <div class="datagrid-content">
+                                                    <div class="d-flex align-items-center">
+                                                        {{ if .Schematic.Author.HasAvatar }}
+                                                        <span class="avatar avatar-xs me-2 rounded"
+                                                              style="background-image: url('{{ .Schematic.Author.Avatar }}')"></span>
+                                                        {{ end }}
+                                                        <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
+                                                            .Schematic.Author.Username }}</a>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Views</div>
-                                            <div class="datagrid-content">{{ .Schematic.Views }}</div>
-                                        </div>
-                                        {{ if .Schematic.HasRating }}
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Rating</div>
-                                            <div class="datagrid-content">
-                                                {{ .Schematic.Rating }}
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Views</div>
+                                                <div class="datagrid-content">{{ .Schematic.Views }}</div>
                                             </div>
-                                        </div>
-                                        {{ end }}
-                                        {{ if .Schematic.HasTags }}
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Tags</div>
-                                            <div class="datagrid-content">
-                                                <div class="avatar-list avatar-list-stacked">
-                                                    {{ range  .Schematic.Tags }}
-                                                    <a href="/schematics/tag/{{ .Key }}">
-                                                        <span class="badge badge-outline text-blue">{{ .Name }}</span>
-                                                    </a>
-                                                    {{ end }}
+                                            {{ if .Schematic.HasRating }}
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Rating</div>
+                                                <div class="datagrid-content">
+                                                    {{ .Schematic.Rating }}
                                                 </div>
                                             </div>
+                                            {{ end }}
+                                            {{ if .Schematic.HasTags }}
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">Tags</div>
+                                                <div class="datagrid-content">
+                                                    <div class="avatar-list avatar-list-stacked">
+                                                        {{ range .Schematic.Tags }}
+                                                        <a href="/schematics/tag/{{ .Key }}">
+                                                            <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                        </a>
+                                                        {{ end }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {{ end }}
                                         </div>
-                                        {{ end }}
                                         {{ if .Schematic.HasDependencies }}
-                                        <div class="datagrid-item">
-                                            <div class="datagrid-title">Dependencies</div>
-                                            <div class="datagrid-content">
+                                        <div class="col-sm-12 col-lg-12 mt-4">
+                                            <h3 class="card-title">Dependencies</h3>
+                                            <div>
                                                 {{ .Schematic.HTMLDependencies }}
                                             </div>
                                         </div>
@@ -113,23 +120,127 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="row row-cards">
+                            <div class="col-sm-12 col-lg-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h3 class="card-title">Comments</h3>
+                                        {{range  .Comments}}
+                                        <div class="col-12 mb-2">
+                                            <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
+                                                <div class="card-body">
+                                                    <div class="text-secondary">
+                                                        {{ .Content }}
+                                                    </div>
+                                                    <div class="mt-4">
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                <div class="row">
+                                                                    <div class="col-1">
+                                                                        <div class="avatar-list avatar-list-stacked">
+                                                                            {{ if .AuthorHasAvatar }}
+                                                                            <span class="avatar avatar-xs rounded"
+                                                                                  style="background-image: url('{{ .AuthorAvatar }}')"></span>
+                                                                            {{ end }}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col">
+                                                                        <a href="/author/{{ .AuthorUsername }}" class="link-blue">
+                                                                            {{ .Author }}
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-auto">
+                                                                <a href="#{{ .ID }}" class="link-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ .Published }}">
+                                                                    <!-- Download SVG icon from http://tabler.io/icons/icon/calendar -->
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" stroke-width="2"
+                                                                         stroke-linecap="round" stroke-linejoin="round"
+                                                                         class="icon icon-1">
+                                                                        <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/>
+                                                                        <path d="M16 3v4"/>
+                                                                        <path d="M8 3v4"/>
+                                                                        <path d="M4 11h16"/>
+                                                                        <path d="M11 15h1"/>
+                                                                        <path d="M12 15v3"/>
+                                                                    </svg>
+                                                                    {{ .Created }}
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-auto">
+                                                                <a href="#tinymce-comment" onclick="commentReply('{{ .ID }}', '{{ .Author }}')" class="link">
+                                                                    Reply
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-auto">
+                                                                <a id="{{ .ID }}" href="#{{ .ID }}" class="link-muted">
+                                                                    <!-- Download SVG icon from http://tabler.io/icons/icon/share -->
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                         height="24" viewBox="0 0 24 24" fill="none"
+                                                                         stroke="currentColor" stroke-width="2"
+                                                                         stroke-linecap="round" stroke-linejoin="round"
+                                                                         class="icon icon-1">
+                                                                        <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                                                        <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                                                        <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                                                        <path d="M8.7 10.7l6.6 -3.4"/>
+                                                                        <path d="M8.7 13.3l6.6 3.4"/>
+                                                                    </svg>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {{end}}
+                                        <div class="col-12 pt-2">
+                                            <div class="mb-12">
+                                                <label id="leave-comment-label" class="form-label">Leave a comment</label>
+                                                <textarea id="tinymce-comment"
+                                                          placeholder="comment text goes here"></textarea>
+                                            </div>
+                                            <div class="mb-12">
+                                                <button class="btn btn-primary w-100" id="post-comment-btn">
+                                                    Post Comment
+                                                </button>
+                                                <input type="hidden" name="parent" id="parent-comment" value="">
+                                            </div>
+                                            <div class="mb-12">
+                                                <div id="comment-success" class="alert alert-important alert-success" style="display: none;" role="alert">
+                                                    <div class="d-flex">
+                                                        <div>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                        </div>
+                                                        <div>
+                                                            Comment Posted!
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
                     </div>
                     <div class="col-lg-5">
                         {{ if eq .Schematic.Video "" }}
                         {{ else }}
                         <div class="card">
-                            <div class="card-body">
-                                <h3 class="card-title">Video</h3>
                                 <div id="player-youtube" data-plyr-provider="youtube"
                                      data-plyr-embed-id="{{ .Schematic.Video }}"></div>
-                            </div>
                         </div>
                         {{ end }}
                         <div class="card">
                             <a href="https://bisecthosting.com/SCHEMATIC">
-                                <img src="https://www.bisecthosting.com/partners/custom-banners/a18a4d46-d49b-4b1e-82d1-c75815722645.webp" class="card-img-top">
+                                <img src="https://www.bisecthosting.com/partners/custom-banners/a18a4d46-d49b-4b1e-82d1-c75815722645.webp"
+                                     class="card-img-top">
                             </a>
                         </div>
                         <div class="card">
@@ -139,7 +250,9 @@
                         </div>
                         <div class="card">
                             <div class="card-body">
-                                <h3 class="card-title">More From <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{ .Schematic.Author.Username }}</a></h3>
+                                <h3 class="card-title">More From <a
+                                        href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
+                                    .Schematic.Author.Username }}</a></h3>
                             </div>
                         </div>
                     </div>
@@ -148,6 +261,7 @@
         </div>
         <script src="/dist/libs/fslightbox/index.js?1692870487" defer></script>
         <script src="/dist/libs/plyr/dist/plyr.min.js?1692870487" defer></script>
+        <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
@@ -163,3 +277,82 @@
     // @formatter:on
 </script>
 {{ end }}
+<script>
+    // @formatter:off
+    document.addEventListener("DOMContentLoaded", function () {
+        let options = {
+            license_key: "gpl",
+            selector: '#tinymce-comment',
+            height: 300,
+            menubar: false,
+            statusbar: false,
+            plugins: [
+                'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
+                'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+            ],
+            toolbar: 'undo redo | formatselect | ' +
+                'bold italic | ' +
+                'link | bullist numlist outdent indent | ' +
+                'removeformat',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
+        }
+        if (localStorage.getItem("tablerTheme") === 'dark') {
+            options.skin = 'oxide-dark';
+            options.content_css = 'dark';
+        }
+        tinyMCE.init(options);
+    })
+    // @formatter:on
+</script>
+<script>
+    function commentReply(id, username) {
+        let leaveCommentLabel = document.getElementById('leave-comment-label')
+        let postCommentButton = document.getElementById('post-comment-btn')
+        leaveCommentLabel.scrollIntoView({
+            alignToTop: true,
+            behavior: 'smooth'
+        });
+        leaveCommentLabel.innerHTML = "Reply to " + username
+        postCommentButton.innerHTML = "Post Reply"
+        document.getElementById("parent-comment").value = id
+        return false;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById('post-comment-btn').addEventListener("click", async function (e) {
+        document.getElementById("post-comment-btn").disabled = true
+        const formData = new FormData();
+        formData.append("content", tinyMCE.activeEditor.getContent())
+        formData.append("author", pb.authStore.model.id)
+        formData.append("schematic", '{{ .Schematic.ID }}')
+        formData.append("parent", document.getElementById("parent-comment").value)
+
+            let successAlert = document.getElementById("comment-success")
+            try {
+                const createdRecord = await pb.collection('comments').create(formData);
+                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                    div = document.createElement('div');
+                    div.classList.add("invalid-feedback")
+                    div.style.display = "block"
+                    div.innerText = "An unexpected error occurred, please try again"
+                    document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
+                    document.getElementById("post-comment-btn").disabled = false
+                } else {
+                    successAlert.style.display = "block"
+                    setTimeout(function(){
+                        window.location.reload(1);
+                    }, 1000);
+                }
+            } catch(e) {
+                console.log(e)
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.style.display = "block"
+                div.innerText = "An unexpected error occurred, please try again"
+                document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
+                document.getElementById("post-comment-btn").disabled = false
+            }
+    });
+    });
+</script>

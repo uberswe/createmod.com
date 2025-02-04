@@ -4,11 +4,15 @@ import (
 	"createmod/internal/models"
 	"fmt"
 	"github.com/labstack/echo/v5"
+	"github.com/mergestat/timediff"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
+	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 )
@@ -18,6 +22,7 @@ const schematicTemplate = "schematic.html"
 type SchematicData struct {
 	DefaultData
 	Schematic models.Schematic
+	Comments  []models.Comment
 }
 
 func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
@@ -44,6 +49,7 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
+		d.Comments = findSchematicComments(app, d.Schematic.ID)
 
 		go countSchematicView(app, results[0])
 		err = c.Render(http.StatusOK, schematicTemplate, d)
@@ -52,6 +58,123 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		}
 		return nil
 	}
+}
+
+func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comment {
+	commentsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+	if err != nil {
+		return nil
+	}
+	// Limit comments to 1000 for now, will add pagination later
+	results, err := app.Dao().FindRecordsByFilter(
+		commentsCollection.Id,
+		"schematic = {:id} && approved = 1",
+		"-created",
+		1000,
+		0,
+		dbx.Params{"id": id})
+
+	var comments []models.DatabaseComment
+
+	for _, result := range results {
+		comments = append(comments, models.DatabaseComment{
+			ID:        result.GetId(),
+			Created:   result.GetTime("created"),
+			Published: result.GetString("published"),
+			Author:    result.GetString("author"),
+			Schematic: result.GetString("schematic"),
+			Karma:     result.GetInt("karma"),
+			Approved:  result.GetBool("approved"),
+			Type:      result.GetString("type"),
+			ParentID:  result.GetString("parent"),
+			Content:   result.GetString("content"),
+		})
+	}
+	return MapResultsToComment(app, comments)
+}
+
+func MapResultsToComment(app *pocketbase.PocketBase, cs []models.DatabaseComment) []models.Comment {
+	var comments []models.Comment
+	// comments that are replies should come last
+	sort.Slice(cs, func(i, j int) bool {
+		if cs[i].ParentID != "" {
+			return false
+		} else if cs[j].ParentID != "" {
+			return true
+		}
+		t1, err := time.Parse("2006-01-02 15:04:05.999Z07:00", cs[i].Published)
+		if err != nil {
+			t1 = cs[i].Created
+		}
+		t2, err := time.Parse("2006-01-02 15:04:05.999Z07:00", cs[j].Published)
+		if err != nil {
+			t2 = cs[j].Created
+		}
+		return t1.Before(t2)
+	})
+	for _, c := range cs {
+		if c.ParentID != "" {
+			for i := range comments {
+				if c.ParentID == comments[i].ID {
+					if i+1 == len(comments) {
+						com := mapResultToComment(app, c)
+						com.Indent = 1
+						comments = append(comments, com)
+						break
+					} else {
+						comments = slices.Insert(comments, i+1, mapResultToComment(app, c))
+						comments[i+1].Indent = 1
+						break
+					}
+				}
+			}
+		} else {
+			comments = append(comments, mapResultToComment(app, c))
+		}
+	}
+	return comments
+}
+
+func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) models.Comment {
+	comment := models.Comment{
+		ID:       c.ID,
+		Approved: c.Approved,
+		ParentID: c.ParentID,
+	}
+
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	sanitizedHTML, err := sanitizer.SanitizeString(c.Content)
+	if err != nil {
+		app.Logger().Debug("Failed to sanitize", "string", c.Content, "error", err)
+		// Fallback legacy sanitizer
+		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(c.Content), "\n", "<br/>")
+	}
+
+	comment.Content = template.HTML(sanitizedHTML)
+
+	userRecord, err := app.Dao().FindRecordById("users", c.Author)
+	if err != nil {
+		return comment
+	}
+	comment.Author = userRecord.GetString("name")
+	comment.AuthorUsername = userRecord.GetString("username")
+	if comment.Author == "" {
+		comment.Author = comment.AuthorUsername
+	}
+	comment.AuthorAvatar = userRecord.GetString("avatar")
+	if comment.AuthorAvatar != "" {
+		comment.AuthorHasAvatar = true
+	}
+
+	t, err := time.Parse("2006-01-02 15:04:05.999Z07:00", c.Published)
+	if err != nil {
+		t = c.Created
+	}
+	fmt.Println(c.Created)
+	comment.Created = timediff.TimeDiff(t)
+	comment.Published = t.Format(time.DateTime)
+
+	return comment
 }
 
 func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) {
@@ -154,6 +277,13 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 			rating = totalRating / float64(len(ratings))
 		}
 	}
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	sanitizedHTML, err := sanitizer.SanitizeString(result.GetString("content"))
+	if err != nil {
+		app.Logger().Debug("Failed to sanitize", "string", result.GetString("content"), "error", err)
+		// Fallback legacy sanitizer
+		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")
+	}
 
 	s := models.Schematic{
 		ID:               result.GetId(),
@@ -163,7 +293,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		CommentCount:     result.GetInt("comment_count"),
 		CommentStatus:    result.GetBool("comment_status"),
 		Content:          result.GetString("content"),
-		HTMLContent:      template.HTML(strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")),
+		HTMLContent:      template.HTML(sanitizedHTML),
 		Excerpt:          result.GetString("excerpt"),
 		FeaturedImage:    result.GetString("featured_image"),
 		Gallery:          result.GetStringSlice("gallery"),

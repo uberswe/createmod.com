@@ -1,42 +1,84 @@
 package migrate
 
 import (
+	"createmod/model"
 	"createmod/query"
+	"errors"
+	"fmt"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
+	"gorm.io/gen"
 	"gorm.io/gorm"
+	"log"
 )
 
 func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[int64]string, oldSchematicIDs map[int64]string) {
-	// TODO check if view exists, if it does we skip
+	log.Println("Migrating views.")
 	// QeyKryWEpost_views
 	// id
 	// type
 	// period
 	// count
 	q := query.Use(gormdb)
-	postViewRes, postErr := q.QeyKryWEpostView.Find()
-	if postErr != nil {
-		panic(postErr)
-	}
-
 	schematicViewsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_views")
 	if err != nil {
 		panic(err)
 	}
 
-	for i := range postViewRes {
-		if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {
-			record := models.NewRecord(schematicViewsCollection)
-			record.Set("old_schematic_id", postViewRes[i].ID)
-			record.Set("schematic", newSchematicID)
-			record.Set("count", postViewRes[i].Count_)
-			record.Set("type", postViewRes[i].Type)
-			record.Set("period", postViewRes[i].Period)
+	totalCount := res{}
+	countErr := app.Dao().DB().
+		NewQuery("SELECT COUNT(id) as c FROM schematic_views").
+		One(&totalCount)
+	if countErr != nil {
+		panic(countErr)
+	}
 
-			if err = app.Dao().SaveRecord(record); err != nil {
-				panic(err)
+	if totalCount.C >= int64(100000) {
+		log.Println("Skipping views, already migrated.")
+		return
+	}
+
+	postViewRes := make([]*model.QeyKryWEpostView, 0)
+	postErr := q.QeyKryWEpostView.FindInBatches(&postViewRes, 25000, func(tx gen.Dao, batch int) error {
+		for i := range postViewRes {
+			if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {
+				filter, err := app.Dao().FindRecordsByFilter(
+					schematicViewsCollection.Id,
+					"old_schematic_id = {:old_schematic_id} && type = {:type}",
+					"-created",
+					1,
+					0,
+					dbx.Params{
+						"old_schematic_id": postViewRes[i].ID,
+						"type":             postViewRes[i].Type,
+					})
+				if !errors.Is(err, gorm.ErrRecordNotFound) && len(filter) != 0 {
+					app.Logger().Debug(
+						fmt.Sprintf("Rating found or error: %v", err),
+						"filter-len", len(filter),
+					)
+					if err != nil {
+						log.Println(err)
+					}
+					continue
+				}
+
+				record := models.NewRecord(schematicViewsCollection)
+				record.Set("old_schematic_id", postViewRes[i].ID)
+				record.Set("schematic", newSchematicID)
+				record.Set("count", postViewRes[i].Count_)
+				record.Set("type", postViewRes[i].Type)
+				record.Set("period", postViewRes[i].Period)
+
+				if err = app.Dao().SaveRecord(record); err != nil {
+					panic(err)
+				}
 			}
 		}
+		return nil
+	})
+	if postErr != nil {
+		panic(postErr)
 	}
 }

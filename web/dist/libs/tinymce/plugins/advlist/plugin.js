@@ -1,5 +1,5 @@
 /**
- * TinyMCE version 6.4.2 (2023-04-26)
+ * TinyMCE version 7.6.0 (2024-12-11)
  */
 
 (function () {
@@ -38,8 +38,6 @@
 
     const isNullable = a => a === null || a === undefined;
     const isNonNullable = a => !isNullable(a);
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
 
     class Optional {
       constructor(tag, value) {
@@ -134,6 +132,9 @@
     }
     Optional.singletonNone = new Optional(false);
 
+    const nativeIndexOf = Array.prototype.indexOf;
+    const rawIndexOf = (ts, t) => nativeIndexOf.call(ts, t);
+    const contains = (xs, x) => rawIndexOf(xs, x) > -1;
     const findUntil = (xs, pred, until) => {
       for (let i = 0, len = xs.length; i < len; i++) {
         const x = xs[i];
@@ -145,6 +146,32 @@
       }
       return Optional.none();
     };
+
+    const keys = Object.keys;
+    const each = (obj, f) => {
+      const props = keys(obj);
+      for (let k = 0, len = props.length; k < len; k++) {
+        const i = props[k];
+        const x = obj[i];
+        f(x, i);
+      }
+    };
+    const map = (obj, f) => {
+      return tupleMap(obj, (x, i) => ({
+        k: i,
+        v: f(x, i)
+      }));
+    };
+    const tupleMap = (obj, f) => {
+      const r = {};
+      each(obj, (x, i) => {
+        const tuple = f(x, i);
+        r[tuple.k] = tuple.v;
+      });
+      return r;
+    };
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
 
     const isCustomList = list => /\btox\-/.test(list.className);
     const isChildOfBody = (editor, elm) => {
@@ -162,7 +189,7 @@
     const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
     const isWithinNonEditableList = (editor, element) => {
       const parentList = editor.dom.getParent(element, 'ol,ul,dl');
-      return isWithinNonEditable(editor, parentList);
+      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
     };
     const setNodeChangeHandler = (editor, nodeChangeHandler) => {
       const initialNode = editor.selection.getNode();
@@ -190,6 +217,13 @@
       return setNodeChangeHandler(editor, nodeChangeHandler);
     };
     const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
+      const listStyleTypeAliases = {
+        'lower-latin': 'lower-alpha',
+        'upper-latin': 'upper-alpha',
+        'lower-alpha': 'lower-latin',
+        'upper-alpha': 'upper-latin'
+      };
+      const stylesContainsAliasMap = map(listStyleTypeAliases, alias => contains(styles, alias));
       editor.ui.registry.addSplitButton(id, {
         tooltip,
         icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
@@ -216,7 +250,7 @@
         },
         select: value => {
           const listStyleType = getSelectedStyleType(editor);
-          return listStyleType.map(listStyle => value === listStyle).getOr(false);
+          return listStyleType.exists(listStyle => value === listStyle || listStyleTypeAliases[listStyle] === value && !stylesContainsAliasMap[value]);
         },
         onSetup: makeSetupHandler(editor, nodeName)
       });
@@ -249,7 +283,7 @@
           register(editor);
           register$2(editor);
         } else {
-          console.error('Please use the Lists plugin together with the Advanced List plugin.');
+          console.error('Please use the Lists plugin together with the List Styles plugin.');
         }
       });
     };

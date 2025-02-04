@@ -75,6 +75,11 @@ func New(schematics []models.Schematic, logger *slog.Logger) *Service {
 
 // Search takes a term and returns schematic ids in the specified order
 func (s *Service) Search(term string, order int, rating int, category string, tag string) []string {
+	// If search hasn't had time to initialize, usually after a reboot
+	if s == nil || s.index == nil {
+		return nil
+	}
+
 	// Ratings
 	result := s.index
 	s.logger.Debug("searching schematics", "index count", len(s.index), "result", len(result))
