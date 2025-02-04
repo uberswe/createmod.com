@@ -30,9 +30,28 @@
                                             {{ end }}
                                         </div>
                                         {{ end }}
+                                        <div class="row">
+                                            <div class="col">
+                                                <h3 class="card-title">Description</h3>
+                                            </div>
+                                            <div class="col-auto pt-2">
+                                                <select id="rating-default">
+                                                    <option value="">Select a rating</option>
+                                                    <option value="5">Excellent</option>
+                                                    <option value="4" selected>Very Good</option>
+                                                    <option value="3">Average</option>
+                                                    <option value="2">Poor</option>
+                                                    <option value="1">Terrible</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button class="btn btn-primary" id="download-btn">
+                                                    Download
+                                                </button>
+                                            </div>
+                                        </div>
                                         <div class="d-flex align-items-center">
                                             <div>
-                                                <h3 class="card-title">Description</h3>
                                                 <div>{{ .Schematic.HTMLContent }}</div>
                                             </div>
                                         </div>
@@ -127,7 +146,7 @@
                                 <div class="card">
                                     <div class="card-body">
                                         <h3 class="card-title">Comments</h3>
-                                        {{range  .Comments}}
+                                        {{range .Comments}}
                                         <div class="col-12 mb-2">
                                             <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
                                                 <div class="card-body">
@@ -147,14 +166,17 @@
                                                                         </div>
                                                                     </div>
                                                                     <div class="col">
-                                                                        <a href="/author/{{ .AuthorUsername }}" class="link-blue">
+                                                                        <a href="/author/{{ .AuthorUsername }}"
+                                                                           class="link-blue">
                                                                             {{ .Author }}
                                                                         </a>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div class="col-auto">
-                                                                <a href="#{{ .ID }}" class="link-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ .Published }}">
+                                                                <a href="#{{ .ID }}" class="link-muted"
+                                                                   data-bs-toggle="tooltip" data-bs-placement="top"
+                                                                   title="{{ .Published }}">
                                                                     <!-- Download SVG icon from http://tabler.io/icons/icon/calendar -->
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24" viewBox="0 0 24 24" fill="none"
@@ -172,7 +194,9 @@
                                                                 </a>
                                                             </div>
                                                             <div class="col-auto">
-                                                                <a href="#tinymce-comment" onclick="commentReply('{{ .ID }}', '{{ .Author }}')" class="link">
+                                                                <a href="#tinymce-comment"
+                                                                   onclick="commentReply('{{ .ID }}', '{{ .Author }}')"
+                                                                   class="link">
                                                                     Reply
                                                                 </a>
                                                             </div>
@@ -198,9 +222,10 @@
                                             </div>
                                         </div>
                                         {{end}}
-                                        <div class="col-12 pt-2">
+                                        <div class="col-12 pt-2" id="comment-section">
                                             <div class="mb-12">
-                                                <label id="leave-comment-label" class="form-label">Leave a comment</label>
+                                                <label id="leave-comment-label" class="form-label">Leave a
+                                                    comment</label>
                                                 <textarea id="tinymce-comment"
                                                           placeholder="comment text goes here"></textarea>
                                             </div>
@@ -211,10 +236,18 @@
                                                 <input type="hidden" name="parent" id="parent-comment" value="">
                                             </div>
                                             <div class="mb-12">
-                                                <div id="comment-success" class="alert alert-important alert-success" style="display: none;" role="alert">
+                                                <div id="comment-success" class="alert alert-important alert-success"
+                                                     style="display: none;" role="alert">
                                                     <div class="d-flex">
                                                         <div>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                 class="icon alert-icon" width="24" height="24"
+                                                                 viewBox="0 0 24 24" stroke-width="2"
+                                                                 stroke="currentColor" fill="none"
+                                                                 stroke-linecap="round" stroke-linejoin="round">
+                                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                                <path d="M5 12l5 5l10 -10"/>
+                                                            </svg>
                                                         </div>
                                                         <div>
                                                             Comment Posted!
@@ -233,8 +266,8 @@
                         {{ if eq .Schematic.Video "" }}
                         {{ else }}
                         <div class="card">
-                                <div id="player-youtube" data-plyr-provider="youtube"
-                                     data-plyr-embed-id="{{ .Schematic.Video }}"></div>
+                            <div id="player-youtube" data-plyr-provider="youtube"
+                                 data-plyr-embed-id="{{ .Schematic.Video }}"></div>
                         </div>
                         {{ end }}
                         <div class="card">
@@ -262,6 +295,7 @@
         <script src="/dist/libs/fslightbox/index.js?1692870487" defer></script>
         <script src="/dist/libs/plyr/dist/plyr.min.js?1692870487" defer></script>
         <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
+        <script src="/dist/libs/star-rating.js/dist/star-rating.min.js?1738096684" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
@@ -306,6 +340,39 @@
     // @formatter:on
 </script>
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const rating = new StarRating('#rating-default', {
+            tooltip: false,
+            clearable: false,
+            stars: function (el, item, index) {
+                el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon gl-star-full icon-1"><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z" /></svg>`;
+            },
+            classNames: {}
+        })
+        document.querySelector('.gl-star-rating--stars').addEventListener('click', async function (e) {
+            for (const span of this.children) {
+                if (span === e.target) {
+                    if (pb.authStore.model === null) {
+                        // TODO replace alert with modal or something
+                        alert("You need to be logged in to rate schematics")
+                    } else {
+                        const formData = new FormData();
+                        formData.append("schematic", '{{ .Schematic.ID }}')
+                        formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
+                        formData.append("user", pb.authStore.model.id)
+                        const createdRecord = await pb.collection('schematic_ratings').create(formData);
+                        if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                            alert("An unexpected error occurred")
+                        } else {
+                            alert("Your rating has been submitted")
+                        }
+                    }
+                }
+            }
+        });
+    })
+</script>
+<script>
     function commentReply(id, username) {
         let leaveCommentLabel = document.getElementById('leave-comment-label')
         let postCommentButton = document.getElementById('post-comment-btn')
@@ -320,13 +387,13 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById('post-comment-btn').addEventListener("click", async function (e) {
-        document.getElementById("post-comment-btn").disabled = true
-        const formData = new FormData();
-        formData.append("content", tinyMCE.activeEditor.getContent())
-        formData.append("author", pb.authStore.model.id)
-        formData.append("schematic", '{{ .Schematic.ID }}')
-        formData.append("parent", document.getElementById("parent-comment").value)
+        document.getElementById('post-comment-btn').addEventListener("click", async function (e) {
+            document.getElementById("post-comment-btn").disabled = true
+            const formData = new FormData();
+            formData.append("content", tinyMCE.activeEditor.getContent())
+            formData.append("author", pb.authStore.model.id)
+            formData.append("schematic", '{{ .Schematic.ID }}')
+            formData.append("parent", document.getElementById("parent-comment").value)
 
             let successAlert = document.getElementById("comment-success")
             try {
@@ -340,11 +407,11 @@
                     document.getElementById("post-comment-btn").disabled = false
                 } else {
                     successAlert.style.display = "block"
-                    setTimeout(function(){
+                    setTimeout(function () {
                         window.location.reload(1);
                     }, 1000);
                 }
-            } catch(e) {
+            } catch (e) {
                 console.log(e)
                 div = document.createElement('div');
                 div.classList.add("invalid-feedback")
@@ -353,6 +420,13 @@
                 document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
                 document.getElementById("post-comment-btn").disabled = false
             }
-    });
+        });
+
+        // Handle logged in
+        setTimeout(function () {
+            if (pb.authStore.model === null) {
+                document.getElementById('comment-section').innerHTML = '<h4>You must be logged in to post a comment.</h4>'
+            }
+        }, 3000);
     });
 </script>

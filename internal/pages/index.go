@@ -47,7 +47,7 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			HighestRated: getHighestRatedSchematics(app),
 			Tags:         allTagsWithCount(app),
 		}
-		d.Title = "Create Mod Schematics"
+		d.Title = "Minecraft Schematics"
 		d.SubCategory = "Home"
 		d.Categories = allCategories(app)
 

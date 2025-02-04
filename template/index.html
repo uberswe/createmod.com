@@ -35,17 +35,10 @@
                     </div>
                     <div class="col-12 col-lg-4">
                         <div class="card mb-5">
-                            <div class="card-body">
+                            <div class="card-body badges-list">
                                 <h3 class="card-title">Tags</h3>
                                 {{range  .Tags}}
-                                <a href="/schematics/tag/{{ .Key }}">
-                                <span class="tag">
-                                    {{ .Name }}
-                                    <span class="badge badge-sm tag-badge">
-                                        {{ .Count }}
-                                    </span>
-                                </span>
-                                </a>
+                                <a href="/schematics/tag/{{ .Key }}" class="btn">{{ .Name }} <span class="badge bg-blue text-blue-fg ms-2">{{ .Count }}</span></a>
                                 {{end}}
                             </div>
                         </div>
