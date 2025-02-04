@@ -24,7 +24,7 @@
                                                 <a data-fslightbox="gallery"
                                                    href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
                                                     <div class="img-responsive img-responsive-1x1 rounded border"
-                                                         style="background-image: url(/api/files/schematics/{{ $.Schematic.ID }}/{{ . }})"></div>
+                                                         style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}?thumb=150x150')"></div>
                                                 </a>
                                             </div>
                                             {{ end }}
@@ -73,8 +73,10 @@
                                                 <div class="datagrid-title">Author</div>
                                                 <div class="datagrid-content">
                                                     <div class="d-flex align-items-center">
+                                                        {{ if .Schematic.Author.HasAvatar }}
                                                         <span class="avatar avatar-xs me-2 rounded"
-                                                              style="background-image: url(./static/avatars/000m.jpg)"></span>
+                                                              style="background-image: url('{{ .Schematic.Author.Avatar }}')"></span>
+                                                        {{ end }}
                                                         <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                                             .Schematic.Author.Username }}</a>
                                                     </div>
@@ -127,7 +129,7 @@
                                         <h3 class="card-title">Comments</h3>
                                         {{range  .Comments}}
                                         <div class="col-12 mb-2">
-                                            <div class="card card-sm">
+                                            <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
                                                 <div class="card-body">
                                                     <div class="text-secondary">
                                                         {{ .Content }}
@@ -138,8 +140,10 @@
                                                                 <div class="row">
                                                                     <div class="col-1">
                                                                         <div class="avatar-list avatar-list-stacked">
+                                                                            {{ if .AuthorHasAvatar }}
                                                                             <span class="avatar avatar-xs rounded"
-                                                                                  style="background-image: url(./static/avatars/000f.jpg)"></span>
+                                                                                  style="background-image: url('{{ .AuthorAvatar }}')"></span>
+                                                                            {{ end }}
                                                                         </div>
                                                                     </div>
                                                                     <div class="col">
@@ -150,7 +154,7 @@
                                                                 </div>
                                                             </div>
                                                             <div class="col-auto">
-                                                                <a href="#{{ .ID }}" class="link-muted">
+                                                                <a href="#{{ .ID }}" class="link-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ .Published }}">
                                                                     <!-- Download SVG icon from http://tabler.io/icons/icon/calendar -->
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24" viewBox="0 0 24 24" fill="none"
@@ -165,6 +169,11 @@
                                                                         <path d="M12 15v3"/>
                                                                     </svg>
                                                                     {{ .Created }}
+                                                                </a>
+                                                            </div>
+                                                            <div class="col-auto">
+                                                                <a href="#tinymce-comment" onclick="commentReply('{{ .ID }}', '{{ .Author }}')" class="link">
+                                                                    Reply
                                                                 </a>
                                                             </div>
                                                             <div class="col-auto">
@@ -191,7 +200,7 @@
                                         {{end}}
                                         <div class="col-12 pt-2">
                                             <div class="mb-12">
-                                                <label class="form-label">Leave a comment</label>
+                                                <label id="leave-comment-label" class="form-label">Leave a comment</label>
                                                 <textarea id="tinymce-comment"
                                                           placeholder="comment text goes here"></textarea>
                                             </div>
@@ -258,13 +267,11 @@
     // @formatter:on
 </script>
 {{ end }}
-
-
-
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
         let options = {
+            license_key: "gpl",
             selector: '#tinymce-comment',
             height: 300,
             menubar: false,
@@ -287,4 +294,17 @@
         tinyMCE.init(options);
     })
     // @formatter:on
+</script>
+<script>
+    function commentReply(id, username) {
+        let leaveCommentLabel = document.getElementById('leave-comment-label')
+        let postCommentButton = document.getElementById('post-comment-btn')
+        leaveCommentLabel.scrollIntoView({
+            alignToTop: true,
+            behavior: 'smooth'
+        });
+        leaveCommentLabel.innerHTML = "Reply to " + username
+        postCommentButton.innerHTML = "Post Reply"
+        return false;
+    }
 </script>

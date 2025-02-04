@@ -11,6 +11,8 @@ import (
 	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 )
@@ -63,11 +65,12 @@ func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comme
 	if err != nil {
 		return nil
 	}
+	// Limit comments to 1000 for now, will add pagination later
 	results, err := app.Dao().FindRecordsByFilter(
 		schematicsCollection.Id,
 		"schematic = {:id} && approved = 1",
-		"+created",
-		100,
+		"-created",
+		1000,
 		0,
 		dbx.Params{"id": id})
 
@@ -92,8 +95,25 @@ func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comme
 
 func MapResultsToComment(app *pocketbase.PocketBase, cs []models.DatabaseComment) []models.Comment {
 	var comments []models.Comment
+	// comments that are replies should come last
+	sort.Slice(cs, func(i, j int) bool {
+		if cs[i].ParentID == "" {
+			return true
+		}
+		return false
+	})
 	for _, c := range cs {
-		comments = append(comments, mapResultToComment(app, c))
+		if c.ParentID != "" {
+			for i := range comments {
+				if c.ParentID == comments[i].ID {
+					comments = slices.Insert(comments, i+1, mapResultToComment(app, c))
+					comments[i+1].Indent = 1
+					break
+				}
+			}
+		} else {
+			comments = append(comments, mapResultToComment(app, c))
+		}
 	}
 	return comments
 }
@@ -126,6 +146,7 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	}
 	fmt.Println(c.Created)
 	comment.Created = timediff.TimeDiff(t)
+	comment.Published = t.Format(time.DateTime)
 
 	return comment
 }
