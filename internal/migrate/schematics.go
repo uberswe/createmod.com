@@ -1,6 +1,8 @@
 package migrate
 
 import (
+	"bufio"
+	"bytes"
 	"createmod/model"
 	"createmod/query"
 	"errors"
@@ -11,6 +13,7 @@ import (
 	"github.com/pocketbase/pocketbase/forms"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
+	"github.com/sunshineplan/imgconv"
 	"gorm.io/gorm"
 	"io"
 	"log"
@@ -155,30 +158,84 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 		record.Set("updated", s.PostModifiedGmt)
 		record.Set("parent", s.PostParent)
 
-		fs, err := app.NewFilesystem()
-		if err != nil {
-			panic(err)
-		}
-
 		filesToUpload := form.FilesToUpload()
-		for fieldKey := range filesToUpload {
-			for _, file := range filesToUpload[fieldKey] {
-				path := record.BaseFilesPath() + "/" + file.Name
-				if err := fs.UploadFile(file, path); err != nil {
-					panic(err)
-				}
-			}
-		}
 
-		if err := app.Dao().SaveRecord(record); err != nil {
-			panic(err)
-		}
-
-		fs.Close()
+		convertToJpg(app, record, filesToUpload)
 
 		oldSchematicIDs[s.ID] = record.GetId()
 	}
 	return oldSchematicIDs
+}
+
+func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) {
+	var galleryFilenames []string
+	fs, err := app.NewFilesystem()
+	if err != nil {
+		return
+	}
+
+	for fieldKey := range files {
+		for i, file := range files[fieldKey] {
+			//Skip schematics
+			if filepath.Ext(file.Name) == ".nbt" {
+				continue
+			}
+			path := record.BaseFilesPath() + "/" + file.Name
+
+			if err := fs.UploadFile(file, path); err != nil {
+				return
+			}
+
+			r, err := fs.GetFile(path)
+			if err != nil {
+				return
+			}
+
+			decode, err := imgconv.Decode(r)
+			if err != nil {
+				return
+			}
+
+			var jpgBuffer bytes.Buffer
+			err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
+				Format: imgconv.JPEG,
+				EncodeOption: []imgconv.EncodeOption{
+					imgconv.Quality(80),
+				},
+			})
+
+			filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
+			if err != nil {
+				return
+			}
+
+			newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
+			if err != nil {
+				return
+			}
+
+			if err := fs.Delete(path); err != nil {
+				return
+			}
+
+			path = record.BaseFilesPath() + "/" + filename
+			if err := fs.UploadFile(newFile, path); err != nil {
+				return
+			}
+			files[fieldKey][i].Name = filename
+
+			if fieldKey == "featured_image" {
+				record.Set("featured_image", filename)
+			} else {
+				galleryFilenames = append(galleryFilenames, filename)
+			}
+		}
+	}
+	record.Set("gallery", galleryFilenames)
+	err = app.Dao().Save(record)
+	if err != nil {
+		return
+	}
 }
 
 func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *models.Record, collection *models.Collection) {

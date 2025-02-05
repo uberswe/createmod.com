@@ -108,7 +108,7 @@
                                             Upload
                                         </button>
                                         <div id="progress-upload" style="display: none;" class="progress">
-                                            <div class="progress-bar progress-bar-indeterminate bg-green"></div>
+                                            <div class="progress-bar bg-green"></div>
                                         </div>
                                         <div id="upload-success" class="alert alert-important alert-success" style="display: none;" role="alert">
                                             <div class="d-flex">
@@ -296,6 +296,7 @@
                 let successAlert = document.getElementById("upload-success")
                 try {
                     progressBar.style.display = "block"
+                    progressBar.classList.add("progress-bar-indeterminate")
                 const createdRecord = await pb.collection('schematics').create(formData);
                 if (createdRecord.code !== undefined && createdRecord.code !== 200) {
                     div = document.createElement('div');
@@ -304,8 +305,10 @@
                     div.innerText = "An unexpected error occurred, please try again"
                     document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
                     document.getElementById("upload-schematic-btn").disabled = false
+                    progressBar.classList.remove("progress-bar-indeterminate")
                     progressBar.display = "none"
                 } else {
+                    progressBar.classList.remove("progress-bar-indeterminate")
                     progressBar.style.display = "none"
                     successAlert.style.display = "block"
                 }
@@ -317,6 +320,7 @@
                     div.innerText = "An unexpected error occurred, please try again"
                     document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
                     document.getElementById("upload-schematic-btn").disabled = false
+                    progressBar.classList.remove("progress-bar-indeterminate")
                     progressBar.display = "none"
                 }
             } else {
@@ -326,6 +330,7 @@
                 div.innerText = "There were errors, please check above"
                 document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
                 document.getElementById("upload-schematic-btn").disabled = false
+                progressBar.classList.remove("progress-bar-indeterminate")
                 progressBar.display = "none"
             }
 

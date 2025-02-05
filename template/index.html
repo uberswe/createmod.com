@@ -11,9 +11,7 @@
                             {{range  .Schematics}}
                             <div class="col-lg-6">
                                 <div class="card card-sm">
-                                    <a href="/schematics/{{ .Name }}" class="d-block"><img
-                                            src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
-                                            class="card-img-top"></a>
+                                    <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480" class="card-img-top"></a>
                                     <div class="card-body">
                                         <div class="d-flex align-items-center">
                                             {{ if .Author }}
@@ -48,8 +46,7 @@
                                 {{range  .Trending}}
                                 <div class="col-lg-12 mb-5">
                                     <div class="card card-sm">
-                                        <a href="/schematics/{{ .Name }}" class="d-block"><img
-                                                src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
+                                        <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
                                                 class="card-img-top"></a>
                                         <div class="card-body">
                                             <div class="d-flex align-items-center">
@@ -76,8 +73,7 @@
                                 {{range  .HighestRated}}
                                 <div class="col-lg-12 mb-5">
                                     <div class="card card-sm">
-                                        <a href="/schematics/{{ .Name }}" class="d-block"><img
-                                                src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
+                                        <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
                                                 class="card-img-top"></a>
                                         <div class="card-body">
                                             <div class="d-flex align-items-center">
