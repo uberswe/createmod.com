@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bufio"
+	"bytes"
 	"createmod/internal/migrate"
 	"createmod/internal/pages"
 	"createmod/internal/router"
@@ -19,6 +21,7 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"github.com/pocketbase/pocketbase/tools/mailer"
+	"github.com/sunshineplan/imgconv"
 	"github.com/sym01/htmlsanitizer"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
@@ -26,6 +29,7 @@ import (
 	"log"
 	"math/rand"
 	"net/mail"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -148,15 +152,20 @@ func (s *Server) Start() {
 				schematicRatingsCollection.Id,
 				"schematic = {:schematic} && user = {:user}",
 				"-created",
-				1,
+				10,
 				0,
 				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": info.AuthRecord.GetId()})
 			if err != nil {
 				return err
 			}
 			if len(results) > 0 {
-				// TODO allow updating ratings
-				return errors.New("you have already rated this schematic")
+				for _, r := range results {
+					// When a rating is changed we simply delete the old record
+					err := app.Dao().Delete(r)
+					if err != nil {
+						return err
+					}
+				}
 			}
 			e.Record.Set("rated_at", time.Now())
 			return nil
@@ -353,8 +362,82 @@ func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *models.Rec
 		return fmt.Errorf("featured image missing or invalid")
 	}
 
+	// convert to jpg in background
+	go convertToJpg(app, record, files)
+
 	// return nil if all is ok
 	return nil
+}
+
+func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) {
+	var galleryFilenames []string
+	fs, err := app.NewFilesystem()
+	if err != nil {
+		return
+	}
+
+	for fieldKey := range files {
+		for i, file := range files[fieldKey] {
+			//Skip schematics
+			if filepath.Ext(file.Name) == ".nbt" {
+				continue
+			}
+			path := record.BaseFilesPath() + "/" + file.Name
+
+			if err := fs.UploadFile(file, path); err != nil {
+				return
+			}
+
+			r, err := fs.GetFile(path)
+			if err != nil {
+				return
+			}
+
+			decode, err := imgconv.Decode(r)
+			if err != nil {
+				return
+			}
+
+			var jpgBuffer bytes.Buffer
+			err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
+				Format: imgconv.JPEG,
+				EncodeOption: []imgconv.EncodeOption{
+					imgconv.Quality(80),
+				},
+			})
+
+			filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
+			if err != nil {
+				return
+			}
+
+			newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
+			if err != nil {
+				return
+			}
+
+			if err := fs.Delete(path); err != nil {
+				return
+			}
+
+			path = record.BaseFilesPath() + "/" + filename
+			if err := fs.UploadFile(newFile, path); err != nil {
+				return
+			}
+			files[fieldKey][i].Name = filename
+
+			if fieldKey == "featured_image" {
+				record.Set("featured_image", filename)
+			} else {
+				galleryFilenames = append(galleryFilenames, filename)
+			}
+		}
+	}
+	record.Set("gallery", galleryFilenames)
+	err = app.Dao().Save(record)
+	if err != nil {
+		return
+	}
 }
 
 func ToYoutubeEmbedUrl(url string) string {
