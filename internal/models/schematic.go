@@ -33,6 +33,7 @@ type Schematic struct {
 	Rating           string
 	HasRating        bool
 	CreatedFormatted string
+	SchematicFile    string
 }
 
 type DatabaseSchematic struct {
@@ -58,6 +59,7 @@ type DatabaseSchematic struct {
 	Rating           string
 	HasRating        bool
 	AvgRating        *float64
+	SchematicFile    string
 }
 
 func (d *DatabaseSchematic) ToSchematic() Schematic {
@@ -87,6 +89,7 @@ func (d *DatabaseSchematic) ToSchematic() Schematic {
 		HasTags:          d.HasTags,
 		Rating:           d.Rating,
 		HasRating:        d.HasRating,
+		SchematicFile:    d.SchematicFile,
 	}
 }
 

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"createmod/internal/models"
+	"createmod/internal/search"
 	"fmt"
 	"github.com/labstack/echo/v5"
 	"github.com/mergestat/timediff"
@@ -21,11 +22,14 @@ const schematicTemplate = "schematic.html"
 
 type SchematicData struct {
 	DefaultData
-	Schematic models.Schematic
-	Comments  []models.Comment
+	Schematic     models.Schematic
+	Comments      []models.Comment
+	AuthorHasMore bool
+	FromAuthor    []models.Schematic
+	Similar       []models.Schematic
 }
 
-func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
+func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -50,6 +54,9 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
+		d.Similar = findSimilarSchematics(app, d.Schematic, searchService)
+		d.FromAuthor = findAuthorSchematics(app, d.Schematic.ID, d.Schematic.Author.ID)
+		d.AuthorHasMore = len(d.FromAuthor) > 0
 
 		go countSchematicView(app, results[0])
 		err = c.Render(http.StatusOK, schematicTemplate, d)
@@ -58,6 +65,69 @@ func SchematicHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		}
 		return nil
 	}
+}
+
+func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string) []models.Schematic {
+	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+	if err != nil {
+		return nil
+	}
+	results, err := app.Dao().FindRecordsByFilter(
+		schematicsCollection.Id,
+		"id != {:id} && author = {:authorID}",
+		"@random",
+		5,
+		0,
+		dbx.Params{"id": id, "authorID": authorID})
+	return MapResultsToSchematic(app, results)
+}
+
+func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schematic, searchService *search.Service) []models.Schematic {
+	// Does title and content give the best match? Maybe tags + category?
+	keywordString := ""
+	for _, t := range schematic.Tags {
+		keywordString += " "
+		keywordString = keywordString + t.Name
+	}
+	for _, c := range schematic.Categories {
+		keywordString += " "
+		keywordString = keywordString + c.Name
+	}
+	ids := searchService.Search(fmt.Sprintf("%s%s", schematic.Title, keywordString), 1, -1, "all", "all")
+	interfaceIds := make([]interface{}, 0, len(ids))
+	limit := 5
+	count := 0
+	for _, id := range ids {
+		if count > limit {
+			break
+		}
+		if id == schematic.ID {
+			continue
+		}
+		interfaceIds = append(interfaceIds, id)
+		count++
+	}
+
+	var schematics []models.DatabaseSchematic
+	err := app.Dao().DB().
+		Select("schematics.*").
+		From("schematics").
+		Where(dbx.In("id", interfaceIds...)).
+		All(&schematics)
+
+	if err != nil {
+		return nil
+	}
+	schematicModels := models.DatabaseSchematicsToSchematics(schematics)
+	sortedModels := make([]models.Schematic, 0)
+	for id := range ids {
+		for i := range schematicModels {
+			if ids[id] == schematicModels[i].ID {
+				sortedModels = append(sortedModels, schematicModels[i])
+			}
+		}
+	}
+	return sortedModels
 }
 
 func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comment {
@@ -310,6 +380,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		MinecraftVersion: findMinecraftVersionFromID(app, result.GetString("minecraft_version")),
 		Views:            views,
 		Rating:           fmt.Sprintf("%.1f", rating),
+		SchematicFile:    fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
 	}
 	s.HasTags = len(s.Tags) > 0
 	s.HasRating = s.Rating != ""

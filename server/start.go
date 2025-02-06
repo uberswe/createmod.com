@@ -7,6 +7,7 @@ import (
 	"createmod/internal/pages"
 	"createmod/internal/router"
 	"createmod/internal/search"
+	"createmod/internal/sitemap"
 	_ "createmod/migrations"
 	"errors"
 	"fmt"
@@ -56,6 +57,7 @@ func New(conf Config) *Server {
 func (s *Server) Start() {
 	app := pocketbase.New()
 	var searchService *search.Service
+	var sitemapService *sitemap.Service
 	log.Println("Launching...")
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
@@ -90,7 +92,7 @@ func (s *Server) Start() {
 			log.Println("Starting Search Server")
 			schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 			if err != nil {
-				panic(err)
+				app.Logger().Error(err.Error())
 			}
 			mappedSchematics := pages.MapResultsToSchematic(app, schematics)
 			app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
@@ -100,14 +102,24 @@ func (s *Server) Start() {
 
 			app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
 				// Rebuild the search index every time a schematic is created
-				schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
-				if err != nil {
-					app.Logger().Warn(err.Error())
-					return err
-				}
-				searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
+				go func() {
+					schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+					if err != nil {
+						app.Logger().Warn(err.Error())
+					}
+					searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
+					sitemapService.Generate(app)
+				}()
 				return nil
 			})
+
+			app.OnModelAfterCreate("users").Add(func(e *core.ModelEvent) error {
+				// Rebuild the sitemap every time a user is created
+				go sitemapService.Generate(app)
+				return nil
+			})
+
+			sitemapService.Generate(app)
 
 		}()
 
@@ -194,6 +206,7 @@ func (s *Server) Start() {
 		// END PASSWORD BACKWARDS COMPATIBILITY
 
 		searchService = search.New(nil, app.Logger())
+		sitemapService = sitemap.New()
 
 		// ROUTES
 

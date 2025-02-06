@@ -120,25 +120,7 @@
                     <div class="col-md-12 col-lg-9">
                         <div class="row row-cards">
                             {{range .Schematics }}
-                            <div class="col-sm-12 col-md-6 col-lg-4">
-                                <div class="card card-sm">
-                                    <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480" class="card-img-top"></a>
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            {{ if .Author }}
-                                            {{ if eq .Author.Avatar "" }}
-                                            {{ else }}
-                                            <span class="avatar me-3 rounded"
-                                                  style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
-                                            {{ end }}
-                                            {{ end }}
-                                            <div>
-                                                <div>{{ .Title }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                {{ template "schematic_card.html" . }}
                             {{end}}
                         </div>
                     </div>
