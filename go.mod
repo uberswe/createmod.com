@@ -13,8 +13,11 @@ require (
 	github.com/gosimple/slug v1.14.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
+	github.com/mergestat/timediff v0.0.3
 	github.com/pocketbase/dbx v1.10.1
 	github.com/pocketbase/pocketbase v0.22.14
+	github.com/sabloger/sitemap-generator v1.3.0
+	github.com/sunshineplan/imgconv v1.1.13
 	github.com/sym01/htmlsanitizer v1.1.0
 	golang.org/x/crypto v0.31.0
 	golang.org/x/text v0.22.0
@@ -86,7 +89,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
-	github.com/mergestat/timediff v0.0.3 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
@@ -100,7 +102,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/steveyen/gtreap v0.1.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	github.com/sunshineplan/imgconv v1.1.13 // indirect
 	github.com/sunshineplan/pdf v1.0.7 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

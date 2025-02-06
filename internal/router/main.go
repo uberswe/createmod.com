@@ -31,8 +31,11 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	}
 
 	e.Renderer = t
+	e.Use(legacyFileCompat)
 	e.Use(legacySearchCompat)
+	e.Use(legacyTagCompat)
 	// Frontend routes
+	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./web/sitemaps"), false))
 	e.GET("/dist/*", apis.StaticDirectoryHandler(os.DirFS("./web/dist"), false))
 	e.GET("/static/*", apis.StaticDirectoryHandler(os.DirFS("./static/dist"), false))
 	// Index
@@ -47,27 +50,12 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.GET("/login", pages.LoginHandler(app))
 	e.GET("/register", pages.RegisterHandler(app))
 	e.GET("/reset-password", pages.PasswordResetHandler(app))
-	// User
-	e.GET("/rules", pages.RulesHandler(app))
 	// News
 	e.GET("/news", pages.NewsHandler(app))
 	e.GET("/news/:slug", pages.NewsPostHandler(app))
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app))
-	e.GET("/schematics/:name", pages.SchematicHandler(app))
-	// Needs backwards compatible with
-	// Tags /?schematic_tags=elevator
-	// TODO fix this
-	e.GET("/schematics/tag/:tag", pages.SchematicHandler(app))
-	e.GET("/schematics/category/:category", pages.SchematicHandler(app))
-	// Backwards compat
-	// /schematic_categories/player-transport
-	e.GET("/schematic_categories/:slug", pages.SchematicHandler(app))
-	// Search
-	// Needs to be backwards compatible with
-	// /?s=searchterm&id=95&post_type=schematics
-	// /?s=search+term+1+2+3&id=95&post_type=schematics
-	// legacySearchCompat middleware should handle this
+	e.GET("/schematics/:name", pages.SchematicHandler(app, searchService))
 	e.GET("/search/:term", pages.SearchHandler(app, searchService))
 	e.POST("/search/:term", pages.SearchHandler(app, searchService))
 	e.GET("/search", pages.SearchHandler(app, searchService))
@@ -80,6 +68,46 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	// Fallback
 	e.GET("/*", pages.FourOhFourHandler(app))
 
+}
+
+func legacyFileCompat(next echo.HandlerFunc) echo.HandlerFunc {
+	fileMatches := map[string]string{
+		"/wp-sitemap.xml": "/sitemaps/sitemap.xml",
+	}
+	return func(c echo.Context) error {
+		path := c.Request().URL.Path
+		for match, newRoute := range fileMatches {
+			if path == match || strings.HasPrefix(path, match) {
+				return c.Redirect(http.StatusMovedPermanently, newRoute)
+			}
+		}
+		return next(c) // proceed with the request chain
+	}
+}
+
+func legacyTagCompat(next echo.HandlerFunc) echo.HandlerFunc {
+	// to /search/?tag=apple
+	urlMatches := []string{
+		"/schematics/tag/",
+	}
+	queryMatches := []string{
+		"schematic_tags",
+	}
+	return func(c echo.Context) error {
+		path := c.Request().URL.Path
+		for _, match := range urlMatches {
+			if strings.HasPrefix(path, match) {
+				return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")))
+			}
+		}
+		query := c.Request().URL.Query()
+		for _, match := range queryMatches {
+			if query.Has(match) && query.Get(match) != "" {
+				return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", query.Get(match)))
+			}
+		}
+		return next(c) // proceed with the request chain
+	}
 }
 
 func legacySearchCompat(next echo.HandlerFunc) echo.HandlerFunc {

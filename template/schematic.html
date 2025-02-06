@@ -9,7 +9,7 @@
                     <div class="col-lg-7">
                         <div class="row row-cards">
                             <div class="col-sm-12 col-lg-12">
-                                <div class="card card-sm">
+                                <div class="card card-sm mb-4">
                                     <a data-fslightbox="gallery"
                                        href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
                                         <img
@@ -45,9 +45,9 @@
                                                 </select>
                                             </div>
                                             <div class="col-auto">
-                                                <button class="btn btn-primary" id="download-btn">
+                                                <a href="{{ .Schematic.SchematicFile }}" class="btn btn-primary" id="download-btn">
                                                     Download
-                                                </button>
+                                                </a>
                                             </div>
                                         </div>
                                         <div class="d-flex align-items-center">
@@ -59,7 +59,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row row-cards">
+                        <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
                                 <div class="card">
                                     <div class="card-body">
@@ -141,7 +141,7 @@
                             </div>
                         </div>
 
-                        <div class="row row-cards">
+                        <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
                                 <div class="card">
                                     <div class="card-body">
@@ -265,27 +265,35 @@
                     <div class="col-lg-5">
                         {{ if eq .Schematic.Video "" }}
                         {{ else }}
-                        <div class="card">
+                        <div class="card mb-4">
                             <div id="player-youtube" data-plyr-provider="youtube"
                                  data-plyr-embed-id="{{ .Schematic.Video }}"></div>
                         </div>
                         {{ end }}
-                        <div class="card">
+                        <div class="card mb-4">
                             <a href="https://bisecthosting.com/SCHEMATIC">
                                 <img src="https://www.bisecthosting.com/partners/custom-banners/a18a4d46-d49b-4b1e-82d1-c75815722645.webp"
                                      class="card-img-top">
                             </a>
                         </div>
-                        <div class="card">
+                        {{ if .AuthorHasMore }}
+                        <div class="card mb-4">
                             <div class="card-body">
-                                <h3 class="card-title">Similar Schematics</h3>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-body">
-                                <h3 class="card-title">More From <a
+                                <h3 class="card-title">More from <a
                                         href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                     .Schematic.Author.Username }}</a></h3>
+                                {{range  .FromAuthor }}
+                                    {{ template "schematic_card_sidebar.html" . }}
+                                {{end}}
+                            </div>
+                        </div>
+                        {{ end }}
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h3 class="card-title">Similar Schematics</h3>
+                                {{range  .Similar }}
+                                    {{ template "schematic_card_sidebar.html" . }}
+                                {{end}}
                             </div>
                         </div>
                     </div>

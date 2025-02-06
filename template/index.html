@@ -9,32 +9,16 @@
                     <div class="col-12 col-lg-8">
                         <div class="row row-cards">
                             {{range  .Schematics}}
-                            <div class="col-lg-6">
-                                <div class="card card-sm">
-                                    <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480" class="card-img-top"></a>
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            {{ if .Author }}
-                                            {{ if eq .Author.Avatar "" }}
-                                            {{ else }}
-                                            <span class="avatar me-3 rounded"
-                                                  style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
-                                            {{ end }}
-                                            {{ end }}
-                                            <div>
-                                                <div>{{ .Title }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                {{ template "schematic_card.html" . }}
                             {{end}}
                         </div>
                     </div>
                     <div class="col-12 col-lg-4">
                         <div class="card mb-5">
                             <div class="card-body badges-list">
-                                <h3 class="card-title">Tags</h3>
+                                <div class="col-12">
+                                    <h3 class="card-title">Tags</h3>
+                                </div>
                                 {{range  .Tags}}
                                 <a href="/schematics/tag/{{ .Key }}" class="btn">{{ .Name }} <span class="badge bg-blue text-blue-fg ms-2">{{ .Count }}</span></a>
                                 {{end}}
@@ -44,26 +28,7 @@
                             <div class="card-body">
                                 <h3 class="card-title">Trending</h3>
                                 {{range  .Trending}}
-                                <div class="col-lg-12 mb-5">
-                                    <div class="card card-sm">
-                                        <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
-                                                class="card-img-top"></a>
-                                        <div class="card-body">
-                                            <div class="d-flex align-items-center">
-                                                {{ if .Author }}
-                                                {{ if eq .Author.Avatar "" }}
-                                                {{ else }}
-                                                <span class="avatar me-3 rounded"
-                                                      style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
-                                                {{ end }}
-                                                {{ end }}
-                                                <div>
-                                                    <div>{{ .Title }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    {{ template "schematic_card_sidebar.html" . }}
                                 {{end}}
                             </div>
                         </div>
@@ -71,26 +36,7 @@
                             <div class="card-body">
                                 <h3 class="card-title">Highest Rated</h3>
                                 {{range  .HighestRated}}
-                                <div class="col-lg-12 mb-5">
-                                    <div class="card card-sm">
-                                        <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
-                                                class="card-img-top"></a>
-                                        <div class="card-body">
-                                            <div class="d-flex align-items-center">
-                                                {{ if .Author }}
-                                                {{ if eq .Author.Avatar "" }}
-                                                {{ else }}
-                                                <span class="avatar me-3 rounded"
-                                                      style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
-                                                {{ end }}
-                                                {{ end }}
-                                                <div>
-                                                    <div>{{ .Title }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    {{ template "schematic_card_sidebar.html" . }}
                                 {{end}}
                             </div>
                         </div>
