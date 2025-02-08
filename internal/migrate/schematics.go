@@ -160,82 +160,98 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 
 		filesToUpload := form.FilesToUpload()
 
-		convertToJpg(app, record, filesToUpload)
+		record, err = convertToJpg(app, record, filesToUpload)
+
+		if err != nil {
+			app.Logger().Error(
+				fmt.Sprintf("Could not convert to jpg: %v", err),
+			)
+			panic("Fatal error, stop migration")
+		}
+
+		err = app.Dao().Save(record)
+		if err != nil {
+			app.Logger().Error(
+				fmt.Sprintf("Could not save: %v", err),
+			)
+			panic("Fatal error, stop migration")
+		}
 
 		oldSchematicIDs[s.ID] = record.GetId()
 	}
 	return oldSchematicIDs
 }
 
-func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) {
+func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) (*models.Record, error) {
 	var galleryFilenames []string
 	fs, err := app.NewFilesystem()
 	if err != nil {
-		return
+		return record, err
 	}
 
 	for fieldKey := range files {
 		for i, file := range files[fieldKey] {
-			//Skip schematics
-			if filepath.Ext(file.Name) == ".nbt" {
-				continue
-			}
 			path := record.BaseFilesPath() + "/" + file.Name
 
 			if err := fs.UploadFile(file, path); err != nil {
-				return
+				return record, err
 			}
 
-			r, err := fs.GetFile(path)
-			if err != nil {
-				return
-			}
+			if fieldKey == "featured_image" || fieldKey == "gallery" {
+				r, err := fs.GetFile(path)
+				if err != nil {
+					return record, err
+				}
 
-			decode, err := imgconv.Decode(r)
-			if err != nil {
-				return
-			}
+				decode, err := imgconv.Decode(r)
+				if err != nil {
+					return record, err
+				}
 
-			var jpgBuffer bytes.Buffer
-			err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
-				Format: imgconv.JPEG,
-				EncodeOption: []imgconv.EncodeOption{
-					imgconv.Quality(80),
-				},
-			})
+				var jpgBuffer bytes.Buffer
+				err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
+					Format: imgconv.JPEG,
+					EncodeOption: []imgconv.EncodeOption{
+						imgconv.Quality(80),
+					},
+				})
 
-			filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
-			if err != nil {
-				return
-			}
+				filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
+				if err != nil {
+					return record, err
+				}
 
-			newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
-			if err != nil {
-				return
-			}
+				newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
+				if err != nil {
+					return record, err
+				}
 
-			if err := fs.Delete(path); err != nil {
-				return
-			}
+				err = r.Close()
+				if err != nil {
+					return record, err
+				}
 
-			path = record.BaseFilesPath() + "/" + filename
-			if err := fs.UploadFile(newFile, path); err != nil {
-				return
-			}
-			files[fieldKey][i].Name = filename
+				if err := fs.Delete(path); err != nil {
+					return record, err
+				}
 
-			if fieldKey == "featured_image" {
-				record.Set("featured_image", filename)
-			} else {
-				galleryFilenames = append(galleryFilenames, filename)
+				path = record.BaseFilesPath() + "/" + filename
+				if err := fs.UploadFile(newFile, path); err != nil {
+					return record, err
+				}
+				files[fieldKey][i].Name = filename
+
+				if fieldKey == "featured_image" {
+					record.Set("featured_image", filename)
+				} else {
+					galleryFilenames = append(galleryFilenames, filename)
+				}
 			}
 		}
 	}
 	record.Set("gallery", galleryFilenames)
-	err = app.Dao().Save(record)
-	if err != nil {
-		return
-	}
+
+	return record, nil
 }
 
 func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *models.Record, collection *models.Collection) {

@@ -390,59 +390,62 @@ func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[s
 	}
 
 	for fieldKey := range files {
-		for i, file := range files[fieldKey] {
-			//Skip schematics
-			if filepath.Ext(file.Name) == ".nbt" {
-				continue
-			}
-			path := record.BaseFilesPath() + "/" + file.Name
+		if fieldKey == "featured_image" || fieldKey == "gallery" {
+			for i, file := range files[fieldKey] {
+				path := record.BaseFilesPath() + "/" + file.Name
 
-			if err := fs.UploadFile(file, path); err != nil {
-				return
-			}
+				if err := fs.UploadFile(file, path); err != nil {
+					return
+				}
 
-			r, err := fs.GetFile(path)
-			if err != nil {
-				return
-			}
+				r, err := fs.GetFile(path)
+				if err != nil {
+					return
+				}
 
-			decode, err := imgconv.Decode(r)
-			if err != nil {
-				return
-			}
+				decode, err := imgconv.Decode(r)
+				if err != nil {
+					return
+				}
 
-			var jpgBuffer bytes.Buffer
-			err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
-				Format: imgconv.JPEG,
-				EncodeOption: []imgconv.EncodeOption{
-					imgconv.Quality(80),
-				},
-			})
+				var jpgBuffer bytes.Buffer
+				err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
+					Format: imgconv.JPEG,
+					EncodeOption: []imgconv.EncodeOption{
+						imgconv.Quality(80),
+					},
+				})
 
-			filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
-			if err != nil {
-				return
-			}
+				filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
+				if err != nil {
+					return
+				}
 
-			newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
-			if err != nil {
-				return
-			}
+				newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
+				if err != nil {
+					return
+				}
 
-			if err := fs.Delete(path); err != nil {
-				return
-			}
+				err = r.Close()
+				if err != nil {
+					return
+				}
 
-			path = record.BaseFilesPath() + "/" + filename
-			if err := fs.UploadFile(newFile, path); err != nil {
-				return
-			}
-			files[fieldKey][i].Name = filename
+				if err := fs.Delete(path); err != nil {
+					return
+				}
 
-			if fieldKey == "featured_image" {
-				record.Set("featured_image", filename)
-			} else {
-				galleryFilenames = append(galleryFilenames, filename)
+				path = record.BaseFilesPath() + "/" + filename
+				if err := fs.UploadFile(newFile, path); err != nil {
+					return
+				}
+				files[fieldKey][i].Name = filename
+
+				if fieldKey == "featured_image" {
+					record.Set("featured_image", filename)
+				} else {
+					galleryFilenames = append(galleryFilenames, filename)
+				}
 			}
 		}
 	}

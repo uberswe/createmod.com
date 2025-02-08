@@ -54,8 +54,8 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service)
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
-		d.Similar = findSimilarSchematics(app, d.Schematic, searchService)
 		d.FromAuthor = findAuthorSchematics(app, d.Schematic.ID, d.Schematic.Author.ID)
+		d.Similar = findSimilarSchematics(app, d.Schematic, d.FromAuthor, searchService)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 
 		go countSchematicView(app, results[0])
@@ -82,7 +82,7 @@ func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string
 	return MapResultsToSchematic(app, results)
 }
 
-func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schematic, searchService *search.Service) []models.Schematic {
+func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schematic, author []models.Schematic, searchService *search.Service) []models.Schematic {
 	// Does title and content give the best match? Maybe tags + category?
 	keywordString := ""
 	for _, t := range schematic.Tags {
@@ -102,6 +102,15 @@ func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schemati
 			break
 		}
 		if id == schematic.ID {
+			continue
+		}
+		found := false
+		for _, a := range author {
+			if id == a.ID {
+				found = true
+			}
+		}
+		if found {
 			continue
 		}
 		interfaceIds = append(interfaceIds, id)
