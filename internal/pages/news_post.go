@@ -15,6 +15,7 @@ type NewsPostData struct {
 func NewsPostHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := NewsPostData{}
+		d.Populate(c)
 		d.Title = ""
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, newsPostTemplate, d)

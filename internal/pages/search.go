@@ -100,6 +100,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 			Rating:            rating,
 			Category:          category,
 		}
+		d.Populate(c)
 		d.Title = "Search"
 		d.Categories = allCategories(app)
 

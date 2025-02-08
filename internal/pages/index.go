@@ -6,6 +6,8 @@ import (
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"net/http"
 	"time"
 )
@@ -47,6 +49,7 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			HighestRated: getHighestRatedSchematics(app),
 			Tags:         allTagsWithCount(app),
 		}
+		d.Populate(c)
 		d.Title = "Minecraft Schematics"
 		d.SubCategory = "Home"
 		d.Categories = allCategories(app)
@@ -119,9 +122,11 @@ func findUserFromID(app *pocketbase.PocketBase, userID string) *models.User {
 }
 
 func mapResultToUser(record *pbmodels.Record) *models.User {
+
+	caser := cases.Title(language.English)
 	return &models.User{
 		ID:       record.GetId(),
-		Username: record.GetString("username"),
+		Username: caser.String(record.GetString("username")),
 		Avatar:   record.GetString("avatar"),
 	}
 }

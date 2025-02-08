@@ -1,6 +1,7 @@
 package router
 
 import (
+	"createmod/internal/auth"
 	"createmod/internal/pages"
 	"createmod/internal/search"
 	"fmt"
@@ -8,6 +9,9 @@ import (
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
+	"github.com/pocketbase/pocketbase/tokens"
+	"github.com/pocketbase/pocketbase/tools/security"
+	"github.com/spf13/cast"
 	"html/template"
 	"net/http"
 	"os"
@@ -34,6 +38,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.Use(legacyFileCompat)
 	e.Use(legacySearchCompat)
 	e.Use(legacyTagCompat)
+	e.Use(cookieAuth(app))
 	// Frontend routes
 	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./web/sitemaps"), false))
 	e.GET("/dist/*", apis.StaticDirectoryHandler(os.DirFS("./web/dist"), false))
@@ -68,6 +73,46 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	// Fallback
 	e.GET("/*", pages.FourOhFourHandler(app))
 
+}
+
+// cookieAuth was added so that requests can be authenticated on the backend when HTML templates are rendered
+func cookieAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			cookie, err := c.Cookie(auth.CookieName)
+			if err != nil {
+				return next(c)
+			}
+
+			claims, _ := security.ParseUnverifiedJWT(cookie.Value)
+			tokenType := cast.ToString(claims["type"])
+
+			switch tokenType {
+			case tokens.TypeAdmin:
+				return next(c)
+
+				// Disable admin auth via cookie for now
+
+				//admin, err := app.Dao().FindAdminByToken(
+				//	cookie.Value,
+				//	app.Settings().AdminAuthToken.Secret,
+				//)
+				//if err == nil && admin != nil {
+				//	c.Set(apis.ContextAdminKey, admin)
+				//}
+			case tokens.TypeAuthRecord:
+				record, err := app.Dao().FindAuthRecordByToken(
+					cookie.Value,
+					app.Settings().RecordAuthToken.Secret,
+				)
+				if err == nil && record != nil {
+					c.Set(apis.ContextAuthRecordKey, record)
+				}
+			}
+
+			return next(c)
+		}
+	}
 }
 
 func legacyFileCompat(next echo.HandlerFunc) echo.HandlerFunc {

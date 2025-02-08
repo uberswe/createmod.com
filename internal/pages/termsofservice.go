@@ -15,6 +15,7 @@ type TermsOfServiceData struct {
 func TermsOfServiceHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := TermsOfServiceData{}
+		d.Populate(c)
 		d.Title = "Terms Of Service"
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, termsOfServiceTemplate, d)

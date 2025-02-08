@@ -20,6 +20,7 @@ type UploadData struct {
 func UploadHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := UploadData{}
+		d.Populate(c)
 		d.Title = "Upload A Schematic"
 		d.Categories = allCategories(app)
 		d.Tags = allTags(app)

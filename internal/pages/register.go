@@ -15,6 +15,7 @@ type registerData struct {
 func RegisterHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := registerData{}
+		d.Populate(c)
 		d.Title = "Register"
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, registerTemplate, d)

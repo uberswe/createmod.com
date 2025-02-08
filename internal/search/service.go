@@ -37,6 +37,7 @@ type schematicIndex struct {
 	Categories  []string
 	Views       int64
 	Rating      float64
+	Author      string
 }
 
 type bleveIndex struct {
@@ -44,6 +45,7 @@ type bleveIndex struct {
 	Description string
 	Tags        []string
 	Categories  []string
+	Author      string
 }
 
 func New(schematics []models.Schematic, logger *slog.Logger) *Service {
@@ -64,6 +66,9 @@ func New(schematics []models.Schematic, logger *slog.Logger) *Service {
 	categoriesFieldMapping.Analyzer = "en"
 	schematicMapping.AddFieldMappingsAt("categories", categoriesFieldMapping)
 	mapping.AddDocumentMapping("schematic", schematicMapping)
+	authorFieldMapping := bleve.NewTextFieldMapping()
+	authorFieldMapping.Analyzer = "en"
+	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
 	var err error
 	s.bleveIndex, err = bleve.NewMemOnly(mapping)
 	if err != nil {
@@ -210,6 +215,7 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			Description: schematics[i].Content,
 			Created:     schematics[i].Created,
 			Views:       int64(schematics[i].Views),
+			Author:      schematics[i].Author.Username,
 		}
 		if parsedFloat, err := strconv.ParseFloat(schematics[i].Rating, 64); err == nil {
 			index[i].Rating = parsedFloat
@@ -225,6 +231,7 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			Description: index[i].Description,
 			Tags:        index[i].Tags,
 			Categories:  index[i].Categories,
+			Author:      index[i].Author,
 		})
 		if err != nil {
 			s.logger.Error("bleve add index", "error", err.Error())

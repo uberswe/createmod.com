@@ -22,10 +22,13 @@ let isAuthenticated = function (_callback) {
                 _callback(true)
             } else {
                 pb.authStore.clear()
+                // clear cookie
+                deleteCookie("create-mod-auth")
                 _callback(false)
             }
         }).catch(() => {
             pb.authStore.clear()
+            deleteCookie("create-mod-auth")
             _callback(false)
         })
         return true
@@ -61,6 +64,15 @@ function getCookie(c_name) {
         if (x == c_name) {
             return unescape(y);
         }
+    }
+}
+
+function deleteCookie( name, path, domain ) {
+    if( getCookie( name ) ) {
+        document.cookie = name + "=" +
+            ((path) ? ";path="+path:"")+
+            ((domain)?";domain="+domain:"") +
+            ";expires=Thu, 01 Jan 1970 00:00:01 GMT";
     }
 }
 
@@ -266,6 +278,7 @@ let run = function () {
         for (let i = 0; i < logoutButtons.length; i++) {
             logoutButtons.item(i).addEventListener("click", async (e) => {
                 pb.authStore.clear();
+                deleteCookie("create-mod-auth")
                 location.href = '/'
             })
         }
@@ -286,6 +299,7 @@ let run = function () {
                         authAvatars.item(i).style.backgroundImage = "url('" + pb.authStore.model.avatar + "')"
                     }
                 }
+                console.log(pb.authStore.model)
                 for (let i = 0; i < authUsernames.length; i++) {
                     authUsernames.item(i).innerText = pb.authStore.model.username
                 }
@@ -321,5 +335,7 @@ let run = function () {
     }
 }
 
+document.addEventListener("DOMContentLoaded", function() {
 // Run everything
-run()
+    run()
+})

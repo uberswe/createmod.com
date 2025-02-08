@@ -30,6 +30,7 @@ func SchematicsHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 		d := SchematicsData{
 			Schematics: MapResultsToSchematic(app, results),
 		}
+		d.Populate(c)
 		d.Title = "Create Mod Schematics"
 		d.Categories = allCategories(app)
 

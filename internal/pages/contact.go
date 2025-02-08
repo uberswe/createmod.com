@@ -15,6 +15,7 @@ type ContactData struct {
 func ContactHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := ContactData{}
+		d.Populate(c)
 		d.Title = "Contact"
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, contactTemplate, d)

@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"createmod/internal/auth"
 	"createmod/internal/migrate"
 	"createmod/internal/pages"
 	"createmod/internal/router"
@@ -29,6 +30,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"math/rand"
+	"net/http"
 	"net/mail"
 	"path/filepath"
 	"regexp"
@@ -182,6 +184,20 @@ func (s *Server) Start() {
 			e.Record.Set("rated_at", time.Now())
 			return nil
 		})
+
+		// COOKIES
+		app.OnRecordAuthRequest().Add(func(e *core.RecordAuthEvent) error {
+			app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", app.Settings().RecordAuthToken.Duration)
+			e.HttpContext.SetCookie(&http.Cookie{
+				Name:     auth.CookieName,
+				Value:    e.Token,
+				Expires:  time.Now().Add(time.Second * time.Duration(app.Settings().RecordAuthToken.Duration)),
+				Path:     "/",
+				SameSite: http.SameSiteStrictMode,
+			})
+			return nil
+		})
+		// END COOKIES
 
 		// PASSWORD BACKWARDS COMPATIBILITY
 		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {

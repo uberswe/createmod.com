@@ -15,6 +15,7 @@ type GuideData struct {
 func GuideHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := GuideData{}
+		d.Populate(c)
 		d.Title = "Guide"
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, guideTemplate, d)

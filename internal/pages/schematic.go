@@ -50,6 +50,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service)
 		d := SchematicData{
 			Schematic: mapResultToSchematic(app, results[0]),
 		}
+		d.Populate(c)
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)

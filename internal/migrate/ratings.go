@@ -58,6 +58,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 		panic(countErr)
 	}
 
+	log.Println("Total ratings count:", totalCount.C)
 	if totalCount.C >= int64(len(ratingEntries)) {
 		log.Println("Skipping ratings, already migrated.")
 		return
@@ -85,12 +86,18 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 			1,
 			0,
 			dbx.Params{"old_id": vm.OldID})
-		if !errors.Is(err, gorm.ErrRecordNotFound) && len(filter) != 0 {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			app.Logger().Debug(
-				fmt.Sprintf("Rating found or error: %v", err),
+				fmt.Sprintf("Rating error: %v", err),
 				"filter-len", len(filter),
 			)
 			continue
+		} else if err == nil && len(filter) != 0 {
+			app.Logger().Debug(
+				fmt.Sprintf("Rating found: %v", err),
+				"filter-len", len(filter),
+			)
+			return
 		}
 
 		newUserId := oldUserIDs[vm.OldUserId]
