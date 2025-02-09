@@ -79,12 +79,18 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 func cookieAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if c.Get(apis.ContextAuthRecordKey) != nil {
+				return next(c)
+			}
+
 			cookie, err := c.Cookie(auth.CookieName)
 			if err != nil {
 				return next(c)
 			}
 
-			claims, _ := security.ParseUnverifiedJWT(cookie.Value)
+			token := strings.TrimSpace(cookie.Value)
+
+			claims, _ := security.ParseUnverifiedJWT(token)
 			tokenType := cast.ToString(claims["type"])
 
 			switch tokenType {
@@ -94,7 +100,7 @@ func cookieAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
 				// Disable admin auth via cookie for now
 
 				//admin, err := app.Dao().FindAdminByToken(
-				//	cookie.Value,
+				//	token,
 				//	app.Settings().AdminAuthToken.Secret,
 				//)
 				//if err == nil && admin != nil {
@@ -102,7 +108,7 @@ func cookieAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
 				//}
 			case tokens.TypeAuthRecord:
 				record, err := app.Dao().FindAuthRecordByToken(
-					cookie.Value,
+					token,
 					app.Settings().RecordAuthToken.Secret,
 				)
 				if err == nil && record != nil {

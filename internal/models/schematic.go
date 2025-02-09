@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"html/template"
 	"time"
 )
@@ -34,6 +33,7 @@ type Schematic struct {
 	HasRating        bool
 	CreatedFormatted string
 	SchematicFile    string
+	RatingCount      int
 }
 
 type DatabaseSchematic struct {
@@ -60,43 +60,4 @@ type DatabaseSchematic struct {
 	HasRating        bool
 	AvgRating        *float64
 	SchematicFile    string
-}
-
-func (d *DatabaseSchematic) ToSchematic() Schematic {
-	created, _ := time.Parse(time.RFC3339, d.Created)
-	if d.AvgRating != nil && *d.AvgRating > 0 {
-		d.Rating = fmt.Sprintf("%0.2f", *d.AvgRating)
-	}
-	return Schematic{
-		ID:               d.ID,
-		Created:          created,
-		Author:           d.Author,
-		CommentCount:     d.CommentCount,
-		Content:          d.Content,
-		HTMLContent:      d.HTMLContent,
-		Excerpt:          d.Excerpt,
-		FeaturedImage:    d.FeaturedImage,
-		HasGallery:       d.HasGallery,
-		Title:            d.Title,
-		Name:             d.Name,
-		Video:            d.Video,
-		HasDependencies:  d.HasDependencies,
-		Dependencies:     d.Dependencies,
-		HTMLDependencies: d.HTMLDependencies,
-		CreatemodVersion: d.CreatemodVersion,
-		MinecraftVersion: d.MinecraftVersion,
-		Views:            d.Views,
-		HasTags:          d.HasTags,
-		Rating:           d.Rating,
-		HasRating:        d.HasRating,
-		SchematicFile:    d.SchematicFile,
-	}
-}
-
-func DatabaseSchematicsToSchematics(databaseSchematics []DatabaseSchematic) (res []Schematic) {
-	res = make([]Schematic, 0)
-	for _, dbs := range databaseSchematics {
-		res = append(res, dbs.ToSchematic())
-	}
-	return res
 }

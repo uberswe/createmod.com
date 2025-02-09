@@ -1,20 +1,24 @@
-<div class="col-lg-6">
+<a href="/schematics/{{ .Name }}" class="d-block">
     <div class="card card-sm">
-        <a href="/schematics/{{ .Name }}" class="d-block"><img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
-                                                               class="card-img-top"></a>
-        <div class="card-body">
-            <div class="d-flex align-items-center">
-                {{ if .Author }}
-                {{ if eq .Author.Avatar "" }}
-                {{ else }}
-                <span class="avatar me-3 rounded"
-                      style="background-image: url(/api/files/users/{{ .Author.ID }}/{{ .Author.Avatar }})"></span>
-                {{ end }}
-                {{ end }}
-                <div>
-                    <div>{{ .Title }}</div>
+        <div class="card-header">
+            <div class="row">
+                <div class="col">
+                    {{ .Title }}
+                </div>
+            </div>
+        </div>
+        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
+             class="card-img">
+        <div class="card-footer">
+            <div class="row">
+                <div class="col">{{ .CreatemodVersion }}</div>
+                <div class="col">{{ .MinecraftVersion }}</div>
+                <div class="col-auto">
+                    {{ range .Categories }}
+                    <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                    {{ end }}
                 </div>
             </div>
         </div>
     </div>
-</div>
+</a>

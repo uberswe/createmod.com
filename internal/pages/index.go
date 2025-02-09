@@ -66,8 +66,11 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase) []models.Schematic {
 	if len(highestRatedSchematics) > 0 && time.Now().Before(highestRatedCacheTime.Add(time.Hour*24)) {
 		return highestRatedSchematics
 	}
-	var schematics []models.DatabaseSchematic
-	err := app.Dao().DB().
+	// TODO a field for average rating can be aggregated daily and indexed to improve performance
+	// Also consider if this is a good metric, perhaps adding more weight to the number of ratings could be good.
+	// Currently it takes an the average, perhaps we should use the mean rating instead as this would account for number of ratings?
+	var res []*pbmodels.Record
+	err := app.Dao().RecordQuery("schematics").
 		Select("schematics.*", "avg(schematic_ratings.rating) as avg_rating", "count(schematic_ratings.rating) as total_rating").
 		From("schematics").
 		LeftJoin("schematic_ratings", dbx.NewExp("schematic_ratings.schematic = schematics.id")).
@@ -75,12 +78,12 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase) []models.Schematic {
 		AndOrderBy("total_rating DESC").
 		GroupBy("schematics.id").
 		Limit(10).
-		All(&schematics)
+		All(&res)
 	if err != nil {
 		app.Logger().Debug("could not fetch highest rated", "error", err.Error())
 		return nil
 	}
-	highestRatedSchematics = models.DatabaseSchematicsToSchematics(schematics)
+	highestRatedSchematics = MapResultsToSchematic(app, res)
 	highestRatedCacheTime = time.Now()
 	return highestRatedSchematics
 }
@@ -89,8 +92,9 @@ func getTrendingSchematics(app *pocketbase.PocketBase) []models.Schematic {
 	if len(trendingSchematics) > 0 && time.Now().Before(trendingCacheTime.Add(time.Hour*24)) {
 		return trendingSchematics
 	}
-	var schematics []models.DatabaseSchematic
-	err := app.Dao().DB().
+	// TODO a field for daily and weekly views can be aggregated daily and indexed to improve performance
+	var res []*pbmodels.Record
+	err := app.Dao().RecordQuery("schematics").
 		Select("schematics.*", "avg(schematic_views.count) as avg_views").
 		From("schematic_views").
 		LeftJoin("schematics", dbx.NewExp("schematic_views.schematic = schematics.id")).
@@ -99,12 +103,12 @@ func getTrendingSchematics(app *pocketbase.PocketBase) []models.Schematic {
 		OrderBy("avg_views DESC").
 		GroupBy("schematics.id").
 		Limit(10).
-		All(&schematics)
+		All(&res)
 	if err != nil {
 		app.Logger().Debug("could not fetch trending", "error", err.Error())
 		return nil
 	}
-	trendingSchematics = models.DatabaseSchematicsToSchematics(schematics)
+	trendingSchematics = MapResultsToSchematic(app, res)
 	trendingCacheTime = time.Now()
 	return trendingSchematics
 }

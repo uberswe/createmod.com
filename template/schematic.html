@@ -109,7 +109,11 @@
                                             <div class="datagrid-item">
                                                 <div class="datagrid-title">Rating</div>
                                                 <div class="datagrid-content">
-                                                    {{ .Schematic.Rating }}
+                                                    {{ if eq .Schematic.RatingCount 0 }}
+                                                        No rating
+                                                    {{ else }}
+                                                        {{ .Schematic.Rating }} based on {{ .Schematic.RatingCount }} ratings
+                                                    {{ end }}
                                                 </div>
                                             </div>
                                             {{ end }}
@@ -277,22 +281,23 @@
                             </a>
                         </div>
                         {{ if .AuthorHasMore }}
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h3 class="card-title">More from <a
+                        <div class="col-12 mb-4">
+                                <h3>More From <a
                                         href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                     .Schematic.Author.Username }}</a></h3>
+
+                            <div class="row row-cards">
                                 {{range  .FromAuthor }}
-                                    {{ template "schematic_card_sidebar.html" . }}
+                                    {{ template "schematic_card_full.html" . }}
                                 {{end}}
                             </div>
                         </div>
                         {{ end }}
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h3 class="card-title">Similar Schematics</h3>
+                        <div class="col-12 mb-4">
+                                <h3>Similar Schematics</h3>
+                            <div class="row row-cards">
                                 {{range  .Similar }}
-                                    {{ template "schematic_card_sidebar.html" . }}
+                                    {{ template "schematic_card_full.html" . }}
                                 {{end}}
                             </div>
                         </div>

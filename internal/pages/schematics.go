@@ -24,7 +24,7 @@ func SchematicsHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			schematicsCollection.Id,
 			"1=1",
 			"-created",
-			30,
+			51,
 			0)
 
 		d := SchematicsData{

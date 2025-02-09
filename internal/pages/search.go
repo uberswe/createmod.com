@@ -9,6 +9,7 @@ import (
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
+	pbmodels "github.com/pocketbase/pocketbase/models"
 	"net/http"
 	"strconv"
 	"strings"
@@ -60,25 +61,27 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 		}
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
-		var schematics []models.DatabaseSchematic
 		app.Logger().Debug("search", "term", term)
 		ids := searchService.Search(term, order, rating, category, tag)
 		app.Logger().Debug("found ids", "ids", ids)
+
 		interfaceIds := make([]interface{}, 0, len(ids))
 		for _, id := range ids {
 			interfaceIds = append(interfaceIds, id)
 		}
 
-		err := app.Dao().DB().
+		var res []*pbmodels.Record
+		err := app.Dao().RecordQuery("schematics").
 			Select("schematics.*").
 			From("schematics").
 			Where(dbx.In("id", interfaceIds...)).
-			All(&schematics)
+			Limit(50).
+			All(&res)
 
 		if err != nil {
 			return err
 		}
-		schematicModels := models.DatabaseSchematicsToSchematics(schematics)
+		schematicModels := MapResultsToSchematic(app, res)
 		sortedModels := make([]models.Schematic, 0)
 		for id := range ids {
 			for i := range schematicModels {
@@ -94,7 +97,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 			Schematics:        sortedModels,
 			Tags:              allTags(app),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
-			SearchResultCount: len(ids),
+			SearchResultCount: len(sortedModels),
 			Term:              term,
 			Sort:              order,
 			Rating:            rating,
