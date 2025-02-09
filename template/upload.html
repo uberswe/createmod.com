@@ -10,6 +10,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h3 class="card-title">Upload Schematic</h3>
+                                {{ if .IsAuthenticated }}
                                 <div class="row">
                                     <div class="col-md-12 col-lg-6">
                                         <div class="mb-3">
@@ -123,6 +124,9 @@
                                         </div>
                                     </div>
                                 </div>
+                                {{ else }}
+                                <h4>You must be <a href="/login">logged in</a> to upload schematics.</h4>
+                                {{ end }}
                             </div>
                         </div>
                     </div>

@@ -447,8 +447,8 @@
         // Handle logged in
         setTimeout(function () {
             if (pb.authStore.model === null) {
-                document.getElementById('comment-section').innerHTML = '<h4>You must be logged in to post a comment.</h4>'
+                document.getElementById('comment-section').innerHTML = '<h4>You must be <a href="/login">logged in</a> to post a comment.</h4>'
             }
-        }, 3000);
+        }, 500);
     });
 </script>

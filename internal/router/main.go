@@ -45,7 +45,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.GET("/static/*", apis.StaticDirectoryHandler(os.DirFS("./web/static"), false))
 	// Index
 	e.GET("/", pages.IndexHandler(app))
-	e.GET("/about", pages.AboutHandler(app))
+	// Removed the about page, not relevant anymore
 	e.GET("/upload", pages.UploadHandler(app))
 	e.GET("/contact", pages.ContactHandler(app))
 	e.GET("/guide", pages.GuideHandler(app))
