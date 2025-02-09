@@ -47,11 +47,11 @@
                        aria-label="Open user menu">
                         <span class="avatar auth-dropdown avatar-sm auth-avatar" style="background-image: url(./static/avatars/000m.jpg)"></span>
                         <div class="d-none d-xl-block ps-2">
-                            <div class="auth-username">username</div>
+                            <div class="auth-username">{{ .Username }}</div>
                         </div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                        <a href="/profile" class="dropdown-item">Profile</a>
+                        <a href="/author/{{ .UsernameSlug }}" class="dropdown-item">Profile</a>
                         <div class="dropdown-divider"></div>
                         <a href="/settings" class="dropdown-item">Settings</a>
                         <a class="dropdown-item logout-button">Logout</a>

@@ -15,6 +15,7 @@ type passwordResetData struct {
 func PasswordResetHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := passwordResetData{}
+		d.Populate(c)
 		d.Title = "Reset Password"
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, passwordResetTemplate, d)

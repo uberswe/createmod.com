@@ -7,8 +7,15 @@
             <div class="container-xl">
                 <div class="row row-cards">
                     {{range .Schematics }}
-                        {{ template "schematic_card.html" . }}
+                        {{ template "schematic_card_small.html" . }}
                     {{end}}
+                </div>
+                <div class="row">
+                    <div class="col pt-4 m-auto">
+                        <div class="alert alert-info" role="alert">
+                            Find more schematics via the <a href="/search">Search page</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

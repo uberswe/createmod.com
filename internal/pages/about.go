@@ -15,6 +15,7 @@ type AboutData struct {
 func AboutHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		d := AboutData{}
+		d.Populate(c)
 		d.Title = "About"
 		d.Categories = allCategories(app)
 		err := c.Render(http.StatusOK, aboutTemplate, d)

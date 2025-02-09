@@ -24,12 +24,13 @@ func SchematicsHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			schematicsCollection.Id,
 			"1=1",
 			"-created",
-			30,
+			51,
 			0)
 
 		d := SchematicsData{
 			Schematics: MapResultsToSchematic(app, results),
 		}
+		d.Populate(c)
 		d.Title = "Create Mod Schematics"
 		d.Categories = allCategories(app)
 

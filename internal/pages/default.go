@@ -2,13 +2,34 @@ package pages
 
 import (
 	"createmod/internal/models"
+	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
+	pbmodels "github.com/pocketbase/pocketbase/models"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+	"strings"
 )
 
 type DefaultData struct {
-	Title       string
-	SubCategory string
-	Categories  []models.SchematicCategory
+	IsAuthenticated bool
+	Username        string
+	UsernameSlug    string
+	Title           string
+	SubCategory     string
+	Categories      []models.SchematicCategory
+}
+
+func (d *DefaultData) Populate(c echo.Context) {
+	user := c.Get(apis.ContextAuthRecordKey)
+	if user != nil {
+		d.IsAuthenticated = true
+		if record, ok := user.(*pbmodels.Record); ok {
+			caser := cases.Title(language.English)
+			d.Username = caser.String(record.GetString("username"))
+			d.UsernameSlug = strings.ToLower(record.GetString("username"))
+		}
+	}
 }
 
 func allCategories(app *pocketbase.PocketBase) []models.SchematicCategory {

@@ -53,15 +53,18 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 						"old_schematic_id": postViewRes[i].ID,
 						"type":             postViewRes[i].Type,
 					})
-				if !errors.Is(err, gorm.ErrRecordNotFound) && len(filter) != 0 {
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					app.Logger().Debug(
-						fmt.Sprintf("Rating found or error: %v", err),
+						fmt.Sprintf("Views error: %v", err),
 						"filter-len", len(filter),
 					)
-					if err != nil {
-						log.Println(err)
-					}
 					continue
+				} else if err == nil && len(filter) != 0 {
+					app.Logger().Debug(
+						fmt.Sprintf("Views found: %v", err),
+						"filter-len", len(filter),
+					)
+					return nil
 				}
 
 				record := models.NewRecord(schematicViewsCollection)

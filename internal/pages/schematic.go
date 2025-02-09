@@ -50,12 +50,13 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service)
 		d := SchematicData{
 			Schematic: mapResultToSchematic(app, results[0]),
 		}
+		d.Populate(c)
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
-		d.Similar = findSimilarSchematics(app, d.Schematic, searchService)
-		d.FromAuthor = findAuthorSchematics(app, d.Schematic.ID, d.Schematic.Author.ID)
+		d.FromAuthor = findAuthorSchematics(app, d.Schematic.ID, d.Schematic.Author.ID, 5)
+		d.Similar = findSimilarSchematics(app, d.Schematic, d.FromAuthor, searchService)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 
 		go countSchematicView(app, results[0])
@@ -67,7 +68,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service)
 	}
 }
 
-func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string) []models.Schematic {
+func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string, limit int) []models.Schematic {
 	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
 	if err != nil {
 		return nil
@@ -76,13 +77,13 @@ func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string
 		schematicsCollection.Id,
 		"id != {:id} && author = {:authorID}",
 		"@random",
-		5,
+		limit,
 		0,
 		dbx.Params{"id": id, "authorID": authorID})
 	return MapResultsToSchematic(app, results)
 }
 
-func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schematic, searchService *search.Service) []models.Schematic {
+func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schematic, author []models.Schematic, searchService *search.Service) []models.Schematic {
 	// Does title and content give the best match? Maybe tags + category?
 	keywordString := ""
 	for _, t := range schematic.Tags {
@@ -104,21 +105,29 @@ func findSimilarSchematics(app *pocketbase.PocketBase, schematic models.Schemati
 		if id == schematic.ID {
 			continue
 		}
+		found := false
+		for _, a := range author {
+			if id == a.ID {
+				found = true
+			}
+		}
+		if found {
+			continue
+		}
 		interfaceIds = append(interfaceIds, id)
 		count++
 	}
 
-	var schematics []models.DatabaseSchematic
-	err := app.Dao().DB().
+	var res []*pbmodels.Record
+	err := app.Dao().RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
 		Where(dbx.In("id", interfaceIds...)).
-		All(&schematics)
-
+		All(&res)
 	if err != nil {
 		return nil
 	}
-	schematicModels := models.DatabaseSchematicsToSchematics(schematics)
+	schematicModels := MapResultsToSchematic(app, res)
 	sortedModels := make([]models.Schematic, 0)
 	for id := range ids {
 		for i := range schematicModels {
@@ -308,6 +317,9 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) 
 
 func MapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Record) (schematics []models.Schematic) {
 	for i := range results {
+		if results[i] == nil || results[i].GetId() == "" {
+			continue
+		}
 		schematics = append(schematics, mapResultToSchematic(app, results[i]))
 	}
 	return schematics
@@ -347,6 +359,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 			rating = totalRating / float64(len(ratings))
 		}
 	}
+
 	sanitizer := htmlsanitizer.NewHTMLSanitizer()
 	sanitizedHTML, err := sanitizer.SanitizeString(result.GetString("content"))
 	if err != nil {
@@ -380,6 +393,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 		MinecraftVersion: findMinecraftVersionFromID(app, result.GetString("minecraft_version")),
 		Views:            views,
 		Rating:           fmt.Sprintf("%.1f", rating),
+		RatingCount:      len(ratings),
 		SchematicFile:    fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
 	}
 	s.HasTags = len(s.Tags) > 0

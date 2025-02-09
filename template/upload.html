@@ -2,6 +2,7 @@
 <div class="page">
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
+        {{template "header.html" .}}
         <div class="page-body">
             <div class="container-xl">
                 <div class="row row-cards">
@@ -256,7 +257,9 @@
             formData.append("createmod_version", document.getElementById("create-version").value)
             formData.append("minecraft_version", document.getElementById("minecraft-version").value)
             formData.append("video", document.getElementById("video").value)
-            formData.append("author", pb.authStore.model.id)
+            if (pb.authStore.model !== null) {
+                formData.append("author", pb.authStore.model.id)
+            }
 
             if (titleElement.value === undefined || titleElement.value === "") {
                 titleElement.classList.add("is-invalid")
@@ -330,8 +333,6 @@
                 div.innerText = "There were errors, please check above"
                 document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
                 document.getElementById("upload-schematic-btn").disabled = false
-                progressBar.classList.remove("progress-bar-indeterminate")
-                progressBar.display = "none"
             }
 
         });
