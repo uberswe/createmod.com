@@ -42,7 +42,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	// Frontend routes
 	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./web/sitemaps"), false))
 	e.GET("/dist/*", apis.StaticDirectoryHandler(os.DirFS("./web/dist"), false))
-	e.GET("/static/*", apis.StaticDirectoryHandler(os.DirFS("./static/dist"), false))
+	e.GET("/static/*", apis.StaticDirectoryHandler(os.DirFS("./web/static"), false))
 	// Index
 	e.GET("/", pages.IndexHandler(app))
 	e.GET("/about", pages.AboutHandler(app))
