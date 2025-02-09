@@ -185,6 +185,20 @@ func (s *Server) Start() {
 			return nil
 		})
 
+		app.OnRecordAfterCreateRequest("contact_form_submissions").Add(func(e *core.RecordCreateEvent) error {
+			message := &mailer.Message{
+				From: mail.Address{
+					Address: app.Settings().Meta.SenderAddress,
+					Name:    app.Settings().Meta.SenderName,
+				},
+				To:      []mail.Address{{Address: app.Settings().Meta.SenderAddress}},
+				Subject: fmt.Sprintf("New CreateMod.com Contact Form Submission"),
+				HTML:    fmt.Sprintf("<p>Email: " + e.Record.GetString("email") + "</p><p>Content: " + e.Record.GetString("content") + "</p>"),
+			}
+
+			return app.NewMailClient().Send(message)
+		})
+
 		// COOKIES
 		app.OnRecordAuthRequest().Add(func(e *core.RecordAuthEvent) error {
 			app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", app.Settings().RecordAuthToken.Duration)
@@ -316,7 +330,7 @@ func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, a
 			},
 			To:      []mail.Address{{Address: u.Email()}},
 			Subject: fmt.Sprintf("New comment on %s", results[0].GetString("title")),
-			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a><p>", results[0].GetString("name"), results[0].GetString("name")),
+			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a></p>", results[0].GetString("name"), results[0].GetString("name")),
 		}
 	} else {
 		u, err := app.Dao().FindRecordById("users", replyToUser)

@@ -18,6 +18,8 @@ type DefaultData struct {
 	Title           string
 	SubCategory     string
 	Categories      []models.SchematicCategory
+	Avatar          string
+	HasAvatar       bool
 }
 
 func (d *DefaultData) Populate(c echo.Context) {
@@ -28,6 +30,8 @@ func (d *DefaultData) Populate(c echo.Context) {
 			caser := cases.Title(language.English)
 			d.Username = caser.String(record.GetString("username"))
 			d.UsernameSlug = strings.ToLower(record.GetString("username"))
+			d.Avatar = record.GetString("avatar")
+			d.HasAvatar = d.Avatar != ""
 		}
 	}
 }
