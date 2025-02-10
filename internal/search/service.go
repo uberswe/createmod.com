@@ -99,7 +99,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		result = ratingResult
 	}
 
-	s.logger.Debug("filtered by rating", "count", len(result))
+	s.logger.Debug("filtered by rating", "count", len(result), "rating", rating)
 	// Category
 	if category != "all" {
 		categoryResult := make([]schematicIndex, 0)
@@ -112,7 +112,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = categoryResult
 	}
-	s.logger.Debug("filtered by category", "count", len(result))
+	s.logger.Debug("filtered by category", "count", len(result), "category", category)
 	// Tag
 	if tag != "all" {
 		tagResult := make([]schematicIndex, 0)
@@ -125,7 +125,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = tagResult
 	}
-	s.logger.Debug("filtered by tag", "count", len(result))
+	s.logger.Debug("filtered by tag", "count", len(result), "tag", tag)
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)

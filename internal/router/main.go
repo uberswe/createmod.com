@@ -26,12 +26,12 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 		"ToLower": strings.ToLower,
 	}
 
-	glob, err := templateBuilder.Funcs(funcMap).ParseGlob("template/*/*.html")
+	glob, err := templateBuilder.Funcs(funcMap).ParseGlob("template/dist/*/*.html")
 	if err != nil {
 		return
 	}
 	t := &Template{
-		templates: template.Must(glob.ParseGlob("template/*.html")),
+		templates: template.Must(glob.ParseGlob("template/dist/*.html")),
 	}
 
 	e.Renderer = t
@@ -40,9 +40,9 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.Use(legacyTagCompat)
 	e.Use(cookieAuth(app))
 	// Frontend routes
-	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./web/sitemaps"), false))
-	e.GET("/dist/*", apis.StaticDirectoryHandler(os.DirFS("./web/dist"), false))
-	e.GET("/static/*", apis.StaticDirectoryHandler(os.DirFS("./web/static"), false))
+	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./template/sitemaps"), false))
+	e.Static("/libs/", "./template/dist/libs")
+	e.GET("/assets/*", apis.StaticDirectoryHandler(os.DirFS("./template/dist/assets"), false))
 	// Index
 	e.GET("/", pages.IndexHandler(app))
 	// Removed the about page, not relevant anymore

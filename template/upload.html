@@ -1,4 +1,5 @@
 {{ template "head.html" . }}
+<link rel="stylesheet" href="/libs/tom-select/dist/css/tom-select.min.css">
 <div class="page">
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
@@ -74,7 +75,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Schematic File</h3>
-                                                    <span class="dropzone-msg-desc">The .nbt schematic file</span>
+                                                    <span class="dropzone-msg-desc">Click here or drag the .nbt schematic file</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -86,7 +87,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Featured Image</h3>
-                                                    <span class="dropzone-msg-desc">This must be a screenshot of your build in Minecraft</span>
+                                                    <span class="dropzone-msg-desc">Click here or drag a screenshot of your build in Minecraft</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -98,7 +99,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                    <span class="dropzone-msg-desc">Further images to showcase your schematic</span>
+                                                    <span class="dropzone-msg-desc">Click here or drag images to showcase your schematic</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -133,18 +134,12 @@
                 </div>
             </div>
         </div>
-        <script src="/dist/libs/dropzone/dist/dropzone-min.js?1692870487" defer></script>
-        <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
-        <script src="/dist/libs/tom-select/dist/js/tom-select.base.min.js?1692870487" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
-<style>
-    .dz-progress {
-        /* progress bar covers file name */
-        display: none !important;
-    }
-</style>
+<script type="module" src="dropzone/dist/dropzone-min.js" defer></script>
+<script type="module"  src="tinymce/tinymce.min.js" defer></script>
+<script src="/libs/tom-select/dist/js/tom-select.base.min.js" defer></script>
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
@@ -191,10 +186,11 @@
                 'removeformat',
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
         }
-        if (localStorage.getItem("tablerTheme") === 'dark') {
+        if (localStorage.getItem("createmodTheme") === 'dark') {
             options.skin = 'oxide-dark';
             options.content_css = 'dark';
         }
+        tinyMCE.baseURL ="/libs/tinymce";
         tinyMCE.init(options);
     })
     // @formatter:on
@@ -252,6 +248,7 @@
                 formData.append("gallery", file)
             }
             formData.append("title", titleElement.value)
+            formData.append("author", pb.authStore.model.id)
             formData.append("description", tinyMCE.activeEditor.getContent())
             formData.append("categories", document.getElementById("schematic-category").value)
             let tagIDs = getSelectValues(document.getElementById("select-tags"))
@@ -261,9 +258,6 @@
             formData.append("createmod_version", document.getElementById("create-version").value)
             formData.append("minecraft_version", document.getElementById("minecraft-version").value)
             formData.append("video", document.getElementById("video").value)
-            if (pb.authStore.model !== null) {
-                formData.append("author", pb.authStore.model.id)
-            }
 
             if (titleElement.value === undefined || titleElement.value === "") {
                 titleElement.classList.add("is-invalid")

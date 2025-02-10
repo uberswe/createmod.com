@@ -162,16 +162,13 @@ func (s *Server) Start() {
 			if err != nil {
 				return err
 			}
-			results, err := app.Dao().FindRecordsByFilter(
+			results, _ := app.Dao().FindRecordsByFilter(
 				schematicRatingsCollection.Id,
 				"schematic = {:schematic} && user = {:user}",
 				"-created",
 				10,
 				0,
 				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": info.AuthRecord.GetId()})
-			if err != nil {
-				return err
-			}
 			if len(results) > 0 {
 				for _, r := range results {
 					// When a rating is changed we simply delete the old record
@@ -181,6 +178,7 @@ func (s *Server) Start() {
 					}
 				}
 			}
+			e.Record.Set("user", info.AuthRecord.GetId())
 			e.Record.Set("rated_at", time.Now())
 			return nil
 		})
