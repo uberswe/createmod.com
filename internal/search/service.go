@@ -137,8 +137,8 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 			s.logger.Error("error for bleve search query", "error", err.Error())
 		}
 		if searchResult != nil {
-			count, _ := s.bleveIndex.DocCount()
-			s.logger.Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count)
+			count, err := s.bleveIndex.DocCount()
+			s.logger.Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
 			for _, si := range searchResult.Hits {
 				for i := range result {
 					if result[i].ID == si.ID {

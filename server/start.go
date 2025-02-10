@@ -58,8 +58,8 @@ func New(conf Config) *Server {
 
 func (s *Server) Start() {
 	app := pocketbase.New()
-	var searchService *search.Service
-	var sitemapService *sitemap.Service
+	searchService := search.New(nil, app.Logger())
+	sitemapService := sitemap.New()
 	log.Println("Launching...")
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
@@ -232,9 +232,6 @@ func (s *Server) Start() {
 			return nil
 		})
 		// END PASSWORD BACKWARDS COMPATIBILITY
-
-		searchService = search.New(nil, app.Logger())
-		sitemapService = sitemap.New()
 
 		// ROUTES
 
