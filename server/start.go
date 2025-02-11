@@ -58,8 +58,6 @@ func New(conf Config) *Server {
 
 func (s *Server) Start() {
 	app := pocketbase.New()
-	var searchService *search.Service
-	var sitemapService *sitemap.Service
 	log.Println("Launching...")
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
@@ -71,6 +69,9 @@ func (s *Server) Start() {
 		log.Println("Bootstrapping...")
 		return nil
 	})
+
+	searchService := search.New(nil, app)
+	sitemapService := sitemap.New()
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
@@ -162,16 +163,13 @@ func (s *Server) Start() {
 			if err != nil {
 				return err
 			}
-			results, err := app.Dao().FindRecordsByFilter(
+			results, _ := app.Dao().FindRecordsByFilter(
 				schematicRatingsCollection.Id,
 				"schematic = {:schematic} && user = {:user}",
 				"-created",
 				10,
 				0,
 				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": info.AuthRecord.GetId()})
-			if err != nil {
-				return err
-			}
 			if len(results) > 0 {
 				for _, r := range results {
 					// When a rating is changed we simply delete the old record
@@ -181,8 +179,23 @@ func (s *Server) Start() {
 					}
 				}
 			}
+			e.Record.Set("user", info.AuthRecord.GetId())
 			e.Record.Set("rated_at", time.Now())
 			return nil
+		})
+
+		app.OnRecordAfterCreateRequest("contact_form_submissions").Add(func(e *core.RecordCreateEvent) error {
+			message := &mailer.Message{
+				From: mail.Address{
+					Address: app.Settings().Meta.SenderAddress,
+					Name:    app.Settings().Meta.SenderName,
+				},
+				To:      []mail.Address{{Address: app.Settings().Meta.SenderAddress}},
+				Subject: fmt.Sprintf("New CreateMod.com Contact Form Submission"),
+				HTML:    fmt.Sprintf("<p>Email: " + e.Record.GetString("email") + "</p><p>Content: " + e.Record.GetString("content") + "</p>"),
+			}
+
+			return app.NewMailClient().Send(message)
 		})
 
 		// COOKIES
@@ -220,9 +233,6 @@ func (s *Server) Start() {
 			return nil
 		})
 		// END PASSWORD BACKWARDS COMPATIBILITY
-
-		searchService = search.New(nil, app.Logger())
-		sitemapService = sitemap.New()
 
 		// ROUTES
 
@@ -316,7 +326,7 @@ func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, a
 			},
 			To:      []mail.Address{{Address: u.Email()}},
 			Subject: fmt.Sprintf("New comment on %s", results[0].GetString("title")),
-			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a><p>", results[0].GetString("name"), results[0].GetString("name")),
+			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a></p>", results[0].GetString("name"), results[0].GetString("name")),
 		}
 	} else {
 		u, err := app.Dao().FindRecordById("users", replyToUser)

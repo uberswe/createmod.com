@@ -11,7 +11,7 @@
                 </h2>
             </div>
             <div class="col">
-                <div class="my-2 my-md-0 flex-grow-1 flex-md-grow-0 order-first order-md-last">
+                <div class="my-2 my-md-0 flex-grow-1 flex-md-grow-0 order-first order-md-last d-none d-md-block">
                     <form action="/search" method="post" autocomplete="off" id="search-form" novalidate>
                         <div class="input-icon">
                     <span class="input-icon-addon">
@@ -45,7 +45,9 @@
                 <div class="nav-item dropdown">
                     <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
                        aria-label="Open user menu">
-                        <span class="avatar auth-dropdown avatar-sm auth-avatar" style="background-image: url(./static/avatars/000m.jpg)"></span>
+                        {{ if .HasAvatar }}
+                        <span class="avatar auth-dropdown avatar-sm auth-avatar" style="background-image: url('{{ .Avatar }}')"></span>
+                        {{ end }}
                         <div class="d-none d-xl-block ps-2">
                             <div class="auth-username">{{ .Username }}</div>
                         </div>

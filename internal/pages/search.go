@@ -61,7 +61,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 		}
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
-		app.Logger().Debug("search", "term", term)
+		app.Logger().Debug("search", "term", term, "searchService", searchService)
 		ids := searchService.Search(term, order, rating, category, tag)
 		app.Logger().Debug("found ids", "ids", ids)
 
@@ -75,26 +75,30 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 			Select("schematics.*").
 			From("schematics").
 			Where(dbx.In("id", interfaceIds...)).
-			Limit(50).
 			All(&res)
 
 		if err != nil {
 			return err
 		}
-		schematicModels := MapResultsToSchematic(app, res)
-		sortedModels := make([]models.Schematic, 0)
+		sortedModels := make([]*pbmodels.Record, 0)
 		for id := range ids {
-			for i := range schematicModels {
-				if ids[id] == schematicModels[i].ID {
-					sortedModels = append(sortedModels, schematicModels[i])
+			for i := range res {
+				if ids[id] == res[i].GetId() {
+					sortedModels = append(sortedModels, res[i])
 				}
 			}
 		}
+		limit := 100
+		if len(sortedModels) > limit {
+			sortedModels = sortedModels[:limit]
+		}
+
+		schematicModels := MapResultsToSchematic(app, sortedModels)
 
 		end := time.Now()
 		duration := end.Sub(start)
 		d := SearchData{
-			Schematics:        sortedModels,
+			Schematics:        schematicModels,
 			Tags:              allTags(app),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
 			SearchResultCount: len(sortedModels),

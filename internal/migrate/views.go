@@ -34,11 +34,6 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 		panic(countErr)
 	}
 
-	if totalCount.C >= int64(100000) {
-		log.Println("Skipping views, already migrated.")
-		return
-	}
-
 	postViewRes := make([]*model.QeyKryWEpostView, 0)
 	postErr := q.QeyKryWEpostView.FindInBatches(&postViewRes, 25000, func(tx gen.Dao, batch int) error {
 		for i := range postViewRes {

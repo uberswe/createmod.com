@@ -55,7 +55,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service)
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
-		d.FromAuthor = findAuthorSchematics(app, d.Schematic.ID, d.Schematic.Author.ID, 5)
+		d.FromAuthor = findAuthorSchematics(app, d.Schematic.ID, d.Schematic.Author.ID, 5, "@random")
 		d.Similar = findSimilarSchematics(app, d.Schematic, d.FromAuthor, searchService)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 
@@ -68,7 +68,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service)
 	}
 }
 
-func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string, limit int) []models.Schematic {
+func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string, limit int, sortBy string) []models.Schematic {
 	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
 	if err != nil {
 		return nil
@@ -76,7 +76,7 @@ func findAuthorSchematics(app *pocketbase.PocketBase, id string, authorID string
 	results, err := app.Dao().FindRecordsByFilter(
 		schematicsCollection.Id,
 		"id != {:id} && author = {:authorID}",
-		"@random",
+		sortBy,
 		limit,
 		0,
 		dbx.Params{"id": id, "authorID": authorID})

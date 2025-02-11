@@ -53,7 +53,9 @@ func showProfile(c echo.Context, app *pocketbase.PocketBase, username string) er
 		return err
 	}
 
-	d.Schematics = findAuthorSchematics(app, "", results[0].GetId(), 1000)
+	if len(results) == 1 {
+		d.Schematics = findAuthorSchematics(app, "", results[0].GetId(), 1000, "-created")
+	}
 
 	err = c.Render(http.StatusOK, profileTemplate, d)
 	if err != nil {

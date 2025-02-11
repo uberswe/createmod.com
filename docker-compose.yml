@@ -1,5 +1,3 @@
-version: '3.7'
-
 services:
   db:
     image: mariadb:lts
@@ -18,6 +16,14 @@ services:
       interval: 3s
       timeout: 5s
       retries: 30
+  npm:
+    build:
+      context: .
+      dockerfile: npm.Dockerfile
+    volumes:
+      - type: bind
+        source: ./template
+        target: /app
   app:
     build:
       context: .
@@ -29,7 +35,8 @@ services:
         source: ./pb_data
         target: /app/pb_data
       - type: bind
-        source: ./web:/app/web
+        source: ./web
+        target: /app/web
       - type: bind
         source: ./server
         target: /app/server
@@ -43,3 +50,5 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      npm:
+        condition: service_completed_successfully

@@ -1,4 +1,6 @@
 {{template "head.html" .}}
+<link rel="stylesheet" href="/libs/star-rating.js/dist/star-rating.min.css">
+<link rel="stylesheet" href="/libs/plyr/dist/plyr.css">
 <div class="page">
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
@@ -45,7 +47,8 @@
                                                 </select>
                                             </div>
                                             <div class="col-auto">
-                                                <a href="{{ .Schematic.SchematicFile }}" class="btn btn-primary" id="download-btn">
+                                                <a href="{{ .Schematic.SchematicFile }}" class="btn btn-primary"
+                                                   id="download-btn">
                                                     Download
                                                 </a>
                                             </div>
@@ -110,9 +113,10 @@
                                                 <div class="datagrid-title">Rating</div>
                                                 <div class="datagrid-content">
                                                     {{ if eq .Schematic.RatingCount 0 }}
-                                                        No rating
+                                                    No rating
                                                     {{ else }}
-                                                        {{ .Schematic.Rating }} based on {{ .Schematic.RatingCount }} ratings
+                                                    {{ .Schematic.Rating }} based on {{ .Schematic.RatingCount }}
+                                                    ratings
                                                     {{ end }}
                                                 </div>
                                             </div>
@@ -226,6 +230,8 @@
                                             </div>
                                         </div>
                                         {{end}}
+
+                                        {{ if .IsAuthenticated }}
                                         <div class="col-12 pt-2" id="comment-section">
                                             <div class="mb-12">
                                                 <label id="leave-comment-label" class="form-label">Leave a
@@ -260,6 +266,10 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {{ else }}
+                                        <h4>You must be <a href="/login">logged in</a> to leave a comment.</h4>
+                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -282,22 +292,22 @@
                         </div>
                         {{ if .AuthorHasMore }}
                         <div class="col-12 mb-4">
-                                <h3>More From <a
-                                        href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
-                                    .Schematic.Author.Username }}</a></h3>
+                            <h3>More From <a
+                                    href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
+                                .Schematic.Author.Username }}</a></h3>
 
                             <div class="row row-cards">
-                                {{range  .FromAuthor }}
-                                    {{ template "schematic_card_full.html" . }}
+                                {{range .FromAuthor }}
+                                {{ template "schematic_card_full.html" . }}
                                 {{end}}
                             </div>
                         </div>
                         {{ end }}
                         <div class="col-12 mb-4">
-                                <h3>Similar Schematics</h3>
+                            <h3>Similar Schematics</h3>
                             <div class="row row-cards">
-                                {{range  .Similar }}
-                                    {{ template "schematic_card_full.html" . }}
+                                {{range .Similar }}
+                                {{ template "schematic_card_full.html" . }}
                                 {{end}}
                             </div>
                         </div>
@@ -305,10 +315,10 @@
                 </div>
             </div>
         </div>
-        <script src="/dist/libs/fslightbox/index.js?1692870487" defer></script>
-        <script src="/dist/libs/plyr/dist/plyr.min.js?1692870487" defer></script>
-        <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
-        <script src="/dist/libs/star-rating.js/dist/star-rating.min.js?1738096684" defer></script>
+        <script src="/libs/fslightbox/index.js" defer></script>
+        <script src="/libs/plyr/dist/plyr.min.js" defer></script>
+        <script type="module"  src="tinymce/tinymce.min.js" defer></script>
+        <script src="/libs/star-rating.js/dist/star-rating.min.js" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
@@ -342,12 +352,13 @@
                 'bold italic | ' +
                 'link | bullist numlist outdent indent | ' +
                 'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; backgroundColor = #353838; }'
         }
-        if (localStorage.getItem("tablerTheme") === 'dark') {
-            options.skin = 'oxide-dark';
+        if (localStorage.getItem("createmodTheme") === 'dark') {
+            options.skin = 'tinymce-5-dark';
             options.content_css = 'dark';
         }
+        tinyMCE.baseURL ="/libs/tinymce";
         tinyMCE.init(options);
     })
     // @formatter:on
@@ -372,22 +383,18 @@
         document.querySelector('.gl-star-rating--stars').addEventListener('click', async function (e) {
             for (const span of this.children) {
                 if (span === e.target) {
-                    if (pb.authStore.model === null) {
+                    const formData = new FormData();
+                    formData.append("schematic", '{{ .Schematic.ID }}')
+                    formData.append("user", pb.authStore.model.id)
+                    formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
+                    const createdRecord = await pb.collection('schematic_ratings').create(formData);
+                    if (createdRecord.code !== undefined && createdRecord.code !== 200) {
                         alert("You need to be logged in to rate schematics")
                     } else {
-                        const formData = new FormData();
-                        formData.append("schematic", '{{ .Schematic.ID }}')
-                        formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
-                        formData.append("user", pb.authStore.model.id)
-                        const createdRecord = await pb.collection('schematic_ratings').create(formData);
-                        if (createdRecord.code !== undefined && createdRecord.code !== 200) {
-                            alert("An unexpected error occurred")
-                        } else {
-                            tooltip.show()
-                            setTimeout(function () {
-                                tooltip.hide()
-                            }, 3000);
-                        }
+                        tooltip.show()
+                        setTimeout(function () {
+                            tooltip.hide()
+                        }, 2000);
                     }
                 }
             }
@@ -443,12 +450,5 @@
                 document.getElementById("post-comment-btn").disabled = false
             }
         });
-
-        // Handle logged in
-        setTimeout(function () {
-            if (pb.authStore.model === null) {
-                document.getElementById('comment-section').innerHTML = '<h4>You must be logged in to post a comment.</h4>'
-            }
-        }, 3000);
     });
 </script>

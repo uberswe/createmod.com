@@ -6,81 +6,118 @@
         <div class="page-body">
             <div class="container-xl">
                 <div class="row row-cards">
-                    <div class="col-12">
-                        <div class="card">
+                    <div class="col-md-6">
+                        <form class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Contact CreateMod.com</h3>
+                            </div>
                             <div class="card-body">
-                                <div class="row g-5">
-                                    <div class="col-xl-6">
-                                        <div class="row">
-                                            <div class="col-md-6 col-xl-12">
-                                                <div class="mb-3">
-                                                    <label class="form-label required">Title</label>
-                                                    <input type="text" class="form-control" name="title"
-                                                           placeholder="Schematic Title">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Description</label>
-                                                    <textarea id="tinymce-schematic">Hello, <b>World</b>!</textarea>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <form class="dropzone" id="dropzone-gallery" action="/upload"
-                                                          autocomplete="off" novalidate>
-                                                        <div class="fallback">
-                                                            <input name="file" type="file"/>
-                                                        </div>
-                                                        <div class="dz-message">
-                                                            <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                            <span class="dropzone-msg-desc">Your custom description here</span>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
+                                <div class="mb-3">
+                                    <label class="form-label required">Email address</label>
+                                    <div>
+                                        <input type="email" class="form-control" aria-describedby="emailHelp"
+                                               placeholder="Enter email" id="contact-email">
+                                        <small class="form-hint">We'll never share your email with anyone
+                                            else.</small>
+                                    </div>
+                                </div>
+                                <div class="mb-3 mb-0">
+                                    <label class="form-label">Message</label>
+                                    <textarea id="contact-content" rows="10" class="form-control"
+                                              placeholder="Type your message here"></textarea>
+                                </div>
+                            </div>
+                            <div class="card-footer text-end">
+                                <button type="submit" class="btn btn-primary" id="contact-form-btn">Send</button>
+                            </div>
+                            <div class="mb-12">
+                                <div id="contact-success" class="alert alert-important alert-success"
+                                     style="display: none;" role="alert">
+                                    <div class="d-flex">
+                                        <div>
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="icon alert-icon" width="24" height="24"
+                                                 viewBox="0 0 24 24" stroke-width="2"
+                                                 stroke="currentColor" fill="none"
+                                                 stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                <path d="M5 12l5 5l10 -10"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            Message sent, you can expect a response within 24 hours!
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="https://discord.gg/NQJuhb6stv">
+                            <div class="card card-sm">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+					<span class="bg-indigo text-white avatar">
+	<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"
+         class="icon icon-tabler icons-tabler-filled icon-tabler-brand-discord"><path stroke="none" d="M0 0h24v24H0z"
+                                                                                      fill="none"/><path
+            d="M14.983 3l.123 .006c2.014 .214 3.527 .672 4.966 1.673a1 1 0 0 1 .371 .488c1.876 5.315 2.373 9.987 1.451 12.28c-1.003 2.005 -2.606 3.553 -4.394 3.553c-.732 0 -1.693 -.968 -2.328 -2.045a21.512 21.512 0 0 0 2.103 -.493a1 1 0 1 0 -.55 -1.924c-3.32 .95 -6.13 .95 -9.45 0a1 1 0 0 0 -.55 1.924c.717 .204 1.416 .37 2.103 .494c-.635 1.075 -1.596 2.044 -2.328 2.044c-1.788 0 -3.391 -1.548 -4.428 -3.629c-.888 -2.217 -.39 -6.89 1.485 -12.204a1 1 0 0 1 .371 -.488c1.439 -1.001 2.952 -1.459 4.966 -1.673a1 1 0 0 1 .935 .435l.063 .107l.651 1.285l.137 -.016a12.97 12.97 0 0 1 2.643 0l.134 .016l.65 -1.284a1 1 0 0 1 .754 -.54l.122 -.009zm-5.983 7a2 2 0 0 0 -1.977 1.697l-.018 .154l-.005 .149l.005 .15a2 2 0 1 0 1.995 -2.15zm6 0a2 2 0 0 0 -1.977 1.697l-.018 .154l-.005 .149l.005 .15a2 2 0 1 0 1.995 -2.15z"/></svg>
+</span>
+                                        </div>
+                                        <div class="col">
+                                            <div class="font-weight-medium">
+                                                Click to Join Uberswe's Discord
+                                            </div>
+                                            <div class="text-secondary">
+                                                To get in touch more quickly
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
-        <script src="/dist/libs/dropzone/dist/dropzone-min.js?1692870487" defer></script>
-        <script src="/dist/libs/tinymce/tinymce.min.js?1692870487" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
 <script>
-    // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
-        let options = {
-            selector: '#tinymce-schematic',
-            height: 300,
-            menubar: false,
-            statusbar: false,
-            plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview', 'anchor',
-                'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-                'bold italic backcolor | alignleft aligncenter ' +
-                'alignright alignjustify | link | bullist numlist outdent indent | ' +
-                'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
-        }
-        if (localStorage.getItem("tablerTheme") === 'dark') {
-            options.skin = 'oxide-dark';
-            options.content_css = 'dark';
-        }
-        tinyMCE.init(options);
-    })
-    // @formatter:on
-</script>
+        document.getElementById('contact-form-btn').addEventListener("click", async function (e) {
+            e.preventDefault()
+            document.getElementById("contact-form-btn").disabled = true
+            const formData = new FormData();
+            formData.append("content", document.getElementById("contact-content").value)
+            formData.append("email", document.getElementById("contact-email").value)
 
-<script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function() {
-        new Dropzone("#dropzone-gallery")
-    })
+            let successAlert = document.getElementById("contact-success")
+            try {
+                const createdRecord = await pb.collection('contact_form_submissions').create(formData);
+                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                    div = document.createElement('div');
+                    div.classList.add("invalid-feedback")
+                    div.style.display = "block"
+                    div.innerText = "An unexpected error occurred, please try again"
+                    document.getElementById("contact-form-btn").parentNode.insertAdjacentElement("beforeend", div)
+                    document.getElementById("contact-form-btn").disabled = false
+                } else {
+                    successAlert.style.display = "block"
+                }
+            } catch (e) {
+                console.log(e)
+                div = document.createElement('div');
+                div.classList.add("invalid-feedback")
+                div.style.display = "block"
+                div.innerText = "An unexpected error occurred, please try again"
+                document.getElementById("contact-form-btn").parentNode.insertAdjacentElement("beforeend", div)
+                document.getElementById("contact-form-btn").disabled = false
+            }
+        });
+    });
 </script>
 {{template "foot.html" .}}
