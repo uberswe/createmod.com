@@ -230,6 +230,8 @@
                                             </div>
                                         </div>
                                         {{end}}
+
+                                        {{ if .IsAuthenticated }}
                                         <div class="col-12 pt-2" id="comment-section">
                                             <div class="mb-12">
                                                 <label id="leave-comment-label" class="form-label">Leave a
@@ -264,6 +266,10 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {{ else }}
+                                        <h4>You must be <a href="/login">logged in</a> to leave a comment.</h4>
+                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -346,13 +352,13 @@
                 'bold italic | ' +
                 'link | bullist numlist outdent indent | ' +
                 'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; backgroundColor = #353838; }'
         }
         if (localStorage.getItem("createmodTheme") === 'dark') {
-            options.skin = 'oxide-dark';
+            options.skin = 'tinymce-5-dark';
             options.content_css = 'dark';
-            tinyMCE.baseURL ="/libs/tinymce";
         }
+        tinyMCE.baseURL ="/libs/tinymce";
         tinyMCE.init(options);
     })
     // @formatter:on
@@ -388,7 +394,7 @@
                         tooltip.show()
                         setTimeout(function () {
                             tooltip.hide()
-                        }, 3000);
+                        }, 2000);
                     }
                 }
             }

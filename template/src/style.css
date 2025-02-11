@@ -154,11 +154,11 @@
     --tblr-tertiary-bg-rgb: 238, 243, 246;
     --tblr-heading-color: inherit;
     --tblr-link-color: #bf9045;
-    --tblr-link-color-rgb: 6, 111, 209;
+    --tblr-link-color-rgb: 191, 144, 69;
     --tblr-link-decoration: none;
-    --tblr-link-hover-color: #0559a7;
-    --tblr-link-hover-color-rgb: 5, 89, 167;
-    --tblr-link-hover-decoration: underline;
+    --tblr-link-hover-color: #db9423;
+    --tblr-link-hover-color-rgb: 219, 148, 35;
+    --tblr-link-hover-decoration: none;
     --tblr-code-color: var(--tblr-gray-600);
     --tblr-highlight-color: #353838;
     --tblr-highlight-bg: #fdeccc;
@@ -196,6 +196,7 @@
     --tblr-emphasis-color-rgb: 255, 255, 255;
     --tblr-secondary-color: rgba(219, 196, 143, 0.75);
     --tblr-secondary-color-rgb: 219, 196, 143;
+    --tblr-secondary-rgb: 189, 140, 62;
     --tblr-secondary-bg: #353838;
     --tblr-secondary-bg-rgb: 24, 36, 51;
     --tblr-tertiary-color: rgba(219, 196, 143, 0.5);
@@ -229,8 +230,9 @@
     --tblr-heading-color: inherit;
     --tblr-link-color: #6aa9e3;
     --tblr-link-hover-color: #88bae9;
-    --tblr-link-color-rgb: 106, 169, 227;
-    --tblr-link-hover-color-rgb: 136, 186, 233;
+    --tblr-link-hover-color-rgb: 219, 148, 35;
+    --tblr-link-hover-decoration: none;
+    --tblr-link-color-rgb: 191, 144, 69;
     --tblr-code-color: var(--tblr-gray-300);
     --tblr-highlight-color: #dce1e7;
     --tblr-highlight-bg: #624000;
@@ -765,10 +767,10 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     --tblr-disabled-color: var(--tblr-gray-300);
     --tblr-code-color: var(--tblr-gray-600);
     --tblr-code-bg: var(--tblr-bg-surface-secondary);
-    --tblr-dark-mode-border-color: #25384f;
-    --tblr-dark-mode-border-color-translucent: rgba(72, 110, 149, 0.14);
-    --tblr-dark-mode-border-active-color: #2c415d;
-    --tblr-dark-mode-border-dark-color: #1f2e41;
+    --tblr-dark-mode-border-color: #b38439;
+    --tblr-dark-mode-border-color-translucent: rgba(189, 140, 62, 0.14);
+    --tblr-dark-mode-border-active-color: #bd8c3e;
+    --tblr-dark-mode-border-dark-color: #b38439;
     --tblr-page-padding: var(--tblr-spacer-3);
     --tblr-page-padding-y: var(--tblr-spacer-4);
     --tblr-font-weight-light: 300;
@@ -796,4 +798,8 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     --tblr-box-shadow-card: 0 0 4px rgba(var(--tblr-body-color-rgb), 0.04);
     --tblr-box-shadow-card-hover: rgba(var(--tblr-body-color-rgb), 0.16) 0 2px 16px 0;
     --tblr-box-shadow-dropdown: 0 16px 24px 2px rgba(0, 0, 0, 0.07), 0 6px 30px 5px rgba(0, 0, 0, 0.06), 0 8px 10px -5px rgba(0, 0, 0, 0.1);
+}
+
+.card a:hover {
+    text-decoration: none;
 }

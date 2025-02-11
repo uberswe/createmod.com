@@ -1,0 +1,42 @@
+name: deploy
+on:
+  push:
+    branches:
+      - main
+      - master
+jobs:
+  build-and-deploy:
+    name: Build and deploy CreateMod.com
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v4
+      - name: Set up node
+        uses: actions/setup-node@v4
+
+      - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
+      - run: npm --prefix template install
+      - run: npm --prefix template build
+
+      - name: SFTP upload
+        uses: Dylan700/sftp-upload-action@latest
+        with:
+          server: ${{secrets.SFTP}}
+          username: ${{secrets.USERNAME}}
+          password: ${{secrets.PASSWORD}}
+          port: 22
+          uploads: |
+            ./main => ./main
+            ./migrations => ./migrations
+            ./template => ./template
+          ignore: |
+            *.git
+            */**/*git*
+      - name: restart
+        uses: outsparkled/pterodactyl-power-action@v0.1.0
+        with:
+          panel-url: ${{ secrets.PANEL_URL }}
+          server-id: ${{ secrets.SERVER_ID }}
+          bearer-token: ${{ secrets.BEARER_TOKEN }}
+          power-action: 'restart'
