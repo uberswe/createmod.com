@@ -25,7 +25,7 @@ jobs:
           server: ${{secrets.SFTP}}
           username: ${{secrets.USERNAME}}
           password: ${{secrets.PASSWORD}}
-          port: 22
+          port: ${{secrets.SFTP_PORT}}
           uploads: |
             ./main => ./main
             ./migrations => ./migrations
