@@ -17,7 +17,7 @@ jobs:
 
       - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
       - run: npm --prefix template install
-      - run: npm --prefix template build
+      - run: npm --prefix template run build
 
       - name: SFTP upload
         uses: Dylan700/sftp-upload-action@latest
