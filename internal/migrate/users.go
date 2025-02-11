@@ -58,5 +58,6 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 		}
 		userOldId[u.ID] = record.GetId()
 	}
+	log.Printf("%d users processed.\n", len(userOldId))
 	return userOldId
 }

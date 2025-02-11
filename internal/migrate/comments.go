@@ -91,6 +91,7 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		panic(commentsErr)
 	}
 
+	updated := 0
 	for _, c := range comments {
 		if c.GetInt("old_parent_id") > 0 {
 			for _, c2 := range comments {
@@ -99,8 +100,10 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 					if err = app.Dao().SaveRecord(c); err != nil {
 						panic(err)
 					}
+					updated++
 				}
 			}
 		}
 	}
+	log.Printf("%d comments migrated.\n", updated)
 }
