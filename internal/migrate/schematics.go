@@ -179,6 +179,7 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 
 		oldSchematicIDs[s.ID] = record.GetId()
 	}
+	log.Printf("%d schematics processed.\n", len(oldSchematicIDs))
 	return oldSchematicIDs
 }
 

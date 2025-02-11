@@ -77,7 +77,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 			}
 		}
 	}
-
+	updated := 0
 	for _, vm := range migrations {
 		filter, err := app.Dao().FindRecordsByFilter(
 			schematicRatingsCollection.Id,
@@ -113,5 +113,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 		if err = app.Dao().SaveRecord(record); err != nil {
 			panic(err)
 		}
+		updated++
 	}
+	log.Printf("%d ratings migrated.\n", updated)
 }
