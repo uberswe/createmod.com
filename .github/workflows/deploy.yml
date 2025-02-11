@@ -19,7 +19,7 @@ jobs:
       - run: npm --prefix template install
       - run: npm --prefix template run build
 
-      - name: SFTP upload
+      - name: SFTP upload dist files
         uses: Dylan700/sftp-upload-action@latest
         with:
           server: ${{secrets.SFTP}}
@@ -27,12 +27,23 @@ jobs:
           password: ${{secrets.PASSWORD}}
           port: ${{secrets.SFTP_PORT}}
           uploads: |
-            ./main => ./main
             ./migrations => ./migrations
             ./template/dist => ./template/dist
           ignore: |
             *.git
             */**/*git*
+          delete: 'true'
+      - name: SFTP upload application binary
+        uses: Dylan700/sftp-upload-action@latest
+        with:
+          server: ${{secrets.SFTP}}
+          username: ${{secrets.USERNAME}}
+          password: ${{secrets.PASSWORD}}
+          port: ${{secrets.SFTP_PORT}}
+          uploads: |
+            ./ => ./
+          ignore: |
+            !main
       - name: restart
         uses: outsparkled/pterodactyl-power-action@v0.1.0
         with:
