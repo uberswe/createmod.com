@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, normalize } from 'path';
 import { readdirSync } from 'fs';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { goTemplateIgnorePlugin } from './plugin/goTemplateIgnorePlugin.js';
@@ -31,27 +31,27 @@ export default defineConfig({
         viteStaticCopy({
             targets: [
                 {
-                    src: resolve(__dirname, 'node_modules/tinymce/'),
+                    src: resolve(__dirname, normalize('node_modules/tinymce/')),
                     dest: 'libs'
                 },
                 {
-                    src: resolve(__dirname, 'node_modules/pocketbase/'),
+                    src: resolve(__dirname, normalize('node_modules/pocketbase/')),
                     dest: 'libs'
                 },
                 {
-                    src: resolve(__dirname, 'node_modules/tom-select/'),
+                    src: resolve(__dirname, normalize('node_modules/tom-select/')),
                     dest: 'libs'
                 },
                 {
-                    src: resolve(__dirname, 'node_modules/fslightbox/'),
+                    src: resolve(__dirname, normalize('node_modules/fslightbox/')),
                     dest: 'libs'
                 },
                 {
-                    src: resolve(__dirname, 'node_modules/plyr/'),
+                    src: resolve(__dirname, normalize('node_modules/plyr/')),
                     dest: 'libs'
                 },
                 {
-                    src: resolve(__dirname, 'node_modules/star-rating.js/'),
+                    src: resolve(__dirname, normalize('node_modules/star-rating.js/')),
                     dest: 'libs'
                 }
             ]

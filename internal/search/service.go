@@ -3,9 +3,9 @@ package search
 import (
 	"createmod/internal/models"
 	"github.com/blevesearch/bleve"
+	"github.com/pocketbase/pocketbase"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -25,7 +25,7 @@ const (
 type Service struct {
 	index      []schematicIndex
 	bleveIndex bleve.Index
-	logger     *slog.Logger
+	app        *pocketbase.PocketBase
 }
 
 type schematicIndex struct {
@@ -48,9 +48,9 @@ type bleveIndex struct {
 	Author      string
 }
 
-func New(schematics []models.Schematic, logger *slog.Logger) *Service {
+func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	s := Service{}
-	s.logger = logger
+	s.app = app
 	mapping := bleve.NewIndexMapping()
 	schematicMapping := bleve.NewDocumentMapping()
 	titleFieldMapping := bleve.NewTextFieldMapping()
@@ -81,13 +81,15 @@ func New(schematics []models.Schematic, logger *slog.Logger) *Service {
 // Search takes a term and returns schematic ids in the specified order
 func (s *Service) Search(term string, order int, rating int, category string, tag string) []string {
 	// If search hasn't had time to initialize, usually after a reboot
+	s.app.Logger().Debug("starting search service - check if initialized")
 	if s == nil || s.index == nil {
+		s.app.Logger().Debug("search service is down", "search", s)
 		return nil
 	}
 
 	// Ratings
 	result := s.index
-	s.logger.Debug("searching schematics", "index count", len(s.index), "result", len(result))
+	s.app.Logger().Debug("searching schematics", "index count", len(s.index), "result", len(result))
 	if rating > 0 {
 		ratingFloat := float64(rating)
 		ratingResult := make([]schematicIndex, 0)
@@ -99,7 +101,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		result = ratingResult
 	}
 
-	s.logger.Debug("filtered by rating", "count", len(result), "rating", rating)
+	s.app.Logger().Debug("filtered by rating", "count", len(result), "rating", rating)
 	// Category
 	if category != "all" {
 		categoryResult := make([]schematicIndex, 0)
@@ -112,7 +114,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = categoryResult
 	}
-	s.logger.Debug("filtered by category", "count", len(result), "category", category)
+	s.app.Logger().Debug("filtered by category", "count", len(result), "category", category)
 	// Tag
 	if tag != "all" {
 		tagResult := make([]schematicIndex, 0)
@@ -125,7 +127,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = tagResult
 	}
-	s.logger.Debug("filtered by tag", "count", len(result), "tag", tag)
+	s.app.Logger().Debug("filtered by tag", "count", len(result), "tag", tag)
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
@@ -134,11 +136,11 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
 		if err != nil {
-			s.logger.Error("error for bleve search query", "error", err.Error())
+			s.app.Logger().Error("error for bleve search query", "error", err.Error())
 		}
 		if searchResult != nil {
 			count, err := s.bleveIndex.DocCount()
-			s.logger.Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
+			s.app.Logger().Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
 			for _, si := range searchResult.Hits {
 				for i := range result {
 					if result[i].ID == si.ID {
@@ -148,7 +150,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 			}
 		}
 		result = newResult
-		s.logger.Debug("filtered by bleve", "count", len(result))
+		s.app.Logger().Debug("filtered by bleve", "count", len(result))
 	}
 	// Order
 	slices.SortFunc(result, func(a, b schematicIndex) int {
@@ -172,14 +174,13 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 			return 0
 		}
 	})
-	s.logger.Debug("sorted", "count", len(result))
+	s.app.Logger().Debug("sorted", "count", len(result))
 
 	ids := make([]string, len(result))
 	for i := range result {
 		ids[i] = result[i].ID
 	}
-	s.logger.Debug("returning ids", "count", len(ids))
-	clear(result)
+	s.app.Logger().Debug("returning ids", "count", len(ids))
 	return ids
 }
 
@@ -191,7 +192,7 @@ func mostViewedSort(a schematicIndex, b schematicIndex) int {
 }
 
 func highestRatingSort(a schematicIndex, b schematicIndex) int {
-	if a.Rating <= b.Rating {
+	if a.Rating >= b.Rating {
 		return -1
 	}
 	return 1
@@ -234,13 +235,18 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			Author:      index[i].Author,
 		})
 		if err != nil {
-			s.logger.Error("bleve add index", "error", err.Error())
+			s.app.Logger().Error("bleve add index", "error", err.Error())
 		}
 	}
 	err := s.bleveIndex.Batch(batch)
 	if err != nil {
-		s.logger.Error("bleve search batching", "error", err.Error())
+		s.app.Logger().Error("bleve search batching", "error", err.Error())
 		return
 	}
+	ids := make([]string, len(index))
+	for i, in := range index {
+		ids[i] = in.ID
+	}
+	s.app.Logger().Debug("new search index", "index", ids)
 	s.index = index
 }

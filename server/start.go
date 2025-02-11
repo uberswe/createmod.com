@@ -58,8 +58,6 @@ func New(conf Config) *Server {
 
 func (s *Server) Start() {
 	app := pocketbase.New()
-	searchService := search.New(nil, app.Logger())
-	sitemapService := sitemap.New()
 	log.Println("Launching...")
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
@@ -71,6 +69,9 @@ func (s *Server) Start() {
 		log.Println("Bootstrapping...")
 		return nil
 	})
+
+	searchService := search.New(nil, app)
+	sitemapService := sitemap.New()
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
