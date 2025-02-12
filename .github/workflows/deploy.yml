@@ -64,7 +64,7 @@ jobs:
           remote-password: ${{secrets.PASSWORD}}
           remote-path: "/"
           sync: "full"
-          ftp-mirror-options: "-p"
+          ftp-mirror-options: "--no-umask"
 
       - name: start
         uses: outsparkled/pterodactyl-power-action@v0.1.0
