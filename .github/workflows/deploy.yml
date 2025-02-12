@@ -42,7 +42,10 @@ jobs:
       - run: rm go.sum
       - run: rm npm.Dockerfile
       - run: rm README.md
-        
+
+      - name: make main executable
+        run: chmod +x ./main
+
       - name: stop
         uses: outsparkled/pterodactyl-power-action@v0.1.0
         with:
