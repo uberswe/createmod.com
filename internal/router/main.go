@@ -51,6 +51,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.GET("/guide", pages.GuideHandler(app))
 	e.GET("/rules", pages.RulesHandler(app))
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app))
+	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app))
 	// Auth
 	e.GET("/login", pages.LoginHandler(app))
 	e.GET("/register", pages.RegisterHandler(app))
