@@ -3,8 +3,8 @@
         <div class="row text-center align-items-center flex-row-reverse">
             <div class="col-lg-auto ms-lg-auto">
                 <ul class="list-inline list-inline-dots mb-0">
-                    <li class="list-inline-item"><a href="/terms-of-service" class="link-secondary">Terms Of Service</a>
-                    </li>
+                    <li class="list-inline-item"><a href="/terms-of-service" class="link-secondary">Terms Of Service</a></li>
+                    <li class="list-inline-item"><a href="/privacy-policy" class="link-secondary">Privacy Policy</a></li>
                     <li class="list-inline-item"><a href="https://github.com/uberswe/createmod" target="_blank"
                                                     class="link-secondary" rel="noopener">Source code</a></li>
                 </ul>
@@ -12,7 +12,7 @@
             <div class="col-12 col-lg-auto mt-3 mt-lg-0">
                 <ul class="list-inline list-inline-dots mb-0">
                     <li class="list-inline-item">
-                        Copyright &copy; 2024
+                        Copyright &copy; 2025
                         <a href="https://createmod.com" class="link-secondary">CreateMod.com</a>.
                         All rights reserved.
                     </li>
@@ -63,6 +63,8 @@
             url = "http://127.0.0.1:8090"
         } else if (host === "0.0.0.0:8090") {
             url = "http://0.0.0.0:8090"
+        } else if (host === "beta.createmod.com") {
+            url = "https://beta.createmod.com"
         }
         const pb = new PocketBase(url)
 
