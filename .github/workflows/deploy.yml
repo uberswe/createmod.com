@@ -18,33 +18,33 @@ jobs:
       - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
       - run: npm --prefix template install
       - run: npm --prefix template run build
+      - name: "cleanup"
+        run: rm -rf .github
+      - run: rm -rf cmd
+      - run: rm -rf .git
+      - run: rm -rf internal
+      - run: rm -rf model
+      - run: rm -rf query
+      - run: rm -rf server
+      - run: rm -rf template/node_modules
+      - run: rm .gitignore
+      - run: rm dev.Dockerfile
+      - run: rm docker-compose.yml
+      - run: rm Dockerfile
+      - run: rm go.mod
+      - run: rm go.sum
+      - run: rm npm.Dockerfile
+      - run: rm README.md
 
-      - name: SFTP upload dist files
-        uses: Dylan700/sftp-upload-action@latest
+      - name: "SFTP upload files"
+        uses: milanmk/actions-file-deployer@master
         with:
-          server: ${{secrets.SFTP}}
-          username: ${{secrets.USERNAME}}
-          password: ${{secrets.PASSWORD}}
-          port: ${{secrets.SFTP_PORT}}
-          uploads: |
-            ./migrations => ./migrations
-            ./template/dist => ./template/dist
-          ignore: |
-            *.git
-            */**/*git*
-          delete: 'true'
-      - name: SFTP upload application binary
-        uses: Dylan700/sftp-upload-action@latest
-        with:
-          server: ${{secrets.SFTP}}
-          username: ${{secrets.USERNAME}}
-          password: ${{secrets.PASSWORD}}
-          port: ${{secrets.SFTP_PORT}}
-          uploads: |
-            ./ => ./
-          ignore: |
-            !main
-          delete: 'true'
+          remote-protocol: "sftp"
+          remote-host: ${{secrets.SFTP}}
+          remote-user: ${{secrets.USERNAME}}
+          remote-port: ${{secrets.SFTP_PORT}}
+          remote-password: ${{secrets.PASSWORD}}
+          remote-path: "/"
       - name: restart
         uses: outsparkled/pterodactyl-power-action@v0.1.0
         with:
