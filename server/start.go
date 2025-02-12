@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"createmod/internal/auth"
+	"createmod/internal/cache"
 	"createmod/internal/migrate"
 	"createmod/internal/pages"
 	"createmod/internal/router"
@@ -49,31 +50,40 @@ type Config struct {
 }
 
 type Server struct {
-	conf Config
+	conf           Config
+	app            *pocketbase.PocketBase
+	searchService  *search.Service
+	sitemapService *sitemap.Service
+	cacheService   *cache.Service
 }
 
 func New(conf Config) *Server {
-	return &Server{conf: conf}
+	app := pocketbase.New()
+	searchService := search.New(nil, app)
+	sitemapService := sitemap.New()
+	return &Server{
+		conf:           conf,
+		app:            app,
+		searchService:  searchService,
+		sitemapService: sitemapService,
+		cacheService:   cache.New(),
+	}
 }
 
 func (s *Server) Start() {
-	app := pocketbase.New()
 	log.Println("Launching...")
 
-	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
+	migratecmd.MustRegister(s.app, s.app.RootCmd, migratecmd.Config{
 		// enable auto creation of migration files when making collection changes in the Admin UI
 		Automigrate: s.conf.AutoMigrate,
 	})
 
-	app.OnBeforeBootstrap().Add(func(e *core.BootstrapEvent) error {
+	s.app.OnBeforeBootstrap().Add(func(e *core.BootstrapEvent) error {
 		log.Println("Bootstrapping...")
 		return nil
 	})
 
-	searchService := search.New(nil, app)
-	sitemapService := sitemap.New()
-
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+	s.app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
 
 		go func() {
@@ -81,9 +91,9 @@ func (s *Server) Start() {
 			if s.conf.MysqlDB != "" {
 				gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
 				if err == nil {
-					migrate.Run(app, gormdb)
+					migrate.Run(s.app, gormdb)
 				} else {
-					app.Logger().Debug(
+					s.app.Logger().Debug(
 						"MIGRATION SKIPPED - No MySQL Connection",
 					)
 				}
@@ -93,77 +103,77 @@ func (s *Server) Start() {
 
 			// SEARCH
 			log.Println("Starting Search Server")
-			schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+			schematics, err := s.app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 			if err != nil {
-				app.Logger().Error(err.Error())
+				s.app.Logger().Error(err.Error())
 			}
-			mappedSchematics := pages.MapResultsToSchematic(app, schematics)
-			app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
-			searchService.BuildIndex(mappedSchematics)
+			mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
+			s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
+			s.searchService.BuildIndex(mappedSchematics)
 
 			// END SEARCH
 
-			app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
+			s.app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
 				// Rebuild the search index every time a schematic is created
 				go func() {
-					schematics, err := app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+					schematics, err := s.app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 					if err != nil {
-						app.Logger().Warn(err.Error())
+						s.app.Logger().Warn(err.Error())
 					}
-					searchService.BuildIndex(pages.MapResultsToSchematic(app, schematics))
-					sitemapService.Generate(app)
+					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+					s.sitemapService.Generate(s.app)
 				}()
 				return nil
 			})
 
-			app.OnModelAfterCreate("users").Add(func(e *core.ModelEvent) error {
+			s.app.OnModelAfterCreate("users").Add(func(e *core.ModelEvent) error {
 				// Rebuild the sitemap every time a user is created
-				go sitemapService.Generate(app)
+				go s.sitemapService.Generate(s.app)
 				return nil
 			})
 
-			sitemapService.Generate(app)
+			s.sitemapService.Generate(s.app)
 
 		}()
 
-		app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
+		s.app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
 			info := apis.RequestInfo(e.HttpContext)
 			if info.AuthRecord == nil {
 				return fmt.Errorf("user is not authenticated")
 			}
-			app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
+			s.app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
 			e.Record.Set("author", info.AuthRecord.GetId())
 
-			if err := validateAndPopulateSchematic(app, e.Record, e.UploadedFiles); err != nil {
+			if err := validateAndPopulateSchematic(s.app, e.Record, e.UploadedFiles); err != nil {
 				return err
 			}
 			return nil
 		})
 
-		app.OnRecordBeforeCreateRequest("comments").Add(func(e *core.RecordCreateEvent) error {
+		s.app.OnRecordBeforeCreateRequest("comments").Add(func(e *core.RecordCreateEvent) error {
 			info := apis.RequestInfo(e.HttpContext)
 			if info.AuthRecord == nil {
 				return fmt.Errorf("user is not authenticated")
 			}
-			app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
+			s.app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
 			e.Record.Set("author", info.AuthRecord.GetId())
 
-			if err := validateAndSaveComment(app, e.Record, info.AuthRecord); err != nil {
+			if err := validateAndSaveComment(s.app, e.Record, info.AuthRecord); err != nil {
 				return err
 			}
 			return nil
 		})
 
-		app.OnRecordBeforeCreateRequest("schematic_ratings").Add(func(e *core.RecordCreateEvent) error {
+		s.app.OnRecordBeforeCreateRequest("schematic_ratings").Add(func(e *core.RecordCreateEvent) error {
 			info := apis.RequestInfo(e.HttpContext)
 			if info.AuthRecord == nil {
 				return fmt.Errorf("user is not authenticated")
 			}
-			schematicRatingsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_ratings")
+			schematicRatingsCollection, err := s.app.Dao().FindCollectionByNameOrId("schematic_ratings")
 			if err != nil {
 				return err
 			}
-			results, _ := app.Dao().FindRecordsByFilter(
+			results, _ := s.app.Dao().FindRecordsByFilter(
 				schematicRatingsCollection.Id,
 				"schematic = {:schematic} && user = {:user}",
 				"-created",
@@ -173,7 +183,7 @@ func (s *Server) Start() {
 			if len(results) > 0 {
 				for _, r := range results {
 					// When a rating is changed we simply delete the old record
-					err := app.Dao().Delete(r)
+					err := s.app.Dao().Delete(r)
 					if err != nil {
 						return err
 					}
@@ -184,27 +194,27 @@ func (s *Server) Start() {
 			return nil
 		})
 
-		app.OnRecordAfterCreateRequest("contact_form_submissions").Add(func(e *core.RecordCreateEvent) error {
+		s.app.OnRecordAfterCreateRequest("contact_form_submissions").Add(func(e *core.RecordCreateEvent) error {
 			message := &mailer.Message{
 				From: mail.Address{
-					Address: app.Settings().Meta.SenderAddress,
-					Name:    app.Settings().Meta.SenderName,
+					Address: s.app.Settings().Meta.SenderAddress,
+					Name:    s.app.Settings().Meta.SenderName,
 				},
-				To:      []mail.Address{{Address: app.Settings().Meta.SenderAddress}},
+				To:      []mail.Address{{Address: s.app.Settings().Meta.SenderAddress}},
 				Subject: fmt.Sprintf("New CreateMod.com Contact Form Submission"),
 				HTML:    fmt.Sprintf("<p>Email: " + e.Record.GetString("email") + "</p><p>Content: " + e.Record.GetString("content") + "</p>"),
 			}
 
-			return app.NewMailClient().Send(message)
+			return s.app.NewMailClient().Send(message)
 		})
 
 		// COOKIES
-		app.OnRecordAuthRequest().Add(func(e *core.RecordAuthEvent) error {
-			app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", app.Settings().RecordAuthToken.Duration)
+		s.app.OnRecordAuthRequest().Add(func(e *core.RecordAuthEvent) error {
+			s.app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", s.app.Settings().RecordAuthToken.Duration)
 			e.HttpContext.SetCookie(&http.Cookie{
 				Name:     auth.CookieName,
 				Value:    e.Token,
-				Expires:  time.Now().Add(time.Second * time.Duration(app.Settings().RecordAuthToken.Duration)),
+				Expires:  time.Now().Add(time.Second * time.Duration(s.app.Settings().RecordAuthToken.Duration)),
 				Path:     "/",
 				SameSite: http.SameSiteStrictMode,
 			})
@@ -213,19 +223,19 @@ func (s *Server) Start() {
 		// END COOKIES
 
 		// PASSWORD BACKWARDS COMPATIBILITY
-		app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
+		s.app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
 			if e.Record != nil && e.Record.GetString("old_password") != "" {
 				p := phpass.New(nil)
 				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
 					hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
 					if err != nil {
-						app.Logger().Warn("old password failled to hash", "error", err.Error())
+						s.app.Logger().Warn("old password failled to hash", "error", err.Error())
 						return nil
 					}
 					e.Record.Set(schema.FieldNamePasswordHash, string(hashedPassword))
 					e.Record.Set("old_password", "")
-					if err = app.Dao().SaveRecord(e.Record); err != nil {
-						app.Logger().Warn("old password invalid", "error", err.Error())
+					if err = s.app.Dao().SaveRecord(e.Record); err != nil {
+						s.app.Logger().Warn("old password invalid", "error", err.Error())
 						return nil
 					}
 				}
@@ -236,7 +246,7 @@ func (s *Server) Start() {
 
 		// ROUTES
 
-		router.Register(app, e.Router, searchService)
+		router.Register(s.app, e.Router, s.searchService, s.cacheService)
 
 		// END ROUTES
 
@@ -245,7 +255,7 @@ func (s *Server) Start() {
 	})
 
 	log.Println("Initializing...")
-	if err := app.Start(); err != nil {
+	if err := s.app.Start(); err != nil {
 		panic(err)
 	}
 }

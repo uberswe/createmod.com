@@ -2,6 +2,7 @@ package router
 
 import (
 	"createmod/internal/auth"
+	"createmod/internal/cache"
 	"createmod/internal/pages"
 	"createmod/internal/search"
 	"fmt"
@@ -18,7 +19,7 @@ import (
 	"strings"
 )
 
-func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Service) {
+func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Service, cacheService *cache.Service) {
 	// HTML Template Renderer
 	templateBuilder := template.New("")
 
@@ -44,13 +45,14 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.Static("/libs/", "./template/dist/libs")
 	e.GET("/assets/*", apis.StaticDirectoryHandler(os.DirFS("./template/dist/assets"), false))
 	// Index
-	e.GET("/", pages.IndexHandler(app))
+	e.GET("/", pages.IndexHandler(app, cacheService))
 	// Removed the about page, not relevant anymore
 	e.GET("/upload", pages.UploadHandler(app))
 	e.GET("/contact", pages.ContactHandler(app))
 	e.GET("/guide", pages.GuideHandler(app))
 	e.GET("/rules", pages.RulesHandler(app))
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app))
+	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app))
 	// Auth
 	e.GET("/login", pages.LoginHandler(app))
 	e.GET("/register", pages.RegisterHandler(app))
@@ -59,17 +61,17 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.GET("/news", pages.NewsHandler(app))
 	e.GET("/news/:slug", pages.NewsPostHandler(app))
 	// Schematics
-	e.GET("/schematics", pages.SchematicsHandler(app))
-	e.GET("/schematics/:name", pages.SchematicHandler(app, searchService))
-	e.GET("/search/:term", pages.SearchHandler(app, searchService))
-	e.POST("/search/:term", pages.SearchHandler(app, searchService))
-	e.GET("/search", pages.SearchHandler(app, searchService))
-	e.GET("/search/", pages.SearchHandler(app, searchService))
-	e.POST("/search/", pages.SearchHandler(app, searchService))
-	e.POST("/search", pages.SearchPostHandler(app))
+	e.GET("/schematics", pages.SchematicsHandler(app, cacheService))
+	e.GET("/schematics/:name", pages.SchematicHandler(app, searchService, cacheService))
+	e.GET("/search/:term", pages.SearchHandler(app, searchService, cacheService))
+	e.POST("/search/:term", pages.SearchHandler(app, searchService, cacheService))
+	e.GET("/search", pages.SearchHandler(app, searchService, cacheService))
+	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService))
+	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService))
+	e.POST("/search", pages.SearchPostHandler(app, cacheService))
 	// User
-	e.GET("/author/:username", pages.ProfileHandler(app))
-	e.GET("/profile", pages.ProfileHandler(app))
+	e.GET("/author/:username", pages.ProfileHandler(app, cacheService))
+	e.GET("/profile", pages.ProfileHandler(app, cacheService))
 	// Fallback
 	e.GET("/*", pages.FourOhFourHandler(app))
 
