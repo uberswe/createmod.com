@@ -59,6 +59,7 @@ jobs:
           remote-user: ${{secrets.USERNAME}}
           remote-port: ${{secrets.SFTP_PORT}}
           remote-password: ${{secrets.PASSWORD}}
+          remote-path: "/"
           sync: "full"
 
       - name: start
