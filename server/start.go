@@ -59,12 +59,10 @@ type Server struct {
 
 func New(conf Config) *Server {
 	app := pocketbase.New()
-	searchService := search.New(nil, app)
 	sitemapService := sitemap.New()
 	return &Server{
 		conf:           conf,
 		app:            app,
-		searchService:  searchService,
 		sitemapService: sitemapService,
 		cacheService:   cache.New(),
 	}
@@ -86,6 +84,7 @@ func (s *Server) Start() {
 	s.app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
 
+		s.searchService = search.New(nil, s.app)
 		go func() {
 			// MIGRATIONS
 			if s.conf.MysqlDB != "" {

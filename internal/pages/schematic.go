@@ -250,7 +250,6 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	if err != nil {
 		t = c.Created
 	}
-	fmt.Println(c.Created)
 	comment.Created = timediff.TimeDiff(t)
 	comment.Published = t.Format(time.DateTime)
 
@@ -327,7 +326,9 @@ func MapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Recor
 			schematic = mapResultToSchematic(app, results[i], cacheService)
 			schematics = append(schematics, schematic)
 			cacheService.SetSchematic(sk, schematic)
+			app.Logger().Debug("schematic cache miss", "key", sk)
 		} else {
+			app.Logger().Debug("schematic cache hit", "key", sk)
 			schematics = append(schematics, schematic)
 		}
 	}
@@ -384,11 +385,11 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record, c
 	}
 
 	sanitizer := htmlsanitizer.NewHTMLSanitizer()
-	sanitizedHTML, err := sanitizer.SanitizeString(result.GetString("content"))
+	sanitizedHTML, err := sanitizer.SanitizeString(strings.ReplaceAll(result.GetString("content"), "\n", "<br/>"))
 	if err != nil {
 		app.Logger().Debug("Failed to sanitize", "string", result.GetString("content"), "error", err)
 		// Fallback legacy sanitizer
-		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")
+		sanitizedHTML = template.HTMLEscapeString(strings.ReplaceAll(result.GetString("content"), "\n", "<br/>"))
 	}
 
 	s := models.Schematic{
