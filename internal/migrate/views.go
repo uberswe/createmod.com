@@ -34,7 +34,7 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 	updated := 0
 	for i, typeDesc := range types {
 		log.Printf("View type %d - %s fetching...\n", i, typeDesc)
-		postViewRes, viewErr := q.QeyKryWEpostView.Where(query.QeyKryWEpostView.Type.Eq(i)).Find()
+		postViewRes, viewErr := q.QeyKryWEpostView.Where(q.QeyKryWEpostView.Type.Eq(i)).Find()
 		if viewErr != nil {
 			panic(viewErr)
 		}
