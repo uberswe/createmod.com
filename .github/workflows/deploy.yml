@@ -34,6 +34,14 @@ jobs:
       - run: rm go.sum
       - run: rm npm.Dockerfile
       - run: rm README.md
+        
+      - name: stop
+        uses: outsparkled/pterodactyl-power-action@v0.1.0
+        with:
+          panel-url: ${{ secrets.PANEL_URL }}
+          server-id: ${{ secrets.SERVER_ID }}
+          bearer-token: ${{ secrets.BEARER_TOKEN }}
+          power-action: 'start'
 
       - name: "SFTP upload files"
         uses: milanmk/actions-file-deployer@master
@@ -44,10 +52,11 @@ jobs:
           remote-port: ${{secrets.SFTP_PORT}}
           remote-password: ${{secrets.PASSWORD}}
           remote-path: "/"
-      - name: restart
+
+      - name: start
         uses: outsparkled/pterodactyl-power-action@v0.1.0
         with:
           panel-url: ${{ secrets.PANEL_URL }}
           server-id: ${{ secrets.SERVER_ID }}
           bearer-token: ${{ secrets.BEARER_TOKEN }}
-          power-action: 'restart'
+          power-action: 'start'
