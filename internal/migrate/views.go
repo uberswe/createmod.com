@@ -37,7 +37,7 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 	for i, typeDesc := range types {
 		log.Printf("View type %d - %s fetching...\n", i, typeDesc)
 		var postViewRes []*model.QeyKryWEpostView
-		viewErr := q.QeyKryWEpostView.Where(q.QeyKryWEpostView.Type.Eq(i)).FindInBatches(&postViewRes, 25000, func(tx gen.Dao, batch int) error {
+		viewErr := q.QeyKryWEpostView.Where(q.QeyKryWEpostView.Type.Eq(i)).FindInBatches(&postViewRes, 100*1000, func(tx gen.Dao, batch int) error {
 			log.Printf("View type %d - %s batch %d\n", i, typeDesc, batch)
 			for i := range postViewRes {
 				if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {

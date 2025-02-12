@@ -250,7 +250,6 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	if err != nil {
 		t = c.Created
 	}
-	fmt.Println(c.Created)
 	comment.Created = timediff.TimeDiff(t)
 	comment.Published = t.Format(time.DateTime)
 
@@ -327,7 +326,9 @@ func MapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Recor
 			schematic = mapResultToSchematic(app, results[i], cacheService)
 			schematics = append(schematics, schematic)
 			cacheService.SetSchematic(sk, schematic)
+			app.Logger().Debug("schematic cache miss", "key", sk)
 		} else {
+			app.Logger().Debug("schematic cache hit", "key", sk)
 			schematics = append(schematics, schematic)
 		}
 	}

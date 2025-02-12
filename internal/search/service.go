@@ -88,7 +88,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	}
 
 	// Ratings
-	var result []schematicIndex
+	result := make([]schematicIndex, len(s.index))
 	copy(result, s.index)
 	s.app.Logger().Debug("searching schematics", "index count", len(s.index), "result", len(result))
 	if rating > 0 {
