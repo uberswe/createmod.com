@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/cache"
 	"createmod/internal/models"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
@@ -19,17 +20,17 @@ type ProfileData struct {
 	DefaultData
 }
 
-func ProfileHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
+func ProfileHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		username := c.PathParam("username")
 		if username == "" {
 			return editProfile(c, app)
 		}
-		return showProfile(c, app, username)
+		return showProfile(c, app, cacheService, username)
 	}
 }
 
-func showProfile(c echo.Context, app *pocketbase.PocketBase, username string) error {
+func showProfile(c echo.Context, app *pocketbase.PocketBase, cacheService *cache.Service, username string) error {
 	d := ProfileData{}
 	d.Populate(c)
 	caser := cases.Title(language.English)
@@ -54,7 +55,7 @@ func showProfile(c echo.Context, app *pocketbase.PocketBase, username string) er
 	}
 
 	if len(results) == 1 {
-		d.Schematics = findAuthorSchematics(app, "", results[0].GetId(), 1000, "-created")
+		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].GetId(), 1000, "-created")
 	}
 
 	err = c.Render(http.StatusOK, profileTemplate, d)

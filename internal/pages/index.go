@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/cache"
 	"createmod/internal/models"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
@@ -30,7 +31,7 @@ type IndexData struct {
 	Tags         []models.SchematicTagWithCount
 }
 
-func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
+func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -44,9 +45,9 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			0)
 
 		d := IndexData{
-			Schematics:   MapResultsToSchematic(app, results),
-			Trending:     getTrendingSchematics(app),
-			HighestRated: getHighestRatedSchematics(app),
+			Schematics:   MapResultsToSchematic(app, results, cacheService),
+			Trending:     getTrendingSchematics(app, cacheService),
+			HighestRated: getHighestRatedSchematics(app, cacheService),
 			Tags:         allTagsWithCount(app),
 		}
 		d.Populate(c)
@@ -62,7 +63,7 @@ func IndexHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 	}
 }
 
-func getHighestRatedSchematics(app *pocketbase.PocketBase) []models.Schematic {
+func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
 	if len(highestRatedSchematics) > 0 && time.Now().Before(highestRatedCacheTime.Add(time.Hour*24)) {
 		return highestRatedSchematics
 	}
@@ -83,12 +84,12 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase) []models.Schematic {
 		app.Logger().Debug("could not fetch highest rated", "error", err.Error())
 		return nil
 	}
-	highestRatedSchematics = MapResultsToSchematic(app, res)
+	highestRatedSchematics = MapResultsToSchematic(app, res, cacheService)
 	highestRatedCacheTime = time.Now()
 	return highestRatedSchematics
 }
 
-func getTrendingSchematics(app *pocketbase.PocketBase) []models.Schematic {
+func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
 	if len(trendingSchematics) > 0 && time.Now().Before(trendingCacheTime.Add(time.Hour*24)) {
 		return trendingSchematics
 	}
@@ -108,7 +109,7 @@ func getTrendingSchematics(app *pocketbase.PocketBase) []models.Schematic {
 		app.Logger().Debug("could not fetch trending", "error", err.Error())
 		return nil
 	}
-	trendingSchematics = MapResultsToSchematic(app, res)
+	trendingSchematics = MapResultsToSchematic(app, res, cacheService)
 	trendingCacheTime = time.Now()
 	return trendingSchematics
 }

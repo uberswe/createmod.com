@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/cache"
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"fmt"
@@ -31,7 +32,7 @@ type SearchData struct {
 	Tag               string
 }
 
-func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) func(c echo.Context) error {
+func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		start := time.Now()
 		slugTerm := c.PathParam("term")
@@ -93,7 +94,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 			sortedModels = sortedModels[:limit]
 		}
 
-		schematicModels := MapResultsToSchematic(app, sortedModels)
+		schematicModels := MapResultsToSchematic(app, sortedModels, cacheService)
 
 		end := time.Now()
 		duration := end.Sub(start)
@@ -119,7 +120,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service) fu
 	}
 }
 
-func SearchPostHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
+func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		data := struct {
 			Term     string `json:"term" form:"advanced-search-term"`

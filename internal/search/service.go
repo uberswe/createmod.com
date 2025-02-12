@@ -88,7 +88,8 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	}
 
 	// Ratings
-	result := s.index
+	var result []schematicIndex
+	copy(result, s.index)
 	s.app.Logger().Debug("searching schematics", "index count", len(s.index), "result", len(result))
 	if rating > 0 {
 		ratingFloat := float64(rating)
