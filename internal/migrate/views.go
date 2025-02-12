@@ -42,13 +42,14 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 			if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {
 				filter, err := app.Dao().FindRecordsByFilter(
 					schematicViewsCollection.Id,
-					"old_schematic_id = {:old_schematic_id} && type = {:type}",
+					"old_schematic_id = {:old_schematic_id} && type = {:type} && period = {:period}",
 					"-created",
 					1,
 					0,
 					dbx.Params{
 						"old_schematic_id": postViewRes[i].ID,
 						"type":             postViewRes[i].Type,
+						"period":           postViewRes[i].Period,
 					})
 				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					app.Logger().Debug(
