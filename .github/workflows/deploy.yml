@@ -52,7 +52,7 @@ jobs:
           panel-url: ${{ secrets.PANEL_URL }}
           server-id: ${{ secrets.SERVER_ID }}
           bearer-token: ${{ secrets.BEARER_TOKEN }}
-          power-action: 'start'
+          power-action: 'stop'
 
       - name: "SFTP upload files"
         uses: milanmk/actions-file-deployer@master
