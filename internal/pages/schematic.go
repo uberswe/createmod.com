@@ -361,11 +361,11 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record) (
 	}
 
 	sanitizer := htmlsanitizer.NewHTMLSanitizer()
-	sanitizedHTML, err := sanitizer.SanitizeString(result.GetString("content"))
+	sanitizedHTML, err := sanitizer.SanitizeString(strings.ReplaceAll(result.GetString("content"), "\n", "<br/>"))
 	if err != nil {
 		app.Logger().Debug("Failed to sanitize", "string", result.GetString("content"), "error", err)
 		// Fallback legacy sanitizer
-		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(result.GetString("content")), "\n", "<br/>")
+		sanitizedHTML = template.HTMLEscapeString(strings.ReplaceAll(result.GetString("content"), "\n", "<br/>"))
 	}
 
 	s := models.Schematic{

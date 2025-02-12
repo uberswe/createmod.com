@@ -43,17 +43,6 @@ jobs:
       - run: rm npm.Dockerfile
       - run: rm README.md
 
-      - name: make main executable
-        run: chmod +x ./main
-
-      - name: stop
-        uses: outsparkled/pterodactyl-power-action@v0.1.0
-        with:
-          panel-url: ${{ secrets.PANEL_URL }}
-          server-id: ${{ secrets.SERVER_ID }}
-          bearer-token: ${{ secrets.BEARER_TOKEN }}
-          power-action: 'stop'
-
       - name: "SFTP upload files"
         uses: milanmk/actions-file-deployer@master
         with:
@@ -64,11 +53,12 @@ jobs:
           remote-password: ${{secrets.PASSWORD}}
           remote-path: "/"
           sync: "full"
+          ftp-mirror-options: ""
 
-      - name: start
+      - name: restart
         uses: outsparkled/pterodactyl-power-action@v0.1.0
         with:
           panel-url: ${{ secrets.PANEL_URL }}
           server-id: ${{ secrets.SERVER_ID }}
           bearer-token: ${{ secrets.BEARER_TOKEN }}
-          power-action: 'start'
+          power-action: 'restart'
