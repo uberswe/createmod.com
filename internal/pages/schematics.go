@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/cache"
 	"createmod/internal/models"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -14,7 +15,7 @@ type SchematicsData struct {
 	Schematics []models.Schematic
 }
 
-func SchematicsHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
+func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -28,7 +29,7 @@ func SchematicsHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
 			0)
 
 		d := SchematicsData{
-			Schematics: MapResultsToSchematic(app, results),
+			Schematics: MapResultsToSchematic(app, results, cacheService),
 		}
 		d.Populate(c)
 		d.Title = "Create Mod Schematics"
