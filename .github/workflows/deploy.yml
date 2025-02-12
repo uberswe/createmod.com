@@ -21,7 +21,6 @@ jobs:
       - name: "cleanup"
         run: rm -rf .github
       - run: rm -rf cmd
-      - run: rm -rf .git
       - run: rm -rf internal
       - run: rm -rf model
       - run: rm -rf query
