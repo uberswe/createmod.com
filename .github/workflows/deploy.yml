@@ -60,7 +60,7 @@ jobs:
           remote-port: ${{secrets.SFTP_PORT}}
           remote-password: ${{secrets.PASSWORD}}
           remote-path: "/"
-          sync-delta-excludes: "main"
+          sync: "full"
 
       - name: start
         uses: outsparkled/pterodactyl-power-action@v0.1.0
