@@ -57,6 +57,9 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		}
 		d.Populate(e)
 		d.Title = d.Schematic.Title
+		d.Slug = fmt.Sprintf("schematics/%s", d.Schematic.Name)
+		d.Description = d.Schematic.Content
+		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)

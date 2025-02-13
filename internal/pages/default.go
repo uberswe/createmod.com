@@ -14,6 +14,9 @@ type DefaultData struct {
 	Username        string
 	UsernameSlug    string
 	Title           string
+	Description     string
+	Slug            string
+	Thumbnail       string
 	SubCategory     string
 	Categories      []models.SchematicCategory
 	Avatar          string

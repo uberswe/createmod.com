@@ -92,7 +92,7 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 }
 
 func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
-	if len(trendingSchematics) > 0 && time.Now().Before(trendingCacheTime.Add(time.Hour*24)) {
+	if len(trendingSchematics) > 0 && time.Now().Before(trendingCacheTime.Add(time.Hour*3)) {
 		return trendingSchematics
 	}
 	// TODO a field for daily and weekly views can be aggregated daily and indexed to improve performance
@@ -102,7 +102,7 @@ func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		From("schematic_views").
 		LeftJoin("schematics", dbx.NewExp("schematic_views.schematic = schematics.id")).
 		Where(dbx.NewExp("schematic_views.type = 0")).
-		AndWhere(dbx.NewExp("schematic_views.created > (SELECT DATETIME('now', '-1 day'))")).
+		AndWhere(dbx.NewExp("schematic_views.created > (SELECT DATETIME('now', '-2 day'))")).
 		OrderBy("avg_views DESC").
 		GroupBy("schematics.id").
 		Limit(10).

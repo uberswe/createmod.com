@@ -32,7 +32,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.BindFunc(legacyTagCompat())
 	e.BindFunc(cookieAuth(app))
 	// Frontend routes
-	e.GET("/sitemaps/*", apis.Static(os.DirFS("./template/sitemaps"), false))
+	e.GET("/sitemaps/*", apis.Static(os.DirFS("./template/dist/sitemaps"), false))
 	e.GET("/libs/", apis.Static(os.DirFS("./template/dist/libs"), false))
 	e.GET("/assets/*", apis.Static(os.DirFS("./template/dist/assets"), false))
 	// Index
