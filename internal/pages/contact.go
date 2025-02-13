@@ -1,27 +1,28 @@
 package pages
 
 import (
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 )
 
-const contactTemplate = "contact.html"
+const contactTemplate = "./template/dist/contact.html"
 
 type ContactData struct {
 	DefaultData
 }
 
-func ContactHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func ContactHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
 		d := ContactData{}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = "Contact"
 		d.Categories = allCategories(app)
-		err := c.Render(http.StatusOK, contactTemplate, d)
+		html, err := registry.LoadFiles(contactTemplate).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }

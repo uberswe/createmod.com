@@ -6,18 +6,21 @@ import (
 	"createmod/internal/search"
 	"fmt"
 	"github.com/gosimple/slug"
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
-	pbmodels "github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const searchTemplate = "search.html"
+var searchTemplates = []string{
+	"./template/dist/search.html",
+	"./template/dist/include/schematic_card.html",
+}
 
 type SearchData struct {
 	DefaultData
@@ -32,33 +35,33 @@ type SearchData struct {
 	Tag               string
 }
 
-func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
 		start := time.Now()
-		slugTerm := c.PathParam("term")
+		slugTerm := e.Request.PathValue("term")
 		order := 1
-		if c.QueryParam("sort") != "" {
-			atoi, err := strconv.Atoi(c.QueryParam("sort"))
+		if e.Request.URL.Query().Get("sort") != "" {
+			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("sort"))
 			if err != nil {
 				return err
 			}
 			order = atoi
 		}
 		rating := -1
-		if c.QueryParam("rating") != "" {
-			atoi, err := strconv.Atoi(c.QueryParam("rating"))
+		if e.Request.URL.Query().Get("rating") != "" {
+			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("rating"))
 			if err != nil {
 				return err
 			}
 			rating = atoi
 		}
 		category := "all"
-		if c.QueryParam("category") != "" {
-			category = c.QueryParam("category")
+		if e.Request.URL.Query().Get("category") != "" {
+			category = e.Request.URL.Query().Get("category")
 		}
 		tag := "all"
-		if c.QueryParam("tag") != "" {
-			tag = c.QueryParam("tag")
+		if e.Request.URL.Query().Get("tag") != "" {
+			tag = e.Request.URL.Query().Get("tag")
 		}
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
@@ -71,8 +74,8 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			interfaceIds = append(interfaceIds, id)
 		}
 
-		var res []*pbmodels.Record
-		err := app.Dao().RecordQuery("schematics").
+		var res []*core.Record
+		err := app.RecordQuery("schematics").
 			Select("schematics.*").
 			From("schematics").
 			Where(dbx.In("id", interfaceIds...)).
@@ -81,10 +84,10 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		if err != nil {
 			return err
 		}
-		sortedModels := make([]*pbmodels.Record, 0)
+		sortedModels := make([]*core.Record, 0)
 		for id := range ids {
 			for i := range res {
-				if ids[id] == res[i].GetId() {
+				if ids[id] == res[i].Id {
 					sortedModels = append(sortedModels, res[i])
 				}
 			}
@@ -108,20 +111,20 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			Rating:            rating,
 			Category:          category,
 		}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = "Search"
 		d.Categories = allCategories(app)
 
-		err = c.Render(http.StatusOK, searchTemplate, d)
+		html, err := registry.LoadFiles(searchTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }
 
-func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
 		data := struct {
 			Term     string `json:"term" form:"advanced-search-term"`
 			Sort     string `json:"sort" form:"advanced-search-sort"`
@@ -129,20 +132,20 @@ func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service) func(
 			Category string `json:"category" form:"advanced-search-category"`
 			Tag      string `json:"tag" form:"advanced-search-tag"`
 		}{}
-		if err := c.Bind(&data); err != nil {
+		if err := e.BindBody(&data); err != nil {
 			return apis.NewBadRequestError("Failed to read request data", err)
 		}
 		term := slug.Make(data.Term)
-		return c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s", term, data.Sort, data.Rating, data.Category, data.Tag))
+		return e.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s", term, data.Sort, data.Rating, data.Category, data.Tag))
 	}
 }
 
 func allTags(app *pocketbase.PocketBase) []models.SchematicTag {
-	tagsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_tags")
+	tagsCollection, err := app.FindCollectionByNameOrId("schematic_tags")
 	if err != nil {
 		return nil
 	}
-	records, err := app.Dao().FindRecordsByFilter(tagsCollection.Id, "1=1", "+name", -1, 0)
+	records, err := app.FindRecordsByFilter(tagsCollection.Id, "1=1", "+name", -1, 0)
 	if err != nil {
 		return nil
 	}
@@ -156,7 +159,7 @@ type schematicTags struct {
 func allTagsWithCount(app *pocketbase.PocketBase) []models.SchematicTagWithCount {
 	tags := allTags(app)
 	var schematics []schematicTags
-	err := app.Dao().DB().
+	err := app.DB().
 		Select("schematics.tags").
 		From("schematics").
 		All(&schematics)

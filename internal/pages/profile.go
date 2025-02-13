@@ -3,15 +3,16 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"net/http"
 )
 
-const profileTemplate = "profile.html"
+const profileTemplate = "./template/dist/profile.html"
 
 type ProfileData struct {
 	Username   string
@@ -20,60 +21,60 @@ type ProfileData struct {
 	DefaultData
 }
 
-func ProfileHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(c echo.Context) error {
-	return func(c echo.Context) error {
-		username := c.PathParam("username")
+func ProfileHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
+		username := e.Request.PathValue("username")
 		if username == "" {
-			return editProfile(c, app)
+			return editProfile(e, app, registry)
 		}
-		return showProfile(c, app, cacheService, username)
+		return showProfile(e, app, cacheService, registry, username)
 	}
 }
 
-func showProfile(c echo.Context, app *pocketbase.PocketBase, cacheService *cache.Service, username string) error {
+func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, username string) error {
 	d := ProfileData{}
-	d.Populate(c)
+	d.Populate(e)
 	caser := cases.Title(language.English)
 	d.Title = "Schematics by " + caser.String(username)
 	d.Categories = allCategories(app)
 
-	usersCollection, err := app.Dao().FindCollectionByNameOrId("users")
+	usersCollection, err := app.FindCollectionByNameOrId("users")
 	if err != nil {
 		return err
 	}
 
-	results, err := app.Dao().FindRecordsByFilter(
+	results, err := app.FindRecordsByFilter(
 		usersCollection.Id,
 		"username = {:username}",
 		"-created",
 		1,
 		0,
-		dbx.Params{"username": c.PathParam("username")})
+		dbx.Params{"username": e.Request.PathValue("username")})
 
 	if err != nil {
 		return err
 	}
 
 	if len(results) == 1 {
-		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].GetId(), 1000, "-created")
+		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].Id, 1000, "-created")
 	}
 
-	err = c.Render(http.StatusOK, profileTemplate, d)
+	html, err := registry.LoadFiles(profileTemplate).Render(d)
 	if err != nil {
 		return err
 	}
-	return nil
+	return e.HTML(http.StatusOK, html)
 }
 
-func editProfile(c echo.Context, app *pocketbase.PocketBase) error {
+func editProfile(e *core.RequestEvent, app *pocketbase.PocketBase, registry *template.Registry) error {
 	// TODO make this possible as part of #51
 	d := ProfileData{}
-	d.Populate(c)
+	d.Populate(e)
 	d.Title = "Edit profile coming soon"
 	d.Categories = allCategories(app)
-	err := c.Render(http.StatusOK, profileTemplate, d)
+	html, err := registry.LoadFiles(profileTemplate).Render(d)
 	if err != nil {
 		return err
 	}
-	return nil
+	return e.HTML(http.StatusOK, html)
 }

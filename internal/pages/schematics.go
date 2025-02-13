@@ -3,25 +3,29 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 )
 
-const schematicsTemplate = "schematics.html"
+var schematicsTemplates = []string{
+	"./template/dist/schematics.html",
+	"./template/dist/include/schematic_card.html",
+}
 
 type SchematicsData struct {
 	DefaultData
 	Schematics []models.Schematic
 }
 
-func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(c echo.Context) error {
-	return func(c echo.Context) error {
-		schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
+		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
 			return err
 		}
-		results, err := app.Dao().FindRecordsByFilter(
+		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
 			"1=1",
 			"-created",
@@ -31,14 +35,14 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service) 
 		d := SchematicsData{
 			Schematics: MapResultsToSchematic(app, results, cacheService),
 		}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = "Create Mod Schematics"
 		d.Categories = allCategories(app)
 
-		err = c.Render(http.StatusOK, schematicsTemplate, d)
+		html, err := registry.LoadFiles(schematicsTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"gorm.io/gorm"
 	"log"
 )
@@ -21,13 +21,13 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		panic(postErr)
 	}
 
-	schematicCommentsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+	schematicCommentsCollection, err := app.FindCollectionByNameOrId("comments")
 	if err != nil {
 		panic(err)
 	}
 
 	totalCount := res{}
-	countErr := app.Dao().DB().
+	countErr := app.DB().
 		NewQuery("SELECT COUNT(id) as c FROM comments").
 		One(&totalCount)
 	if countErr != nil {
@@ -40,7 +40,7 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 	}
 
 	for _, s := range commentsRes {
-		filter, err := app.Dao().FindRecordsByFilter(
+		filter, err := app.FindRecordsByFilter(
 			schematicCommentsCollection.Id,
 			"old_id = {:old_id}",
 			"-created",
@@ -57,7 +57,7 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 
 		newSchematicID := oldSchematicIDs[s.CommentPostID]
 		newUserID := oldUserIDs[s.UserID]
-		record := models.NewRecord(schematicCommentsCollection)
+		record := core.NewRecord(schematicCommentsCollection)
 		record.Set("old_schematic_id", s.CommentPostID)
 		record.Set("schematic", newSchematicID)
 		record.Set("author", newUserID)
@@ -75,14 +75,14 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		record.Set("old_id", s.CommentID)
 		record.Set("old_schematic_id", s.CommentPostID)
 
-		if err = app.Dao().SaveRecord(record); err != nil {
+		if err = app.Save(record); err != nil {
 			panic(err)
 		}
 	}
 
 	// iterate comments again to set parent comments
 
-	comments, commentsErr := app.Dao().FindRecordsByFilter(schematicCommentsCollection.Id,
+	comments, commentsErr := app.FindRecordsByFilter(schematicCommentsCollection.Id,
 		"1 = 1",
 		"-created",
 		-1,
@@ -96,8 +96,8 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		if c.GetInt("old_parent_id") > 0 {
 			for _, c2 := range comments {
 				if c2.GetInt("old_id") == c.GetInt("old_parent_id") {
-					c.Set("parent", c2.GetId())
-					if err = app.Dao().SaveRecord(c); err != nil {
+					c.Set("parent", c2.Id)
+					if err = app.Save(c); err != nil {
 						panic(err)
 					}
 					updated++

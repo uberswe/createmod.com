@@ -127,7 +127,7 @@
                                                 <div class="datagrid-content">
                                                     <div class="avatar-list avatar-list-stacked">
                                                         {{ range .Schematic.Tags }}
-                                                        <a href="/schematics/tag/{{ .Key }}">
+                                                        <a href="/search/?tag={{ .Key }}">
                                                             <span class="badge badge-outline text-blue">{{ .Name }}</span>
                                                         </a>
                                                         {{ end }}

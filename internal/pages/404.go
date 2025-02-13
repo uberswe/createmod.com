@@ -1,15 +1,20 @@
 package pages
 
 import (
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 )
 
-const fourOhFourTemplate = "404.html"
+const fourOhFourTemplate = "./template/dist/404.html"
 
-func FourOhFourHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
-	return func(c echo.Context) error {
-		return c.Render(http.StatusNotFound, fourOhFourTemplate, nil)
+func FourOhFourHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
+		html, err := registry.LoadFiles(fourOhFourTemplate).Render(nil)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusNotFound, html)
 	}
 }

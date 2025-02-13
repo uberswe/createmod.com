@@ -10,8 +10,8 @@ import (
 	"github.com/elliotchance/phpserialize"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/forms"
-	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"github.com/sunshineplan/imgconv"
 	"gorm.io/gorm"
@@ -36,29 +36,32 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 	if postErr != nil {
 		panic(postErr)
 	}
-	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+	schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 	if err != nil {
 		panic(err)
 	}
-	schematicCategoriesCollection, err := app.Dao().FindCollectionByNameOrId("schematic_categories")
+	schematicCategoriesCollection, err := app.FindCollectionByNameOrId("schematic_categories")
 	if err != nil {
 		panic(err)
 	}
-	schematicTagsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_tags")
+	schematicTagsCollection, err := app.FindCollectionByNameOrId("schematic_tags")
 	if err != nil {
 		panic(err)
 	}
-	minecraftVersionsCollection, err := app.Dao().FindCollectionByNameOrId("minecraft_versions")
+	minecraftVersionsCollection, err := app.FindCollectionByNameOrId("minecraft_versions")
 	if err != nil {
 		panic(err)
 	}
-	createmodVersionsCollection, err := app.Dao().FindCollectionByNameOrId("createmod_versions")
+	createmodVersionsCollection, err := app.FindCollectionByNameOrId("createmod_versions")
 	if err != nil {
 		panic(err)
 	}
 	for _, s := range postRes {
-		record := models.NewRecord(schematicsCollection)
-		record.RefreshId()
+		record := core.NewRecord(schematicsCollection)
+		err := app.Save(record)
+		if err != nil {
+			panic(err)
+		}
 
 		author := fmt.Sprintf("%d", s.PostAuthor)
 
@@ -73,7 +76,7 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			panic(postMetaErr)
 		}
 
-		filter, err := app.Dao().FindRecordsByFilter(
+		filter, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
 			"old_id = {:old_id}",
 			"-created",
@@ -158,7 +161,7 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 		record.Set("updated", s.PostModifiedGmt)
 		record.Set("parent", s.PostParent)
 
-		filesToUpload := form.FilesToUpload()
+		filesToUpload := make(map[string][]*filesystem.File, 0)
 
 		record, err = convertToJpg(app, record, filesToUpload)
 
@@ -169,7 +172,7 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			panic("Fatal error, stop migration")
 		}
 
-		err = app.Dao().Save(record)
+		err = app.Save(record)
 		if err != nil {
 			app.Logger().Error(
 				fmt.Sprintf("Could not save: %v", err),
@@ -177,13 +180,13 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			panic("Fatal error, stop migration")
 		}
 
-		oldSchematicIDs[s.ID] = record.GetId()
+		oldSchematicIDs[s.ID] = record.Id
 	}
 	log.Printf("%d schematics processed.\n", len(oldSchematicIDs))
 	return oldSchematicIDs
 }
 
-func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) (*models.Record, error) {
+func convertToJpg(app *pocketbase.PocketBase, record *core.Record, files map[string][]*filesystem.File) (*core.Record, error) {
 	var galleryFilenames []string
 	fs, err := app.NewFilesystem()
 	if err != nil {
@@ -255,9 +258,9 @@ func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[s
 	return record, nil
 }
 
-func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *models.Record, collection *models.Collection) {
-	cmRecord := models.NewRecord(collection)
-	cmRes, err := app.Dao().FindRecordsByFilter(
+func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *core.Record, collection *core.Collection) {
+	cmRecord := core.NewRecord(collection)
+	cmRes, err := app.FindRecordsByFilter(
 		collection.Id,
 		"version = {:version}",
 		"-created",
@@ -266,7 +269,7 @@ func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostme
 		dbx.Params{"version": m.MetaValue})
 	if err != nil || len(cmRes) == 0 {
 		cmRecord.Set("version", m.MetaValue)
-		if err := app.Dao().SaveRecord(cmRecord); err != nil {
+		if err := app.Save(cmRecord); err != nil {
 			panic(err)
 		}
 	} else {
@@ -276,9 +279,9 @@ func processCreatemodVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostme
 	record.Set("createmod_version", []string{cmRecord.Id})
 }
 
-func processMinecraftVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *models.Record, collection *models.Collection) {
-	mcvRecord := models.NewRecord(collection)
-	mcvRes, err := app.Dao().FindRecordsByFilter(
+func processMinecraftVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, record *core.Record, collection *core.Collection) {
+	mcvRecord := core.NewRecord(collection)
+	mcvRes, err := app.FindRecordsByFilter(
 		collection.Id,
 		"version = {:version}",
 		"-created",
@@ -287,7 +290,7 @@ func processMinecraftVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostme
 		dbx.Params{"version": m.MetaValue})
 	if err != nil || len(mcvRes) == 0 {
 		mcvRecord.Set("version", m.MetaValue)
-		if err := app.Dao().SaveRecord(mcvRecord); err != nil {
+		if err := app.Save(mcvRecord); err != nil {
 			panic(err)
 		}
 	} else {
@@ -297,7 +300,7 @@ func processMinecraftVersion(app *pocketbase.PocketBase, m *model.QeyKryWEpostme
 	record.Set("minecraft_version", []string{mcvRecord.Id})
 }
 
-func processSchematicFile(m *model.QeyKryWEpostmetum, q *query.Query, record *models.Record, form *forms.RecordUpsert) {
+func processSchematicFile(m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, upser *forms.RecordUpsert) {
 	fileID, err := strconv.Atoi(m.MetaValue)
 	if err != nil {
 		panic(err)
@@ -339,14 +342,10 @@ func processSchematicFile(m *model.QeyKryWEpostmetum, q *query.Query, record *mo
 	if err != nil {
 		panic(err)
 	}
-	err = form.AddFiles("schematic_file", fileFromPath)
-	if err != nil {
-		panic(err)
-	}
 	record.Set("schematic_file", fileFromPath.Name)
 }
 
-func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q *query.Query, record *models.Record, schematicTagsCollection *models.Collection) {
+func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, schematicTagsCollection *core.Collection) {
 	var tagRecords []string
 	var tags []interface{}
 	var tagIDs []int
@@ -372,8 +371,8 @@ func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum
 			// skip
 			continue
 		}
-		tagRecord := models.NewRecord(schematicTagsCollection)
-		tagRes, err := app.Dao().FindRecordsByFilter(
+		tagRecord := core.NewRecord(schematicTagsCollection)
+		tagRes, err := app.FindRecordsByFilter(
 			schematicTagsCollection.Id,
 			"key = {:key}",
 			"-created",
@@ -384,7 +383,7 @@ func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum
 			// Create the category
 			tagRecord.Set("key", termRes.Slug)
 			tagRecord.Set("name", termRes.Name)
-			if err := app.Dao().SaveRecord(tagRecord); err != nil {
+			if err := app.Save(tagRecord); err != nil {
 				panic(err)
 			}
 		} else {
@@ -398,7 +397,7 @@ func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum
 	}
 }
 
-func processCategories(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q *query.Query, record *models.Record, schematicCategoriesCollection *models.Collection) {
+func processCategories(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, schematicCategoriesCollection *core.Collection) {
 	postID, err := strconv.Atoi(m.MetaValue)
 	if err != nil {
 		panic(err)
@@ -409,8 +408,8 @@ func processCategories(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q
 	if termErr != nil {
 		panic(termErr)
 	}
-	categoryRecord := models.NewRecord(schematicCategoriesCollection)
-	categoryRes, err := app.Dao().FindRecordsByFilter(
+	categoryRecord := core.NewRecord(schematicCategoriesCollection)
+	categoryRes, err := app.FindRecordsByFilter(
 		schematicCategoriesCollection.Id,
 		"key = {:key}",
 		"-created",
@@ -421,7 +420,7 @@ func processCategories(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q
 		// Create the category
 		categoryRecord.Set("key", termRes.Slug)
 		categoryRecord.Set("name", termRes.Name)
-		if err := app.Dao().SaveRecord(categoryRecord); err != nil {
+		if err := app.Save(categoryRecord); err != nil {
 			panic(err)
 		}
 	} else {
@@ -431,7 +430,7 @@ func processCategories(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q
 	record.Set("categories", []string{categoryRecord.Id})
 }
 
-func processSchematicGallery(m *model.QeyKryWEpostmetum, q *query.Query, record *models.Record, form *forms.RecordUpsert) {
+func processSchematicGallery(m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, form *forms.RecordUpsert) {
 	var galleryFilenames []string
 	var postIDs []interface{}
 	var postInts []int
@@ -488,16 +487,12 @@ func processSchematicGallery(m *model.QeyKryWEpostmetum, q *query.Query, record 
 		if err != nil {
 			panic(err)
 		}
-		err = form.AddFiles("gallery", fileFromPath)
-		if err != nil {
-			panic(err)
-		}
 		galleryFilenames = append(galleryFilenames, fileFromPath.Name)
 	}
 	record.Set("gallery", galleryFilenames)
 }
 
-func processSchematicFeaturedImage(m *model.QeyKryWEpostmetum, q *query.Query, record *models.Record, form *forms.RecordUpsert) {
+func processSchematicFeaturedImage(m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, form *forms.RecordUpsert) {
 	fileID, err := strconv.Atoi(m.MetaValue)
 	if err != nil {
 		panic(err)
@@ -536,10 +531,6 @@ func processSchematicFeaturedImage(m *model.QeyKryWEpostmetum, q *query.Query, r
 		}
 	}
 	fileFromPath, err := filesystem.NewFileFromPath(filename)
-	if err != nil {
-		panic(err)
-	}
-	err = form.AddFiles("featured_image", fileFromPath)
 	if err != nil {
 		panic(err)
 	}

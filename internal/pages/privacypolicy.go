@@ -1,27 +1,28 @@
 package pages
 
 import (
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 )
 
-const privacyPolicyTemplate = "privacy-policy.html"
+const privacyPolicyTemplate = "./template/dist/privacy-policy.html"
 
 type PrivacyPolicyData struct {
 	DefaultData
 }
 
-func PrivacyPolicyHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func PrivacyPolicyHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
 		d := PrivacyPolicyData{}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = "Privacy Policy"
 		d.Categories = allCategories(app)
-		err := c.Render(http.StatusOK, privacyPolicyTemplate, d)
+		html, err := registry.LoadFiles(privacyPolicyTemplate).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }
