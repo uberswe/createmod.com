@@ -2,9 +2,9 @@ package pages
 
 import (
 	"createmod/internal/models"
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
-	pbmodels "github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 )
 
@@ -17,40 +17,40 @@ type UploadData struct {
 	Tags              []models.SchematicTag
 }
 
-func UploadHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
 		d := UploadData{}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = "Upload A Schematic"
 		d.Categories = allCategories(app)
 		d.Tags = allTags(app)
 		d.MinecraftVersions = allMinecraftVersions(app)
 		d.CreatemodVersions = allCreatemodVersions(app)
-		err := c.Render(http.StatusOK, uploadTemplate, d)
+		html, err := registry.LoadFiles(uploadTemplate).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }
 
 func allCreatemodVersions(app *pocketbase.PocketBase) []models.CreatemodVersion {
-	createmodVersionCollection, err := app.Dao().FindCollectionByNameOrId("createmod_versions")
+	createmodVersionCollection, err := app.FindCollectionByNameOrId("createmod_versions")
 	if err != nil {
 		return nil
 	}
-	records, err := app.Dao().FindRecordsByFilter(createmodVersionCollection.Id, "1=1", "-version", -1, 0)
+	records, err := app.FindRecordsByFilter(createmodVersionCollection.Id, "1=1", "-version", -1, 0)
 	if err != nil {
 		return nil
 	}
 	return mapResultToCreatemodVersions(records)
 }
 
-func mapResultToCreatemodVersions(records []*pbmodels.Record) []models.CreatemodVersion {
+func mapResultToCreatemodVersions(records []*core.Record) []models.CreatemodVersion {
 	versions := make([]models.CreatemodVersion, 0, len(records))
 	for _, r := range records {
 		versions = append(versions, models.CreatemodVersion{
-			ID:      r.GetId(),
+			ID:      r.Id,
 			Version: r.GetString("version"),
 		})
 	}
@@ -58,22 +58,22 @@ func mapResultToCreatemodVersions(records []*pbmodels.Record) []models.Createmod
 }
 
 func allMinecraftVersions(app *pocketbase.PocketBase) []models.MinecraftVersion {
-	minecraftVersionCollection, err := app.Dao().FindCollectionByNameOrId("minecraft_versions")
+	minecraftVersionCollection, err := app.FindCollectionByNameOrId("minecraft_versions")
 	if err != nil {
 		return nil
 	}
-	records, err := app.Dao().FindRecordsByFilter(minecraftVersionCollection.Id, "1=1", "-version", -1, 0)
+	records, err := app.FindRecordsByFilter(minecraftVersionCollection.Id, "1=1", "-version", -1, 0)
 	if err != nil {
 		return nil
 	}
 	return mapResultToMinecraftVersions(records)
 }
 
-func mapResultToMinecraftVersions(records []*pbmodels.Record) []models.MinecraftVersion {
+func mapResultToMinecraftVersions(records []*core.Record) []models.MinecraftVersion {
 	versions := make([]models.MinecraftVersion, 0, len(records))
 	for _, r := range records {
 		versions = append(versions, models.MinecraftVersion{
-			ID:      r.GetId(),
+			ID:      r.Id,
 			Version: r.GetString("version"),
 		})
 	}

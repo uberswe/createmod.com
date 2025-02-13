@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"gorm.io/gen"
 	"gorm.io/gorm"
 	"log"
@@ -21,7 +21,7 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 	// period
 	// count
 	q := query.Use(gormdb)
-	schematicViewsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_views")
+	schematicViewsCollection, err := app.FindCollectionByNameOrId("schematic_views")
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 			log.Printf("View type %d - %s batch %d\n", i, typeDesc, batch)
 			for i := range postViewRes {
 				if newSchematicID, ok := oldSchematicIDs[postViewRes[i].ID]; ok {
-					filter, err := app.Dao().FindRecordsByFilter(
+					filter, err := app.FindRecordsByFilter(
 						schematicViewsCollection.Id,
 						"old_schematic_id = {:old_schematic_id} && type = {:type} && period = {:period}",
 						"-created",
@@ -66,14 +66,14 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 						continue
 					}
 
-					record := models.NewRecord(schematicViewsCollection)
+					record := core.NewRecord(schematicViewsCollection)
 					record.Set("old_schematic_id", postViewRes[i].ID)
 					record.Set("schematic", newSchematicID)
 					record.Set("count", postViewRes[i].Count_)
 					record.Set("type", postViewRes[i].Type)
 					record.Set("period", postViewRes[i].Period)
 
-					if err = app.Dao().SaveRecord(record); err != nil {
+					if err = app.Save(record); err != nil {
 						return err
 					}
 					updated++

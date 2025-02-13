@@ -1,8 +1,9 @@
 package pages
 
 import (
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 )
 
@@ -12,16 +13,17 @@ type TermsOfServiceData struct {
 	DefaultData
 }
 
-func TermsOfServiceHandler(app *pocketbase.PocketBase) func(c echo.Context) error {
-	return func(c echo.Context) error {
+func TermsOfServiceHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
 		d := TermsOfServiceData{}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = "Terms Of Service"
 		d.Categories = allCategories(app)
-		err := c.Render(http.StatusOK, termsOfServiceTemplate, d)
+
+		html, err := registry.LoadFiles(termsOfServiceTemplate).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }

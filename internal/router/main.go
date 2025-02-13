@@ -7,138 +7,105 @@ import (
 	"createmod/internal/search"
 	"fmt"
 	"github.com/gosimple/slug"
-	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/tokens"
-	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/spf13/cast"
-	"html/template"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/router"
+	"github.com/pocketbase/pocketbase/tools/template"
+	html "html/template"
 	"net/http"
 	"os"
 	"strings"
 )
 
-func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Service, cacheService *cache.Service) {
-	// HTML Template Renderer
-	templateBuilder := template.New("")
+func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service) {
+	registry := template.NewRegistry()
 
-	funcMap := template.FuncMap{
+	funcMap := html.FuncMap{
 		"ToLower": strings.ToLower,
 	}
 
-	glob, err := templateBuilder.Funcs(funcMap).ParseGlob("template/dist/*/*.html")
-	if err != nil {
-		return
-	}
-	t := &Template{
-		templates: template.Must(glob.ParseGlob("template/dist/*.html")),
-	}
+	registry.AddFuncs(funcMap)
 
-	e.Renderer = t
-	e.Use(legacyFileCompat)
-	e.Use(legacySearchCompat)
-	e.Use(legacyTagCompat)
-	e.Use(cookieAuth(app))
+	e.BindFunc(legacyFileCompat())
+	e.BindFunc(legacySearchCompat())
+	e.BindFunc(legacyTagCompat())
+	e.BindFunc(cookieAuth(app))
 	// Frontend routes
-	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./template/sitemaps"), false))
-	e.Static("/libs/", "./template/dist/libs")
-	e.GET("/assets/*", apis.StaticDirectoryHandler(os.DirFS("./template/dist/assets"), false))
+	e.GET("/sitemaps/*", apis.Static(os.DirFS("./template/sitemaps"), false))
+	e.GET("/libs/", apis.Static(os.DirFS("./template/dist/libs"), false))
+	e.GET("/assets/*", apis.Static(os.DirFS("./template/dist/assets"), false))
 	// Index
-	e.GET("/", pages.IndexHandler(app, cacheService))
+	e.GET("/", pages.IndexHandler(app, cacheService, registry))
 	// Removed the about page, not relevant anymore
-	e.GET("/upload", pages.UploadHandler(app))
-	e.GET("/contact", pages.ContactHandler(app))
-	e.GET("/guide", pages.GuideHandler(app))
-	e.GET("/rules", pages.RulesHandler(app))
-	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app))
-	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app))
+	e.GET("/upload", pages.UploadHandler(app, registry))
+	e.GET("/contact", pages.ContactHandler(app, registry))
+	e.GET("/guide", pages.GuideHandler(app, registry))
+	e.GET("/rules", pages.RulesHandler(app, registry))
+	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry))
+	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry))
 	// Auth
-	e.GET("/login", pages.LoginHandler(app))
-	e.GET("/register", pages.RegisterHandler(app))
-	e.GET("/reset-password", pages.PasswordResetHandler(app))
+	e.GET("/login", pages.LoginHandler(app, registry))
+	e.GET("/register", pages.RegisterHandler(app, registry))
+	e.GET("/reset-password", pages.PasswordResetHandler(app, registry))
 	// News
-	e.GET("/news", pages.NewsHandler(app))
-	e.GET("/news/:slug", pages.NewsPostHandler(app))
+	e.GET("/news", pages.NewsHandler(app, registry))
+	e.GET("/news/:slug", pages.NewsPostHandler(app, registry))
 	// Schematics
-	e.GET("/schematics", pages.SchematicsHandler(app, cacheService))
-	e.GET("/schematics/:name", pages.SchematicHandler(app, searchService, cacheService))
-	e.GET("/search/:term", pages.SearchHandler(app, searchService, cacheService))
-	e.POST("/search/:term", pages.SearchHandler(app, searchService, cacheService))
-	e.GET("/search", pages.SearchHandler(app, searchService, cacheService))
-	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService))
-	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService))
-	e.POST("/search", pages.SearchPostHandler(app, cacheService))
+	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
+	e.GET("/schematics/:name", pages.SchematicHandler(app, searchService, cacheService, registry))
+	e.GET("/search/:term", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.POST("/search/:term", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.POST("/search", pages.SearchPostHandler(app, cacheService, registry))
 	// User
-	e.GET("/author/:username", pages.ProfileHandler(app, cacheService))
-	e.GET("/profile", pages.ProfileHandler(app, cacheService))
+	e.GET("/author/:username", pages.ProfileHandler(app, cacheService, registry))
+	e.GET("/profile", pages.ProfileHandler(app, cacheService, registry))
 	// Fallback
-	e.GET("/*", pages.FourOhFourHandler(app))
+	e.GET("/*", pages.FourOhFourHandler(app, registry))
 
 }
 
 // cookieAuth was added so that requests can be authenticated on the backend when HTML templates are rendered
-func cookieAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if c.Get(apis.ContextAuthRecordKey) != nil {
-				return next(c)
-			}
-
-			cookie, err := c.Cookie(auth.CookieName)
-			if err != nil {
-				return next(c)
-			}
-
-			token := strings.TrimSpace(cookie.Value)
-
-			claims, _ := security.ParseUnverifiedJWT(token)
-			tokenType := cast.ToString(claims["type"])
-
-			switch tokenType {
-			case tokens.TypeAdmin:
-				return next(c)
-
-				// Disable admin auth via cookie for now
-
-				//admin, err := app.Dao().FindAdminByToken(
-				//	token,
-				//	app.Settings().AdminAuthToken.Secret,
-				//)
-				//if err == nil && admin != nil {
-				//	c.Set(apis.ContextAdminKey, admin)
-				//}
-			case tokens.TypeAuthRecord:
-				record, err := app.Dao().FindAuthRecordByToken(
-					token,
-					app.Settings().RecordAuthToken.Secret,
-				)
-				if err == nil && record != nil {
-					c.Set(apis.ContextAuthRecordKey, record)
-				}
-			}
-
-			return next(c)
+func cookieAuth(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
+		if e.Auth != nil {
+			return e.Next()
 		}
+
+		cookie, err := e.Request.Cookie(auth.CookieName)
+		if err != nil {
+			return e.Next()
+		}
+
+		token := strings.TrimSpace(cookie.Value)
+
+		record, err := app.FindAuthRecordByToken(token, core.TokenTypeAuth)
+		if err == nil && record != nil {
+			e.Auth = record
+		}
+		return e.Next()
 	}
 }
 
-func legacyFileCompat(next echo.HandlerFunc) echo.HandlerFunc {
+func legacyFileCompat() func(e *core.RequestEvent) error {
 	fileMatches := map[string]string{
 		"/wp-sitemap.xml": "/sitemaps/sitemap.xml",
 	}
-	return func(c echo.Context) error {
-		path := c.Request().URL.Path
+	return func(e *core.RequestEvent) error {
+		path := e.Request.URL.Path
 		for match, newRoute := range fileMatches {
 			if path == match || strings.HasPrefix(path, match) {
-				return c.Redirect(http.StatusMovedPermanently, newRoute)
+				return e.Redirect(http.StatusMovedPermanently, newRoute)
 			}
 		}
-		return next(c) // proceed with the request chain
+		return e.Next() // proceed with the request chain
 	}
 }
 
-func legacyTagCompat(next echo.HandlerFunc) echo.HandlerFunc {
+func legacyTagCompat() func(e *core.RequestEvent) error {
 	// to /search/?tag=apple
 	urlMatches := []string{
 		"/schematics/tag/",
@@ -146,33 +113,33 @@ func legacyTagCompat(next echo.HandlerFunc) echo.HandlerFunc {
 	queryMatches := []string{
 		"schematic_tags",
 	}
-	return func(c echo.Context) error {
-		path := c.Request().URL.Path
+	return func(e *core.RequestEvent) error {
+		path := e.Request.URL.Path
 		for _, match := range urlMatches {
 			if strings.HasPrefix(path, match) {
-				return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")))
+				return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")))
 			}
 		}
-		query := c.Request().URL.Query()
+		query := e.Request.URL.Query()
 		for _, match := range queryMatches {
 			if query.Has(match) && query.Get(match) != "" {
-				return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", query.Get(match)))
+				return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", query.Get(match)))
 			}
 		}
-		return next(c) // proceed with the request chain
+		return e.Next() // proceed with the request chain
 	}
 }
 
-func legacySearchCompat(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		path := c.Request().URL.Path
-		query := c.Request().URL.Query()
-		fmt.Sprintln("should redirect", c.Request().URL.Path, c.Request().URL.Query())
+func legacySearchCompat() func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
+		path := e.Request.URL.Path
+		query := e.Request.URL.Query()
+		fmt.Sprintln("should redirect", e.Request.URL.Path, e.Request.URL.Query())
 		if (path == "" || path == "/") && query.Has("s") && query.Get("s") != "" {
 			searchSlug := slug.Make(query.Get("s"))
-			return c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/%s", searchSlug))
+			return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/%s", searchSlug))
 		}
 
-		return next(c) // proceed with the request chain
+		return e.Next() // proceed with the request chain
 	}
 }

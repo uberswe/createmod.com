@@ -10,17 +10,14 @@ import (
 	"createmod/internal/router"
 	"createmod/internal/search"
 	"createmod/internal/sitemap"
-	_ "createmod/migrations"
+	//_ "createmod/migrations"
 	"errors"
 	"fmt"
 	"github.com/apokalyptik/phpass"
 	"github.com/gosimple/slug"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/models/schema"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 	"github.com/pocketbase/pocketbase/tools/mailer"
@@ -76,12 +73,12 @@ func (s *Server) Start() {
 		Automigrate: s.conf.AutoMigrate,
 	})
 
-	s.app.OnBeforeBootstrap().Add(func(e *core.BootstrapEvent) error {
+	s.app.OnBootstrap().BindFunc(func(e *core.BootstrapEvent) error {
 		log.Println("Bootstrapping...")
-		return nil
+		return e.Next()
 	})
 
-	s.app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+	s.app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
 
 		s.searchService = search.New(nil, s.app)
@@ -102,7 +99,7 @@ func (s *Server) Start() {
 
 			// SEARCH
 			log.Println("Starting Search Server")
-			schematics, err := s.app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+			schematics, err := s.app.FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 			if err != nil {
 				s.app.Logger().Error(err.Error())
 			}
@@ -112,88 +109,93 @@ func (s *Server) Start() {
 
 			// END SEARCH
 
-			s.app.OnModelAfterCreate("schematics").Add(func(e *core.ModelEvent) error {
+			s.app.OnModelCreate("schematics").BindFunc(func(e *core.ModelEvent) error {
 				// Rebuild the search index every time a schematic is created
+				err := e.Next()
+				if err != nil {
+					return err
+				}
 				go func() {
-					schematics, err := s.app.Dao().FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+					schematics, err := s.app.FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
 					if err != nil {
 						s.app.Logger().Warn(err.Error())
 					}
 					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
 					s.sitemapService.Generate(s.app)
 				}()
-				return nil
+				return e.Next()
 			})
 
-			s.app.OnModelAfterCreate("users").Add(func(e *core.ModelEvent) error {
+			s.app.OnModelCreate("users").BindFunc(func(e *core.ModelEvent) error {
 				// Rebuild the sitemap every time a user is created
+				err := e.Next()
+				if err != nil {
+					return err
+				}
 				go s.sitemapService.Generate(s.app)
-				return nil
+				return e.Next()
 			})
 
 			s.sitemapService.Generate(s.app)
 
 		}()
 
-		s.app.OnRecordBeforeCreateRequest("schematics").Add(func(e *core.RecordCreateEvent) error {
-			info := apis.RequestInfo(e.HttpContext)
-			if info.AuthRecord == nil {
+		s.app.OnRecordCreateRequest("schematics").BindFunc(func(e *core.RecordRequestEvent) error {
+			if e.Auth == nil {
 				return fmt.Errorf("user is not authenticated")
 			}
-			s.app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
-			e.Record.Set("author", info.AuthRecord.GetId())
+			s.app.Logger().Debug("setting author", "id", e.Auth.Id, "username", e.Auth.GetString("username"))
+			e.Record.Set("author", e.Auth.Id)
 
-			if err := validateAndPopulateSchematic(s.app, e.Record, e.UploadedFiles); err != nil {
+			if err := validateAndPopulateSchematic(s.app, e.Record, e); err != nil {
 				return err
 			}
-			return nil
+			return e.Next()
 		})
 
-		s.app.OnRecordBeforeCreateRequest("comments").Add(func(e *core.RecordCreateEvent) error {
-			info := apis.RequestInfo(e.HttpContext)
-			if info.AuthRecord == nil {
+		s.app.OnRecordCreateRequest("comments").BindFunc(func(e *core.RecordRequestEvent) error {
+			if e.Auth == nil {
 				return fmt.Errorf("user is not authenticated")
 			}
-			s.app.Logger().Debug("setting author", "id", info.AuthRecord.GetId(), "username", info.AuthRecord.GetString("username"))
-			e.Record.Set("author", info.AuthRecord.GetId())
+			s.app.Logger().Debug("setting author", "id", e.Auth.Id, "username", e.Auth.GetString("username"))
+			e.Record.Set("author", e.Auth.Id)
 
-			if err := validateAndSaveComment(s.app, e.Record, info.AuthRecord); err != nil {
+			if err := validateAndSaveComment(s.app, e.Record, e.Auth); err != nil {
 				return err
 			}
-			return nil
+			return e.Next()
 		})
 
-		s.app.OnRecordBeforeCreateRequest("schematic_ratings").Add(func(e *core.RecordCreateEvent) error {
-			info := apis.RequestInfo(e.HttpContext)
-			if info.AuthRecord == nil {
+		s.app.OnRecordCreateRequest("schematic_ratings").BindFunc(func(e *core.RecordRequestEvent) error {
+			if e.Auth == nil {
 				return fmt.Errorf("user is not authenticated")
 			}
-			schematicRatingsCollection, err := s.app.Dao().FindCollectionByNameOrId("schematic_ratings")
+			schematicRatingsCollection, err := s.app.FindCollectionByNameOrId("schematic_ratings")
 			if err != nil {
 				return err
 			}
-			results, _ := s.app.Dao().FindRecordsByFilter(
+			results, _ := s.app.FindRecordsByFilter(
 				schematicRatingsCollection.Id,
 				"schematic = {:schematic} && user = {:user}",
 				"-created",
 				10,
 				0,
-				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": info.AuthRecord.GetId()})
+				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": e.Auth.Id})
 			if len(results) > 0 {
 				for _, r := range results {
 					// When a rating is changed we simply delete the old record
-					err := s.app.Dao().Delete(r)
+					err := s.app.Delete(r)
 					if err != nil {
 						return err
 					}
 				}
 			}
-			e.Record.Set("user", info.AuthRecord.GetId())
+			e.Record.Set("user", e.Auth.Id)
 			e.Record.Set("rated_at", time.Now())
-			return nil
+			return e.Next()
 		})
 
-		s.app.OnRecordAfterCreateRequest("contact_form_submissions").Add(func(e *core.RecordCreateEvent) error {
+		s.app.OnRecordAfterCreateSuccess("contact_form_submissions").BindFunc(func(e *core.RecordEvent) error {
 			message := &mailer.Message{
 				From: mail.Address{
 					Address: s.app.Settings().Meta.SenderAddress,
@@ -208,38 +210,38 @@ func (s *Server) Start() {
 		})
 
 		// COOKIES
-		s.app.OnRecordAuthRequest().Add(func(e *core.RecordAuthEvent) error {
-			s.app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", s.app.Settings().RecordAuthToken.Duration)
-			e.HttpContext.SetCookie(&http.Cookie{
+		s.app.OnRecordAuthRequest().BindFunc(func(e *core.RecordAuthRequestEvent) error {
+			s.app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", e.Record.Collection().AuthToken.Duration)
+			e.SetCookie(&http.Cookie{
 				Name:     auth.CookieName,
 				Value:    e.Token,
-				Expires:  time.Now().Add(time.Second * time.Duration(s.app.Settings().RecordAuthToken.Duration)),
+				Expires:  time.Now().Add(time.Second * time.Duration(e.Record.Collection().AuthToken.Duration)),
 				Path:     "/",
 				SameSite: http.SameSiteStrictMode,
 			})
-			return nil
+			return e.Next()
 		})
 		// END COOKIES
 
 		// PASSWORD BACKWARDS COMPATIBILITY
-		s.app.OnRecordBeforeAuthWithPasswordRequest("users").Add(func(e *core.RecordAuthWithPasswordEvent) error {
+		s.app.OnRecordAuthWithPasswordRequest("users").BindFunc(func(e *core.RecordAuthWithPasswordRequestEvent) error {
 			if e.Record != nil && e.Record.GetString("old_password") != "" {
 				p := phpass.New(nil)
 				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
 					hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
 					if err != nil {
 						s.app.Logger().Warn("old password failled to hash", "error", err.Error())
-						return nil
+						return e.Next()
 					}
-					e.Record.Set(schema.FieldNamePasswordHash, string(hashedPassword))
+					e.Record.SetPassword(string(hashedPassword))
 					e.Record.Set("old_password", "")
-					if err = s.app.Dao().SaveRecord(e.Record); err != nil {
+					if err = s.app.Save(e.Record); err != nil {
 						s.app.Logger().Warn("old password invalid", "error", err.Error())
-						return nil
+						return e.Next()
 					}
 				}
 			}
-			return nil
+			return e.Next()
 		})
 		// END PASSWORD BACKWARDS COMPATIBILITY
 
@@ -250,7 +252,7 @@ func (s *Server) Start() {
 		// END ROUTES
 
 		log.Println("CreateMod.com Running!")
-		return nil
+		return e.Next()
 	})
 
 	log.Println("Initializing...")
@@ -259,16 +261,16 @@ func (s *Server) Start() {
 	}
 }
 
-func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, authRecord *models.Record) error {
+func validateAndSaveComment(app *pocketbase.PocketBase, record *core.Record, authrecord *core.Record) error {
 	replyToUser := ""
 	if record.GetString("parent") != "" {
 		// Validate parent is a comment for the same schematic
-		commentsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+		commentsCollection, err := app.FindCollectionByNameOrId("comments")
 		if err != nil {
 			return nil
 		}
 		// Limit comments to 1000 for now, will add pagination later
-		results, err := app.Dao().FindRecordsByFilter(
+		results, err := app.FindRecordsByFilter(
 			commentsCollection.Id,
 			"schematic = {:id} && approved = 1",
 			"-created",
@@ -287,11 +289,11 @@ func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, a
 	}
 
 	// Validate that schematic exists
-	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+	schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 	if err != nil {
 		return err
 	}
-	results, err := app.Dao().FindRecordsByFilter(
+	results, err := app.FindRecordsByFilter(
 		schematicsCollection.Id,
 		"id = {:id}",
 		"-created",
@@ -323,7 +325,7 @@ func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, a
 
 	if replyToUser == "" {
 
-		u, err := app.Dao().FindRecordById("users", results[0].GetString("author"))
+		u, err := app.FindRecordById("users", results[0].GetString("author"))
 		if err != nil {
 			return err
 		}
@@ -338,7 +340,7 @@ func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, a
 			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a></p>", results[0].GetString("name"), results[0].GetString("name")),
 		}
 	} else {
-		u, err := app.Dao().FindRecordById("users", replyToUser)
+		u, err := app.FindRecordById("users", replyToUser)
 		if err != nil {
 			return err
 		}
@@ -357,7 +359,7 @@ func validateAndSaveComment(app *pocketbase.PocketBase, record *models.Record, a
 	return app.NewMailClient().Send(message)
 }
 
-func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) error {
+func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *core.Record, e *core.RecordRequestEvent) error {
 	// Title and slug
 	schematicSlug := slug.Make(record.GetString("title"))
 	if schematicSlug == "" || !strings.ContainsFunc(schematicSlug, anyLetter) {
@@ -391,23 +393,31 @@ func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *models.Rec
 		record.Set("video", vidUrl)
 	}
 
+	files := make(map[string][]*filesystem.File, 0)
+
 	// Check valid schematic file
 	// TODO this can be improved by parsing the file
-	if sf, ok := files["schematic_file"]; ok {
+	if sf, err := e.FindUploadedFiles("schematic_file"); err == nil {
 		if len(sf) == 0 || sf[0].Size <= 1 {
 			return fmt.Errorf("schematic file invalid")
 		}
+		files["schematic_file"] = sf
 	} else {
 		return fmt.Errorf("schematic file missing or invalid")
 	}
 
 	// Check valid featured image
-	if fi, ok := files["featured_image"]; ok {
+	if fi, err := e.FindUploadedFiles("featured_image"); err == nil {
 		if len(fi) == 0 || fi[0].Size <= 1 {
 			return fmt.Errorf("featured image invalid")
 		}
+		files["featured_image"] = fi
 	} else {
 		return fmt.Errorf("featured image missing or invalid")
+	}
+
+	if g, err := e.FindUploadedFiles("gallery"); err == nil {
+		files["gallery"] = g
 	}
 
 	// convert to jpg in background
@@ -417,7 +427,7 @@ func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *models.Rec
 	return nil
 }
 
-func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[string][]*filesystem.File) {
+func convertToJpg(app *pocketbase.PocketBase, record *core.Record, files map[string][]*filesystem.File) {
 	var galleryFilenames []string
 	fs, err := app.NewFilesystem()
 	if err != nil {
@@ -485,7 +495,7 @@ func convertToJpg(app *pocketbase.PocketBase, record *models.Record, files map[s
 		}
 	}
 	record.Set("gallery", galleryFilenames)
-	err = app.Dao().Save(record)
+	err = app.Save(record)
 	if err != nil {
 		return
 	}
@@ -504,7 +514,7 @@ func ToYoutubeEmbedUrl(url string) string {
 }
 
 func uniqueSlug(app *pocketbase.PocketBase, s string) string {
-	records, err := app.Dao().FindRecordsByFilter("schematics", "name={:slug}", "-created", 1, 0, dbx.Params{"slug": s})
+	records, err := app.FindRecordsByFilter("schematics", "name={:slug}", "-created", 1, 0, dbx.Params{"slug": s})
 	if err != nil {
 		return ""
 	}

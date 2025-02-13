@@ -30,6 +30,7 @@ jobs:
         run: rm -rf .github
       - run: rm -rf cmd
       - run: rm -rf internal
+        run: rm -rf migrations
       - run: rm -rf model
       - run: rm -rf query
       - run: rm -rf server

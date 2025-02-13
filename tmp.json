@@ -1,0 +1,4 @@
+[
+  "CREATE INDEX `idx_cbSjJJe` ON `schematic_ratings` (`schematic`)",
+  "CREATE INDEX `idx_686Bo0u` ON `schematic_ratings` (`created`)"
+]

@@ -5,11 +5,11 @@ import (
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"fmt"
-	"github.com/labstack/echo/v5"
 	"github.com/mergestat/timediff"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	pbmodels "github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
+	template2 "github.com/pocketbase/pocketbase/tools/template"
 	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
@@ -30,28 +30,32 @@ type SchematicData struct {
 	Similar       []models.Schematic
 }
 
-func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service) func(c echo.Context) error {
-	return func(c echo.Context) error {
-		schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry) func(e *core.RequestEvent) error {
+	return func(e *core.RequestEvent) error {
+		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
 			return err
 		}
-		results, err := app.Dao().FindRecordsByFilter(
+		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
 			"name = {:name}",
 			"-created",
 			1,
 			0,
-			dbx.Params{"name": c.PathParam("name")})
+			dbx.Params{"name": e.Request.PathValue("name")})
 
 		if len(results) != 1 {
-			return c.Render(http.StatusNotFound, fourOhFourTemplate, nil)
+			html, err := registry.LoadFiles(fourOhFourTemplate).Render(nil)
+			if err != nil {
+				return err
+			}
+			return e.HTML(http.StatusNotFound, html)
 		}
 
 		d := SchematicData{
 			Schematic: mapResultToSchematic(app, results[0], cacheService),
 		}
-		d.Populate(c)
+		d.Populate(e)
 		d.Title = d.Schematic.Title
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app)
@@ -61,20 +65,20 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 
 		go countSchematicView(app, results[0])
-		err = c.Render(http.StatusOK, schematicTemplate, d)
+		html, err := registry.LoadFiles(schematicTemplate).Render(d)
 		if err != nil {
 			return err
 		}
-		return nil
+		return e.HTML(http.StatusOK, html)
 	}
 }
 
 func findAuthorSchematics(app *pocketbase.PocketBase, cacheService *cache.Service, id string, authorID string, limit int, sortBy string) []models.Schematic {
-	schematicsCollection, err := app.Dao().FindCollectionByNameOrId("schematics")
+	schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 	if err != nil {
 		return nil
 	}
-	results, err := app.Dao().FindRecordsByFilter(
+	results, err := app.FindRecordsByFilter(
 		schematicsCollection.Id,
 		"id != {:id} && author = {:authorID}",
 		sortBy,
@@ -119,8 +123,8 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		count++
 	}
 
-	var res []*pbmodels.Record
-	err := app.Dao().RecordQuery("schematics").
+	var res []*core.Record
+	err := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
 		Where(dbx.In("id", interfaceIds...)).
@@ -141,12 +145,12 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 }
 
 func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comment {
-	commentsCollection, err := app.Dao().FindCollectionByNameOrId("comments")
+	commentsCollection, err := app.FindCollectionByNameOrId("comments")
 	if err != nil {
 		return nil
 	}
 	// Limit comments to 1000 for now, will add pagination later
-	results, err := app.Dao().FindRecordsByFilter(
+	results, err := app.FindRecordsByFilter(
 		commentsCollection.Id,
 		"schematic = {:id} && approved = 1",
 		"-created",
@@ -158,8 +162,8 @@ func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comme
 
 	for _, result := range results {
 		comments = append(comments, models.DatabaseComment{
-			ID:        result.GetId(),
-			Created:   result.GetTime("created"),
+			ID:        result.Id,
+			Created:   result.GetDateTime("created").Time(),
 			Published: result.GetString("published"),
 			Author:    result.GetString("author"),
 			Schematic: result.GetString("schematic"),
@@ -232,7 +236,7 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 
 	comment.Content = template.HTML(sanitizedHTML)
 
-	userRecord, err := app.Dao().FindRecordById("users", c.Author)
+	userRecord, err := app.FindRecordById("users", c.Author)
 	if err != nil {
 		return comment
 	}
@@ -256,8 +260,8 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	return comment
 }
 
-func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) {
-	schematicViewsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_views")
+func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record) {
+	schematicViewsCollection, err := app.FindCollectionByNameOrId("schematic_views")
 	if err != nil {
 		app.Logger().Error(err.Error())
 		return
@@ -278,14 +282,14 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) 
 	}
 
 	for t, p := range types {
-		viewsRes, err := app.Dao().FindRecordsByFilter(
+		viewsRes, err := app.FindRecordsByFilter(
 			schematicViewsCollection.Id,
 			"schematic = {:schematic} && type = {:type} && period = {:period}",
 			"-created",
 			1,
 			0,
 			dbx.Params{
-				"schematic": schematic.GetId(),
+				"schematic": schematic.Id,
 				"type":      t,
 				"period":    p,
 			})
@@ -294,13 +298,13 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) 
 			if err != nil {
 				app.Logger().Error(err.Error())
 			}
-			record := pbmodels.NewRecord(schematicViewsCollection)
-			record.Set("schematic", schematic.GetId())
+			record := core.NewRecord(schematicViewsCollection)
+			record.Set("schematic", schematic.Id)
 			record.Set("count", 1)
 			record.Set("type", t)
 			record.Set("period", p)
 
-			if err = app.Dao().SaveRecord(record); err != nil {
+			if err = app.Save(record); err != nil {
 				app.Logger().Error(err.Error())
 				return
 			}
@@ -309,18 +313,18 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *pbmodels.Record) 
 
 		viewRecord := viewsRes[0]
 		viewRecord.Set("count", viewRecord.GetInt("count")+1)
-		if err = app.Dao().SaveRecord(viewRecord); err != nil {
+		if err = app.Save(viewRecord); err != nil {
 			app.Logger().Error(err.Error())
 		}
 	}
 }
 
-func MapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Record, cacheService *cache.Service) (schematics []models.Schematic) {
+func MapResultsToSchematic(app *pocketbase.PocketBase, results []*core.Record, cacheService *cache.Service) (schematics []models.Schematic) {
 	for i := range results {
-		if results[i] == nil || results[i].GetId() == "" {
+		if results[i] == nil || results[i].Id == "" {
 			continue
 		}
-		sk := cache.SchematicKey(results[i].GetId())
+		sk := cache.SchematicKey(results[i].Id)
 		schematic, found := cacheService.GetSchematic(sk)
 		if !found {
 			schematic = mapResultToSchematic(app, results[i], cacheService)
@@ -335,12 +339,12 @@ func MapResultsToSchematic(app *pocketbase.PocketBase, results []*pbmodels.Recor
 	return schematics
 }
 
-func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record, cacheService *cache.Service) (schematic models.Schematic) {
-	schematicId := result.GetId()
+func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cacheService *cache.Service) (schematic models.Schematic) {
+	schematicId := result.Id
 	vk := cache.ViewKey(schematicId)
 	views, found := cacheService.GetInt(vk)
 	if !found {
-		records, err := app.Dao().FindRecordsByFilter(
+		records, err := app.FindRecordsByFilter(
 			"schematic_views",
 			"period = 'total' && schematic = {:schematic}",
 			"-updated",
@@ -363,7 +367,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record, c
 	if !found || !found2 {
 		totalRating := float64(0)
 
-		ratings, err := app.Dao().FindRecordsByFilter(
+		ratings, err := app.FindRecordsByFilter(
 			"schematic_ratings",
 			"schematic = {:schematic}",
 			"-updated",
@@ -394,8 +398,8 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record, c
 
 	s := models.Schematic{
 		ID:               schematicId,
-		Created:          result.Created.Time(),
-		CreatedFormatted: result.Created.Time().Format("2006-01-02"),
+		Created:          result.GetDateTime("created").Time(),
+		CreatedFormatted: result.GetDateTime("created").Time().Format("2006-01-02"),
 		Author:           findUserFromID(app, result.GetString("author")),
 		CommentCount:     result.GetInt("comment_count"),
 		CommentStatus:    result.GetBool("comment_status"),
@@ -426,7 +430,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *pbmodels.Record, c
 }
 
 func findMinecraftVersionFromID(app *pocketbase.PocketBase, id string) string {
-	record, err := app.Dao().FindRecordById("minecraft_versions", id)
+	record, err := app.FindRecordById("minecraft_versions", id)
 	if err != nil {
 		return ""
 	}
@@ -434,7 +438,7 @@ func findMinecraftVersionFromID(app *pocketbase.PocketBase, id string) string {
 }
 
 func findCreateModVersionFromID(app *pocketbase.PocketBase, id string) string {
-	record, err := app.Dao().FindRecordById("createmod_versions", id)
+	record, err := app.FindRecordById("createmod_versions", id)
 	if err != nil {
 		return ""
 	}
@@ -442,21 +446,21 @@ func findCreateModVersionFromID(app *pocketbase.PocketBase, id string) string {
 }
 
 func findTagsFromIDs(app *pocketbase.PocketBase, s []string) []models.SchematicTag {
-	tagsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_tags")
+	tagsCollection, err := app.FindCollectionByNameOrId("schematic_tags")
 	if err != nil {
 		return nil
 	}
-	records, err := app.Dao().FindRecordsByIds(tagsCollection.Id, s)
+	records, err := app.FindRecordsByIds(tagsCollection.Id, s)
 	if err != nil {
 		return nil
 	}
 	return mapResultToTags(records)
 }
 
-func mapResultToTags(records []*pbmodels.Record) (tags []models.SchematicTag) {
+func mapResultToTags(records []*core.Record) (tags []models.SchematicTag) {
 	for i := range records {
 		tags = append(tags, models.SchematicTag{
-			ID:   records[i].GetId(),
+			ID:   records[i].Id,
 			Key:  records[i].GetString("key"),
 			Name: records[i].GetString("name"),
 		})
@@ -465,21 +469,21 @@ func mapResultToTags(records []*pbmodels.Record) (tags []models.SchematicTag) {
 }
 
 func findCategoriesFromIDs(app *pocketbase.PocketBase, s []string) []models.SchematicCategory {
-	categoriesCollection, err := app.Dao().FindCollectionByNameOrId("schematic_categories")
+	categoriesCollection, err := app.FindCollectionByNameOrId("schematic_categories")
 	if err != nil {
 		return nil
 	}
-	records, err := app.Dao().FindRecordsByIds(categoriesCollection.Id, s)
+	records, err := app.FindRecordsByIds(categoriesCollection.Id, s)
 	if err != nil {
 		return nil
 	}
 	return mapResultToCategories(records)
 }
 
-func mapResultToCategories(records []*pbmodels.Record) (categories []models.SchematicCategory) {
+func mapResultToCategories(records []*core.Record) (categories []models.SchematicCategory) {
 	for i := range records {
 		categories = append(categories, models.SchematicCategory{
-			ID:   records[i].GetId(),
+			ID:   records[i].Id,
 			Key:  records[i].GetString("key"),
 			Name: records[i].GetString("name"),
 		})

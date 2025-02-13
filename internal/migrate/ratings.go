@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"gorm.io/gorm"
 	"log"
 	"time"
@@ -45,13 +45,13 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 
 	migrations := make([]viewMigration, 0)
 
-	schematicRatingsCollection, err := app.Dao().FindCollectionByNameOrId("schematic_ratings")
+	schematicRatingsCollection, err := app.FindCollectionByNameOrId("schematic_ratings")
 	if err != nil {
 		panic(err)
 	}
 
 	totalCount := res{}
-	countErr := app.Dao().DB().
+	countErr := app.DB().
 		NewQuery("SELECT COUNT(id) as c FROM schematic_ratings").
 		One(&totalCount)
 	if countErr != nil {
@@ -79,7 +79,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 	}
 	updated := 0
 	for _, vm := range migrations {
-		filter, err := app.Dao().FindRecordsByFilter(
+		filter, err := app.FindRecordsByFilter(
 			schematicRatingsCollection.Id,
 			"old_id = {:old_id}",
 			"-created",
@@ -102,7 +102,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 
 		newUserId := oldUserIDs[vm.OldUserId]
 		newSchematicId := oldSchematicIDs[vm.OldPostId]
-		record := models.NewRecord(schematicRatingsCollection)
+		record := core.NewRecord(schematicRatingsCollection)
 		record.Set("rated_at", vm.Date)
 		record.Set("old_id", vm.OldID)
 		record.Set("old_schematic_id", vm.OldPostId)
@@ -110,7 +110,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 		record.Set("rating", vm.Value)
 		record.Set("user", newUserId)
 		record.Set("schematic", newSchematicId)
-		if err = app.Dao().SaveRecord(record); err != nil {
+		if err = app.Save(record); err != nil {
 			panic(err)
 		}
 		updated++

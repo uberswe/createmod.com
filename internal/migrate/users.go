@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/pocketbase/pocketbase/core"
 	"gorm.io/gorm"
 	"log"
 )
@@ -17,7 +17,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 	if err != nil {
 		panic(err)
 	}
-	userCollection, err := app.Dao().FindCollectionByNameOrId("users")
+	userCollection, err := app.FindCollectionByNameOrId("users")
 	if err != nil {
 		panic(err)
 	}
@@ -26,7 +26,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 
 	for _, u := range res {
 		var user User
-		userErr := app.Dao().DB().
+		userErr := app.DB().
 			NewQuery("SELECT id, old_id FROM users WHERE old_id={:old_id}").
 			Bind(dbx.Params{
 				"old_id": u.ID,
@@ -41,7 +41,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 			continue
 		}
 
-		record := models.NewRecord(userCollection)
+		record := core.NewRecord(userCollection)
 
 		record.Set("old_id", u.ID)
 		record.Set("created", u.UserRegistered)
@@ -53,10 +53,10 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 		record.Set("status", fmt.Sprintf("%d", u.UserStatus))
 		record.Set("tokenKey", uuid.Must(uuid.NewRandom()).String())
 
-		if err := app.Dao().SaveRecord(record); err != nil {
+		if err := app.Save(record); err != nil {
 			panic(err)
 		}
-		userOldId[u.ID] = record.GetId()
+		userOldId[u.ID] = record.Id
 	}
 	log.Printf("%d users processed.\n", len(userOldId))
 	return userOldId
