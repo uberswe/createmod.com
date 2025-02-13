@@ -47,6 +47,7 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 		record.Set("created", u.UserRegistered)
 		record.Set("username", u.UserNicename)
 		record.Set("email", u.UserEmail)
+		record.Set("password", u.UserPass)
 		record.Set("old_password", u.UserPass) // We can't and don't want to know the old password, will force reset all users later and remove this
 		record.Set("name", u.DisplayName)
 		record.Set("url", u.UserURL)
