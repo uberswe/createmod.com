@@ -36,7 +36,7 @@
             </div>
         </div>
         <div class="offcanvas offcanvas-bottom h-auto hide" tabindex="-1" id="offcanvasBottom" aria-modal="true"
-             role="dialog">
+             role="dialog" data-bs-scroll="true" data-bs-backdrop="false">
             <div class="offcanvas-body">
                 <div class="container">
                     <div class="row align-items-center">
@@ -282,14 +282,18 @@
                                 let successModal = new bootstrap.Modal(document.getElementById('modal-success'), {});
                                 successModal.show();
                             }).catch((e) => {
-                                for (const [key, value] of Object.entries(e.data.data)) {
-                                    let div = document.createElement('div');
-                                    div.classList.add("invalid-feedback")
-                                    div.innerText = value.message
-                                    let element = document.getElementById(key);
-                                    element.classList.add("is-invalid")
-                                    element.parentNode.insertAdjacentElement("beforeend", div)
-                                    errorDivs.push(div)
+                                if (e.data === undefined || e.data.data === undefined) {
+                                    alert("Something went wrong, please reload the page and try again")
+                                } else {
+                                    for (const [key, value] of Object.entries(e.data.data)) {
+                                        let div = document.createElement('div');
+                                        div.classList.add("invalid-feedback")
+                                        div.innerText = value.message
+                                        let element = document.getElementById(key);
+                                        element.classList.add("is-invalid")
+                                        element.parentNode.insertAdjacentElement("beforeend", div)
+                                        errorDivs.push(div)
+                                    }
                                 }
                             });
                         } else {
