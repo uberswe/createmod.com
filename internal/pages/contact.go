@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const contactTemplate = "contact.html"
+const contactTemplate = "./template/dist/contact.html"
 
 type ContactData struct {
 	DefaultData

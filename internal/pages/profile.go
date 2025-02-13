@@ -12,7 +12,7 @@ import (
 	"net/http"
 )
 
-const profileTemplate = "profile.html"
+const profileTemplate = "./template/dist/profile.html"
 
 type ProfileData struct {
 	Username   string

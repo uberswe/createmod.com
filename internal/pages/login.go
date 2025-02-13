@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const loginTemplate = "login.html"
+const loginTemplate = "./template/dist/login.html"
 
 type LoginData struct {
 	DefaultData

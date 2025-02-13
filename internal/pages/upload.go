@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-const uploadTemplate = "upload.html"
+const uploadTemplate = "./template/dist/upload.html"
 
 type UploadData struct {
 	DefaultData

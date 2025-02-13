@@ -54,6 +54,9 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		}
 		d.Populate(e)
 		d.Title = "Minecraft Schematics"
+		d.Description = "The Create Schematics Repository. Download user-created Create Mod Schematics. Upload your own for others to see."
+		d.Slug = "/"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.SubCategory = "Home"
 		d.Categories = allCategories(app)
 

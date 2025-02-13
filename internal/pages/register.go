@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const registerTemplate = "register.html"
+const registerTemplate = "./template/dist/register.html"
 
 type registerData struct {
 	DefaultData

@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const guideTemplate = "guide.html"
+const guideTemplate = "./template/dist/guide.html"
 
 type GuideData struct {
 	DefaultData

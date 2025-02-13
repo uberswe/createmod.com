@@ -9,7 +9,10 @@ import (
 	"net/http"
 )
 
-const schematicsTemplate = "schematics.html"
+var schematicsTemplates = []string{
+	"./template/dist/schematics.html",
+	"./template/dist/include/schematic_card.html",
+}
 
 type SchematicsData struct {
 	DefaultData
@@ -36,7 +39,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		d.Title = "Create Mod Schematics"
 		d.Categories = allCategories(app)
 
-		html, err := registry.LoadFiles(schematicTemplate).Render(d)
+		html, err := registry.LoadFiles(schematicsTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const passwordResetTemplate = "password-reset.html"
+const passwordResetTemplate = "./template/dist/password-reset.html"
 
 type passwordResetData struct {
 	DefaultData

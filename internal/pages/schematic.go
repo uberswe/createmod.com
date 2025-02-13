@@ -19,7 +19,10 @@ import (
 	"time"
 )
 
-const schematicTemplate = "schematic.html"
+var schematicTemplates = []string{
+	"./template/dist/schematic.html",
+	"./template/dist/include/schematic_card.html",
+}
 
 type SchematicData struct {
 	DefaultData
@@ -68,7 +71,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 
 		go countSchematicView(app, results[0])
-		html, err := registry.LoadFiles(schematicTemplate).Render(d)
+		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

@@ -17,7 +17,10 @@ import (
 	"time"
 )
 
-const searchTemplate = "search.html"
+var searchTemplates = []string{
+	"./template/dist/search.html",
+	"./template/dist/include/schematic_card.html",
+}
 
 type SearchData struct {
 	DefaultData
@@ -112,7 +115,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		d.Title = "Search"
 		d.Categories = allCategories(app)
 
-		html, err := registry.LoadFiles(searchTemplate).Render(d)
+		html, err := registry.LoadFiles(searchTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

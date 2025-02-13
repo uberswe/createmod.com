@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const termsOfServiceTemplate = "terms-of-service.html"
+const termsOfServiceTemplate = "./template/dist/terms-of-service.html"
 
 type TermsOfServiceData struct {
 	DefaultData

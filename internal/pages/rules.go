@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const rulesTemplate = "rules.html"
+const rulesTemplate = "./template/dist/rules.html"
 
 type RulesData struct {
 	DefaultData

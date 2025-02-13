@@ -29,12 +29,14 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 
 	e.BindFunc(legacyFileCompat())
 	e.BindFunc(legacySearchCompat())
+	e.BindFunc(legacyCategoryCompat())
 	e.BindFunc(legacyTagCompat())
 	e.BindFunc(cookieAuth(app))
 	// Frontend routes
-	e.GET("/sitemaps/*", apis.Static(os.DirFS("./template/dist/sitemaps"), false))
-	e.GET("/libs/", apis.Static(os.DirFS("./template/dist/libs"), false))
-	e.GET("/assets/*", apis.Static(os.DirFS("./template/dist/assets"), false))
+	e.GET("/sitemaps/{path...}", apis.Static(os.DirFS("./template/dist/sitemaps"), false))
+	e.GET("/libs/{path...}", apis.Static(os.DirFS("./template/dist/libs"), false))
+	e.GET("/assets/{path...}", apis.Static(os.DirFS("./template/dist/assets"), false))
+	e.GET("/assets/x/{path...}", apis.Static(os.DirFS("./template/static"), false))
 	// Index
 	e.GET("/", pages.IndexHandler(app, cacheService, registry))
 	// Removed the about page, not relevant anymore
@@ -53,19 +55,36 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/news/:slug", pages.NewsPostHandler(app, registry))
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
-	e.GET("/schematics/:name", pages.SchematicHandler(app, searchService, cacheService, registry))
-	e.GET("/search/:term", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.POST("/search/:term", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry))
+	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search", pages.SearchPostHandler(app, cacheService, registry))
 	// User
-	e.GET("/author/:username", pages.ProfileHandler(app, cacheService, registry))
+	e.GET("/author/{username}", pages.ProfileHandler(app, cacheService, registry))
 	e.GET("/profile", pages.ProfileHandler(app, cacheService, registry))
 	// Fallback
-	e.GET("/*", pages.FourOhFourHandler(app, registry))
+	e.GET("/{any}", pages.FourOhFourHandler(app, registry))
 
+}
+
+func legacyCategoryCompat() func(e *core.RequestEvent) error {
+	// to /search/?category=apple
+	urlMatches := []string{
+		"/schematics/category/",
+		"/schematic_categories/",
+	}
+	return func(e *core.RequestEvent) error {
+		path := e.Request.URL.Path
+		for _, match := range urlMatches {
+			if strings.HasPrefix(path, match) {
+				return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?category=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")))
+			}
+		}
+		return e.Next() // proceed with the request chain
+	}
 }
 
 // cookieAuth was added so that requests can be authenticated on the backend when HTML templates are rendered

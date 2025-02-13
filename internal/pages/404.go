@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const fourOhFourTemplate = "404.html"
+const fourOhFourTemplate = "./template/dist/404.html"
 
 func FourOhFourHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {

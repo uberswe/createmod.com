@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const newsPostTemplate = "news_post.html"
+const newsPostTemplate = "./template/dist/news_post.html"
 
 type NewsPostData struct {
 	DefaultData

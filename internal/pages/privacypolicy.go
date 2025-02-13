@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const privacyPolicyTemplate = "privacy-policy.html"
+const privacyPolicyTemplate = "./template/dist/privacy-policy.html"
 
 type PrivacyPolicyData struct {
 	DefaultData
