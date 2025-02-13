@@ -58,10 +58,6 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 	}
 	for _, s := range postRes {
 		record := core.NewRecord(schematicsCollection)
-		err := app.Save(record)
-		if err != nil {
-			panic(err)
-		}
 
 		author := fmt.Sprintf("%d", s.PostAuthor)
 
@@ -163,6 +159,11 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 
 		filesToUpload := make(map[string][]*filesystem.File, 0)
 
+		err = app.Save(record)
+		if err != nil {
+			log.Printf("ERROR for %s - %d: %v\n", s.PostName, s.ID, err)
+			continue
+		}
 		record, err = convertToJpg(app, record, filesToUpload)
 
 		if err != nil {
@@ -177,7 +178,8 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			app.Logger().Error(
 				fmt.Sprintf("Could not save: %v", err),
 			)
-			panic("Fatal error, stop migration")
+			log.Printf("ERROR for %s - %d: %v\n", s.PostName, s.ID, err)
+			continue
 		}
 
 		oldSchematicIDs[s.ID] = record.Id
@@ -340,7 +342,8 @@ func processSchematicFile(m *model.QeyKryWEpostmetum, q *query.Query, record *co
 	}
 	fileFromPath, err := filesystem.NewFileFromPath(filename)
 	if err != nil {
-		panic(err)
+		log.Printf("ERROR for %s: %v\n", filename, err)
+		return
 	}
 	record.Set("schematic_file", fileFromPath.Name)
 }
@@ -384,7 +387,8 @@ func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum
 			tagRecord.Set("key", termRes.Slug)
 			tagRecord.Set("name", termRes.Name)
 			if err := app.Save(tagRecord); err != nil {
-				panic(err)
+				log.Printf("ERROR for %s - %s: %v\n", termRes.Slug, termRes.Name, err)
+				continue
 			}
 		} else {
 			tagRecord = tagRes[0]

@@ -111,7 +111,8 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 		record.Set("user", newUserId)
 		record.Set("schematic", newSchematicId)
 		if err = app.Save(record); err != nil {
-			panic(err)
+			log.Printf("ERROR for %d - %d: %v\n", vm.Value, vm.OldID, err)
+			continue
 		}
 		updated++
 	}

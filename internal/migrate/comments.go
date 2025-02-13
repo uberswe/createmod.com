@@ -98,7 +98,8 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 				if c2.GetInt("old_id") == c.GetInt("old_parent_id") {
 					c.Set("parent", c2.Id)
 					if err = app.Save(c); err != nil {
-						panic(err)
+						log.Printf("ERROR for %d: %v\n", c.GetInt("old_id"), err)
+						continue
 					}
 					updated++
 				}
