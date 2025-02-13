@@ -10,7 +10,7 @@ import (
 	"createmod/internal/router"
 	"createmod/internal/search"
 	"createmod/internal/sitemap"
-	//_ "createmod/migrations"
+	_ "createmod/migrations"
 	"errors"
 	"fmt"
 	"github.com/apokalyptik/phpass"
