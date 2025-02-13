@@ -26,11 +26,12 @@ jobs:
       - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
       - run: npm --prefix template install
       - run: npm --prefix template run build
+
       - name: "cleanup"
         run: rm -rf .github
       - run: rm -rf cmd
       - run: rm -rf internal
-        run: rm -rf migrations
+      - run: rm -rf migrations
       - run: rm -rf model
       - run: rm -rf query
       - run: rm -rf server
