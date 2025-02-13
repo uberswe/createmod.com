@@ -82,7 +82,8 @@ func migrateViews(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[in
 			return nil
 		})
 		if viewErr != nil {
-			panic(viewErr)
+			log.Printf("ERROR for %d: %v\n", len(postViewRes), viewErr)
+			continue
 		}
 	}
 	log.Printf("%d views migrated.\n", updated)
