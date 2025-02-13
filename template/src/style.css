@@ -801,5 +801,5 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
 }
 
 .card a:hover {
-    text-decoration: none;
+    text-decoration: none !important;
 }

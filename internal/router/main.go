@@ -41,7 +41,7 @@ func Register(app *pocketbase.PocketBase, e *echo.Echo, searchService *search.Se
 	e.Use(legacyTagCompat)
 	e.Use(cookieAuth(app))
 	// Frontend routes
-	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./template/sitemaps"), false))
+	e.GET("/sitemaps/*", apis.StaticDirectoryHandler(os.DirFS("./template/dist/sitemaps"), false))
 	e.Static("/libs/", "./template/dist/libs")
 	e.GET("/assets/*", apis.StaticDirectoryHandler(os.DirFS("./template/dist/assets"), false))
 	// Index

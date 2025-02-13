@@ -1,4 +1,5 @@
 # CreateMod.com
+[![deploy](https://github.com/uberswe/createmod.com/actions/workflows/deploy.yml/badge.svg)](https://github.com/uberswe/createmod.com/actions/workflows/deploy.yml)
 
 This repository contains all the files needed to run CreateMod.com
 
