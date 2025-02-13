@@ -55,7 +55,8 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 		record.Set("tokenKey", uuid.Must(uuid.NewRandom()).String())
 
 		if err := app.Save(record); err != nil {
-			panic(err)
+			log.Printf("ERROR for %s - %s: %v\n", u.UserNicename, u.UserEmail, err)
+			continue
 		}
 		userOldId[u.ID] = record.Id
 	}
