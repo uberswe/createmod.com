@@ -103,6 +103,7 @@ func migrateRatings(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map[
 		newUserId := oldUserIDs[vm.OldUserId]
 		newSchematicId := oldSchematicIDs[vm.OldPostId]
 		record := core.NewRecord(schematicRatingsCollection)
+		record.Set("created", vm.Date)
 		record.Set("rated_at", vm.Date)
 		record.Set("old_id", vm.OldID)
 		record.Set("old_schematic_id", vm.OldPostId)

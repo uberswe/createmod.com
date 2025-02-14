@@ -155,16 +155,8 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 		record.Set("to_ping", s.ToPing)
 		record.Set("type", s.PostType)
 		record.Set("updated", s.PostModifiedGmt)
-		record.Set("parent", s.PostParent)
 
-		filesToUpload := make(map[string][]*filesystem.File, 0)
-
-		err = app.Save(record)
-		if err != nil {
-			log.Printf("ERROR for %s - %d: %v\n", s.PostName, s.ID, err)
-			continue
-		}
-		record, err = convertToJpg(app, record, filesToUpload)
+		record, err = convertToJpg(app, record)
 
 		if err != nil {
 			app.Logger().Error(
@@ -188,75 +180,56 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 	return oldSchematicIDs
 }
 
-func convertToJpg(app *pocketbase.PocketBase, record *core.Record, files map[string][]*filesystem.File) (*core.Record, error) {
-	var galleryFilenames []string
-	fs, err := app.NewFilesystem()
+func convertToJpg(app *pocketbase.PocketBase, record *core.Record) (*core.Record, error) {
+	var err error
+	unsavedFiles := record.GetUnsavedFiles("featured_image")
+	record, err = convertInLoop("featured_image", unsavedFiles, record)
+	if err != nil {
+		return record, err
+	}
+	unsavedFiles = record.GetUnsavedFiles("gallery")
+	record, err = convertInLoop("gallery", unsavedFiles, record)
 	if err != nil {
 		return record, err
 	}
 
-	for fieldKey := range files {
-		for i, file := range files[fieldKey] {
-			path := record.BaseFilesPath() + "/" + file.Name
+	return record, nil
+}
 
-			if err := fs.UploadFile(file, path); err != nil {
-				return record, err
-			}
-
-			if fieldKey == "featured_image" || fieldKey == "gallery" {
-				r, err := fs.GetFile(path)
-				if err != nil {
-					return record, err
-				}
-
-				decode, err := imgconv.Decode(r)
-				if err != nil {
-					return record, err
-				}
-
-				var jpgBuffer bytes.Buffer
-				err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
-					Format: imgconv.JPEG,
-					EncodeOption: []imgconv.EncodeOption{
-						imgconv.Quality(80),
-					},
-				})
-
-				filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
-				if err != nil {
-					return record, err
-				}
-
-				newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
-				if err != nil {
-					return record, err
-				}
-
-				err = r.Close()
-				if err != nil {
-					return record, err
-				}
-
-				if err := fs.Delete(path); err != nil {
-					return record, err
-				}
-
-				path = record.BaseFilesPath() + "/" + filename
-				if err := fs.UploadFile(newFile, path); err != nil {
-					return record, err
-				}
-				files[fieldKey][i].Name = filename
-
-				if fieldKey == "featured_image" {
-					record.Set("featured_image", filename)
-				} else {
-					galleryFilenames = append(galleryFilenames, filename)
-				}
-			}
+func convertInLoop(key string, unsavedFiles []*filesystem.File, record *core.Record) (*core.Record, error) {
+	var convertedFiles []*filesystem.File
+	for _, f := range unsavedFiles {
+		rsc, err := f.Reader.Open()
+		if err != nil {
+			return record, err
 		}
-	}
-	record.Set("gallery", galleryFilenames)
+		decode, err := imgconv.Decode(rsc)
+		if err != nil {
+			return record, err
+		}
 
+		var jpgBuffer bytes.Buffer
+		err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
+			Format: imgconv.JPEG,
+			EncodeOption: []imgconv.EncodeOption{
+				imgconv.Quality(80),
+			},
+		})
+
+		filename := strings.TrimSuffix(f.Name, filepath.Ext(f.Name)) + ".jpg"
+		if err != nil {
+			return record, err
+		}
+
+		newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
+		if err != nil {
+			return record, err
+		}
+
+		convertedFiles = append(convertedFiles, newFile)
+
+	}
+	record.Set(key, convertedFiles)
 	return record, nil
 }
 
@@ -345,7 +318,7 @@ func processSchematicFile(m *model.QeyKryWEpostmetum, q *query.Query, record *co
 		log.Printf("ERROR for %s: %v\n", filename, err)
 		return
 	}
-	record.Set("schematic_file", fileFromPath.Name)
+	record.Set("schematic_file", fileFromPath)
 }
 
 func processSchematicTags(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, schematicTagsCollection *core.Collection) {
@@ -435,7 +408,7 @@ func processCategories(app *pocketbase.PocketBase, m *model.QeyKryWEpostmetum, q
 }
 
 func processSchematicGallery(m *model.QeyKryWEpostmetum, q *query.Query, record *core.Record, form *forms.RecordUpsert) {
-	var galleryFilenames []string
+	var galleryFilenames []*filesystem.File
 	var postIDs []interface{}
 	var postInts []int
 	if m.MetaValue == "" {
@@ -491,7 +464,7 @@ func processSchematicGallery(m *model.QeyKryWEpostmetum, q *query.Query, record 
 		if err != nil {
 			panic(err)
 		}
-		galleryFilenames = append(galleryFilenames, fileFromPath.Name)
+		galleryFilenames = append(galleryFilenames, fileFromPath)
 	}
 	record.Set("gallery", galleryFilenames)
 }
@@ -538,5 +511,5 @@ func processSchematicFeaturedImage(m *model.QeyKryWEpostmetum, q *query.Query, r
 	if err != nil {
 		panic(err)
 	}
-	record.Set("featured_image", fileFromPath.Name)
+	record.Set("featured_image", fileFromPath)
 }
