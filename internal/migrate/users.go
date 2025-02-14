@@ -41,6 +41,10 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 			continue
 		}
 
+		if len(u.UserNicename) < 3 {
+			u.UserNicename = "legacy-" + u.UserNicename
+		}
+
 		record := core.NewRecord(userCollection)
 
 		record.Set("old_id", u.ID)

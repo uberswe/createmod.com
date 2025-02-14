@@ -1935,7 +1935,7 @@ func init() {
 						"hidden": false,
 						"id": "yhl0bhyv",
 						"max": 0,
-						"min": 7,
+						"min": 1,
 						"name": "content",
 						"pattern": "",
 						"presentable": false,
