@@ -65,6 +65,7 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		record.Set("author_email", s.CommentAuthorEmail)
 		record.Set("author_ip", s.CommentAuthorIP)
 		record.Set("published", s.CommentDateGmt)
+		record.Set("created", s.CommentDateGmt)
 		record.Set("content", s.CommentContent)
 		record.Set("karma", s.CommentKarma)
 		record.Set("approved", s.CommentApproved)
@@ -76,7 +77,8 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		record.Set("old_schematic_id", s.CommentPostID)
 
 		if err = app.Save(record); err != nil {
-			panic(err)
+			log.Printf("ERROR for %d - %d: %v\n", s.CommentID, s.CommentParent, err)
+			continue
 		}
 	}
 

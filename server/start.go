@@ -420,85 +420,67 @@ func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *core.Recor
 		files["gallery"] = g
 	}
 
-	// convert to jpg in background
-	go convertToJpg(app, record, files)
+	record, err = convertToJpg(app, record)
+
+	if err != nil {
+		return err
+	}
 
 	// return nil if all is ok
 	return nil
 }
 
-func convertToJpg(app *pocketbase.PocketBase, record *core.Record, files map[string][]*filesystem.File) {
-	var galleryFilenames []string
-	fs, err := app.NewFilesystem()
+func convertToJpg(app *pocketbase.PocketBase, record *core.Record) (*core.Record, error) {
+	var err error
+	unsavedFiles := record.GetUnsavedFiles("featured_image")
+	record, err = convertInLoop("featured_image", unsavedFiles, record)
 	if err != nil {
-		return
+		return record, err
+	}
+	unsavedFiles = record.GetUnsavedFiles("gallery")
+	record, err = convertInLoop("gallery", unsavedFiles, record)
+	if err != nil {
+		return record, err
 	}
 
-	for fieldKey := range files {
-		if fieldKey == "featured_image" || fieldKey == "gallery" {
-			for i, file := range files[fieldKey] {
-				path := record.BaseFilesPath() + "/" + file.Name
+	return record, nil
+}
 
-				if err := fs.UploadFile(file, path); err != nil {
-					return
-				}
-
-				r, err := fs.GetFile(path)
-				if err != nil {
-					return
-				}
-
-				decode, err := imgconv.Decode(r)
-				if err != nil {
-					return
-				}
-
-				var jpgBuffer bytes.Buffer
-				err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
-					Format: imgconv.JPEG,
-					EncodeOption: []imgconv.EncodeOption{
-						imgconv.Quality(80),
-					},
-				})
-
-				filename := strings.TrimSuffix(file.Name, filepath.Ext(file.Name)) + ".jpg"
-				if err != nil {
-					return
-				}
-
-				newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
-				if err != nil {
-					return
-				}
-
-				err = r.Close()
-				if err != nil {
-					return
-				}
-
-				if err := fs.Delete(path); err != nil {
-					return
-				}
-
-				path = record.BaseFilesPath() + "/" + filename
-				if err := fs.UploadFile(newFile, path); err != nil {
-					return
-				}
-				files[fieldKey][i].Name = filename
-
-				if fieldKey == "featured_image" {
-					record.Set("featured_image", filename)
-				} else {
-					galleryFilenames = append(galleryFilenames, filename)
-				}
-			}
+func convertInLoop(key string, unsavedFiles []*filesystem.File, record *core.Record) (*core.Record, error) {
+	var convertedFiles []*filesystem.File
+	for _, f := range unsavedFiles {
+		rsc, err := f.Reader.Open()
+		if err != nil {
+			return record, err
 		}
+		decode, err := imgconv.Decode(rsc)
+		if err != nil {
+			return record, err
+		}
+
+		var jpgBuffer bytes.Buffer
+		err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
+			Format: imgconv.JPEG,
+			EncodeOption: []imgconv.EncodeOption{
+				imgconv.Quality(80),
+			},
+		})
+
+		filename := strings.TrimSuffix(f.Name, filepath.Ext(f.Name)) + ".jpg"
+		if err != nil {
+			return record, err
+		}
+
+		newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
+		if err != nil {
+			return record, err
+		}
+
+		convertedFiles = append(convertedFiles, newFile)
+
 	}
-	record.Set("gallery", galleryFilenames)
-	err = app.Save(record)
-	if err != nil {
-		return
-	}
+	record.Set(key, convertedFiles)
+	return record, nil
 }
 
 func ToYoutubeEmbedUrl(url string) string {
