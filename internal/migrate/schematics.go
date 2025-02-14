@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/elliotchance/phpserialize"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -18,7 +19,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -116,8 +116,7 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			case "schematicf_tags":
 				processSchematicTags(app, m, q, record, schematicTagsCollection)
 			case "schematicf_video":
-				_, err := url.Parse(m.MetaValue)
-				if err == nil {
+				if is.URL.Validate(m.MetaValue) == nil {
 					record.Set("video", m.MetaValue)
 				}
 			case "schematicf_gallery":
