@@ -146,6 +146,8 @@ func (s *Server) Start() {
 			}
 			s.app.Logger().Debug("setting author", "id", e.Auth.Id, "username", e.Auth.GetString("username"))
 			e.Record.Set("author", e.Auth.Id)
+			e.Record.Set("postdate", time.Now())
+			e.Record.Set("modified", time.Now())
 
 			if err := validateAndPopulateSchematic(s.app, e.Record, e); err != nil {
 				return err
@@ -225,6 +227,7 @@ func (s *Server) Start() {
 
 		// PASSWORD BACKWARDS COMPATIBILITY
 		s.app.OnRecordAuthWithPasswordRequest("users").BindFunc(func(e *core.RecordAuthWithPasswordRequestEvent) error {
+			s.app.Logger().Debug("OnRecordAuthWithPasswordRequest", "record", e.Record)
 			if e.Record != nil && e.Record.GetString("old_password") != "" {
 				p := phpass.New(nil)
 				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {

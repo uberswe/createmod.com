@@ -6,9 +6,13 @@
         <div class="page-body">
             <div class="container-xl">
                 <div class="row row-cards">
+                    {{ if .HasSchematics }}
                     {{range .Schematics }}
                         {{ template "schematic_card_small.html" . }}
                     {{end}}
+                    {{ else }}
+                        <h4>This user has not posted any schematics.</h4>
+                    {{ end }}
                 </div>
             </div>
         </div>

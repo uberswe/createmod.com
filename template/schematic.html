@@ -89,7 +89,8 @@
                                             </div>
                                             <div class="datagrid-item">
                                                 <div class="datagrid-title">Uploaded</div>
-                                                <div class="datagrid-content">{{ .Schematic.CreatedFormatted }}</div>
+                                                <div class="datagrid-content" data-bs-toggle="tooltip" data-bs-placement="top"
+                                                     title="{{ .Schematic.CreatedFormatted }}">{{ .Schematic.CreatedHumanReadable }}</div>
                                             </div>
                                             <div class="datagrid-item">
                                                 <div class="datagrid-title">Author</div>
@@ -363,6 +364,7 @@
     })
     // @formatter:on
 </script>
+{{ if .IsAuthenticated }}
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const rating = new StarRating('#rating-default', {
@@ -380,29 +382,39 @@
             trigger: 'manual',
         })
 
+
         document.querySelector('.gl-star-rating--stars').addEventListener('click', async function (e) {
-            for (const span of this.children) {
-                if (span === e.target) {
-                    const formData = new FormData();
-                    formData.append("schematic", '{{ .Schematic.ID }}')
-                    formData.append("user", pb.authStore.model.id)
-                    formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
-                    const createdRecord = await pb.collection('schematic_ratings').create(formData);
-                    if (createdRecord.code !== undefined && createdRecord.code !== 200) {
-                        alert("You need to be logged in to rate schematics")
-                    } else {
-                        tooltip.show()
-                        setTimeout(function () {
-                            tooltip.hide()
-                        }, 2000);
+            if (pb.authStore.model === undefined) {
+                alert("You need to be logged in to rate schematics")
+            } else {
+                for (const span of this.children) {
+                    if (span === e.target) {
+                        const formData = new FormData();
+                        formData.append("schematic", '{{ .Schematic.ID }}')
+                        formData.append("user", pb.authStore.model.id)
+                        formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
+                        const createdRecord = await pb.collection('schematic_ratings').create(formData);
+                        if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                            alert("You need to be logged in to rate schematics")
+                        } else {
+                            tooltip.show()
+                            setTimeout(function () {
+                                tooltip.hide()
+                            }, 2000);
+                        }
                     }
                 }
             }
         });
     })
 </script>
+{{ end }}
+{{ if .IsAuthenticated }}
 <script>
     function commentReply(id, username) {
+        if (id == null) {
+            return false
+        }
         let leaveCommentLabel = document.getElementById('leave-comment-label')
         let postCommentButton = document.getElementById('post-comment-btn')
         leaveCommentLabel.scrollIntoView({
@@ -417,6 +429,10 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('post-comment-btn').addEventListener("click", async function (e) {
+            if (pb.authStore.model.id === undefined) {
+                alert("You need to be logged in to comment")
+                return false;
+            }
             document.getElementById("post-comment-btn").disabled = true
             const formData = new FormData();
             formData.append("content", tinyMCE.activeEditor.getContent())
@@ -452,3 +468,4 @@
         });
     });
 </script>
+{{ end }}

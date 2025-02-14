@@ -12,12 +12,16 @@ import (
 	"net/http"
 )
 
-const profileTemplate = "./template/dist/profile.html"
+var profileTemplates = []string{
+	"./template/dist/profile.html",
+	"./template/dist/include/schematic_card.html",
+}
 
 type ProfileData struct {
-	Username   string
-	Name       string
-	Schematics []models.Schematic
+	Username      string
+	Name          string
+	HasSchematics bool
+	Schematics    []models.Schematic
 	DefaultData
 }
 
@@ -58,8 +62,11 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 	if len(results) == 1 {
 		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].Id, 1000, "-created")
 	}
+	if len(d.Schematics) > 0 {
+		d.HasSchematics = true
+	}
 
-	html, err := registry.LoadFiles(profileTemplate).Render(d)
+	html, err := registry.LoadFiles(profileTemplates...).Render(d)
 	if err != nil {
 		return err
 	}
@@ -72,7 +79,7 @@ func editProfile(e *core.RequestEvent, app *pocketbase.PocketBase, registry *tem
 	d.Populate(e)
 	d.Title = "Edit profile coming soon"
 	d.Categories = allCategories(app)
-	html, err := registry.LoadFiles(profileTemplate).Render(d)
+	html, err := registry.LoadFiles(profileTemplates...).Render(d)
 	if err != nil {
 		return err
 	}
