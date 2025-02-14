@@ -39,6 +39,7 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		return
 	}
 
+	updated := 0
 	for _, s := range commentsRes {
 		filter, err := app.FindRecordsByFilter(
 			schematicCommentsCollection.Id,
@@ -93,7 +94,6 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 		panic(commentsErr)
 	}
 
-	updated := 0
 	for _, c := range comments {
 		if c.GetInt("old_parent_id") > 0 {
 			for _, c2 := range comments {

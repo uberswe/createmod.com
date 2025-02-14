@@ -138,12 +138,30 @@
     </div>
 </div>
 <style>
-    .ts-control {
+    body .ts-control {
+        background: #ffffff !important;
+        border: none !important;
+    }
+    body .ts-wrapper.multi .ts-control>div {
+        background: #bf9045 !important;
+    }
+
+    body .ts-dropdown {
+        background: #ffffff !important;
+        color: #bf9045 !important;
+    }
+
+    body[data-bs-theme=dark] .ts-control {
         background: #1f2121 !important;
         border: none !important;
     }
-    .ts-wrapper.multi .ts-control>div {
+    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
         background: #bf9045 !important;
+    }
+
+    body[data-bs-theme=dark] .ts-dropdown {
+        background: #1f2121 !important;
+        color: #bf9045 !important;
     }
 </style>
 <script type="module" src="dropzone/dist/dropzone-min.js" defer></script>
