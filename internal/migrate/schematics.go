@@ -18,6 +18,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -115,7 +116,10 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			case "schematicf_tags":
 				processSchematicTags(app, m, q, record, schematicTagsCollection)
 			case "schematicf_video":
-				record.Set("video", m.MetaValue)
+				_, err := url.Parse(m.MetaValue)
+				if err == nil {
+					record.Set("video", m.MetaValue)
+				}
 			case "schematicf_gallery":
 				processSchematicGallery(m, q, record, form)
 			case "schematicf_featured_image":
@@ -156,6 +160,20 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 		record.Set("type", s.PostType)
 		record.Set("updated", s.PostModifiedGmt)
 
+		schematicFileArray := record.GetUnsavedFiles("schematic_file")
+		if len(schematicFileArray) == 0 {
+			// Skip missing schematic file
+			log.Println("Skip missing schematic file")
+			continue
+		}
+
+		if schematicFileArray[0].Size < 1 {
+			// Skip empty schematic file
+			log.Println("Skip empty schematic file")
+			log.Printf("ERROR for %s - %d: %v\n", s.PostName, s.ID, err)
+			continue
+		}
+
 		record, err = convertToJpg(app, record)
 
 		if err != nil {
@@ -163,7 +181,6 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 				fmt.Sprintf("Could not convert to jpg: %v", err),
 			)
 			log.Printf("ERROR for %s - %d: %v\n", s.PostName, s.ID, err)
-			continue
 		}
 
 		err = app.Save(record)
