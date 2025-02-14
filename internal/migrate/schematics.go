@@ -162,7 +162,8 @@ func migrateSchematics(app *pocketbase.PocketBase, gormdb *gorm.DB, userOldId ma
 			app.Logger().Error(
 				fmt.Sprintf("Could not convert to jpg: %v", err),
 			)
-			panic("Fatal error, stop migration")
+			log.Printf("ERROR for %s - %d: %v\n", s.PostName, s.ID, err)
+			continue
 		}
 
 		err = app.Save(record)
