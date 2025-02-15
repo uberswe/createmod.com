@@ -23,7 +23,6 @@ import (
 	"github.com/pocketbase/pocketbase/tools/mailer"
 	"github.com/sunshineplan/imgconv"
 	"github.com/sym01/htmlsanitizer"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
@@ -231,17 +230,8 @@ func (s *Server) Start() {
 			if e.Record != nil && e.Record.GetString("old_password") != "" {
 				p := phpass.New(nil)
 				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
-					hashedPassword, err := bcrypt.GenerateFromPassword([]byte(e.Password), 12)
-					if err != nil {
-						s.app.Logger().Warn("old password failled to hash", "error", err.Error())
-						return e.Next()
-					}
-					e.Record.SetPassword(string(hashedPassword))
+					e.Record.SetPassword(e.Password)
 					e.Record.Set("old_password", "")
-					if err = s.app.Save(e.Record); err != nil {
-						s.app.Logger().Warn("old password invalid", "error", err.Error())
-						return e.Next()
-					}
 				}
 			}
 			return e.Next()
