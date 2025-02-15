@@ -18,6 +18,9 @@ func ContactHandler(app *pocketbase.PocketBase, registry *template.Registry) fun
 		d := ContactData{}
 		d.Populate(e)
 		d.Title = "Contact"
+		d.Description = "Contact the CreateMod.com maintainers in case you have a question or suggestion."
+		d.Slug = "/contact"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app)
 		html, err := registry.LoadFiles(contactTemplate).Render(d)
 		if err != nil {

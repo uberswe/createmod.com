@@ -18,6 +18,9 @@ func NewsHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e
 		d := NewsData{}
 		d.Populate(e)
 		d.Title = "News"
+		d.Description = "CreateMod.com news features the latest developments on the website."
+		d.Slug = "/news"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app)
 		html, err := registry.LoadFiles(newsTemplate).Render(d)
 		if err != nil {

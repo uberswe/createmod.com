@@ -18,6 +18,9 @@ func GuideHandler(app *pocketbase.PocketBase, registry *template.Registry) func(
 		d := GuideData{}
 		d.Populate(e)
 		d.Title = "Guide"
+		d.Description = "How do you use Create Mod schematic files? This page has a simple guide that should help!"
+		d.Slug = "/guide"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app)
 		html, err := registry.LoadFiles(guideTemplate).Render(d)
 		if err != nil {

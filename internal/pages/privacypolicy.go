@@ -18,6 +18,9 @@ func PrivacyPolicyHandler(app *pocketbase.PocketBase, registry *template.Registr
 		d := PrivacyPolicyData{}
 		d.Populate(e)
 		d.Title = "Privacy Policy"
+		d.Description = "The CreateMod.com privacy policy."
+		d.Slug = "/privacy-policy"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app)
 		html, err := registry.LoadFiles(privacyPolicyTemplate).Render(d)
 		if err != nil {
