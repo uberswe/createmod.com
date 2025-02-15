@@ -201,7 +201,7 @@
                                                                     {{ .Created }}
                                                                 </a>
                                                             </div>
-                                                            {{ if .IsAuthenticated }}
+                                                            {{ if $.IsAuthenticated }}
                                                             <div class="col-auto">
                                                                 <a href="#tinymce-comment"
                                                                    onclick="commentReply('{{ .ID }}', '{{ .Author }}')"
