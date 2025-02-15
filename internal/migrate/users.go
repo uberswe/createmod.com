@@ -3,6 +3,7 @@ package migrate
 import (
 	"createmod/query"
 	"fmt"
+	"github.com/drexedam/gravatar"
 	"github.com/google/uuid"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -51,6 +52,12 @@ func migrateUsers(app *pocketbase.PocketBase, gormdb *gorm.DB) (userOldId map[in
 		record.Set("created", u.UserRegistered)
 		record.Set("username", u.UserNicename)
 		record.Set("email", u.UserEmail)
+		avatarUrl := gravatar.New(u.UserEmail).
+			Size(200).
+			Default(gravatar.MysteryMan).
+			Rating(gravatar.Pg).
+			AvatarURL()
+		record.Set("avatar", avatarUrl)
 		record.Set("password", u.UserPass)
 		record.Set("old_password", u.UserPass) // We can't and don't want to know the old password, will force reset all users later and remove this
 		record.Set("name", u.DisplayName)

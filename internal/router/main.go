@@ -46,6 +46,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/rules", pages.RulesHandler(app, registry))
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry))
 	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry))
+	e.GET("/settings", pages.UserSettingsHandler(app, registry))
 	// Auth
 	e.GET("/login", pages.LoginHandler(app, registry))
 	e.GET("/register", pages.RegisterHandler(app, registry))
