@@ -113,7 +113,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		}
 		d.Populate(e)
 		d.Title = "Search"
-		d.Categories = allCategories(app)
+		d.Categories = allCategories(app, cacheService)
 		d.Description = fmt.Sprintf("Search results for %s Create Mod Schematics.", d.Term)
 		d.Slug = fmt.Sprintf("/search/%s", slugTerm)
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
@@ -191,7 +191,11 @@ type schematicTags struct {
 	Tags string
 }
 
-func allTagsWithCount(app *pocketbase.PocketBase) []models.SchematicTagWithCount {
+func allTagsWithCount(app *pocketbase.PocketBase, service *cache.Service) []models.SchematicTagWithCount {
+	tagsWithCount, found := service.GetTagWithCount(cache.AllTagsWithCountKey)
+	if found {
+		return tagsWithCount
+	}
 	tags := allTags(app)
 	var schematics []schematicTags
 	err := app.DB().
@@ -202,19 +206,19 @@ func allTagsWithCount(app *pocketbase.PocketBase) []models.SchematicTagWithCount
 		app.Logger().Debug("could not fetch tags with count", "error", err.Error())
 		return nil
 	}
-	tagsWithCount := make([]models.SchematicTagWithCount, len(tags))
 	for i := range tags {
-		tagsWithCount[i] = models.SchematicTagWithCount{
+		tagsWithCount = append(tagsWithCount, models.SchematicTagWithCount{
 			ID:    tags[i].ID,
 			Key:   tags[i].Key,
 			Name:  tags[i].Name,
 			Count: 0,
-		}
+		})
 		for x := range schematics {
 			if strings.Contains(schematics[x].Tags, tagsWithCount[i].ID) {
 				tagsWithCount[i].Count++
 			}
 		}
 	}
+	service.SetTagWithCount(cache.AllTagsWithCountKey, tagsWithCount)
 	return tagsWithCount
 }

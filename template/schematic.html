@@ -185,7 +185,6 @@
                                                                 <a href="#{{ .ID }}" class="link-muted"
                                                                    data-bs-toggle="tooltip" data-bs-placement="top"
                                                                    title="{{ .Published }}">
-                                                                    <!-- Download SVG icon from http://tabler.io/icons/icon/calendar -->
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24" viewBox="0 0 24 24" fill="none"
                                                                          stroke="currentColor" stroke-width="2"
@@ -212,7 +211,6 @@
                                                             {{ end }}
                                                             <div class="col-auto">
                                                                 <a id="{{ .ID }}" href="#{{ .ID }}" class="link-muted">
-                                                                    <!-- Download SVG icon from http://tabler.io/icons/icon/share -->
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24"
                                                                          height="24" viewBox="0 0 24 24" fill="none"
                                                                          stroke="currentColor" stroke-width="2"
@@ -384,7 +382,7 @@
 
 
         document.querySelector('.gl-star-rating--stars').addEventListener('click', async function (e) {
-            if (pb.authStore.model === undefined) {
+            if (pb.authStore.model == null) {
                 alert("You need to be logged in to rate schematics")
             } else {
                 for (const span of this.children) {

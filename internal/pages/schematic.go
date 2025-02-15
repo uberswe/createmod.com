@@ -64,7 +64,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.Description = d.Schematic.Content
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
-		d.Categories = allCategories(app)
+		d.Categories = allCategories(app, cacheService)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
 		d.FromAuthor = findAuthorSchematics(app, cacheService, d.Schematic.ID, d.Schematic.Author.ID, 5, "@random")
 		d.Similar = findSimilarSchematics(app, cacheService, d.Schematic, d.FromAuthor, searchService)

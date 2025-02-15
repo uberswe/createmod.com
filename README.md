@@ -41,7 +41,7 @@ docker compose up --build
 You will need to run `npm install` and `npm run build` to generate the frontend files, you can do this with docker if needed using the following command.
 
 ```
-docker compose run npm
+docker compose run --remove-orphans npm
 ```
 
 ## Environmental Variables

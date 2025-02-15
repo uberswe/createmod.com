@@ -21,7 +21,6 @@ func LoginHandler(app *pocketbase.PocketBase, registry *template.Registry) func(
 		d.Description = "Login to CreateMod.com to upload your schematics or to rate and comment on other builds."
 		d.Slug = "/login"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app)
 		html, err := registry.LoadFiles(loginTemplate).Render(d)
 		if err != nil {
 			return err

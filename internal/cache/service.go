@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+// It's never the cache
+
+const (
+	AllTagsWithCountKey       = "AllTagsWithCount"
+	HighestRatedSchematicsKey = "HighestRatedSchematics"
+	TrendingSchematicsKey     = "TrendingSchematics"
+	AllCategoriesKey          = "AllCategories"
+)
+
 type Service struct {
 	c *cache.Cache
 }
@@ -105,4 +114,45 @@ func (s *Service) GetSchematic(key string) (models.Schematic, bool) {
 
 func (s *Service) SetSchematics(key string, value []models.Schematic) {
 	s.c.Set(key, value, cache.DefaultExpiration)
+}
+
+func (s *Service) GetSchematics(key string) ([]models.Schematic, bool) {
+	v, found := s.Get(key)
+	if !found {
+		return nil, found
+	}
+	if schem, ok := v.([]models.Schematic); ok {
+		return schem, found
+	}
+	return nil, false
+}
+
+func (s *Service) SetCategories(key string, value []models.SchematicCategory, duration time.Duration) {
+	s.c.Set(key, value, duration)
+}
+
+func (s *Service) GetCategories(key string) ([]models.SchematicCategory, bool) {
+	v, found := s.Get(key)
+	if !found {
+		return nil, found
+	}
+	if categories, ok := v.([]models.SchematicCategory); ok {
+		return categories, found
+	}
+	return nil, false
+}
+
+func (s *Service) SetTagWithCount(key string, tags []models.SchematicTagWithCount) {
+	s.c.Set(key, tags, cache.DefaultExpiration)
+}
+
+func (s *Service) GetTagWithCount(key string) ([]models.SchematicTagWithCount, bool) {
+	v, found := s.Get(key)
+	if !found {
+		return nil, found
+	}
+	if tags, ok := v.([]models.SchematicTagWithCount); ok {
+		return tags, found
+	}
+	return nil, false
 }

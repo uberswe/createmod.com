@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/cache"
 	"createmod/internal/models"
 	"github.com/drexedam/gravatar"
 	"github.com/pocketbase/pocketbase"
@@ -9,6 +10,7 @@ import (
 	"golang.org/x/text/language"
 	"html/template"
 	"strings"
+	"time"
 )
 
 type DefaultData struct {
@@ -42,14 +44,21 @@ func (d *DefaultData) Populate(e *core.RequestEvent) {
 	}
 }
 
-func allCategories(app *pocketbase.PocketBase) []models.SchematicCategory {
+func allCategories(app *pocketbase.PocketBase, cacheService *cache.Service) []models.SchematicCategory {
+	categories, found := cacheService.GetCategories(cache.AllCategoriesKey)
+	if found {
+		return categories
+	}
 	categoriesCollection, err := app.FindCollectionByNameOrId("schematic_categories")
 	if err != nil {
 		return nil
 	}
-	records, err := app.FindRecordsByFilter(categoriesCollection.Id, "1=1", "+name", -1, 0)
+	records, err := app.FindRecordsByFilter(categoriesCollection.Id, "1=1", "+key", -1, 0)
 	if err != nil {
 		return nil
 	}
-	return mapResultToCategories(records)
+	categories = mapResultToCategories(records)
+	// 730 hours = 1 month
+	cacheService.SetCategories(cache.AllCategoriesKey, categories, time.Hour*730)
+	return categories
 }

@@ -38,7 +38,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		}
 		d.Populate(e)
 		d.Title = "Create Mod Schematics"
-		d.Categories = allCategories(app)
+		d.Categories = allCategories(app, cacheService)
 		d.Description = "Find the latest Create Mod schematics listed here."
 		d.Slug = "/schematics"
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)

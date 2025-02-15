@@ -40,20 +40,21 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// Index
 	e.GET("/", pages.IndexHandler(app, cacheService, registry))
 	// Removed the about page, not relevant anymore
-	e.GET("/upload", pages.UploadHandler(app, registry))
-	e.GET("/contact", pages.ContactHandler(app, registry))
-	e.GET("/guide", pages.GuideHandler(app, registry))
-	e.GET("/rules", pages.RulesHandler(app, registry))
-	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry))
-	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry))
-	e.GET("/settings", pages.UserSettingsHandler(app, registry))
+	e.GET("/upload", pages.UploadHandler(app, registry, cacheService))
+	e.GET("/contact", pages.ContactHandler(app, registry, cacheService))
+	e.GET("/guide", pages.GuideHandler(app, registry, cacheService))
+	e.GET("/rules", pages.RulesHandler(app, registry, cacheService))
+	e.GET("/explore", pages.ExploreHandler(app, cacheService, registry))
+	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService))
+	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService))
+	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService))
 	// Auth
 	e.GET("/login", pages.LoginHandler(app, registry))
 	e.GET("/register", pages.RegisterHandler(app, registry))
 	e.GET("/reset-password", pages.PasswordResetHandler(app, registry))
 	// News
-	e.GET("/news", pages.NewsHandler(app, registry))
-	e.GET("/news/:slug", pages.NewsPostHandler(app, registry))
+	e.GET("/news", pages.NewsHandler(app, registry, cacheService))
+	e.GET("/news/:slug", pages.NewsPostHandler(app, registry, cacheService))
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
 	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry))

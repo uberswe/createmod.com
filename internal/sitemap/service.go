@@ -54,6 +54,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	addPage(app, now, smPages, "/news", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/schematics", 0.9, smg.Daily)
 	addPage(app, now, smPages, "/search", 0.9, smg.Daily)
+	addPage(app, now, smPages, "/explore", 0.9, smg.Daily)
 
 	smSchematics := smi.NewSitemap()
 	smSchematics.SetName("schematics")
