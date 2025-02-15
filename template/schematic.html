@@ -202,6 +202,7 @@
                                                                     {{ .Created }}
                                                                 </a>
                                                             </div>
+                                                            {{ if .IsAuthenticated }}
                                                             <div class="col-auto">
                                                                 <a href="#tinymce-comment"
                                                                    onclick="commentReply('{{ .ID }}', '{{ .Author }}')"
@@ -209,6 +210,7 @@
                                                                     Reply
                                                                 </a>
                                                             </div>
+                                                            {{ end }}
                                                             <div class="col-auto">
                                                                 <a id="{{ .ID }}" href="#{{ .ID }}" class="link-muted">
                                                                     <!-- Download SVG icon from http://tabler.io/icons/icon/share -->
@@ -364,7 +366,6 @@
     })
     // @formatter:on
 </script>
-{{ if .IsAuthenticated }}
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const rating = new StarRating('#rating-default', {
@@ -408,7 +409,6 @@
         });
     })
 </script>
-{{ end }}
 {{ if .IsAuthenticated }}
 <script>
     function commentReply(id, username) {

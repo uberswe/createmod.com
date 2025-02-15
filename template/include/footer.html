@@ -281,6 +281,13 @@
                                 pb.collection('users').requestVerification(email.value);
                                 let successModal = new bootstrap.Modal(document.getElementById('modal-success'), {});
                                 successModal.show();
+                                // Log the user in automatically
+                                pb.collection('users').authWithPassword(
+                                    username.value,
+                                    password.value,
+                                ).then((authData) => {
+                                    location.href = '/'
+                                });
                             }).catch((e) => {
                                 if (e.data === undefined || e.data.data === undefined) {
                                     alert("Something went wrong, please reload the page and try again")
