@@ -44,6 +44,8 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 	d.Title = "Schematics by " + caser.String(username)
 	d.Categories = allCategories(app)
 	d.Username = caser.String(username)
+	d.Description = "Find Create Mod schematics by " + caser.String(username) + " on CreateMod.com"
+	d.Slug = "/author/" + username
 
 	usersCollection, err := app.FindCollectionByNameOrId("users")
 	if err != nil {
@@ -65,6 +67,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 	if len(results) == 1 {
 		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].Id, 1000, "-created")
 		d.UserAvatar = tmpl.URL(results[0].GetString("avatar"))
+		d.Thumbnail = results[0].GetString("avatar")
 	}
 	if len(d.Schematics) > 0 {
 		d.HasSchematics = true

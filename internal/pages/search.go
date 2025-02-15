@@ -114,12 +114,47 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		d.Populate(e)
 		d.Title = "Search"
 		d.Categories = allCategories(app)
+		d.Description = fmt.Sprintf("Search results for %s Create Mod Schematics.", d.Term)
+		d.Slug = fmt.Sprintf("/search/%s", slugTerm)
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
+		if d.SearchResultCount > 0 {
+			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)
+		}
 
 		html, err := registry.LoadFiles(searchTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
+		// Update search count
+		go searchCount(app, term, slugTerm, int32(d.SearchResultCount))
 		return e.HTML(http.StatusOK, html)
+	}
+}
+
+func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searchResults int32) {
+	term = strings.ToLower(strings.TrimSpace(term))
+	records, err := app.FindRecordsByFilter("searches", "term = {:term}", "+term", 1, 0, dbx.Params{"term": term})
+	if err != nil {
+		return
+	}
+	searchesCollection, err := app.FindCollectionByNameOrId("searches")
+	if err != nil {
+		return
+	}
+	if len(records) == 0 {
+		record := core.NewRecord(searchesCollection)
+		record.Set("term", term)
+		record.Set("slug", termSlug)
+		record.Set("searches", 1)
+		record.Set("results", searchResults)
+		return
+	}
+	record := records[0]
+	record.Set("searches", record.GetInt("searches")+1)
+	record.Set("results", searchResults)
+	err = app.Save(record)
+	if err != nil {
+		return
 	}
 }
 

@@ -7,8 +7,10 @@
                 </div>
             </div>
         </div>
-        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x480"
-             class="card-img">
+        <div class="card-body-borderless">
+        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360"
+             alt="Featured image of {{ .Title }}" class="img-fluid">
+        </div>
         <div class="card-footer">
             <div class="row">
                 <div class="col">{{ .CreatemodVersion }}</div>

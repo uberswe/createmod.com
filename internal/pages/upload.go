@@ -22,6 +22,9 @@ func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry) func
 		d := UploadData{}
 		d.Populate(e)
 		d.Title = "Upload A Schematic"
+		d.Description = "Upload a Create Mod schematic to share it with others."
+		d.Slug = "/upload"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app)
 		d.Tags = allTags(app)
 		d.MinecraftVersions = allMinecraftVersions(app)

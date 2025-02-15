@@ -3,6 +3,7 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	"fmt"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -38,6 +39,9 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		d.Populate(e)
 		d.Title = "Create Mod Schematics"
 		d.Categories = allCategories(app)
+		d.Description = "Find the latest Create Mod schematics listed here."
+		d.Slug = "/schematics"
+		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)
 
 		html, err := registry.LoadFiles(schematicsTemplates...).Render(d)
 		if err != nil {

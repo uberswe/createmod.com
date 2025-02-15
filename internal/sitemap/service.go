@@ -24,6 +24,10 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	if err != nil {
 		app.Logger().Warn(err.Error())
 	}
+	searches, err := app.FindRecordsByFilter("searches", "searches >= 50 && results > 0", "-created", -1, 0)
+	if err != nil {
+		app.Logger().Warn(err.Error())
+	}
 	now := time.Now().UTC()
 
 	smi := smg.NewSitemapIndex(true)
@@ -43,6 +47,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	addPage(app, now, smPages, "/guide", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/rules", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/terms-of-service", 0.9, smg.Weekly)
+	addPage(app, now, smPages, "/privacy-policy", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/login", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/register", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/reset-password", 0.9, smg.Weekly)
@@ -86,6 +91,22 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 			ChangeFreq: smg.Weekly,
 			Priority:   0.5,
 			Images:     images,
+		})
+		if err != nil {
+			app.Logger().Error("Unable to add SitemapLoc:", "error", err)
+		}
+	}
+
+	smSearches := smi.NewSitemap()
+	smSearches.SetName("searches")
+	smSearches.SetLastMod(&now)
+
+	for i := range searches {
+		err := smSearches.Add(&smg.SitemapLoc{
+			Loc:        fmt.Sprintf("/search/%s", searches[i].GetString("slug")),
+			LastMod:    &now,
+			ChangeFreq: smg.Weekly,
+			Priority:   0.7,
 		})
 		if err != nil {
 			app.Logger().Error("Unable to add SitemapLoc:", "error", err)

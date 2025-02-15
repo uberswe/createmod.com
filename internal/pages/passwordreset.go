@@ -18,6 +18,9 @@ func PasswordResetHandler(app *pocketbase.PocketBase, registry *template.Registr
 		d := passwordResetData{}
 		d.Populate(e)
 		d.Title = "Reset Password"
+		d.Description = "The CreateMod.com reset password page."
+		d.Slug = "/reset-password"
+		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app)
 		html, err := registry.LoadFiles(passwordResetTemplate).Render(d)
 		if err != nil {
