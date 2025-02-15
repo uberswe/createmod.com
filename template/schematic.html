@@ -97,8 +97,7 @@
                                                 <div class="datagrid-content">
                                                     <div class="d-flex align-items-center">
                                                         {{ if .Schematic.Author.HasAvatar }}
-                                                        <span class="avatar avatar-xs me-2 rounded"
-                                                              style="background-image: url('{{ .Schematic.Author.Avatar }}')"></span>
+                                                        <img class="avatar avatar-xs me-2 rounded" src="{{ .Schematic.Author.Avatar }}"></img>
                                                         {{ end }}
                                                         <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                                             .Schematic.Author.Username }}</a>

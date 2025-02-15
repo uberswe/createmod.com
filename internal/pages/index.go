@@ -3,12 +3,14 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	"github.com/drexedam/gravatar"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	tmpl "html/template"
 	"net/http"
 	"time"
 )
@@ -132,11 +134,16 @@ func findUserFromID(app *pocketbase.PocketBase, userID string) *models.User {
 }
 
 func mapResultToUser(record *core.Record) *models.User {
-
 	caser := cases.Title(language.English)
+	avatarUrl := gravatar.New(record.GetString("email")).
+		Size(200).
+		Default(gravatar.MysteryMan).
+		Rating(gravatar.Pg).
+		AvatarURL()
 	return &models.User{
-		ID:       record.Id,
-		Username: caser.String(record.GetString("username")),
-		Avatar:   record.GetString("avatar"),
+		ID:        record.Id,
+		Username:  caser.String(record.GetString("username")),
+		Avatar:    tmpl.URL(avatarUrl),
+		HasAvatar: len(avatarUrl) > 0,
 	}
 }

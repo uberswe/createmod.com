@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/apokalyptik/phpass"
+	"github.com/drexedam/gravatar"
 	"github.com/gosimple/slug"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -108,7 +109,7 @@ func (s *Server) Start() {
 
 			// END SEARCH
 
-			s.app.OnModelCreate("schematics").BindFunc(func(e *core.ModelEvent) error {
+			s.app.OnRecordCreate("schematics").BindFunc(func(e *core.RecordEvent) error {
 				// Rebuild the search index every time a schematic is created
 				err := e.Next()
 				if err != nil {
@@ -125,14 +126,34 @@ func (s *Server) Start() {
 				return e.Next()
 			})
 
-			s.app.OnModelCreate("users").BindFunc(func(e *core.ModelEvent) error {
-				// Rebuild the sitemap every time a user is created
+			s.app.OnRecordCreate("users").BindFunc(func(e *core.RecordEvent) error {
+				avatarUrl := gravatar.New(e.Record.GetString("email")).
+					Size(200).
+					Default(gravatar.NotFound).
+					Rating(gravatar.Pg).
+					AvatarURL()
+				e.Record.Set("avatar", avatarUrl)
 				err := e.Next()
 				if err != nil {
 					return err
 				}
+				// Rebuild the sitemap every time a user is created
 				go s.sitemapService.Generate(s.app)
-				return e.Next()
+				return nil
+			})
+
+			s.app.OnRecordUpdate("users").BindFunc(func(e *core.RecordEvent) error {
+				avatarUrl := gravatar.New(e.Record.GetString("email")).
+					Size(200).
+					Default(gravatar.NotFound).
+					Rating(gravatar.Pg).
+					AvatarURL()
+				e.Record.Set("avatar", avatarUrl)
+				err := e.Next()
+				if err != nil {
+					return err
+				}
+				return nil
 			})
 
 			s.sitemapService.Generate(s.app)

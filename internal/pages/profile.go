@@ -9,6 +9,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/template"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	tmpl "html/template"
 	"net/http"
 )
 
@@ -21,6 +22,7 @@ type ProfileData struct {
 	Username      string
 	Name          string
 	HasSchematics bool
+	UserAvatar    tmpl.URL
 	Schematics    []models.Schematic
 	DefaultData
 }
@@ -41,6 +43,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 	caser := cases.Title(language.English)
 	d.Title = "Schematics by " + caser.String(username)
 	d.Categories = allCategories(app)
+	d.Username = caser.String(username)
 
 	usersCollection, err := app.FindCollectionByNameOrId("users")
 	if err != nil {
@@ -61,6 +64,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 
 	if len(results) == 1 {
 		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].Id, 1000, "-created")
+		d.UserAvatar = tmpl.URL(results[0].GetString("avatar"))
 	}
 	if len(d.Schematics) > 0 {
 		d.HasSchematics = true

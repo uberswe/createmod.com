@@ -5,6 +5,14 @@
         {{template "header.html" .}}
         <div class="page-body">
             <div class="container-xl">
+                <div class="row mb-4">
+                    <div class="col-md-auto">
+                        <img class="avatar avatar-md" src="{{ .UserAvatar }}">
+                    </div>
+                    <div class="col-md-auto align-center">
+                        <h2>{{ .Username }}</h2>
+                    </div>
+                </div>
                 <div class="row row-cards">
                     {{ if .HasSchematics }}
                     {{range .Schematics }}

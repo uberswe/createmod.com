@@ -46,7 +46,7 @@
                     <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
                        aria-label="Open user menu">
                         {{ if .HasAvatar }}
-                        <span class="avatar auth-dropdown avatar-sm auth-avatar" style="background-image: url('{{ .Avatar }}')"></span>
+                        <img class="avatar auth-dropdown avatar-sm auth-avatar" src="{{ .Avatar }}">
                         {{ end }}
                         <div class="d-none d-xl-block ps-2">
                             <div class="auth-username">{{ .Username }}</div>

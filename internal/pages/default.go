@@ -2,10 +2,12 @@ package pages
 
 import (
 	"createmod/internal/models"
+	"github.com/drexedam/gravatar"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"html/template"
 	"strings"
 )
 
@@ -19,7 +21,7 @@ type DefaultData struct {
 	Thumbnail       string
 	SubCategory     string
 	Categories      []models.SchematicCategory
-	Avatar          string
+	Avatar          template.URL
 	HasAvatar       bool
 }
 
@@ -30,9 +32,13 @@ func (d *DefaultData) Populate(e *core.RequestEvent) {
 		caser := cases.Title(language.English)
 		d.Username = caser.String(user.GetString("username"))
 		d.UsernameSlug = strings.ToLower(user.GetString("username"))
-		d.Avatar = user.GetString("avatar")
+		url := gravatar.New(user.GetString("email")).
+			Size(200).
+			Default(gravatar.MysteryMan).
+			Rating(gravatar.Pg).
+			AvatarURL()
+		d.Avatar = template.URL(url)
 		d.HasAvatar = d.Avatar != ""
-
 	}
 }
 
