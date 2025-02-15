@@ -81,6 +81,7 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 			log.Printf("ERROR for %d - %d: %v\n", s.CommentID, s.CommentParent, err)
 			continue
 		}
+		updated++
 	}
 
 	// iterate comments again to set parent comments
@@ -103,7 +104,6 @@ func migrateComments(app *pocketbase.PocketBase, gormdb *gorm.DB, oldUserIDs map
 						log.Printf("ERROR for %d: %v\n", c.GetInt("old_id"), err)
 						continue
 					}
-					updated++
 				}
 			}
 		}

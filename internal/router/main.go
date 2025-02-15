@@ -152,6 +152,8 @@ func legacyTagCompat() func(e *core.RequestEvent) error {
 
 func legacySearchCompat() func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
+		// ?s=test&id=95&post_type=schematics
+		// test is the term above
 		path := e.Request.URL.Path
 		query := e.Request.URL.Query()
 		fmt.Sprintln("should redirect", e.Request.URL.Path, e.Request.URL.Query())
