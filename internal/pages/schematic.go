@@ -331,7 +331,7 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record) {
 
 func MapResultsToSchematic(app *pocketbase.PocketBase, results []*core.Record, cacheService *cache.Service) (schematics []models.Schematic) {
 	for i := range results {
-		if results[i] == nil || results[i].Id == "" {
+		if results[i] == nil || results[i].Id == "" || !results[i].GetDateTime("deleted").IsZero() {
 			continue
 		}
 		sk := cache.SchematicKey(results[i].Id)

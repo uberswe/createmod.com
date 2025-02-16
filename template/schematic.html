@@ -32,7 +32,7 @@
                                             {{ end }}
                                         </div>
                                         {{ end }}
-                                        <div class="row">
+                                        <div class="row mt-4">
                                             <div class="col">
                                                 <h3 class="card-title">Description</h3>
                                             </div>
@@ -45,6 +45,11 @@
                                                     <option value="2">Poor</option>
                                                     <option value="1">Terrible</option>
                                                 </select>
+                                            </div>
+                                            <div class="col-auto">
+                                                <a href="#" class="btn btn-secondary" onclick="copyLink(event)" data-link="https://createmod.com/schematics/{{ .Schematic.Name }}">
+                                                    Copy Link
+                                                </a>
                                             </div>
                                             <div class="col-auto">
                                                 <a href="{{ .Schematic.SchematicFile }}" class="btn btn-primary"
@@ -342,6 +347,13 @@
     // @formatter:on
 </script>
 {{ end }}
+<script>
+    function copyLink(event) {
+        navigator.clipboard.writeText(event.target.dataset.link);
+        event.target.classList.remove("btn-secondary")
+        event.target.classList.add("btn-green")
+    }
+</script>
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {

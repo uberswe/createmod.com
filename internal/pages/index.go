@@ -74,7 +74,6 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 	err := app.RecordQuery("schematics").
 		Select("schematics.*", "avg(schematic_ratings.rating) as avg_rating", "count(schematic_ratings.rating) as total_rating").
 		From("schematics").
-		Where(dbx.NewExp("schematics.deleted = null")).
 		LeftJoin("schematic_ratings", dbx.NewExp("schematic_ratings.schematic = schematics.id")).
 		OrderBy("avg_rating DESC").
 		AndOrderBy("total_rating DESC").
@@ -101,7 +100,6 @@ func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		Select("schematics.*", "avg(schematic_views.count) as avg_views").
 		From("schematic_views").
 		LeftJoin("schematics", dbx.NewExp("schematic_views.schematic = schematics.id")).
-		Where(dbx.NewExp("schematics.deleted = null")).
 		Where(dbx.NewExp("schematic_views.type = 0")).
 		AndWhere(dbx.NewExp("schematic_views.created > (SELECT DATETIME('now', '-2 day'))")).
 		OrderBy("avg_views DESC").

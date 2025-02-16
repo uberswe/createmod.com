@@ -160,3 +160,7 @@ func (s *Service) GetTagWithCount(key string) ([]models.SchematicTagWithCount, b
 	}
 	return nil, false
 }
+
+func (s *Service) Flush() {
+	s.c.Flush()
+}

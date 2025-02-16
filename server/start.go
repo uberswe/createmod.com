@@ -81,6 +81,13 @@ func (s *Server) Start() {
 	s.app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
 
+		log.Println("Starting Search Server")
+		schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+		if err != nil {
+			s.app.Logger().Error(err.Error())
+		}
+		mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
+		s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
 		s.searchService = search.New(nil, s.app)
 		go func() {
 			// MIGRATIONS
@@ -88,6 +95,9 @@ func (s *Server) Start() {
 				gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
 				if err == nil {
 					migrate.Run(s.app, gormdb)
+					// Flush cache after migrations run
+					log.Println("Flushing Cache")
+					s.cacheService.Flush()
 				} else {
 					s.app.Logger().Debug(
 						"MIGRATION SKIPPED - No MySQL Connection",
@@ -98,7 +108,7 @@ func (s *Server) Start() {
 			// END MIGRATIONS
 
 			// SEARCH
-			log.Println("Starting Search Server")
+			log.Println("Rebuilding Search Server Index")
 			schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
 			if err != nil {
 				s.app.Logger().Error(err.Error())
@@ -106,6 +116,8 @@ func (s *Server) Start() {
 			mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
 			s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
 			s.searchService.BuildIndex(mappedSchematics)
+			log.Println("Flushing Cache")
+			s.cacheService.Flush()
 
 			// END SEARCH
 
