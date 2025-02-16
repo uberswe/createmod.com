@@ -4,6 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
 	"fmt"
+	"github.com/aws/smithy-go/time"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -28,7 +29,7 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 			return err
 		}
 		var results []core.Record
-		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted = null")).All(&results)
+		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted < {:deleted}", dbx.Params{"deleted": time.ParseEpochSeconds(1.000)})).All(&results)
 		if err != nil {
 			return err
 		}
