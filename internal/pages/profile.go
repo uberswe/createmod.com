@@ -31,7 +31,7 @@ func ProfileHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 	return func(e *core.RequestEvent) error {
 		username := e.Request.PathValue("username")
 		if username == "" {
-			return editProfile(e, app, registry)
+			return editProfile(e, app, registry, cacheService)
 		}
 		return showProfile(e, app, cacheService, registry, username)
 	}
@@ -42,7 +42,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 	d.Populate(e)
 	caser := cases.Title(language.English)
 	d.Title = "Schematics by " + caser.String(username)
-	d.Categories = allCategories(app)
+	d.Categories = allCategories(app, cacheService)
 	d.Username = caser.String(username)
 	d.Description = "Find Create Mod schematics by " + caser.String(username) + " on CreateMod.com"
 	d.Slug = "/author/" + username
@@ -54,7 +54,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 
 	results, err := app.FindRecordsByFilter(
 		usersCollection.Id,
-		"username = {:username}",
+		"username = {:username} && deleted = null",
 		"-created",
 		1,
 		0,
@@ -80,12 +80,12 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 	return e.HTML(http.StatusOK, html)
 }
 
-func editProfile(e *core.RequestEvent, app *pocketbase.PocketBase, registry *template.Registry) error {
+func editProfile(e *core.RequestEvent, app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) error {
 	// TODO make this possible as part of #51
 	d := ProfileData{}
 	d.Populate(e)
 	d.Title = "Edit profile coming soon"
-	d.Categories = allCategories(app)
+	d.Categories = allCategories(app, cacheService)
 	html, err := registry.LoadFiles(profileTemplates...).Render(d)
 	if err != nil {
 		return err

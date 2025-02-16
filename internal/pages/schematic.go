@@ -29,8 +29,10 @@ type SchematicData struct {
 	Schematic     models.Schematic
 	Comments      []models.Comment
 	AuthorHasMore bool
-	FromAuthor    []models.Schematic
-	Similar       []models.Schematic
+	// IsAuthor of the current schematic, for edit and delete actions
+	IsAuthor   bool
+	FromAuthor []models.Schematic
+	Similar    []models.Schematic
 }
 
 func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry) func(e *core.RequestEvent) error {
@@ -41,7 +43,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"name = {:name}",
+			"name = {:name} && deleted = null",
 			"-created",
 			1,
 			0,
@@ -64,13 +66,14 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.Description = d.Schematic.Content
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
-		d.Categories = allCategories(app)
+		d.Categories = allCategories(app, cacheService)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
 		d.FromAuthor = findAuthorSchematics(app, cacheService, d.Schematic.ID, d.Schematic.Author.ID, 5, "@random")
 		d.Similar = findSimilarSchematics(app, cacheService, d.Schematic, d.FromAuthor, searchService)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
+		d.IsAuthor = d.Schematic.Author.ID == d.UserID
 
-		go countSchematicView(app, results[0])
+		countSchematicView(app, results[0])
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -86,7 +89,7 @@ func findAuthorSchematics(app *pocketbase.PocketBase, cacheService *cache.Servic
 	}
 	results, err := app.FindRecordsByFilter(
 		schematicsCollection.Id,
-		"id != {:id} && author = {:authorID}",
+		"id != {:id} && author = {:authorID} && deleted = null",
 		sortBy,
 		limit,
 		0,
@@ -133,6 +136,7 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 	err := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
+		Where(dbx.NewExp("deleted = null")).
 		Where(dbx.In("id", interfaceIds...)).
 		All(&res)
 	if err != nil {
@@ -430,6 +434,9 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 		Rating:               fmt.Sprintf("%.1f", rating),
 		RatingCount:          ratingCount,
 		SchematicFile:        fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
+	}
+	if len(result.GetStringSlice("categories")) > 0 {
+		s.CategoryId = result.GetStringSlice("categories")[0]
 	}
 	s.HasTags = len(s.Tags) > 0
 	s.HasRating = s.Rating != ""

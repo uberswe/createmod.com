@@ -12,20 +12,12 @@ import (
 	"golang.org/x/text/language"
 	tmpl "html/template"
 	"net/http"
-	"time"
 )
 
 var indexTemplates = []string{
 	"./template/dist/index.html",
 	"./template/dist/include/schematic_card.html",
 }
-
-var (
-	trendingCacheTime      time.Time
-	trendingSchematics     []models.Schematic
-	highestRatedCacheTime  time.Time
-	highestRatedSchematics []models.Schematic
-)
 
 type IndexData struct {
 	DefaultData
@@ -43,7 +35,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"1=1",
+			"deleted = null",
 			"-created",
 			50,
 			0)
@@ -52,7 +44,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			Schematics:   MapResultsToSchematic(app, results, cacheService),
 			Trending:     getTrendingSchematics(app, cacheService),
 			HighestRated: getHighestRatedSchematics(app, cacheService),
-			Tags:         allTagsWithCount(app),
+			Tags:         allTagsWithCount(app, cacheService),
 		}
 		d.Populate(e)
 		d.Title = "Minecraft Schematics"
@@ -60,7 +52,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		d.Slug = "/"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.SubCategory = "Home"
-		d.Categories = allCategories(app)
+		d.Categories = allCategories(app, cacheService)
 
 		html, err := registry.LoadFiles(indexTemplates...).Render(d)
 		if err != nil {
@@ -71,7 +63,8 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 }
 
 func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
-	if len(highestRatedSchematics) > 0 && time.Now().Before(highestRatedCacheTime.Add(time.Hour*24)) {
+	highestRatedSchematics, found := cacheService.GetSchematics(cache.HighestRatedSchematicsKey)
+	if found {
 		return highestRatedSchematics
 	}
 	// TODO a field for average rating can be aggregated daily and indexed to improve performance
@@ -81,6 +74,7 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 	err := app.RecordQuery("schematics").
 		Select("schematics.*", "avg(schematic_ratings.rating) as avg_rating", "count(schematic_ratings.rating) as total_rating").
 		From("schematics").
+		Where(dbx.NewExp("schematics.deleted = null")).
 		LeftJoin("schematic_ratings", dbx.NewExp("schematic_ratings.schematic = schematics.id")).
 		OrderBy("avg_rating DESC").
 		AndOrderBy("total_rating DESC").
@@ -92,12 +86,13 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 		return nil
 	}
 	highestRatedSchematics = MapResultsToSchematic(app, res, cacheService)
-	highestRatedCacheTime = time.Now()
+	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRatedSchematics)
 	return highestRatedSchematics
 }
 
 func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
-	if len(trendingSchematics) > 0 && time.Now().Before(trendingCacheTime.Add(time.Hour*3)) {
+	trendingSchematics, found := cacheService.GetSchematics(cache.TrendingSchematicsKey)
+	if found {
 		return trendingSchematics
 	}
 	// TODO a field for daily and weekly views can be aggregated daily and indexed to improve performance
@@ -106,6 +101,7 @@ func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		Select("schematics.*", "avg(schematic_views.count) as avg_views").
 		From("schematic_views").
 		LeftJoin("schematics", dbx.NewExp("schematic_views.schematic = schematics.id")).
+		Where(dbx.NewExp("schematics.deleted = null")).
 		Where(dbx.NewExp("schematic_views.type = 0")).
 		AndWhere(dbx.NewExp("schematic_views.created > (SELECT DATETIME('now', '-2 day'))")).
 		OrderBy("avg_views DESC").
@@ -117,7 +113,7 @@ func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		return nil
 	}
 	trendingSchematics = MapResultsToSchematic(app, res, cacheService)
-	trendingCacheTime = time.Now()
+	cacheService.SetSchematics(cache.TrendingSchematicsKey, trendingSchematics)
 	return trendingSchematics
 }
 

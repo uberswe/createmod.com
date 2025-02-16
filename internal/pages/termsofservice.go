@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/cache"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -13,7 +14,7 @@ type TermsOfServiceData struct {
 	DefaultData
 }
 
-func TermsOfServiceHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
+func TermsOfServiceHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		d := TermsOfServiceData{}
 		d.Populate(e)
@@ -21,7 +22,7 @@ func TermsOfServiceHandler(app *pocketbase.PocketBase, registry *template.Regist
 		d.Description = "The CreateMod.com terms of service."
 		d.Slug = "/terms-of-service"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app)
+		d.Categories = allCategories(app, cacheService)
 
 		html, err := registry.LoadFiles(termsOfServiceTemplate).Render(d)
 		if err != nil {

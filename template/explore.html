@@ -1,0 +1,27 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-xl">
+                {{range .Images }}
+                    <a href="/schematics/{{ .Name }}">
+                        <img class="rounded-3 border m-2 lazy"
+                             data-src="/api/files/schematics/{{ .ID }}/{{ .Image }}?thumb=150x150"
+                             src="/static/150x150.png" alt="{{ .Title }}">
+                    </a>
+                {{end}}
+            </div>
+            <div class="row">
+                <div class="col-md-6 pt-4 m-auto">
+                    <div class="alert alert-info" role="alert">
+                        Reload the page or <a href="/explore">click here</a> for 1000 random images.
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}
