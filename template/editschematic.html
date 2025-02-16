@@ -10,34 +10,42 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body">
-                                <h3 class="card-title">Upload Schematic</h3>
+                                <h3 class="card-title">Edit Schematic</h3>
                                 {{ if .IsAuthenticated }}
+                                {{ if .IsAuthor }}
                                 <div class="row">
                                     <div class="col-md-12 col-lg-6">
                                         <div class="mb-3">
                                             <label class="form-label required">Title</label>
                                             <input type="text" id="schematic-title" class="form-control" name="title"
-                                                   placeholder="Schematic Title">
+                                                   placeholder="Schematic Title" value="{{ .Schematic.Title }}">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Description</label>
                                             <textarea id="tinymce-schematic"
-                                                      placeholder="Describe your schematic and include any details on how to get it running."></textarea>
+                                                      placeholder="Describe your schematic and include any details on how to get it running.">
+                                                {{ .Schematic.Content }}
+                                            </textarea>
                                         </div>
                                         <div class="row">
                                             <div class="mb-3 col-md-12 col-lg-6">
                                                 <label class="form-label required">Category</label>
                                                 <select name="category" id="schematic-category" class="form-select">
-                                                    {{ range .Categories}}
-                                                    <option value="{{ .ID }}">{{ .Name }}</option>
+                                                    {{ range $cats := .Categories }}
+                                                            {{ if eq $cats.ID $.Schematic.CategoryId }}
+                                                                <option selected value="{{ .ID }}">{{ .Name }}</option>
+                                                            {{ else }}
+                                                                <option value="{{ .ID }}">{{ .Name }}</option>
+                                                            {{ end }}
                                                     {{ end }}
                                                 </select>
                                             </div>
                                             <div class="mb-3 col-md-12 col-lg-6">
                                                 <label class="form-label">Tags</label>
-                                                <select type="text" class="form-select" placeholder="Select tags" id="select-tags" value="" multiple>
-                                                    {{ range .Tags}}
-                                                    <option value="{{ .ID }}">{{ .Name }}</option>
+                                                <select type="text" class="form-select" placeholder="Select tags"
+                                                        id="select-tags" value="" multiple>
+                                                    {{ range .TagsWithSelected }}
+                                                        <option {{ if .Selected }}selected {{ end }}value="{{ .ID }}">{{ .Name }}</option>
                                                     {{ end }}
                                                 </select>
                                             </div>
@@ -47,7 +55,7 @@
                                                 <label class="form-label required">Create Version</label>
                                                 <select id="create-version" name="" class="form-select">
                                                     {{ range .CreatemodVersions}}
-                                                    <option value="{{ .ID }}">{{ .Version }}</option>
+                                                    <option {{ if eq .ID $.CreateModVersionId}}selected {{ end }}value="{{ .ID }}">{{ .Version }}</option>
                                                     {{ end }}
                                                 </select>
                                             </div>
@@ -63,10 +71,15 @@
                                         <div class="mb-3">
                                             <label class="form-label">Schematic Video</label>
                                             <input id="video" type="text" class="form-control" name="video"
-                                                   placeholder="Schematic Video URL">
+                                                   placeholder="Schematic Video URL" value="{{ .Schematic.Video }}">
                                         </div>
                                     </div>
                                     <div class="col-md-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                                                Delete Schematic
+                                            </button>
+                                        </div>
                                         <div class="mb-3">
                                             <form class="dropzone" id="dropzone-schematic" action="/upload"
                                                   autocomplete="off" novalidate>
@@ -75,7 +88,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Schematic File</h3>
-                                                    <span class="dropzone-msg-desc">Click here or drag the .nbt schematic file</span>
+                                                    <span class="dropzone-msg-desc">Leave this empty unless you want to replace the current file</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -87,7 +100,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Featured Image</h3>
-                                                    <span class="dropzone-msg-desc">Click here or drag a screenshot of your build in Minecraft</span>
+                                                    <span class="dropzone-msg-desc">Leave this empty unless you want to replace the current image</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -99,7 +112,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                    <span class="dropzone-msg-desc">Click here or drag images to showcase your schematic</span>
+                                                    <span class="dropzone-msg-desc">Leave this empty unless you want to replace the current images</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -108,25 +121,35 @@
                                 <div class="row">
                                     <div class="mt-5">
                                         <button class="btn btn-primary w-100" id="upload-schematic-btn">
-                                            Upload
+                                            Save Schematic
                                         </button>
                                         <div id="progress-upload" style="display: none;" class="progress">
                                             <div class="progress-bar bg-green"></div>
                                         </div>
-                                        <div id="upload-success" class="alert alert-important alert-success" style="display: none;" role="alert">
+                                        <div id="upload-success" class="alert alert-important alert-success"
+                                             style="display: none;" role="alert">
                                             <div class="d-flex">
                                                 <div>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon"
+                                                         width="24" height="24" viewBox="0 0 24 24" stroke-width="2"
+                                                         stroke="currentColor" fill="none" stroke-linecap="round"
+                                                         stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                        <path d="M5 12l5 5l10 -10"/>
+                                                    </svg>
                                                 </div>
                                                 <div>
-                                                    Schematic has been uploaded!
+                                                    Schematic has been saved!
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 {{ else }}
-                                <h4>You must be <a href="/login">logged in</a> to upload schematics.</h4>
+                                <h4>You can only edit your own schematics.</h4>
+                                {{ end }}
+                                {{ else }}
+                                <h4>You must be <a href="/login">logged in</a> to edit schematics.</h4>
                                 {{ end }}
                             </div>
                         </div>
@@ -137,12 +160,27 @@
         {{template "footer.html" .}}
     </div>
 </div>
+<div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="modal-title">Are you sure?</div>
+                <div>If you proceed, you will no longer have access to this schematic.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="delete-schematic-btn">Yes, delete my schematic</button>
+            </div>
+        </div>
+    </div>
+</div>
 <style>
     body .ts-control {
         background: #ffffff !important;
         border: none !important;
     }
-    body .ts-wrapper.multi .ts-control>div {
+
+    body .ts-wrapper.multi .ts-control > div {
         background: #bf9045 !important;
     }
 
@@ -155,7 +193,8 @@
         background: #1f2121 !important;
         border: none !important;
     }
-    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
+
+    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control > div {
         background: #bf9045 !important;
     }
 
@@ -165,7 +204,7 @@
     }
 </style>
 <script type="module" src="dropzone/dist/dropzone-min.js" defer></script>
-<script type="module"  src="tinymce/tinymce.min.js" defer></script>
+<script type="module" src="tinymce/tinymce.min.js" defer></script>
 <script src="/libs/tom-select/dist/js/tom-select.base.min.js" defer></script>
 <script>
     // @formatter:off
@@ -226,6 +265,8 @@
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function() {
+        let schematicID = "{{ .Schematic.ID }}"
+
         // based on https://stackoverflow.com/a/61357880/1260548
         let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
             url: "/files/upload",
@@ -256,6 +297,11 @@
             parallelUploads: 10,
             maxFiles: 10,
         })
+
+        document.getElementById('delete-schematic-btn').addEventListener("click", async function (e) {
+            const del = await pb.collection('schematics').delete(schematicID);
+            location.href = "/"
+        });
 
         document.getElementById('upload-schematic-btn').addEventListener("click", async function (e) {
             let titleElement = document.getElementById("schematic-title")
@@ -303,22 +349,6 @@
                 errors.push("A schematic must have a description")
                 descriptionElement.parentNode.insertAdjacentElement("beforeend", div)
             }
-            if (dropzoneSchematic.files.length === 0) {
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "A schematic must have a schematic file"
-                errors.push("A schematic must have a schematic file")
-                document.getElementById("dropzone-schematic").parentNode.insertAdjacentElement("beforeend", div)
-            }
-            if (dropzoneFeatured.files.length === 0) {
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "A schematic must have a featured image"
-                errors.push("A schematic must have a featured image")
-                document.getElementById("dropzone-featured").parentNode.insertAdjacentElement("beforeend", div)
-            }
 
             if (errors.length === 0) {
                 let progressBar = document.getElementById("progress-upload")
@@ -326,7 +356,7 @@
                 try {
                     progressBar.style.display = "block"
                     progressBar.classList.add("progress-bar-indeterminate")
-                const createdRecord = await pb.collection('schematics').create(formData);
+                const createdRecord = await pb.collection('schematics').update(schematicID, formData);
                 if (createdRecord.code !== undefined && createdRecord.code !== 200) {
                     div = document.createElement('div');
                     div.classList.add("invalid-feedback")

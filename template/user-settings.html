@@ -53,6 +53,13 @@
                                                 Set new password
                                             </a>
                                         </div>
+                                        <h3 class="card-title mt-4">Account Actions</h3>
+                                        <p class="card-subtitle">You can delete your account permanently, begin the process by clicking the button below.</p>
+                                        <div>
+                                            <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                                                Delete Account
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -61,6 +68,32 @@
                 </div>
             </div>
         </div>
+        <div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <div class="modal-title">Are you sure?</div>
+                        <div>If you proceed, you will no longer have access to your account. Your schematics will be removed.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="delete-schematic-btn">Yes, delete my account</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                let userId = "{{ .UserID }}"
+
+                document.getElementById('delete-schematic-btn').addEventListener("click", async function (e) {
+                    const del = await pb.collection('users').delete(userId);
+                    pb.authStore.clear();
+                    deleteCookie("create-mod-auth")
+                    location.href = "/"
+                });
+            });
+        </script>
         {{template "footer.html" .}}
     </div>
 </div>

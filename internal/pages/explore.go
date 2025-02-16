@@ -4,6 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
 	"fmt"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -27,7 +28,7 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 			return err
 		}
 		var results []core.Record
-		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").All(&results)
+		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted = null")).All(&results)
 		if err != nil {
 			return err
 		}

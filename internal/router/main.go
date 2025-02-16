@@ -58,6 +58,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
 	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry))
+	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
 	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry))

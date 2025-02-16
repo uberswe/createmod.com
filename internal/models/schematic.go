@@ -26,6 +26,7 @@ type Schematic struct {
 	Dependencies         string
 	HTMLDependencies     template.HTML
 	Categories           []SchematicCategory
+	CategoryId           string
 	Tags                 []SchematicTag
 	CreatemodVersion     string
 	MinecraftVersion     string

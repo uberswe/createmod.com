@@ -101,6 +101,10 @@ func (s *Service) SetSchematic(key string, value models.Schematic) {
 	s.c.Set(key, value, cache.DefaultExpiration)
 }
 
+func (s *Service) DeleteSchematic(key string) {
+	s.c.Delete(key)
+}
+
 func (s *Service) GetSchematic(key string) (models.Schematic, bool) {
 	v, found := s.Get(key)
 	if !found {

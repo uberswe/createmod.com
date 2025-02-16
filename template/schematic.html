@@ -52,6 +52,14 @@
                                                     Download
                                                 </a>
                                             </div>
+                                            {{ if .IsAuthor }}
+                                            <div class="col-auto">
+                                                <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-secondary"
+                                                   id="edit-btn">
+                                                    Edit
+                                                </a>
+                                            </div>
+                                            {{ end }}
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <div>

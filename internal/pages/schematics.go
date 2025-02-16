@@ -28,7 +28,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"1=1",
+			"deleted = null",
 			"-created",
 			51,
 			0)

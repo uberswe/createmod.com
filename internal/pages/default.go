@@ -16,6 +16,7 @@ import (
 type DefaultData struct {
 	IsAuthenticated bool
 	Username        string
+	UserID          string
 	UsernameSlug    string
 	Title           string
 	Description     string
@@ -33,6 +34,7 @@ func (d *DefaultData) Populate(e *core.RequestEvent) {
 		d.IsAuthenticated = true
 		caser := cases.Title(language.English)
 		d.Username = caser.String(user.GetString("username"))
+		d.UserID = user.Id
 		d.UsernameSlug = strings.ToLower(user.GetString("username"))
 		url := gravatar.New(user.GetString("email")).
 			Size(200).

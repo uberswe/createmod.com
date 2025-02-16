@@ -99,7 +99,7 @@ func (s *Server) Start() {
 
 			// SEARCH
 			log.Println("Starting Search Server")
-			schematics, err := s.app.FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+			schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
 			if err != nil {
 				s.app.Logger().Error(err.Error())
 			}
@@ -109,24 +109,60 @@ func (s *Server) Start() {
 
 			// END SEARCH
 
-			s.app.OnRecordCreate("schematics").BindFunc(func(e *core.RecordEvent) error {
+			s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
 				// Rebuild the search index every time a schematic is created
 				err := e.Next()
 				if err != nil {
 					return err
 				}
 				go func() {
-					schematics, err := s.app.FindRecordsByFilter("schematics", "1=1", "-created", -1, 0)
+					schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
 					if err != nil {
 						s.app.Logger().Warn(err.Error())
 					}
 					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
 					s.sitemapService.Generate(s.app)
 				}()
-				return e.Next()
+				return nil
 			})
 
-			s.app.OnRecordCreate("users").BindFunc(func(e *core.RecordEvent) error {
+			s.app.OnRecordUpdate("schematics").BindFunc(func(e *core.RecordEvent) error {
+				err = e.Next()
+				if err != nil {
+					return err
+				}
+				s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
+				go func() {
+					schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+					if err != nil {
+						s.app.Logger().Warn(err.Error())
+					}
+					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+					s.sitemapService.Generate(s.app)
+				}()
+				return nil
+			})
+
+			s.app.OnRecordDeleteExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
+				e.Record.Set("deleted", time.Now())
+				err := e.App.Save(e.Record)
+				if err != nil {
+					return err
+				}
+				s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
+				// Prevent actual deletion
+				go func() {
+					schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+					if err != nil {
+						s.app.Logger().Warn(err.Error())
+					}
+					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+					s.sitemapService.Generate(s.app)
+				}()
+				return nil
+			})
+
+			s.app.OnRecordCreateExecute("users").BindFunc(func(e *core.RecordEvent) error {
 				avatarUrl := gravatar.New(e.Record.GetString("email")).
 					Size(200).
 					Default(gravatar.NotFound).
@@ -153,6 +189,32 @@ func (s *Server) Start() {
 				if err != nil {
 					return err
 				}
+				return nil
+			})
+
+			s.app.OnRecordDeleteExecute("users").BindFunc(func(e *core.RecordEvent) error {
+				schemRes, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:author}", "-created", -1, 0, dbx.Params{"author": e.Record.Id})
+				if err != nil {
+					return err
+				}
+				// Delete all schematics if a user is deleted
+				for _, r := range schemRes {
+					s.cacheService.DeleteSchematic(cache.SchematicKey(r.Id))
+					r.Set("deleted", time.Now())
+					err = e.App.Save(r)
+					if err != nil {
+						return err
+					}
+				}
+				e.Record.Set("deleted", time.Now())
+				err = e.App.Save(e.Record)
+				if err != nil {
+					return err
+				}
+				// Prevent actual deletion
+				go func() {
+					s.sitemapService.Generate(s.app)
+				}()
 				return nil
 			})
 
@@ -231,9 +293,12 @@ func (s *Server) Start() {
 			return s.app.NewMailClient().Send(message)
 		})
 
-		// COOKIES
 		s.app.OnRecordAuthRequest().BindFunc(func(e *core.RecordAuthRequestEvent) error {
-			s.app.Logger().Info("onRecordAuthRequest", "record", e.Record, "setCookie", auth.CookieName, "exp", e.Record.Collection().AuthToken.Duration)
+			// prevent deleted users from logging in
+			if !e.Record.GetDateTime("deleted").IsZero() {
+				return fmt.Errorf("deleted user can not login")
+			}
+			// COOKIES
 			e.SetCookie(&http.Cookie{
 				Name:     auth.CookieName,
 				Value:    e.Token,
@@ -241,9 +306,9 @@ func (s *Server) Start() {
 				Path:     "/",
 				SameSite: http.SameSiteStrictMode,
 			})
+			// END COOKIES
 			return e.Next()
 		})
-		// END COOKIES
 
 		// PASSWORD BACKWARDS COMPATIBILITY
 		s.app.OnRecordAuthWithPasswordRequest("users").BindFunc(func(e *core.RecordAuthWithPasswordRequestEvent) error {

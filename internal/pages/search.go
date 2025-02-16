@@ -126,20 +126,27 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			return err
 		}
 		// Update search count
-		go searchCount(app, term, slugTerm, int32(d.SearchResultCount))
+		err = searchCount(app, term, slugTerm, int32(d.SearchResultCount))
+		if err != nil {
+			return err
+		}
 		return e.HTML(http.StatusOK, html)
 	}
 }
 
-func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searchResults int32) {
+func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searchResults int32) error {
 	term = strings.ToLower(strings.TrimSpace(term))
+	// Skip empty or invalid searches
+	if term == "" {
+		return nil
+	}
 	records, err := app.FindRecordsByFilter("searches", "term = {:term}", "+term", 1, 0, dbx.Params{"term": term})
 	if err != nil {
-		return
+		return err
 	}
 	searchesCollection, err := app.FindCollectionByNameOrId("searches")
 	if err != nil {
-		return
+		return err
 	}
 	if len(records) == 0 {
 		record := core.NewRecord(searchesCollection)
@@ -147,15 +154,12 @@ func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searc
 		record.Set("slug", termSlug)
 		record.Set("searches", 1)
 		record.Set("results", searchResults)
-		return
+		return app.Save(record)
 	}
 	record := records[0]
 	record.Set("searches", record.GetInt("searches")+1)
 	record.Set("results", searchResults)
-	err = app.Save(record)
-	if err != nil {
-		return
-	}
+	return app.Save(record)
 }
 
 func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {

@@ -85,8 +85,8 @@
                 x = ARRcookies[i].substr(0, ARRcookies[i].indexOf("="));
                 y = ARRcookies[i].substr(ARRcookies[i].indexOf("=") + 1);
                 x = x.replace(/^\s+|\s+$/g, "");
-                if (x == c_name) {
-                    return unescape(y);
+                if (x === c_name) {
+                    return decodeURI(y);
                 }
             }
         }
@@ -145,6 +145,7 @@
                 if (loginButton != null) {
                     loginButton.innerText = "Logout"
                     loginButton.onclick = (ev) => {
+                        deleteCookie("create-mod-auth")
                         pb.authStore.clear();
                         location.href = '/login'
                     }
