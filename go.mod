@@ -7,7 +7,9 @@ toolchain go1.23.6
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/blevesearch/bleve v1.0.14
+	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/elliotchance/phpserialize v1.4.0
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/joho/godotenv v1.5.1
@@ -21,10 +23,10 @@ require (
 	github.com/sym01/htmlsanitizer v1.1.0
 	golang.org/x/crypto v0.33.0
 	golang.org/x/text v0.22.0
-	gorm.io/driver/mysql v1.4.4
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/gen v0.3.26
-	gorm.io/gorm v1.25.9
-	gorm.io/plugin/dbresolver v1.5.0
+	gorm.io/gorm v1.25.12
+	gorm.io/plugin/dbresolver v1.5.3
 )
 
 require (
@@ -62,13 +64,11 @@ require (
 	github.com/couchbase/vellum v1.0.2 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/domodwyer/mailyak/v3 v3.6.2 // indirect
-	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/ganigeorgiev/fexpr v0.4.1 // indirect
 	github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2 // indirect
-	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
