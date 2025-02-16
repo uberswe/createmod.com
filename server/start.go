@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
-	"createmod/internal/migrate"
 	"createmod/internal/pages"
 	"createmod/internal/router"
 	"createmod/internal/search"
@@ -24,8 +23,6 @@ import (
 	"github.com/pocketbase/pocketbase/tools/mailer"
 	"github.com/sunshineplan/imgconv"
 	"github.com/sym01/htmlsanitizer"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"log"
 	"math/rand"
 	"net/http"
@@ -88,151 +85,117 @@ func (s *Server) Start() {
 		}
 		mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
 		s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
-		s.searchService = search.New(nil, s.app)
-		go func() {
-			// MIGRATIONS
-			if s.conf.MysqlDB != "" {
-				gormdb, err := gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", s.conf.MysqlUser, s.conf.MysqlPass, s.conf.MysqlHost, s.conf.MysqlDB)))
-				if err == nil {
-					migrate.Run(s.app, gormdb)
-					// Flush cache after migrations run
-					log.Println("Flushing Cache")
-					s.cacheService.Flush()
-				} else {
-					s.app.Logger().Debug(
-						"MIGRATION SKIPPED - No MySQL Connection",
-					)
-				}
-			}
+		s.searchService = search.New(mappedSchematics, s.app)
+		s.sitemapService.Generate(s.app)
 
-			// END MIGRATIONS
-
-			// SEARCH
-			log.Println("Rebuilding Search Server Index")
-			schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
+			// Rebuild the search index every time a schematic is created
+			err := e.Next()
 			if err != nil {
-				s.app.Logger().Error(err.Error())
+				return err
 			}
-			mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
-			s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
-			s.searchService.BuildIndex(mappedSchematics)
-			log.Println("Flushing Cache")
-			s.cacheService.Flush()
+			go func() {
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+				if err != nil {
+					s.app.Logger().Warn(err.Error())
+				}
+				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+				s.sitemapService.Generate(s.app)
+			}()
+			return nil
+		})
 
-			// END SEARCH
+		s.app.OnRecordUpdate("schematics").BindFunc(func(e *core.RecordEvent) error {
+			err = e.Next()
+			if err != nil {
+				return err
+			}
+			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
+			go func() {
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+				if err != nil {
+					s.app.Logger().Warn(err.Error())
+				}
+				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+				s.sitemapService.Generate(s.app)
+			}()
+			return nil
+		})
 
-			s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
-				// Rebuild the search index every time a schematic is created
-				err := e.Next()
+		s.app.OnRecordDeleteExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
+			e.Record.Set("deleted", time.Now())
+			err := e.App.Save(e.Record)
+			if err != nil {
+				return err
+			}
+			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
+			// Prevent actual deletion
+			go func() {
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+				if err != nil {
+					s.app.Logger().Warn(err.Error())
+				}
+				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+				s.sitemapService.Generate(s.app)
+			}()
+			return nil
+		})
+
+		s.app.OnRecordCreateExecute("users").BindFunc(func(e *core.RecordEvent) error {
+			avatarUrl := gravatar.New(e.Record.GetString("email")).
+				Size(200).
+				Default(gravatar.NotFound).
+				Rating(gravatar.Pg).
+				AvatarURL()
+			e.Record.Set("avatar", avatarUrl)
+			err := e.Next()
+			if err != nil {
+				return err
+			}
+			// Rebuild the sitemap every time a user is created
+			go s.sitemapService.Generate(s.app)
+			return nil
+		})
+
+		s.app.OnRecordUpdate("users").BindFunc(func(e *core.RecordEvent) error {
+			avatarUrl := gravatar.New(e.Record.GetString("email")).
+				Size(200).
+				Default(gravatar.NotFound).
+				Rating(gravatar.Pg).
+				AvatarURL()
+			e.Record.Set("avatar", avatarUrl)
+			err := e.Next()
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+
+		s.app.OnRecordDeleteExecute("users").BindFunc(func(e *core.RecordEvent) error {
+			schemRes, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:author}", "-created", -1, 0, dbx.Params{"author": e.Record.Id})
+			if err != nil {
+				return err
+			}
+			// Delete all schematics if a user is deleted
+			for _, r := range schemRes {
+				s.cacheService.DeleteSchematic(cache.SchematicKey(r.Id))
+				r.Set("deleted", time.Now())
+				err = e.App.Save(r)
 				if err != nil {
 					return err
 				}
-				go func() {
-					schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
-					if err != nil {
-						s.app.Logger().Warn(err.Error())
-					}
-					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
-					s.sitemapService.Generate(s.app)
-				}()
-				return nil
-			})
-
-			s.app.OnRecordUpdate("schematics").BindFunc(func(e *core.RecordEvent) error {
-				err = e.Next()
-				if err != nil {
-					return err
-				}
-				s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
-				go func() {
-					schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
-					if err != nil {
-						s.app.Logger().Warn(err.Error())
-					}
-					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
-					s.sitemapService.Generate(s.app)
-				}()
-				return nil
-			})
-
-			s.app.OnRecordDeleteExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
-				e.Record.Set("deleted", time.Now())
-				err := e.App.Save(e.Record)
-				if err != nil {
-					return err
-				}
-				s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
-				// Prevent actual deletion
-				go func() {
-					schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
-					if err != nil {
-						s.app.Logger().Warn(err.Error())
-					}
-					s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
-					s.sitemapService.Generate(s.app)
-				}()
-				return nil
-			})
-
-			s.app.OnRecordCreateExecute("users").BindFunc(func(e *core.RecordEvent) error {
-				avatarUrl := gravatar.New(e.Record.GetString("email")).
-					Size(200).
-					Default(gravatar.NotFound).
-					Rating(gravatar.Pg).
-					AvatarURL()
-				e.Record.Set("avatar", avatarUrl)
-				err := e.Next()
-				if err != nil {
-					return err
-				}
-				// Rebuild the sitemap every time a user is created
-				go s.sitemapService.Generate(s.app)
-				return nil
-			})
-
-			s.app.OnRecordUpdate("users").BindFunc(func(e *core.RecordEvent) error {
-				avatarUrl := gravatar.New(e.Record.GetString("email")).
-					Size(200).
-					Default(gravatar.NotFound).
-					Rating(gravatar.Pg).
-					AvatarURL()
-				e.Record.Set("avatar", avatarUrl)
-				err := e.Next()
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-
-			s.app.OnRecordDeleteExecute("users").BindFunc(func(e *core.RecordEvent) error {
-				schemRes, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:author}", "-created", -1, 0, dbx.Params{"author": e.Record.Id})
-				if err != nil {
-					return err
-				}
-				// Delete all schematics if a user is deleted
-				for _, r := range schemRes {
-					s.cacheService.DeleteSchematic(cache.SchematicKey(r.Id))
-					r.Set("deleted", time.Now())
-					err = e.App.Save(r)
-					if err != nil {
-						return err
-					}
-				}
-				e.Record.Set("deleted", time.Now())
-				err = e.App.Save(e.Record)
-				if err != nil {
-					return err
-				}
-				// Prevent actual deletion
-				go func() {
-					s.sitemapService.Generate(s.app)
-				}()
-				return nil
-			})
-
-			s.sitemapService.Generate(s.app)
-
-		}()
+			}
+			e.Record.Set("deleted", time.Now())
+			err = e.App.Save(e.Record)
+			if err != nil {
+				return err
+			}
+			// Prevent actual deletion
+			go func() {
+				s.sitemapService.Generate(s.app)
+			}()
+			return nil
+		})
 
 		s.app.OnRecordCreateRequest("schematics").BindFunc(func(e *core.RecordRequestEvent) error {
 			if e.Auth == nil {
