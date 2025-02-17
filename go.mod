@@ -9,7 +9,7 @@ require (
 	github.com/aws/smithy-go v1.22.2
 	github.com/blevesearch/bleve v1.0.14
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
-	github.com/gosimple/slug v1.14.0
+	github.com/gosimple/slug v1.15.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
 	github.com/mergestat/timediff v0.0.3
