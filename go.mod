@@ -12,7 +12,7 @@ require (
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/gosimple/slug v1.15.0
 	github.com/joho/godotenv v1.5.1
-	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
+	github.com/labstack/echo/v5 c44f6283f02a
 	github.com/mergestat/timediff v0.0.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pocketbase/dbx v1.11.0
