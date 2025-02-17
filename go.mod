@@ -2,7 +2,7 @@ module createmod
 
 go 1.23
 
-toolchain go1.23.6
+toolchain go1.24.0
 
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
