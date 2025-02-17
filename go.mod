@@ -20,7 +20,7 @@ require (
 	github.com/sunshineplan/imgconv v1.1.13
 	github.com/sym01/htmlsanitizer v1.1.0
 	golang.org/x/text v0.22.0
-	gorm.io/driver/mysql v1.4.4
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/gen v0.3.26
 	gorm.io/gorm v1.25.9
 )
