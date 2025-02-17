@@ -2,8 +2,7 @@ name: deploy
 on:
   push:
     branches:
-      - main
-      - master
+      - production
   workflow_dispatch:
     inputs:
       sync:
@@ -19,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
       - name: Set up node
         uses: actions/setup-node@v4
 
