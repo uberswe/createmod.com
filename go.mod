@@ -8,6 +8,7 @@ require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/aws/smithy-go v1.22.2
 	github.com/blevesearch/bleve v1.0.14
+	github.com/blevesearch/bleve/v2 v2.4.4
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/gosimple/slug v1.14.0
 	github.com/joho/godotenv v1.5.1
@@ -27,7 +28,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/RoaringBitmap/roaring v0.4.23 // indirect
+	github.com/RoaringBitmap/roaring v1.9.3 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.36.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.8 // indirect
@@ -47,9 +48,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.14 // indirect
+	github.com/bits-and-blooms/bitset v1.12.0 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
-	github.com/blevesearch/mmap-go v1.0.2 // indirect
-	github.com/blevesearch/segment v0.9.0 // indirect
+	github.com/blevesearch/mmap-go v1.0.4 // indirect
+	github.com/blevesearch/segment v0.9.1 // indirect
 	github.com/blevesearch/snowballstem v0.9.0 // indirect
 	github.com/blevesearch/zap/v11 v11.0.14 // indirect
 	github.com/blevesearch/zap/v12 v12.0.14 // indirect
@@ -97,7 +99,7 @@ require (
 	github.com/sunshineplan/pdf v1.0.7 // indirect
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/willf/bitset v1.1.10 // indirect
-	go.etcd.io/bbolt v1.3.5 // indirect
+	go.etcd.io/bbolt v1.3.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	gocloud.dev v0.40.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
