@@ -2,8 +2,7 @@ name: deploy
 on:
   push:
     branches:
-      - main
-      - master
+      - production
   workflow_dispatch:
     inputs:
       sync:
