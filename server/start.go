@@ -160,7 +160,7 @@ func (s *Server) Start() {
 		s.app.OnRecordUpdate("users").BindFunc(func(e *core.RecordEvent) error {
 			avatarUrl := gravatar.New(e.Record.GetString("email")).
 				Size(200).
-				Default(gravatar.NotFound).
+				Default(gravatar.MysteryMan).
 				Rating(gravatar.Pg).
 				AvatarURL()
 			e.Record.Set("avatar", avatarUrl)

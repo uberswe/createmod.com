@@ -114,8 +114,9 @@ func cookieAuth(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
 
 func legacyFileCompat() func(e *core.RequestEvent) error {
 	fileMatches := map[string]string{
-		"/wp-sitemap.xml":  "/sitemaps/sitemap.xml",
-		"upload-schematic": "/upload",
+		"/wp-sitemap.xml":    "/sitemaps/sitemap.xml",
+		"/upload-schematic":  "/upload",
+		"/upload-schematics": "/upload",
 	}
 	return func(e *core.RequestEvent) error {
 		path := e.Request.URL.Path
