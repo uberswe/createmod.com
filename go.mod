@@ -22,7 +22,7 @@ require (
 	golang.org/x/text v0.22.0
 	gorm.io/driver/mysql v1.4.4
 	gorm.io/gen v0.3.26
-	gorm.io/gorm v1.25.9
+	gorm.io/gorm v1.25.12
 )
 
 require (
