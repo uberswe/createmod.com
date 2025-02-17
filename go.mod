@@ -2,7 +2,7 @@ module createmod
 
 go 1.23
 
-toolchain go1.23.6
+toolchain go1.24.0
 
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
@@ -23,7 +23,7 @@ require (
 	golang.org/x/text v0.22.0
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gen v0.3.26
-	gorm.io/gorm v1.25.9
+	gorm.io/gorm v1.25.12
 )
 
 require (
