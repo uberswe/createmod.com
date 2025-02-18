@@ -39,6 +39,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	smPages := smi.NewSitemap()
 	smPages.SetName("pages")
 	smPages.SetLastMod(&now)
+	smPages.SetOutputPath("template/dist/sitemaps/")
 
 	addPage(app, now, smPages, "/", 1.0, smg.Daily)
 	addPage(app, now, smPages, "/about", 0.9, smg.Weekly)
@@ -59,6 +60,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	schematicsSmCount := 1
 	smSchematics := smi.NewSitemap()
 	smSchematics.SetName(fmt.Sprintf("schematics-%d", schematicsSmCount))
+	smSchematics.SetOutputPath("template/dist/sitemaps/")
 	smSchematics.SetLastMod(&now)
 
 	for i := range schematics {
@@ -66,6 +68,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 			schematicsSmCount++
 			smSchematics = smi.NewSitemap()
 			smSchematics.SetName(fmt.Sprintf("schematics-%d", schematicsSmCount))
+			smSchematics.SetOutputPath("template/dist/sitemaps/")
 			smSchematics.SetLastMod(&now)
 		}
 		images := []*smg.SitemapImage{{ImageLoc: fmt.Sprintf("/api/files/%s/%s", schematics[i].BaseFilesPath(), schematics[i].GetString("featured_image"))}}
@@ -88,12 +91,14 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	smUsers := smi.NewSitemap()
 	smUsers.SetName(fmt.Sprintf("users-%d", userSmCount))
 	smUsers.SetLastMod(&now)
+	smUsers.SetOutputPath("template/dist/sitemaps/")
 	for i := range users {
 		if i != 0 && i%1000 == 0 {
 			userSmCount++
 			smUsers = smi.NewSitemap()
 			smUsers.SetName(fmt.Sprintf("users-%d", userSmCount))
 			smUsers.SetLastMod(&now)
+			smUsers.SetOutputPath("template/dist/sitemaps/")
 		}
 		images := make([]*smg.SitemapImage, 0)
 		if users[i].GetString("avatar") != "" {
@@ -114,6 +119,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	smSearches := smi.NewSitemap()
 	smSearches.SetName("searches")
 	smSearches.SetLastMod(&now)
+	smSearches.SetOutputPath("template/dist/sitemaps/")
 
 	for i := range searches {
 		err := smSearches.Add(&smg.SitemapLoc{
