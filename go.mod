@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
-	github.com/aws/smithy-go v1.22.2
+	github.com/aws/smithy-go v1.22.3
 	github.com/blevesearch/bleve/v2 v2.4.4
 	github.com/blevesearch/bleve/v2 v2.4.4
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
