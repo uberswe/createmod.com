@@ -38,17 +38,6 @@ docker compose run --remove-orphans npm
 
 ## Environmental Variables
 
-### MySQL
-
-MySQL variables can be set if you need to migrate from an existing Wordpress database otherwise these can be left blank
-
-```
-MYSQL_HOST=localhost:3306
-MYSQL_DB=webapp
-MYSQL_USER=webapp
-MYSQL_PASS=root
-```
-
 ### Auto Migrate
 
 Auto Migrate can be used to automatically generate database migration files when changes to the data structures are made.

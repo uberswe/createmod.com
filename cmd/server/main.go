@@ -7,10 +7,6 @@ import (
 )
 
 const (
-	MysqlHost   = "MYSQL_HOST"
-	MysqlDB     = "MYSQL_DB"
-	MysqlUser   = "MYSQL_USER"
-	MysqlPass   = "MYSQL_PASS"
 	AutoMigrate = "AUTO_MIGRATE"
 	CreateAdmin = "CREATE_ADMIN"
 )
@@ -24,10 +20,6 @@ func main() {
 	}
 
 	s := server.New(server.Config{
-		MysqlHost:   envFile[MysqlHost],
-		MysqlDB:     envFile[MysqlDB],
-		MysqlUser:   envFile[MysqlUser],
-		MysqlPass:   envFile[MysqlPass],
 		AutoMigrate: envFile[AutoMigrate] == "true",
 		CreateAdmin: envFile[CreateAdmin] == "true",
 	})
