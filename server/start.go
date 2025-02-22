@@ -35,10 +35,6 @@ import (
 )
 
 type Config struct {
-	MysqlHost   string
-	MysqlDB     string
-	MysqlUser   string
-	MysqlPass   string
 	AutoMigrate bool
 	CreateAdmin bool
 }
