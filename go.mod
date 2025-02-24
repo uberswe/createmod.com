@@ -12,7 +12,7 @@ require (
 	github.com/mergestat/timediff v0.0.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pocketbase/dbx v1.11.0
-	github.com/pocketbase/pocketbase v0.25.7
+	github.com/pocketbase/pocketbase v0.25.8
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.13
 	github.com/sym01/htmlsanitizer v1.1.0
