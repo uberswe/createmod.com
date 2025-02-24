@@ -53,21 +53,17 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	s.app = app
 	mapping := bleve.NewIndexMapping()
 	schematicMapping := bleve.NewDocumentMapping()
+	schematicMapping.DefaultAnalyzer = "en"
 	titleFieldMapping := bleve.NewTextFieldMapping()
-	titleFieldMapping.Analyzer = "en"
 	schematicMapping.AddFieldMappingsAt("title", titleFieldMapping)
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
-	descriptionFieldMapping.Analyzer = "en"
 	schematicMapping.AddFieldMappingsAt("description", descriptionFieldMapping)
 	tagsFieldMapping := bleve.NewTextFieldMapping()
-	tagsFieldMapping.Analyzer = "en"
 	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
 	categoriesFieldMapping := bleve.NewTextFieldMapping()
-	categoriesFieldMapping.Analyzer = "en"
 	schematicMapping.AddFieldMappingsAt("categories", categoriesFieldMapping)
 	mapping.AddDocumentMapping("schematic", schematicMapping)
 	authorFieldMapping := bleve.NewTextFieldMapping()
-	authorFieldMapping.Analyzer = "en"
 	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
 	var err error
 	s.bleveIndex, err = bleve.NewMemOnly(mapping)
