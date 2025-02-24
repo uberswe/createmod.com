@@ -3,6 +3,7 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	"createmod/internal/promotion"
 	"createmod/internal/search"
 	"fmt"
 	"github.com/mergestat/timediff"
@@ -33,9 +34,10 @@ type SchematicData struct {
 	IsAuthor   bool
 	FromAuthor []models.Schematic
 	Similar    []models.Schematic
+	Promotion  template.HTML
 }
 
-func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry) func(e *core.RequestEvent) error {
+func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -72,6 +74,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.Similar = findSimilarSchematics(app, cacheService, d.Schematic, d.FromAuthor, searchService)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
+		d.Promotion = promotionService.RandomPromotion()
 
 		countSchematicView(app, results[0])
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)

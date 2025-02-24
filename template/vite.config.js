@@ -21,9 +21,10 @@ function getHtmlEntries(directory) {
     }, {});
 }
 
+const promotionEntries = getHtmlEntries('./include/promotional');
 const includeEntries = getHtmlEntries('./include');
 const rootEntries = getHtmlEntries('.');
-const inputEntries = { ...includeEntries, ...rootEntries };
+const inputEntries = { ...promotionEntries, ...includeEntries, ...rootEntries };
 
 export default defineConfig({
     plugins: [
