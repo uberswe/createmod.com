@@ -298,9 +298,11 @@
                         </div>
                         {{ end }}
                         <div class="card mb-4">
-                            <a href="https://bisecthosting.com/SCHEMATIC">
-                                <img src="https://www.bisecthosting.com/partners/custom-banners/a18a4d46-d49b-4b1e-82d1-c75815722645.webp"
-                                     class="card-img-top">
+                            {{ .Promotion }}
+                        </div>
+                        <div class="mb-4">
+                            <a href="https://createmod.net/">
+                                <img width="100%" src="https://img.shields.io/badge/Official%20Create%20Mod%20Website-Click%20Here-c28a23?style=for-the-badge" alt="Official Create Mod Website">
                             </a>
                         </div>
                         {{ if .AuthorHasMore }}
@@ -352,6 +354,7 @@
         navigator.clipboard.writeText(event.target.dataset.link);
         event.target.classList.remove("btn-secondary")
         event.target.classList.add("btn-green")
+        event.target.innerText = "Copied!"
     }
 </script>
 <script>

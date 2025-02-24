@@ -4,6 +4,7 @@ import (
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/pages"
+	"createmod/internal/promotion"
 	"createmod/internal/search"
 	"fmt"
 	"github.com/gosimple/slug"
@@ -19,6 +20,7 @@ import (
 )
 
 func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service) {
+	promotionService := promotion.New()
 	registry := template.NewRegistry()
 
 	funcMap := html.FuncMap{
@@ -58,7 +60,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/news/:slug", pages.NewsPostHandler(app, registry, cacheService))
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
-	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry))
+	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService))
 	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
 	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
