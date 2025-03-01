@@ -264,6 +264,20 @@ func (s *Server) Start() {
 			return s.app.NewMailClient().Send(message)
 		})
 
+		s.app.OnRecordAfterCreateSuccess("schematics").BindFunc(func(e *core.RecordEvent) error {
+			message := &mailer.Message{
+				From: mail.Address{
+					Address: s.app.Settings().Meta.SenderAddress,
+					Name:    s.app.Settings().Meta.SenderName,
+				},
+				To:      []mail.Address{{Address: s.app.Settings().Meta.SenderAddress}},
+				Subject: fmt.Sprintf("New CreateMod.com Schematic"),
+				HTML:    fmt.Sprintf("<p>Title: <a href=\"https://createmod.com/schematics/" + e.Record.GetString("name") + "\">" + e.Record.GetString("schematic_title") + "</a></p><p>Description: " + e.Record.GetString("description") + "</p>"),
+			}
+
+			return s.app.NewMailClient().Send(message)
+		})
+
 		s.app.OnRecordAuthRequest().BindFunc(func(e *core.RecordAuthRequestEvent) error {
 			// prevent deleted users from logging in
 			if !e.Record.GetDateTime("deleted").IsZero() {
