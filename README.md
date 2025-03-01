@@ -63,3 +63,13 @@ You can set the following to true to generate dummy data. Please note that it wi
 ```
 DUMMY_DATA=true
 ```
+
+### Discord Webhook URL
+
+A webhook url can be specified for Discord notifications
+
+```
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/122...
+```
+
+You can read more about Discord webhooks here: https://discord.com/developers/docs/resources/webhook
