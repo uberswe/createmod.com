@@ -84,8 +84,6 @@ func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Serv
 				Selected:     selected,
 			})
 		}
-
-		countSchematicView(app, results[0])
 		html, err := registry.LoadFiles(editSchematicTemplates...).Render(d)
 		if err != nil {
 			return err

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/discord"
 	"createmod/internal/models"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
@@ -37,7 +38,7 @@ type SchematicData struct {
 	Promotion  template.HTML
 }
 
-func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service) func(e *core.RequestEvent) error {
+func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -76,7 +77,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
 		d.Promotion = promotionService.RandomPromotion()
 
-		countSchematicView(app, results[0])
+		countSchematicView(app, results[0], discordService)
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -273,7 +274,7 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	return comment
 }
 
-func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record) {
+func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record, discordService *discord.Service) {
 	schematicViewsCollection, err := app.FindCollectionByNameOrId("schematic_views")
 	if err != nil {
 		app.Logger().Error(err.Error())
@@ -325,11 +326,19 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record) {
 		}
 
 		viewRecord := viewsRes[0]
-		viewRecord.Set("count", viewRecord.GetInt("count")+1)
+		count := viewRecord.GetInt("count")
+		if count == 50 && t == 4 {
+			go sendToDiscord(schematic, discordService)
+		}
+		viewRecord.Set("count", count+1)
 		if err = app.Save(viewRecord); err != nil {
 			app.Logger().Error(err.Error())
 		}
 	}
+}
+
+func sendToDiscord(schematic *core.Record, discordService *discord.Service) {
+	discordService.Post(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", schematic.GetString("name")))
 }
 
 func MapResultsToSchematic(app *pocketbase.PocketBase, results []*core.Record, cacheService *cache.Service) (schematics []models.Schematic) {

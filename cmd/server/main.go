@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	AutoMigrate = "AUTO_MIGRATE"
-	CreateAdmin = "CREATE_ADMIN"
+	AutoMigrate       = "AUTO_MIGRATE"
+	CreateAdmin       = "CREATE_ADMIN"
+	DiscordWebhookUrl = "DISCORD_WEBHOOK_URL"
 )
 
 func main() {
@@ -20,8 +21,9 @@ func main() {
 	}
 
 	s := server.New(server.Config{
-		AutoMigrate: envFile[AutoMigrate] == "true",
-		CreateAdmin: envFile[CreateAdmin] == "true",
+		AutoMigrate:       envFile[AutoMigrate] == "true",
+		CreateAdmin:       envFile[CreateAdmin] == "true",
+		DiscordWebhookUrl: envFile[DiscordWebhookUrl],
 	})
 	s.Start()
 }

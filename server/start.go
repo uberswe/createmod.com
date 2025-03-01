@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
+	"createmod/internal/discord"
 	"createmod/internal/pages"
 	"createmod/internal/router"
 	"createmod/internal/search"
@@ -35,8 +36,9 @@ import (
 )
 
 type Config struct {
-	AutoMigrate bool
-	CreateAdmin bool
+	AutoMigrate       bool
+	CreateAdmin       bool
+	DiscordWebhookUrl string
 }
 
 type Server struct {
@@ -45,16 +47,19 @@ type Server struct {
 	searchService  *search.Service
 	sitemapService *sitemap.Service
 	cacheService   *cache.Service
+	discordService *discord.Service
 }
 
 func New(conf Config) *Server {
 	app := pocketbase.New()
 	sitemapService := sitemap.New()
+	discordService := discord.New(conf.DiscordWebhookUrl)
 	return &Server{
 		conf:           conf,
 		app:            app,
 		sitemapService: sitemapService,
 		cacheService:   cache.New(),
+		discordService: discordService,
 	}
 }
 
@@ -272,7 +277,7 @@ func (s *Server) Start() {
 				},
 				To:      []mail.Address{{Address: s.app.Settings().Meta.SenderAddress}},
 				Subject: fmt.Sprintf("New CreateMod.com Schematic"),
-				HTML:    fmt.Sprintf("<p>Title: <a href=\"https://createmod.com/schematics/" + e.Record.GetString("name") + "\">" + e.Record.GetString("schematic_title") + "</a></p><p>Description: " + e.Record.GetString("description") + "</p>"),
+				HTML:    fmt.Sprintf("<p>Title: <a href=\"https://createmod.com/schematics/" + e.Record.GetString("name") + "\">" + e.Record.GetString("title") + "</a></p><p>Description: " + e.Record.GetString("description") + "</p>"),
 			}
 
 			return s.app.NewMailClient().Send(message)
@@ -311,7 +316,7 @@ func (s *Server) Start() {
 
 		// ROUTES
 
-		router.Register(s.app, e.Router, s.searchService, s.cacheService)
+		router.Register(s.app, e.Router, s.searchService, s.cacheService, s.discordService)
 
 		// END ROUTES
 
