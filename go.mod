@@ -15,7 +15,7 @@ require (
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pocketbase/pocketbase v0.25.9
 	github.com/sabloger/sitemap-generator v1.3.0
-	github.com/sunshineplan/imgconv v1.1.13
+	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.0
 	golang.org/x/text v0.23.0
 	gorm.io/driver/mysql v1.5.7
@@ -25,6 +25,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/HugoSmits86/nativewebp v1.1.0 // indirect
 	github.com/RoaringBitmap/roaring v1.9.3 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.36.1 // indirect
@@ -104,7 +105,7 @@ require (
 	gocloud.dev v0.40.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
-	golang.org/x/image v0.24.0 // indirect
+	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/oauth2 v0.26.0 // indirect
