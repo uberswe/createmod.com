@@ -14,6 +14,8 @@ cloud.google.com/go/storage v1.43.0/go.mod h1:ajvxEa7WmZS1PxvKRq4bq0tFT3vMd502Jw
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/HugoSmits86/nativewebp v1.1.0 h1:4V8ftAa8nY7F4I2qof7A74qf2Fjnl3zSdllpnwpCG+E=
+github.com/HugoSmits86/nativewebp v1.1.0/go.mod h1:YNQuWenlVmSUUASVNhTDwf4d7FwYQGbGhklC8p72Vr8=
 github.com/RoaringBitmap/roaring v1.9.3 h1:t4EbC5qQwnisr5PrP9nt0IRhRTb9gMUgQF4t4S2OByM=
 github.com/RoaringBitmap/roaring v1.9.3/go.mod h1:6AXUsoIEzDTFFQCe1RbGA6uFONMhvejWj5rqITANK90=
 github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c h1:gCpyY7PGkzuRVS8c4BdODZMoLAXp3D8mEMHwyW/nRtE=
@@ -288,6 +290,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/sunshineplan/imgconv v1.1.13 h1:XGBE1pIpCnr9AezZPdNyH+UYlWcHr2exyyNTQhVv83U=
 github.com/sunshineplan/imgconv v1.1.13/go.mod h1:Y9xOzUU+4OKgc8hkvt9Dr12VUlfZ9HLox8RAnhJQQd8=
+github.com/sunshineplan/imgconv v1.1.14 h1:XBdC93R/5w6piUIoNZi5x011RDrkNRVv6ej4PdsoUQ0=
+github.com/sunshineplan/imgconv v1.1.14/go.mod h1:0E6bQ6wSjHLjY+H4mU5erwyEunx4TTVbC6pCY6q4AOs=
 github.com/sunshineplan/pdf v1.0.7 h1:62xlc079jh4tGLDjiihyyhwVFkn0IsxLyDpHplbG9Ew=
 github.com/sunshineplan/pdf v1.0.7/go.mod h1:QsEmZCWBE3uFK8PCrM0pua1WDWLNU77YusiDEcY56OQ=
 github.com/sym01/htmlsanitizer v1.1.0 h1:Q0NEwQmWTlC0st3rmbElEEaO5rM4LOuYnWtBT5pj5Ec=
@@ -326,6 +330,8 @@ golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa/go.mod h1:BHOTPb3L19zxehTsLo
 golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/image v0.24.0 h1:AN7zRgVsbvmTfNyqIbbOraYL8mSwcKncEj8ofjgzcMQ=
 golang.org/x/image v0.24.0/go.mod h1:4b/ITuLfqYq1hqZcjofwctIhi7sZh2WaCjvsBNjjya8=
+golang.org/x/image v0.25.0 h1:Y6uW6rH1y5y/LK1J8BPWZtr6yZ7hrsy6hFrXjgsc2fQ=
+golang.org/x/image v0.25.0/go.mod h1:tCAmOEGthTtkalusGp1g3xa2gke8J6c2N565dTyl9Rs=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961/go.mod h1:wehouNa3lNwaWXcvxsM5YxQ5yQlVC4a0KAMCusXpPoU=
 golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3/go.mod h1:6SW0HCj/g11FgYtHlgUYUwCkIfeOF89ocIRzGO/8vkc=
