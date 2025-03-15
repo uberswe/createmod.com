@@ -35,6 +35,7 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	smi.SetSitemapIndexName("sitemap")
 	smi.SetHostname("https://www.createmod.com")
 	smi.SetOutputPath("template/dist/sitemaps/")
+	smi.SetServerURI("/sitemaps/")
 
 	smPages := smi.NewSitemap()
 	smPages.SetName("pages")

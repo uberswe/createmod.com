@@ -6,6 +6,7 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ const (
 	lowestRatingOrder  = 5
 	mostViewedOrder    = 6
 	leastViewedOrder   = 7
+	regex              = `<.*?>`
 )
 
 type Service struct {
@@ -52,8 +54,9 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	s := Service{}
 	s.app = app
 	mapping := bleve.NewIndexMapping()
+
 	schematicMapping := bleve.NewDocumentMapping()
-	schematicMapping.DefaultAnalyzer = "en"
+
 	titleFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("title", titleFieldMapping)
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
@@ -62,9 +65,10 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
 	categoriesFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("categories", categoriesFieldMapping)
-	mapping.AddDocumentMapping("schematic", schematicMapping)
 	authorFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
+
+	mapping.AddDocumentMapping("schematic", schematicMapping)
 	var err error
 	s.bleveIndex, err = bleve.NewMemOnly(mapping)
 	if err != nil {
@@ -129,6 +133,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
 		query := bleve.NewQueryStringQuery(term)
+		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query)
 		searchRequest := bleve.NewSearchRequest(query)
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
@@ -209,8 +214,8 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 	for i := range schematics {
 		index[i] = schematicIndex{
 			ID:          schematics[i].ID,
-			Title:       schematics[i].Title,
-			Description: schematics[i].Content,
+			Title:       stripHtmlRegex(schematics[i].Title),
+			Description: stripHtmlRegex(schematics[i].Content),
 			Created:     schematics[i].Created,
 			Views:       int64(schematics[i].Views),
 			Author:      schematics[i].Author.Username,
@@ -246,4 +251,9 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 	}
 	s.app.Logger().Debug("new search index", "index", ids)
 	s.index = index
+}
+
+func stripHtmlRegex(s string) string {
+	r := regexp.MustCompile(regex)
+	return r.ReplaceAllString(s, " ")
 }
