@@ -16,9 +16,11 @@
     "vite-plugin-static-copy": "^2.2.0"
   },
   "dependencies": {
-    "@tabler/core": "^1.0.0",
+    "@tabler/core": "^1.1.1",
+    "autosize": "^6.0.1",
     "dropzone": "^6.0.0-beta.2",
     "fslightbox": "^3.4.2",
+    "imask": "^7.6.1",
     "plyr": "^3.7.8",
     "pocketbase": "^0.25.1",
     "star-rating.js": "^4.3.1",
