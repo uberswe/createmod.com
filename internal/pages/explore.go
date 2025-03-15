@@ -29,7 +29,7 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 			return err
 		}
 		var results []core.Record
-		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted < {:deleted}", dbx.Params{"deleted": time.ParseEpochSeconds(1.000)})).All(&results)
+		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted < {:deleted}", dbx.Params{"deleted": time.ParseEpochSeconds(1.000)})).OrderBy("RANDOM()").All(&results)
 		if err != nil {
 			return err
 		}

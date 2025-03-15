@@ -40,7 +40,9 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/libs/{path...}", apis.Static(os.DirFS("./template/dist/libs"), false))
 	e.GET("/assets/{path...}", apis.Static(os.DirFS("./template/dist/assets"), false))
 	e.GET("/assets/x/{path...}", apis.Static(os.DirFS("./template/static"), false))
-	e.GET("/robots.txt", apis.Static(os.DirFS("./template/root/robots.txt"), false))
+	e.GET("/robots.txt", func(e *core.RequestEvent) error {
+		return e.String(200, "User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml")
+	})
 	// Index
 	e.GET("/", pages.IndexHandler(app, cacheService, registry))
 	// Removed the about page, not relevant anymore
