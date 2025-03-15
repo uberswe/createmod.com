@@ -62,5 +62,11 @@ export default defineConfig({
         rollupOptions: {
             input: inputEntries
         }
-    }
+    },
+    optimizeDeps: {
+        include: [
+            "autosize > commonjs-external",
+            "imask > commonjs-external"
+        ]
+    },
 });
