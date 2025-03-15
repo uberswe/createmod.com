@@ -1,4 +1,0 @@
-User-agent: *
-Disallow: /_/
-Allow: /
-Sitemap: https://createmod.com/sitemaps/sitemap.xml
