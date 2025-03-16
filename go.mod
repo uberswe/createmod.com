@@ -13,7 +13,7 @@ require (
 	github.com/mergestat/timediff v0.0.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pocketbase/dbx v1.11.0
-	github.com/pocketbase/pocketbase v0.25.9
+	github.com/pocketbase/pocketbase v0.26.1
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.0
@@ -97,13 +97,13 @@ require (
 	go.etcd.io/bbolt v1.3.7 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	gocloud.dev v0.40.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
+	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/image v0.25.0 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.221.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250212204824-5a70512c5d8b // indirect
@@ -113,5 +113,5 @@ require (
 	modernc.org/libc v1.61.13 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
-	modernc.org/sqlite v1.35.0 // indirect
+	modernc.org/sqlite v1.36.1 // indirect
 )
