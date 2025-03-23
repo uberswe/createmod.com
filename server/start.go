@@ -90,6 +90,10 @@ func (s *Server) Start() {
 		s.sitemapService.Generate(s.app)
 
 		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
+			if !validNBT(e) {
+				return fmt.Errorf("invalid NBT file")
+			}
+
 			// Rebuild the search index every time a schematic is created
 			err := e.Next()
 			if err != nil {
@@ -107,6 +111,10 @@ func (s *Server) Start() {
 		})
 
 		s.app.OnRecordUpdate("schematics").BindFunc(func(e *core.RecordEvent) error {
+			if !validNBT(e) {
+				return fmt.Errorf("invalid NBT file")
+			}
+
 			err = e.Next()
 			if err != nil {
 				return err
@@ -328,6 +336,17 @@ func (s *Server) Start() {
 	if err := s.app.Start(); err != nil {
 		panic(err)
 	}
+}
+
+func validNBT(e *core.RecordEvent) bool {
+	files := e.Record.GetUnsavedFiles("schematic_file")
+	for _, f := range files {
+		if f.Size == 0 || !strings.HasSuffix(f.OriginalName, ".nbt") {
+			return false
+		}
+	}
+	// no files may be submitted on update
+	return true
 }
 
 func validateAndSaveComment(app *pocketbase.PocketBase, record *core.Record, authrecord *core.Record) error {
