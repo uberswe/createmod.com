@@ -195,10 +195,10 @@ func MapResultsToComment(app *pocketbase.PocketBase, cs []models.DatabaseComment
 	var comments []models.Comment
 	// comments that are replies should come last
 	sort.Slice(cs, func(i, j int) bool {
-		if cs[i].ParentID != "" {
-			return false
-		} else if cs[j].ParentID != "" {
+		if cs[j].ParentID != "" && cs[i].ParentID == "" {
 			return true
+		} else if cs[i].ParentID != "" && cs[j].ParentID == "" {
+			return false
 		}
 		t1, err := time.Parse("2006-01-02 15:04:05.999Z07:00", cs[i].Published)
 		if err != nil {
