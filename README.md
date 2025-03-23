@@ -7,7 +7,7 @@ To run make sure you have npm and go installed locally and run:
 ```
 cd ./template
 npm install
-npm build
+npm run build
 cd ..
 go run ./cmd/server/main.go serve
 ```

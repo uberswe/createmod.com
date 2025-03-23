@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"strings"
 )
 
@@ -15,7 +15,7 @@ type Service struct {
 
 func New() *Service {
 	s := Service{}
-	items, _ := ioutil.ReadDir("./template/dist/include/promotional/")
+	items, _ := os.ReadDir("./template/dist/include/promotional/")
 	for _, item := range items {
 		if !item.IsDir() && strings.HasSuffix(item.Name(), ".html") {
 			// Service is non critical, ignore errors
