@@ -13,7 +13,7 @@ require (
 	github.com/mergestat/timediff v0.0.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pocketbase/dbx v1.11.0
-	github.com/pocketbase/pocketbase v0.26.1
+	github.com/pocketbase/pocketbase v0.26.4
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.0
@@ -87,5 +87,5 @@ require (
 	modernc.org/libc v1.61.13 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
-	modernc.org/sqlite v1.36.1 // indirect
+	modernc.org/sqlite v1.36.2 // indirect
 )
