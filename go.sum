@@ -137,6 +137,8 @@ github.com/pocketbase/pocketbase v0.26.1 h1:0WBqIRKKPCqp+xHPVLB4fevkoT9HVlR4BSuN
 github.com/pocketbase/pocketbase v0.26.1/go.mod h1:t5y5pfnhrEg//RuSzSg0a926OLZ0oQj66jYs3BzDJwA=
 github.com/pocketbase/pocketbase v0.26.4 h1:Mbe4QBgG/sEWy0iEioagNm2RqHBeAbym8Lr+8ibGTCA=
 github.com/pocketbase/pocketbase v0.26.4/go.mod h1:PZIC1rfrWdLYhrbIUtS4JmFvdq5S6clYJ2jW39Kh/J0=
+github.com/pocketbase/pocketbase v0.26.6 h1:ya+D2QK5DP3ynntCEJPj5Sc6hl9KZ+ZsfxVKp9UCB4o=
+github.com/pocketbase/pocketbase v0.26.6/go.mod h1:Pd+NfdYGBHXJOi9OI5WHS/Shn7J0iDSv5rNcCZ93LJM=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
@@ -229,6 +231,8 @@ modernc.org/sqlite v1.36.1 h1:bDa8BJUH4lg6EGkLbahKe/8QqoF8p9gArSc6fTqYhyQ=
 modernc.org/sqlite v1.36.1/go.mod h1:7MPwH7Z6bREicF9ZVUR78P1IKuxfZ8mRIDHD0iD+8TU=
 modernc.org/sqlite v1.36.2 h1:vjcSazuoFve9Wm0IVNHgmJECoOXLZM1KfMXbcX2axHA=
 modernc.org/sqlite v1.36.2/go.mod h1:ADySlx7K4FdY5MaJcEv86hTJ0PjedAloTUuif0YS3ws=
+modernc.org/sqlite v1.36.3 h1:qYMYlFR+rtLDUzuXoST1SDIdEPbX8xzuhdF90WsX1ss=
+modernc.org/sqlite v1.36.3/go.mod h1:ADySlx7K4FdY5MaJcEv86hTJ0PjedAloTUuif0YS3ws=
 modernc.org/strutil v1.2.1 h1:UneZBkQA+DX2Rp35KcM69cSsNES9ly8mQWD71HKlOA0=
 modernc.org/strutil v1.2.1/go.mod h1:EHkiggD70koQxjVdSBM3JKM7k6L0FbGE5eymy9i3B9A=
 modernc.org/token v1.1.0 h1:Xl7Ap9dKaEs5kLoOQeQmPWevfnk/DM5qcLcYlA8ys6Y=
