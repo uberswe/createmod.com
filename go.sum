@@ -171,6 +171,8 @@ github.com/pocketbase/pocketbase v0.26.6 h1:ya+D2QK5DP3ynntCEJPj5Sc6hl9KZ+ZsfxVK
 github.com/pocketbase/pocketbase v0.26.6/go.mod h1:Pd+NfdYGBHXJOi9OI5WHS/Shn7J0iDSv5rNcCZ93LJM=
 github.com/pocketbase/pocketbase v0.27.0 h1:TWyWBOpPRODEvaJfGFSDS1+m13aJQJqVZqvOo2W3Tdo=
 github.com/pocketbase/pocketbase v0.27.0/go.mod h1:W1iPzrOpUtRhzOwHZu9+awW7LhPPdji5ZMnTL2XFcGM=
+github.com/pocketbase/pocketbase v0.27.2 h1:dQewBdRfaOMHOneB+AEVkFSW6e4tUxFCWedLdx04e3s=
+github.com/pocketbase/pocketbase v0.27.2/go.mod h1:aTpwwloVJzeJ7MlwTRrbI/x62QNR2/kkCrovmyrXpqs=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
