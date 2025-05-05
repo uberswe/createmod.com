@@ -3,6 +3,7 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	"github.com/drexedam/gravatar"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -54,7 +55,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 
 	results, err := app.FindRecordsByFilter(
 		usersCollection.Id,
-		"username = {:username} && deleted = null",
+		"username:lower = {:username} && deleted = null",
 		"-created",
 		1,
 		0,
@@ -66,8 +67,13 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 
 	if len(results) == 1 {
 		d.Schematics = findAuthorSchematics(app, cacheService, "", results[0].Id, 1000, "-created")
-		d.UserAvatar = tmpl.URL(results[0].GetString("avatar"))
-		d.Thumbnail = results[0].GetString("avatar")
+		url := gravatar.New(results[0].GetString("email")).
+			Size(200).
+			Default(gravatar.MysteryMan).
+			Rating(gravatar.Pg).
+			AvatarURL()
+		d.UserAvatar = tmpl.URL(url)
+		d.Thumbnail = url
 	}
 	if len(d.Schematics) > 0 {
 		d.HasSchematics = true
