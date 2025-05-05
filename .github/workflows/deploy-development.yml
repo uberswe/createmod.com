@@ -11,7 +11,7 @@ on:
         default: "delta"
 jobs:
   build-and-deploy:
-    name: Build and deploy CreateMod.com
+    name: Build and deploy CreateMod.com development server
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
