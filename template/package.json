@@ -12,7 +12,7 @@
     "postcss-cli": "^11.0.0",
     "postcss-import": "^16.1.0",
     "purgecss": "^7.0.2",
-    "vite": "^6.1.0",
+    "vite": "^6.3.4",
     "vite-plugin-static-copy": "^2.2.0"
   },
   "dependencies": {
@@ -22,7 +22,7 @@
     "fslightbox": "^3.4.2",
     "imask": "^7.6.1",
     "plyr": "^3.7.8",
-    "pocketbase": "^0.25.1",
+    "pocketbase": "^0.26.0",
     "star-rating.js": "^4.3.1",
     "tinymce": "^7.6.1",
     "tom-select": "^2.4.2"

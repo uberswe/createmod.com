@@ -1,0 +1,66 @@
+name: deploy
+on:
+  push:
+    branches:
+      - development
+  workflow_dispatch:
+    inputs:
+      sync:
+        description: "File synchronization"
+        required: true
+        default: "delta"
+jobs:
+  build-and-deploy:
+    name: Build and deploy CreateMod.com development server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v5
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23.10.0
+
+      - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
+      - run: npm --prefix template install
+      - run: npm --prefix template run build
+
+      - name: "cleanup"
+        run: rm -rf .github
+      - run: rm -rf cmd
+      - run: rm -rf internal
+      - run: rm -rf migrations
+      - run: rm -rf model
+      - run: rm -rf query
+      - run: rm -rf server
+      - run: rm -rf template/node_modules
+      - run: rm .gitignore
+      - run: rm dev.Dockerfile
+      - run: rm docker-compose.yml
+      - run: rm Dockerfile
+      - run: rm go.mod
+      - run: rm go.sum
+      - run: rm npm.Dockerfile
+      - run: rm README.md
+
+      - name: "SFTP upload files"
+        uses: milanmk/actions-file-deployer@master
+        with:
+          remote-protocol: "sftp"
+          remote-host: ${{secrets.DEV_SFTP}}
+          remote-user: ${{secrets.DEV_USERNAME}}
+          remote-port: ${{secrets.DEV_SFTP_PORT}}
+          remote-password: ${{secrets.DEV_PASSWORD}}
+          remote-path: "/"
+          sync: "full"
+
+      - name: restart
+        uses: outsparkled/pterodactyl-power-action@v0.1.0
+        with:
+          panel-url: ${{ secrets.DEV_PANEL_URL }}
+          server-id: ${{ secrets.DEV_SERVER_ID }}
+          bearer-token: ${{ secrets.DEV_BEARER_TOKEN }}
+          power-action: 'restart'
