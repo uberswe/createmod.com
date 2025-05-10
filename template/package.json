@@ -13,7 +13,7 @@
     "postcss-import": "^16.1.0",
     "purgecss": "^7.0.2",
     "vite": "^6.3.4",
-    "vite-plugin-static-copy": "^2.2.0"
+    "vite-plugin-static-copy": "^3.0.0"
   },
   "dependencies": {
     "@tabler/core": "^1.1.1",
