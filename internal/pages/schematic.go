@@ -7,6 +7,7 @@ import (
 	"createmod/internal/promotion"
 	"createmod/internal/search"
 	"fmt"
+	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/mergestat/timediff"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -66,7 +67,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.Populate(e)
 		d.Title = d.Schematic.Title
 		d.Slug = fmt.Sprintf("schematics/%s", d.Schematic.Name)
-		d.Description = d.Schematic.Content
+		d.Description = strip.StripTags(d.Schematic.Content)
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
 		d.Categories = allCategories(app, cacheService)
