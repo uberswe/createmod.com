@@ -11,7 +11,7 @@ require (
 	github.com/grokify/html-strip-tags-go v0.1.0
 	github.com/gtuk/discordwebhook v1.2.0
 	github.com/joho/godotenv v1.5.1
-	github.com/mergestat/timediff v0.0.3
+	github.com/mergestat/timediff v0.0.4
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pocketbase/pocketbase v0.28.3
