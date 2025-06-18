@@ -179,6 +179,8 @@ github.com/mattn/go-runewidth v0.0.16 h1:E5ScNMtiwvlvB5paMFdw9p4kSQzbXFikJ5SQO6T
 github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/mergestat/timediff v0.0.3 h1:ucCNh4/ZrTPjFZ081PccNbhx9spymCJkFxSzgVuPU+Y=
 github.com/mergestat/timediff v0.0.3/go.mod h1:yvMUaRu2oetc+9IbPLYBJviz6sA7xz8OXMDfhBl7YSI=
+github.com/mergestat/timediff v0.0.4 h1:NZ3sqG/6K9flhTubdltmRx3RBfIiYv6LsGP+4FlXMM8=
+github.com/mergestat/timediff v0.0.4/go.mod h1:yvMUaRu2oetc+9IbPLYBJviz6sA7xz8OXMDfhBl7YSI=
 github.com/mschoch/smat v0.2.0 h1:8imxQsjDm8yFEAVBe7azKmKSgzSkZXDuKkSq9374khM=
 github.com/mschoch/smat v0.2.0/go.mod h1:kc9mz7DoBKqDyiRL7VZN8KvXQMWeTaVnttLRXOlotKw=
 github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdhx/f4=
