@@ -213,6 +213,8 @@ github.com/pocketbase/pocketbase v0.28.2 h1:b6cfUfr5d4whvUFGFhI8oHRzx/eB76GCUQGf
 github.com/pocketbase/pocketbase v0.28.2/go.mod h1:ElwIYS1b5xS9w0U7AK7tsm6FuC0lzw57H8p/118Cu7g=
 github.com/pocketbase/pocketbase v0.28.3 h1:cNe/Yl1j6gB5R8TJulAhjRYWEs87S02sKX0frndBNO8=
 github.com/pocketbase/pocketbase v0.28.3/go.mod h1:jSuN93vE/oeJVOz2D2ZxcYyr2bYNmDOMCUkM+JhyJQ0=
+github.com/pocketbase/pocketbase v0.28.4 h1:RmhWXDcfKrFM9/W0G0Zrlv4eKBM8/s/v4SQKytjgD20=
+github.com/pocketbase/pocketbase v0.28.4/go.mod h1:jSuN93vE/oeJVOz2D2ZxcYyr2bYNmDOMCUkM+JhyJQ0=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
