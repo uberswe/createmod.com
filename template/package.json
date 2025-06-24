@@ -21,6 +21,7 @@
     "dropzone": "^6.0.0-beta.2",
     "fslightbox": "^3.4.2",
     "imask": "^7.6.1",
+    "masonry-layout": "^4.2.2",
     "plyr": "^3.7.8",
     "pocketbase": "^0.26.0",
     "star-rating.js": "^4.3.1",
