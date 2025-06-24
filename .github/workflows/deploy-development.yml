@@ -56,11 +56,3 @@ jobs:
           remote-password: ${{secrets.DEV_PASSWORD}}
           remote-path: "/"
           sync: "full"
-
-      - name: restart
-        uses: outsparkled/pterodactyl-power-action@v0.1.0
-        with:
-          panel-url: ${{ secrets.DEV_PANEL_URL }}
-          server-id: ${{ secrets.DEV_SERVER_ID }}
-          bearer-token: ${{ secrets.DEV_BEARER_TOKEN }}
-          power-action: 'restart'
