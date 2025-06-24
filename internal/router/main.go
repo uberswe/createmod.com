@@ -47,7 +47,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	})
 	e.GET("/ads.txt", func(e *core.RequestEvent) error {
 		s, ok := cacheService.GetString("ads.txt")
-		if !ok {
+		if ok {
 			return e.String(200, s)
 		}
 		s, err := getContent("https://api.nitropay.com/v1/ads-2143.txt")
