@@ -5,12 +5,24 @@
         {{template "header.html" .}}
         <div class="page-body">
             <div class="container-xl">
-                {{range .Images }}
-                    <a href="/schematics/{{ .Name }}">
-                        <img class="rounded-3 border m-2 lazy"
-                             data-src="/api/files/schematics/{{ .ID }}/{{ .Image }}?thumb=150x150"
-                             src="/static/150x150.png" alt="{{ .Title }}">
+                <div class="row" data-masonry='{"percentPosition": true }'>
+                {{range $i, $image := .Images }}
+                    <div class="card m-2 p-0" style="width: 150px; height: 150px;">
+                    <a href="/schematics/{{ $image.Name }}">
+                        <img class="rounded-3 border lazy"
+                             data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}?thumb=150x150"
+                             src="/static/150x150.png" alt="{{ $image.Title }}">
                     </a>
+                    </div>
+                    {{ if mod $i 30 }}
+                        {{ if gt $i 0 }}
+                            {{ if lt $i 35 }}
+                                <div class="card m-2 card-borderless text-center" style="width: 315px; height: 315px;">
+                                    <div style="margin: auto" id="explore-inline"></div>
+                                </div>
+                            {{ end }}
+                        {{ end }}
+                    {{end}}
                 {{end}}
             </div>
             <div class="row">
@@ -20,8 +32,28 @@
                     </div>
                 </div>
             </div>
+            </div>
         </div>
         {{template "footer.html" .}}
     </div>
+    <script src="/libs/masonry-layout/masonry.pkgd.min.js"></script>
+    <script></script>
+    <script>
+        window['nitroAds'].createAd('explore-inline', {
+            "refreshTime": 30,
+            "sizes": [
+                [
+                    "300",
+                    "250"
+                ]
+            ],
+            "report": {
+                "enabled": true,
+                "icon": true,
+                "wording": "Report Ad",
+                "position": "top-right"
+            }
+        });
+    </script>
 </div>
 {{template "foot.html" .}}
