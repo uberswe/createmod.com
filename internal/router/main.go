@@ -15,6 +15,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/router"
 	"github.com/pocketbase/pocketbase/tools/template"
 	html "html/template"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -26,6 +27,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 
 	funcMap := html.FuncMap{
 		"ToLower": strings.ToLower,
+		"mod":     func(i, j int) bool { return i%j == 0 },
 	}
 
 	registry.AddFuncs(funcMap)
@@ -42,6 +44,18 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/assets/x/{path...}", apis.Static(os.DirFS("./template/static"), false))
 	e.GET("/robots.txt", func(e *core.RequestEvent) error {
 		return e.String(200, "User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml")
+	})
+	e.GET("/ads.txt", func(e *core.RequestEvent) error {
+		s, ok := cacheService.GetString("ads.txt")
+		if !ok {
+			return e.String(200, s)
+		}
+		s, err := getContent("https://api.nitropay.com/v1/ads-2143.txt")
+		if err != nil || s == "" {
+			return e.String(500, "Could not determine content")
+		}
+		cacheService.SetString("ads.txt", s)
+		return e.String(200, s)
 	})
 	// Index
 	e.GET("/", pages.IndexHandler(app, cacheService, registry))
@@ -174,4 +188,23 @@ func legacySearchCompat() func(e *core.RequestEvent) error {
 
 		return e.Next() // proceed with the request chain
 	}
+}
+
+func getContent(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("GET error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Status error: %v", resp.StatusCode)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("Read body: %v", err)
+	}
+
+	return string(data), nil
 }

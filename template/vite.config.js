@@ -31,30 +31,13 @@ export default defineConfig({
         goTemplateIgnorePlugin(),
         viteStaticCopy({
             targets: [
-                {
-                    src: resolve(__dirname, normalize('node_modules/tinymce/')),
-                    dest: 'libs'
-                },
-                {
-                    src: resolve(__dirname, normalize('node_modules/pocketbase/')),
-                    dest: 'libs'
-                },
-                {
-                    src: resolve(__dirname, normalize('node_modules/tom-select/')),
-                    dest: 'libs'
-                },
-                {
-                    src: resolve(__dirname, normalize('node_modules/fslightbox/')),
-                    dest: 'libs'
-                },
-                {
-                    src: resolve(__dirname, normalize('node_modules/plyr/')),
-                    dest: 'libs'
-                },
-                {
-                    src: resolve(__dirname, normalize('node_modules/star-rating.js/')),
-                    dest: 'libs'
-                }
+                { src: 'node_modules/tinymce/**/*',       dest: 'libs/tinymce' },
+                { src: 'node_modules/pocketbase/**/*',    dest: 'libs/pocketbase' },
+                { src: 'node_modules/tom-select/**/*',     dest: 'libs/tom-select' },
+                { src: 'node_modules/fslightbox/**/*',     dest: 'libs/fslightbox' },
+                { src: 'node_modules/plyr/**/*',           dest: 'libs/plyr' },
+                { src: 'node_modules/star-rating.js/**/*', dest: 'libs/star-rating' },
+                { src: 'node_modules/masonry-layout/dist/**/*', dest: 'libs/masonry-layout' }
             ]
         })
     ],
