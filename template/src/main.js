@@ -1,4 +1,6 @@
 import '@tabler/core/dist/js/tabler.min.js';
+import * as bootstrap from 'bootstrap';
+window.bootstrap = bootstrap;
 
 const lazyImages = document.querySelectorAll(".lazy");
 

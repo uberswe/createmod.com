@@ -1,5 +1,5 @@
 {{template "head.html" .}}
-<link rel="stylesheet" href="/libs/star-rating.js/dist/star-rating.min.css">
+<link rel="stylesheet" href="/libs/star-rating/dist/star-rating.min.css">
 <link rel="stylesheet" href="/libs/plyr/dist/plyr.css">
 <div class="page">
     {{template "sidebar.html" .}}
@@ -73,6 +73,11 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="row row-cards mb-4">
+                            <div class="col-sm-12 col-lg-12">
+                                <div id="schematic-under-images"></div>
                             </div>
                         </div>
                         <div class="row row-cards mb-4">
@@ -161,7 +166,11 @@
                                 </div>
                             </div>
                         </div>
-
+                        <div class="row row-cards mb-4">
+                            <div class="col-sm-12 col-lg-12">
+                                <div id="schematic-under-info"></div>
+                            </div>
+                        </div>
                         <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
                                 <div class="card">
@@ -300,15 +309,6 @@
                         <div class="card mb-4">
                             {{ .Promotion }}
                         </div>
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="m-auto" style="max-width: 235px;">
-                                    <a href="https://wiki.createmod.net/" target="_blank" rel="noopener noreferrer">
-                                        <img src="https://img.shields.io/badge/Visit%20The-Create%20Mod%20Wiki-c28a23?style=for-the-badge" alt="Official Create Mod Wiki">
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
                         {{ if .AuthorHasMore }}
                         <div class="col-12 mb-4">
                             <h3>More From <a
@@ -337,7 +337,7 @@
         <script src="/libs/fslightbox/index.js" defer></script>
         <script src="/libs/plyr/dist/plyr.min.js" defer></script>
         <script type="module"  src="tinymce/tinymce.min.js" defer></script>
-        <script src="/libs/star-rating.js/dist/star-rating.min.js" defer></script>
+        <script src="/libs/star-rating/dist/star-rating.min.js" defer></script>
         {{template "footer.html" .}}
     </div>
 </div>
@@ -432,6 +432,38 @@
             }
         });
     })
+</script>
+<script>
+    window['nitroAds'].createAd('schematic-under-images', {
+        "refreshTime": 30,
+        "sizes": [
+            [
+                "728",
+                "90"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+    window['nitroAds'].createAd('schematic-under-info', {
+        "refreshTime": 30,
+        "sizes": [
+            [
+                "728",
+                "90"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
 </script>
 {{ if .IsAuthenticated }}
 <script>
