@@ -117,6 +117,9 @@
                                 </button>
                             </div>
                         </form>
+                        <div style="position: sticky; top: 20px;" class="mt-5">
+                            <div id="search-under"></div>
+                        </div>
                     </div>
                     <div class="col-md-12 col-lg-9">
                         <div class="row row-cards">
@@ -129,6 +132,35 @@
             </div>
         </div>
         {{template "footer.html" .}}
+        <script>
+            window['nitroAds'].createAd('search-under', {
+                "refreshTime": 30,
+                "format": "sticky-stack",
+                "stickyStackLimit": 15,
+                "stickyStackSpace": 2.5,
+                "stickyStackOffset": 25,
+                "sizes": [
+                    [
+                        "300",
+                        "250"
+                    ],
+                    [
+                        "300",
+                        "600"
+                    ],
+                    [
+                        "160",
+                        "600"
+                    ]
+                ],
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "top-right"
+                }
+            });
+        </script>
     </div>
 </div>
 {{template "foot.html" .}}

@@ -16,11 +16,9 @@
                     </div>
                     {{ if mod $i 30 }}
                         {{ if gt $i 0 }}
-                            {{ if lt $i 35 }}
                                 <div class="card m-2 card-borderless text-center" style="width: 315px; height: 315px;">
-                                    <div style="margin: auto" id="explore-inline"></div>
+                                    <div style="margin: auto" id="explore-inline-{{ $i }}"></div>
                                 </div>
-                            {{ end }}
                         {{ end }}
                     {{end}}
                 {{end}}
@@ -37,9 +35,11 @@
         {{template "footer.html" .}}
     </div>
     <script src="/libs/masonry-layout/masonry.pkgd.min.js"></script>
-    <script></script>
     <script>
-        window['nitroAds'].createAd('explore-inline', {
+    {{range $i, $image := .Images }}
+    {{ if mod $i 30 }}
+    {{ if gt $i 0 }}
+        window['nitroAds'].createAd('explore-inline-{{ $i }}', {
             "refreshTime": 30,
             "sizes": [
                 [
@@ -54,6 +54,9 @@
                 "position": "top-right"
             }
         });
+    {{end}}
+    {{end}}
+    {{end}}
     </script>
 </div>
 {{template "foot.html" .}}
