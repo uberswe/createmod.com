@@ -79,6 +79,15 @@
                             <div class="col-sm-12 col-lg-12">
                                 <div class="card">
                                     <div class="card-body">
+                                        <div id="schematic-under-images"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row row-cards mb-4">
+                            <div class="col-sm-12 col-lg-12">
+                                <div class="card">
+                                    <div class="card-body">
                                         <div class="datagrid">
                                             <div class="datagrid-item">
                                                 <div class="datagrid-title">Mod Version</div>
@@ -161,7 +170,15 @@
                                 </div>
                             </div>
                         </div>
-
+                        <div class="row row-cards mb-4">
+                            <div class="col-sm-12 col-lg-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="schematic-under-info"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
                                 <div class="card">
@@ -299,15 +316,6 @@
                         {{ end }}
                         <div class="card mb-4">
                             {{ .Promotion }}
-                        </div>
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="m-auto" style="max-width: 235px;">
-                                    <a href="https://wiki.createmod.net/" target="_blank" rel="noopener noreferrer">
-                                        <img src="https://img.shields.io/badge/Visit%20The-Create%20Mod%20Wiki-c28a23?style=for-the-badge" alt="Official Create Mod Wiki">
-                                    </a>
-                                </div>
-                            </div>
                         </div>
                         {{ if .AuthorHasMore }}
                         <div class="col-12 mb-4">
@@ -490,6 +498,38 @@
                 document.getElementById("post-comment-btn").disabled = false
             }
         });
+    });
+</script>
+<script>
+    window['nitroAds'].createAd('schematic-under-images', {
+        "refreshTime": 30,
+        "sizes": [
+            [
+                "728",
+                "90"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+    window['nitroAds'].createAd('schematic-under-info', {
+        "refreshTime": 30,
+        "sizes": [
+            [
+                "728",
+                "90"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
     });
 </script>
 {{ end }}
