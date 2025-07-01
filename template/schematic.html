@@ -77,11 +77,7 @@
                         </div>
                         <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div id="schematic-under-images"></div>
-                                    </div>
-                                </div>
+                                <div id="schematic-under-images"></div>
                             </div>
                         </div>
                         <div class="row row-cards mb-4">
@@ -172,11 +168,7 @@
                         </div>
                         <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div id="schematic-under-info"></div>
-                                    </div>
-                                </div>
+                                <div id="schematic-under-info"></div>
                             </div>
                         </div>
                         <div class="row row-cards mb-4">
@@ -441,6 +433,38 @@
         });
     })
 </script>
+<script>
+    window['nitroAds'].createAd('schematic-under-images', {
+        "refreshTime": 30,
+        "sizes": [
+            [
+                "728",
+                "90"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+    window['nitroAds'].createAd('schematic-under-info', {
+        "refreshTime": 30,
+        "sizes": [
+            [
+                "728",
+                "90"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+</script>
 {{ if .IsAuthenticated }}
 <script>
     function commentReply(id, username) {
@@ -498,38 +522,6 @@
                 document.getElementById("post-comment-btn").disabled = false
             }
         });
-    });
-</script>
-<script>
-    window['nitroAds'].createAd('schematic-under-images', {
-        "refreshTime": 30,
-        "sizes": [
-            [
-                "728",
-                "90"
-            ]
-        ],
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        }
-    });
-    window['nitroAds'].createAd('schematic-under-info', {
-        "refreshTime": 30,
-        "sizes": [
-            [
-                "728",
-                "90"
-            ]
-        ],
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        }
     });
 </script>
 {{ end }}
