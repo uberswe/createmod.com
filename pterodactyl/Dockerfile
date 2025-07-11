@@ -29,6 +29,10 @@ LABEL org.opencontainers.image.licenses=MIT
 RUN apk add --update --no-cache ca-certificates curl git openssl sqlite tar tzdata \
     && adduser -D -h /home/container container
 
+# Copy entrypoint script and set permissions
+COPY ./pterodactyl/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 USER container
 ENV USER=container HOME=/home/container
 WORKDIR /home/container
@@ -41,10 +45,6 @@ COPY --from=go-builder /app/pb_public /home/container/pb_public
 
 # Create necessary directories
 RUN mkdir -p /home/container/pb_data /home/container/migrations
-
-# Copy entrypoint script
-COPY ./pterodactyl/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 EXPOSE 8090
 
