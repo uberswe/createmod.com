@@ -14,6 +14,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+# Ensure pb_public directory exists
+RUN mkdir -p pb_public
 RUN go build -o main ./cmd/server/main.go
 
 # Final stage
