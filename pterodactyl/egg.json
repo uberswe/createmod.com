@@ -1,0 +1,62 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2023-12-23T21:20:20+03:00",
+    "name": "CreateMod with PocketBase",
+    "author": "admin@example.com",
+    "description": "Host the CreateMod application with PocketBase serving as a proxy to the frontend.",
+    "features": null,
+    "docker_images": {
+        "CreateMod Latest": "ghcr.io/uberswe/createmod:latest"
+    },
+    "file_denylist": [],
+    "startup": "./main serve --http 0.0.0.0:{{SERVER_PORT}}",
+    "config": {
+        "files": "{}",
+        "startup": "{\r\n    \"done\": \"CreateMod.com Running!\"\r\n}",
+        "logs": "{}",
+        "stop": "^^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/bash\r\n# Installation Script for CreateMod\r\n#\r\n# Server Files: \/mnt\/server\r\napt update\r\napt install -y git curl jq file unzip\r\n\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\n# Create necessary directories\r\nmkdir -p pb_data migrations template/dist\r\n\r\n# Create a basic .env file if it doesn't exist\r\nif [ ! -f \/mnt\/server\/.env ]; then\r\n    echo \"AUTO_MIGRATE=false\" > \/mnt\/server\/.env\r\n    echo \"CREATE_ADMIN=false\" >> \/mnt\/server\/.env\r\n    echo \"DISCORD_WEBHOOK_URL=\" >> \/mnt\/server\/.env\r\nfi\r\n\r\necho -e \"Installation complete\"\r\nexit 0",
+            "container": "alpine:latest",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Auto Migrate",
+            "description": "Enable automatic database migrations",
+            "env_variable": "AUTO_MIGRATE",
+            "default_value": "false",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Create Admin",
+            "description": "Create admin user on startup",
+            "env_variable": "CREATE_ADMIN",
+            "default_value": "false",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Discord Webhook URL",
+            "description": "Discord webhook URL for notifications",
+            "env_variable": "DISCORD_WEBHOOK_URL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        }
+    ]
+}
