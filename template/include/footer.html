@@ -93,8 +93,10 @@
                         deleteCookie("create-mod-auth")
                         _callback(false)
                     })
+                    _callback(true)
                     return true
                 }
+                _callback(false)
                 return false
             }
 
@@ -327,9 +329,7 @@
                 }
             }
 
-            let authDropdowns = document.getElementsByClassName("auth-dropdown")
-
-            function renderDropdown(isLoggedIn) {
+            isAuthenticated(function renderDropdown(isLoggedIn) {
                 if (isLoggedIn) {
                     let authAvatars = document.getElementsByClassName("auth-avatar")
                     let authUsernames = document.getElementsByClassName("auth-username")
@@ -347,15 +347,13 @@
                         }
                     }
                 } else {
+                    let authDropdowns = document.getElementsByClassName("auth-section")
                     for (let i = 0; i < authDropdowns.length; i++) {
                         authDropdowns.item(i).innerHTML = "<a href=\"/login\" >Login</a>"
                     }
                 }
-            }
+            })
 
-            if (authDropdowns != null && authDropdowns.length !== 0) {
-                renderDropdown(isAuthenticated(renderDropdown))
-            }
 
             let searchForm = document.getElementById("search-form")
             let searchField = document.getElementById("search-field")
