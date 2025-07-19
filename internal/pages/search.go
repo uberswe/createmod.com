@@ -39,7 +39,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 	return func(e *core.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
-		order := 1
+		order := 6
 		if e.Request.URL.Query().Get("sort") != "" {
 			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("sort"))
 			if err != nil {
