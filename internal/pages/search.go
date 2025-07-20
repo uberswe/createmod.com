@@ -26,6 +26,8 @@ type SearchData struct {
 	DefaultData
 	Schematics        []models.Schematic
 	Tags              []models.SchematicTag
+	MinecraftVersions []models.MinecraftVersion
+	CreateVersions    []models.CreatemodVersion
 	SearchSpeed       string
 	SearchResultCount int
 	Term              string
@@ -33,13 +35,15 @@ type SearchData struct {
 	Rating            int
 	Category          string
 	Tag               string
+	MinecraftVersion  string
+	CreateVersion     string
 }
 
 func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
-		order := 1
+		order := 6
 		if e.Request.URL.Query().Get("sort") != "" {
 			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("sort"))
 			if err != nil {
@@ -63,10 +67,18 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		if e.Request.URL.Query().Get("tag") != "" {
 			tag = e.Request.URL.Query().Get("tag")
 		}
+		mcVersion := "all"
+		if e.Request.URL.Query().Get("mcv") != "" {
+			mcVersion = e.Request.URL.Query().Get("mcv")
+		}
+		createVersion := "all"
+		if e.Request.URL.Query().Get("cv") != "" {
+			createVersion = e.Request.URL.Query().Get("cv")
+		}
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
 		app.Logger().Debug("search", "term", term, "searchService", searchService)
-		ids := searchService.Search(term, order, rating, category, tag)
+		ids := searchService.Search(term, order, rating, category, tag, mcVersion, createVersion)
 		app.Logger().Debug("found ids", "ids", ids)
 
 		interfaceIds := make([]interface{}, 0, len(ids))
@@ -104,12 +116,16 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		d := SearchData{
 			Schematics:        schematicModels,
 			Tags:              allTags(app),
+			MinecraftVersions: allMinecraftVersions(app),
+			CreateVersions:    allCreatemodVersions(app),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
 			SearchResultCount: len(sortedModels),
 			Term:              term,
 			Sort:              order,
 			Rating:            rating,
 			Category:          category,
+			MinecraftVersion:  mcVersion,
+			CreateVersion:     createVersion,
 		}
 		d.Populate(e)
 		d.Title = "Search"
@@ -165,17 +181,19 @@ func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searc
 func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		data := struct {
-			Term     string `json:"term" form:"advanced-search-term"`
-			Sort     string `json:"sort" form:"advanced-search-sort"`
-			Rating   string `json:"rating" form:"advanced-search-ranking"`
-			Category string `json:"category" form:"advanced-search-category"`
-			Tag      string `json:"tag" form:"advanced-search-tag"`
+			Term             string `json:"term" form:"advanced-search-term"`
+			Sort             string `json:"sort" form:"advanced-search-sort"`
+			Rating           string `json:"rating" form:"advanced-search-ranking"`
+			Category         string `json:"category" form:"advanced-search-category"`
+			Tag              string `json:"tag" form:"advanced-search-tag"`
+			MinecraftVersion string `json:"minecraft-version" form:"advanced-search-minecraft-version"`
+			CreateVersion    string `json:"create-version" form:"advanced-search-create-version"`
 		}{}
 		if err := e.BindBody(&data); err != nil {
 			return apis.NewBadRequestError("Failed to read request data", err)
 		}
 		term := slug.Make(data.Term)
-		return e.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s", term, data.Sort, data.Rating, data.Category, data.Tag))
+		return e.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, data.Tag, data.MinecraftVersion, data.CreateVersion))
 	}
 }
 

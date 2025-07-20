@@ -1,6 +1,8 @@
-import '@tabler/core/dist/js/tabler.min.js';
-import * as bootstrap from 'bootstrap';
-window.bootstrap = bootstrap;
+import {Modal, Tooltip} from "@tabler/core";
+
+// Expose Tooltip to the global scope
+window.Tooltip = Tooltip;
+window.Modal = Modal;
 
 const lazyImages = document.querySelectorAll(".lazy");
 

@@ -93,6 +93,12 @@
                                     <span class="form-check-label">1 star</span>
                                 </label>
                             </div>
+                            <p>
+                                <a class="" data-bs-toggle="collapse" href="#collapseAdvanced" role="button" aria-expanded="false" aria-controls="collapseExample">
+                                    Show advanced options
+                                </a>
+                            </p>
+                            <div class="collapse" id="collapseAdvanced">
                             <div class="subheader mb-2">Category</div>
                             <div class="mb-3">
                                 <select name="advanced-search-category" class="form-select">
@@ -110,6 +116,25 @@
                                     <option value="{{ .Key }}" {{ if eq $.Tag .Key }}selected{{ end }}>{{ .Name }}</option>
                                     {{ end }}
                                 </select>
+                            </div>
+                            <div class="subheader mb-2">Minecraft Version</div>
+                            <div class="mb-3">
+                                <select name="advanced-search-minecraft-version" class="form-select">
+                                    <option value="all" {{ if eq .MinecraftVersion "all" }}selected{{ end }}>All</option>
+                                    {{ range .MinecraftVersions }}
+                                    <option value="{{ .Version }}" {{ if eq $.MinecraftVersion .Version }}selected{{ end }}>{{ .Version }}</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                            <div class="subheader mb-2">Create Version</div>
+                            <div class="mb-3">
+                                <select name="advanced-search-create-version" class="form-select">
+                                    <option value="all" {{ if eq .CreateVersion "all" }}selected{{ end }}>All</option>
+                                    {{ range .CreateVersions }}
+                                    <option value="{{ .Version }}" {{ if eq $.CreateVersion .Version }}selected{{ end }}>{{ .Version }}</option>
+                                    {{ end }}
+                                </select>
+                            </div>
                             </div>
                             <div class="mt-5">
                                 <button class="btn btn-primary w-100">

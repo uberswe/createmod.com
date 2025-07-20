@@ -2,6 +2,7 @@ package search
 
 import (
 	"createmod/internal/models"
+	"fmt"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/pocketbase/pocketbase"
 	"golang.org/x/text/cases"
@@ -31,15 +32,17 @@ type Service struct {
 }
 
 type schematicIndex struct {
-	ID          string
-	Title       string
-	Description string
-	Created     time.Time
-	Tags        []string
-	Categories  []string
-	Views       int64
-	Rating      float64
-	Author      string
+	ID               string
+	Title            string
+	Description      string
+	Created          time.Time
+	Tags             []string
+	Categories       []string
+	Views            int64
+	Rating           float64
+	Author           string
+	MinecraftVersion string
+	CreateVersion    string
 }
 
 type bleveIndex struct {
@@ -58,8 +61,10 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	schematicMapping := bleve.NewDocumentMapping()
 
 	titleFieldMapping := bleve.NewTextFieldMapping()
+	titleFieldMapping.Name = "title"
 	schematicMapping.AddFieldMappingsAt("title", titleFieldMapping)
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
+	descriptionFieldMapping.Name = "description"
 	schematicMapping.AddFieldMappingsAt("description", descriptionFieldMapping)
 	tagsFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
@@ -79,7 +84,7 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 }
 
 // Search takes a term and returns schematic ids in the specified order
-func (s *Service) Search(term string, order int, rating int, category string, tag string) []string {
+func (s *Service) Search(term string, order int, rating int, category string, tag string, minecraftVersion string, createVersion string) []string {
 	// If search hasn't had time to initialize, usually after a reboot
 	s.app.Logger().Debug("starting search service - check if initialized")
 	if s == nil || s.index == nil {
@@ -129,11 +134,36 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		result = tagResult
 	}
 	s.app.Logger().Debug("filtered by tag", "count", len(result), "tag", tag)
+	// Create Mod Version
+	if createVersion != "all" {
+		cvResult := make([]schematicIndex, 0)
+		for i := range result {
+			if result[i].CreateVersion == createVersion {
+				cvResult = append(cvResult, result[i])
+			}
+		}
+		result = cvResult
+	}
+	s.app.Logger().Debug("filtered by create mod version", "count", len(result), "createVersion", createVersion)
+	// Minecraft version
+	if minecraftVersion != "all" {
+		mcvResult := make([]schematicIndex, 0)
+		for i := range result {
+			if result[i].MinecraftVersion == minecraftVersion {
+				mcvResult = append(mcvResult, result[i])
+			}
+		}
+		result = mcvResult
+	}
+	s.app.Logger().Debug("filtered by minecraft version", "count", len(result), "minecraftVersion", minecraftVersion)
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
-		query := bleve.NewQueryStringQuery(term)
-		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query)
+		// https://blevesearch.com/docs/Query-String-Query/
+		query := bleve.NewQueryStringQuery(fmt.Sprintf("Title:%s^5 Description:\"%s\" Tags:%s^2 Categories:%s^2 Author:%s^3", term, term, term, term, term))
+		q, err := query.Parse()
+		fields, fieldsError := s.bleveIndex.Fields()
+		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query, "error", err, "fullQuery", q, "fieldsError", fieldsError, "fields", fields)
 		searchRequest := bleve.NewSearchRequest(query)
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
@@ -236,6 +266,10 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			Categories:  index[i].Categories,
 			Author:      index[i].Author,
 		})
+
+		index[i].MinecraftVersion = schematics[i].MinecraftVersion
+		index[i].CreateVersion = schematics[i].CreatemodVersion
+
 		if err != nil {
 			s.app.Logger().Error("bleve add index", "error", err.Error())
 		}

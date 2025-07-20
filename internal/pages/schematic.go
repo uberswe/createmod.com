@@ -113,7 +113,7 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		keywordString += " "
 		keywordString = keywordString + c.Name
 	}
-	ids := searchService.Search(fmt.Sprintf("%s%s", schematic.Title, keywordString), 1, -1, "all", "all")
+	ids := searchService.Search(fmt.Sprintf("%s%s", schematic.Title, keywordString), 1, -1, "all", "all", "", "")
 	interfaceIds := make([]interface{}, 0, len(ids))
 	limit := 5
 	count := 0
