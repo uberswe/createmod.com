@@ -250,7 +250,7 @@
 
                             pb.collection('users').create(data).then((record) => {
                                 pb.collection('users').requestVerification(email.value);
-                                let successModal = new bootstrap.Modal(document.getElementById('modal-success'), {});
+                                let successModal = new Modal(document.getElementById('modal-success'), {});
                                 successModal.show();
                                 // Log the user in automatically
                                 pb.collection('users').authWithPassword(
@@ -304,7 +304,7 @@
                         email.parentNode.insertAdjacentElement("beforeend", div)
                     } else {
                         pb.collection('users').requestPasswordReset(email.value).then((record) => {
-                            let successModal = new bootstrap.Modal(document.getElementById('modal-success'), {});
+                            let successModal = new Modal(document.getElementById('modal-success'), {});
                             successModal.show();
                         }).catch((e) => {
                             email.classList.add("is-invalid")

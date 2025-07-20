@@ -2,6 +2,7 @@ package search
 
 import (
 	"createmod/internal/models"
+	"fmt"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/pocketbase/pocketbase"
 	"golang.org/x/text/cases"
@@ -60,8 +61,10 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	schematicMapping := bleve.NewDocumentMapping()
 
 	titleFieldMapping := bleve.NewTextFieldMapping()
+	titleFieldMapping.Name = "title"
 	schematicMapping.AddFieldMappingsAt("title", titleFieldMapping)
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
+	descriptionFieldMapping.Name = "description"
 	schematicMapping.AddFieldMappingsAt("description", descriptionFieldMapping)
 	tagsFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
@@ -156,8 +159,11 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
-		query := bleve.NewQueryStringQuery(term)
-		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query)
+		// https://blevesearch.com/docs/Query-String-Query/
+		query := bleve.NewQueryStringQuery(fmt.Sprintf("Title:%s^5 Description:\"%s\" Tags:%s^2 Categories:%s^2 Author:%s^3", term, term, term, term, term))
+		q, err := query.Parse()
+		fields, fieldsError := s.bleveIndex.Fields()
+		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query, "error", err, "fullQuery", q, "fieldsError", fieldsError, "fields", fields)
 		searchRequest := bleve.NewSearchRequest(query)
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
