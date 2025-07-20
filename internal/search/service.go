@@ -159,8 +159,12 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
+		queryFormat := fmt.Sprintf("Title:%s^5 Description:%s Tags:%s^2 Categories:%s^2 Author:%s^3", term, term, term, term, term)
+		if strings.Contains(term, " ") {
+			queryFormat = term
+		}
 		// https://blevesearch.com/docs/Query-String-Query/
-		query := bleve.NewQueryStringQuery(fmt.Sprintf("Title:%s^5 Description:\"%s\" Tags:%s^2 Categories:%s^2 Author:%s^3", term, term, term, term, term))
+		query := bleve.NewQueryStringQuery(queryFormat)
 		q, err := query.Parse()
 		fields, fieldsError := s.bleveIndex.Fields()
 		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query, "error", err, "fullQuery", q, "fieldsError", fieldsError, "fields", fields)
