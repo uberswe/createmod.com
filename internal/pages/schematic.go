@@ -94,7 +94,7 @@ func findAuthorSchematics(app *pocketbase.PocketBase, cacheService *cache.Servic
 	}
 	results, err := app.FindRecordsByFilter(
 		schematicsCollection.Id,
-		"id != {:id} && author = {:authorID} && deleted = null",
+		"id != {:id} && author = {:authorID} && deleted = null && moderated = true",
 		sortBy,
 		limit,
 		0,
@@ -141,7 +141,7 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 	err := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
-		Where(dbx.NewExp("deleted = null")).
+		Where(dbx.NewExp("deleted = null && moderated = true")).
 		Where(dbx.In("id", interfaceIds...)).
 		All(&res)
 	if err != nil {
@@ -353,9 +353,7 @@ func MapResultsToSchematic(app *pocketbase.PocketBase, results []*core.Record, c
 			schematic = mapResultToSchematic(app, results[i], cacheService)
 			schematics = append(schematics, schematic)
 			cacheService.SetSchematic(sk, schematic)
-			app.Logger().Debug("schematic cache miss", "key", sk)
 		} else {
-			app.Logger().Debug("schematic cache hit", "key", sk)
 			schematics = append(schematics, schematic)
 		}
 	}

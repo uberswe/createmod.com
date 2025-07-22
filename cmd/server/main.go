@@ -10,6 +10,7 @@ const (
 	AutoMigrate       = "AUTO_MIGRATE"
 	CreateAdmin       = "CREATE_ADMIN"
 	DiscordWebhookUrl = "DISCORD_WEBHOOK_URL"
+	OpenAIAPIKey      = "OPENAI_API_KEY"
 )
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 		AutoMigrate:       envFile[AutoMigrate] == "true",
 		CreateAdmin:       envFile[CreateAdmin] == "true",
 		DiscordWebhookUrl: envFile[DiscordWebhookUrl],
+		OpenAIApiKey:      envFile[OpenAIAPIKey],
 	})
 	s.Start()
 }
