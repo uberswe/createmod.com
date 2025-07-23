@@ -328,7 +328,8 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record, disc
 
 		viewRecord := viewsRes[0]
 		count := viewRecord.GetInt("count")
-		if count == 50 && t == 4 {
+		moderated := schematic.GetBool("moderated")
+		if count == 50 && t == 4 && !moderated {
 			go sendToDiscord(schematic, discordService)
 		}
 		viewRecord.Set("count", count+1)
