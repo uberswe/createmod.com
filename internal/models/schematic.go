@@ -36,6 +36,7 @@ type Schematic struct {
 	HasRating            bool
 	SchematicFile        string
 	RatingCount          int
+	AIDescription        string
 }
 
 type DatabaseSchematic struct {
@@ -62,4 +63,5 @@ type DatabaseSchematic struct {
 	HasRating        bool
 	AvgRating        *float64
 	SchematicFile    string
+	AIDescription    string
 }
