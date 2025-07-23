@@ -35,7 +35,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"deleted = null",
+			"deleted = null && moderated = true",
 			"-created",
 			50,
 			0)

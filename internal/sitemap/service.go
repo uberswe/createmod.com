@@ -16,7 +16,7 @@ func New() *Service {
 // Generate is used to generate sitemaps, should be called asynchronously on start and new page creation
 func (*Service) Generate(app *pocketbase.PocketBase) {
 	app.Logger().Info("sitemap generation started")
-	schematics, err := app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+	schematics, err := app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
 	if err != nil {
 		app.Logger().Warn(err.Error())
 	}
