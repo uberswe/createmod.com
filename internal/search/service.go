@@ -287,7 +287,6 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 	for i, in := range index {
 		ids[i] = in.ID
 	}
-	s.app.Logger().Debug("new search index", "index", ids)
 	s.index = index
 }
 
