@@ -81,8 +81,15 @@ func (s *Server) Start() {
 		return e.Next()
 	})
 
+	// CORS middleware is now handled in setupCORS function
+
 	s.app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
+
+		// Setup CORS middleware
+		if err := setupCORS(e); err != nil {
+			return err
+		}
 
 		log.Println("Starting Search Server")
 		schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)

@@ -32,6 +32,9 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 
 	registry.AddFuncs(funcMap)
 
+	// Add CORS middleware first to handle OPTIONS requests
+	e.BindFunc(CorsMiddleware())
+
 	e.BindFunc(legacyFileCompat())
 	e.BindFunc(legacySearchCompat())
 	e.BindFunc(legacyCategoryCompat())
