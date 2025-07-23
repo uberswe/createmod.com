@@ -6,6 +6,7 @@ import (
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
+	"createmod/internal/moderation"
 	"createmod/internal/pages"
 	"createmod/internal/router"
 	"createmod/internal/search"
@@ -39,27 +40,31 @@ type Config struct {
 	AutoMigrate       bool
 	CreateAdmin       bool
 	DiscordWebhookUrl string
+	OpenAIApiKey      string
 }
 
 type Server struct {
-	conf           Config
-	app            *pocketbase.PocketBase
-	searchService  *search.Service
-	sitemapService *sitemap.Service
-	cacheService   *cache.Service
-	discordService *discord.Service
+	conf              Config
+	app               *pocketbase.PocketBase
+	searchService     *search.Service
+	sitemapService    *sitemap.Service
+	cacheService      *cache.Service
+	discordService    *discord.Service
+	moderationService *moderation.Service
 }
 
 func New(conf Config) *Server {
 	app := pocketbase.New()
 	sitemapService := sitemap.New()
 	discordService := discord.New(conf.DiscordWebhookUrl)
+	moderationService := moderation.NewService(conf.OpenAIApiKey, app.Logger())
 	return &Server{
-		conf:           conf,
-		app:            app,
-		sitemapService: sitemapService,
-		cacheService:   cache.New(),
-		discordService: discordService,
+		conf:              conf,
+		app:               app,
+		sitemapService:    sitemapService,
+		cacheService:      cache.New(),
+		discordService:    discordService,
+		moderationService: moderationService,
 	}
 }
 
@@ -80,7 +85,7 @@ func (s *Server) Start() {
 		log.Println("Running Before Serve Logic")
 
 		log.Println("Starting Search Server")
-		schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+		schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
 		if err != nil {
 			s.app.Logger().Error(err.Error())
 		}
@@ -100,7 +105,7 @@ func (s *Server) Start() {
 				return err
 			}
 			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
 				if err != nil {
 					s.app.Logger().Warn(err.Error())
 				}
@@ -121,7 +126,7 @@ func (s *Server) Start() {
 			}
 			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
 			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
 				if err != nil {
 					s.app.Logger().Warn(err.Error())
 				}
@@ -140,7 +145,7 @@ func (s *Server) Start() {
 			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
 			// Prevent actual deletion
 			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
 				if err != nil {
 					s.app.Logger().Warn(err.Error())
 				}
@@ -218,6 +223,10 @@ func (s *Server) Start() {
 			if err := validateAndPopulateSchematic(s.app, e.Record, e); err != nil {
 				return err
 			}
+
+			// Initially set as unmoderated (pending moderation)
+			e.Record.Set("moderated", false)
+
 			return e.Next()
 		})
 
@@ -287,6 +296,72 @@ func (s *Server) Start() {
 				Subject: fmt.Sprintf("New CreateMod.com Schematic"),
 				HTML:    fmt.Sprintf("<p>Title: <a href=\"https://createmod.com/schematics/" + e.Record.GetString("name") + "\">" + e.Record.GetString("title") + "</a></p><p>Description: " + e.Record.GetString("description") + "</p>"),
 			}
+
+			// Start asynchronous moderation check
+			go func() {
+				title := e.Record.GetString("title")
+				description := e.Record.GetString("description")
+				featuredImage := fmt.Sprintf("https://createmod.com/api/files/%s/%s", e.Record.BaseFilesPath(), e.Record.GetString("featured_image"))
+
+				s.app.Logger().Debug("Starting async moderation check for schematic",
+					"id", e.Record.Id,
+					"title", title,
+					"featured_image", featuredImage)
+
+				result, err := s.moderationService.CheckSchematic(title, description, featuredImage)
+				if err != nil {
+					s.app.Logger().Error("Failed to check schematic content", "error", err, "id", e.Record.Id)
+					// If moderation fails, we'll leave the schematic as unmoderated
+					return
+				}
+
+				// Get a fresh copy of the record to update
+				record, err := s.app.FindRecordById("schematics", e.Record.Id)
+				if err != nil {
+					s.app.Logger().Error("Failed to find schematic record for moderation update", "error", err, "id", e.Record.Id)
+					return
+				}
+
+				if result.Approved {
+					// Content is approved by moderation service, now check quality
+					s.app.Logger().Debug("Schematic content approved by moderation service, checking quality", "id", e.Record.Id)
+
+					// Perform quality check
+					qualityResult, err := s.moderationService.CheckSchematicQuality(title, description)
+					if err != nil {
+						s.app.Logger().Error("Failed to check schematic quality", "error", err, "id", e.Record.Id)
+						// If quality check fails, we'll approve the schematic as a fallback
+						record.Set("moderated", true)
+					} else if qualityResult.Approved {
+						// Schematic passed quality check
+						s.app.Logger().Debug("Schematic passed quality check", "id", e.Record.Id)
+						record.Set("moderated", true)
+					} else {
+						// Schematic failed quality check
+						s.app.Logger().Debug("Schematic failed quality check",
+							"id", e.Record.Id,
+							"reason", qualityResult.Reason)
+						record.Set("moderated", false)
+						record.Set("deleted_at", time.Now())
+						record.Set("moderation_reason", qualityResult.Reason)
+					}
+				} else {
+					// Content is not approved by moderation service
+					s.app.Logger().Debug("Schematic content rejected by moderation service",
+						"id", e.Record.Id,
+						"reason", result.Reason)
+					record.Set("moderated", false)
+					record.Set("deleted_at", time.Now())
+					record.Set("moderation_reason", result.Reason)
+				}
+
+				// Save the updated record
+				if err := s.app.Save(record); err != nil {
+					s.app.Logger().Error("Failed to save schematic record after moderation",
+						"error", err,
+						"id", e.Record.Id)
+				}
+			}()
 
 			return s.app.NewMailClient().Send(message)
 		})

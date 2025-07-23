@@ -55,7 +55,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 
 	results, err := app.FindRecordsByFilter(
 		usersCollection.Id,
-		"username:lower = {:username} && deleted = null",
+		"username:lower = {:username} && deleted = null && moderated = true",
 		"-created",
 		1,
 		0,
