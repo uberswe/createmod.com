@@ -98,8 +98,8 @@ func (s *Server) Start() {
 		s.searchService = search.New(mappedSchematics, s.app)
 		s.sitemapService.Generate(s.app)
 
-		// Start the AI description service
-		go s.aiDescriptionService.ProcessSchematics(s.app)
+		// Start the AI description service scheduler (polls every 30 minutes)
+		s.aiDescriptionService.StartScheduler(s.app)
 
 		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
 			if !validNBT(e) {

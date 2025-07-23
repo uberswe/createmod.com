@@ -17,6 +17,7 @@ import (
 type Service struct {
 	openaiClient *openai.Client
 	testMode     bool
+	stopChan     chan struct{} // Channel to signal the background goroutine to stop
 }
 
 // New creates a new AI description service
@@ -24,19 +25,49 @@ func New(apiKey string, logger openai.Logger) *Service {
 	return &Service{
 		openaiClient: openai.NewClient(apiKey, logger),
 		testMode:     false,
+		stopChan:     make(chan struct{}),
 	}
+}
+
+// StartScheduler starts a background goroutine that runs the service every 30 minutes
+func (s *Service) StartScheduler(app *pocketbase.PocketBase) {
+	go func() {
+		// Run immediately on start
+		s.ProcessSchematics(app)
+
+		// Then run every 30 minutes
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.ProcessSchematics(app)
+			case <-s.stopChan:
+				app.Logger().Info("AI description scheduler stopped")
+				return
+			}
+		}
+	}()
+
+	app.Logger().Info("AI description scheduler started (polling every 30 minutes)")
+}
+
+// Stop stops the background goroutine
+func (s *Service) Stop() {
+	close(s.stopChan)
 }
 
 // ProcessSchematics processes schematics without AI descriptions
 func (s *Service) ProcessSchematics(app *pocketbase.PocketBase) {
 	app.Logger().Info("AI description generation started")
 
-	// Find schematics with empty ai_description
+	// Find schematics with empty ai_description (limit to 100)
 	schematics, err := app.FindRecordsByFilter(
 		"schematics",
 		"(ai_description = '' || ai_description = null) && moderated = 1 && deleted = null",
 		"-created",
-		-1,
+		100,
 		0,
 	)
 	if err != nil {
