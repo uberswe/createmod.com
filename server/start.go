@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"createmod/internal/aidescription"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
@@ -44,13 +45,14 @@ type Config struct {
 }
 
 type Server struct {
-	conf              Config
-	app               *pocketbase.PocketBase
-	searchService     *search.Service
-	sitemapService    *sitemap.Service
-	cacheService      *cache.Service
-	discordService    *discord.Service
-	moderationService *moderation.Service
+	conf                 Config
+	app                  *pocketbase.PocketBase
+	searchService        *search.Service
+	sitemapService       *sitemap.Service
+	cacheService         *cache.Service
+	discordService       *discord.Service
+	moderationService    *moderation.Service
+	aiDescriptionService *aidescription.Service
 }
 
 func New(conf Config) *Server {
@@ -58,13 +60,15 @@ func New(conf Config) *Server {
 	sitemapService := sitemap.New()
 	discordService := discord.New(conf.DiscordWebhookUrl)
 	moderationService := moderation.NewService(conf.OpenAIApiKey, app.Logger())
+	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, app.Logger())
 	return &Server{
-		conf:              conf,
-		app:               app,
-		sitemapService:    sitemapService,
-		cacheService:      cache.New(),
-		discordService:    discordService,
-		moderationService: moderationService,
+		conf:                 conf,
+		app:                  app,
+		sitemapService:       sitemapService,
+		cacheService:         cache.New(),
+		discordService:       discordService,
+		moderationService:    moderationService,
+		aiDescriptionService: aiDescriptionService,
 	}
 }
 
@@ -93,6 +97,9 @@ func (s *Server) Start() {
 		s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
 		s.searchService = search.New(mappedSchematics, s.app)
 		s.sitemapService.Generate(s.app)
+
+		// Start the AI description service scheduler (polls every 30 minutes)
+		s.aiDescriptionService.StartScheduler(s.app)
 
 		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
 			if !validNBT(e) {
