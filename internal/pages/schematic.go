@@ -446,6 +446,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 		Rating:               fmt.Sprintf("%.1f", rating),
 		RatingCount:          ratingCount,
 		SchematicFile:        fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
+		AIDescription:        result.GetString("ai_description"),
 	}
 	if len(result.GetStringSlice("categories")) > 0 {
 		s.CategoryId = result.GetStringSlice("categories")[0]
