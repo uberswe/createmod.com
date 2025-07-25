@@ -5,6 +5,7 @@ import Pagination from '../../components/common/Pagination';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getUserByUsername, getSchematicsByAuthor, getCategories } from '../../lib/api';
+import { validateServerAuth } from '../../lib/auth';
 
 /**
  * User profile page component
@@ -22,7 +23,7 @@ import { getUserByUsername, getSchematicsByAuthor, getCategories } from '../../l
  * @param {number} props.currentPage - Current page number
  */
 export default function UserProfile({ 
-  user, 
+  user = {}, 
   schematics = [], 
   categories = [], 
   isAuthenticated = false,
@@ -35,6 +36,36 @@ export default function UserProfile({
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('schematics');
+  
+  // Debug: Log user data to see what's available
+  console.log('[DEBUG] User Profile Component - User data:', user);
+  console.log('[DEBUG] User Profile Component - User data keys:', Object.keys(user));
+  console.log('[DEBUG] User Profile Component - Is own profile:', isOwnProfile);
+  console.log('[DEBUG] User Profile Component - Current user:', currentUser);
+  console.log('[DEBUG] User Profile Component - Is authenticated:', isAuthenticated);
+  
+  // Additional error handling and validation
+  if (!user || Object.keys(user).length === 0) {
+    console.error('[ERROR] User Profile Component - User data is empty or undefined');
+  }
+  
+  if (isOwnProfile && (!currentUser || Object.keys(currentUser).length === 0)) {
+    console.error('[ERROR] User Profile Component - Own profile but currentUser is empty or undefined');
+  }
+  
+  // Ensure user object has all required fields with fallbacks
+  const safeUser = {
+    id: user?.id || '',
+    username: user?.username || 'Unknown User',
+    name: user?.name || '',
+    avatar: user?.avatar || '',
+    joined: user?.joined || null,
+    bio: user?.bio || '',
+    ...user // Include any other fields from the original user object
+  };
+  
+  // Use safeUser instead of user throughout the component
+  user = safeUser;
   
   // Handle 404 case
   if (userNotFound) {
@@ -69,14 +100,28 @@ export default function UserProfile({
     );
   }
   
-  // Format date
+  // Format date with improved error handling
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }).format(date);
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('[ERROR] Invalid date:', dateString);
+        return 'N/A';
+      }
+      
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).format(date);
+    } catch (error) {
+      console.error('[ERROR] Error formatting date:', error);
+      return 'N/A';
+    }
   };
   
   // Handle page change
@@ -100,6 +145,9 @@ export default function UserProfile({
         <div className="col-lg-4">
           <div className="card">
             <div className="card-body p-4 text-center">
+              {/* Debug user data */}
+              {console.log('[DEBUG] Rendering avatar - user.avatar:', user.avatar)}
+              
               {user.avatar ? (
                 <span 
                   className="avatar avatar-xl mb-3 avatar-rounded" 
@@ -107,11 +155,15 @@ export default function UserProfile({
                 ></span>
               ) : (
                 <span className="avatar avatar-xl mb-3 avatar-rounded">
-                  {user.username.charAt(0).toUpperCase()}
+                  {user.username ? user.username.charAt(0).toUpperCase() : '?'}
                 </span>
               )}
-              <h3 className="m-0 mb-1">{user.name || user.username}</h3>
-              <div className="text-muted">{user.username}</div>
+              
+              {/* Debug name data */}
+              {console.log('[DEBUG] Rendering name - user.name:', user.name)}
+              
+              <h3 className="m-0 mb-1">{user.name || user.username || 'Unknown User'}</h3>
+              <div className="text-muted">{user.username || 'No username'}</div>
               
               <div className="mt-3">
                 <div className="row g-2 text-center">
@@ -123,7 +175,21 @@ export default function UserProfile({
                   </div>
                   <div className="col-6">
                     <div className="border rounded p-2">
-                      <div className="h1 m-0">{user.joined ? formatDate(user.joined).split(' ')[2] : 'N/A'}</div>
+                      {/* Debug joined date */}
+                      {console.log('[DEBUG] Rendering joined date - user.joined:', user.joined)}
+                      
+                      <div className="h1 m-0">
+                        {user.joined ? 
+                          (() => {
+                            try {
+                              return formatDate(user.joined).split(' ')[2];
+                            } catch (error) {
+                              console.error('[ERROR] Failed to format joined date:', error);
+                              return 'N/A';
+                            }
+                          })() 
+                          : 'N/A'}
+                      </div>
                       <div className="text-muted">Joined</div>
                     </div>
                   </div>
@@ -238,14 +304,22 @@ export default function UserProfile({
               {/* About tab */}
               <div className="card">
                 <div className="card-header">
-                  <h3 className="card-title">About {isOwnProfile ? 'Me' : user.username}</h3>
+                  <h3 className="card-title">About {isOwnProfile ? 'Me' : (user.username || 'User')}</h3>
                 </div>
                 <div className="card-body">
+                  {/* Debug about tab data */}
+                  {console.log('[DEBUG] Rendering About tab - user data:', {
+                    username: user.username,
+                    name: user.name,
+                    joined: user.joined,
+                    bio: user.bio
+                  })}
+                  
                   <div className="mb-3">
                     <div className="datagrid">
                       <div className="datagrid-item">
                         <div className="datagrid-title">Username</div>
-                        <div className="datagrid-content">{user.username}</div>
+                        <div className="datagrid-content">{user.username || 'N/A'}</div>
                       </div>
                       
                       {user.name && (
@@ -257,7 +331,18 @@ export default function UserProfile({
                       
                       <div className="datagrid-item">
                         <div className="datagrid-title">Joined</div>
-                        <div className="datagrid-content">{user.joined ? formatDate(user.joined) : 'N/A'}</div>
+                        <div className="datagrid-content">
+                          {user.joined ? 
+                            (() => {
+                              try {
+                                return formatDate(user.joined);
+                              } catch (error) {
+                                console.error('[ERROR] Failed to format joined date in About tab:', error);
+                                return 'N/A';
+                              }
+                            })() 
+                            : 'N/A'}
+                        </div>
                       </div>
                       
                       <div className="datagrid-item">
@@ -295,19 +380,166 @@ export async function getServerSideProps(context) {
     const page = parseInt(context.query.page || '1', 10);
     const perPage = 12;
     
-    // Check if user is authenticated
-    const isAuthenticated = context.req.cookies['create-mod-auth'] !== undefined;
-    let currentUser = null;
+    console.log(`[DEBUG] getServerSideProps - Fetching profile for username: ${username}`);
+    
+    // Check if user is authenticated and get current user data
+    const { isAuthenticated, user: authUser } = await validateServerAuth(context.req);
+    
+    // Create a serialization-safe version of the current user object
+    const currentUser = authUser ? {
+      id: authUser.id,
+      username: authUser.username,
+      email: authUser.email || null, // Use null instead of undefined for serialization
+      name: authUser.name || '',
+      avatar: authUser.avatar || '',
+      joined: authUser.created || null, // Use created as joined date if available
+      bio: authUser.bio || '',
+      verified: authUser.verified || false // Use false instead of undefined for serialization
+    } : null;
+    
+    console.log('[DEBUG] getServerSideProps - Auth result:', { 
+      isAuthenticated, 
+      currentUserId: currentUser?.id,
+      currentUsername: currentUser?.username,
+      serializedUser: !!currentUser
+    });
     
     // Get categories for sidebar
     const categoriesData = await getCategories();
     const categories = categoriesData.items || [];
     
-    // Get user by username
-    const userData = await getUserByUsername(username);
+    // Check if this is the user's own profile by comparing usernames (case-insensitive)
+    const isOwnProfile = isAuthenticated && currentUser && 
+                        currentUser.username.toLowerCase() === username.toLowerCase();
+    console.log('[DEBUG] getServerSideProps - isOwnProfile calculation:', {
+      isAuthenticated,
+      hasCurrentUser: !!currentUser,
+      currentUsername: currentUser?.username?.toLowerCase(),
+      requestedUsername: username.toLowerCase(),
+      isOwnProfile
+    });
     
-    // If user not found, return 404
-    if (!userData.items || userData.items.length === 0) {
+    // If viewing own profile, use the authenticated user's data directly
+    let user;
+    if (isOwnProfile && currentUser) {
+      console.log('[DEBUG] getServerSideProps - Using authenticated user data for own profile');
+      user = currentUser;
+    } else {
+      // Otherwise, try to fetch the user by username
+      const userData = await getUserByUsername(username);
+      console.log('[DEBUG] getServerSideProps - User data from API:', userData);
+      
+      // If user not found, return 404
+      if (!userData.items || userData.items.length === 0) {
+        return {
+          props: {
+            userNotFound: true,
+            categories,
+            isAuthenticated,
+            currentUser
+          }
+        };
+      }
+      
+      // Get the raw user data from the API response
+      const rawUser = userData.items[0];
+      
+      // Create a serialization-safe version of the profile user object
+      user = {
+        id: rawUser.id,
+        username: rawUser.username,
+        name: rawUser.name || '',
+        avatar: rawUser.avatar || '',
+        joined: rawUser.created || rawUser.joined || null, // Use created or joined date if available
+        bio: rawUser.bio || '',
+        email: rawUser.email || null, // Use null instead of undefined for serialization
+        verified: rawUser.verified || false // Use false instead of undefined for serialization
+      };
+    }
+    
+    console.log('[DEBUG] getServerSideProps - Processed user data:', {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      avatar: user.avatar ? 'Has avatar' : 'No avatar',
+      joined: user.joined,
+      bio: user.bio ? 'Has bio' : 'No bio',
+      serialized: true,
+      allFields: Object.keys(user)
+    });
+    
+    
+    // Get user's schematics
+    const schematicsData = await getSchematicsByAuthor(user.id, {
+      sort: '-created',
+      filter: 'moderated=true',
+      expand: 'author,categories,tags',
+      page,
+      perPage
+    });
+    console.log('[DEBUG] getServerSideProps - Schematics data:', {
+      count: schematicsData.items?.length || 0,
+      totalItems: schematicsData.totalItems || 0
+    });
+    
+    const schematics = schematicsData.items || [];
+    const totalItems = schematicsData.totalItems || 0;
+    const totalPages = Math.ceil(totalItems / perPage);
+    
+    // Prepare the final props object
+    const props = {
+      user,
+      schematics,
+      categories,
+      isAuthenticated,
+      currentUser,
+      isOwnProfile,
+      userNotFound: false,
+      totalItems,
+      totalPages,
+      currentPage: page
+    };
+    
+    // Log the final props being returned (excluding large arrays)
+    console.log('[DEBUG] getServerSideProps - Final props:', {
+      user: {
+        id: props.user?.id,
+        username: props.user?.username,
+        hasName: !!props.user?.name,
+        hasAvatar: !!props.user?.avatar,
+        hasJoined: !!props.user?.joined,
+        hasBio: !!props.user?.bio,
+        isEmpty: !props.user || Object.keys(props.user).length === 0
+      },
+      currentUser: props.currentUser ? {
+        id: props.currentUser.id,
+        username: props.currentUser.username,
+        isEmpty: Object.keys(props.currentUser).length === 0
+      } : null,
+      isAuthenticated: props.isAuthenticated,
+      isOwnProfile: props.isOwnProfile,
+      userNotFound: props.userNotFound,
+      schematicsCount: props.schematics?.length || 0,
+      categoriesCount: props.categories?.length || 0,
+      totalItems: props.totalItems,
+      totalPages: props.totalPages,
+      currentPage: props.currentPage
+    });
+    
+    // Additional validation before returning props
+    if (!props.user || Object.keys(props.user).length === 0) {
+      console.error('[ERROR] getServerSideProps - User data is empty or undefined');
+      
+      // If this is supposed to be the user's own profile, use currentUser as a fallback
+      if (isOwnProfile && currentUser) {
+        console.log('[DEBUG] getServerSideProps - Using currentUser as fallback for empty user data');
+        props.user = currentUser;
+      }
+    }
+    
+    // Final check to ensure we're not returning empty user data
+    if (!props.user || Object.keys(props.user).length === 0) {
+      console.error('[ERROR] getServerSideProps - Still have empty user data after fallback attempt');
       return {
         props: {
           userNotFound: true,
@@ -318,38 +550,7 @@ export async function getServerSideProps(context) {
       };
     }
     
-    const user = userData.items[0];
-    
-    // Check if this is the user's own profile
-    const isOwnProfile = isAuthenticated && currentUser && currentUser.username.toLowerCase() === username.toLowerCase();
-    
-    // Get user's schematics
-    const schematicsData = await getSchematicsByAuthor(user.id, {
-      sort: '-created',
-      filter: 'moderated=true',
-      expand: 'author,categories,tags',
-      page,
-      perPage
-    });
-    
-    const schematics = schematicsData.items || [];
-    const totalItems = schematicsData.totalItems || 0;
-    const totalPages = Math.ceil(totalItems / perPage);
-    
-    return {
-      props: {
-        user,
-        schematics,
-        categories,
-        isAuthenticated,
-        currentUser,
-        isOwnProfile,
-        userNotFound: false,
-        totalItems,
-        totalPages,
-        currentPage: page
-      }
-    };
+    return { props };
   } catch (error) {
     console.error('Error fetching user profile:', error);
     

@@ -334,8 +334,9 @@ export async function getCurrentUser() {
  * @returns {Promise<Object>} - Response data
  */
 export async function getUserByUsername(username) {
+  // Use case-insensitive comparison for username
   return getRecords('users', {
-    filter: `username="${username}"`,
+    filter: `username~"${username}"`,
     limit: 1
   });
 }
