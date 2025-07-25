@@ -5,7 +5,8 @@ import Header from './Header';
 import Footer from './Footer';
 import { useRouter } from 'next/router';
 import { logCookies, logNavigation, logAuth, logError } from '../../utils/logger';
-import { setAuthCookie } from '../../lib/auth';
+import { setAuthCookie, clearAuthCookie } from '../../lib/auth';
+import { pb, isAuthenticated as pbIsAuthenticated, getCurrentUser, refreshAuth, logout } from '../../lib/pocketbase';
 
 /**
  * Main layout component for the application
@@ -49,120 +50,121 @@ export default function Layout({
       logCookies('LAYOUT', 'BEFORE_AUTH_CHECK');
       
       try {
-        // Log the auth cookie before sending the request
-        if (typeof document !== 'undefined') {
-          const cookies = document.cookie.split(';').map(cookie => cookie.trim());
-          const authCookie = cookies.find(cookie => cookie.startsWith('create-mod-auth='));
-          if (authCookie) {
-            logAuth('LAYOUT', 'AUTH_COOKIE_FOUND_BEFORE_REFRESH', { 
-              cookieStart: authCookie.substring(0, 30) + '...',
-              cookieLength: authCookie.length
-            });
-          } else {
-            logAuth('LAYOUT', 'NO_AUTH_COOKIE_FOUND_BEFORE_REFRESH');
-          }
-        }
+        // Check if PocketBase has a valid token in its authStore
+        const isValid = pbIsAuthenticated();
+        logAuth('LAYOUT', 'POCKETBASE_AUTH_CHECK', { isValid });
         
-        logAuth('LAYOUT', 'AUTH_REFRESH_REQUEST_SENDING');
-        const response = await fetch('/api/collections/users/auth-refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
-        
-        // Log detailed information about the response
-        const responseHeaders = {};
-        response.headers.forEach((value, name) => {
-          responseHeaders[name] = value;
-        });
-        
-        logAuth('LAYOUT', 'AUTH_REFRESH_RESPONSE_RECEIVED', { 
-          status: response.status,
-          statusText: response.statusText,
-          headers: responseHeaders
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
+        if (isValid) {
+          // Get the current user from PocketBase's authStore
+          const currentUser = getCurrentUser();
           
           // Log detailed information about the user data
-          logAuth('LAYOUT', 'AUTH_REFRESH_SUCCESS', {
-            id: userData.record?.id,
-            username: userData.record?.username,
-            email: userData.record?.email,
-            verified: userData.record?.verified
+          logAuth('LAYOUT', 'POCKETBASE_AUTH_VALID', {
+            id: currentUser?.id,
+            username: currentUser?.username,
+            email: currentUser?.email,
+            verified: currentUser?.verified
           });
           
-          // Log the structure of the userData object to help identify where the token is
-          console.log('[LAYOUT] Auth refresh response userData structure:', {
-            hasToken: !!userData.token,
-            tokenLength: userData.token ? userData.token.length : 0,
-            hasRecord: !!userData.record,
-            recordKeys: userData.record ? Object.keys(userData.record) : [],
-            otherKeys: Object.keys(userData).filter(key => key !== 'token' && key !== 'record')
-          });
-          
-          // Check if the response contains a token in the body
-          if (userData.token) {
-            setAuthCookie(userData.token);
-            logAuth('LAYOUT', 'AUTH_COOKIE_SET_WITH_PROPER_ATTRIBUTES');
-          } else {
-            // If no token in body, try to extract from headers (less reliable)
-            const authToken = response.headers.get('set-cookie')?.match(/create-mod-auth=([^;]+)/)?.[1];
-            if (authToken) {
-              setAuthCookie(authToken);
-              logAuth('LAYOUT', 'AUTH_COOKIE_SET_FROM_HEADERS');
-            } else {
-              logAuth('LAYOUT', 'NO_AUTH_TOKEN_FOUND_IN_RESPONSE');
-            }
-          }
-          
-          setIsAuthenticated(true);
-          setUser(userData.record);
-          logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: true });
-          logCookies('LAYOUT', 'AFTER_AUTH_SUCCESS');
-        } else {
-          logAuth('LAYOUT', 'AUTH_REFRESH_FAILED', { status: response.status });
-          
-          // Use the logout endpoint to properly clear the HttpOnly cookie
-          logAuth('LAYOUT', 'CALLING_LOGOUT_ENDPOINT_TO_CLEAR_COOKIE');
+          // Try to refresh the token to ensure it's still valid
           try {
-            const logoutResponse = await fetch('/api/collections/users/auth-logout', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
+            logAuth('LAYOUT', 'POCKETBASE_AUTH_REFRESH_STARTED');
+            const authData = await refreshAuth();
+            
+            logAuth('LAYOUT', 'POCKETBASE_AUTH_REFRESH_SUCCESS', {
+              id: authData.record?.id,
+              username: authData.record?.username,
+              email: authData.record?.email,
+              verified: authData.record?.verified
             });
-            logAuth('LAYOUT', 'LOGOUT_RESPONSE_RECEIVED', { status: logoutResponse.status });
-          } catch (logoutError) {
-            logError('LAYOUT', 'Error calling logout endpoint', logoutError);
+            
+            // Ensure the token is also set in the cookie for backward compatibility
+            if (authData.token) {
+              setAuthCookie(authData.token);
+              logAuth('LAYOUT', 'AUTH_COOKIE_SET_WITH_PROPER_ATTRIBUTES');
+            }
+            
+            setIsAuthenticated(true);
+            setUser(authData.record);
+            logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: true });
+            logCookies('LAYOUT', 'AFTER_AUTH_SUCCESS');
+          } catch (refreshError) {
+            logError('LAYOUT', 'Error refreshing authentication', refreshError);
+            
+            // Clear the auth state
+            logout();
+            clearAuthCookie();
+            
+            setIsAuthenticated(false);
+            setUser(null);
+            logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false, reason: 'refresh_error' });
+            logCookies('LAYOUT', 'AFTER_AUTH_REFRESH_ERROR');
           }
-          
-          setIsAuthenticated(false);
-          setUser(null);
-          logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false });
-          logCookies('LAYOUT', 'AFTER_AUTH_FAILURE');
+        } else {
+          // Check if there's an auth cookie that PocketBase doesn't know about
+          if (typeof document !== 'undefined') {
+            const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+            const authCookie = cookies.find(cookie => cookie.startsWith('create-mod-auth='));
+            
+            if (authCookie) {
+              logAuth('LAYOUT', 'AUTH_COOKIE_FOUND_BUT_POCKETBASE_NOT_AUTHENTICATED', { 
+                cookieStart: authCookie.substring(0, 30) + '...',
+                cookieLength: authCookie.length
+              });
+              
+              // Try to set the token in PocketBase's authStore
+              const token = authCookie.split('=')[1];
+              pb.authStore.save(token, null);
+              
+              // Check if the token is now valid
+              if (pb.authStore.isValid) {
+                logAuth('LAYOUT', 'POCKETBASE_AUTH_SET_FROM_COOKIE_SUCCESS');
+                
+                // Try to refresh the token
+                try {
+                  const authData = await refreshAuth();
+                  
+                  setIsAuthenticated(true);
+                  setUser(authData.record);
+                  logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: true, source: 'cookie' });
+                } catch (refreshError) {
+                  logError('LAYOUT', 'Error refreshing authentication from cookie', refreshError);
+                  
+                  // Clear the auth state
+                  logout();
+                  clearAuthCookie();
+                  
+                  setIsAuthenticated(false);
+                  setUser(null);
+                  logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false, reason: 'cookie_refresh_error' });
+                }
+              } else {
+                logAuth('LAYOUT', 'POCKETBASE_AUTH_SET_FROM_COOKIE_FAILED');
+                clearAuthCookie();
+                setIsAuthenticated(false);
+                setUser(null);
+                logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false, reason: 'invalid_cookie' });
+              }
+            } else {
+              logAuth('LAYOUT', 'NO_AUTH_COOKIE_FOUND');
+              setIsAuthenticated(false);
+              setUser(null);
+              logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false, reason: 'no_cookie' });
+            }
+          } else {
+            // Server-side rendering, can't check cookies
+            logAuth('LAYOUT', 'SERVER_SIDE_RENDERING_NO_COOKIE_CHECK');
+            setIsAuthenticated(false);
+            setUser(null);
+            logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false, reason: 'server_side' });
+          }
         }
       } catch (error) {
         logError('LAYOUT', 'Error checking authentication', error);
         
-        // Use the logout endpoint to properly clear the HttpOnly cookie
-        logAuth('LAYOUT', 'CALLING_LOGOUT_ENDPOINT_TO_CLEAR_COOKIE_ON_ERROR');
-        try {
-          const logoutResponse = await fetch('/api/collections/users/auth-logout', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-          });
-          logAuth('LAYOUT', 'LOGOUT_RESPONSE_RECEIVED_ON_ERROR', { status: logoutResponse.status });
-        } catch (logoutError) {
-          logError('LAYOUT', 'Error calling logout endpoint on auth error', logoutError);
-        }
+        // Clear the auth state
+        logout();
+        clearAuthCookie();
         
         setIsAuthenticated(false);
         setUser(null);
@@ -195,44 +197,51 @@ export default function Layout({
     logCookies('LAYOUT', 'BEFORE_LOGOUT');
     
     try {
-      logAuth('LAYOUT', 'LOGOUT_REQUEST_SENDING');
-      // Use the proper logout endpoint to clear the HttpOnly cookie on the server side
-      const response = await fetch('/api/collections/users/auth-logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      logAuth('LAYOUT', 'POCKETBASE_LOGOUT_STARTED');
       
-      logAuth('LAYOUT', 'LOGOUT_RESPONSE_RECEIVED', { status: response.status });
+      // Use PocketBase's logout function to clear the authStore
+      logout();
       
-      // The server should have cleared the HttpOnly cookie in the response
-      // No need to try clearing it client-side as that won't work with HttpOnly cookies
-      logCookies('LAYOUT', 'AFTER_SERVER_COOKIE_CLEAR');
+      // Also clear the HttpOnly cookie for backward compatibility
+      clearAuthCookie();
       
+      logAuth('LAYOUT', 'POCKETBASE_LOGOUT_COMPLETED');
+      logCookies('LAYOUT', 'AFTER_LOGOUT');
+      
+      // Update the component state
       logAuth('LAYOUT', 'UPDATING_AUTH_STATE');
       setIsAuthenticated(false);
       setUser(null);
       logAuth('LAYOUT', 'AUTH_STATE_UPDATED', { isAuthenticated: false });
       
-      logNavigation('LAYOUT', router.pathname, '/', 'logout');
-      router.push('/');
-    } catch (error) {
-      logError('LAYOUT', 'Error during logout', error);
-      
-      // Try again to call the logout endpoint to clear the cookie
+      // For backward compatibility, also try to call the server logout endpoint
       try {
-        logAuth('LAYOUT', 'RETRY_LOGOUT_REQUEST_ON_ERROR');
-        await fetch('/api/collections/users/auth-logout', {
+        logAuth('LAYOUT', 'LEGACY_LOGOUT_REQUEST_SENDING');
+        const response = await fetch('/api/collections/users/auth-logout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
         });
-      } catch (retryError) {
-        logError('LAYOUT', 'Error during logout retry', retryError);
+        logAuth('LAYOUT', 'LEGACY_LOGOUT_RESPONSE_RECEIVED', { status: response.status });
+      } catch (legacyError) {
+        // Ignore errors from the legacy logout endpoint
+        logError('LAYOUT', 'Error during legacy logout', legacyError);
+      }
+      
+      logNavigation('LAYOUT', router.pathname, '/', 'logout');
+      router.push('/');
+    } catch (error) {
+      logError('LAYOUT', 'Error during logout', error);
+      
+      // Try to clear the auth state anyway
+      try {
+        logout();
+        clearAuthCookie();
+        logAuth('LAYOUT', 'POCKETBASE_LOGOUT_COMPLETED_ON_ERROR');
+      } catch (clearError) {
+        logError('LAYOUT', 'Error clearing auth state on logout error', clearError);
       }
       
       // Update the authentication state regardless of the outcome

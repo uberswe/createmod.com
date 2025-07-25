@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout/Layout';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { getCategories, authenticateUser, authWithOAuth2 } from '../../lib/api';
+import { getCategories } from '../../lib/api';
 import { setAuthCookie, validateServerAuth } from '../../lib/auth';
 import { getCSRFToken, validateCSRFToken } from '../../lib/csrf';
+import { login, loginWithOAuth2 } from '../../lib/pocketbase';
 
 /**
  * Login page component
@@ -131,8 +132,8 @@ export default function Login({ categories = [], isAuthenticated = false }) {
       const authCookieBeforeLogin = cookiesBeforeLogin.find(cookie => cookie.startsWith('create-mod-auth='));
       console.log('[LOGIN] Auth cookie before login attempt:', !!authCookieBeforeLogin);
       
-      // Use the authenticateUser function from lib/api.js
-      const authData = await authenticateUser(
+      // Use the login function from lib/pocketbase.js
+      const authData = await login(
         formData.identity,
         formData.password
       );
@@ -143,7 +144,7 @@ export default function Login({ categories = [], isAuthenticated = false }) {
         email: authData.record?.email
       });
       
-      // Extract token from response headers if available
+      // Extract token from PocketBase authData
       const authToken = authData.token;
       
       // If token is available, set it with proper attributes
@@ -181,14 +182,16 @@ export default function Login({ categories = [], isAuthenticated = false }) {
    */
   const handleSocialLogin = async (provider) => {
     try {
-      // Use the authWithOAuth2 function from lib/api.js
-      await authWithOAuth2(provider);
+      console.log(`[LOGIN] Attempting to login with ${provider} using PocketBase OAuth2`);
       
-      // Note: The function above will redirect the user to the OAuth provider
-      // and the page will be unloaded, so the code below won't execute
+      // Use the loginWithOAuth2 function from lib/pocketbase.js
+      await loginWithOAuth2(provider);
+      
+      // Note: The function above will open a popup window with the OAuth provider
+      // and handle the authentication flow automatically
       
     } catch (error) {
-      console.error(`${provider} login error:`, error);
+      console.error(`[LOGIN] ${provider} login error:`, error);
       setAuthError(`Failed to authenticate with ${provider}. Please try again.`);
     }
   };

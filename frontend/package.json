@@ -17,6 +17,7 @@
     "dompurify": "^3.0.6",
     "isomorphic-dompurify": "^2.26.0",
     "next": "^15.4.3",
+    "pocketbase": "^0.26.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   }

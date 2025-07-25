@@ -2,6 +2,8 @@
  * Authentication utility functions
  */
 
+import { pb, refreshAuth as pbRefreshAuth, logout as pbLogout } from './pocketbase';
+
 /**
  * Validate authentication on the server side
  * @param {Object} req - Next.js request object with cookies
@@ -22,30 +24,30 @@ export async function validateServerAuth(req) {
       return result;
     }
 
-    // Make a request to the backend to validate the token
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
-    console.log('[SERVER-AUTH] Making request to validate token:', `${baseUrl}/api/collections/users/auth-refresh`);
-    console.log('[SERVER-AUTH] Auth cookie being sent:', authCookie.substring(0, 20) + '...');
+    // Set the token in PocketBase's authStore
+    pb.authStore.save(authCookie, null);
     
-    const response = await fetch(`${baseUrl}/api/collections/users/auth-refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': `create-mod-auth=${authCookie}`
-      },
-    });
+    // Check if the token is valid
+    if (!pb.authStore.isValid) {
+      console.log('[SERVER-AUTH] Auth token is invalid');
+      return result;
+    }
+    
+    console.log('[SERVER-AUTH] Auth token loaded into PocketBase authStore');
 
-    // If the response is successful, the token is valid
-    if (response.ok) {
-      const userData = await response.json();
+    try {
+      // Refresh the token to validate it
+      const authData = await pb.collection('users').authRefresh();
       console.log('[SERVER-AUTH] Auth token validated successfully');
       
       return {
         isAuthenticated: true,
-        user: userData.record
+        user: authData.record
       };
-    } else {
-      console.log('[SERVER-AUTH] Auth token validation failed:', response.status);
+    } catch (error) {
+      console.log('[SERVER-AUTH] Auth token validation failed:', error);
+      // Clear the invalid token
+      pb.authStore.clear();
       return result;
     }
   } catch (error) {
@@ -63,6 +65,12 @@ export function setAuthCookie(token, maxAge = 30 * 24 * 60 * 60) {
   if (typeof document === 'undefined') {
     console.log('[CLIENT-AUTH] Cannot set cookie: document is undefined (server-side)');
     return;
+  }
+
+  // Set the token in PocketBase's authStore if it's not already set
+  if (!pb.authStore.isValid) {
+    console.log('[CLIENT-AUTH] Setting token in PocketBase authStore');
+    pb.authStore.save(token, null);
   }
 
   // Set the cookie with proper attributes
@@ -93,6 +101,10 @@ export function clearAuthCookie() {
   const cookiesBeforeClear = document.cookie.split(';').map(cookie => cookie.trim());
   const authCookieBeforeClear = cookiesBeforeClear.find(cookie => cookie.startsWith('create-mod-auth='));
   console.log('[CLIENT-AUTH] Auth cookie before clearing:', authCookieBeforeClear ? `${authCookieBeforeClear.substring(0, 30)}...` : 'Not found');
+
+  // Clear the PocketBase authStore
+  console.log('[CLIENT-AUTH] Clearing PocketBase authStore');
+  pbLogout();
 
   // Clear the cookie by setting an expiration date in the past
   // Use multiple approaches to ensure the cookie is cleared in all environments
