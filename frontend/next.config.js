@@ -17,6 +17,11 @@ const nextConfig = {
         port: '8090',
         pathname: '/api/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.gravatar.com',
+        pathname: '/avatar/**',
+      },
     ],
   },
   // Configure async rewrites to maintain the same URL structure

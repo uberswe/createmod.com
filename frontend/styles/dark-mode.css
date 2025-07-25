@@ -1,0 +1,108 @@
+/* Dark mode styles for cards and form controls */
+
+/* Apply dark background to cards when in dark mode */
+[data-bs-theme="dark"] .card {
+  background-color: #222;
+  border-color: #444;
+}
+
+[data-bs-theme="dark"] .card-header {
+  background-color: #2a2a2a;
+  border-bottom-color: #444;
+}
+
+[data-bs-theme="dark"] .card-footer {
+  background-color: #2a2a2a;
+  border-top-color: #444;
+}
+
+/* Apply dark background to form controls when in dark mode */
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+  background-color: #333;
+  border-color: #555;
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+  background-color: #3a3a3a;
+  border-color: #666;
+  color: #fff;
+}
+
+/* Apply dark background to input groups */
+[data-bs-theme="dark"] .input-group-text {
+  background-color: #2a2a2a;
+  border-color: #555;
+  color: #fff;
+}
+
+/* Apply dark background to dropdowns */
+[data-bs-theme="dark"] .dropdown-menu {
+  background-color: #222;
+  border-color: #444;
+}
+
+[data-bs-theme="dark"] .dropdown-item {
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-item:focus {
+  background-color: #333;
+}
+
+/* Apply dark background to modals */
+[data-bs-theme="dark"] .modal-content {
+  background-color: #222;
+  border-color: #444;
+}
+
+[data-bs-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-footer {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+/* Apply dark background to list groups */
+[data-bs-theme="dark"] .list-group-item {
+  background-color: #222;
+  border-color: #444;
+  color: #fff;
+}
+
+/* Apply dark background to tables */
+[data-bs-theme="dark"] .table {
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .table-hover > tbody > tr:hover > * {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Apply dark background to pagination */
+[data-bs-theme="dark"] .pagination {
+  --bs-pagination-bg: #222;
+  --bs-pagination-border-color: #444;
+  --bs-pagination-color: #fff;
+  --bs-pagination-hover-bg: #333;
+  --bs-pagination-hover-border-color: #555;
+  --bs-pagination-hover-color: #fff;
+  --bs-pagination-active-bg: #0d6efd;
+  --bs-pagination-active-border-color: #0d6efd;
+  --bs-pagination-active-color: #fff;
+  --bs-pagination-disabled-bg: #222;
+  --bs-pagination-disabled-border-color: #444;
+  --bs-pagination-disabled-color: #6c757d;
+}
+
+/* Apply dark background to badges */
+[data-bs-theme="dark"] .badge-outline {
+  border-color: #555;
+  background-color: #333;
+}

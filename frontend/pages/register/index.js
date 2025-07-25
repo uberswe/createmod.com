@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout/Layout';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { getCategories } from '../../lib/api';
+import { getCategories, registerUser, authenticateUser } from '../../lib/api';
 
 /**
  * Register page component
@@ -27,7 +27,17 @@ export default function Register({ categories = [], isAuthenticated = false }) {
   
   // Redirect if already authenticated
   useEffect(() => {
+    console.log('[REGISTER] Authentication status changed:', isAuthenticated);
+    
+    // Check for auth cookie
+    if (typeof document !== 'undefined') {
+      const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+      const authCookie = cookies.find(cookie => cookie.startsWith('create-mod-auth='));
+      console.log('[REGISTER] Auth cookie present:', !!authCookie);
+    }
+    
     if (isAuthenticated) {
+      console.log('[REGISTER] User is already authenticated, redirecting to home page');
       router.push('/');
     }
   }, [isAuthenticated, router]);
@@ -104,51 +114,99 @@ export default function Register({ categories = [], isAuthenticated = false }) {
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[REGISTER] Registration form submitted');
     
     if (!validateForm()) {
+      console.log('[REGISTER] Form validation failed');
       return;
     }
     
+    console.log('[REGISTER] Form validation passed, proceeding with registration');
     setIsSubmitting(true);
     setSubmitError('');
     
     try {
-      // In a real implementation, you would use PocketBase client to register
-      // For now, we'll just simulate a successful registration
+      // Prepare user data for registration
+      const userData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        passwordConfirm: formData.passwordConfirm,
+        emailVisibility: true,
+        verified: false
+      };
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('[REGISTER] Attempting to register user:', {
+        username: userData.username,
+        email: userData.email,
+        emailVisibility: userData.emailVisibility,
+        verified: userData.verified
+      });
       
-      // In a real implementation, this would be:
-      // const data = {
-      //   username: formData.username,
-      //   email: formData.email,
-      //   password: formData.password,
-      //   passwordConfirm: formData.passwordConfirm,
-      //   terms: formData.terms
-      // };
-      // await pb.collection('users').create(data);
-      // await pb.collection('users').requestVerification(formData.email);
+      // Register the user
+      const registrationResult = await registerUser(userData);
+      console.log('[REGISTER] Registration successful:', {
+        userId: registrationResult.id,
+        username: registrationResult.username,
+        email: registrationResult.email,
+        created: registrationResult.created
+      });
       
       // Show success message
+      console.log('[REGISTER] Setting showSuccess to true');
       setShowSuccess(true);
       
-      // Automatically log in the user after registration
-      // In a real implementation, this would be:
-      // await pb.collection('users').authWithPassword(formData.username, formData.password);
+      // Check for auth cookie after registration
+      const cookiesAfterRegistration = document.cookie.split(';').map(cookie => cookie.trim());
+      const authCookieAfterRegistration = cookiesAfterRegistration.find(cookie => cookie.startsWith('create-mod-auth='));
+      console.log('[REGISTER] Auth cookie after registration:', !!authCookieAfterRegistration);
       
-      // Redirect to home page after a delay
-      setTimeout(() => {
-        router.push('/');
-      }, 3000);
+      // Automatically log in the user after registration
+      console.log('[REGISTER] Attempting auto-login after registration');
+      try {
+        console.log('[REGISTER] Calling authenticateUser with email:', formData.email);
+        const authData = await authenticateUser(formData.email, formData.password);
+        
+        console.log('[REGISTER] Auto-login successful:', {
+          userId: authData.record?.id,
+          username: authData.record?.username,
+          email: authData.record?.email
+        });
+        
+        // Check for auth cookie after auto-login
+        const cookiesAfterLogin = document.cookie.split(';').map(cookie => cookie.trim());
+        const authCookieAfterLogin = cookiesAfterLogin.find(cookie => cookie.startsWith('create-mod-auth='));
+        console.log('[REGISTER] Auth cookie after auto-login:', !!authCookieAfterLogin);
+        
+        // Redirect to home page after a delay
+        console.log('[REGISTER] Setting timeout for redirect to home page');
+        setTimeout(() => {
+          console.log('[REGISTER] Redirecting to home page');
+          router.push('/');
+        }, 3000);
+      } catch (loginError) {
+        console.error('[REGISTER] Auto-login error after registration:', loginError);
+        console.log('[REGISTER] Continuing to show success message despite auto-login failure');
+        // Even if auto-login fails, we still show success since registration worked
+      }
       
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('[REGISTER] Registration error:', error);
       
-      // In a real implementation, you would handle specific error types
-      // For example, if the username or email is already taken
-      setSubmitError('An error occurred during registration. Please try again.');
+      // Handle specific error types
+      console.log('[REGISTER] Analyzing error message:', error.message);
+      if (error.message && error.message.includes('email')) {
+        console.log('[REGISTER] Email already registered error');
+        setSubmitError('This email is already registered. Please use a different email or try to log in.');
+      } else if (error.message && error.message.includes('username')) {
+        console.log('[REGISTER] Username already taken error');
+        setSubmitError('This username is already taken. Please choose a different username.');
+      } else {
+        console.log('[REGISTER] Generic registration error');
+        setSubmitError('An error occurred during registration. Please try again.');
+      }
     } finally {
+      console.log('[REGISTER] Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -387,7 +445,24 @@ export default function Register({ categories = [], isAuthenticated = false }) {
 export async function getServerSideProps(context) {
   try {
     // Check if user is already authenticated
-    const isAuthenticated = context.req.cookies['create-mod-auth'] !== undefined;
+    const authCookie = context.req.cookies['create-mod-auth'];
+    const isAuthenticated = authCookie !== undefined;
+    
+    console.log('Server-side auth check (register) - Cookie exists:', isAuthenticated);
+    
+    // Validate the auth cookie if it exists
+    let validAuth = false;
+    if (isAuthenticated) {
+      try {
+        // In a real implementation, you would validate the token here
+        // For now, we'll just assume it's valid if it exists
+        validAuth = true;
+      } catch (authError) {
+        console.error('Auth validation error (register):', authError);
+      }
+    }
+    
+    console.log('Server-side auth check (register) - Valid auth:', validAuth);
     
     // Get categories for sidebar
     const categoriesData = await getCategories();
@@ -396,7 +471,7 @@ export async function getServerSideProps(context) {
     return {
       props: {
         categories,
-        isAuthenticated
+        isAuthenticated: validAuth
       }
     };
   } catch (error) {

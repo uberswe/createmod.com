@@ -228,7 +228,7 @@ export async function getServerSideProps(context) {
     try {
       const schematicsData = await getRecords('schematics', {
         sort: '-rating', // Sort by highest rating
-        filter: 'moderated=true && deleted=null',
+        filter: 'moderated=true',
         expand: 'author,categories,tags',
         page: 1,
         perPage: 6

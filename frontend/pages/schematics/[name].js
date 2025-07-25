@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getSchematicByName, getCategories, getSchematicComments, postComment, rateSchematic, getRecords } from '../../lib/api';
 import { useRouter } from 'next/router';
+import DOMPurify from "isomorphic-dompurify";
 
 /**
  * Schematic detail page component
@@ -236,7 +237,7 @@ export default function SchematicDetail({ schematic, fromAuthor, similar, catego
                   
                   {/* Content */}
                   <div className="d-flex align-items-center">
-                    <div dangerouslySetInnerHTML={{ __html: schematic.content }}></div>
+                    <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(schematic.content) }}></div>
                   </div>
                 </div>
               </div>
@@ -331,7 +332,7 @@ export default function SchematicDetail({ schematic, fromAuthor, similar, catego
                   {schematic.has_dependencies && (
                     <div className="col-sm-12 col-lg-12 mt-4">
                       <h3 className="card-title">Dependencies</h3>
-                      <div dangerouslySetInnerHTML={{ __html: schematic.dependencies }}></div>
+                      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(schematic.dependencies) }}></div>
                     </div>
                   )}
                 </div>
@@ -393,7 +394,7 @@ export default function SchematicDetail({ schematic, fromAuthor, similar, catego
                                 </small>
                               </div>
                             </div>
-                            <p className="mb-0">{comment.content}</p>
+                            <p className="mb-0" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.content) }}></p>
                           </div>
                         </div>
                       ))}
@@ -497,7 +498,7 @@ export async function getServerSideProps(context) {
       try {
         // Fetch more schematics from the same author (excluding current schematic)
         const authorSchematicsData = await getRecords('schematics', {
-          filter: `author="${schematic.expand.author.id}" && id!="${schematic.id}" && moderated=true && deleted=null`,
+          filter: `author="${schematic.expand.author.id}" && id!="${schematic.id}" && moderated=true`,
           sort: '-created',
           expand: 'author,categories,tags',
           limit: 3
@@ -519,7 +520,7 @@ export async function getServerSideProps(context) {
         const categoryFilter = categoryIds.map(id => `categories.id ?= "${id}"`).join(' || ');
         
         const similarSchematicsData = await getRecords('schematics', {
-          filter: `(${categoryFilter}) && id!="${schematic.id}" && moderated=true && deleted=null`,
+          filter: `(${categoryFilter}) && id!="${schematic.id}" && moderated=true`,
           sort: '-created',
           expand: 'author,categories,tags',
           limit: 3

@@ -3,7 +3,7 @@ import Layout from '../../components/layout/Layout';
 import SchematicCard from '../../components/schematics/SchematicCard';
 import SearchFilters from '../../components/search/SearchFilters';
 import Pagination from '../../components/common/Pagination';
-import { getSchematics, getCategories, getTags } from '../../lib/api';
+import { getRecords, getCategories, getTags, getMinecraftVersions, getCreateModVersions } from '../../lib/api';
 import { useRouter } from 'next/router';
 
 /**
@@ -13,6 +13,8 @@ import { useRouter } from 'next/router';
  * @param {Array} props.schematics - Schematics data
  * @param {Array} props.categories - Categories data
  * @param {Array} props.tags - Tags data
+ * @param {Array} props.minecraftVersions - Available Minecraft versions
+ * @param {Array} props.createModVersions - Available Create mod versions
  * @param {number} props.totalItems - Total number of items
  * @param {number} props.totalPages - Total number of pages
  * @param {Object} props.filters - Current active filters
@@ -21,6 +23,8 @@ export default function Search({
   schematics = [], 
   categories = [], 
   tags = [], 
+  minecraftVersions = [],
+  createModVersions = [],
   totalItems = 0, 
   totalPages = 1,
   filters = {}
@@ -113,6 +117,8 @@ export default function Search({
           <SearchFilters 
             categories={categories} 
             tags={tags}
+            minecraftVersions={minecraftVersions}
+            createModVersions={createModVersions}
             currentFilters={filters}
           />
         </div>
@@ -194,8 +200,16 @@ export async function getServerSideProps(context) {
     const tagsData = await getTags();
     const tags = tagsData.items || [];
     
+    // Get Minecraft versions for filters
+    const minecraftVersionsData = await getMinecraftVersions();
+    const minecraftVersions = minecraftVersionsData.items || [];
+    
+    // Get Create mod versions for filters
+    const createModVersionsData = await getCreateModVersions();
+    const createModVersions = createModVersionsData.items || [];
+    
     // Build filter string for API
-    let filterString = 'moderated=true && deleted=null';
+    let filterString = 'moderated=true';
     
     // Add category filter
     if (filters.category !== 'all') {
@@ -225,7 +239,7 @@ export async function getServerSideProps(context) {
     
     // Add rating filter
     if (filters.rating !== '-1') {
-      filterString += ` && rating >= ${filters.rating}`;
+      filterString += ` && rating != null && rating >= ${filters.rating}`;
     }
     
     // Add search term filter
@@ -246,7 +260,7 @@ export async function getServerSideProps(context) {
     }
     
     // Get schematics with filters
-    const schematicsData = await getSchematics({
+    const schematicsData = await getRecords('schematics', {
       sort: sortString,
       filter: filterString,
       expand: 'author,categories,tags,minecraft_version,createmod_version',
@@ -263,6 +277,8 @@ export async function getServerSideProps(context) {
         schematics,
         categories,
         tags,
+        minecraftVersions,
+        createModVersions,
         totalItems,
         totalPages,
         filters
@@ -277,6 +293,8 @@ export async function getServerSideProps(context) {
         schematics: [],
         categories: [],
         tags: [],
+        minecraftVersions: [],
+        createModVersions: [],
         totalItems: 0,
         totalPages: 1,
         filters: {}

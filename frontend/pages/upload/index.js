@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout/Layout';
 import { getCategories, getTags, getMinecraftVersions, getCreateModVersions, createRecord, uploadFile } from '../../lib/api';
 import { useRouter } from 'next/router';
+import { validateServerAuth } from '../../lib/auth';
 
 /**
  * Upload page component
@@ -561,9 +562,14 @@ export default function Upload({
  */
 export async function getServerSideProps(context) {
   try {
-    // Check if user is authenticated
-    const isAuthenticated = context.req.cookies['create-mod-auth'] !== undefined;
-    let user = null;
+    // Validate authentication on the server side
+    const { isAuthenticated, user } = await validateServerAuth(context.req);
+    
+    console.log('[SERVER] Upload page - Auth validation result:', { 
+      isAuthenticated, 
+      userId: user?.id,
+      username: user?.username 
+    });
     
     // Get categories
     const categoriesData = await getCategories();
@@ -581,6 +587,16 @@ export async function getServerSideProps(context) {
     const createmodVersionsData = await getCreateModVersions();
     const createmodVersions = createmodVersionsData.items || [];
     
+    // If not authenticated, redirect to login page
+    if (!isAuthenticated) {
+      return {
+        redirect: {
+          destination: '/login?redirect=/upload',
+          permanent: false,
+        },
+      };
+    }
+    
     return {
       props: {
         categories,
@@ -588,11 +604,11 @@ export async function getServerSideProps(context) {
         minecraftVersions,
         createmodVersions,
         isAuthenticated,
-        user
+        user: user ? JSON.parse(JSON.stringify(user)) : null // Serialize user object for Next.js
       }
     };
   } catch (error) {
-    console.error('Error fetching data for upload page:', error);
+    console.error('[SERVER] Error in getServerSideProps for upload page:', error);
     
     // Return empty data on error
     return {

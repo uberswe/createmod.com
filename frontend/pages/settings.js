@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/layout/Layout';
-import { getCurrentUser, updateRecord, getCategories, requestEmailVerification } from '../lib/api';
+import { updateRecord, getCategories, requestEmailVerification } from '../lib/api';
+import { validateServerAuth } from '../lib/auth';
 
 /**
  * User settings page component
@@ -450,35 +451,38 @@ export default function Settings({ categories = [], isAuthenticated = false, use
  */
 export async function getServerSideProps(context) {
   try {
-    // Check if user is authenticated
-    const isAuthenticated = context.req.cookies['create-mod-auth'] !== undefined;
-    let user = null;
+    // Validate authentication on the server side
+    const { isAuthenticated, user } = await validateServerAuth(context.req);
+    
+    console.log('[SERVER] Settings page - Auth validation result:', { 
+      isAuthenticated, 
+      userId: user?.id,
+      username: user?.username 
+    });
     
     // Get categories for sidebar
     const categoriesData = await getCategories();
     const categories = categoriesData.items || [];
     
-    // If authenticated, get user data
-    if (isAuthenticated) {
-      try {
-        // This would normally use the auth token from cookies to get the current user
-        // For now, we'll use a placeholder approach
-        const userData = await getCurrentUser(context.req.cookies['create-mod-auth']);
-        user = userData;
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
+    // If not authenticated, redirect to login page
+    if (!isAuthenticated) {
+      return {
+        redirect: {
+          destination: '/login?redirect=/settings',
+          permanent: false,
+        },
+      };
     }
     
     return {
       props: {
         categories,
         isAuthenticated,
-        user
+        user: user ? JSON.parse(JSON.stringify(user)) : null // Serialize user object for Next.js
       }
     };
   } catch (error) {
-    console.error('Error in getServerSideProps:', error);
+    console.error('[SERVER] Error in getServerSideProps for settings page:', error);
     
     return {
       props: {

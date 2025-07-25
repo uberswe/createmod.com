@@ -326,7 +326,7 @@ export async function getServerSideProps(context) {
     // Get user's schematics
     const schematicsData = await getSchematicsByAuthor(user.id, {
       sort: '-created',
-      filter: 'moderated=true && deleted=null',
+      filter: 'moderated=true',
       expand: 'author,categories,tags',
       page,
       perPage

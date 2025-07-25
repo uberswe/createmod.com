@@ -7,10 +7,12 @@ import { useRouter } from 'next/router';
  * @param {Object} props - Component props
  * @param {Array} props.categories - Available categories
  * @param {Array} props.tags - Available tags
+ * @param {Array} props.minecraftVersions - Available Minecraft versions
+ * @param {Array} props.createModVersions - Available Create mod versions
  * @param {Object} props.currentFilters - Current active filters
  * @param {Function} props.onFilterChange - Callback when filters change
  */
-export default function SearchFilters({ categories = [], tags = [], currentFilters = {}, onFilterChange }) {
+export default function SearchFilters({ categories = [], tags = [], minecraftVersions = [], createModVersions = [], currentFilters = {}, onFilterChange }) {
   const router = useRouter();
   
   /**
@@ -132,11 +134,11 @@ export default function SearchFilters({ categories = [], tags = [], currentFilte
             onChange={(e) => handleFilterChange('minecraft', e.target.value)}
           >
             <option value="all">All Versions</option>
-            <option value="1.20">1.20</option>
-            <option value="1.19">1.19</option>
-            <option value="1.18">1.18</option>
-            <option value="1.17">1.17</option>
-            <option value="1.16">1.16</option>
+            {minecraftVersions.map((version) => (
+              <option key={version.id} value={version.version}>
+                {version.version}
+              </option>
+            ))}
           </select>
         </div>
         
@@ -149,10 +151,11 @@ export default function SearchFilters({ categories = [], tags = [], currentFilte
             onChange={(e) => handleFilterChange('createmod', e.target.value)}
           >
             <option value="all">All Versions</option>
-            <option value="0.5.1">0.5.1</option>
-            <option value="0.5.0">0.5.0</option>
-            <option value="0.4.1">0.4.1</option>
-            <option value="0.4.0">0.4.0</option>
+            {createModVersions.map((version) => (
+              <option key={version.id} value={version.version}>
+                {version.version}
+              </option>
+            ))}
           </select>
         </div>
       </div>

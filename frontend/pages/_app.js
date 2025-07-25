@@ -1,4 +1,5 @@
 import '../styles/globals.css';
+import '../styles/dark-mode.css';
 import { useEffect } from 'react';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 

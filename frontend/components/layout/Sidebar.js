@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
@@ -10,9 +10,37 @@ import Image from 'next/image';
  * @param {Array} props.categories - Categories for navigation
  * @param {boolean} props.isAuthenticated - Whether user is authenticated
  * @param {Object} props.user - User data if authenticated
+ * @param {Function} props.handleLogout - Function to handle user logout
+ * @param {Function} props.toggleTheme - Function to toggle theme
+ * @param {string} props.theme - Current theme ('light' or 'dark')
  */
-export default function Sidebar({ categories = [], isAuthenticated = false, user = null }) {
+export default function Sidebar({ 
+  categories = [], 
+  isAuthenticated = false, 
+  user = null,
+  handleLogout,
+  toggleTheme,
+  theme = 'light'
+}) {
   const router = useRouter();
+  
+  // Log component render with authentication state
+  useEffect(() => {
+    console.log('[SIDEBAR] Sidebar component rendered with:', {
+      isAuthenticated,
+      userId: user?.id,
+      username: user?.username,
+      categoriesCount: categories.length,
+      path: router.pathname
+    });
+    
+    // Log conditional rendering decisions
+    console.log('[SIDEBAR] Sidebar rendering decisions:', {
+      showLoginButton: !isAuthenticated,
+      showUserMenu: isAuthenticated,
+      showLogoutButton: isAuthenticated
+    });
+  }, [isAuthenticated, user, categories.length, router.pathname]);
   
   /**
    * Check if the current path matches the given path
@@ -21,16 +49,6 @@ export default function Sidebar({ categories = [], isAuthenticated = false, user
    */
   const isActive = (path) => {
     return router.pathname === path || router.asPath === path;
-  };
-  
-  /**
-   * Handle logout
-   */
-  const handleLogout = () => {
-    // Clear auth cookie
-    document.cookie = "create-mod-auth=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;";
-    // Redirect to home page
-    router.push('/');
   };
   
   return (
@@ -64,39 +82,53 @@ export default function Sidebar({ categories = [], isAuthenticated = false, user
         
         {/* Mobile user menu */}
         <div className="navbar-nav flex-row d-lg-none">
-          {isAuthenticated && user ? (
+          {isAuthenticated ? (
             <div className="nav-item dropdown auth-section">
               <a href="#" className="nav-link d-flex lh-1 text-reset p-0 dropdown" data-bs-toggle="dropdown" aria-label="Open user menu">
-                {user.avatar && (
+                {user?.avatar && (
                   <Image 
                     className="avatar avatar-sm auth-avatar" 
-                    src={user.avatar} 
-                    alt={user.username} 
+                    src={user?.avatar} 
+                    alt={user?.username} 
                     width={32} 
                     height={32} 
                   />
                 )}
                 <div className="d-none d-xl-block ps-2">
-                  <div className="auth-username">{user.username}</div>
+                  <div className="auth-username">{user?.username}</div>
                 </div>
               </a>
               <div className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                <Link href={`/author/${user.username.toLowerCase()}`} className="dropdown-item">
+                <Link href={`/author/${user?.username?.toLowerCase()}`} className="dropdown-item">
                   Profile
                 </Link>
                 <div className="dropdown-divider"></div>
                 <Link href="/settings" className="dropdown-item">
                   Settings
                 </Link>
-                <a className="dropdown-item logout-button" onClick={handleLogout}>
+                <a 
+                  href="#" 
+                  className="dropdown-item logout-button" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLogout();
+                  }}
+                >
                   Logout
                 </a>
               </div>
             </div>
           ) : (
-            <Link href="/login" className="nav-link">
+            <a 
+              href="#" 
+              className="nav-link"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push('/login/');
+              }}
+            >
               Login
-            </Link>
+            </a>
           )}
         </div>
         
@@ -289,9 +321,13 @@ export default function Sidebar({ categories = [], isAuthenticated = false, user
             {/* Authentication */}
             {!isAuthenticated ? (
               <li className="nav-item">
-                <Link 
-                  href="/login" 
-                  className={`nav-link ${isActive('/login') ? 'active' : ''}`}
+                <a 
+                  href="#" 
+                  className={`nav-link ${isActive('/login/') ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    router.push('/login/');
+                  }}
                 >
                   <span className="nav-link-icon d-md-none d-lg-inline-block">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-login">
@@ -304,7 +340,7 @@ export default function Sidebar({ categories = [], isAuthenticated = false, user
                   <span className="nav-link-title">
                     Login
                   </span>
-                </Link>
+                </a>
               </li>
             ) : (
               <>
@@ -330,8 +366,8 @@ export default function Sidebar({ categories = [], isAuthenticated = false, user
                 {/* Profile - Mobile only */}
                 <li className="nav-item d-xl-none d-inline-block">
                   <Link 
-                    href="/profile" 
-                    className={`nav-link ${isActive('/profile') ? 'active' : ''}`}
+                    href={`/author/${user?.username?.toLowerCase()}`} 
+                    className={`nav-link ${isActive(`/author/${user?.username?.toLowerCase()}`) ? 'active' : ''}`}
                   >
                     <span className="nav-link-icon d-md-none d-lg-inline-block">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-user">
@@ -348,7 +384,14 @@ export default function Sidebar({ categories = [], isAuthenticated = false, user
                 
                 {/* Logout */}
                 <li className="nav-item">
-                  <a className="nav-link" onClick={handleLogout}>
+                  <a 
+                    href="#" 
+                    className="nav-link" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleLogout();
+                    }}
+                  >
                     <span className="nav-link-icon d-md-none d-lg-inline-block">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-logout">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>

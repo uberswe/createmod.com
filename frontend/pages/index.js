@@ -33,7 +33,7 @@ export default function Home({ categories = [], schematics = [], totalItems = 0 
                 <Link href="/upload" className="btn btn-primary me-2">
                   Upload Schematic
                 </Link>
-                <Link href="/search" className="btn btn-outline-secondary">
+                <Link href="/search" className="btn btn-secondary">
                   Advanced Search
                 </Link>
               </div>
@@ -112,7 +112,7 @@ export async function getServerSideProps(context) {
     // We'll sort by most recent and limit to 6 items
     const schematicsData = await getRecords('schematics', {
       sort: '-created', // Sort by newest first
-      filter: 'moderated=true && deleted=null', // Only show moderated and non-deleted schematics
+      filter: 'moderated=true', // Only show moderated schematics
       expand: 'author,categories,tags', // Include related data
       page: 1,
       perPage: 6 // Show 6 schematics on the main page

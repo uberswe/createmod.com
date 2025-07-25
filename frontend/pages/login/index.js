@@ -3,6 +3,8 @@ import Layout from '../../components/layout/Layout';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { getCategories, authenticateUser, authWithOAuth2 } from '../../lib/api';
+import { setAuthCookie, validateServerAuth } from '../../lib/auth';
+import { getCSRFToken, validateCSRFToken } from '../../lib/csrf';
 
 /**
  * Login page component
@@ -15,7 +17,8 @@ export default function Login({ categories = [], isAuthenticated = false }) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     identity: '',
-    password: ''
+    password: '',
+    csrfToken: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +33,32 @@ export default function Login({ categories = [], isAuthenticated = false }) {
       router.push(redirectUrl);
     }
   }, [isAuthenticated, redirectUrl, router]);
+  
+  // Generate CSRF token on component mount
+  useEffect(() => {
+    // Only generate token on client-side
+    if (typeof window !== 'undefined') {
+      const token = getCSRFToken();
+      setFormData(prev => ({ ...prev, csrfToken: token }));
+      console.log('[LOGIN] CSRF token generated');
+    }
+  }, []);
+
+  // Debug authentication status
+  useEffect(() => {
+    console.log('[LOGIN] Authentication status changed:', isAuthenticated);
+    
+    // Check for auth cookie
+    if (typeof document !== 'undefined') {
+      const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+      const authCookie = cookies.find(cookie => cookie.startsWith('create-mod-auth='));
+      console.log('[LOGIN] Auth cookie present:', !!authCookie);
+    }
+    
+    if (isAuthenticated) {
+      console.log('[LOGIN] User is authenticated, should redirect to:', redirectUrl);
+    }
+  }, [isAuthenticated, redirectUrl]);
   
   /**
    * Handle input change
@@ -75,31 +104,73 @@ export default function Login({ categories = [], isAuthenticated = false }) {
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[LOGIN] Login form submitted');
     
     if (!validateForm()) {
+      console.log('[LOGIN] Form validation failed');
       return;
     }
     
+    // Validate CSRF token
+    if (!validateCSRFToken(formData.csrfToken)) {
+      console.error('[LOGIN] CSRF token validation failed');
+      setAuthError('Security validation failed. Please refresh the page and try again.');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    console.log('[LOGIN] Form validation passed, proceeding with login');
     setIsSubmitting(true);
     setAuthError('');
     
     try {
+      console.log('[LOGIN] Attempting to authenticate with identity:', formData.identity);
+      
+      // Check for existing auth cookie before login attempt
+      const cookiesBeforeLogin = document.cookie.split(';').map(cookie => cookie.trim());
+      const authCookieBeforeLogin = cookiesBeforeLogin.find(cookie => cookie.startsWith('create-mod-auth='));
+      console.log('[LOGIN] Auth cookie before login attempt:', !!authCookieBeforeLogin);
+      
       // Use the authenticateUser function from lib/api.js
       const authData = await authenticateUser(
         formData.identity,
         formData.password
       );
       
-      // The auth cookie is set by the server in the response
-      // No need to manually set it here
+      console.log('[LOGIN] Authentication successful, received data:', {
+        userId: authData.record?.id,
+        username: authData.record?.username,
+        email: authData.record?.email
+      });
       
-      // Redirect to the requested page or home
-      router.push(redirectUrl);
+      // Extract token from response headers if available
+      const authToken = authData.token;
+      
+      // If token is available, set it with proper attributes
+      if (authToken) {
+        setAuthCookie(authToken);
+        console.log('[LOGIN] Auth cookie set with proper attributes');
+      }
+      
+      // Check for auth cookie after successful login
+      const cookiesAfterLogin = document.cookie.split(';').map(cookie => cookie.trim());
+      const authCookieAfterLogin = cookiesAfterLogin.find(cookie => cookie.startsWith('create-mod-auth='));
+      console.log('[LOGIN] Auth cookie after login:', !!authCookieAfterLogin);
+      
+      // Add a small delay before redirecting to ensure cookie is set
+      console.log('[LOGIN] Adding delay before redirect to ensure cookie is set');
+      setTimeout(() => {
+        // Redirect to the requested page or home
+        console.log('[LOGIN] Redirecting to:', redirectUrl);
+        router.push(redirectUrl);
+      }, 500);
       
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[LOGIN] Login error:', error);
+      console.log('[LOGIN] Setting auth error message');
       setAuthError('Invalid username/email or password');
     } finally {
+      console.log('[LOGIN] Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -149,6 +220,13 @@ export default function Login({ categories = [], isAuthenticated = false }) {
             <h2 className="h2 text-center mb-4">Login to your account</h2>
             
             <form onSubmit={handleSubmit} noValidate>
+              {/* Hidden CSRF token field */}
+              <input 
+                type="hidden" 
+                name="csrfToken" 
+                value={formData.csrfToken} 
+              />
+              
               {authError && (
                 <div className="alert alert-danger" role="alert">
                   {authError}
@@ -267,8 +345,14 @@ export default function Login({ categories = [], isAuthenticated = false }) {
  */
 export async function getServerSideProps(context) {
   try {
-    // Check if user is already authenticated
-    const isAuthenticated = context.req.cookies['create-mod-auth'] !== undefined;
+    // Validate authentication on the server side
+    const { isAuthenticated, user } = await validateServerAuth(context.req);
+    
+    console.log('[SERVER] Login page - Auth validation result:', { 
+      isAuthenticated, 
+      userId: user?.id,
+      username: user?.username 
+    });
     
     // Get categories for sidebar
     const categoriesData = await getCategories();
@@ -277,17 +361,19 @@ export async function getServerSideProps(context) {
     return {
       props: {
         categories,
-        isAuthenticated
+        isAuthenticated,
+        user: user ? JSON.parse(JSON.stringify(user)) : null // Serialize user object for Next.js
       }
     };
   } catch (error) {
-    console.error('Error fetching data for login page:', error);
+    console.error('[SERVER] Error fetching data for login page:', error);
     
     // Return empty data on error
     return {
       props: {
         categories: [],
-        isAuthenticated: false
+        isAuthenticated: false,
+        user: null
       }
     };
   }
