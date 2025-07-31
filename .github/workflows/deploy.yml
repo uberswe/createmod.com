@@ -38,8 +38,6 @@ jobs:
       - run: rm -rf server
       - run: rm -rf template/node_modules
       - run: rm .gitignore
-      - run: rm dev.Dockerfile
-      - run: rm docker-compose.yml
       - run: rm Dockerfile
       - run: rm go.mod
       - run: rm go.sum
