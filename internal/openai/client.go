@@ -654,3 +654,7 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 	// Otherwise, return the reason
 	return false, responseContent, nil
 }
+
+func (c *Client) HasApiKey() bool {
+	return c.apiKey != ""
+}
