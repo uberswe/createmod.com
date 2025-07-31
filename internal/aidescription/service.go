@@ -62,6 +62,11 @@ func (s *Service) Stop() {
 func (s *Service) ProcessSchematics(app *pocketbase.PocketBase) {
 	app.Logger().Info("AI description generation started")
 
+	if !s.openaiClient.HasApiKey() {
+		app.Logger().Error("OpenAI API key is required")
+		return
+	}
+
 	// Find schematics with empty ai_description (limit to 100)
 	schematics, err := app.FindRecordsByFilter(
 		"schematics",
