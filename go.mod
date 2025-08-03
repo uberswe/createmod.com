@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
-	github.com/aws/smithy-go v1.22.4
+	github.com/aws/smithy-go v1.22.5
 	github.com/blevesearch/bleve/v2 v2.5.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/gosimple/slug v1.15.0
