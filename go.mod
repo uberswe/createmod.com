@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/aws/smithy-go v1.22.5
-	github.com/blevesearch/bleve/v2 v2.5.2
+	github.com/blevesearch/bleve/v2 v2.5.3
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/gosimple/slug v1.15.0
 	github.com/grokify/html-strip-tags-go v0.1.0
@@ -27,7 +27,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/blevesearch/bleve_index_api v1.2.8 // indirect
-	github.com/blevesearch/geo v0.2.3 // indirect
+	github.com/blevesearch/geo v0.2.4 // indirect
 	github.com/blevesearch/go-faiss v1.0.25 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
 	github.com/blevesearch/gtreap v0.1.1 // indirect
