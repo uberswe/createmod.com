@@ -23,12 +23,50 @@
                                     <div class="card-body">
                                         <h2 class="mb-4">My Account</h2>
                                         <h3 class="card-title">Profile Details</h3>
-                                        <div class="row align-items-center">
+                                        <div class="row align-items-center mb-3">
                                             <div class="col-auto">
                                                 <img class="avatar avatar-xl" src="{{ .Avatar }}">
                                             </div>
                                             <div class="col-auto">We use Gravatar for profile pictures, <a href="https://gravatar.com/site/check/">change your avatar via the Gravatar website</a>.</div>
                                         </div>
+                                        <form id="profile-form" hx-patch="/api/collections/users/records/{{ .UserID }}" hx-swap="none">
+                                            <div class="mb-3">
+                                                <label class="form-label" for="settings-username">Username</label>
+                                                <input id="settings-username" name="username" type="text" class="form-control" value="{{ .Username }}" required>
+                                            </div>
+                                            <div class="form-footer">
+                                                <button type="submit" class="btn btn-primary">Save changes</button>
+                                            </div>
+                                        </form>
+                                        <script>
+                                          // Simple client-side required validation and feedback
+                                          (function(){
+                                            var pf = document.getElementById('profile-form');
+                                            if (!pf) return;
+                                            pf.addEventListener('submit', function(e){
+                                              var u = document.getElementById('settings-username');
+                                              if (u && !u.value.trim()) {
+                                                e.preventDefault();
+                                                u.classList.add('is-invalid');
+                                                return false;
+                                              } else if (u) {
+                                                u.classList.remove('is-invalid');
+                                              }
+                                            });
+                                            document.body.addEventListener('htmx:afterRequest', function(evt){
+                                              if (evt.target === pf) {
+                                                var ok = evt.detail && evt.detail.xhr && evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300;
+                                                try {
+                                                  if (typeof showToast === 'function') {
+                                                    showToast(ok ? 'Profile updated' : 'Update failed. Please try again.', ok ? 'success' : 'danger');
+                                                  } else {
+                                                    alert(ok ? 'Profile updated' : 'Update failed. Please try again.');
+                                                  }
+                                                } catch (e) {}
+                                              }
+                                            });
+                                          })();
+                                        </script>
                                         <h3 class="card-title mt-4">Alternate Login Options</h3>
                                         <div class="row g-3 mb-2">
                                             <div class="col-md">
@@ -77,21 +115,24 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="delete-schematic-btn">Yes, delete my account</button>
+                        <form id="delete-account-form" hx-delete="/api/collections/users/records/{{ .UserID }}" hx-swap="none">
+                            <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">Yes, delete my account</button>
+                        </form>
                     </div>
                 </div>
             </div>
         </div>
         <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                let userId = "{{ .UserID }}"
-
-                document.getElementById('delete-schematic-btn').addEventListener("click", async function (e) {
-                    const del = await pb.collection('users').delete(userId);
-                    pb.authStore.clear();
-                    deleteCookie("create-mod-auth")
-                    location.href = "/"
-                });
+            // After successful deletion via HTMX, clear auth and redirect
+            document.addEventListener('htmx:afterRequest', function(evt) {
+              var form = document.getElementById('delete-account-form');
+              if (evt.target === form) {
+                try {
+                  if (typeof pb !== 'undefined') { pb.authStore.clear(); }
+                  deleteCookie('create-mod-auth');
+                } catch (e) {}
+                window.location = '/';
+              }
             });
         </script>
         {{template "footer.html" .}}

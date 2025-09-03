@@ -12,9 +12,9 @@ import (
 	"net/http"
 )
 
-var exploreTemplates = []string{
-	"./template/dist/explore.html",
-}
+var exploreTemplates = append([]string{
+	"./template/explore.html",
+}, commonTemplates...)
 
 type ExploreData struct {
 	DefaultData

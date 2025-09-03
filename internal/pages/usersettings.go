@@ -8,9 +8,9 @@ import (
 	"net/http"
 )
 
-var userSettingsTemplates = []string{
-	"./template/dist/user-settings.html",
-}
+var userSettingsTemplates = append([]string{
+	"./template/user-settings.html",
+}, commonTemplates...)
 
 type UserSettingsData struct {
 	DefaultData

@@ -7,7 +7,11 @@ import (
 	"net/http"
 )
 
-const loginTemplate = "./template/dist/login.html"
+const loginTemplate = "./template/login.html"
+
+var loginTemplates = append([]string{
+	loginTemplate,
+}, commonTemplates...)
 
 type LoginData struct {
 	DefaultData
@@ -21,7 +25,7 @@ func LoginHandler(app *pocketbase.PocketBase, registry *template.Registry) func(
 		d.Description = "Login to CreateMod.com to upload your schematics or to rate and comment on other builds."
 		d.Slug = "/login"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		html, err := registry.LoadFiles(loginTemplate).Render(d)
+		html, err := registry.LoadFiles(loginTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

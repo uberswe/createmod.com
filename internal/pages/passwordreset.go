@@ -7,7 +7,11 @@ import (
 	"net/http"
 )
 
-const passwordResetTemplate = "./template/dist/password-reset.html"
+const passwordResetTemplate = "./template/password-reset.html"
+
+var passwordResetTemplates = append([]string{
+	passwordResetTemplate,
+}, commonTemplates...)
 
 type passwordResetData struct {
 	DefaultData
@@ -21,7 +25,7 @@ func PasswordResetHandler(app *pocketbase.PocketBase, registry *template.Registr
 		d.Description = "The CreateMod.com reset password page."
 		d.Slug = "/reset-password"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		html, err := registry.LoadFiles(passwordResetTemplate).Render(d)
+		html, err := registry.LoadFiles(passwordResetTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

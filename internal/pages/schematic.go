@@ -22,10 +22,10 @@ import (
 	"time"
 )
 
-var schematicTemplates = []string{
-	"./template/dist/schematic.html",
-	"./template/dist/include/schematic_card.html",
-}
+var schematicTemplates = append([]string{
+	"./template/schematic.html",
+	"./template/include/schematic_card.html",
+}, commonTemplates...)
 
 type SchematicData struct {
 	DefaultData
@@ -54,7 +54,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 			dbx.Params{"name": e.Request.PathValue("name")})
 
 		if len(results) != 1 {
-			html, err := registry.LoadFiles(fourOhFourTemplate).Render(nil)
+			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
 			if err != nil {
 				return err
 			}

@@ -42,7 +42,7 @@
             </div>
         </div>
     </div>
-    <script src="/libs/pocketbase/dist/pocketbase.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.26.0/dist/pocketbase.umd.js" crossorigin="anonymous" integrity="sha384-Xf1OcXEVWauA5CD3AztHqIy5tUPx6rk2hp0h5giz/jXpnZo7KCh9v2VWXOQYZVWM"></script>
     <script>
         let url = "https://createmod.com"
         const host = window.location.host;
@@ -261,7 +261,7 @@
                                 });
                             }).catch((e) => {
                                 if (e.data === undefined || e.data.data === undefined) {
-                                    alert("Something went wrong, please reload the page and try again")
+                                    if (typeof showToast === 'function') { showToast('Something went wrong, please reload the page and try again', 'danger'); } else { alert('Something went wrong, please reload the page and try again'); }
                                 } else {
                                     for (const [key, value] of Object.entries(e.data.data)) {
                                         let div = document.createElement('div');

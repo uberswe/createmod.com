@@ -17,10 +17,11 @@ import (
 	"time"
 )
 
-var searchTemplates = []string{
-	"./template/dist/search.html",
-	"./template/dist/include/schematic_card.html",
-}
+var searchTemplates = append([]string{
+	"./template/search.html",
+	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_medium.html",
+}, commonTemplates...)
 
 type SearchData struct {
 	DefaultData
@@ -29,14 +30,21 @@ type SearchData struct {
 	MinecraftVersions []models.MinecraftVersion
 	CreateVersions    []models.CreatemodVersion
 	SearchSpeed       string
-	SearchResultCount int
+	SearchResultCount int // total results count
 	Term              string
+	TermSlug          string
 	Sort              int
 	Rating            int
 	Category          string
 	Tag               string
 	MinecraftVersion  string
 	CreateVersion     string
+	Page              int
+	PageSize          int
+	HasPrev           bool
+	HasNext           bool
+	PrevURL           string
+	NextURL           string
 }
 
 func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
@@ -109,23 +117,70 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			sortedModels = sortedModels[:limit]
 		}
 
-		schematicModels := MapResultsToSchematic(app, sortedModels, cacheService)
+		// Pagination
+		page := 1
+		if e.Request.URL.Query().Get("p") != "" {
+			if p, err := strconv.Atoi(e.Request.URL.Query().Get("p")); err == nil && p > 0 {
+				page = p
+			}
+		}
+		pageSize := 24
+		total := len(sortedModels)
+		maxPage := 0
+		if pageSize > 0 {
+			maxPage = (total + pageSize - 1) / pageSize
+		}
+		if maxPage > 0 && page > maxPage {
+			page = maxPage
+		}
+		startIdx := (page - 1) * pageSize
+		if startIdx < 0 {
+			startIdx = 0
+		}
+		endIdx := startIdx + pageSize
+		if endIdx > total {
+			endIdx = total
+		}
+		pageSlice := sortedModels
+		if total > 0 {
+			pageSlice = sortedModels[startIdx:endIdx]
+		}
+
+		schematicModels := MapResultsToSchematic(app, pageSlice, cacheService)
 
 		end := time.Now()
 		duration := end.Sub(start)
+
+		baseURL := fmt.Sprintf("/search/%s?sort=%d&rating=%d&category=%s&tag=%s&mcv=%s&cv=%s", slugTerm, order, rating, category, tag, mcVersion, createVersion)
+		prevURL := ""
+		nextURL := ""
+		if page > 1 {
+			prevURL = fmt.Sprintf("%s&p=%d", baseURL, page-1)
+		}
+		if endIdx < total {
+			nextURL = fmt.Sprintf("%s&p=%d", baseURL, page+1)
+		}
+
 		d := SearchData{
 			Schematics:        schematicModels,
 			Tags:              allTags(app),
 			MinecraftVersions: allMinecraftVersions(app),
 			CreateVersions:    allCreatemodVersions(app),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
-			SearchResultCount: len(sortedModels),
+			SearchResultCount: total,
 			Term:              term,
+			TermSlug:          slugTerm,
 			Sort:              order,
 			Rating:            rating,
 			Category:          category,
 			MinecraftVersion:  mcVersion,
 			CreateVersion:     createVersion,
+			Page:              page,
+			PageSize:          pageSize,
+			HasPrev:           prevURL != "",
+			HasNext:           nextURL != "",
+			PrevURL:           prevURL,
+			NextURL:           nextURL,
 		}
 		d.Populate(e)
 		d.Title = "Search"

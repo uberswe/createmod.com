@@ -23,7 +23,7 @@
             <div class="container-xl">
                 <div class="row g-4">
                     <div class="col-md-12 col-lg-3">
-                        <form action="/search" method="post" autocomplete="off" id="advanced-search-form" novalidate>
+                        <form action="/search" method="post" autocomplete="off" id="advanced-search-form" novalidate hx-post="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true">
                             <div class="subheader mb-2">Search term</div>
                             <div class="input-icon mb-3">
                     <span class="input-icon-addon">
@@ -147,10 +147,19 @@
                         </div>
                     </div>
                     <div class="col-md-12 col-lg-9">
-                        <div class="row row-cards">
-                            {{range .Schematics }}
-                                {{ template "schematic_card_medium.html" . }}
-                            {{end}}
+                        <div id="search-results">
+                            <div class="row row-cards">
+                                {{range .Schematics }}
+                                    {{ template "schematic_card_medium.html" . }}
+                                {{end}}
+                            </div>
+                            {{ if or .HasPrev .HasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
+                                <div class="text-secondary">Page {{ .Page }}</div>
+                                <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
+                            </div>
+                            {{ end }}
                         </div>
                     </div>
                 </div>

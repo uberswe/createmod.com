@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const privacyPolicyTemplate = "./template/dist/privacy-policy.html"
+const privacyPolicyTemplate = "./template/privacy-policy.html"
+
+var privacyPolicyTemplates = append([]string{
+	privacyPolicyTemplate,
+}, commonTemplates...)
 
 type PrivacyPolicyData struct {
 	DefaultData
@@ -23,7 +27,7 @@ func PrivacyPolicyHandler(app *pocketbase.PocketBase, registry *template.Registr
 		d.Slug = "/privacy-policy"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(privacyPolicyTemplate).Render(d)
+		html, err := registry.LoadFiles(privacyPolicyTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

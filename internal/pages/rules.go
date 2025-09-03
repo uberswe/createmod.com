@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const rulesTemplate = "./template/dist/rules.html"
+const rulesTemplate = "./template/rules.html"
+
+var rulesTemplates = append([]string{
+	rulesTemplate,
+}, commonTemplates...)
 
 type RulesData struct {
 	DefaultData
@@ -23,7 +27,7 @@ func RulesHandler(app *pocketbase.PocketBase, registry *template.Registry, cache
 		d.Slug = "/rules"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(rulesTemplate).Render(d)
+		html, err := registry.LoadFiles(rulesTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

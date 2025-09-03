@@ -14,10 +14,10 @@ import (
 	"net/http"
 )
 
-var profileTemplates = []string{
-	"./template/dist/profile.html",
-	"./template/dist/include/schematic_card.html",
-}
+var profileTemplates = append([]string{
+	"./template/profile.html",
+	"./template/include/schematic_card.html",
+}, commonTemplates...)
 
 type ProfileData struct {
 	Username      string

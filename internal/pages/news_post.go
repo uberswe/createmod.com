@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const newsPostTemplate = "./template/dist/news_post.html"
+const newsPostTemplate = "./template/news_post.html"
+
+var newsPostTemplates = append([]string{
+	newsPostTemplate,
+}, commonTemplates...)
 
 type NewsPostData struct {
 	DefaultData
@@ -20,7 +24,7 @@ func NewsPostHandler(app *pocketbase.PocketBase, registry *template.Registry, ca
 		d.Populate(e)
 		d.Title = ""
 		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(newsPostTemplate).Render(d)
+		html, err := registry.LoadFiles(newsPostTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

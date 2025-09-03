@@ -5,7 +5,7 @@
         </button>
         <h1 class="navbar-brand navbar-brand-autodark ms-3">
             <a href="/">
-                <img alt="CreateMod.com logo" src="/static/logo.png">
+                <img alt="CreateMod.com logo" src="/assets/x/logo.png">
             </a>
         </h1>
         <div class="navbar-nav flex-row d-lg-none">
@@ -31,13 +31,14 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" /></svg>
                 </a>
             </div>
+            {{ if .IsAuthenticated }}
             <div class="nav-item dropdown auth-section">
                 <a href="#" class="nav-link d-flex lh-1 text-reset p-0 dropdown" data-bs-toggle="dropdown" aria-label="Open user menu">
-                    {{ if .IsAuthenticated }}
+                    {{ if .HasAvatar }}
                         <img class="avatar avatar-sm auth-avatar" src="{{ .Avatar }}">
                     {{ end }}
                     <div class="d-none d-xl-block ps-2">
-                        <div class="auth-username">username</div>
+                        <div class="auth-username">{{ .Username }}</div>
                     </div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -47,6 +48,7 @@
                     <a class="dropdown-item logout-button">Logout</a>
                 </div>
             </div>
+            {{ end }}
         </div>
         <div class="collapse navbar-collapse" id="sidebar-menu">
             <ul class="navbar-nav pt-lg-3">

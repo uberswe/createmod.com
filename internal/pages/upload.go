@@ -9,7 +9,11 @@ import (
 	"net/http"
 )
 
-const uploadTemplate = "./template/dist/upload.html"
+const uploadTemplate = "./template/upload.html"
+
+var uploadTemplates = append([]string{
+	uploadTemplate,
+}, commonTemplates...)
 
 type UploadData struct {
 	DefaultData
@@ -30,7 +34,7 @@ func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 		d.Tags = allTags(app)
 		d.MinecraftVersions = allMinecraftVersions(app)
 		d.CreatemodVersions = allCreatemodVersions(app)
-		html, err := registry.LoadFiles(uploadTemplate).Render(d)
+		html, err := registry.LoadFiles(uploadTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

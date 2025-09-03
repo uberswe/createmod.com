@@ -7,7 +7,11 @@ import (
 	"net/http"
 )
 
-const registerTemplate = "./template/dist/register.html"
+const registerTemplate = "./template/register.html"
+
+var registerTemplates = append([]string{
+	registerTemplate,
+}, commonTemplates...)
 
 type registerData struct {
 	DefaultData
@@ -21,7 +25,7 @@ func RegisterHandler(app *pocketbase.PocketBase, registry *template.Registry) fu
 		d.Description = "The CreateMod.com register page."
 		d.Slug = "/register"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		html, err := registry.LoadFiles(registerTemplate).Render(d)
+		html, err := registry.LoadFiles(registerTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

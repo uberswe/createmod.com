@@ -11,7 +11,7 @@
                     <a href="/schematics/{{ $image.Name }}">
                         <img class="rounded-3 border lazy"
                              data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}?thumb=150x150"
-                             src="/static/150x150.png" alt="{{ $image.Title }}">
+                             src="/assets/x/150x150.png" alt="{{ $image.Title }}">
                     </a>
                     </div>
                     {{ if mod $i 30 }}
@@ -34,7 +34,7 @@
         </div>
         {{template "footer.html" .}}
     </div>
-    <script src="/libs/masonry-layout/masonry.pkgd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/masonry-layout@4.2.2/dist/masonry.pkgd.min.js" defer crossorigin="anonymous"></script>
     <script>
     {{range $i, $image := .Images }}
     {{ if mod $i 30 }}

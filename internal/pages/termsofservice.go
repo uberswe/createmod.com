@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const termsOfServiceTemplate = "./template/dist/terms-of-service.html"
+const termsOfServiceTemplate = "./template/terms-of-service.html"
+
+var termsOfServiceTemplates = append([]string{
+	termsOfServiceTemplate,
+}, commonTemplates...)
 
 type TermsOfServiceData struct {
 	DefaultData
@@ -24,7 +28,7 @@ func TermsOfServiceHandler(app *pocketbase.PocketBase, registry *template.Regist
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app, cacheService)
 
-		html, err := registry.LoadFiles(termsOfServiceTemplate).Render(d)
+		html, err := registry.LoadFiles(termsOfServiceTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

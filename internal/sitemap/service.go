@@ -43,7 +43,6 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	smPages.SetOutputPath("template/dist/sitemaps/")
 
 	addPage(app, now, smPages, "/", 1.0, smg.Daily)
-	addPage(app, now, smPages, "/about", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/upload", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/contact", 0.9, smg.Weekly)
 	addPage(app, now, smPages, "/guide", 0.9, smg.Weekly)

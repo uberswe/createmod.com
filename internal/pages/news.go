@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const newsTemplate = "./template/dist/news.html"
+const newsTemplate = "./template/news.html"
+
+var newsTemplates = append([]string{
+	newsTemplate,
+}, commonTemplates...)
 
 type NewsData struct {
 	DefaultData
@@ -23,7 +27,7 @@ func NewsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheS
 		d.Slug = "/news"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(newsTemplate).Render(d)
+		html, err := registry.LoadFiles(newsTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

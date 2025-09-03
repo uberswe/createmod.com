@@ -1,4 +1,99 @@
-<script type="module" src="/src/main.js" defer></script>
-<script type="module" src="/src/theme.js" defer></script>
+<!-- Tabler JS via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/js/tabler.min.js" defer crossorigin="anonymous" integrity="sha384-2r3eTK9ussulv0Rm7xjvQuXVu5gRqRuctZwtAMvMjBWlcw69acmlK94r+ijsLkJu"></script>
+<!-- Theme handling -->
+<script src="/assets/x/theme.js" defer></script>
+<script>
+// Simple toast helper using Tabler alert styles
+(function(){
+  function ensureToastContainer(){
+    var c = document.getElementById('toast-container');
+    if (c) return c;
+    c = document.createElement('div');
+    c.id = 'toast-container';
+    c.style.position = 'fixed';
+    c.style.top = '1rem';
+    c.style.right = '1rem';
+    c.style.zIndex = '2140';
+    c.style.display = 'flex';
+    c.style.flexDirection = 'column';
+    c.style.gap = '.5rem';
+    document.body.appendChild(c);
+    return c;
+  }
+  window.showToast = function(message, variant){
+    try {
+      var c = ensureToastContainer();
+      var v = variant || 'danger';
+      var wrap = document.createElement('div');
+      wrap.className = 'alert alert-' + v;
+      wrap.role = 'alert';
+      wrap.style.minWidth = '240px';
+      wrap.style.maxWidth = '360px';
+      wrap.style.boxShadow = '0 4px 16px rgba(0,0,0,.2)';
+      wrap.innerHTML = '<div class="d-flex"><div class="flex-fill">' + (message || 'Something went wrong. Please try again.') + '</div>'+
+        '<button type="button" class="btn-close ms-2" aria-label="Close"></button></div>';
+      wrap.querySelector('.btn-close').addEventListener('click', function(){
+        wrap.remove();
+      });
+      c.appendChild(wrap);
+      setTimeout(function(){ try{ wrap.remove(); }catch(e){} }, 5000);
+    } catch (e) {
+      try { alert(message || 'Something went wrong. Please try again.'); } catch (_) {}
+    }
+  }
+})();
+</script>
+<script>
+// Basic HTMX error handler -> toast
+window.addEventListener('htmx:responseError', function (evt) {
+  try {
+    console.error('HTMX error', evt);
+    var msg = 'Something went wrong. Please try again.';
+    if (evt && evt.detail && evt.detail.xhr && evt.detail.xhr.responseText) {
+      // naive extract text if available
+      msg = evt.detail.xhr.status + ' ' + (evt.detail.xhr.statusText || '')
+    }
+    if (typeof showToast === 'function') {
+      showToast(msg, 'danger');
+    } else {
+      alert(msg);
+    }
+  } catch (e) {}
+});
+</script>
+<script>
+// Lazy-load images with class="lazy"
+document.addEventListener('DOMContentLoaded', function () {
+  var lazyImages = document.querySelectorAll('.lazy');
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries, obs) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var img = entry.target;
+          var src = img.getAttribute('data-src');
+          if (src) { img.src = src; }
+          obs.unobserve(img);
+        }
+      });
+    }, { root: null, rootMargin: '0px', threshold: 0.1 });
+    lazyImages.forEach(function(img){ observer.observe(img); });
+  } else {
+    lazyImages.forEach(function(img){
+      var src = img.getAttribute('data-src');
+      if (src) { img.src = src; }
+    });
+  }
+});
+</script>
+<script>
+// Attach PB token to HTMX requests when available
+document.body.addEventListener('htmx:configRequest', function (evt) {
+  try {
+    if (typeof pb !== 'undefined' && pb.authStore && pb.authStore.token) {
+      evt.detail.headers['Authorization'] = 'Bearer ' + pb.authStore.token;
+    }
+  } catch (e) {}
+});
+</script>
 </body>
 </html>

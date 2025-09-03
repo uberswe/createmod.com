@@ -22,10 +22,43 @@
 
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemaps/sitemap.xml">
     <meta name="robots" content="all">
-    <link rel="shortcut icon" href="/static/favicon-192x192.png" type="image/x-icon">
-    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
+    <!-- Tabler CSS via CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
+    <!-- Dropzone CSS via CDN (for upload pages) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous">
+    <!-- Project overrides -->
+    <link rel="stylesheet" href="/assets/x/app.css" />
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer crossorigin="anonymous" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"></script>
+
     <script data-cfasync="false">window.nitroAds=window.nitroAds||{createAd:function(){return new Promise(e=>{window.nitroAds.queue.push(["createAd",arguments,e])})},addUserToken:function(){window.nitroAds.queue.push(["addUserToken",arguments])},queue:[]};</script>
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js"></script>
+
+    <style>
+      /* Simple HTMX indicator bar */
+      .htmx-indicator {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--tblr-primary, #bf9045);
+        z-index: 2000;
+        transition: width 0.3s ease;
+      }
+      .htmx-request .htmx-indicator,
+      body.htmx-request .htmx-indicator {
+        width: 60%;
+        animation: htmx-progress 1.2s ease-in-out infinite;
+      }
+      @keyframes htmx-progress {
+        0% { width: 10%; }
+        50% { width: 70%; }
+        100% { width: 90%; }
+      }
+    </style>
 </head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-HG8QRCK47M"></script>
@@ -36,4 +69,5 @@
 
     gtag('config', 'G-HG8QRCK47M');
 </script>
-<body >
+<body hx-boost="true" hx-indicator="#htmx-indicator">
+<div id="htmx-indicator" class="htmx-indicator"></div>

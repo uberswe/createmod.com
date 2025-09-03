@@ -14,10 +14,12 @@ import (
 	"net/http"
 )
 
-var indexTemplates = []string{
-	"./template/dist/index.html",
-	"./template/dist/include/schematic_card.html",
-}
+var indexTemplates = append([]string{
+	"./template/index.html",
+	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_full.html",
+	"./template/include/schematic_card_medium.html",
+}, commonTemplates...)
 
 type IndexData struct {
 	DefaultData

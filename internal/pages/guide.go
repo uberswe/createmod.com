@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const guideTemplate = "./template/dist/guide.html"
+const guideTemplate = "./template/guide.html"
+
+var guideTemplates = append([]string{
+	guideTemplate,
+}, commonTemplates...)
 
 type GuideData struct {
 	DefaultData
@@ -23,7 +27,7 @@ func GuideHandler(app *pocketbase.PocketBase, registry *template.Registry, cache
 		d.Slug = "/guide"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(guideTemplate).Render(d)
+		html, err := registry.LoadFiles(guideTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

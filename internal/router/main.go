@@ -39,9 +39,8 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.BindFunc(cookieAuth(app))
 	// Frontend routes
 	e.GET("/sitemaps/{path...}", apis.Static(os.DirFS("./template/dist/sitemaps"), false))
-	e.GET("/libs/{path...}", apis.Static(os.DirFS("./template/dist/libs"), false))
-	e.GET("/assets/{path...}", apis.Static(os.DirFS("./template/dist/assets"), false))
 	e.GET("/assets/x/{path...}", apis.Static(os.DirFS("./template/static"), false))
+	// Serve unbundled source assets directly (no npm build)
 	e.GET("/robots.txt", func(e *core.RequestEvent) error {
 		return e.String(200, "User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml")
 	})
@@ -78,6 +77,8 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
 	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService))
+	// Partial comments endpoint for HTMX refresh
+	e.GET("/schematics/{name}/comments", pages.SchematicCommentsHandler(app, searchService, cacheService, registry, discordService))
 	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
 	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))

@@ -7,11 +7,15 @@ import (
 	"net/http"
 )
 
-const fourOhFourTemplate = "./template/dist/404.html"
+const fourOhFourTemplate = "./template/404.html"
+
+var fourOhFourTemplates = append([]string{
+	fourOhFourTemplate,
+}, commonTemplates...)
 
 func FourOhFourHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		html, err := registry.LoadFiles(fourOhFourTemplate).Render(nil)
+		html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
 		if err != nil {
 			return err
 		}

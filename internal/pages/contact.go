@@ -8,7 +8,11 @@ import (
 	"net/http"
 )
 
-const contactTemplate = "./template/dist/contact.html"
+const contactTemplate = "./template/contact.html"
+
+var contactTemplates = append([]string{
+	contactTemplate,
+}, commonTemplates...)
 
 type ContactData struct {
 	DefaultData
@@ -23,7 +27,7 @@ func ContactHandler(app *pocketbase.PocketBase, registry *template.Registry, cac
 		d.Slug = "/contact"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(contactTemplate).Render(d)
+		html, err := registry.LoadFiles(contactTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

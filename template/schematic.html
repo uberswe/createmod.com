@@ -1,6 +1,6 @@
 {{template "head.html" .}}
-<link rel="stylesheet" href="/libs/star-rating/dist/star-rating.min.css">
-<link rel="stylesheet" href="/libs/plyr/dist/plyr.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" crossorigin="anonymous">
 <div class="page">
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
@@ -175,7 +175,11 @@
                             <div class="col-sm-12 col-lg-12">
                                 <div class="card">
                                     <div class="card-body">
-                                        <h3 class="card-title">Comments</h3>
+                                        <h3 class="card-title d-flex align-items-center justify-content-between">
+                                            <span>Comments</span>
+                                            <a class="btn btn-sm btn-outline-secondary" hx-get="/schematics/{{ .Schematic.Name }}/comments" hx-target="#comments-list" hx-swap="outerHTML">Refresh</a>
+                                        </h3>
+                                        <div id="comments-list">
                                         {{range .Comments}}
                                         <div class="col-12 mb-2">
                                             <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
@@ -252,20 +256,26 @@
                                             </div>
                                         </div>
                                         {{end}}
+                                        </div>
 
                                         {{ if .IsAuthenticated }}
-                                        <div class="col-12 pt-2" id="comment-section">
+                                        <form class="col-12 pt-2" id="comment-section"
+                                              hx-post="/api/collections/comments/records"
+                                              hx-swap="none"
+                                              enctype="multipart/form-data"
+                                              onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
                                             <div class="mb-12">
                                                 <label id="leave-comment-label" class="form-label">Leave a
                                                     comment</label>
-                                                <textarea id="tinymce-comment"
+                                                <textarea id="tinymce-comment" name="content"
                                                           placeholder="comment text goes here"></textarea>
                                             </div>
                                             <div class="mb-12">
-                                                <button class="btn btn-primary w-100" id="post-comment-btn">
+                                                <button type="submit" class="btn btn-primary w-100" id="post-comment-btn">
                                                     Post Comment
                                                 </button>
                                                 <input type="hidden" name="parent" id="parent-comment" value="">
+                                                <input type="hidden" name="schematic" value="{{ .Schematic.ID }}">
                                             </div>
                                             <div class="mb-12">
                                                 <div id="comment-success" class="alert alert-important alert-success"
@@ -287,7 +297,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </form>
 
                                         {{ else }}
                                         <h4>You must be <a href="/login">logged in</a> to leave a comment.</h4>
@@ -334,10 +344,10 @@
                 </div>
             </div>
         </div>
-        <script src="/libs/fslightbox/index.js" defer></script>
-        <script src="/libs/plyr/dist/plyr.min.js" defer></script>
-        <script type="module"  src="tinymce/tinymce.min.js" defer></script>
-        <script src="/libs/star-rating/dist/star-rating.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/fslightbox@3.4.2/index.js" defer crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js" defer crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.js" defer crossorigin="anonymous"></script>
         {{template "footer.html" .}}
     </div>
 </div>
@@ -385,7 +395,7 @@
             options.skin = 'tinymce-5-dark';
             options.content_css = 'dark';
         }
-        tinyMCE.baseURL ="/libs/tinymce";
+        tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
         tinyMCE.init(options);
     })
     // @formatter:on
@@ -482,46 +492,23 @@
         document.getElementById("parent-comment").value = id
         return false;
     }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        document.getElementById('post-comment-btn').addEventListener("click", async function (e) {
-            if (pb.authStore.model.id === undefined) {
-                alert("You need to be logged in to comment")
-                return false;
-            }
-            document.getElementById("post-comment-btn").disabled = true
-            const formData = new FormData();
-            formData.append("content", tinyMCE.activeEditor.getContent())
-            formData.append("author", pb.authStore.model.id)
-            formData.append("schematic", '{{ .Schematic.ID }}')
-            formData.append("parent", document.getElementById("parent-comment").value)
-
-            let successAlert = document.getElementById("comment-success")
-            try {
-                const createdRecord = await pb.collection('comments').create(formData);
-                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
-                    div = document.createElement('div');
-                    div.classList.add("invalid-feedback")
-                    div.style.display = "block"
-                    div.innerText = "An unexpected error occurred, please try again"
-                    document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
-                    document.getElementById("post-comment-btn").disabled = false
-                } else {
-                    successAlert.style.display = "block"
-                    setTimeout(function () {
-                        window.location.reload(1);
-                    }, 1000);
-                }
-            } catch (e) {
-                console.log(e)
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "An unexpected error occurred, please try again"
-                document.getElementById("post-comment-btn").parentNode.insertAdjacentElement("beforeend", div)
-                document.getElementById("post-comment-btn").disabled = false
-            }
-        });
-    });
+</script>
+<script>
+// Refresh comments and show success after HTMX comment submit
+document.addEventListener('htmx:afterRequest', function(evt) {
+  var form = document.getElementById('comment-section');
+  if (!form) return;
+  if (evt.target === form) {
+    try {
+      var status = evt.detail && evt.detail.xhr ? evt.detail.xhr.status : 0;
+      if (status >= 200 && status < 300) {
+        htmx.ajax('GET','/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'});
+        var s = document.getElementById('comment-success'); if (s) { s.style.display = 'block'; }
+        if (window.tinyMCE && tinyMCE.activeEditor) { tinyMCE.activeEditor.setContent(''); }
+        var p = document.getElementById('parent-comment'); if (p) { p.value = ''; }
+      }
+    } catch (e) {}
+  }
+});
 </script>
 {{ end }}

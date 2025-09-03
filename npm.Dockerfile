@@ -1,5 +1,1 @@
-FROM node:alpine
-
-WORKDIR /app
-
-CMD npm install && npm run build
+# Deprecated: npm build no longer used. Kept as empty placeholder to avoid Docker references.

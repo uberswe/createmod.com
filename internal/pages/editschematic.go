@@ -13,9 +13,9 @@ import (
 	"net/http"
 )
 
-var editSchematicTemplates = []string{
-	"./template/dist/editschematic.html",
-}
+var editSchematicTemplates = append([]string{
+	"./template/editschematic.html",
+}, commonTemplates...)
 
 type EditSchematicData struct {
 	DefaultData
@@ -50,7 +50,7 @@ func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Serv
 			dbx.Params{"name": e.Request.PathValue("name")})
 
 		if len(results) != 1 {
-			html, err := registry.LoadFiles(fourOhFourTemplate).Render(nil)
+			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
 			if err != nil {
 				return err
 			}
