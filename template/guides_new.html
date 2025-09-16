@@ -1,0 +1,86 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">New Guide</h2>
+              <div class="text-secondary">Create a new guide using Markdown</div>
+            </div>
+            <div class="col-auto ms-auto">
+              <a class="btn" href="/guides">Back</a>
+            </div>
+          </div>
+        </div>
+        <div class="row row-cards">
+          <div class="col-12 col-md-9">
+            <form class="card" action="/guides" method="post">
+              <div class="card-header"><h3 class="card-title">Guide details</h3></div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label required" for="title">Title</label>
+                  <input type="text" class="form-control" id="title" name="title" placeholder="My first guide" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="content">Content (Markdown)</label>
+                  <textarea class="form-control" id="content" name="content" rows="12" placeholder="# Heading\nWrite your guide here..."></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="video_url">Optional video link (YouTube)</label>
+                  <input type="url" class="form-control" id="video_url" name="video_url" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="external_url">Optional external guide link</label>
+                  <input type="url" class="form-control" id="external_url" name="external_url" placeholder="https://example.com/your-guide" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Preview</label>
+                  <div id="md-preview" class="card card-body" style="min-height:120px; background: rgba(0,0,0,0.02);"></div>
+                  <small class="form-hint">Live preview renders basic Markdown (headings, bold, italics, links).</small>
+                </div>
+              </div>
+              <div class="card-footer d-flex justify-content-end">
+                <a href="/guides" class="btn btn-link">Cancel</a>
+                <button type="submit" class="btn btn-primary ms-2">Publish</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}
+<script>
+// very small Markdown preview (basic) to avoid extra deps
+(function(){
+  var input = document.getElementById('content');
+  var out = document.getElementById('md-preview');
+  function esc(s){return s.replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]||c;});}
+  function md(s){
+    s = esc(s);
+    // headings
+    s = s.replace(/^######\s(.+)$/mg, '<h6>$1</h6>')
+         .replace(/^#####\s(.+)$/mg, '<h5>$1</h5>')
+         .replace(/^####\s(.+)$/mg, '<h4>$1</h4>')
+         .replace(/^###\s(.+)$/mg, '<h3>$1</h3>')
+         .replace(/^##\s(.+)$/mg, '<h2>$1</h2>')
+         .replace(/^#\s(.+)$/mg, '<h1>$1</h1>');
+    // bold/italic
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+         .replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // links
+    s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1<\/a>');
+    // paragraphs
+    s = s.replace(/\n{2,}/g, '</p><p>');
+    return '<p>'+s+'</p>';
+  }
+  function render(){ out.innerHTML = md(input.value || ''); }
+  if (input && out){ input.addEventListener('input', render); render(); }
+})();
+</script>

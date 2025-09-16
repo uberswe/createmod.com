@@ -658,3 +658,73 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 func (c *Client) HasApiKey() bool {
 	return c.apiKey != ""
 }
+
+// TranslateToEnglish uses Chat Completions to translate arbitrary text to natural English.
+// It returns the original text if the API key is missing or an error occurs.
+func (c *Client) TranslateToEnglish(text string) (string, error) {
+	if c.apiKey == "" {
+		return text, fmt.Errorf("OpenAI API key is required")
+	}
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return text, nil
+	}
+	prompt := "Translate the following text to natural English suitable for a website.\nReturn only the translated English text without quotes or extra commentary.\n\n" + trimmed
+	request := ChatCompletionRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "You are a professional translator that outputs only natural English translations."},
+			{Role: "user", Content: prompt},
+		},
+	}
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return text, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	if c.logger != nil {
+		c.logger.Info("OpenAI chat completion request (translate)", "endpoint", ChatCompletionEndpoint, "request_body_size", len(jsonData))
+	}
+	req, err := http.NewRequest("POST", ChatCompletionEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return text, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to send OpenAI chat completion request (translate)", "error", err.Error())
+		}
+		return text, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to read OpenAI chat completion response (translate)", "error", err.Error())
+		}
+		return text, fmt.Errorf("failed to read response body: %w", err)
+	}
+	if c.logger != nil {
+		if resp.StatusCode == http.StatusOK {
+			c.logger.Info("OpenAI chat completion response (translate)", "status_code", resp.StatusCode, "response_body_size", len(respBody))
+		} else {
+			c.logger.Info("OpenAI chat completion response (translate)", "status_code", resp.StatusCode, "response_body", string(respBody))
+		}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return text, fmt.Errorf("OpenAI API returned status code %d", resp.StatusCode)
+	}
+	var completionResponse ChatCompletionResponse
+	if err := json.Unmarshal(respBody, &completionResponse); err != nil {
+		return text, fmt.Errorf("failed to decode response: %w", err)
+	}
+	if len(completionResponse.Choices) == 0 {
+		return text, fmt.Errorf("no choices in OpenAI response")
+	}
+	out := strings.TrimSpace(completionResponse.Choices[0].Message.Content)
+	if out == "" {
+		return text, fmt.Errorf("empty translation")
+	}
+	return out, nil
+}

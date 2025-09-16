@@ -1,0 +1,60 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="row row-cards">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h1 class="card-title">API Documentation</h1>
+                <p class="text-secondary">Welcome to the createmod.com API. This page provides a quick overview and examples. More endpoints will be added over time.</p>
+
+                <h2 class="h3 mt-4" id="auth">Authentication & API keys</h2>
+                <p>Authentication uses API keys via the HTTP Authorization header.</p>
+                <pre><code>Authorization: Bearer &lt;API_KEY&gt;</code></pre>
+                <h3 class="h4 mt-3" id="keys">How to generate API keys</h3>
+                <ol>
+                  <li>Go to <a href="/settings">Settings</a> when logged in.</li>
+                  <li>Find the "API Keys" section and click "Generate new key".</li>
+                  <li>Copy the key and store it securely. You won't be able to view it again.</li>
+                </ol>
+                <p class="text-secondary">Note: key revocation and usage tracking per key will be rolled out gradually.</p>
+
+                <h2 class="h3 mt-4">Endpoints</h2>
+                <ul>
+                  <li><strong>Search schematics</strong>: <code>GET /api/schematics?query=&lt;term&gt;&amp;page=1</code></li>
+                  <li><strong>Schematic detail</strong>: <code>GET /api/schematics/{name}</code> — returns images, size, blocks, materials list (no full NBT)</li>
+                </ul>
+
+                <h2 class="h3 mt-4">Examples</h2>
+                <p>Search for schematics with the term "windmill":</p>
+                <pre><code>curl -H "Authorization: Bearer &lt;API_KEY&gt;" \
+  "https://createmod.com/api/schematics?query=windmill&amp;page=1"</code></pre>
+
+                <p>Fetch a schematic detail by name:</p>
+                <pre><code>curl -H "Authorization: Bearer &lt;API_KEY&gt;" \
+  "https://createmod.com/api/schematics/&lt;name&gt;"</code></pre>
+
+                <h2 class="h3 mt-4">Rate limits</h2>
+                <p>To keep the service reliable, requests may be rate-limited per API key. Limits and usage tracking will be documented here.</p>
+
+                <h2 class="h3 mt-4">Code samples</h2>
+                <p>Go example:</p>
+                <pre><code>req, _ := http.NewRequest("GET", "https://createmod.com/api/schematics?query=gear", nil)
+req.Header.Set("Authorization", "Bearer &lt;API_KEY&gt;")
+resp, _ := http.DefaultClient.Do(req)
+// handle resp
+</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

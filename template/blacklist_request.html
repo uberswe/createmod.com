@@ -1,0 +1,33 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="row row-cards">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h1 class="card-title">Request schematic blacklisting</h1>
+                <p class="text-secondary">If someone has uploaded your schematic without permission, you can request a blacklist. Please include links, names, and any proof of ownership.</p>
+                <form method="post" action="/reports">
+                  <input type="hidden" name="target_type" value="blacklist">
+                  <input type="hidden" name="target_id" value="{{ .UserID }}">
+                  <input type="hidden" name="return_to" value="/profile">
+                  <div class="mb-3">
+                    <label class="form-label" for="reason">Details</label>
+                    <textarea id="reason" name="reason" class="form-control" rows="6" placeholder="Describe the schematics to blacklist and why" required></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-danger">Submit request</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

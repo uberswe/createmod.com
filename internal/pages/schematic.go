@@ -25,6 +25,7 @@ import (
 var schematicTemplates = append([]string{
 	"./template/schematic.html",
 	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_full.html",
 }, commonTemplates...)
 
 type SchematicData struct {
@@ -33,10 +34,12 @@ type SchematicData struct {
 	Comments      []models.Comment
 	AuthorHasMore bool
 	// IsAuthor of the current schematic, for edit and delete actions
-	IsAuthor   bool
-	FromAuthor []models.Schematic
-	Similar    []models.Schematic
-	Promotion  template.HTML
+	IsAuthor    bool
+	FromAuthor  []models.Schematic
+	Similar     []models.Schematic
+	Promotion   template.HTML
+	Versions    []models.SchematicVersion
+	HasVersions bool
 }
 
 func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service) func(e *core.RequestEvent) error {
@@ -47,11 +50,11 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"name = {:name} && deleted = null",
+			"name = {:name} && deleted = null && (scheduled_at = null || scheduled_at <= {:now})",
 			"-created",
 			1,
 			0,
-			dbx.Params{"name": e.Request.PathValue("name")})
+			dbx.Params{"name": e.Request.PathValue("name"), "now": time.Now()})
 
 		if len(results) != 1 {
 			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
@@ -78,6 +81,21 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
 		d.Promotion = promotionService.RandomPromotion()
 
+		// Load recent version history (up to 10)
+		verRecs, err := app.FindRecordsByFilter("schematic_versions", "schematic = {:id}", "-version", 10, 0, dbx.Params{"id": d.Schematic.ID})
+		if err == nil && len(verRecs) > 0 {
+			versions := make([]models.SchematicVersion, 0, len(verRecs))
+			for i := range verRecs {
+				versions = append(versions, models.SchematicVersion{
+					Version: verRecs[i].GetInt("version"),
+					Created: verRecs[i].GetDateTime("created").Time(),
+					Note:    verRecs[i].GetString("note"),
+				})
+			}
+			d.Versions = versions
+			d.HasVersions = true
+		}
+
 		countSchematicView(app, results[0], discordService)
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
@@ -94,11 +112,11 @@ func findAuthorSchematics(app *pocketbase.PocketBase, cacheService *cache.Servic
 	}
 	results, err := app.FindRecordsByFilter(
 		schematicsCollection.Id,
-		"id != {:id} && author = {:authorID} && deleted = null && moderated = true",
+		"id != {:id} && author = {:authorID} && deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
 		sortBy,
 		limit,
 		0,
-		dbx.Params{"id": id, "authorID": authorID})
+		dbx.Params{"id": id, "authorID": authorID, "now": time.Now()})
 	return MapResultsToSchematic(app, results, cacheService)
 }
 
@@ -141,7 +159,7 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 	err := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
-		Where(dbx.NewExp("deleted = null && moderated = true")).
+		Where(dbx.NewExp("deleted = null AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
 		Where(dbx.In("id", interfaceIds...)).
 		All(&res)
 	if err != nil {
@@ -332,9 +350,69 @@ func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record, disc
 		if count == 50 && t == 4 && moderated {
 			go sendToDiscord(schematic, discordService)
 		}
-		viewRecord.Set("count", count+1)
+		// increment first
+		newCount := count + 1
+		viewRecord.Set("count", newCount)
 		if err = app.Save(viewRecord); err != nil {
 			app.Logger().Error(err.Error())
+		} else {
+			// award view-based achievements at thresholds for total views
+			if t == 4 && moderated {
+				authorID := schematic.GetString("author")
+				if authorID != "" {
+					award := func(key, title, desc, icon string) {
+						achID := ""
+						if achColl, err := app.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
+							if a, _ := app.FindRecordsByFilter(achColl.Id, "key = {:k}", "-created", 1, 0, dbx.Params{"k": key}); len(a) > 0 {
+								achID = a[0].Id
+							} else {
+								rec := core.NewRecord(achColl)
+								rec.Set("key", key)
+								rec.Set("title", title)
+								rec.Set("description", desc)
+								rec.Set("icon", icon)
+								if err := app.Save(rec); err == nil {
+									achID = rec.Id
+								}
+							}
+							if achID != "" {
+								if uaColl, err := app.FindCollectionByNameOrId("user_achievements"); err == nil && uaColl != nil {
+									if ua, _ := app.FindRecordsByFilter(uaColl.Id, "user = {:u} && achievement = {:a}", "-created", 1, 0, dbx.Params{"u": authorID, "a": achID}); len(ua) == 0 {
+										rec := core.NewRecord(uaColl)
+										rec.Set("user", authorID)
+										rec.Set("achievement", achID)
+										_ = app.Save(rec)
+									}
+								}
+							}
+						}
+					}
+					// thresholds
+					switch newCount {
+					case 100:
+						award("views_100", "100 Views", "One of your schematics reached 100 total views", "eye")
+						// points: +5 for 100 total views
+						if u, err := app.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
+							u.Set("points", u.GetInt("points")+5)
+							_ = app.Save(u)
+						}
+					case 1000:
+						award("views_1000", "1,000 Views", "One of your schematics reached 1,000 total views", "eye")
+						// points: +25 for 1,000 total views
+						if u, err := app.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
+							u.Set("points", u.GetInt("points")+25)
+							_ = app.Save(u)
+						}
+					case 10000:
+						award("views_10000", "10,000 Views", "One of your schematics reached 10,000 total views", "eye")
+						// points: +100 for 10,000 total views
+						if u, err := app.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
+							u.Set("points", u.GetInt("points")+100)
+							_ = app.Save(u)
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -447,6 +525,8 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 		RatingCount:          ratingCount,
 		SchematicFile:        fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
 		AIDescription:        result.GetString("ai_description"),
+		Paid:                 result.GetBool("paid"),
+		ExternalURL:          result.GetString("external_url"),
 	}
 	if len(result.GetStringSlice("categories")) > 0 {
 		s.CategoryId = result.GetStringSlice("categories")[0]

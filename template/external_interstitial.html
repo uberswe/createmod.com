@@ -1,0 +1,56 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body" role="main">
+      <div class="container-xl">
+        <div class="row row-cards">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h1 class="card-title">You are leaving createmod.com</h1>
+                <p class="text-secondary">We are sending you to an external site. Please be cautious and make sure you trust the destination.</p>
+                <p>Destination:</p>
+                <div class="mb-3"><code class="text-break">{{ .Target }}</code></div>
+                <p>Continuing in <span id="ext-countdown" aria-live="polite">5</span> seconds...</p>
+                <a id="ext-continue" class="btn btn-primary" href="{{ .Target }}" rel="noopener noreferrer" aria-label="Continue to external site">Continue now</a>
+              </div>
+            </div>
+          </div>
+          {{if not .IsContributor}}
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h2 class="card-title h3 mb-2">Support CreateMod</h2>
+                <div id="ad-slot-external" class="ad-slot" style="min-height:120px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.1);">
+                  <span class="text-secondary">Ad placement (external link)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}
+<script>
+(function(){
+  var seconds = 5;
+  var el = document.getElementById('ext-countdown');
+  function tick(){
+    seconds -= 1;
+    if (el) { el.textContent = String(seconds); }
+    if (seconds <= 0) {
+      var link = document.getElementById('ext-continue');
+      if (link && link.href) { window.location.href = link.href; }
+    } else {
+      setTimeout(tick, 1000);
+    }
+  }
+  setTimeout(tick, 1000);
+})();
+</script>

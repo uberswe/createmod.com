@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-type Service struct{}
+type Service struct{ dev bool }
 
-func New() *Service {
-	return &Service{}
+func New(dev bool) *Service {
+	return &Service{dev: dev}
 }
 
 // Generate is used to generate sitemaps, should be called asynchronously on start and new page creation
-func (*Service) Generate(app *pocketbase.PocketBase) {
+func (s *Service) Generate(app *pocketbase.PocketBase) {
 	app.Logger().Info("sitemap generation started")
 	schematics, err := app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
 	if err != nil {
@@ -56,6 +56,8 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 	addPage(app, now, smPages, "/schematics", 0.9, smg.Daily)
 	addPage(app, now, smPages, "/search", 0.9, smg.Daily)
 	addPage(app, now, smPages, "/explore", 0.9, smg.Daily)
+	addPage(app, now, smPages, "/users", 0.6, smg.Weekly)
+	addPage(app, now, smPages, "/videos", 0.6, smg.Weekly)
 
 	schematicsSmCount := 1
 	smSchematics := smi.NewSitemap()
@@ -133,20 +135,54 @@ func (*Service) Generate(app *pocketbase.PocketBase) {
 		}
 	}
 
-	// TODO add news
+	// Add news sitemap (listing page and individual posts by ID)
+	smNews := smi.NewSitemap()
+	smNews.SetName("news")
+	smNews.SetLastMod(&now)
+	smNews.SetOutputPath("template/dist/sitemaps/")
+	if err := smNews.Add(&smg.SitemapLoc{
+		Loc:        "/news",
+		LastMod:    &now,
+		ChangeFreq: smg.Weekly,
+		Priority:   0.6,
+	}); err != nil {
+		app.Logger().Error("Unable to add SitemapLoc:", "error", err)
+	}
+	// Attempt to include individual news posts (fallback-safe)
+	if newsRecs, err := app.FindRecordsByFilter("news", "1=1", "-postdate", 1000, 0); err == nil {
+		for i := range newsRecs {
+			lm := now
+			if dt := newsRecs[i].GetDateTime("postdate"); !dt.IsZero() {
+				lm = dt.Time()
+			} else if dt := newsRecs[i].GetDateTime("updated"); !dt.IsZero() {
+				lm = dt.Time()
+			} else if dt := newsRecs[i].GetDateTime("created"); !dt.IsZero() {
+				lm = dt.Time()
+			}
+			if err := smNews.Add(&smg.SitemapLoc{
+				Loc:        fmt.Sprintf("/news/%s", newsRecs[i].Id),
+				LastMod:    &lm,
+				ChangeFreq: smg.Weekly,
+				Priority:   0.5,
+			}); err != nil {
+				app.Logger().Error("Unable to add SitemapLoc:", "error", err)
+			}
+		}
+	} else {
+		app.Logger().Warn(err.Error())
+	}
 
 	filename, err := smi.Save()
 	if err != nil {
 		app.Logger().Error("Unable to Save Sitemap:", "error", err)
 	}
 
-	// TODO check if production site
-	// Pings the Search engines. default Google and Bing, But you can add any other ping URL's
-	// in this format: http://www.google.com/webmasters/tools/ping?sitemap=%s
-	//err = smi.PingSearchEngines()
-	//if err != nil {
-	//	return
-	//}
+	// Only ping search engines in production
+	if !s.dev {
+		if err := smi.PingSearchEngines(); err != nil {
+			app.Logger().Warn("PingSearchEngines failed", "error", err)
+		}
+	}
 
 	app.Logger().Info("Sitemap generated", "filename", filename)
 

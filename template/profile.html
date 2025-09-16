@@ -3,14 +3,77 @@
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
         {{template "header.html" .}}
-        <div class="page-body">
+        <div class="page-body" role="main">
             <div class="container-xl">
-                <div class="row mb-4">
+                <div class="row mb-4 align-items-center">
                     <div class="col-md-auto">
+                        {{ if .UserAvatar }}
                         <img class="avatar avatar-md" src="{{ .UserAvatar }}">
+                        {{ else }}
+                        <img class="avatar avatar-md" src="https://mc-heads.net/avatar/Steve">
+                        {{ end }}
                     </div>
                     <div class="col-md-auto align-center">
-                        <h2>{{ .Username }}</h2>
+                        <h2 class="mb-0">{{ .Username }}</h2>
+                        {{ if .HasSchematics }}
+                        <span class="badge bg-green ms-2" title="This user has uploaded schematics">Contributor</span>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ if .IsAuthenticated }}
+                <div class="row mb-3">
+                    <div class="col">
+                        <a href="/blacklist-request" class="btn btn-outline-danger">Request schematic blacklisting</a>
+                    </div>
+                </div>
+                {{ end }}
+                <div class="row mb-3">
+                    <div class="col-12 col-md-8">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title mb-0">Usage</h3></div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-secondary">Total schematics</div>
+                                        <div class="h3 mb-0">{{ .SchematicCount }}</div>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-secondary">Total views</div>
+                                        <div class="h3 mb-0">{{ .TotalViews }}</div>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-secondary">Total downloads</div>
+                                        <div class="h3 mb-0">{{ .TotalDownloads }}</div>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-secondary">Points</div>
+                                        <div class="h3 mb-0">{{ .Points }}</div>
+                                    </div>
+                                </div>
+                                {{ if .HasAchievements }}
+                                <hr />
+                                <div>
+                                    <div class="text-secondary mb-2">Achievements</div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {{ range .Achievements }}
+                                        <span class="badge badge-outline text-yellow" title="{{ .Description }}">{{ .Title }}</span>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                                {{ end }}
+                                {{ if .HasAccessories }}
+                                <hr />
+                                <div>
+                                    <div class="text-secondary mb-2">Accessories</div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {{ range .Accessories }}
+                                        <span class="badge">{{ . }}</span>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="row row-cards">

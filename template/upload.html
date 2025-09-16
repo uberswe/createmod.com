@@ -68,16 +68,19 @@
                                     </div>
                                     <div class="col-md-12 col-lg-6">
                                         <div class="mb-3">
-                                            <form class="dropzone" id="dropzone-schematic" action="/upload"
+                                            <form class="dropzone" id="dropzone-schematic" action="/upload/nbt"
                                                   autocomplete="off" novalidate>
                                                 <div class="fallback">
-                                                    <input name="schematic-file" type="file"/>
+                                                    <input name="schematic-file" type="file" accept=".nbt"/>
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Schematic File</h3>
                                                     <span class="dropzone-msg-desc">Click here or drag the .nbt schematic file</span>
                                                 </div>
                                             </form>
+                                            <div id="upload-preview-link" class="alert alert-info mt-3" style="display:none;">
+                                                Private preview link ready: <a id="upload-preview-url" href="#"></a>
+                                            </div>
                                         </div>
                                         <div class="mb-3">
                                             <form class="dropzone" id="dropzone-featured" action="/upload"
@@ -228,7 +231,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         // based on https://stackoverflow.com/a/61357880/1260548
         let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
-            url: "/files/upload",
+            url: "/upload/nbt",
             method: "POST",
             acceptedFiles: '.nbt',
             thumbnailMethod: 'crop',
@@ -380,3 +383,46 @@
     })
 </script>
 {{template "foot.html" .}}
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    if (window.Dropzone) {
+      Dropzone.autoDiscover = false;
+      var dzEl = document.getElementById('dropzone-schematic');
+      if (dzEl) {
+        var dz = new Dropzone(dzEl, {
+          url: '/upload/nbt',
+          paramName: 'nbt',
+          maxFiles: 1,
+          createImageThumbnails: false,
+          acceptedFiles: '.nbt',
+        });
+        dz.on('success', function(file, response){
+          try {
+            var text = typeof response === 'string' ? response : (response && response.toString ? response.toString() : '');
+            var m = text && text.match(/url=(\/u\/[a-f0-9]+)/i);
+            if (m && m[1]) {
+              var url = m[1];
+              var linkWrap = document.getElementById('upload-preview-link');
+              var link = document.getElementById('upload-preview-url');
+              if (link && linkWrap) {
+                link.href = url;
+                try { link.textContent = (location && location.origin ? location.origin : '') + url; } catch(e) { link.textContent = url; }
+                linkWrap.style.display = '';
+              }
+            } else {
+              if (typeof showToast === 'function') { showToast('Upload succeeded but preview URL not found.', 'warning'); }
+            }
+          } catch (e) {}
+        });
+        dz.on('error', function(file, msg, xhr){
+          var err = msg;
+          if (xhr && xhr.responseText) { err = xhr.responseText; }
+          if (typeof showToast === 'function') { showToast(err || 'Upload failed', 'danger'); }
+        });
+      }
+    }
+  } catch (e) {}
+});
+</script>

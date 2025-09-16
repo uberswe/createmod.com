@@ -36,6 +36,8 @@
                 <a href="#" class="nav-link d-flex lh-1 text-reset p-0 dropdown" data-bs-toggle="dropdown" aria-label="Open user menu">
                     {{ if .HasAvatar }}
                         <img class="avatar avatar-sm auth-avatar" src="{{ .Avatar }}">
+                    {{ else }}
+                        <img class="avatar avatar-sm auth-avatar" src="https://mc-heads.net/avatar/Steve">
                     {{ end }}
                     <div class="d-none d-xl-block ps-2">
                         <div class="auth-username">{{ .Username }}</div>
@@ -45,13 +47,30 @@
                     <a href="/profile" class="dropdown-item">Profile</a>
                     <div class="dropdown-divider"></div>
                     <a href="/settings" class="dropdown-item">Settings</a>
-                    <a class="dropdown-item logout-button">Logout</a>
+                    <a class="dropdown-item" href="/logout">Logout</a>
                 </div>
             </div>
             {{ end }}
         </div>
         <div class="collapse navbar-collapse" id="sidebar-menu">
             <ul class="navbar-nav pt-lg-3">
+                {{ $t := printf "%T" . }}
+                {{ if eq $t "pages.UploadPreviewData" }}
+                <li class="nav-item">
+                    <div class="card m-2">
+                        <div class="card-body">
+                            <h3 class="card-title">Schematic Stats</h3>
+                            <ul class="list-unstyled">
+                                <li><strong>Filename:</strong> {{ .Filename }}</li>
+                                <li><strong>Size:</strong> {{ .Size }} bytes</li>
+                                <li><strong>SHA-256:</strong> {{ .Checksum }}</li>
+                                <li><strong>Uploaded:</strong> {{ HumanDate .UploadedAt }}</li>
+                                <li><strong>Parsed:</strong> {{ .ParsedSummary }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </li>
+                {{ end }}
                 <li class="nav-item">
                     <a class="nav-link" href="/" >
                   <span class="nav-link-icon d-md-none d-lg-inline-block">
@@ -122,6 +141,33 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="/guides" >
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-book"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 4a2 2 0 0 0 -2 2v12a2 2 0 0 1 2 -2h12"/><path d="M16 4a2 2 0 0 1 2 2v12"/><path d="M8 6h10"/></svg>                  </span>
+                        <span class="nav-link-title">
+                    Guides
+                  </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/videos" >
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-player-play"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z" /></svg>                 </span>
+                        <span class="nav-link-title">
+                    Videos
+                  </span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/collections" >
+                  <span class="nav-link-icon d-md-none d-lg-inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-folders"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19h14a2 2 0 0 0 2 -2v-7a2 2 0 0 0 -2 -2h-7l-2 -2h-5a2 2 0 0 0 -2 2v11a2 2 0 0 0 2 2" /></svg>                 </span>
+                        <span class="nav-link-title">
+                    Collections
+                  </span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="/explore" >
                   <span class="nav-link-icon d-md-none d-lg-inline-block">
                         <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-library-photo"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 3m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 7.26a2.005 2.005 0 0 0 -1.012 1.737v10c0 1.1 .9 2 2 2h10c.75 0 1.158 -.385 1.5 -1" /><path d="M17 7h.01" /><path d="M7 13l3.644 -3.644a1.21 1.21 0 0 1 1.712 0l3.644 3.644" /><path d="M15 12l1.644 -1.644a1.21 1.21 0 0 1 1.712 0l2.644 2.644" /></svg>                 </span>
@@ -154,7 +200,7 @@
                     <a class="nav-link" href="/settings" >
                   <span class="nav-link-icon d-md-none d-lg-inline-block">
                         <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-settings"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>                 </span>
-                        <span class="nav-link-title logout-button">
+                        <span class="nav-link-title">
                     Settings
                   </span>
                     </a>
@@ -163,16 +209,16 @@
                     <a class="nav-link" href="/profile" >
                   <span class="nav-link-icon d-md-none d-lg-inline-block">
                         <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-user"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg>                 </span>
-                        <span class="nav-link-title logout-button">
+                        <span class="nav-link-title">
                     Profile
                   </span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" >
+                    <a class="nav-link" href="/logout">
                   <span class="nav-link-icon d-md-none d-lg-inline-block">
                         <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-login"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M21 12h-13l3 -3" /><path d="M11 15l-3 -3" /></svg>                  </span>
-                        <span class="nav-link-title logout-button">
+                        <span class="nav-link-title">
                     Logout
                   </span>
                     </a>

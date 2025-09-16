@@ -25,7 +25,11 @@
                                         <h3 class="card-title">Profile Details</h3>
                                         <div class="row align-items-center mb-3">
                                             <div class="col-auto">
+                                                {{ if .Avatar }}
                                                 <img class="avatar avatar-xl" src="{{ .Avatar }}">
+                                                {{ else }}
+                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve">
+                                                {{ end }}
                                             </div>
                                             <div class="col-auto">We use Gravatar for profile pictures, <a href="https://gravatar.com/site/check/">change your avatar via the Gravatar website</a>.</div>
                                         </div>
@@ -67,6 +71,81 @@
                                             });
                                           })();
                                         </script>
+                                        <h3 class="card-title mt-4">Gamification</h3>
+                                        <div class="mb-3">
+                                            <div class="text-secondary">Points</div>
+                                            <div class="h3 mb-2">{{ .Points }}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <form id="accessories-form" hx-patch="/api/collections/users/records/{{ .UserID }}" hx-swap="none">
+                                                <div class="mb-2 text-secondary">Accessories</div>
+                                                <div class="d-flex gap-3 flex-wrap">
+                                                    {{ range .AccessoryOptions }}
+                                                    {{ $opt := . }}
+                                                    {{ $allowed := index $.AllowedAccessories $opt }}
+                                                    {{ $req := index $.AccessoryRequirements $opt }}
+                                                    <label class="form-check">
+                                                        <input class="form-check-input acc-opt" type="checkbox" value="{{ $opt }}" data-opt="{{ $opt }}" data-allowed="{{ $allowed }}" {{ if not $allowed }}disabled{{ end }} {{ if index $.AccessorySelected $opt }}checked{{ end }}>
+                                                        <span class="form-check-label">
+                                                            {{ $opt }}
+                                                            <span class="badge {{ if $allowed }}badge-outline text-green{{ else }}badge-outline text-secondary{{ end }} ms-1" title="Requires {{ $req }} points">{{ if $allowed }}Unlocked{{ else }}Requires {{ $req }} pts{{ end }}</span>
+                                                        </span>
+                                                    </label>
+                                                    {{ end }}
+                                                </div>
+                                                <input type="hidden" name="accessories" id="accessories-input" value="{{ .Accessories }}">
+                                                <div class="form-footer mt-2">
+                                                    <button type="submit" class="btn btn-outline-primary">Save accessories</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="mb-2 text-secondary">Avatar preview</div>
+                                            <div id="avatar-preview" class="d-inline-block position-relative">
+                                                {{ if .Avatar }}
+                                                <img class="avatar avatar-xl" src="{{ .Avatar }}" alt="Avatar">
+                                                {{ else }}
+                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve" alt="Avatar">
+                                                {{ end }}
+                                                <div id="avatar-accessories" class="position-absolute bottom-0 start-50 translate-middle-x d-flex gap-1 flex-wrap justify-content-center"></div>
+                                            </div>
+                                        </div>
+                                        <script>
+                                          (function(){
+                                            var form = document.getElementById('accessories-form');
+                                            if(!form) return;
+                                            function allowedCheckedValues(){
+                                              var boxes = form.querySelectorAll('.acc-opt');
+                                              var vals = [];
+                                              boxes.forEach(function(b){
+                                                var allowed = (b.dataset && b.dataset.allowed === 'true');
+                                                if (allowed && !b.disabled && b.checked) {
+                                                  vals.push(b.value);
+                                                }
+                                              });
+                                              return vals;
+                                            }
+                                            function renderPreview(){
+                                              var cont = document.getElementById('avatar-accessories');
+                                              if(!cont) return;
+                                              var vals = allowedCheckedValues();
+                                              cont.innerHTML = '';
+                                              vals.forEach(function(v){
+                                                var span = document.createElement('span');
+                                                span.className = 'badge badge-outline text-yellow';
+                                                span.textContent = v;
+                                                cont.appendChild(span);
+                                              });
+                                            }
+                                            // Init from server state
+                                            renderPreview();
+                                            // Live update on change
+                                            form.addEventListener('change', function(ev){ renderPreview(); });
+                                            form.addEventListener('submit', function(ev){
+                                              document.getElementById('accessories-input').value = allowedCheckedValues().join(',');
+                                            });
+                                          })();
+                                        </script>
                                         <h3 class="card-title mt-4">Alternate Login Options</h3>
                                         <div class="row g-3 mb-2">
                                             <div class="col-md">
@@ -91,6 +170,56 @@
                                                 Set new password
                                             </a>
                                         </div>
+                                        <h3 class="card-title mt-4">API Keys</h3>
+                                        <p class="card-subtitle">Create and manage API keys for accessing the public API.</p>
+                                        {{ if .NewAPIKey }}
+                                        <div class="alert alert-warning" role="alert">
+                                            <strong>Your new API key:</strong>
+                                            <code>{{ .NewAPIKey }}</code>
+                                            <div class="text-secondary">Copy this now. It will not be shown again.</div>
+                                        </div>
+                                        {{ end }}
+                                        <form action="/settings/api-keys/new" method="post" class="mb-3">
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-md-6">
+                                                    <label class="form-label" for="api-label">Label (optional)</label>
+                                                    <input type="text" class="form-control" id="api-label" name="label" placeholder="e.g. CLI Script" />
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <button type="submit" class="btn btn-primary">Generate new key</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                        {{ if .APIKeys }}
+                                        <div class="table-responsive mb-3">
+                                            <table class="table">
+                                                <thead>
+                                                <tr>
+                                                    <th>Label</th>
+                                                    <th>Last 8</th>
+                                                    <th>Created</th>
+                                                    <th></th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {{ range .APIKeys }}
+                                                <tr>
+                                                    <td>{{ .Label }}</td>
+                                                    <td><code>{{ .Last8 }}</code></td>
+                                                    <td>{{ HumanDate .Created }}</td>
+                                                    <td>
+                                                        <form action="/settings/api-keys/{{ .ID }}/revoke" method="post" onsubmit="return confirm('Revoke this key?');">
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm">Revoke</button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                {{ end }}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {{ else }}
+                                        <div class="text-secondary mb-3">No API keys yet.</div>
+                                        {{ end }}
                                         <h3 class="card-title mt-4">Account Actions</h3>
                                         <p class="card-subtitle">You can delete your account permanently, begin the process by clicking the button below.</p>
                                         <div>

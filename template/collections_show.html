@@ -1,0 +1,55 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <div class="d-flex align-items-center">
+                <h2 class="page-title mb-0">{{ if .TitleText }}{{ .TitleText }}{{ else }}Collection{{ end }}</h2>
+                {{ if .Featured }}<span class="badge bg-yellow-lt ms-2">Featured</span>{{ end }}
+              </div>
+              <div class="text-secondary">Collection details · Views: {{ .Views }}</div>
+            </div>
+            <div class="col-auto ms-auto d-flex align-items-center gap-2">
+              {{ if .IsOwner }}
+              <a class="btn" href="{{ .Slug }}/edit">Edit</a>
+              <form action="{{ .Slug }}/delete" method="post" onsubmit="return confirm('Delete this collection?');">
+                <button type="submit" class="btn btn-outline-danger">Delete</button>
+              </form>
+              {{ end }}
+              <a class="btn btn-primary" href="{{ .Slug }}/download">Download all</a>
+              <a class="btn" href="/collections">Back to collections</a>
+            </div>
+          </div>
+        </div>
+        {{ if .BannerURL }}
+        <div class="row mb-3">
+          <div class="col-12">
+            <img src="{{ .BannerURL }}" alt="Banner" class="img-fluid rounded" />
+          </div>
+        </div>
+        {{ end }}
+        {{ if .Description }}
+        <div class="row">
+          <div class="col-12 col-md-10 col-lg-8">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Description</h3></div>
+              <div class="card-body">
+                <p>{{ .Description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        {{ else }}
+        <div class="alert alert-secondary">No description provided.</div>
+        {{ end }}
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

@@ -12,19 +12,37 @@ import (
 	"golang.org/x/text/language"
 	tmpl "html/template"
 	"net/http"
+	"strings"
 )
+
+// UserAchievement is a minimal UI struct for profile achievements.
+type UserAchievement struct {
+	Title       string
+	Description string
+	Icon        string
+}
 
 var profileTemplates = append([]string{
 	"./template/profile.html",
 	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_small.html",
 }, commonTemplates...)
 
 type ProfileData struct {
-	Username      string
-	Name          string
-	HasSchematics bool
-	UserAvatar    tmpl.URL
-	Schematics    []models.Schematic
+	Username       string
+	Name           string
+	HasSchematics  bool
+	UserAvatar     tmpl.URL
+	Schematics     []models.Schematic
+	SchematicCount int
+	TotalViews     int
+	TotalDownloads int
+	Points         int
+	Accessories    []string
+	HasAccessories bool
+	// Achievements earned by this user (minimal display)
+	Achievements    []UserAchievement
+	HasAchievements bool
 	DefaultData
 }
 
@@ -74,6 +92,59 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 			AvatarURL()
 		d.UserAvatar = tmpl.URL(url)
 		d.Thumbnail = url
+		// Load points and accessories
+		d.Points = results[0].GetInt("points")
+		acc := strings.TrimSpace(results[0].GetString("accessories"))
+		if acc != "" {
+			d.Accessories = strings.Split(acc, ",")
+			for i := range d.Accessories {
+				d.Accessories[i] = strings.TrimSpace(d.Accessories[i])
+			}
+			d.HasAccessories = len(d.Accessories) > 0
+		}
+
+		// Usage stats
+		d.SchematicCount = len(d.Schematics)
+		totalViews := 0
+		for _, s := range d.Schematics {
+			totalViews += s.Views
+		}
+		d.TotalViews = totalViews
+		// Sum downloads (type=4, period="total") best-effort
+		if coll, err := app.FindCollectionByNameOrId("schematic_downloads"); err == nil && coll != nil {
+			sum := 0
+			for _, s := range d.Schematics {
+				recs, _ := app.FindRecordsByFilter(coll.Id, "schematic = {:schematic} && type = {:type} && period = {:period}", "-created", 1, 0, dbx.Params{"schematic": s.ID, "type": 4, "period": "total"})
+				if len(recs) > 0 {
+					sum += recs[0].GetInt("count")
+				}
+			}
+			d.TotalDownloads = sum
+		}
+
+		// Load achievements
+		if uaColl, err := app.FindCollectionByNameOrId("user_achievements"); err == nil && uaColl != nil {
+			if achColl, err := app.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
+				if uas, err := app.FindRecordsByFilter(uaColl.Id, "user = {:u}", "-created", 100, 0, dbx.Params{"u": results[0].Id}); err == nil {
+					achs := make([]UserAchievement, 0, len(uas))
+					for _, ua := range uas {
+						achID := ua.GetString("achievement")
+						if achID == "" {
+							continue
+						}
+						if rec, err := app.FindRecordById(achColl.Id, achID); err == nil && rec != nil {
+							achs = append(achs, UserAchievement{
+								Title:       rec.GetString("title"),
+								Description: rec.GetString("description"),
+								Icon:        rec.GetString("icon"),
+							})
+						}
+					}
+					d.Achievements = achs
+					d.HasAchievements = len(achs) > 0
+				}
+			}
+		}
 	}
 	if len(d.Schematics) > 0 {
 		d.HasSchematics = true

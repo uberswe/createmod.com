@@ -4,6 +4,7 @@ import (
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
+	"createmod/internal/i18n"
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
@@ -19,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service) {
@@ -26,8 +28,11 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	registry := template.NewRegistry()
 
 	funcMap := html.FuncMap{
-		"ToLower": strings.ToLower,
-		"mod":     func(i, j int) bool { return i%j == 0 },
+		"ToLower":   strings.ToLower,
+		"mod":       func(i, j int) bool { return i%j == 0 },
+		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
+		"printf":    fmt.Sprintf,
+		"T":         func(lang string, key string) string { return i18n.T(lang, key) },
 	}
 
 	registry.AddFuncs(funcMap)
@@ -60,25 +65,92 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/", pages.IndexHandler(app, cacheService, registry))
 	// Removed the about page, not relevant anymore
 	e.GET("/upload", pages.UploadHandler(app, registry, cacheService))
+	e.POST("/upload/nbt", pages.UploadNBTHandler(app, registry, cacheService))
+	// Private preview URL for temporary uploads
+	e.GET("/u/{token}", pages.UploadPreviewHandler(app, registry, cacheService))
+	// Make public endpoint for temporary uploads
+	e.POST("/u/{token}/make-public", pages.UploadMakePublicHandler(app, registry, cacheService))
+	// Upload moderation pending confirmation page
+	e.GET("/upload/pending", pages.UploadPendingHandler(app, registry, cacheService))
 	e.GET("/contact", pages.ContactHandler(app, registry, cacheService))
+	e.GET("/blacklist-request", pages.BlacklistRequestHandler(app, registry, cacheService))
 	e.GET("/guide", pages.GuideHandler(app, registry, cacheService))
 	e.GET("/rules", pages.RulesHandler(app, registry, cacheService))
 	e.GET("/explore", pages.ExploreHandler(app, cacheService, registry))
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService))
 	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService))
 	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService))
+	// API Docs
+	e.GET("/api", pages.APIDocsHandler(app, registry, cacheService))
+	// Public JSON API (beta)
+	e.GET("/api/schematics", pages.APISchematicsListHandler(app, searchService, cacheService))
+	e.GET("/api/schematics/{name}", pages.APISchematicDetailHandler(app, cacheService))
+	// Reports
+	e.POST("/reports", pages.ReportSubmitHandler(app))
+	// Admin
+	e.GET("/admin/reports", pages.AdminReportsHandler(app, registry, cacheService))
+	e.POST("/admin/reports/{id}/resolve", pages.AdminReportResolveHandler(app))
 	// Auth
 	e.GET("/login", pages.LoginHandler(app, registry))
 	e.GET("/register", pages.RegisterHandler(app, registry))
 	e.GET("/reset-password", pages.PasswordResetHandler(app, registry))
+	e.GET("/logout", func(e *core.RequestEvent) error {
+		secure := e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https")
+		auth.ClearAuthCookie(e.Response, secure)
+		// Clear server-side auth for this request context
+		e.Auth = nil
+		if e.Request.Header.Get("HX-Request") != "" {
+			// HTMX request: instruct client to navigate
+			e.Response.Header().Set("HX-Redirect", "/")
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusFound, "/")
+	})
 	// News
 	e.GET("/news", pages.NewsHandler(app, registry, cacheService))
-	e.GET("/news/:slug", pages.NewsPostHandler(app, registry, cacheService))
+	e.GET("/news/{slug}", pages.NewsPostHandler(app, registry, cacheService))
+	// Users listing
+	e.GET("/users", pages.UsersHandler(app, registry, cacheService))
+	// Videos listing
+	e.GET("/videos", pages.VideosHandler(app, registry, cacheService))
+	// Guides listing
+	e.GET("/guides", pages.GuidesHandler(app, registry, cacheService))
+	// Guide create
+	e.GET("/guides/new", pages.GuidesNewHandler(app, registry, cacheService))
+	e.POST("/guides", pages.GuidesCreateHandler(app, cacheService))
+	// Collections listing
+	e.GET("/collections", pages.CollectionsHandler(app, registry, cacheService))
+	// Collections create flow
+	e.GET("/collections/new", pages.CollectionsNewHandler(app, registry, cacheService))
+	e.POST("/collections", pages.CollectionsCreateHandler(app, registry, cacheService))
+	// Collections detail
+	e.GET("/collections/{slug}", pages.CollectionsShowHandler(app, registry, cacheService))
+	// Collections edit/update/delete
+	e.GET("/collections/{slug}/edit", pages.CollectionsEditHandler(app, registry, cacheService))
+	e.POST("/collections/{slug}", pages.CollectionsUpdateHandler(app))
+	e.POST("/collections/{slug}/delete", pages.CollectionsDeleteHandler(app))
+	// Collections reorder (author-only)
+	e.POST("/collections/{slug}/reorder", pages.CollectionsReorderHandler(app))
+	// Collections download (zip)
+	e.GET("/collections/{slug}/download", pages.CollectionsDownloadHandler(app, cacheService))
+	// API keys (user settings)
+	e.POST("/settings/api-keys/new", pages.APIKeyCreateHandler(app, cacheService))
+	e.POST("/settings/api-keys/{id}/revoke", pages.APIKeyRevokeHandler(app))
+	// Language setter
+	e.GET("/lang", pages.SetLanguageHandler())
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
 	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService))
 	// Partial comments endpoint for HTMX refresh
 	e.GET("/schematics/{name}/comments", pages.SchematicCommentsHandler(app, searchService, cacheService, registry, discordService))
+	// Add to collection
+	e.POST("/schematics/{name}/add-to-collection", pages.SchematicAddToCollectionHandler(app))
+	// Download endpoint to track download metrics separately
+	e.GET("/download/{name}", pages.DownloadHandler(app, cacheService))
+	// Download interstitial page
+	e.GET("/get/{name}", pages.DownloadInterstitialHandler(app, registry, cacheService))
+	// External link interstitial
+	e.GET("/out", pages.ExternalLinkInterstitialHandler(app, registry, cacheService))
 	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
 	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))

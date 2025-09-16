@@ -16,9 +16,11 @@
                     </div>
                     {{ if mod $i 30 }}
                         {{ if gt $i 0 }}
+                          {{ if not $.IsContributor }}
                                 <div class="card m-2 card-borderless text-center" style="width: 315px; height: 315px;">
                                     <div style="margin: auto" id="explore-inline-{{ $i }}"></div>
                                 </div>
+                          {{ end }}
                         {{ end }}
                     {{end}}
                 {{end}}
@@ -39,6 +41,7 @@
     {{range $i, $image := .Images }}
     {{ if mod $i 30 }}
     {{ if gt $i 0 }}
+        if (document.getElementById('explore-inline-{{ $i }}')) {
         window['nitroAds'].createAd('explore-inline-{{ $i }}', {
             "refreshTime": 30,
             "sizes": [
@@ -54,6 +57,7 @@
                 "position": "top-right"
             }
         });
+        }
     {{end}}
     {{end}}
     {{end}}

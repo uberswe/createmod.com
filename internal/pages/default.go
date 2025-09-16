@@ -4,6 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
 	"github.com/drexedam/gravatar"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"golang.org/x/text/cases"
@@ -26,9 +27,14 @@ type DefaultData struct {
 	Categories      []models.SchematicCategory
 	Avatar          template.URL
 	HasAvatar       bool
+	IsContributor   bool
+	Language        string
 }
 
 func (d *DefaultData) Populate(e *core.RequestEvent) {
+	// Always determine language first for templates
+	d.Language = preferredLanguageFromRequest(e.Request)
+
 	user := e.Auth
 	if user != nil {
 		d.IsAuthenticated = true
@@ -43,6 +49,13 @@ func (d *DefaultData) Populate(e *core.RequestEvent) {
 			AvatarURL()
 		d.Avatar = template.URL(url)
 		d.HasAvatar = d.Avatar != ""
+		// Determine contributor status: has at least one schematic
+		if e.App != nil {
+			recs, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:author}", "-created", 1, 0, dbx.Params{"author": user.Id})
+			if err == nil && len(recs) > 0 {
+				d.IsContributor = true
+			}
+		}
 	}
 }
 

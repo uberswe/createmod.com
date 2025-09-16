@@ -1,0 +1,50 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="row row-cards">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h1 class="card-title">Private Preview</h1>
+                <p class="text-secondary">Share this private link to allow others to view and download before publishing.</p>
+                <ul>
+                  <li><strong>Filename:</strong> {{ .Filename }}</li>
+                  <li><strong>Size:</strong> {{ .Size }} bytes</li>
+                  <li><strong>SHA-256:</strong> {{ .Checksum }}</li>
+                  <li><strong>Uploaded:</strong> {{ HumanDate .UploadedAt }}</li>
+                  <li><strong>Parsed:</strong> {{ .ParsedSummary }}</li>
+                  <li><strong>Block Count:</strong> {{ .BlockCount }}</li>
+                  <li><strong>Materials:</strong>
+                    {{ if .Materials }}
+                      <ul>
+                        {{ range .Materials }}
+                          <li>{{ . }}</li>
+                        {{ end }}
+                      </ul>
+                    {{ else }}
+                      <em>none</em>
+                    {{ end }}
+                  </li>
+                </ul>
+                <form method="post" action="/u/{{ .Token }}/make-public">
+                  <div class="mb-3">
+                    <label class="form-label" for="scheduled_at">Schedule publish time (optional)</label>
+                    <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="form-control" />
+                    <div class="form-hint">If set, your schematic will be published at this time. Times are interpreted in your local timezone and stored as UTC.</div>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Make Public</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

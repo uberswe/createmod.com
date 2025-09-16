@@ -98,6 +98,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		err := app.RecordQuery("schematics").
 			Select("schematics.*").
 			From("schematics").
+			Where(dbx.NewExp("deleted = null AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
 			Where(dbx.In("id", interfaceIds...)).
 			All(&res)
 

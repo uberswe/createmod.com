@@ -1,0 +1,76 @@
+/* CreateMod.com custom overrides (post-Tabler)
+   Use this file for small tweaks and overrides without any build step.
+   Keep minimal and documented. */
+
+:root {
+  /* keep brand gold similar but ensure consistent contrast */
+  --tblr-primary: #bf9045;
+  --brand-gold: #bf9045;
+}
+
+/**************
+  General polish
+***************/
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Slightly round cards and buttons for a softer look */
+.card, .btn {
+  border-radius: .6rem;
+}
+
+/* Soft shadow on large cards only */
+.card.card-lg {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+/* Improve focus visibility for a11y without clashing with design */
+:where(a, button, .btn, input, select, textarea):focus-visible {
+  outline: 2px solid var(--tblr-primary);
+  outline-offset: 2px;
+}
+
+/* Links hover state closer to brand */
+a:hover {
+  color: var(--tblr-primary);
+}
+
+/**************
+  News content
+***************/
+.news-content p {
+  margin: 0 0 1rem 0;
+}
+.news-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: .4rem;
+}
+.news-content h2, .news-content h3 {
+  margin-top: 1.25rem;
+}
+
+/*****************
+  Badges & chips
+*****************/
+.badge {
+  border-radius: .5rem;
+}
+
+/* Tighten badge spacing in lists */
+.avatar-list .badge {
+  margin-right: .25rem;
+  margin-bottom: .25rem;
+}
+
+/*****************
+  Header tweaks
+*****************/
+.header-brand, .navbar-brand, .page-title {
+  letter-spacing: .2px;
+}
+
+/* Keep placeholders for future small tweaks */
+/* .lazy { background-color: rgba(0,0,0,0.03); } */

@@ -20,6 +20,16 @@ type Service struct {
 	c *cache.Cache
 }
 
+// SetWithTTL sets a key with a specific TTL duration.
+func (s *Service) SetWithTTL(key string, value interface{}, duration time.Duration) {
+	s.c.Set(key, value, duration)
+}
+
+// Delete removes a key from the cache.
+func (s *Service) Delete(key string) {
+	s.c.Delete(key)
+}
+
 // New creates the CreateMod.com in-memory cache service
 func New() *Service {
 	c := cache.New(60*time.Minute, 120*time.Minute)

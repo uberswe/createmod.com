@@ -1,0 +1,108 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Edit collection</h2>
+              <div class="text-secondary">Update your collection details</div>
+            </div>
+            <div class="col-auto ms-auto">
+              <a class="btn" href="{{ .Slug }}">Back</a>
+            </div>
+          </div>
+        </div>
+        <div class="row row-cards">
+          <div class="col-12 col-md-8">
+            <form class="card" action="{{ .Slug }}" method="post">
+              <div class="card-header"><h3 class="card-title">Collection details</h3></div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label required" for="title">Title</label>
+                  <input type="text" class="form-control" id="title" name="title" value="{{ .TitleText }}" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="description">Description</label>
+                  <textarea class="form-control" id="description" name="description" rows="5">{{ .Description }}</textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="banner_url">Banner image URL</label>
+                  <input type="url" class="form-control" id="banner_url" name="banner_url" value="{{ .BannerURL }}" />
+                </div>
+              </div>
+              <div class="card-footer d-flex justify-content-between align-items-center">
+                <div>
+                  <button type="submit" class="btn btn-outline-danger" formaction="{{ .Slug }}/delete" formmethod="post" onclick="return confirm('Delete this collection?');">Delete</button>
+                </div>
+                <div>
+                  <a href="{{ .Slug }}" class="btn btn-link">Cancel</a>
+                  <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+              </div>
+            </form>
+            <form class="card mt-3" action="{{ .Slug }}/reorder" method="post">
+              <div class="card-header"><h3 class="card-title">Reorder schematics</h3></div>
+              <div class="card-body">
+                <div class="mb-2 text-secondary">Drag items to reorder. On submit we will save the order. You can also manually edit the CSV below.</div>
+                {{ if .SchematicIDs }}
+                <ul id="schem-list" class="list-group mb-2">
+                  {{ range .SchematicIDs }}
+                  <li class="list-group-item d-flex align-items-center" draggable="true" data-id="{{ . }}">
+                    <span class="me-2" aria-hidden="true">↕</span>
+                    <code class="flex-fill">{{ . }}</code>
+                  </li>
+                  {{ end }}
+                </ul>
+                {{ end }}
+                <input type="text" class="form-control" name="schematics" id="schematics-input" placeholder="id1,id2,id3" />
+                <small class="form-hint">If the list above is present, it will populate this field automatically.</small>
+              </div>
+              <div class="card-footer">
+                <button type="submit" class="btn btn-primary">Save order</button>
+              </div>
+            </form>
+            <script>
+            (function(){
+              var list = document.getElementById('schem-list');
+              var input = document.getElementById('schematics-input');
+              if(!list) return; // no preloaded items
+              function serialize(){
+                var ids = [];
+                var items = list.querySelectorAll('li[data-id]');
+                for(var i=0;i<items.length;i++){ ids.push(items[i].getAttribute('data-id')); }
+                if(input){ input.value = ids.join(','); }
+              }
+              serialize();
+              var dragSrc = null;
+              list.addEventListener('dragstart', function(e){
+                var li = e.target.closest('li[data-id]');
+                dragSrc = li;
+                e.dataTransfer.effectAllowed = 'move';
+              });
+              list.addEventListener('dragover', function(e){ e.preventDefault(); });
+              list.addEventListener('drop', function(e){
+                e.preventDefault();
+                var li = e.target.closest('li[data-id]');
+                if(!li || !dragSrc || li === dragSrc) return;
+                // insert before if dropping above, else after
+                var rect = li.getBoundingClientRect();
+                var before = (e.clientY - rect.top) < (rect.height/2);
+                if(before){ list.insertBefore(dragSrc, li); } else { list.insertBefore(dragSrc, li.nextSibling); }
+                serialize();
+              });
+              var form = list.closest('form');
+              if(form){ form.addEventListener('submit', serialize); }
+            })();
+            </script>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

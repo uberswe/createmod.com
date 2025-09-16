@@ -1,0 +1,61 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body" role="main">
+      <div class="container-xl">
+        <div class="row row-cards">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                {{if .Paid}}
+                <h1 class="card-title">Preparing external link...</h1>
+                <p class="text-secondary">You will be redirected in <span id="countdown-ext" aria-live="polite">5</span> seconds.</p>
+                <p>If it doesn't, click the button below:</p>
+                <a id="manual-link-ext" class="btn btn-primary" href="/out?url={{ .ExternalURL | urlquery }}" aria-label="Continue to seller">Continue to seller</a>
+                {{else}}
+                <h1 class="card-title">Preparing your download...</h1>
+                <p class="text-secondary">Your download will start automatically in <span id="countdown" aria-live="polite">5</span> seconds.</p>
+                <p>If it doesn't, click the button below:</p>
+                <a id="manual-link" class="btn btn-primary" href="/download/{{ .Name }}?t={{ .Token }}" aria-label="Download now">Download now</a>
+                {{end}}
+              </div>
+            </div>
+          </div>
+          {{if not .IsContributor}}
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h2 class="card-title h3 mb-2">Support CreateMod</h2>
+                <div id="ad-slot-download" class="ad-slot" style="min-height:120px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.1);">
+                  <span class="text-secondary">Ad placement (download page)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}
+<script>
+(function(){
+  var seconds = 5;
+  var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
+  var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
+  function tick(){
+    seconds -= 1;
+    if (el) { el.textContent = String(seconds); }
+    if (seconds <= 0) {
+      if (link && link.href) { window.location.href = link.href; }
+    } else {
+      setTimeout(tick, 1000);
+    }
+  }
+  setTimeout(tick, 1000);
+})();
+</script>

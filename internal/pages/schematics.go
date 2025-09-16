@@ -4,11 +4,13 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
 	"fmt"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 var schematicsTemplates = append([]string{
@@ -46,10 +48,12 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"deleted = null && moderated = true",
+			"deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
 			"-created",
 			limit,
-			offset)
+			offset,
+			dbx.Params{"now": time.Now()},
+		)
 		if err != nil {
 			return err
 		}

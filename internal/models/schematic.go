@@ -37,6 +37,8 @@ type Schematic struct {
 	SchematicFile        string
 	RatingCount          int
 	AIDescription        string
+	Paid                 bool
+	ExternalURL          string
 }
 
 type DatabaseSchematic struct {

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -213,4 +214,85 @@ func (s *Service) DownloadAndProcessImage(app *pocketbase.PocketBase, imageURL s
 	os.Remove(tempFilePath)
 
 	return description, nil
+}
+
+// TranslateToEnglish is a thin wrapper around the OpenAI client to translate text to English.
+// On any error or when the API key is missing, it returns the original text unchanged.
+func (s *Service) TranslateToEnglish(text string) (string, error) {
+	if s == nil || s.openaiClient == nil || !s.openaiClient.HasApiKey() {
+		return text, fmt.Errorf("openai not configured")
+	}
+	out, err := s.openaiClient.TranslateToEnglish(text)
+	if err != nil {
+		return text, err
+	}
+	return out, nil
+}
+
+// BackfillTranslations finds a limited batch of past schematics that are not in English
+// and attempts a best-effort translation of key text fields to English. It is safe to call
+// multiple times; each run processes up to a small batch.
+func (s *Service) BackfillTranslations(app *pocketbase.PocketBase) {
+	if s == nil || s.openaiClient == nil || !s.openaiClient.HasApiKey() {
+		app.Logger().Info("BackfillTranslations skipped: OpenAI not configured")
+		return
+	}
+	app.Logger().Info("BackfillTranslations started")
+	// Find schematics needing translation (limit 50 per run)
+	recs, err := app.FindRecordsByFilter(
+		"schematics",
+		"deleted = null && moderated = 1 && detected_language != 'en'",
+		"-created",
+		50,
+		0,
+	)
+	if err != nil {
+		app.Logger().Error("BackfillTranslations query failed", "error", err)
+		return
+	}
+	for i := range recs {
+		lang := strings.ToLower(strings.TrimSpace(recs[i].GetString("detected_language")))
+		if lang == "en" { // safety
+			continue
+		}
+		updated := false
+		translate := func(val string) string {
+			val = strings.TrimSpace(val)
+			if val == "" {
+				return ""
+			}
+			out, err := s.TranslateToEnglish(val)
+			if err != nil {
+				app.Logger().Debug("translate failed", "error", err)
+				return ""
+			}
+			return strings.TrimSpace(out)
+		}
+		if t := translate(recs[i].GetString("title")); t != "" {
+			recs[i].Set("title", t)
+			updated = true
+		}
+		if ex := translate(recs[i].GetString("excerpt")); ex != "" {
+			recs[i].Set("excerpt", ex)
+			updated = true
+		}
+		if desc := translate(recs[i].GetString("description")); desc != "" {
+			recs[i].Set("description", desc)
+			updated = true
+		}
+		if html := translate(recs[i].GetString("content")); html != "" {
+			recs[i].Set("content", html)
+			updated = true
+		}
+		if updated {
+			if err := app.Save(recs[i]); err != nil {
+				app.Logger().Warn("BackfillTranslations save failed", "id", recs[i].Id, "error", err)
+			} else {
+				app.Logger().Info("BackfillTranslations updated schematic", "id", recs[i].Id)
+			}
+		}
+		// rate-limit between records
+		time.Sleep(time.Second)
+	}
+	app.Logger().Info("BackfillTranslations completed", "count", len(recs))
 }

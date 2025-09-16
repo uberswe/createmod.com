@@ -28,7 +28,7 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 			return err
 		}
 		var results []core.Record
-		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted = null")).Where(dbx.NewExp("moderated = true")).OrderBy("RANDOM()").All(&results)
+		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted = null")).Where(dbx.NewExp("moderated = true")).Where(dbx.NewExp("(scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).OrderBy("RANDOM()").All(&results)
 		if err != nil {
 			return err
 		}

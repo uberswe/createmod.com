@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/language"
 	tmpl "html/template"
 	"net/http"
+	"time"
 )
 
 var indexTemplates = append([]string{
@@ -37,10 +38,12 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"deleted = null && moderated = true",
+			"deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
 			"-created",
 			50,
-			0)
+			0,
+			dbx.Params{"now": time.Now()},
+		)
 
 		d := IndexData{
 			Schematics:   MapResultsToSchematic(app, results, cacheService),
@@ -77,6 +80,7 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 		Select("schematics.*", "avg(schematic_ratings.rating) as avg_rating", "count(schematic_ratings.rating) as total_rating").
 		From("schematics").
 		LeftJoin("schematic_ratings", dbx.NewExp("schematic_ratings.schematic = schematics.id")).
+		Where(dbx.NewExp("schematics.deleted = null AND schematics.moderated = true AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))")).
 		OrderBy("avg_rating DESC").
 		AndOrderBy("total_rating DESC").
 		GroupBy("schematics.id").

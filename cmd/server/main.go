@@ -11,6 +11,7 @@ const (
 	CreateAdmin       = "CREATE_ADMIN"
 	DiscordWebhookUrl = "DISCORD_WEBHOOK_URL"
 	OpenAIAPIKey      = "OPENAI_API_KEY"
+	DevEnv            = "DEV"
 )
 
 func main() {
@@ -26,6 +27,7 @@ func main() {
 		CreateAdmin:       envFile[CreateAdmin] == "true",
 		DiscordWebhookUrl: envFile[DiscordWebhookUrl],
 		OpenAIApiKey:      envFile[OpenAIAPIKey],
+		Dev:               envFile[DevEnv] == "true",
 	})
 	s.Start()
 }
