@@ -1,0 +1,48 @@
+services:
+  pocketbase:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: dev/pocketbase.Dockerfile
+      args:
+        PB_VERSION: 0.30.0
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./dev/pb_data:/pb_data
+      - ./dev/pb_migrations:/pb_migrations
+      - ./dev/pb_hooks:/pb_hooks
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025" # UI
+      - "1025:1025" # SMTP
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - APP_BASE_URL=http://localhost:8080
+      - ENV=local
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/robots.txt"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
