@@ -273,6 +273,7 @@ Commands:
 
 
 ## 9) Running Locally
+- Optional: reset PB data from golden snapshot: `make pb-reset`
 - Start stack: `docker compose up --build -d`
 - Wait for pocketbase healthcheck.
 - Seed data if using scripts: `docker compose exec pocketbase pb migrate --apply && ./dev/scripts/seed.sh`
@@ -283,7 +284,7 @@ Commands:
 
 Makefile (optional):
 ```
-.PHONY: up down test go-test e2e seed
+.PHONY: up down test go-test e2e seed pw-install pb-reset
 up:
 	docker compose up --build -d
 
@@ -296,8 +297,14 @@ go-test:
 e2e:
 	npx playwright test
 
+pw-install:
+	npx playwright install --with-deps
+
 seed:
 	./dev/scripts/seed.sh
+
+pb-reset:
+	./dev/scripts/reset_pb_data.sh
 ```
 
 
@@ -375,19 +382,51 @@ Artifacts: Collect Playwright traces, screenshots, server and PB logs on failure
 
 
 ## 12) Implementation Tasks (Checklist)
+
+Current Status (this repo):
+- docker-compose.yml is present with pocketbase, mailhog, and app services.
+- Playwright is configured (playwright.config.ts) and package.json scripts exist.
+- An auth fixture exists at tests/e2e/fixtures/auth.ts.
+- The auth cookie name matches the backend constant internal/auth.CookieName = "create-mod-auth".
+- A basic smoke E2E test exists at tests/e2e/specs/smoke.spec.ts.
+- A sample NBT fixture exists at tests/fixtures/sample.nbt.
+- Seed script exists at dev/scripts/seed.sh; currently waits for PocketBase health and then exits (no real seeding yet).
+- Golden PocketBase snapshot placeholder exists at dev/golden_pb_data/ (.gitkeep).
+- Skipped E2E scaffolds added under tests/e2e/specs/ to document upcoming work (describe.skip): logout, interstitial token, collections reorder, schematic a11y.
+- Makefile present with targets: up, down, go-test, e2e, pw-install, seed.
+- Go component tests cover logout (normal + HTMX) under internal/pages/logout_http_test.go.
+- CI workflow present at .github/workflows/tests.yml to run Go and Playwright tests in GitHub Actions.
+- PocketBase health E2E test exists at tests/e2e/specs/pocketbase_health.spec.ts.
+- HTMX logout E2E spec exists at tests/e2e/specs/logout_htmx.spec.ts (no seeds required).
+- PB reset script exists at dev/scripts/reset_pb_data.sh to restore pb_data from dev/golden_pb_data.
+- dev/pb_data directory is tracked (.gitkeep) and used by docker-compose for PocketBase data.
+
 Short-term (Phase 1):
-- [ ] Add docker-compose.yml with pocketbase, app, mailhog.
-- [ ] Create dev/golden_pb_data or seed scripts; document reset.
-- [ ] Add Playwright to repo (package.json, config, install step).
-- [ ] Implement auth fixture; confirm cookie name aligns with app (create-mod-auth or actual).
+- [x] Add docker-compose.yml with pocketbase, app, mailhog.
+- [x] Create dev/golden_pb_data or seed scripts; document reset.
+- [x] Add Playwright to repo (package.json, config, install step).
+- [x] Implement auth fixture; confirm cookie name aligns with app (create-mod-auth or actual).
 - [ ] Write initial E2E specs:
   - [ ] Auth parity & logout (normal + HTMX)
   - [ ] Upload → preview → make public (happy path)
   - [ ] Interstitial token single-use
   - [ ] Collections add + DnD reorder
   - [ ] A11y scan for schematic page
-- [ ] Add tests/fixtures with sample .nbt file(s).
-- [ ] Document commands in README/TESTING.md.
+- [x] Add tests/fixtures with sample .nbt file(s).
+- [x] Document commands in README/TESTING.md.
+
+Next Milestones (Phase 1 specifics):
+- Decide on data strategy:
+  - Golden snapshot at dev/golden_pb_data (preferred for speed), or
+  - Seed scripts under dev/scripts with PocketBase migration + seeding commands.
+- Implement minimal seed data:
+  - Admin user, regular user (user@example.com/password123)
+  - A couple of schematics (one paid), one collection, one guide.
+- Add first actionable E2E specs:
+  - Logout flow verifies HX-Redirect and cookie cleared (uses internal/auth.CookieName).
+  - Interstitial token single-use for a public schematic download.
+  - Collections add + reorder persists (if UI supports DnD, otherwise POST reordering endpoint).
+  - A11y scan for a schematic page via @axe-core/playwright.
 
 Phase 2:
 - [ ] Expand E2E coverage for moderation/reporting with MailHog assertions.
@@ -419,7 +458,13 @@ Acceptance Criteria:
 - HTMX redirect mismatches: verify HX-Redirect headers in server responses.
 - Downloads in headless browsers: ensure proper wait for download events and increase timeout on slow CI.
 - Flaky tests: add retries at test level; avoid time-dependent logic where possible; prefer polling for counters.
+- Node error “Cannot find module '@playwright/test'”: run `make pw-install` (runs `npm ci` and installs browsers) or `npm ci` manually. If still failing, delete `node_modules` and `package-lock.json` then run `npm ci` again.
+- E2E ECONNREFUSED to localhost: ensure the stack is running before tests. Prefer `make e2e-up` (starts docker-compose, waits for health, seeds, then runs tests). If Docker isn’t available locally, start the app and PocketBase manually (e.g., `go run ./cmd/server` and PocketBase container/binary), then set `APP_BASE_URL` and `PB_URL` env vars and run `make e2e`.
+- PocketBase container source: We build a minimal image from official release archives via dev/pocketbase.Dockerfile. If the build fails, check network access to GitHub Releases and ensure unzip/wget are available in the Docker build context. You can override the version with PB_VERSION (e.g., `docker compose build --build-arg PB_VERSION=0.30.0 pocketbase`). On Apple Silicon, if you experience platform issues, remove or adjust the `platform: linux/amd64` line in docker-compose.yml.
+- Permission denied when running scripts (seed/reset): invoke via Bash to avoid executable-bit issues, e.g. `bash ./dev/scripts/seed.sh` and `bash ./dev/scripts/reset_pb_data.sh`. The Makefile already uses Bash for these targets.
 
+
+- App not reachable on 8080: ensure the app container binds to 0.0.0.0:8080. This repo’s Dockerfile runs `./main serve --http 0.0.0.0:8080` and docker-compose maps `8080:8080`. If you changed ports, update APP_BASE_URL and the compose mapping accordingly.
 
 ## 15) Glossary
 - PB: PocketBase

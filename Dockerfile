@@ -21,7 +21,7 @@ COPY . .
 RUN go build -o main ./cmd/server/main.go
 
 # Expose port 8080 to the outside world
-EXPOSE 8090
+EXPOSE 8080
 
 # Run the executable
-CMD ["./main","serve","--http", "0.0.0.0:8090"]
+CMD ["./main","serve","--http", "0.0.0.0:8080"]
