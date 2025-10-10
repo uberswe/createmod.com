@@ -340,6 +340,19 @@
                     progressBar.classList.remove("progress-bar-indeterminate")
                     progressBar.style.display = "none"
                     successAlert.style.display = "block"
+                    try {
+                        const slugOrId = createdRecord?.name || createdRecord?.id;
+                        if (slugOrId) {
+                            const linkUrl = `https://createmod.com/schematics/${slugOrId}`;
+                            const info = document.createElement('div');
+                            info.classList.add('mt-2');
+                            info.innerHTML = `
+                                <p>It may take up to 24 hours for your schematic to pass moderation. You can still freely share the direct link.</p>
+                                <p><a id="uploaded-schematic-link" href="${linkUrl}" class="link-secondary">${linkUrl}</a></p>
+                            `;
+                            successAlert.parent.appendChild(info);
+                        }
+                    } catch (_) {}
                 }
                 } catch(e) {
                     console.log(e)
