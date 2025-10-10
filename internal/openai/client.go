@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -646,8 +647,8 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 	responseContent := completionResponse.Choices[0].Message.Content
 	responseContent = strings.TrimSpace(responseContent)
 
-	// Check if the response is "true"
-	if responseContent == "true" {
+	// Check for truthy responses robustly
+	if isAffirmativeTrue(responseContent) {
 		return true, "", nil
 	}
 
@@ -657,6 +658,29 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 
 func (c *Client) HasApiKey() bool {
 	return c.apiKey != ""
+}
+
+// isAffirmativeTrue determines if the OpenAI response should be treated as approval (true)
+// It handles variants like "True", "true.", and sentences that clearly include the token 'true'.
+// It also guards against obvious negatives like "not true" or explicit "false".
+func isAffirmativeTrue(s string) bool {
+	if s == "" {
+		return false
+	}
+	t := strings.ToLower(strings.TrimSpace(s))
+	// quick exact and punctuation-trimmed checks
+	t = strings.Trim(t, "\"'` ")
+	trimmed := strings.TrimRight(t, ".!?) ")
+	if trimmed == "true" {
+		return true
+	}
+	// guard common negatives
+	if strings.Contains(t, "not true") || strings.Contains(t, "false") {
+		return false
+	}
+	// look for standalone word true
+	re := regexp.MustCompile(`\btrue\b`)
+	return re.FindStringIndex(t) != nil
 }
 
 // TranslateToEnglish uses Chat Completions to translate arbitrary text to natural English.
