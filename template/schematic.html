@@ -79,15 +79,35 @@
                                             <div class="col-12 mt-2">
                                                 <form class="row g-2 align-items-center" action="/schematics/{{ .Schematic.Name }}/add-to-collection" method="post">
                                                     <div class="col-auto">
-                                                        <label for="collection-input" class="form-label mb-0">Add to collection</label>
+                                                        <label for="collection-select" class="form-label mb-0">Add to collection</label>
                                                     </div>
                                                     <div class="col-auto">
-                                                        <input id="collection-input" type="text" class="form-control" name="collection" placeholder="Collection slug or id" />
+                                                        <select id="collection-select" class="form-select" name="collection">
+                                                            <option value="" disabled selected>Select collection</option>
+                                                            {{ range .UserCollections }}
+                                                            <option value="{{ if .Slug }}{{ .Slug }}{{ else }}{{ .ID }}{{ end }}">{{ .Title }}</option>
+                                                            {{ end }}
+                                                            <option value="__new__">Create new collection…</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-auto" id="new-collection-wrap" style="display:none;">
+                                                        <input type="text" class="form-control" name="new_collection_name" id="new-collection-name" placeholder="New collection name">
                                                     </div>
                                                     <div class="col-auto">
                                                         <button type="submit" class="btn btn-outline-primary">Add</button>
                                                     </div>
                                                 </form>
+                                                <script>
+                                                    (function(){
+                                                      var sel = document.getElementById('collection-select');
+                                                      var wrap = document.getElementById('new-collection-wrap');
+                                                      if (sel && wrap) {
+                                                        sel.addEventListener('change', function(){
+                                                          wrap.style.display = (sel.value === '__new__') ? '' : 'none';
+                                                        });
+                                                      }
+                                                    })();
+                                                </script>
                                             </div>
                                             {{ end }}
                                         </div>

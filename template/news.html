@@ -8,6 +8,7 @@
                 <div class="row justify-content-center">
                     <div class="col-lg-10 col-xl-9">
                         {{ if .Posts }}
+                            {{ $root := . }}
                             {{ range .Posts }}
                             <div class="card card-lg mb-4">
                                 <div class="card-header">
@@ -19,7 +20,7 @@
                                     {{ else }}
                                         <p>No excerpt provided.</p>
                                     {{ end }}
-                                    <p><a href="{{ .URL }}" class="btn btn-primary">{{ T .Language "Read more" }}</a></p>
+                                    <p><a href="{{ .URL }}" class="btn btn-primary">{{ T $root.Language "Read more" }}</a></p>
                                 </div>
                                 <div class="card-footer">
                                     {{ HumanDate .PostDate }}

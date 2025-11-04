@@ -27,7 +27,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
     <!-- Dropzone CSS via CDN (for upload pages) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous">
-    <!-- Project overrides -->
+    <!-- Theme variables & Tabler overrides (local) -->
+    <link rel="stylesheet" href="/assets/x/style.css" />
+    <!-- Project overrides (small tweaks) -->
     <link rel="stylesheet" href="/assets/x/app.css" />
 
     <!-- HTMX -->
@@ -70,4 +72,25 @@
     gtag('config', 'G-HG8QRCK47M');
 </script>
 <body hx-boost="true" hx-indicator="#htmx-indicator">
+<script>
+  (function(){
+    try {
+      var pref = localStorage.getItem('cm_sidebar') || 'closed';
+      document.body.setAttribute('data-sidebar', pref);
+      document.addEventListener('click', function(e){
+        var btn = e.target && e.target.closest && e.target.closest('#sidebar-toggle');
+        if (btn) {
+          var cur = document.body.getAttribute('data-sidebar') || 'closed';
+          var next = cur === 'closed' ? 'open' : 'closed';
+          document.body.setAttribute('data-sidebar', next);
+          try { localStorage.setItem('cm_sidebar', next); } catch(_){ }
+        }
+      });
+      document.body.addEventListener('htmx:afterOnLoad', function(){
+        var pref2 = localStorage.getItem('cm_sidebar') || 'closed';
+        document.body.setAttribute('data-sidebar', pref2);
+      });
+    } catch(_) {}
+  })();
+</script>
 <div id="htmx-indicator" class="htmx-indicator"></div>

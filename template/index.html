@@ -6,33 +6,26 @@
         <div class="page-body">
             <div class="container-xl">
                 <div class="row g-4">
-                    <div class="col-12 col-lg-4">
-                        <div class="row">
-                            <div class="col mb-5">
+                    <div class="col-12 mb-4">
                         <h3>Trending Schematics</h3>
-
-                                <div class="row row-cards">
-                                {{range  .Trending}}
-                                    {{ template "schematic_card_full.html" . }}
-                                {{end}}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col mb-5">
-                        <h3>Highest Rated Schematics</h3>
-
-                                <div class="row row-cards">
-                                {{range  .HighestRated}}
-                                    {{ template "schematic_card_full.html" . }}
-                                {{end}}
-                                </div>
-                            </div>
+                        <div class="row row-cards">
+                            {{range .Trending}}
+                                {{ template "schematic_card_full.html" . }}
+                            {{end}}
                         </div>
                     </div>
-                    <div class="col-12 col-lg-8">
+                    <div class="col-12 mb-4">
+                        <h3>Highest Rated Schematics</h3>
                         <div class="row row-cards">
-                            {{range  .Schematics}}
+                            {{range .HighestRated}}
+                                {{ template "schematic_card_full.html" . }}
+                            {{end}}
+                        </div>
+                    </div>
+                    <div class="col-12 mb-4">
+                        <h3>Latest Schematics</h3>
+                        <div class="row row-cards">
+                            {{range .Schematics}}
                                 {{ template "schematic_card_medium.html" . }}
                             {{end}}
                         </div>

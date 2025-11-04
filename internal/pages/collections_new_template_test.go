@@ -18,9 +18,13 @@ func Test_Collections_New_Template_Has_Expected_Elements(t *testing.T) {
 		"Create collection",
 		"action=\"/collections\"",
 		"method=\"post\"",
+		"enctype=\"multipart/form-data\"",
 		"name=\"title\"",
 		"name=\"description\"",
 		"name=\"banner_url\"",
+		"name=\"banner\"",
+		"accept=\"image/png,image/jpeg,image/webp\"",
+		"Recommended 1600x400 (4:1), max 2MB",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

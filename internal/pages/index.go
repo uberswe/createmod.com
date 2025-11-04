@@ -11,7 +11,9 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	tmpl "html/template"
+	"math"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -95,28 +97,107 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 	return highestRatedSchematics
 }
 
+// trendingScore computes a decayed popularity score combining recent views and ratings sum.
+// score = (views48h + ratingWeight*log1p(ratingsSum)) / pow(ageHours+2, decay)
+func trendingScore(now time.Time, created time.Time, views48h float64, ratingsSum float64, decay float64, ratingWeight float64) float64 {
+	ageHours := now.Sub(created).Hours()
+	if ageHours < 0 {
+		ageHours = 0
+	}
+	den := math.Pow(ageHours+2, decay)
+	if den == 0 {
+		den = 1
+	}
+	return (views48h + ratingWeight*math.Log1p(ratingsSum)) / den
+}
+
 func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
 	trendingSchematics, found := cacheService.GetSchematics(cache.TrendingSchematicsKey)
 	if found {
 		return trendingSchematics
 	}
-	// TODO a field for daily and weekly views can be aggregated daily and indexed to improve performance
-	var res []*core.Record
+
+	now := time.Now().UTC()
+	// 1) Fetch eligible schematics (moderated, not deleted, scheduled ok)
+	var schemRecs []*core.Record
 	err := app.RecordQuery("schematics").
-		Select("schematics.*", "avg(schematic_views.count) as avg_views").
-		From("schematic_views").
-		LeftJoin("schematics", dbx.NewExp("schematic_views.schematic = schematics.id")).
-		Where(dbx.NewExp("schematic_views.type = 0")).
-		AndWhere(dbx.NewExp("schematic_views.created > (SELECT DATETIME('now', '-2 day'))")).
-		OrderBy("avg_views DESC").
-		GroupBy("schematics.id").
-		Limit(10).
-		All(&res)
-	if err != nil {
-		app.Logger().Debug("could not fetch trending", "error", err.Error())
+		Select("schematics.*").
+		From("schematics").
+		Where(dbx.NewExp("schematics.deleted = null AND schematics.moderated = true AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))")).
+		OrderBy("-created").
+		Limit(200).
+		All(&schemRecs)
+	if err != nil || len(schemRecs) == 0 {
+		app.Logger().Debug("trending: fetch schematics failed or none, falling back", "err", func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return ""
+		}())
 		return nil
 	}
-	trendingSchematics = MapResultsToSchematic(app, res, cacheService)
+
+	// 2) Aggregate recent views (last 48h)
+	twoDaysAgo := now.Add(-48 * time.Hour)
+	twoDaysAgoStr := twoDaysAgo.Format("2006-01-02 15:04:05")
+	type kv struct {
+		ID string
+		V  float64
+	}
+	var viewRows []kv
+	err = app.RecordQuery("schematic_views").
+		Select("schematic as id", "SUM(count) as v").
+		From("schematic_views").
+		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": twoDaysAgoStr})).
+		GroupBy("schematic").
+		All(&viewRows)
+	views48 := make(map[string]float64, len(viewRows))
+	if err == nil {
+		for _, r := range viewRows {
+			views48[r.ID] = r.V
+		}
+	}
+
+	// 3) Aggregate ratings sum
+	var ratingRows []kv
+	err2 := app.RecordQuery("schematic_ratings").
+		Select("schematic as id", "SUM(rating) as v").
+		From("schematic_ratings").
+		GroupBy("schematic").
+		All(&ratingRows)
+	ratingsSum := make(map[string]float64, len(ratingRows))
+	if err2 == nil {
+		for _, r := range ratingRows {
+			ratingsSum[r.ID] = r.V
+		}
+	}
+
+	// 4) Compute scores, sort
+	type scored struct {
+		rec   *core.Record
+		score float64
+	}
+	scoredList := make([]scored, 0, len(schemRecs))
+	const decay = 1.8
+	const ratingWeight = 2.0
+	for _, rec := range schemRecs {
+		id := rec.Id
+		created := rec.GetDateTime("created").Time()
+		v := views48[id]
+		r := ratingsSum[id]
+		s := trendingScore(now, created, v, r, decay, ratingWeight)
+		scoredList = append(scoredList, scored{rec: rec, score: s})
+	}
+	sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
+	if len(scoredList) > 10 {
+		scoredList = scoredList[:10]
+	}
+	ordered := make([]*core.Record, 0, len(scoredList))
+	for _, it := range scoredList {
+		ordered = append(ordered, it.rec)
+	}
+
+	trendingSchematics = MapResultsToSchematic(app, ordered, cacheService)
 	cacheService.SetSchematics(cache.TrendingSchematicsKey, trendingSchematics)
 	return trendingSchematics
 }

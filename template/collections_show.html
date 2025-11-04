@@ -29,7 +29,18 @@
         {{ if .BannerURL }}
         <div class="row mb-3">
           <div class="col-12">
-            <img src="{{ .BannerURL }}" alt="Banner" class="img-fluid rounded" />
+            <img src="{{ .BannerURL }}" alt="Collection banner" class="img-fluid rounded" />
+          </div>
+        </div>
+        {{ else }}
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="card card-sm border-dashed text-secondary" style="height: 200px; display:flex; align-items:center; justify-content:center;">
+              <div>
+                <div class="mb-1">No banner image set</div>
+                <div class="small">Recommended size 1600x400 (4:1), max 2MB</div>
+              </div>
+            </div>
           </div>
         </div>
         {{ end }}

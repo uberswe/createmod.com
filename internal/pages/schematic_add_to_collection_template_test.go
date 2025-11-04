@@ -18,6 +18,8 @@ func Test_Schematic_Template_Has_AddToCollection_Form(t *testing.T) {
 		"action=\"/schematics/{{ .Schematic.Name }}/add-to-collection\"",
 		"name=\"collection\"",
 		"Add to collection",
+		"Create new collection…",
+		"id=\"collection-select\"",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

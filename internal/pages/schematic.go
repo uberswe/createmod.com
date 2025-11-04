@@ -28,18 +28,25 @@ var schematicTemplates = append([]string{
 	"./template/include/schematic_card_full.html",
 }, commonTemplates...)
 
+type CollectionOption struct {
+	ID    string
+	Slug  string
+	Title string
+}
+
 type SchematicData struct {
 	DefaultData
 	Schematic     models.Schematic
 	Comments      []models.Comment
 	AuthorHasMore bool
 	// IsAuthor of the current schematic, for edit and delete actions
-	IsAuthor    bool
-	FromAuthor  []models.Schematic
-	Similar     []models.Schematic
-	Promotion   template.HTML
-	Versions    []models.SchematicVersion
-	HasVersions bool
+	IsAuthor        bool
+	FromAuthor      []models.Schematic
+	Similar         []models.Schematic
+	Promotion       template.HTML
+	Versions        []models.SchematicVersion
+	HasVersions     bool
+	UserCollections []CollectionOption
 }
 
 func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service) func(e *core.RequestEvent) error {
@@ -80,6 +87,22 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
 		d.Promotion = promotionService.RandomPromotion()
+
+		// Load collections for the current user (for Add to collection dropdown)
+		if e.Auth != nil {
+			if coll, err := app.FindCollectionByNameOrId("collections"); err == nil && coll != nil {
+				recs, _ := app.FindRecordsByFilter(coll.Id, "author = {:a} && deleted = null", "+title", 200, 0, dbx.Params{"a": e.Auth.Id})
+				opts := make([]CollectionOption, 0, len(recs))
+				for _, r := range recs {
+					t := r.GetString("title")
+					if t == "" {
+						t = r.GetString("name")
+					}
+					opts = append(opts, CollectionOption{ID: r.Id, Slug: r.GetString("slug"), Title: t})
+				}
+				d.UserCollections = opts
+			}
+		}
 
 		// Load recent version history (up to 10)
 		verRecs, err := app.FindRecordsByFilter("schematic_versions", "schematic = {:id}", "-version", 10, 0, dbx.Params{"id": d.Schematic.ID})

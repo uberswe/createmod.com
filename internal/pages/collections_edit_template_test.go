@@ -18,9 +18,13 @@ func Test_Collections_Edit_Template_Has_Expected_Elements(t *testing.T) {
 		"Edit collection",
 		"action=\"{{ .Slug }}\"",
 		"method=\"post\"",
+		"enctype=\"multipart/form-data\"",
 		"name=\"title\"",
 		"name=\"description\"",
 		"name=\"banner_url\"",
+		"name=\"banner\"",
+		"accept=\"image/png,image/jpeg,image/webp\"",
+		"Recommended 1600x400 (4:1), max 2MB",
 		"action=\"{{ .Slug }}/delete\"",
 		">Delete<",
 		// DnD reorder UI elements

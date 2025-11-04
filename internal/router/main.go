@@ -74,7 +74,10 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/upload/pending", pages.UploadPendingHandler(app, registry, cacheService))
 	e.GET("/contact", pages.ContactHandler(app, registry, cacheService))
 	e.GET("/blacklist-request", pages.BlacklistRequestHandler(app, registry, cacheService))
-	e.GET("/guide", pages.GuideHandler(app, registry, cacheService))
+	// Redirect legacy single guide page to the guides listing
+	e.GET("/guide", func(e *core.RequestEvent) error {
+		return e.Redirect(http.StatusMovedPermanently, "/guides")
+	})
 	e.GET("/rules", pages.RulesHandler(app, registry, cacheService))
 	e.GET("/explore", pages.ExploreHandler(app, cacheService, registry))
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService))
@@ -92,6 +95,8 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.POST("/admin/reports/{id}/resolve", pages.AdminReportResolveHandler(app))
 	// Auth
 	e.GET("/login", pages.LoginHandler(app, registry))
+	// Handle login form submissions
+	e.POST("/login", pages.LoginPostHandler(app))
 	e.GET("/register", pages.RegisterHandler(app, registry))
 	e.GET("/reset-password", pages.PasswordResetHandler(app, registry))
 	e.GET("/logout", func(e *core.RequestEvent) error {

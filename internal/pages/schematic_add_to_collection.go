@@ -2,6 +2,7 @@ package pages
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -57,26 +58,50 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 		}
 		schematic := schemRecs[0]
 
-		// Resolve collection by slug first, then id
+		// Resolve collection by slug first, then id, or create if requested
 		collsColl, err := app.FindCollectionByNameOrId("collections")
 		if err != nil || collsColl == nil {
 			return e.String(http.StatusInternalServerError, "collections collection not available")
 		}
 		var collection *core.Record
-		if recs, err := app.FindRecordsByFilter(collsColl.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": collInput}); err == nil && len(recs) > 0 {
-			collection = recs[0]
-		}
-		if collection == nil {
-			if rec, err := app.FindRecordById(collsColl.Id, collInput); err == nil {
+		if collInput == "__new__" {
+			newName := strings.TrimSpace(e.Request.FormValue("new_collection_name"))
+			if newName == "" {
+				if e.Request.Header.Get("HX-Request") != "" {
+					e.Response.Header().Set("HX-Redirect", returnTo+"?error=new_name_required")
+					return e.HTML(http.StatusNoContent, "")
+				}
+				return e.Redirect(http.StatusSeeOther, returnTo+"?error=new_name_required")
+			}
+			rec := core.NewRecord(collsColl)
+			rec.Set("title", newName)
+			rec.Set("name", newName)
+			rec.Set("author", e.Auth.Id)
+			if err := app.Save(rec); err == nil {
 				collection = rec
+			} else {
+				if e.Request.Header.Get("HX-Request") != "" {
+					e.Response.Header().Set("HX-Redirect", returnTo+"?error=failed_create_collection")
+					return e.HTML(http.StatusNoContent, "")
+				}
+				return e.Redirect(http.StatusSeeOther, returnTo+"?error=failed_create_collection")
 			}
-		}
-		if collection == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", returnTo+"?error=collection_not_found")
-				return e.HTML(http.StatusNoContent, "")
+		} else {
+			if recs, err := app.FindRecordsByFilter(collsColl.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": collInput}); err == nil && len(recs) > 0 {
+				collection = recs[0]
 			}
-			return e.Redirect(http.StatusSeeOther, returnTo+"?error=collection_not_found")
+			if collection == nil {
+				if rec, err := app.FindRecordById(collsColl.Id, collInput); err == nil {
+					collection = rec
+				}
+			}
+			if collection == nil {
+				if e.Request.Header.Get("HX-Request") != "" {
+					e.Response.Header().Set("HX-Redirect", returnTo+"?error=collection_not_found")
+					return e.HTML(http.StatusNoContent, "")
+				}
+				return e.Redirect(http.StatusSeeOther, returnTo+"?error=collection_not_found")
+			}
 		}
 
 		// Try join table variants

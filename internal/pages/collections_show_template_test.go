@@ -1,29 +1,53 @@
 package pages
 
 import (
-	"os"
+	"createmod/internal/i18n"
+	pbtempl "github.com/pocketbase/pocketbase/tools/template"
+	htmltmpl "html/template"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func Test_Collections_Show_Template_Has_Expected_Elements(t *testing.T) {
-	path := filepath.Join("..", "..", "template", "collections_show.html")
-	b, err := os.ReadFile(path)
+func Test_Collections_Show_Template_Placeholder_When_No_Banner(t *testing.T) {
+	r := pbtempl.NewRegistry()
+	r.AddFuncs(htmltmpl.FuncMap{
+		"HumanDate": func(ti any) string { return "" },
+		"T":         func(lang, key string) string { return i18n.T(lang, key) },
+	})
+
+	files := append([]string{
+		"./template/collections_show.html",
+	}, commonTemplates...)
+
+	root := projectRootFromThisFile(t)
+	var paths []string
+	for _, f := range files {
+		paths = append(paths, filepath.Join(root, f))
+	}
+
+	d := CollectionsShowData{}
+	d.DefaultData.Language = "en"
+	d.Title = "Collection"
+	d.Description = ""
+	d.BannerURL = ""
+
+	out, err := r.LoadFiles(paths...).Render(d)
 	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
+		t.Fatalf("render collections_show.html failed: %v", err)
 	}
-	s := string(b)
-	must := []string{
-		"page-title",
-		"Back to collections",
-		"Collection details",
-		"Featured",
-		"Download all",
+	// contains placeholder message
+	if !containsAll(out, []string{"No banner image set", "Recommended size 1600x400"}) {
+		t.Fatalf("expected placeholder banner hint when no banner is set")
 	}
-	for _, m := range must {
-		if !strings.Contains(s, m) {
-			t.Fatalf("collections_show.html missing: %s", m)
+}
+
+// containsAll is a small helper used only in this test file.
+func containsAll(s string, subs []string) bool {
+	for _, sub := range subs {
+		if !strings.Contains(s, sub) {
+			return false
 		}
 	}
+	return true
 }
