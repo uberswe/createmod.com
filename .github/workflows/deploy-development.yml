@@ -22,7 +22,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v5
         with:
-          node-version: 23.10.0
+          node-version: 24.11.1
 
       - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
       - run: npm --prefix template install
