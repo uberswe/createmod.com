@@ -15,11 +15,8 @@
                     </div>
                     <div class="col-12 col-lg-4">
                         <div class="row">
-                            <div class="col mb-5">
-                                <h3>Popular Schematic Tags</h3>
-                                {{range .Tags }}
-                                    <a href="/schematics/tag/{{ .Key }}" class="btn m-1">{{ .Name }} <span class="badge bg-blue text-blue-fg ms-2">{{ .Count }}</span></a>
-                                {{end}}
+                            <div class="card mb-5">
+                                <div id="index-top-right"></div>
                             </div>
                         </div>
                         <div class="row">
@@ -52,3 +49,14 @@
     </div>
 </div>
 {{template "foot.html" .}}
+<script>
+    window['nitroAds'].createAd('index-top-right', {
+        "delayLoading": true,
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+</script>

@@ -16,6 +16,12 @@
                         <div class="text-secondary mt-1">About {{ .SearchResultCount }} results in {{ .SearchSpeed }} seconds</div>
                         {{ end }}
                     </div>
+                    <div class="col">
+                        <div id="search-top"></div>
+                        <div id="search-top-mobile"></div>
+                    </div>
+                    <div class="col">
+                    </div>
                 </div>
             </div>
         </div>
@@ -184,6 +190,31 @@
                     "wording": "Report Ad",
                     "position": "top-right"
                 }
+            });
+            window['nitroAds'].createAd('search-top', {
+                "sizes": [
+                    [
+                        "728",
+                        "90"
+                    ]
+                ],
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "bottom-right"
+                },
+                "mediaQuery": "(min-width: 1025px)"
+            });
+            window['nitroAds'].createAd('search-top-mobile', {
+                "delayLoading": true,
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "bottom-right"
+                },
+                "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
             });
         </script>
     </div>
