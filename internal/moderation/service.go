@@ -126,6 +126,47 @@ func (s *Service) CheckSchematicQuality(title, description string) (*ModerationR
 	}, nil
 }
 
+// CheckImageQuality checks if an image shows an actual Minecraft build
+func (s *Service) CheckImageQuality(featuredImagePath string) (*ModerationResult, error) {
+	// Check if the featured image path is a valid URL
+	if !s.isValidURL(featuredImagePath) {
+		// If the image path is not a valid URL, we can't check it
+		if s.logger != nil {
+			s.logger.Debug("Skipping image quality check - invalid URL", "path", featuredImagePath)
+		}
+		return &ModerationResult{
+			Approved: true,
+			Reason:   "",
+		}, nil
+	}
+
+	// Log that we're checking the image quality
+	if s.logger != nil {
+		s.logger.Debug("Checking image quality for Minecraft build", "url", featuredImagePath)
+	}
+
+	// Send the request to OpenAI
+	isValid, reason, err := s.openaiClient.CheckMinecraftBuildImage(featuredImagePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check image quality: %w", err)
+	}
+
+	// Log the result
+	if s.logger != nil {
+		if isValid {
+			s.logger.Debug("Image quality check passed")
+		} else {
+			s.logger.Debug("Image quality check failed", "reason", reason)
+		}
+	}
+
+	// Return the result
+	return &ModerationResult{
+		Approved: isValid,
+		Reason:   reason,
+	}, nil
+}
+
 // isValidURL checks if the provided string is a valid URL and if it resolves
 // by making a HEAD request without downloading the full content
 func (s *Service) isValidURL(urlString string) bool {

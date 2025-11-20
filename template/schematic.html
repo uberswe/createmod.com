@@ -78,6 +78,7 @@
                         <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
                                 <div id="schematic-under-images"></div>
+                                <div id="schematic-under-images-mobile"></div>
                             </div>
                         </div>
                         <div class="row row-cards mb-4">
@@ -169,6 +170,7 @@
                         <div class="row row-cards mb-4">
                             <div class="col-sm-12 col-lg-12">
                                 <div id="schematic-under-info"></div>
+                                <div id="schematic-under-info-mobile"></div>
                             </div>
                         </div>
                         <div class="row row-cards mb-4">
@@ -447,7 +449,8 @@
             "icon": true,
             "wording": "Report Ad",
             "position": "bottom-right"
-        }
+        },
+        "mediaQuery": "(min-width: 1025px)"
     });
     window['nitroAds'].createAd('schematic-under-info', {
         "refreshTime": 30,
@@ -462,7 +465,55 @@
             "icon": true,
             "wording": "Report Ad",
             "position": "bottom-right"
+        },
+        "mediaQuery": "(min-width: 1025px)"
+    });
+    window['nitroAds'].createAd('schematic-right-sidebar', {
+        "sizes": [
+            [
+                "336",
+                "280"
+            ]
+        ],
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
         }
+    });
+    window['nitroAds'].createAd('schematic-right-sidebar-sizeless', {
+        "delayLoading": true,
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+    window['nitroAds'].createAd('schematic-right-sidebar-video', {
+        "format": "video-nc",
+        "video": {}
+    });
+    window['nitroAds'].createAd('schematic-under-images-mobile', {
+        "delayLoading": true,
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        },
+        "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
+    });
+    window['nitroAds'].createAd('schematic-under-info-mobile', {
+        "delayLoading": true,
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        },
+        "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
     });
 </script>
 {{ if .IsAuthenticated }}
