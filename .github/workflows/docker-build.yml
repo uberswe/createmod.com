@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - development
-      - feat/docker-build
       - production
 
 env:
@@ -40,8 +39,6 @@ jobs:
           tags: |
             type=ref,event=branch,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
             type=sha,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
-            type=ref,event=branch,prefix=test-,enable=${{ github.ref == 'refs/heads/feat/docker-build' }}
-            type=sha,prefix=test-,enable=${{ github.ref == 'refs/heads/feat/docker-build' }}
             type=ref,event=branch,enable=${{ github.ref == 'refs/heads/production' }}
             type=sha,enable=${{ github.ref == 'refs/heads/production' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/production' }}
