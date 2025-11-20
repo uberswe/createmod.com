@@ -14,7 +14,7 @@ jobs:
     name: Build and deploy CreateMod.com development server
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set up Go
@@ -22,7 +22,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v5
         with:
-          node-version: 23.10.0
+          node-version: 24.11.1
 
       - run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
       - run: npm --prefix template install
