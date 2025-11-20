@@ -3,6 +3,9 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	tmpl "html/template"
+	"net/http"
+
 	"github.com/drexedam/gravatar"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -10,8 +13,6 @@ import (
 	"github.com/pocketbase/pocketbase/tools/template"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	tmpl "html/template"
-	"net/http"
 )
 
 var indexTemplates = []string{
@@ -24,7 +25,6 @@ type IndexData struct {
 	Schematics   []models.Schematic
 	Trending     []models.Schematic
 	HighestRated []models.Schematic
-	Tags         []models.SchematicTagWithCount
 }
 
 func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
@@ -44,7 +44,6 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			Schematics:   MapResultsToSchematic(app, results, cacheService),
 			Trending:     getTrendingSchematics(app, cacheService),
 			HighestRated: getHighestRatedSchematics(app, cacheService),
-			Tags:         allTagsWithCount(app, cacheService),
 		}
 		d.Populate(e)
 		d.Title = "Minecraft Schematics"

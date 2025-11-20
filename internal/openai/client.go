@@ -660,6 +660,132 @@ func (c *Client) HasApiKey() bool {
 	return c.apiKey != ""
 }
 
+// CheckMinecraftBuildImage checks if an image shows an actual Minecraft build
+// Returns true if it's a valid build, false with a reason if it's spam/random blocks
+func (c *Client) CheckMinecraftBuildImage(imageURL string) (bool, string, error) {
+	if c.apiKey == "" {
+		return false, "", fmt.Errorf("OpenAI API key is required")
+	}
+
+	// Log that we're checking the image
+	if c.logger != nil {
+		c.logger.Debug("Checking if image shows a Minecraft build")
+	}
+
+	// Create the request using chat completion with vision
+	request := map[string]interface{}{
+		"model": "gpt-4o",
+		"messages": []map[string]interface{}{
+			{
+				"role":    "system",
+				"content": "You are a helpful assistant that evaluates Minecraft build images.",
+			},
+			{
+				"role": "user",
+				"content": []map[string]interface{}{
+					{
+						"type": "text",
+						"text": "This image is supposed to show a Minecraft schematic/build. Your job is to determine: 1) Does this image show Minecraft? 2) Does it show an actual build/structure, not just random blocks or spam? Return only 'true' if it is a valid Minecraft build, or a brief reason as a string if it's not valid (e.g., 'not a Minecraft image', 'just random blocks', 'spam/low effort').",
+					},
+					{
+						"type": "image_url",
+						"image_url": map[string]string{
+							"url": imageURL,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Send the request
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Log the request at info level (without image data)
+	if c.logger != nil {
+		c.logger.Info("OpenAI Minecraft build image check request", "endpoint", ChatCompletionEndpoint, "request_body_size", len(jsonData))
+	}
+
+	req, err := http.NewRequest("POST", ChatCompletionEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return false, "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to send OpenAI Minecraft build image check request", "error", err.Error())
+		}
+		return false, "", fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to read OpenAI Minecraft build image check response", "error", err.Error())
+		}
+		return false, "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Log the response
+	if c.logger != nil {
+		if resp.StatusCode == http.StatusOK {
+			c.logger.Info("OpenAI Minecraft build image check response", "status_code", resp.StatusCode, "response_body_size", len(respBody))
+		} else {
+			c.logger.Info("OpenAI Minecraft build image check response", "status_code", resp.StatusCode, "response_body", string(respBody))
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errorResponse struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(respBody, &errorResponse); err == nil {
+			return false, "", fmt.Errorf("OpenAI API error: %s", errorResponse.Error.Message)
+		}
+		return false, "", fmt.Errorf("OpenAI API returned status code %d", resp.StatusCode)
+	}
+
+	var completionResponse ChatCompletionResponse
+	if err := json.Unmarshal(respBody, &completionResponse); err != nil {
+		return false, "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Check if there are any choices in the response
+	if len(completionResponse.Choices) == 0 {
+		return false, "", fmt.Errorf("no choices in OpenAI response")
+	}
+
+	// Get the response content
+	responseContent := completionResponse.Choices[0].Message.Content
+	responseContent = strings.TrimSpace(responseContent)
+
+	// Check for truthy responses robustly
+	if isAffirmativeTrue(responseContent) {
+		if c.logger != nil {
+			c.logger.Debug("Minecraft build image check passed")
+		}
+		return true, "", nil
+	}
+
+	// Otherwise, return the reason
+	if c.logger != nil {
+		c.logger.Debug("Minecraft build image check failed", "reason", responseContent)
+	}
+	return false, responseContent, nil
+}
+
 // isAffirmativeTrue determines if the OpenAI response should be treated as approval (true)
 // It handles variants like "True", "true.", and sentences that clearly include the token 'true'.
 // It also guards against obvious negatives like "not true" or explicit "false".
