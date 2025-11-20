@@ -39,6 +39,7 @@ jobs:
           tags: |
             type=ref,event=branch,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
             type=sha,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
+            type=sha,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
             type=ref,event=branch,enable=${{ github.ref == 'refs/heads/production' }}
             type=sha,enable=${{ github.ref == 'refs/heads/production' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/production' }}
@@ -53,7 +54,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
