@@ -39,7 +39,7 @@ jobs:
           tags: |
             type=ref,event=branch,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
             type=sha,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
-            type=sha,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
+            type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
             type=ref,event=branch,enable=${{ github.ref == 'refs/heads/production' }}
             type=sha,enable=${{ github.ref == 'refs/heads/production' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/production' }}
