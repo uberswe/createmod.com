@@ -1,0 +1,32 @@
+kind: pipeline
+type: kubernetes
+name: default
+
+# Trigger only on branches starting with drone/
+trigger:
+  branch:
+    include:
+      - drone/*
+  event:
+    include:
+      - push
+
+steps:
+  - name: build
+    image: plugins/docker
+    settings:
+      # Build the image
+      repo: harbor.uberswe/${DRONE_REPO_NAME}
+      tags:
+        - ${DRONE_BRANCH/drone\//}  # Remove 'drone/' prefix from tag
+        - ${DRONE_BRANCH/drone\//}-${DRONE_COMMIT_SHA:0:8}
+      # Registry configuration
+      registry: harbor.uberswe
+      username:
+        from_secret: harbor_username
+      password:
+        from_secret: harbor_password
+      # Build arguments (optional)
+      build_args:
+        - COMMIT_SHA=${DRONE_COMMIT_SHA}
+        - BRANCH=${DRONE_BRANCH}
