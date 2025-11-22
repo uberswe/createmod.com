@@ -5,6 +5,8 @@ name: default
 trigger:
   branch:
     include:
+      - master
+      - main
       - drone/*
   event:
     include:
