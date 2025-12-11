@@ -22,7 +22,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v6
         with:
-          node-version: 24.11.1
+          node-version: 24.12.0
 
       - name: Build Go binary
         run: GOOS=linux CGO_ENABLED=0 go build -a -installsuffix cgo -o ./main ./cmd/server/main.go
