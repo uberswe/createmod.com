@@ -1,0 +1,18 @@
+---
+# Headless service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: createmod-headless
+  namespace: createmod-com-dev
+  labels:
+    app: createmod
+spec:
+  clusterIP: None
+  selector:
+    app: createmod
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8090
+      protocol: TCP

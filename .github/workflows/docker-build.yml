@@ -1,14 +1,20 @@
-name: Build and Push Docker Image
+name: Build and Deploy
 
 on:
   push:
     branches:
+      - master
       - development
-      - production
+  workflow_dispatch:
+    inputs:
+      no-cache:
+        description: 'Build without cache'
+        required: false
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -16,10 +22,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,13 +43,13 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/createmod.com
           tags: |
-            type=ref,event=branch,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
-            type=sha,prefix=dev-,enable=${{ github.ref == 'refs/heads/development' }}
-            type=ref,event=branch,enable=${{ github.ref == 'refs/heads/production' }}
-            type=sha,enable=${{ github.ref == 'refs/heads/production' }}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/production' }}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -51,9 +59,81 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+          cache-from: ${{ github.event.inputs.no-cache == 'true' && '' || 'type=gha,scope=createmod' }}
+          cache-to: type=gha,mode=max,scope=createmod
+          no-cache: ${{ github.event.inputs.no-cache == 'true' }}
           platforms: linux/amd64
 
-      - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+  update-dev-manifest:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/development'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: development
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update dev deployment manifests
+        env:
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          # Extract the commit-specific tag
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "development-" | grep "${COMMIT_SHA:0:7}" | head -1)
+
+          # Update createmod dev
+          sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/dev/deployment.yaml
+
+          echo "Updated createmod dev to: ${IMAGE_TAG}"
+
+      - name: Commit dev manifests
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update dev deployment image [skip ci]"
+          file_pattern: "k8s/createmod/dev/deployment.yaml"
+          branch: development
+          commit_user_name: GitHub Actions Bot
+          commit_user_email: github-actions[bot]@users.noreply.github.com
+
+  update-prod-manifest:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update prod deployment manifests
+        env:
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          # Extract the commit-specific tag
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "master-" | grep "${COMMIT_SHA:0:7}" | head -1)
+
+          # Update createmod prod
+          sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/prod/deployment.yaml
+
+          echo "Updated createmod prod to: ${IMAGE_TAG}"
+
+      - name: Commit prod manifests
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update prod deployment image [skip ci]"
+          file_pattern: "k8s/createmod/prod/deployment.yaml"
+          branch: master
+          commit_user_name: GitHub Actions Bot
+          commit_user_email: github-actions[bot]@users.noreply.github.com

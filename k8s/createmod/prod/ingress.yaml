@@ -1,0 +1,45 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: createmod-prod
+  namespace: createmod-com-prod
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`createmod.com`) || Host(`www.createmod.com`)
+      services:
+        - name: createmod
+          port: 80
+  tls:
+    secretName: createmod-com-prod-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: createmod-prod-http
+  namespace: createmod-com-prod
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: Host(`createmod.com`) || Host(`www.createmod.com`)
+      services:
+        - name: createmod
+          port: 80
+      middlewares:
+        - name: https-redirect
+          namespace: createmod-com-prod
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: createmod-com-prod
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
