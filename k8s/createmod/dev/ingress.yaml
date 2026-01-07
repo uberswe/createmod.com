@@ -1,0 +1,56 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: createmod-dev
+  namespace: createmod-com-dev
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # Route for Authentik outpost callbacks - required for auth flow
+    - kind: Rule
+      match: Host(`createmod-com.9m.se`) && PathPrefix(`/outpost.goauthentik.io/`)
+      services:
+        - kind: Service
+          name: authentik-server
+          namespace: authentik
+          port: 80
+    # Main route with forwardAuth
+    - kind: Rule
+      match: Host(`createmod-com.9m.se`)
+      services:
+        - name: createmod
+          port: 80
+      middlewares:
+        - name: authentik-forwardauth
+  tls:
+    secretName: createmod-com-dev-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: createmod-dev-http
+  namespace: createmod-com-dev
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: Host(`createmod-com.9m.se`)
+      services:
+        - name: createmod
+          port: 80
+      middlewares:
+        - name: https-redirect
+          namespace: createmod-com-dev
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: createmod-com-dev
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

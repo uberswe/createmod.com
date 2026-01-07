@@ -1,0 +1,8 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: createmod-com-prod
+  annotations:
+    linkerd.io/inject: enabled
+    config.linkerd.io/skip-outbound-ports: "443"  # Allow backup jobs to complete
