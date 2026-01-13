@@ -1,6 +1,10 @@
 name: Build and Deploy
 
 on:
+  pull_request:
+    branches:
+      - master
+      - development
   push:
     branches:
       - master
@@ -17,7 +21,7 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,6 +37,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -51,7 +56,23 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
 
-      - name: Build and push Docker image
+      - name: Build Docker image (PR - test only)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=createmod
+          cache-to: type=gha,mode=max,scope=createmod
+          platforms: linux/amd64
+
+      - name: Build and push Docker image (merge)
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -67,9 +88,9 @@ jobs:
           platforms: linux/amd64
 
   update-dev-manifest:
-    needs: [build-and-push]
+    needs: [build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/development'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/development'
     permissions:
       contents: write
 
@@ -82,7 +103,7 @@ jobs:
 
       - name: Update dev deployment manifests
         env:
-          IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          IMAGE_TAGS: ${{ needs.build.outputs.image-tag }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           # Extract the commit-specific tag
@@ -103,9 +124,9 @@ jobs:
           commit_user_email: github-actions[bot]@users.noreply.github.com
 
   update-prod-manifest:
-    needs: [build-and-push]
+    needs: [build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     permissions:
       contents: write
 
@@ -118,7 +139,7 @@ jobs:
 
       - name: Update prod deployment manifests
         env:
-          IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          IMAGE_TAGS: ${{ needs.build.outputs.image-tag }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           # Extract the commit-specific tag
