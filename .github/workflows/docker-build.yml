@@ -22,9 +22,13 @@ env:
 
 jobs:
   # Test build on PR open/update (not merged)
+  # Skip if this is an automated deployment PR (prevents infinite loop)
   test-build:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged != true
+    if: |
+      github.event.pull_request.merged != true &&
+      !startsWith(github.head_ref, 'chore/update-dev-image-') &&
+      !startsWith(github.head_ref, 'chore/update-prod-image-')
     permissions:
       contents: read
 
@@ -48,9 +52,13 @@ jobs:
           platforms: linux/amd64
 
   # Build and push on PR merge
+  # Skip if this is an automated deployment PR (prevents infinite loop)
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    if: |
+      (github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch') &&
+      !startsWith(github.head_ref, 'chore/update-dev-image-') &&
+      !startsWith(github.head_ref, 'chore/update-prod-image-')
     permissions:
       contents: read
       packages: write
@@ -103,13 +111,13 @@ jobs:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'development'
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: development
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update dev deployment manifests
         env:
@@ -124,14 +132,20 @@ jobs:
 
           echo "Updated createmod dev to: ${IMAGE_TAG}"
 
-      - name: Commit dev manifests
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "chore: update dev deployment image [skip ci]"
-          file_pattern: "k8s/createmod/dev/deployment.yaml"
-          branch: development
-          commit_user_name: GitHub Actions Bot
-          commit_user_email: github-actions[bot]@users.noreply.github.com
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update dev deployment image to ${{ github.sha }}"
+          title: "chore: update dev deployment image"
+          body: |
+            Automated PR to update the dev deployment image.
+
+            - Commit: ${{ github.sha }}
+            - PR: #${{ github.event.pull_request.number }}
+          branch: chore/update-dev-image-${{ github.sha }}
+          base: development
+          delete-branch: true
 
   update-prod-manifest:
     needs: [build-and-push]
@@ -139,13 +153,13 @@ jobs:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: master
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update prod deployment manifests
         env:
@@ -160,11 +174,17 @@ jobs:
 
           echo "Updated createmod prod to: ${IMAGE_TAG}"
 
-      - name: Commit prod manifests
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "chore: update prod deployment image [skip ci]"
-          file_pattern: "k8s/createmod/prod/deployment.yaml"
-          branch: master
-          commit_user_name: GitHub Actions Bot
-          commit_user_email: github-actions[bot]@users.noreply.github.com
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update prod deployment image to ${{ github.sha }}"
+          title: "chore: update prod deployment image"
+          body: |
+            Automated PR to update the prod deployment image.
+
+            - Commit: ${{ github.sha }}
+            - PR: #${{ github.event.pull_request.number }}
+          branch: chore/update-prod-image-${{ github.sha }}
+          base: master
+          delete-branch: true
