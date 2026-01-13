@@ -1,7 +1,11 @@
 name: Build and Deploy
 
 on:
-  push:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - closed
     branches:
       - master
       - development
@@ -17,8 +21,36 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # Test build on PR open/update (not merged)
+  test-build:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged != true
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (test only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=createmod
+          cache-to: type=gha,mode=max,scope=createmod
+          platforms: linux/amd64
+
+  # Build and push on PR merge
   build-and-push:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       packages: write
@@ -45,11 +77,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/createmod.com
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
+            type=ref,event=branch,value=${{ github.event.pull_request.base.ref }}
+            type=sha,prefix=${{ github.event.pull_request.base.ref }}-
+            type=raw,value=latest,enable=${{ github.event.pull_request.base.ref == 'master' }}
+            type=raw,value=dev-latest,enable=${{ github.event.pull_request.base.ref == 'development' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -69,7 +100,7 @@ jobs:
   update-dev-manifest:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/development'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'development'
     permissions:
       contents: write
 
@@ -105,7 +136,7 @@ jobs:
   update-prod-manifest:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
     permissions:
       contents: write
 
