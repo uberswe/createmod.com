@@ -125,7 +125,7 @@ jobs:
           echo "Updated createmod dev to: ${IMAGE_TAG}"
 
       - name: Commit dev manifests
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update dev deployment image [skip ci]"
           file_pattern: "k8s/createmod/dev/deployment.yaml"
@@ -161,7 +161,7 @@ jobs:
           echo "Updated createmod prod to: ${IMAGE_TAG}"
 
       - name: Commit prod manifests
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update prod deployment image [skip ci]"
           file_pattern: "k8s/createmod/prod/deployment.yaml"
