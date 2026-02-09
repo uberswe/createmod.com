@@ -10,7 +10,7 @@ on:
       - synchronize
       - closed
     branches:
-      - production
+      - master
       - development
   workflow_dispatch:
     inputs:
@@ -184,7 +184,7 @@ jobs:
   update-prod-manifest:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'production'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
     permissions:
       contents: write
       pull-requests: write
@@ -193,19 +193,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: production
-
-      - name: Close stale prod deployment PRs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Find and close any existing prod deployment PRs
-          gh pr list --state open --head "chore/update-prod-image-" --json number --jq '.[].number' | while read pr_number; do
-            if [ -n "$pr_number" ]; then
-              echo "Closing stale PR #${pr_number}"
-              gh pr close "$pr_number" --delete-branch || true
-            fi
-          done
+          ref: master
 
       - name: Close stale prod deployment PRs
         env:
@@ -245,5 +233,5 @@ jobs:
             - Commit: ${{ github.sha }}
             - PR: #${{ github.event.pull_request.number }}
           branch: chore/update-prod-image-${{ github.sha }}
-          base: production
+          base: master
           delete-branch: true
