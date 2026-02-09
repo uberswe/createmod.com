@@ -7,7 +7,7 @@ on:
       - synchronize
       - closed
     branches:
-      - master
+      - production
       - development
   workflow_dispatch:
     inputs:
@@ -87,7 +87,7 @@ jobs:
           tags: |
             type=ref,event=branch,value=${{ github.event.pull_request.base.ref }}
             type=sha,prefix=${{ github.event.pull_request.base.ref }}-
-            type=raw,value=latest,enable=${{ github.event.pull_request.base.ref == 'master' }}
+            type=raw,value=latest,enable=${{ github.event.pull_request.base.ref == 'production' }}
             type=raw,value=dev-latest,enable=${{ github.event.pull_request.base.ref == 'development' }}
 
       - name: Build and push Docker image
@@ -118,6 +118,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: development
+
+      - name: Close stale dev deployment PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find and close any existing dev deployment PRs
+          gh pr list --state open --head "chore/update-dev-image-" --json number --jq '.[].number' | while read pr_number; do
+            if [ -n "$pr_number" ]; then
+              echo "Closing stale PR #${pr_number}"
+              gh pr close "$pr_number" --delete-branch || true
+            fi
+          done
 
       - name: Update dev deployment manifests
         env:
@@ -150,7 +162,7 @@ jobs:
   update-prod-manifest:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'production'
     permissions:
       contents: write
       pull-requests: write
@@ -159,7 +171,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: production
+
+      - name: Close stale prod deployment PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find and close any existing prod deployment PRs
+          gh pr list --state open --head "chore/update-prod-image-" --json number --jq '.[].number' | while read pr_number; do
+            if [ -n "$pr_number" ]; then
+              echo "Closing stale PR #${pr_number}"
+              gh pr close "$pr_number" --delete-branch || true
+            fi
+          done
 
       - name: Update prod deployment manifests
         env:
@@ -167,7 +191,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
         run: |
           # Extract the commit-specific tag
-          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "master-" | grep "${COMMIT_SHA:0:7}" | head -1)
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "production-" | grep "${COMMIT_SHA:0:7}" | head -1)
 
           # Update createmod prod
           sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/prod/deployment.yaml
@@ -186,5 +210,5 @@ jobs:
             - Commit: ${{ github.sha }}
             - PR: #${{ github.event.pull_request.number }}
           branch: chore/update-prod-image-${{ github.sha }}
-          base: master
+          base: production
           delete-branch: true
