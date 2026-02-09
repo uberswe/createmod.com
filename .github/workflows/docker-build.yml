@@ -170,7 +170,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update dev deployment image to ${{ github.sha }}"
+          commit-message: "chore: update dev deployment image [skip ci]"
           title: "chore: update dev deployment image"
           body: |
             Automated PR to update the dev deployment image.
@@ -225,7 +225,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update prod deployment image to ${{ github.sha }}"
+          commit-message: "chore: update prod deployment image [skip ci]"
           title: "chore: update prod deployment image"
           body: |
             Automated PR to update the prod deployment image.
