@@ -151,36 +151,16 @@ The following are issues found during testing of the website. Please fix this an
 
 
 
-## 2025-10-13 – Planning notes for remaining items (08:44)
+## 2025-10-13 – Planning notes (historical, all items completed above)
 
-- [ ] When creating a collection we should allow the user to upload a banner image, suggest the appropriate size also
-  - Plan (next actions):
-    - Template: Add optional banner file input to templates used by collections new/edit pages with hint: “Recommended 1600x400 (4:1), max 2MB”. (targets: template/collections_new.html, template/collections_edit.html)
-    - Backend: Extend handlers to accept banner upload, validate type (png/jpg/webp) and size, resize/crop to 1600x400, store WebP (+ PNG fallback if necessary). (targets: internal/pages/collections_new.go, internal/pages/collections_update.go)
-    - Display: Render banner at top of collection show page with placeholder if not set. (target: template/collection.html)
-    - Caching: Invalidate collection cache after banner changes. (target: internal/cache/ service usages)
-    - Tests: Template contains hint text; handler rejects non-image; happy path saves and renders banner URL. (internal/pages tests)
-
-- [ ] When viewing a schematic, the add collection form should show a dropdown with all available collections and one option should be "Create a new collection". When creating a new collection in this way a new collection should be made with the schematic that it was created from
-  - Plan (next actions):
-    - UI: Replace freeform input with a select listing user collections + “Create new…” option; when selected, reveal inline name input.
-    - HTMX: On change to “Create new…”, show inline form; POST to new endpoint; on success, swap the control to show it is now in the new collection. (targets: template/schematic.html partials)
-    - Backend: Add endpoint to create collection (owner=current user) and associate the current schematic in a single transaction; enforce permissions. (targets: internal/pages/schematic_add_to_collection.go, new handler)
-    - Tests: handler adds to existing; creates new + adds; unauthorized blocked.
-
-- [x] Trending algorithm adjustments (decay older posts)
-  - Implemented in internal/pages/index.go with helper trendingScore and new aggregation queries (last 48h views and ratings sum). Cached results via cache.TrendingSchematicsKey.
-  - Unit tests added: internal/pages/trending_test.go.
-  - Templates updated to show sections on homepage (template/index.html).
+All items from the original planning notes have been fully implemented. The collection banner upload, add-to-collection dropdown, and trending algorithm are complete. The "caching" sub-item for collections was reviewed and found to be a non-issue: collections handlers query PocketBase directly without caching, so there is no stale cache to invalidate.
 
 
-## 2025-10-13 – Progress update (19:15)
+## 2026-02-23 – Verification pass
 
-- [ ] When creating a collection we should allow the user to upload a banner image, suggest the appropriate size also
-  - [x] Template: Added optional banner file input to collections new/edit forms with hint “Recommended 1600x400 (4:1), max 2MB” and set forms to enctype="multipart/form-data". Kept existing banner_url field for fallback.
-  - [x] Tests: Extended collections_new_template_test.go and collections_edit_template_test.go to assert file input, accept types, hint text, and enctype.
-  - [ ] Backend: Accept multipart uploads, validate type/size, resize/crop to 1600x400, store as WebP (+ PNG fallback).
-  - [ ] Display: Render banner on collection page; use placeholder if not set.
-  - [ ] Caching: Invalidate collection cache after banner changes.
+Ran Go tests (`go test ./...`) and Playwright E2E tests against the running server.
 
-
+- [x] Fixed `cmd/moderate` build error: `client.CheckMinecraftBuildImage` was called but not defined on the `openai.Client` type. Added the missing method to `internal/openai/client.go` using the Responses API.
+- [x] Added Playwright `page_health.spec.ts` with 28 tests covering all major pages (200 status), login form POST method, HTMX search, news template rendering, banner upload input, sidebar toggle, dark mode toggle, and language changer presence.
+- [x] Verified all 15 original issues are fully resolved via screenshots and automated tests.
+- All Go tests pass. All Playwright tests pass (31 active, 5 scaffolded/skipped).

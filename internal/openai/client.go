@@ -683,6 +683,96 @@ func isAffirmativeTrue(s string) bool {
 	return re.FindStringIndex(t) != nil
 }
 
+// CheckMinecraftBuildImage uses the Responses API to determine whether the given image
+// depicts a valid Minecraft build. Returns (isValid, reason, error).
+func (c *Client) CheckMinecraftBuildImage(imageURL string) (bool, string, error) {
+	if c.apiKey == "" {
+		return false, "", fmt.Errorf("OpenAI API key is required")
+	}
+
+	request := ResponseRequest{
+		Model: "gpt-4.1",
+		Input: []ResponseMessage{
+			{
+				Role: "user",
+				Content: []ResponseContent{
+					{
+						Type: "input_text",
+						Text: "Does this image show a valid Minecraft build or schematic? Answer only 'true' if it is a Minecraft build. If it is not, return a short reason why.",
+					},
+					{
+						Type:     "input_image",
+						ImageURL: imageURL,
+					},
+				},
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	if c.logger != nil {
+		c.logger.Info("OpenAI responses request (build check)", "endpoint", ResponsesEndpoint, "request_body_size", len(jsonData))
+	}
+
+	req, err := http.NewRequest("POST", ResponsesEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return false, "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to send OpenAI responses request (build check)", "error", err.Error())
+		}
+		return false, "", fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if c.logger != nil {
+		if resp.StatusCode == http.StatusOK {
+			c.logger.Info("OpenAI responses response (build check)", "status_code", resp.StatusCode, "response_body_size", len(respBody))
+		} else {
+			c.logger.Info("OpenAI responses response (build check)", "status_code", resp.StatusCode, "response_body", string(respBody))
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, "", fmt.Errorf("OpenAI API returned status code %d", resp.StatusCode)
+	}
+
+	var responseResponse ResponseResponse
+	if err := json.Unmarshal(respBody, &responseResponse); err != nil {
+		return false, "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	for _, message := range responseResponse.Output {
+		if message.Role == "assistant" && len(message.Content) > 0 {
+			for _, content := range message.Content {
+				if content.Type == "output_text" {
+					text := strings.TrimSpace(content.Text)
+					if isAffirmativeTrue(text) {
+						return true, "", nil
+					}
+					return false, text, nil
+				}
+			}
+		}
+	}
+
+	return false, "no response from OpenAI", nil
+}
+
 // TranslateToEnglish uses Chat Completions to translate arbitrary text to natural English.
 // It returns the original text if the API key is missing or an error occurs.
 func (c *Client) TranslateToEnglish(text string) (string, error) {
