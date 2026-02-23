@@ -7,6 +7,21 @@
             <div class="container-xl">
                 <div class="row g-4">
                     <div class="col-12 mb-4">
+                    <div class="col-12 col-lg-8">
+                        <div class="row row-cards">
+                            {{range  .Schematics}}
+                                {{ template "schematic_card_medium.html" . }}
+                            {{end}}
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="row">
+                            <div class="card mb-5">
+                                <div id="index-top-right"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col mb-5">
                         <h3>Trending Schematics</h3>
                         <div class="row row-cards">
                             {{range .Trending}}
@@ -37,3 +52,14 @@
     </div>
 </div>
 {{template "foot.html" .}}
+<script>
+    window['nitroAds'].createAd('index-top-right', {
+        "delayLoading": true,
+        "report": {
+            "enabled": true,
+            "icon": true,
+            "wording": "Report Ad",
+            "position": "bottom-right"
+        }
+    });
+</script>

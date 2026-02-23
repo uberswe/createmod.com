@@ -1,3 +1,19 @@
+FROM node:alpine AS frontend-builder
+
+WORKDIR /app/template
+
+# Copy package files for dependency installation
+COPY template/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy template source files
+COPY template/ ./
+
+# Build frontend assets
+RUN npm run build
+
 FROM golang:alpine
 
 RUN apk update && apk upgrade && \
@@ -16,6 +32,9 @@ RUN go mod download
 
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
+
+# Copy built frontend assets from frontend-builder stage
+COPY --from=frontend-builder /app/template/dist ./template/dist
 
 # Build the Go app
 RUN go build -o main ./cmd/server/main.go

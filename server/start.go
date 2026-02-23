@@ -699,9 +699,28 @@ func (s *Server) Start() {
 						// If quality check fails, we'll approve the schematic as a fallback
 						record.Set("moderated", true)
 					} else if qualityResult.Approved {
-						// Schematic passed quality check
-						s.app.Logger().Debug("Schematic passed quality check", "id", e.Record.Id)
-						record.Set("moderated", true)
+						// Schematic text passed quality check, now check image
+						s.app.Logger().Debug("Schematic passed quality check, checking image", "id", e.Record.Id)
+
+						// Perform image quality check
+						imageQualityResult, err := s.moderationService.CheckImageQuality(featuredImage)
+						if err != nil {
+							s.app.Logger().Error("Failed to check image quality", "error", err, "id", e.Record.Id)
+							// If image quality check fails, we'll approve the schematic as a fallback
+							record.Set("moderated", true)
+						} else if imageQualityResult.Approved {
+							// Image passed quality check
+							s.app.Logger().Debug("Image passed quality check", "id", e.Record.Id)
+							record.Set("moderated", true)
+						} else {
+							// Image failed quality check
+							s.app.Logger().Debug("Image failed quality check",
+								"id", e.Record.Id,
+								"reason", imageQualityResult.Reason)
+							record.Set("moderated", false)
+							record.Set("deleted_at", time.Now())
+							record.Set("moderation_reason", imageQualityResult.Reason)
+						}
 					} else {
 						// Schematic failed quality check
 						s.app.Logger().Debug("Schematic failed quality check",

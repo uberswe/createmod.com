@@ -353,7 +353,7 @@
                                 <p>It may take up to 24 hours for your schematic to pass moderation. You can still freely share the direct link.</p>
                                 <p><a id="uploaded-schematic-link" href="${linkUrl}" class="link-secondary">${linkUrl}</a></p>
                             `;
-                            successAlert.parent.appendChild(info);
+                            successAlert.parentNode.insertAdjacentElement("beforeend", info)
                         }
                     } catch (_) {}
                 }

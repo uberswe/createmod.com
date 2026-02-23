@@ -16,6 +16,12 @@
                         <div class="text-secondary mt-1">About {{ .SearchResultCount }} results in {{ .SearchSpeed }} seconds</div>
                         {{ end }}
                     </div>
+                    <div class="col">
+                        <div id="search-top"></div>
+                        <div id="search-top-mobile"></div>
+                    </div>
+                    <div class="col">
+                    </div>
                 </div>
             </div>
         </div>
@@ -142,8 +148,8 @@
                                 </button>
                             </div>
                         </form>
-                        <div style="position: sticky; top: 20px;" class="mt-5">
-                            <div id="search-under"></div>
+                        <div class="mt-5 search-under-container">
+                            <div id="search-under" style="min-height: 550px; display: block; margin-bottom: 2rem;"></div>
                         </div>
                     </div>
                     <div class="col-md-12 col-lg-9">
@@ -193,6 +199,31 @@
                     "wording": "Report Ad",
                     "position": "top-right"
                 }
+            });
+            window['nitroAds'].createAd('search-top', {
+                "sizes": [
+                    [
+                        "728",
+                        "90"
+                    ]
+                ],
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "bottom-right"
+                },
+                "mediaQuery": "(min-width: 1025px)"
+            });
+            window['nitroAds'].createAd('search-top-mobile', {
+                "delayLoading": true,
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "bottom-right"
+                },
+                "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
             });
         </script>
     </div>
