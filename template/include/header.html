@@ -1,85 +1,61 @@
-<div class="page-header d-print-none">
-    <div class="container-xl">
-        <div class="row g-3 align-items-center">
-            <div class="col d-none d-lg-block">
-                <div class="page-pretitle">
-                    {{ .SubCategory }}
-                </div>
-                <h2 class="page-title">
-                    {{ .Title }}
-                </h2>
+<header class="top-header">
+    <div class="top-header-inner">
+        <button class="sidebar-mobile-toggle d-lg-none" type="button" aria-label="Toggle sidebar">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <a href="/" class="top-header-brand">
+            <img alt="CreateMod.com logo" src="/assets/x/logo.png" height="60">
+        </a>
+        <form class="top-header-search" action="/search" method="post" autocomplete="off" id="search-form" novalidate hx-post="/search" hx-target="body" hx-swap="outerHTML" hx-push-url="true">
+            <div class="input-group">
+                <input id="search-field" type="text" value="" name="q" class="form-control" placeholder="Search…" aria-label="Search CreateMod.com">
+                <button class="btn btn-primary" type="submit" aria-label="Search">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                </button>
             </div>
-            <div class="col">
-                <div class="my-2 my-md-0 flex-grow-1 flex-md-grow-0 order-first order-md-last d-none d-md-block">
-                    <form action="/search" method="post" autocomplete="off" id="search-form" novalidate hx-post="/search" hx-target="body" hx-swap="outerHTML" hx-push-url="true">
-                        <div class="input-icon">
-                    <span class="input-icon-addon">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
-                           stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
-                           stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path
-                              d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
-                    </span>
-                            <input id="search-field" type="text" value="" name="advanced-search-term" class="form-control" placeholder="Search…"
-                                   aria-label="Search CreateMod.com">
-                        </div>
-                    </form>
-                </div>
-
-            </div>
-            <div class="col">
-            </div>
-            <div class="col-auto">
-                <div class="d-none d-md-flex align-items-center gap-2">
-                    <button id="sidebar-toggle" type="button" class="btn btn-outline-secondary btn-icon" aria-label="Toggle sidebar" title="Toggle sidebar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                    </button>
-                    <a href="?theme=dark" class="nav-link px-0 hide-theme-dark" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Enable dark mode" data-bs-original-title="Enable dark mode">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
-                    </a>
-                    <a href="?theme=light" class="nav-link px-0 hide-theme-light" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Enable light mode" data-bs-original-title="Enable light mode">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1"><path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
-                    </a>
-                    <div class="dropdown ms-2">
-                        <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" aria-label="Select language">{{ .Language }}</a>
-                        <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                            <a class="dropdown-item" href="/lang?l=en&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"en", return_to: window.location.pathname + window.location.search}' hx-push-url="false">English</a>
-                            <a class="dropdown-item" href="/lang?l=pt-BR&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"pt-BR", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Português (Brasil)</a>
-                            <a class="dropdown-item" href="/lang?l=pt-PT&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"pt-PT", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Português</a>
-                            <a class="dropdown-item" href="/lang?l=es&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"es", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Español</a>
-                            <a class="dropdown-item" href="/lang?l=de&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"de", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Deutsch</a>
-                            <a class="dropdown-item" href="/lang?l=pl&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"pl", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Polski</a>
-                            <a class="dropdown-item" href="/lang?l=ru&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"ru", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Русский</a>
-                            <a class="dropdown-item" href="/lang?l=zh-Hans&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"zh-Hans", return_to: window.location.pathname + window.location.search}' hx-push-url="false">简体中文</a>
-                        </div>
-                    </div>
+        </form>
+        <div class="top-header-actions">
+            <a href="?theme=dark" class="nav-link px-0 hide-theme-dark" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Enable dark mode" title="Enable dark mode">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path></svg>
+            </a>
+            <a href="?theme=light" class="nav-link px-0 hide-theme-light" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Enable light mode" title="Enable light mode">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
+            </a>
+            <div class="dropdown">
+                <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" aria-label="Select language">{{ .Language }}</a>
+                <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                    <a class="dropdown-item" href="/lang?l=en&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"en", return_to: window.location.pathname + window.location.search}' hx-push-url="false">English</a>
+                    <a class="dropdown-item" href="/lang?l=pt-BR&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"pt-BR", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Português (Brasil)</a>
+                    <a class="dropdown-item" href="/lang?l=pt-PT&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"pt-PT", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Português</a>
+                    <a class="dropdown-item" href="/lang?l=es&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"es", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Español</a>
+                    <a class="dropdown-item" href="/lang?l=de&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"de", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Deutsch</a>
+                    <a class="dropdown-item" href="/lang?l=pl&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"pl", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Polski</a>
+                    <a class="dropdown-item" href="/lang?l=ru&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"ru", return_to: window.location.pathname + window.location.search}' hx-push-url="false">Русский</a>
+                    <a class="dropdown-item" href="/lang?l=zh-Hans&return_to={{ .Slug }}" hx-get="/lang" hx-vals='js:{l:"zh-Hans", return_to: window.location.pathname + window.location.search}' hx-push-url="false">简体中文</a>
                 </div>
             </div>
             {{ if .IsAuthenticated }}
-            <div class="col col-auto d-none d-lg-block auth-section">
-                <div class="nav-item dropdown">
-                    <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
-                        {{ if .HasAvatar }}
-                        <img class="avatar avatar-sm auth-avatar" src="{{ .Avatar }}">
-                        {{ else }}
-                        <img class="avatar avatar-sm auth-avatar" src="https://mc-heads.net/avatar/Steve">
-                        {{ end }}
-                        <div class="d-none d-xl-block ps-2">
-                            <div class="auth-username">{{ .Username }}</div>
-                        </div>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                        <a href="/profile" class="dropdown-item">Profile</a>
-                        <div class="dropdown-divider"></div>
-                        <a href="/settings" class="dropdown-item">Settings</a>
-                        <a class="dropdown-item" href="/logout">Logout</a>
+            <div class="nav-item dropdown auth-section">
+                <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
+                    {{ if .HasAvatar }}
+                    <img class="avatar avatar-sm auth-avatar" src="{{ .Avatar }}">
+                    {{ else }}
+                    <img class="avatar avatar-sm auth-avatar" src="https://mc-heads.net/avatar/Steve">
+                    {{ end }}
+                    <div class="d-none d-xl-block ps-2">
+                        <div class="auth-username">{{ .Username }}</div>
                     </div>
+                </a>
+                <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                    <a href="/profile" class="dropdown-item">Profile</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="/settings" class="dropdown-item">Settings</a>
+                    <a class="dropdown-item" href="/logout">Logout</a>
                 </div>
             </div>
             {{ else }}
-            <div class="col-auto d-none d-lg-block">
-                <a href="/login" id="login-button" class="btn btn-primary">Login</a>
-            </div>
+            <a href="/login" id="login-button" class="btn btn-primary">Login</a>
             {{ end }}
         </div>
     </div>
-</div>
+</header>

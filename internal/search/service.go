@@ -2,8 +2,8 @@ package search
 
 import (
 	"createmod/internal/models"
-	"fmt"
 	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/pocketbase/pocketbase"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -15,20 +15,22 @@ import (
 )
 
 const (
-	bestMatchOrder     = 1
-	newestOrder        = 2
-	oldestOrder        = 3
-	highestRatingOrder = 4
-	lowestRatingOrder  = 5
-	mostViewedOrder    = 6
-	leastViewedOrder   = 7
+	BestMatchOrder     = 1
+	NewestOrder        = 2
+	OldestOrder        = 3
+	HighestRatingOrder = 4
+	LowestRatingOrder  = 5
+	MostViewedOrder    = 6
+	LeastViewedOrder   = 7
+	TrendingOrder      = 8
 	regex              = `<.*?>`
 )
 
 type Service struct {
-	index      []schematicIndex
-	bleveIndex bleve.Index
-	app        *pocketbase.PocketBase
+	index          []schematicIndex
+	bleveIndex     bleve.Index
+	app            *pocketbase.PocketBase
+	trendingScores map[string]float64
 }
 
 type schematicIndex struct {
@@ -46,11 +48,17 @@ type schematicIndex struct {
 }
 
 type bleveIndex struct {
-	Title       string
-	Description string
-	Tags        []string
-	Categories  []string
-	Author      string
+	Title         string
+	Description   string
+	AIDescription string
+	Tags          []string
+	Categories    []string
+	Author        string
+}
+
+// SetTrendingScores sets the trending scores map used for trending sort order.
+func (s *Service) SetTrendingScores(scores map[string]float64) {
+	s.trendingScores = scores
 }
 
 func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
@@ -66,6 +74,9 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
 	descriptionFieldMapping.Name = "description"
 	schematicMapping.AddFieldMappingsAt("description", descriptionFieldMapping)
+	aiDescFieldMapping := bleve.NewTextFieldMapping()
+	aiDescFieldMapping.Name = "aidescription"
+	schematicMapping.AddFieldMappingsAt("aidescription", aiDescFieldMapping)
 	tagsFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
 	categoriesFieldMapping := bleve.NewTextFieldMapping()
@@ -83,8 +94,10 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	return &s
 }
 
-// Search takes a term and returns schematic ids in the specified order
-func (s *Service) Search(term string, order int, rating int, category string, tag string, minecraftVersion string, createVersion string) []string {
+// Search takes a term and returns schematic ids in the specified order.
+// tags is a list of tags to filter by (AND logic — result must match ALL selected tags).
+// Pass nil or empty slice for no tag filtering.
+func (s *Service) Search(term string, order int, rating int, category string, tags []string, minecraftVersion string, createVersion string) []string {
 	// If search hasn't had time to initialize, usually after a reboot
 	s.app.Logger().Debug("starting search service - check if initialized")
 	if s == nil || s.index == nil {
@@ -121,19 +134,26 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		result = categoryResult
 	}
 	s.app.Logger().Debug("filtered by category", "count", len(result), "category", category)
-	// Tag
-	if tag != "all" {
+	// Tags (AND logic: result must match ALL selected tags)
+	if len(tags) > 0 && !(len(tags) == 1 && tags[0] == "all") {
+		caser := cases.Title(language.English)
 		tagResult := make([]schematicIndex, 0)
 		for i := range result {
-			tag = strings.ReplaceAll(tag, "-", " ")
-			caser := cases.Title(language.English)
-			if slices.Contains(result[i].Tags, caser.String(tag)) {
+			matchAll := true
+			for _, tag := range tags {
+				normalized := caser.String(strings.ReplaceAll(tag, "-", " "))
+				if !slices.Contains(result[i].Tags, normalized) {
+					matchAll = false
+					break
+				}
+			}
+			if matchAll {
 				tagResult = append(tagResult, result[i])
 			}
 		}
 		result = tagResult
 	}
-	s.app.Logger().Debug("filtered by tag", "count", len(result), "tag", tag)
+	s.app.Logger().Debug("filtered by tags", "count", len(result), "tags", tags)
 	// Create Mod Version
 	if createVersion != "all" {
 		cvResult := make([]schematicIndex, 0)
@@ -159,16 +179,30 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
-		queryFormat := fmt.Sprintf("Title:%s^5 Description:%s Tags:%s^2 Categories:%s^2 Author:%s^3", term, term, term, term, term)
-		if strings.Contains(term, " ") {
-			queryFormat = term
+
+		// Build a disjunction of: AND-match (all words must appear) + exact phrase boost
+		words := strings.Fields(term)
+		var searchQuery query.Query
+		if len(words) == 1 {
+			// Single word: use query string with field boosts
+			searchQuery = bleve.NewQueryStringQuery(term)
+		} else {
+			// Multi-word: conjunction (AND) of each word across any field
+			conjuncts := make([]query.Query, 0, len(words))
+			for _, w := range words {
+				conjuncts = append(conjuncts, bleve.NewMatchQuery(w))
+			}
+			andQuery := bleve.NewConjunctionQuery(conjuncts...)
+
+			// Exact phrase boost (10x)
+			phraseQuery := bleve.NewMatchPhraseQuery(term)
+			phraseQuery.SetBoost(10.0)
+
+			// Combine: results matching AND or phrase, phrase-matched results score higher
+			searchQuery = bleve.NewDisjunctionQuery(andQuery, phraseQuery)
 		}
-		// https://blevesearch.com/docs/Query-String-Query/
-		query := bleve.NewQueryStringQuery(queryFormat)
-		q, err := query.Parse()
-		fields, fieldsError := s.bleveIndex.Fields()
-		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query, "error", err, "fullQuery", q, "fieldsError", fieldsError, "fields", fields)
-		searchRequest := bleve.NewSearchRequest(query)
+
+		searchRequest := bleve.NewSearchRequest(searchQuery)
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
 		if err != nil {
@@ -191,21 +225,23 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	// Order
 	slices.SortFunc(result, func(a, b schematicIndex) int {
 		switch order {
-		case bestMatchOrder:
+		case BestMatchOrder:
 			// Handled by bleve
 			return 0
-		case newestOrder:
+		case NewestOrder:
 			return newestSort(a, b)
-		case oldestOrder:
+		case OldestOrder:
 			return -newestSort(a, b)
-		case highestRatingOrder:
+		case HighestRatingOrder:
 			return highestRatingSort(a, b)
-		case lowestRatingOrder:
+		case LowestRatingOrder:
 			return -highestRatingSort(a, b)
-		case mostViewedOrder:
+		case MostViewedOrder:
 			return mostViewedSort(a, b)
-		case leastViewedOrder:
+		case LeastViewedOrder:
 			return -mostViewedSort(a, b)
+		case TrendingOrder:
+			return trendingSort(s.trendingScores, a, b)
 		default:
 			return 0
 		}
@@ -241,6 +277,18 @@ func newestSort(a schematicIndex, b schematicIndex) int {
 	return -1
 }
 
+func trendingSort(scores map[string]float64, a schematicIndex, b schematicIndex) int {
+	sa := scores[a.ID]
+	sb := scores[b.ID]
+	if sa > sb {
+		return -1
+	}
+	if sa < sb {
+		return 1
+	}
+	return 0
+}
+
 // BuildIndex takes a set of schematics and prepares a search index
 func (s *Service) BuildIndex(schematics []models.Schematic) {
 	batch := s.bleveIndex.NewBatch()
@@ -264,11 +312,12 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			index[i].Tags = append(index[i].Tags, t.Name)
 		}
 		err := batch.Index(index[i].ID, bleveIndex{
-			Title:       index[i].Title,
-			Description: index[i].Description,
-			Tags:        index[i].Tags,
-			Categories:  index[i].Categories,
-			Author:      index[i].Author,
+			Title:         index[i].Title,
+			Description:   index[i].Description,
+			AIDescription: stripHtmlRegex(schematics[i].AIDescription),
+			Tags:          index[i].Tags,
+			Categories:    index[i].Categories,
+			Author:        index[i].Author,
 		})
 
 		index[i].MinecraftVersion = schematics[i].MinecraftVersion
@@ -288,6 +337,105 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 		ids[i] = in.ID
 	}
 	s.index = index
+}
+
+// Suggestion represents an autocomplete suggestion result.
+type Suggestion struct {
+	Text string `json:"text"`
+	Type string `json:"type"` // "schematic", "tag", "category"
+	URL  string `json:"url"`
+}
+
+// Suggest returns autocomplete suggestions matching the given query prefix.
+// It searches titles, tags, and categories from the in-memory index.
+func (s *Service) Suggest(q string, limit int) []Suggestion {
+	if s == nil || s.index == nil || len(q) < 2 {
+		return nil
+	}
+	q = strings.ToLower(strings.TrimSpace(q))
+	if q == "" {
+		return nil
+	}
+
+	results := make([]Suggestion, 0, limit)
+	seen := make(map[string]bool)
+
+	// Title matches (prefix then contains)
+	for _, idx := range s.index {
+		if len(results) >= limit {
+			break
+		}
+		titleLower := strings.ToLower(idx.Title)
+		if strings.HasPrefix(titleLower, q) || strings.Contains(titleLower, q) {
+			key := "s:" + idx.ID
+			if !seen[key] {
+				seen[key] = true
+				results = append(results, Suggestion{
+					Text: idx.Title,
+					Type: "schematic",
+					URL:  "/schematics/" + idx.ID,
+				})
+			}
+		}
+	}
+
+	// Tag name matches
+	tagSeen := make(map[string]bool)
+	for _, idx := range s.index {
+		if len(results) >= limit {
+			break
+		}
+		for _, tag := range idx.Tags {
+			tagLower := strings.ToLower(tag)
+			if tagSeen[tagLower] {
+				continue
+			}
+			if strings.HasPrefix(tagLower, q) || strings.Contains(tagLower, q) {
+				tagSeen[tagLower] = true
+				caser := cases.Title(language.English)
+				tagKey := strings.ReplaceAll(strings.ToLower(tag), " ", "-")
+				results = append(results, Suggestion{
+					Text: caser.String(tag),
+					Type: "tag",
+					URL:  "/search/?tag=" + tagKey,
+				})
+				if len(results) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	// Category name matches
+	catSeen := make(map[string]bool)
+	for _, idx := range s.index {
+		if len(results) >= limit {
+			break
+		}
+		for _, cat := range idx.Categories {
+			catLower := strings.ToLower(cat)
+			if catSeen[catLower] {
+				continue
+			}
+			if strings.HasPrefix(catLower, q) || strings.Contains(catLower, q) {
+				catSeen[catLower] = true
+				catKey := strings.ReplaceAll(strings.ToLower(cat), " ", "-")
+				results = append(results, Suggestion{
+					Text: cat,
+					Type: "category",
+					URL:  "/search/?category=" + catKey,
+				})
+				if len(results) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	if len(results) > limit {
+		results = results[:limit]
+	}
+	return results
 }
 
 func stripHtmlRegex(s string) string {

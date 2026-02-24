@@ -26,14 +26,6 @@ func Test_Header_Avatar_Fallback_Shows_Default(t *testing.T) {
 	}
 }
 
-func Test_Sidebar_Avatar_Fallback_Shows_Default(t *testing.T) {
-	d := DefaultData{IsAuthenticated: true, Username: "Alice", HasAvatar: false}
-	html := renderTemplate(t, "template/include/sidebar.html", d)
-	if !strings.Contains(html, "https://mc-heads.net/avatar/Steve") {
-		t.Fatalf("sidebar should contain default mc-heads avatar when HasAvatar=false")
-	}
-}
-
 func Test_Comments_Template_Includes_Default_Avatar_URL(t *testing.T) {
 	// Basic string presence check (template-only) similar to other template tests
 	path := filepath.Join(projectRootFromThisFile_avatar(t), "template", "include", "comments.html")

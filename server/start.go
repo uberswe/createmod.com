@@ -8,6 +8,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/moderation"
+	"createmod/internal/nbtparser"
 	"createmod/internal/pages"
 	"createmod/internal/router"
 	"createmod/internal/search"
@@ -16,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"github.com/apokalyptik/phpass"
 	"github.com/drexedam/gravatar"
 	"github.com/gosimple/slug"
@@ -135,16 +137,42 @@ func (s *Server) Start() {
 		mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
 		s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
 		s.searchService = search.New(mappedSchematics, s.app)
+		if scores := pages.ComputeTrendingScores(s.app); scores != nil {
+			s.searchService.SetTrendingScores(scores)
+		}
 		s.sitemapService.Generate(s.app)
 
 		// Start the AI description service scheduler (polls every 30 minutes)
-		s.aiDescriptionService.StartScheduler(s.app)
-		// Kick off a one-time translation backfill for existing non-English schematics (non-blocking)
-		go s.aiDescriptionService.BackfillTranslations(s.app)
+		if s.conf.OpenAIApiKey != "" {
+			s.aiDescriptionService.StartScheduler(s.app)
+			// Kick off a one-time translation backfill for existing non-English schematics (non-blocking)
+			go s.aiDescriptionService.BackfillTranslations(s.app)
+		}
 
 		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
 			if !validNBT(e) {
 				return fmt.Errorf("invalid NBT file")
+			}
+
+			// Extract and store materials from NBT file
+			files := e.Record.GetUnsavedFiles("schematic_file")
+			for _, f := range files {
+				if f.Size > 0 && strings.HasSuffix(f.OriginalName, ".nbt") {
+					rsc, err := f.Reader.Open()
+					if err == nil {
+						data, err := io.ReadAll(rsc)
+						rsc.Close()
+						if err == nil {
+							materials, err := nbtparser.ExtractMaterials(data)
+							if err == nil && len(materials) > 0 {
+								materialsJSON, err := json.Marshal(materials)
+								if err == nil {
+									e.Record.Set("materials", string(materialsJSON))
+								}
+							}
+						}
+					}
+				}
 			}
 
 			// Rebuild the search index every time a schematic is created
@@ -205,6 +233,9 @@ func (s *Server) Start() {
 					s.app.Logger().Warn(err.Error())
 				}
 				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
+					s.searchService.SetTrendingScores(scores)
+				}
 				s.sitemapService.Generate(s.app)
 			}()
 			return nil
@@ -326,6 +357,9 @@ func (s *Server) Start() {
 					s.app.Logger().Warn(err.Error())
 				}
 				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
+					s.searchService.SetTrendingScores(scores)
+				}
 				s.sitemapService.Generate(s.app)
 			}()
 			return nil
@@ -345,6 +379,9 @@ func (s *Server) Start() {
 					s.app.Logger().Warn(err.Error())
 				}
 				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
+				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
+					s.searchService.SetTrendingScores(scores)
+				}
 				s.sitemapService.Generate(s.app)
 			}()
 			return nil

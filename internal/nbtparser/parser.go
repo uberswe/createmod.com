@@ -98,3 +98,58 @@ func ExtractStats(data []byte) (blockCount int, materials []string, ok bool) {
 	}
 	return blockCount, materials, true
 }
+
+// Material represents a block type and its count in a schematic
+type Material struct {
+	BlockID string `json:"block_id"`
+	Count   int    `json:"count"`
+}
+
+// ExtractMaterials parses NBT data and returns a list of materials (block types and counts).
+// It uses the mcnbt library to convert to StandardFormat and reads the palette.
+func ExtractMaterials(data []byte) ([]Material, error) {
+	decoded, err := mc.DecodeAny(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode NBT: %w", err)
+	}
+
+	std, err := mc.ConvertToStandard(decoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to standard format: %w", err)
+	}
+
+	// Count blocks by palette state
+	stateCounts := make(map[int]int)
+	for _, block := range std.Blocks {
+		stateCounts[block.State]++
+	}
+
+	// Map palette states to block names
+	blockCounts := make(map[string]int)
+	for state, count := range stateCounts {
+		if palette, ok := std.Palette[state]; ok {
+			name := palette.Name
+			// Filter out air blocks
+			if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" {
+				continue
+			}
+			blockCounts[name] += count
+		}
+	}
+
+	// Convert to sorted slice
+	materials := make([]Material, 0, len(blockCounts))
+	for blockID, count := range blockCounts {
+		materials = append(materials, Material{
+			BlockID: blockID,
+			Count:   count,
+		})
+	}
+
+	// Sort by count descending
+	sort.Slice(materials, func(i, j int) bool {
+		return materials[i].Count > materials[j].Count
+	})
+
+	return materials, nil
+}

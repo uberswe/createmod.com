@@ -185,7 +185,7 @@ func APISchematicsListHandler(app *pocketbase.PocketBase, searchService *search.
 		} else {
 			// Search via in-memory searchService, then DB fetch in order
 			term := strings.ReplaceAll(q, "-", " ")
-			ids := searchService.Search(term, 6, -1, "all", "all", "all", "all")
+			ids := searchService.Search(term, search.MostViewedOrder, -1, "all", nil, "all", "all")
 			// Fetch matching records
 			var res []*core.Record
 			if len(ids) > 0 {

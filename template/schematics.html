@@ -4,7 +4,9 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-xl">
+            <div class="container-wide">
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
                 <div id="schematics-results">
                     <div class="row row-cards">
                         {{range .Schematics }}
@@ -23,6 +25,9 @@
                             Find more schematics via the <a href="/search">Search page</a>
                         </div>
                     </div>
+                </div>
+                </div>
+                {{template "ad_rail.html" .}}
                 </div>
             </div>
         </div>

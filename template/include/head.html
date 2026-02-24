@@ -20,17 +20,20 @@
     <meta name="twitter:image:src" content="{{ .Thumbnail }}">
 
 
+    {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ end }}
+    {{ if .PrevPageURL }}<link rel="prev" href="{{ .PrevPageURL }}">{{ end }}
+    {{ if .NextPageURL }}<link rel="next" href="{{ .NextPageURL }}">{{ end }}
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemaps/sitemap.xml">
-    <meta name="robots" content="all">
+    {{ if .NoIndex }}<meta name="robots" content="noindex, follow">{{ else }}<meta name="robots" content="all">{{ end }}
     <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
     <!-- Tabler CSS via CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
     <!-- Dropzone CSS via CDN (for upload pages) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous">
     <!-- Theme variables & Tabler overrides (local) -->
-    <link rel="stylesheet" href="/assets/x/style.css" />
+    <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project overrides (small tweaks) -->
-    <link rel="stylesheet" href="/assets/x/app.css" />
+    <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
 
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.12" defer crossorigin="anonymous" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"></script>
@@ -75,20 +78,14 @@
 <script>
   (function(){
     try {
-      var pref = localStorage.getItem('cm_sidebar') || 'closed';
-      document.body.setAttribute('data-sidebar', pref);
       document.addEventListener('click', function(e){
-        var btn = e.target && e.target.closest && e.target.closest('#sidebar-toggle');
+        var btn = e.target && e.target.closest && e.target.closest('.sidebar-mobile-toggle');
         if (btn) {
-          var cur = document.body.getAttribute('data-sidebar') || 'closed';
-          var next = cur === 'closed' ? 'open' : 'closed';
-          document.body.setAttribute('data-sidebar', next);
-          try { localStorage.setItem('cm_sidebar', next); } catch(_){ }
+          document.body.classList.toggle('sidebar-open');
         }
       });
       document.body.addEventListener('htmx:afterOnLoad', function(){
-        var pref2 = localStorage.getItem('cm_sidebar') || 'closed';
-        document.body.setAttribute('data-sidebar', pref2);
+        document.body.classList.remove('sidebar-open');
       });
     } catch(_) {}
   })();

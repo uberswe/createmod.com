@@ -38,6 +38,8 @@ type Schematic struct {
 	RatingCount          int
 	AIDescription        string
 	Paid                 bool
+	Featured             bool
+	Materials            string
 	ExternalURL          string
 }
 
@@ -66,4 +68,5 @@ type DatabaseSchematic struct {
 	AvgRating        *float64
 	SchematicFile    string
 	AIDescription    string
+	Featured         bool
 }

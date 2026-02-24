@@ -4,7 +4,7 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-xl">
+            <div class="container-wide">
                 <div class="row" data-masonry='{"percentPosition": true }'>
                 {{range $i, $image := .Images }}
                     <div class="card m-2 p-0" style="width: 150px; height: 150px;">
@@ -14,53 +14,19 @@
                              src="/assets/x/150x150.png" alt="{{ $image.Title }}">
                     </a>
                     </div>
-                    {{ if mod $i 30 }}
-                        {{ if gt $i 0 }}
-                          {{ if not $.IsContributor }}
-                                <div class="card m-2 card-borderless text-center" style="width: 315px; height: 315px;">
-                                    <div style="margin: auto" id="explore-inline-{{ $i }}"></div>
-                                </div>
-                          {{ end }}
-                        {{ end }}
-                    {{end}}
                 {{end}}
-            </div>
-            <div class="row">
-                <div class="col-md-6 pt-4 m-auto">
-                    <div class="alert alert-info" role="alert">
-                        Reload the page or <a href="/explore">click here</a> for 1000 random images.
+                </div>
+                <div class="row">
+                    <div class="col-md-6 pt-4 m-auto">
+                        <div class="alert alert-info" role="alert">
+                            Reload the page or <a href="/explore">click here</a> for 1000 random images.
+                        </div>
                     </div>
                 </div>
-            </div>
             </div>
         </div>
         {{template "footer.html" .}}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/masonry-layout@4.2.2/dist/masonry.pkgd.min.js" defer crossorigin="anonymous"></script>
-    <script>
-    {{range $i, $image := .Images }}
-    {{ if mod $i 30 }}
-    {{ if gt $i 0 }}
-        if (document.getElementById('explore-inline-{{ $i }}')) {
-        window['nitroAds'].createAd('explore-inline-{{ $i }}', {
-            "refreshTime": 30,
-            "sizes": [
-                [
-                    "300",
-                    "250"
-                ]
-            ],
-            "report": {
-                "enabled": true,
-                "icon": true,
-                "wording": "Report Ad",
-                "position": "top-right"
-            }
-        });
-        }
-    {{end}}
-    {{end}}
-    {{end}}
-    </script>
 </div>
 {{template "foot.html" .}}

@@ -1,20 +1,13 @@
 package pages
 
 import (
-	"createmod/internal/i18n"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
-	htmltmpl "html/template"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func Test_Collections_Show_Template_Placeholder_When_No_Banner(t *testing.T) {
-	r := pbtempl.NewRegistry()
-	r.AddFuncs(htmltmpl.FuncMap{
-		"HumanDate": func(ti any) string { return "" },
-		"T":         func(lang, key string) string { return i18n.T(lang, key) },
-	})
+	r := NewTestRegistry()
 
 	files := append([]string{
 		"./template/collections_show.html",

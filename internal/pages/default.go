@@ -29,6 +29,10 @@ type DefaultData struct {
 	HasAvatar       bool
 	IsContributor   bool
 	Language        string
+	CanonicalURL    string
+	PrevPageURL     string
+	NextPageURL     string
+	NoIndex         bool
 }
 
 func (d *DefaultData) Populate(e *core.RequestEvent) {

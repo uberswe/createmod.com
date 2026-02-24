@@ -8,6 +8,8 @@ import (
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/gosimple/slug"
 	"github.com/pocketbase/pocketbase"
@@ -23,9 +25,24 @@ import (
 	"time"
 )
 
+// computeAssetVersion hashes local CSS files and returns a short hex string.
+// Called once at startup so templates can append ?v=<hash> for cache-busting.
+func computeAssetVersion() string {
+	h := sha256.New()
+	for _, path := range []string{"./template/static/style.css", "./template/static/app.css"} {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			h.Write(data)
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))[:8]
+}
+
 func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service) {
 	promotionService := promotion.New()
 	registry := template.NewRegistry()
+
+	assetVer := computeAssetVersion()
 
 	funcMap := html.FuncMap{
 		"ToLower":   strings.ToLower,
@@ -33,6 +50,15 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"printf":    fmt.Sprintf,
 		"T":         func(lang string, key string) string { return i18n.T(lang, key) },
+		"AssetVer":  func() string { return assetVer },
+		"tagSelected": func(selected []string, key string) bool {
+			for _, s := range selected {
+				if s == key {
+					return true
+				}
+			}
+			return false
+		},
 	}
 
 	registry.AddFuncs(funcMap)
@@ -157,8 +183,12 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// External link interstitial
 	e.GET("/out", pages.ExternalLinkInterstitialHandler(app, registry, cacheService))
 	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
+	// Search autocomplete
+	e.GET("/api/search/suggest", pages.SearchSuggestHandler(searchService))
+	e.GET("/search/{term}/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
+	e.GET("/search/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
 	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService, registry))

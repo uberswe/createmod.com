@@ -1,0 +1,26 @@
+{{define "schematic_card_featured.html"}}
+<div class="col-md-4 col-12 mb-3">
+  <a href="/schematics/{{ .Name }}" class="d-block text-decoration-none">
+    <div class="card card-featured card-hover-lift overflow-hidden">
+      <div class="ratio ratio-16x9">
+        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360"
+             alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover">
+      </div>
+      <div class="card-img-overlay d-flex flex-column justify-content-end p-3">
+        <h3 class="text-white mb-1" style="text-shadow: 0 1px 3px rgba(0,0,0,0.6);">{{ .Title }}</h3>
+        <div class="d-flex align-items-center gap-2">
+          {{ if .Author }}
+          {{ if .Author.HasAvatar }}
+          <span class="avatar avatar-xs" style="background-image: url({{ .Author.Avatar }})"></span>
+          {{ end }}
+          <span class="text-white-50 small">{{ .Author.Username }}</span>
+          {{ end }}
+          {{ range .Categories }}
+          <span class="badge badge-outline text-white">{{ .Name }}</span>
+          {{ end }}
+        </div>
+      </div>
+    </div>
+  </a>
+</div>
+{{end}}

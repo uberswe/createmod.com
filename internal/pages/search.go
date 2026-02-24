@@ -21,22 +21,30 @@ var searchTemplates = append([]string{
 	"./template/search.html",
 	"./template/include/schematic_card.html",
 	"./template/include/schematic_card_medium.html",
+	"./template/include/search_filters.html",
+	"./template/include/search_pagination.html",
 }, commonTemplates...)
 
 type SearchData struct {
 	DefaultData
 	Schematics        []models.Schematic
 	Tags              []models.SchematicTag
+	TagsWithCount     []models.SchematicTagWithCount
+	SelectedTags      []string
 	MinecraftVersions []models.MinecraftVersion
 	CreateVersions    []models.CreatemodVersion
 	SearchSpeed       string
 	SearchResultCount int // total results count
+	TotalResults      int
+	TotalPages        int
+	PageNumbers       []int // sliding window page numbers; -1 = ellipsis
 	Term              string
 	TermSlug          string
 	Sort              int
+	DisplaySort       int // sort value shown in the UI (always BestMatch when no explicit sort)
 	Rating            int
 	Category          string
-	Tag               string
+	Tag               string // backward compat: first selected tag
 	MinecraftVersion  string
 	CreateVersion     string
 	Page              int
@@ -45,20 +53,33 @@ type SearchData struct {
 	HasNext           bool
 	PrevURL           string
 	NextURL           string
+	ViewMode          string
 }
 
 func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
-		order := 6
-		if e.Request.URL.Query().Get("sort") != "" {
+		// Also accept ?q= query param (used by live HTMX filtering)
+		if slugTerm == "" {
+			if q := strings.TrimSpace(e.Request.URL.Query().Get("q")); q != "" {
+				slugTerm = slug.Make(q)
+			}
+		}
+
+		// Default sort is always BestMatch; explicit ?sort= overrides
+		hasSortParam := e.Request.URL.Query().Get("sort") != ""
+		order := search.BestMatchOrder
+		displaySort := search.BestMatchOrder
+		if hasSortParam {
 			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("sort"))
 			if err != nil {
 				return err
 			}
 			order = atoi
+			displaySort = atoi
 		}
+
 		rating := -1
 		if e.Request.URL.Query().Get("rating") != "" {
 			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("rating"))
@@ -71,10 +92,23 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		if e.Request.URL.Query().Get("category") != "" {
 			category = e.Request.URL.Query().Get("category")
 		}
-		tag := "all"
-		if e.Request.URL.Query().Get("tag") != "" {
-			tag = e.Request.URL.Query().Get("tag")
+		// Multi-tag: parse comma-separated tag param
+		tagParam := e.Request.URL.Query().Get("tag")
+		var selectedTags []string
+		if tagParam != "" && tagParam != "all" {
+			for _, t := range strings.Split(tagParam, ",") {
+				t = strings.TrimSpace(t)
+				if t != "" {
+					selectedTags = append(selectedTags, t)
+				}
+			}
 		}
+		// Build tags slice for search service (nil means no filter)
+		searchTags := selectedTags
+		if len(searchTags) == 0 {
+			searchTags = nil
+		}
+
 		mcVersion := "all"
 		if e.Request.URL.Query().Get("mcv") != "" {
 			mcVersion = e.Request.URL.Query().Get("mcv")
@@ -86,7 +120,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
 		app.Logger().Debug("search", "term", term, "searchService", searchService)
-		ids := searchService.Search(term, order, rating, category, tag, mcVersion, createVersion)
+		ids := searchService.Search(term, order, rating, category, searchTags, mcVersion, createVersion)
 		app.Logger().Debug("found ids", "ids", ids)
 
 		interfaceIds := make([]interface{}, 0, len(ids))
@@ -113,14 +147,14 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 				}
 			}
 		}
-		limit := 100
-		if len(sortedModels) > limit {
-			sortedModels = sortedModels[:limit]
-		}
 
-		// Pagination
+		// Pagination: check path value first, fall back to ?p= query param
 		page := 1
-		if e.Request.URL.Query().Get("p") != "" {
+		if pathPage := e.Request.PathValue("page"); pathPage != "" {
+			if p, err := strconv.Atoi(pathPage); err == nil && p > 0 {
+				page = p
+			}
+		} else if e.Request.URL.Query().Get("p") != "" {
 			if p, err := strconv.Atoi(e.Request.URL.Query().Get("p")); err == nil && p > 0 {
 				page = p
 			}
@@ -152,28 +186,78 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		end := time.Now()
 		duration := end.Sub(start)
 
-		baseURL := fmt.Sprintf("/search/%s?sort=%d&rating=%d&category=%s&tag=%s&mcv=%s&cv=%s", slugTerm, order, rating, category, tag, mcVersion, createVersion)
+		// Reconstruct tag param for URLs
+		tagURLParam := "all"
+		if len(selectedTags) > 0 {
+			tagURLParam = strings.Join(selectedTags, ",")
+		}
+
+		// Build query string for filter params — only include sort when explicitly set
+		// so the smart default logic applies consistently across pagination
+		queryParts := []string{}
+		if hasSortParam {
+			queryParts = append(queryParts, fmt.Sprintf("sort=%d", order))
+		}
+		queryParts = append(queryParts, fmt.Sprintf("rating=%d", rating))
+		queryParts = append(queryParts, fmt.Sprintf("category=%s", category))
+		queryParts = append(queryParts, fmt.Sprintf("tag=%s", tagURLParam))
+		queryParts = append(queryParts, fmt.Sprintf("mcv=%s", mcVersion))
+		queryParts = append(queryParts, fmt.Sprintf("cv=%s", createVersion))
+		// Build query-param pagination URLs (works with both path-based and HTMX ?q= requests)
+		buildPageURL := func(p int) string {
+			parts := make([]string, 0, len(queryParts)+2)
+			if slugTerm != "" {
+				parts = append(parts, fmt.Sprintf("q=%s", slugTerm))
+			}
+			parts = append(parts, queryParts...)
+			if p > 1 {
+				parts = append(parts, fmt.Sprintf("p=%d", p))
+			}
+			return fmt.Sprintf("/search?%s", strings.Join(parts, "&"))
+		}
+
 		prevURL := ""
 		nextURL := ""
 		if page > 1 {
-			prevURL = fmt.Sprintf("%s&p=%d", baseURL, page-1)
+			prevURL = buildPageURL(page - 1)
 		}
 		if endIdx < total {
-			nextURL = fmt.Sprintf("%s&p=%d", baseURL, page+1)
+			nextURL = buildPageURL(page + 1)
+		}
+
+		// SEO canonical & prev/next
+		canonicalURL := fmt.Sprintf("https://createmod.com%s", buildPageURL(page))
+		seoNoIndex := page > 20
+
+		viewMode := e.Request.URL.Query().Get("view")
+		if viewMode != "list" {
+			viewMode = "grid"
+		}
+
+		totalPages := 0
+		if pageSize > 0 {
+			totalPages = (total + pageSize - 1) / pageSize
 		}
 
 		d := SearchData{
 			Schematics:        schematicModels,
 			Tags:              allTags(app),
+			TagsWithCount:     allTagsWithCount(app, cacheService),
+			SelectedTags:      selectedTags,
 			MinecraftVersions: allMinecraftVersions(app),
 			CreateVersions:    allCreatemodVersions(app),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
 			SearchResultCount: total,
+			TotalResults:      total,
+			TotalPages:        totalPages,
+			PageNumbers:       computePageNumbers(page, totalPages),
 			Term:              term,
 			TermSlug:          slugTerm,
 			Sort:              order,
+			DisplaySort:       displaySort,
 			Rating:            rating,
 			Category:          category,
+			Tag:               tagURLParam,
 			MinecraftVersion:  mcVersion,
 			CreateVersion:     createVersion,
 			Page:              page,
@@ -182,12 +266,28 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			HasNext:           nextURL != "",
 			PrevURL:           prevURL,
 			NextURL:           nextURL,
+			ViewMode:          viewMode,
 		}
 		d.Populate(e)
-		d.Title = "Search"
+		// Dynamic title based on search context
+		if term != "" && page > 1 {
+			d.Title = fmt.Sprintf("%s Schematics - Page %d", term, page)
+		} else if term != "" {
+			d.Title = fmt.Sprintf("%s Schematics", term)
+		} else {
+			d.Title = "Search"
+		}
 		d.Categories = allCategories(app, cacheService)
 		d.Description = fmt.Sprintf("Search results for %s Create Mod Schematics.", d.Term)
 		d.Slug = fmt.Sprintf("/search/%s", slugTerm)
+		d.CanonicalURL = canonicalURL
+		d.NoIndex = seoNoIndex
+		if prevURL != "" {
+			d.PrevPageURL = fmt.Sprintf("https://createmod.com%s", prevURL)
+		}
+		if nextURL != "" {
+			d.NextPageURL = fmt.Sprintf("https://createmod.com%s", nextURL)
+		}
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		if d.SearchResultCount > 0 {
 			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)
@@ -204,6 +304,47 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		}
 		return e.HTML(http.StatusOK, html)
 	}
+}
+
+// computePageNumbers returns a sliding window of page numbers with ellipsis markers (-1).
+func computePageNumbers(current, totalPages int) []int {
+	if totalPages <= 1 {
+		return nil
+	}
+	const windowSize = 5
+	pages := make([]int, 0, windowSize+4)
+
+	start := current - windowSize/2
+	end := current + windowSize/2
+
+	if start < 1 {
+		start = 1
+		end = windowSize
+	}
+	if end > totalPages {
+		end = totalPages
+		start = totalPages - windowSize + 1
+	}
+	if start < 1 {
+		start = 1
+	}
+
+	if start > 1 {
+		pages = append(pages, 1)
+		if start > 2 {
+			pages = append(pages, -1) // ellipsis
+		}
+	}
+	for i := start; i <= end; i++ {
+		pages = append(pages, i)
+	}
+	if end < totalPages {
+		if end < totalPages-1 {
+			pages = append(pages, -1) // ellipsis
+		}
+		pages = append(pages, totalPages)
+	}
+	return pages
 }
 
 func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searchResults int32) error {
@@ -237,19 +378,32 @@ func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searc
 func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		data := struct {
-			Term             string `json:"term" form:"advanced-search-term"`
-			Sort             string `json:"sort" form:"advanced-search-sort"`
-			Rating           string `json:"rating" form:"advanced-search-ranking"`
-			Category         string `json:"category" form:"advanced-search-category"`
-			Tag              string `json:"tag" form:"advanced-search-tag"`
-			MinecraftVersion string `json:"minecraft-version" form:"advanced-search-minecraft-version"`
-			CreateVersion    string `json:"create-version" form:"advanced-search-create-version"`
+			Term             string `json:"q" form:"q"`
+			Sort             string `json:"sort" form:"sort"`
+			Rating           string `json:"rating" form:"rating"`
+			Category         string `json:"category" form:"category"`
+			Tag              string `json:"tag" form:"tag"`
+			MinecraftVersion string `json:"mcv" form:"mcv"`
+			CreateVersion    string `json:"cv" form:"cv"`
 		}{}
 		if err := e.BindBody(&data); err != nil {
 			return apis.NewBadRequestError("Failed to read request data", err)
 		}
+		// Handle multi-tag: form may submit multiple tag values via checkboxes
+		tagParam := data.Tag
+		if tagParam == "" {
+			// Check for multiple tag values from checkboxes
+			if err := e.Request.ParseForm(); err == nil {
+				if tagValues := e.Request.Form["tag"]; len(tagValues) > 1 {
+					tagParam = strings.Join(tagValues, ",")
+				}
+			}
+		}
+		if tagParam == "" {
+			tagParam = "all"
+		}
 		term := slug.Make(data.Term)
-		return e.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, data.Tag, data.MinecraftVersion, data.CreateVersion))
+		return e.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, tagParam, data.MinecraftVersion, data.CreateVersion))
 	}
 }
 

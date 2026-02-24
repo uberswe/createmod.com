@@ -15,20 +15,22 @@ func Test_Index_Template_Shows_Trending_First(t *testing.T) {
 	}
 	s := string(b)
 
-	if !strings.Contains(s, "Trending Schematics") {
-		t.Fatalf("index.html should contain 'Trending Schematics' section")
+	if !strings.Contains(s, "Trending") {
+		t.Fatalf("index.html should contain 'Trending' tab")
 	}
-	if !strings.Contains(s, "Highest Rated Schematics") {
-		t.Fatalf("index.html should contain 'Highest Rated Schematics' section")
+	if !strings.Contains(s, "Highest Rated") {
+		t.Fatalf("index.html should contain 'Highest Rated' tab")
 	}
-	// Ensure the trending section (left column) appears before the main recent list that uses medium cards
-	idxTrending := strings.Index(s, "Trending Schematics")
-	idxRecentCards := strings.Index(s, `template "schematic_card_medium.html"`)
-	if idxTrending < 0 || idxRecentCards < 0 {
-		t.Fatalf("failed to locate expected markers in index.html")
+	if !strings.Contains(s, "Featured Builds") {
+		t.Fatalf("index.html should contain 'Featured Builds' section")
 	}
-	if idxTrending > idxRecentCards {
-		t.Fatalf("expected 'Trending Schematics' to appear before medium card list on the page")
+	// Ensure tabbed sections use the small card template
+	if !strings.Contains(s, `template "schematic_card_small.html"`) {
+		t.Fatalf("index.html should use schematic_card_small.html template")
+	}
+	// Ensure featured section uses the featured card template
+	if !strings.Contains(s, `template "schematic_card_featured.html"`) {
+		t.Fatalf("index.html should use schematic_card_featured.html template")
 	}
 }
 

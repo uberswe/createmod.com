@@ -1,0 +1,61 @@
+name: tests
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+          - 8025:8025
+          - 1025:1025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Go tests
+        run: go test ./...
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install Playwright
+        run: |
+          npm ci || npm i -D @playwright/test @axe-core/playwright pocketbase
+          npx playwright install --with-deps
+      - name: Build and run PocketBase
+        run: |
+          docker build -f dev/pocketbase.Dockerfile --build-arg PB_VERSION=0.30.0 -t pb:local .
+          docker run -d --network host \
+            -v ${{ github.workspace }}/dev/pb_data:/pb_data \
+            -v ${{ github.workspace }}/dev/pb_migrations:/pb_migrations \
+            -v ${{ github.workspace }}/dev/pb_hooks:/pb_hooks \
+            --name pocketbase pb:local
+          for i in `seq 1 60`; do curl -fsS http://localhost:8090/api/health && break || sleep 1; done
+      - name: Build and start app
+        run: |
+          docker build -t app:local .
+          docker run -d --network host \
+            -e POCKETBASE_URL=http://localhost:8090 \
+            -e SMTP_HOST=localhost \
+            -e SMTP_PORT=1025 \
+            -e APP_BASE_URL=http://localhost:8080 \
+            -e ENV=ci \
+            --name app app:local
+      - name: Wait for app
+        run: |
+          for i in `seq 1 60`; do curl -fsS http://localhost:8080/ && break || sleep 1; done
+      - name: Playwright tests
+        env:
+          APP_BASE_URL: http://localhost:8080
+          PB_URL: http://localhost:8090
+        run: npx playwright test
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report

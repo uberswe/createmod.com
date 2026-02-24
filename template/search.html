@@ -3,176 +3,105 @@
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
         {{template "header.html" .}}
-        <div class="page-header d-print-none">
-            <div class="container-xl">
-                <div class="row g-2 align-items-center">
-                    <div class="col">
-                        <h2 class="page-title">
-                            Search results
-                        </h2>
-                        {{ if eq .SearchResultCount 0 }}
-                        <div class="text-secondary mt-1">No results found</div>
-                        {{ else }}
-                        <div class="text-secondary mt-1">About {{ .SearchResultCount }} results in {{ .SearchSpeed }} seconds</div>
-                        {{ end }}
-                    </div>
-                    <div class="col">
-                        <div id="search-top"></div>
-                        <div id="search-top-mobile"></div>
-                    </div>
-                    <div class="col">
+        <div class="page-body">
+            <div class="container-wide">
+                <!-- Search hero -->
+                <div class="search-hero mb-4">
+                    <div class="input-icon">
+                        <span class="input-icon-addon">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                               stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                               stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path
+                                  d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                        </span>
+                        <input id="search-hero-input" type="text" value="{{ .Term }}" name="q" class="form-control form-control-lg" placeholder="Search schematics..."
+                               aria-label="Search CreateMod.com" autocomplete="off"
+                               hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true"
+                               hx-trigger="keyup changed delay:400ms, search" hx-include="#advanced-search-form">
                     </div>
                 </div>
-            </div>
-        </div>
-        <div class="page-body">
-            <div class="container-xl">
-                <div class="row g-4">
-                    <div class="col-md-12 col-lg-3">
-                        <form action="/search" method="post" autocomplete="off" id="advanced-search-form" novalidate hx-post="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true">
-                            <div class="subheader mb-2">Search term</div>
-                            <div class="input-icon mb-3">
-                    <span class="input-icon-addon">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
-                           stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
-                           stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path
-                              d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
-                    </span>
-                                <input id="advanced-search-field" name="advanced-search-term" type="text" value="{{ .Term }}" class="form-control" placeholder="Search…"
-                                       aria-label="Search CreateMod.com">
-                            </div>
-                            <div class="subheader mb-2">Order by</div>
-                            <div class="mb-3">
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="1" {{ if eq .Sort 1 }}checked{{ end }}>
-                                    <span class="form-check-label">Best match</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="2" {{ if eq .Sort 2 }}checked{{ end }}>
-                                    <span class="form-check-label">Newest</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="3" {{ if eq .Sort 3 }}checked{{ end }}>
-                                    <span class="form-check-label">Oldest</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="4" {{ if eq .Sort 4 }}checked{{ end }}>
-                                    <span class="form-check-label">Highest rating</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="5" {{ if eq .Sort 5 }}checked{{ end }}>
-                                    <span class="form-check-label">Lowest rating</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="6" {{ if eq .Sort 6 }}checked{{ end }}>
-                                    <span class="form-check-label">Most views</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-sort" value="7" {{ if eq .Sort 7 }}checked{{ end }}>
-                                    <span class="form-check-label">Least views</span>
-                                </label>
-                            </div>
-                            <div class="subheader mb-2">Minimum Rating</div>
-                            <div class="mb-3">
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="-1" {{ if eq .Rating -1 }}checked{{ end }}>
-                                    <span class="form-check-label">Any rating</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="5" {{ if eq .Rating 5 }}checked{{ end }}>
-                                    <span class="form-check-label">5 stars</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="4" {{ if eq .Rating 4 }}checked{{ end }}>
-                                    <span class="form-check-label">4 stars</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="3" {{ if eq .Rating 3 }}checked{{ end }}>
-                                    <span class="form-check-label">3 stars</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="2" {{ if eq .Rating 2 }}checked{{ end }}>
-                                    <span class="form-check-label">2 stars</span>
-                                </label>
-                                <label class="form-check">
-                                    <input type="radio" class="form-check-input" name="advanced-search-ranking" value="1" {{ if eq .Rating 1 }}checked{{ end }}>
-                                    <span class="form-check-label">1 star</span>
-                                </label>
-                            </div>
-                            <p>
-                                <a class="" data-bs-toggle="collapse" href="#collapseAdvanced" role="button" aria-expanded="false" aria-controls="collapseExample">
-                                    Show advanced options
-                                </a>
-                            </p>
-                            <div class="collapse" id="collapseAdvanced">
-                            <div class="subheader mb-2">Category</div>
-                            <div class="mb-3">
-                                <select name="advanced-search-category" class="form-select">
-                                    <option value="all" {{ if eq .Category "all" }}selected{{ end }}>All</option>
-                                    {{ range .Categories}}
-                                        <option value="{{ .Key }}" {{ if eq $.Category .Key }}selected{{ end }}>{{ .Name }}</option>
-                                    {{ end }}
-                                </select>
-                            </div>
-                            <div class="subheader mb-2">Tag</div>
-                            <div class="mb-3">
-                                <select name="advanced-search-tag" class="form-select">
-                                    <option value="all" {{ if eq .Tag "all" }}selected{{ end }}>All</option>
-                                    {{ range .Tags }}
-                                    <option value="{{ .Key }}" {{ if eq $.Tag .Key }}selected{{ end }}>{{ .Name }}</option>
-                                    {{ end }}
-                                </select>
-                            </div>
-                            <div class="subheader mb-2">Minecraft Version</div>
-                            <div class="mb-3">
-                                <select name="advanced-search-minecraft-version" class="form-select">
-                                    <option value="all" {{ if eq .MinecraftVersion "all" }}selected{{ end }}>All</option>
-                                    {{ range .MinecraftVersions }}
-                                    <option value="{{ .Version }}" {{ if eq $.MinecraftVersion .Version }}selected{{ end }}>{{ .Version }}</option>
-                                    {{ end }}
-                                </select>
-                            </div>
-                            <div class="subheader mb-2">Create Version</div>
-                            <div class="mb-3">
-                                <select name="advanced-search-create-version" class="form-select">
-                                    <option value="all" {{ if eq .CreateVersion "all" }}selected{{ end }}>All</option>
-                                    {{ range .CreateVersions }}
-                                    <option value="{{ .Version }}" {{ if eq $.CreateVersion .Version }}selected{{ end }}>{{ .Version }}</option>
-                                    {{ end }}
-                                </select>
-                            </div>
-                            </div>
-                            <div class="mt-5">
-                                <button class="btn btn-primary w-100">
-                                    Search
-                                </button>
-                            </div>
-                        </form>
-                        <div class="mt-5 search-under-container">
+
+                <!-- 3-column layout -->
+                <div class="search-layout">
+                    <!-- Left: Filter sidebar -->
+                    <div class="search-sidebar d-none d-lg-block">
+                        {{template "search_filters.html" .}}
+                        <div class="mt-4 search-under-container">
                             <div id="search-under" style="min-height: 550px; display: block; margin-bottom: 2rem;"></div>
                         </div>
                     </div>
-                    <div class="col-md-12 col-lg-9">
+
+                    <!-- Mobile filter toggle -->
+                    <div class="d-lg-none mb-3">
+                        <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobile-filters" aria-controls="mobile-filters">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z" /></svg>
+                            Filters
+                        </button>
+                    </div>
+                    <!-- Mobile filters offcanvas -->
+                    <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="mobile-filters" aria-labelledby="mobile-filters-label">
+                        <div class="offcanvas-header">
+                            <h5 class="offcanvas-title" id="mobile-filters-label">Filters</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                        </div>
+                        <div class="offcanvas-body" id="mobile-filters-body">
+                        </div>
+                    </div>
+
+                    <!-- Center: Results -->
+                    <div class="search-center">
                         <div id="search-results">
+                            <div class="text-secondary small mb-3">
+                                {{ if eq .SearchResultCount 0 }}
+                                    No results found
+                                {{ else }}
+                                    {{ .SearchResultCount }} schematics found in {{ .SearchSpeed }}s
+                                {{ end }}
+                            </div>
                             <div class="row row-cards">
                                 {{range .Schematics }}
                                     {{ template "schematic_card_medium.html" . }}
                                 {{end}}
                             </div>
-                            {{ if or .HasPrev .HasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
-                                <div class="text-secondary">Page {{ .Page }}</div>
-                                <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
-                            </div>
-                            {{ end }}
+                            {{template "search_pagination.html" .}}
                         </div>
+                    </div>
+
+                    <!-- Right: Ad rail (desktop only) -->
+                    <div class="search-ad-rail d-none d-xl-block">
+                        <div id="search-ad-right-top" class="mb-3"></div>
+                        <div id="search-ad-right-bottom"></div>
                     </div>
                 </div>
             </div>
         </div>
         {{template "footer.html" .}}
         <script>
+            // Populate mobile offcanvas with a copy of the desktop filters on open
+            var mobileFilters = document.getElementById('mobile-filters');
+            if (mobileFilters) {
+                mobileFilters.addEventListener('show.bs.offcanvas', function () {
+                    var src = document.querySelector('.search-sidebar #search-filters');
+                    var dest = document.getElementById('mobile-filters-body');
+                    if (src && dest) {
+                        var clone = src.cloneNode(true);
+                        // Remove HTMX attributes from clone so it acts as a plain form
+                        var form = clone.querySelector('form');
+                        if (form) {
+                            form.removeAttribute('hx-get');
+                            form.removeAttribute('hx-target');
+                            form.removeAttribute('hx-select');
+                            form.removeAttribute('hx-swap');
+                            form.removeAttribute('hx-push-url');
+                            form.removeAttribute('hx-trigger');
+                            form.removeAttribute('hx-include');
+                            form.id = 'mobile-search-form';
+                        }
+                        dest.innerHTML = '';
+                        dest.appendChild(clone);
+                    }
+                });
+            }
             window['nitroAds'].createAd('search-under', {
                 "refreshTime": 30,
                 "format": "sticky-stack",
@@ -180,18 +109,9 @@
                 "stickyStackSpace": 2.5,
                 "stickyStackOffset": 25,
                 "sizes": [
-                    [
-                        "300",
-                        "250"
-                    ],
-                    [
-                        "300",
-                        "600"
-                    ],
-                    [
-                        "160",
-                        "600"
-                    ]
+                    ["300", "250"],
+                    ["300", "600"],
+                    ["160", "600"]
                 ],
                 "report": {
                     "enabled": true,
@@ -200,30 +120,25 @@
                     "position": "top-right"
                 }
             });
-            window['nitroAds'].createAd('search-top', {
-                "sizes": [
-                    [
-                        "728",
-                        "90"
-                    ]
-                ],
+            window['nitroAds'].createAd('search-ad-right-top', {
+                "refreshTime": 30,
+                "sizes": [["300", "250"]],
                 "report": {
                     "enabled": true,
                     "icon": true,
                     "wording": "Report Ad",
-                    "position": "bottom-right"
-                },
-                "mediaQuery": "(min-width: 1025px)"
+                    "position": "top-right"
+                }
             });
-            window['nitroAds'].createAd('search-top-mobile', {
-                "delayLoading": true,
+            window['nitroAds'].createAd('search-ad-right-bottom', {
+                "refreshTime": 30,
+                "sizes": [["300", "600"]],
                 "report": {
                     "enabled": true,
                     "icon": true,
                     "wording": "Report Ad",
-                    "position": "bottom-right"
-                },
-                "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
+                    "position": "top-right"
+                }
             });
         </script>
     </div>

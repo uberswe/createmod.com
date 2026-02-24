@@ -4,8 +4,10 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/models"
+	"createmod/internal/nbtparser"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
+	"encoding/json"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/mergestat/timediff"
@@ -47,6 +49,8 @@ type SchematicData struct {
 	Versions        []models.SchematicVersion
 	HasVersions     bool
 	UserCollections []CollectionOption
+	Materials       []nbtparser.Material
+	BloxelizerURL   string
 }
 
 func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service) func(e *core.RequestEvent) error {
@@ -87,6 +91,21 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
 		d.Promotion = promotionService.RandomPromotion()
+
+		// Parse materials from stored JSON
+		materialsJSON := results[0].GetString("materials")
+		if materialsJSON != "" {
+			var materials []nbtparser.Material
+			if err := json.Unmarshal([]byte(materialsJSON), &materials); err == nil {
+				d.Materials = materials
+			}
+		}
+
+		// Construct Bloxelizer URL (only for free schematics with a file)
+		schematicFileName := results[0].GetString("schematic_file")
+		if schematicFileName != "" && !d.Schematic.Paid {
+			d.BloxelizerURL = fmt.Sprintf("https://bloxelizer.com/viewer?url=https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, schematicFileName)
+		}
 
 		// Load collections for the current user (for Add to collection dropdown)
 		if e.Auth != nil {
@@ -154,7 +173,7 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 		keywordString += " "
 		keywordString = keywordString + c.Name
 	}
-	ids := searchService.Search(fmt.Sprintf("%s %s", schematic.Title, keywordString), 1, -1, "all", "all", "all", "all")
+	ids := searchService.Search(fmt.Sprintf("%s %s", schematic.Title, keywordString), search.BestMatchOrder, -1, "all", nil, "all", "all")
 	interfaceIds := make([]interface{}, 0, len(ids))
 	limit := 5
 	count := 0
@@ -549,6 +568,8 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 		SchematicFile:        fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
 		AIDescription:        result.GetString("ai_description"),
 		Paid:                 result.GetBool("paid"),
+		Featured:             result.GetBool("featured"),
+		Materials:            result.GetString("materials"),
 		ExternalURL:          result.GetString("external_url"),
 	}
 	if len(result.GetStringSlice("categories")) > 0 {

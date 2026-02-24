@@ -1,0 +1,20 @@
+{{define "search_pagination.html"}}
+{{ if or .HasPrev .HasNext }}
+<nav class="d-flex flex-column align-items-center mt-4 gap-2" aria-label="Search results pagination">
+    <div class="text-secondary small">
+        Page {{ .Page }}{{ if gt .TotalPages 0 }} of {{ .TotalPages }}{{ end }} &middot; {{ .SearchResultCount }} results
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary btn-sm"{{ else }}class="btn btn-outline-secondary btn-sm disabled" tabindex="-1" aria-disabled="true"{{ end }}>
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 6l-6 6l6 6" /></svg>
+            Previous
+        </a>
+        <span class="text-secondary">Page {{ .Page }}</span>
+        <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary btn-sm"{{ else }}class="btn btn-outline-secondary btn-sm disabled" tabindex="-1" aria-disabled="true"{{ end }}>
+            Next
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
+        </a>
+    </div>
+</nav>
+{{ end }}
+{{end}}

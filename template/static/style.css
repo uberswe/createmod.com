@@ -358,12 +358,3 @@
   --tblr-tabler-lt-rgb: 22, 44, 67;
 }
 
-/* Sidebar toggle behavior (desktop) */
-@media (min-width: 992px) {
-  body[data-sidebar="closed"] aside.navbar-vertical {
-    display: none !important;
-  }
-  body[data-sidebar="closed"] .page-wrapper {
-    margin-left: 0 !important;
-  }
-}

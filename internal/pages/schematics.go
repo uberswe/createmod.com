@@ -16,6 +16,7 @@ import (
 var schematicsTemplates = append([]string{
 	"./template/schematics.html",
 	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_small.html",
 }, commonTemplates...)
 
 type SchematicsData struct {

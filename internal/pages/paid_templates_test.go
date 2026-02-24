@@ -24,18 +24,25 @@ func Test_Schematic_Template_Paid_Elements(t *testing.T) {
 }
 
 func Test_Include_Cards_Paid_Badge(t *testing.T) {
-	paths := []string{
-		filepath.Join("..", "..", "template", "include", "schematic_card.html"),
-		filepath.Join("..", "..", "template", "include", "schematic_card_full.html"),
+	// schematic_card.html is the base card that contains Paid badge markup.
+	// schematic_card_full.html and others delegate to it via {{template}}.
+	p := filepath.Join("..", "..", "template", "include", "schematic_card.html")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatalf("read %s: %v", p, err)
 	}
-	for _, p := range paths {
-		b, err := os.ReadFile(p)
-		if err != nil {
-			t.Fatalf("read %s: %v", p, err)
-		}
-		s := string(b)
-		if !strings.Contains(s, "Paid") || !strings.Contains(s, "badge") {
-			t.Fatalf("%s should contain a Paid badge marker", p)
-		}
+	s := string(b)
+	if !strings.Contains(s, "Paid") || !strings.Contains(s, "badge") {
+		t.Fatalf("%s should contain a Paid badge marker", p)
+	}
+	// Verify full card delegates to schematic_card.html
+	fp := filepath.Join("..", "..", "template", "include", "schematic_card_full.html")
+	fb, err := os.ReadFile(fp)
+	if err != nil {
+		t.Fatalf("read %s: %v", fp, err)
+	}
+	fs := string(fb)
+	if !strings.Contains(fs, `schematic_card.html`) {
+		t.Fatalf("%s should reference schematic_card.html", fp)
 	}
 }

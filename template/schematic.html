@@ -6,7 +6,7 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-xl">
+            <div class="container-wide">
                 <div class="row g-2 g-md-3">
                     <div class="col-lg-7">
                         <div class="row row-cards">
@@ -57,6 +57,15 @@
                                                     {{ if .Schematic.Paid }}{{ T .Language "Get Schematic" }}{{ else }}{{ T .Language "Download" }}{{ end }}
                                                 </a>
                                             </div>
+                                            {{ if .BloxelizerURL }}
+                                            <div class="col-auto">
+                                                <a href="/out?url={{ .BloxelizerURL }}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-3d-cube-sphere" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
+                                                    View in 3D
+                                                    <small class="d-block text-muted" style="font-size:0.7em;">via Bloxelizer</small>
+                                                </a>
+                                            </div>
+                                            {{ end }}
                                             {{ if .Schematic.Paid }}
                                             <div class="col-auto pt-2">
                                                 <span class="badge badge-outline text-red">Paid</span>
@@ -133,6 +142,36 @@
                                             <li>v{{ .Version }} — {{ HumanDate .Created }}{{ if .Note }} — {{ .Note }}{{ end }}</li>
                                             {{ end }}
                                         </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+                        <!-- Materials List -->
+                        {{ if .Materials }}
+                        <div class="row row-cards mb-4">
+                            <div class="col-sm-12 col-lg-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Materials</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="material-list" id="material-list">
+                                            {{ range $i, $m := .Materials }}
+                                            <div class="material-list-item{{ if ge $i 10 }} d-none material-hidden{{ end }}">
+                                                <img loading="lazy" src="https://blocksitems.com/api/v1/blocks/{{ $m.BlockID }}/icon?size=32"
+                                                     alt="{{ $m.BlockID }}" width="32" height="32"
+                                                     onerror="this.style.display='none'">
+                                                <span>{{ $m.BlockID }}</span>
+                                                <span class="material-count">x{{ $m.Count }}</span>
+                                            </div>
+                                            {{ end }}
+                                        </div>
+                                        {{ if gt (len .Materials) 10 }}
+                                        <button class="btn btn-ghost-primary btn-sm mt-2" onclick="document.querySelectorAll('.material-hidden').forEach(el => el.classList.remove('d-none')); this.remove();">
+                                            Show all ({{ len .Materials }} materials)
+                                        </button>
+                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -441,6 +480,7 @@
                         </div>
                     </div>
                 </div>
+                {{template "ad_rail.html" .}}
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/fslightbox@3.4.2/index.js" defer crossorigin="anonymous"></script>
