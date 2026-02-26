@@ -47,7 +47,7 @@ func DownloadInterstitialHandler(app *pocketbase.PocketBase, registry *template.
 		paid := false
 		external := ""
 		if coll, err := app.FindCollectionByNameOrId("schematics"); err == nil && coll != nil {
-			recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})", "-created", 1, 0, dbx.Params{"name": name, "now": time.Now()})
+			recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})", "-created", 1, 0, dbx.Params{"name": name, "now": time.Now()})
 			if err == nil && len(recs) > 0 {
 				rec := recs[0]
 				paid = rec.GetBool("paid")

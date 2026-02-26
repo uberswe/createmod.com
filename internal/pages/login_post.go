@@ -1,10 +1,9 @@
 package pages
 
 import (
-	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/pocketbase/pocketbase"
@@ -39,16 +38,14 @@ func LoginPostHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) err
 		host := e.Request.Host
 		pbURL := scheme + "://" + host + "/api/collections/users/auth-with-password"
 
-		payload := map[string]string{
-			"identity": identity,
-			"password": password,
-		}
-		b, _ := json.Marshal(payload)
-		req, err := http.NewRequest(http.MethodPost, pbURL, bytes.NewReader(b))
+		form := url.Values{}
+		form.Set("identity", identity)
+		form.Set("password", password)
+		req, err := http.NewRequest(http.MethodPost, pbURL, strings.NewReader(form.Encode()))
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to build auth request")
 		}
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Set("Accept", "application/json")
 
 		resp, err := http.DefaultClient.Do(req)

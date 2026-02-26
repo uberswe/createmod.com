@@ -14,6 +14,11 @@ const (
 	HighestRatedSchematicsKey = "HighestRatedSchematics"
 	TrendingSchematicsKey     = "TrendingSchematics"
 	AllCategoriesKey          = "AllCategories"
+	FeaturedSchematicsKey     = "FeaturedSchematics"
+	LatestSchematicsKey       = "LatestSchematics"
+	LatestHasNextKey          = "LatestHasNext"
+	HighestRatedHasNextKey    = "HighestRatedHasNext"
+	TrendingHasNextKey        = "TrendingHasNext"
 )
 
 type Service struct {
@@ -44,6 +49,10 @@ func SchematicKey(schematicId string) string {
 
 func ViewKey(schematicId string) string {
 	return fmt.Sprintf("views:%s", schematicId)
+}
+
+func DownloadKey(schematicId string) string {
+	return fmt.Sprintf("downloads:%s", schematicId)
 }
 
 func RatingKey(schematicId string) string {

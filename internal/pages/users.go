@@ -43,7 +43,7 @@ func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cache
 		if err != nil || coll == nil {
 			return e.String(http.StatusInternalServerError, "users collection not available")
 		}
-		recs, err := app.FindRecordsByFilter(coll.Id, "deleted = null", "-created", limit, offset)
+		recs, err := app.FindRecordsByFilter(coll.Id, "deleted = ''", "-created", limit, offset)
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to query users")
 		}

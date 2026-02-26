@@ -66,7 +66,7 @@ func init() {
 		}
 
 		// Loop schematics and set moderated to true
-		schematics, err := app.FindRecordsByFilter("schematics", "deleted = null", "-created", -1, 0)
+		schematics, err := app.FindRecordsByFilter("schematics", "deleted = ''", "-created", -1, 0)
 		if err != nil {
 			return err
 		}

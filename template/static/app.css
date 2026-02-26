@@ -9,6 +9,30 @@
 }
 
 /**************
+  Light theme: warm beige backgrounds
+***************/
+:root,
+[data-bs-theme=light] {
+  --tblr-body-bg: #f5f0e8;
+  --tblr-body-bg-rgb: 245, 240, 232;
+  --tblr-light: #f5f0e8;
+  --tblr-light-rgb: 245, 240, 232;
+  --tblr-tertiary-bg: #ece5d8;
+  --tblr-tertiary-bg-rgb: 236, 229, 216;
+  --tblr-secondary-bg: #e0d7c8;
+  --tblr-secondary-bg-rgb: 224, 215, 200;
+  --tblr-gray-100: #ece5d8;
+  --tblr-border-color: #ddd5c5;
+  --tblr-border-color-translucent: rgba(80, 60, 20, 0.1);
+  --tblr-light-bg-subtle: #f8f4ed;
+  --tblr-light-border-subtle: #e0d7c8;
+  --tblr-bg-surface: #faf7f2;
+  --tblr-bg-surface-secondary: #f0eadf;
+  --tblr-card-bg: #faf7f2;
+  --tblr-card-border-color: #e4daca;
+}
+
+/**************
   General polish
 ***************/
 body {
@@ -150,10 +174,28 @@ a:hover {
 }
 
 /***************
+  Narrow ad rail (160px, for lg breakpoint)
+***************/
+.ad-rail-sm {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  width: 160px;
+  flex-shrink: 0;
+}
+
+/***************
   Responsive ad rail
 ***************/
 @media (max-width: 1199.98px) {
   .ad-rail {
+    position: static;
+    width: 100%;
+    max-height: none;
+  }
+}
+@media (max-width: 991.98px) {
+  .ad-rail-sm {
     position: static;
     width: 100%;
     max-height: none;
@@ -553,4 +595,9 @@ body.sidebar-open::after {
   .search-sidebar {
     display: none !important;
   }
+}
+
+/* Utility: prevent flex children from overflowing */
+.min-width-0 {
+  min-width: 0;
 }

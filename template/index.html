@@ -19,6 +19,9 @@
                         </div>
                         {{ end }}
 
+                        <!-- Mobile ad -->
+                        <div id="index-mobile-mid" class="d-xl-none mb-3 text-center"></div>
+
                         <!-- Tabbed section: Latest | Trending | Highest Rated -->
                         <div class="card">
                             <div class="card-header" hx-boost="false">
@@ -101,19 +104,21 @@
     </div>
 </div>
 {{template "foot.html" .}}
+{{template "ad_rail_script.html" .}}
+
 <script>
-window['nitroAds'].createAd('ad-rail-top', {
-  "refreshLimit": 10,
-  "refreshTime": 30,
-  "format": "display",
+window['nitroAds'].createAd('index-mobile-mid', {
   "sizes": [
+    ["320", "100"],
+    ["320", "50"],
     ["300", "250"]
   ],
   "report": {
     "enabled": true,
     "icon": true,
-    "w498": true
+    "wording": "Report Ad",
+    "position": "top-right"
   },
-  "mediaQuery": "(min-width: 1200px)"
+  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
 });
 </script>

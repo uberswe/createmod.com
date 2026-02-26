@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_UploadPreview_Template_Has_Scheduling_Input(t *testing.T) {
+func Test_UploadPreview_Template_Has_Review_Layout(t *testing.T) {
 	path := filepath.Join("..", "..", "template", "upload_preview.html")
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -15,9 +15,12 @@ func Test_UploadPreview_Template_Has_Scheduling_Input(t *testing.T) {
 	}
 	s := string(b)
 	must := []string{
-		"name=\"scheduled_at\"",
-		"type=\"datetime-local\"",
-		"Schedule publish time (optional)",
+		"Schematic Statistics",
+		".ParsedMaterials",
+		".IsOwner",
+		"Publish Schematic",
+		"Download Schematic",
+		"blocksitems.com",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

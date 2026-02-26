@@ -55,7 +55,7 @@ func (d *DefaultData) Populate(e *core.RequestEvent) {
 		d.HasAvatar = d.Avatar != ""
 		// Determine contributor status: has at least one schematic
 		if e.App != nil {
-			recs, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:author}", "-created", 1, 0, dbx.Params{"author": user.Id})
+			recs, err := e.App.FindRecordsByFilter("schematics", "deleted = '' && author = {:author}", "-created", 1, 0, dbx.Params{"author": user.Id})
 			if err == nil && len(recs) > 0 {
 				d.IsContributor = true
 			}

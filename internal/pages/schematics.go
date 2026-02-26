@@ -49,7 +49,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
+			"deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
 			"-created",
 			limit,
 			offset,

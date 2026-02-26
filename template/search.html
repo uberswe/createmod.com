@@ -48,6 +48,9 @@
                         </div>
                     </div>
 
+                    <!-- Mobile: top ad -->
+                    <div id="search-top-mobile" class="d-lg-none mb-3 text-center"></div>
+
                     <!-- Center: Results -->
                     <div class="search-center">
                         <div id="search-results">
@@ -102,6 +105,22 @@
                     }
                 });
             }
+            // Mobile top banner
+            window['nitroAds'].createAd('search-top-mobile', {
+                "sizes": [
+                    ["320", "100"],
+                    ["320", "50"],
+                    ["300", "250"]
+                ],
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "top-right"
+                },
+                "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+            });
+            // Left sidebar sticky ads
             window['nitroAds'].createAd('search-under', {
                 "refreshTime": 30,
                 "format": "sticky-stack",
@@ -110,8 +129,7 @@
                 "stickyStackOffset": 25,
                 "sizes": [
                     ["300", "250"],
-                    ["300", "600"],
-                    ["160", "600"]
+                    ["300", "600"]
                 ],
                 "report": {
                     "enabled": true,

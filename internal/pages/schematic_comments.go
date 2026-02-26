@@ -26,7 +26,7 @@ func SchematicCommentsHandler(app *pocketbase.PocketBase, searchService *search.
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"name = {:name} && deleted = null",
+			"name = {:name} && deleted = ''",
 			"-created",
 			1,
 			0,

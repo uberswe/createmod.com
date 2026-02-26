@@ -12,10 +12,13 @@ export async function superuserToken(): Promise<string> {
   const email = process.env.PB_ADMIN_EMAIL || 'local@createmod.com';
   const password = process.env.PB_ADMIN_PASSWORD || 'jfq.utb*jda2abg!WCR';
 
+  const params = new URLSearchParams();
+  params.set('identity', email);
+  params.set('password', password);
   const resp = await fetch(`${pb}/api/collections/_superusers/auth-with-password`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identity: email, password }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
   });
 
   if (!resp.ok) {

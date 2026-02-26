@@ -129,18 +129,50 @@ func (s *Server) Start() {
 	s.app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		log.Println("Running Before Serve Logic")
 
+		// Initialise the search service. It attempts to load a cached index
+		// snapshot from storage (S3 / local) so the server can serve search
+		// requests immediately. A background goroutine then does a full
+		// rebuild from the database to pick up any recent changes.
 		log.Println("Starting Search Server")
-		schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
-		if err != nil {
-			s.app.Logger().Error(err.Error())
-		}
-		mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
-		s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
-		s.searchService = search.New(mappedSchematics, s.app)
-		if scores := pages.ComputeTrendingScores(s.app); scores != nil {
-			s.searchService.SetTrendingScores(scores)
-		}
-		s.sitemapService.Generate(s.app)
+		s.searchService = search.New(s.app)
+
+		// Full index rebuild + trending scores + sitemap in the background
+		// so the server is available to handle requests right away.
+		go func() {
+			s.app.Logger().Info("search: background index rebuild starting")
+			schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
+			if err != nil {
+				s.app.Logger().Error(err.Error())
+				return
+			}
+			mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
+			s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
+			s.searchService.BuildIndex(mappedSchematics)
+			if scores := pages.ComputeTrendingScores(s.app); scores != nil {
+				s.searchService.SetTrendingScores(scores)
+			}
+			s.sitemapService.Generate(s.app)
+			s.app.Logger().Info("search: background index rebuild complete")
+		}()
+
+		// Warm index page cache so the first visitor never waits
+		pages.WarmIndexCache(s.app, s.cacheService)
+
+		// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
+		go pages.RepairSchematics(s.app)
+
+		// Background ticker: recompute trending scores and refresh index cache every 10 minutes
+		go func() {
+			ticker := time.NewTicker(10 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				s.app.Logger().Debug("Background: refreshing trending scores and index cache")
+				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
+					s.searchService.SetTrendingScores(scores)
+				}
+				pages.WarmIndexCache(s.app, s.cacheService)
+			}
+		}()
 
 		// Start the AI description service scheduler (polls every 30 minutes)
 		if s.conf.OpenAIApiKey != "" {
@@ -154,7 +186,7 @@ func (s *Server) Start() {
 				return fmt.Errorf("invalid NBT file")
 			}
 
-			// Extract and store materials from NBT file
+			// Extract and store materials, dimensions, block count, and mods from NBT file
 			files := e.Record.GetUnsavedFiles("schematic_file")
 			for _, f := range files {
 				if f.Size > 0 && strings.HasSuffix(f.OriginalName, ".nbt") {
@@ -169,6 +201,37 @@ func (s *Server) Start() {
 								if err == nil {
 									e.Record.Set("materials", string(materialsJSON))
 								}
+
+								// Extract mod namespaces from materials
+								modSet := make(map[string]struct{})
+								for _, m := range materials {
+									parts := strings.SplitN(m.BlockID, ":", 2)
+									if len(parts) == 2 && parts[0] != "minecraft" && parts[0] != "" {
+										modSet[parts[0]] = struct{}{}
+									}
+								}
+								if len(modSet) > 0 {
+									mods := make([]string, 0, len(modSet))
+									for mod := range modSet {
+										mods = append(mods, mod)
+									}
+									modsJSON, err := json.Marshal(mods)
+									if err == nil {
+										e.Record.Set("mods", string(modsJSON))
+									}
+								}
+							}
+
+							blockCount, _, _ := nbtparser.ExtractStats(data)
+							if blockCount > 0 {
+								e.Record.Set("block_count", blockCount)
+							}
+
+							dimX, dimY, dimZ, _ := nbtparser.ExtractDimensions(data)
+							if dimX > 0 || dimY > 0 || dimZ > 0 {
+								e.Record.Set("dim_x", dimX)
+								e.Record.Set("dim_y", dimY)
+								e.Record.Set("dim_z", dimZ)
 							}
 						}
 					}
@@ -185,7 +248,7 @@ func (s *Server) Start() {
 			authorID := e.Record.GetString("author")
 			if authorID != "" {
 				// Count author's schematics (not deleted)
-				if recs, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
+				if recs, err := e.App.FindRecordsByFilter("schematics", "deleted = '' && author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
 					if len(recs) == 1 { // this is the first one
 						if achColl, err := e.App.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
 							// ensure achievement exists
@@ -228,7 +291,7 @@ func (s *Server) Start() {
 			}
 
 			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
 				if err != nil {
 					s.app.Logger().Warn(err.Error())
 				}
@@ -249,7 +312,7 @@ func (s *Server) Start() {
 			// Capture previous state before update
 			prevRec, _ := e.App.FindRecordById("schematics", e.Record.Id)
 
-			err = e.Next()
+			err := e.Next()
 			if err != nil {
 				return err
 			}
@@ -352,7 +415,7 @@ func (s *Server) Start() {
 
 			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
 			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
 				if err != nil {
 					s.app.Logger().Warn(err.Error())
 				}
@@ -374,7 +437,7 @@ func (s *Server) Start() {
 			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
 			// Prevent actual deletion
 			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = null && moderated = true", "-created", -1, 0)
+				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
 				if err != nil {
 					s.app.Logger().Warn(err.Error())
 				}
@@ -553,7 +616,7 @@ func (s *Server) Start() {
 		})
 
 		s.app.OnRecordDeleteExecute("users").BindFunc(func(e *core.RecordEvent) error {
-			schemRes, err := e.App.FindRecordsByFilter("schematics", "deleted = null && author = {:author}", "-created", -1, 0, dbx.Params{"author": e.Record.Id})
+			schemRes, err := e.App.FindRecordsByFilter("schematics", "deleted = '' && author = {:author}", "-created", -1, 0, dbx.Params{"author": e.Record.Id})
 			if err != nil {
 				return err
 			}

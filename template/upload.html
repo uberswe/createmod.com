@@ -1,441 +1,687 @@
 {{ template "head.html" . }}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/css/tom-select.min.css" crossorigin="anonymous">
 <div class="page">
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
             <div class="container-wide">
-                <div class="row row-cards">
-                    <div class="col-12">
-                        <div class="card">
+
+                <!-- Progress Steps -->
+                <div id="upload-steps">
+                    {{ template "upload_steps.html" . }}
+                </div>
+
+                <!-- Upload Zone Card (centered, narrower) -->
+                <div class="row row-cards justify-content-center">
+                    <div class="col-lg-8 col-xl-6">
+                        <div class="card mb-3" id="upload-card">
                             <div class="card-body">
                                 <h3 class="card-title">Upload Schematic</h3>
-                                {{ if .IsAuthenticated }}
-                                <div class="row">
-                                    <div class="col-md-12 col-lg-6">
-                                        <div class="mb-3">
-                                            <label class="form-label required">Title</label>
-                                            <input type="text" id="schematic-title" class="form-control" name="title"
-                                                   placeholder="Schematic Title">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Description</label>
-                                            <textarea id="tinymce-schematic"
-                                                      placeholder="Describe your schematic and include any details on how to get it running."></textarea>
-                                        </div>
-                                        <div class="row">
-                                            <div class="mb-3 col-md-12 col-lg-6">
-                                                <label class="form-label required">Category</label>
-                                                <select name="category" id="schematic-category" class="form-select">
-                                                    {{ range .Categories}}
-                                                    <option value="{{ .ID }}">{{ .Name }}</option>
-                                                    {{ end }}
-                                                </select>
-                                            </div>
-                                            <div class="mb-3 col-md-12 col-lg-6">
-                                                <label class="form-label">Tags</label>
-                                                <select type="text" class="form-select" placeholder="Select tags" id="select-tags" value="" multiple>
-                                                    {{ range .Tags}}
-                                                    <option value="{{ .ID }}">{{ .Name }}</option>
-                                                    {{ end }}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="mb-3 col-md-12 col-lg-6">
-                                                <label class="form-label required">Create Version</label>
-                                                <select id="create-version" name="" class="form-select">
-                                                    {{ range .CreatemodVersions}}
-                                                    <option value="{{ .ID }}">{{ .Version }}</option>
-                                                    {{ end }}
-                                                </select>
-                                            </div>
-                                            <div class="mb-3 col-md-12 col-lg-6">
-                                                <label class="form-label required">Minecraft Version</label>
-                                                <select id="minecraft-version" name="" class="form-select">
-                                                    {{ range .MinecraftVersions}}
-                                                    <option value="{{ .ID }}">{{ .Version }}</option>
-                                                    {{ end }}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Schematic Video</label>
-                                            <input id="video" type="text" class="form-control" name="video"
-                                                   placeholder="Schematic Video URL">
-                                        </div>
+                                <p class="text-secondary">Upload a Create Mod schematic to analyze it and share it with the community.</p>
+
+                                <div id="upload-zone" style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;"
+                                     ondragover="event.preventDefault(); this.style.borderColor='var(--tblr-primary)'; this.style.backgroundColor='rgba(191,144,69,0.05)';"
+                                     ondragleave="this.style.borderColor='var(--tblr-border-color)'; this.style.backgroundColor='';"
+                                     ondrop="event.preventDefault(); this.style.borderColor='var(--tblr-border-color)'; this.style.backgroundColor=''; handleFileDrop(event.dataTransfer.files);">
+                                    <input type="file" id="nbt-file-input" accept=".nbt" style="display:none;" onchange="handleFileDrop(this.files);">
+                                    <div id="upload-prompt" onclick="document.getElementById('nbt-file-input').click();">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 9l5 -5l5 5" /><path d="M12 4l0 12" /></svg>
+                                        <h4 class="text-secondary">Drop your .nbt schematic file here</h4>
+                                        <p class="text-secondary">or click to select a file</p>
+                                        <small class="text-muted">Max file size: 10MB</small>
                                     </div>
-                                    <div class="col-md-12 col-lg-6">
-                                        <div class="mb-3">
-                                            <form class="dropzone" id="dropzone-schematic" action="/upload/nbt"
-                                                  autocomplete="off" novalidate>
-                                                <div class="fallback">
-                                                    <input name="schematic-file" type="file" accept=".nbt"/>
-                                                </div>
-                                                <div class="dz-message">
-                                                    <h3 class="dropzone-msg-title">Schematic File</h3>
-                                                    <span class="dropzone-msg-desc">Click here or drag the .nbt schematic file</span>
-                                                </div>
-                                            </form>
-                                            <div id="upload-preview-link" class="alert alert-info mt-3" style="display:none;">
-                                                Private preview link ready: <a id="upload-preview-url" href="#"></a>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <form class="dropzone" id="dropzone-featured" action="/upload"
-                                                  autocomplete="off" novalidate>
-                                                <div class="fallback">
-                                                    <input name="featured-file" type="file"/>
-                                                </div>
-                                                <div class="dz-message">
-                                                    <h3 class="dropzone-msg-title">Featured Image</h3>
-                                                    <span class="dropzone-msg-desc">Click here or drag a screenshot of your build in Minecraft</span>
-                                                </div>
-                                            </form>
-                                        </div>
-                                        <div class="mb-3">
-                                            <form class="dropzone" id="dropzone-gallery" action="/upload"
-                                                  autocomplete="off" novalidate>
-                                                <div class="fallback">
-                                                    <input name="gallery-file" type="file"/>
-                                                </div>
-                                                <div class="dz-message">
-                                                    <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                    <span class="dropzone-msg-desc">Click here or drag images to showcase your schematic</span>
-                                                </div>
-                                            </form>
-                                        </div>
+                                    <div id="upload-spinner" style="display:none;">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <p class="text-secondary mt-2">Uploading and analyzing schematic...</p>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="mt-5">
-                                        <button class="btn btn-primary w-100" id="upload-schematic-btn">
-                                            Upload
-                                        </button>
-                                        <div id="progress-upload" style="display: none;" class="progress">
-                                            <div class="progress-bar bg-green"></div>
-                                        </div>
-                                        <div id="upload-success" class="alert alert-important alert-success" style="display: none;" role="alert">
-                                            <div class="d-flex">
-                                                <div>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                                </div>
-                                                <div>
-                                                    Schematic has been uploaded!
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {{ else }}
-                                <h4>You must be <a href="/login">logged in</a> to upload schematics.</h4>
-                                {{ end }}
+
+                                <div id="upload-error" class="alert alert-danger mt-3" style="display:none;" role="alert"></div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Results Section (hidden until upload succeeds) — two-column layout -->
+                <div id="upload-results" style="display:none;">
+                    <div class="row row-cards">
+
+                        <!-- Left column: Stats, Mods, Actions -->
+                        <div class="col-lg-5 col-xl-4">
+
+                            <!-- Schematic Statistics Card -->
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h3 class="card-title">Schematic Statistics</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="datagrid">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Filename</div>
+                                            <div class="datagrid-content" id="stat-filename"></div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Dimensions</div>
+                                            <div class="datagrid-content" id="stat-dimensions"></div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">Total Blocks</div>
+                                            <div class="datagrid-content" id="stat-blocks"></div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">File Size</div>
+                                            <div class="datagrid-content" id="stat-size"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Required Mods Card -->
+                            <div class="card mb-3" id="mods-card" style="display:none;">
+                                <div class="card-header">
+                                    <h3 class="card-title">Required Mods</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div id="mods-list"></div>
+                                </div>
+                            </div>
+
+                            <!-- Bloxelizer 3D Viewer Link -->
+                            <div class="card mb-3" id="bloxelizer-card" style="display:none;">
+                                <div class="card-body text-center">
+                                    <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
+                                        View in 3D on Bloxelizer
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Actions Card -->
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    {{ if .IsAuthenticated }}
+                                    <div class="mb-3">
+                                        <label class="form-label">Share Link</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="share-link" readonly>
+                                            <button class="btn btn-outline-secondary" type="button" id="copy-link-btn" onclick="copyShareLink()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                <span class="copy-text">Copy</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <a id="publish-btn" href="#" class="btn btn-primary w-100">
+                                        Publish Schematic
+                                    </a>
+                                    {{ else }}
+                                    <div class="text-center">
+                                        <p class="text-secondary mb-2">Want to share this schematic and publish it to the community?</p>
+                                        <a href="/login" class="btn btn-primary">Login to publish</a>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                            </div>
+
+                            <!-- Additional Files (Variations) -->
+                            {{ if .IsAuthenticated }}
+                            <div class="card mb-3" id="add-more-files-card" style="display:none;">
+                                <div class="card-header d-flex align-items-center">
+                                    <h3 class="card-title mb-0">Additional Files (Variations)</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-secondary">Optionally add more .nbt files as variations or sets for this schematic.</p>
+                                    <div id="additional-files-list-upload"></div>
+                                    <div class="border rounded p-3 mt-2">
+                                        <div class="mb-2">
+                                            <label class="form-label">NBT File</label>
+                                            <input type="file" id="add-file-nbt-upload" class="form-control" accept=".nbt">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Description</label>
+                                            <input type="text" id="add-file-desc-upload" class="form-control" placeholder="e.g. Compact version, Mirror variant...">
+                                        </div>
+                                        <div id="add-file-error-upload" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
+                                        <button class="btn btn-sm btn-outline-primary mt-2" id="add-file-btn-upload" onclick="submitAdditionalFileUpload()">
+                                            Add File
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {{ end }}
+
+                        </div>
+
+                        <!-- Right column: Materials -->
+                        <div class="col-lg-7 col-xl-8">
+                            <div class="card mb-3" id="materials-card" style="display:none;">
+                                <div class="card-header d-flex align-items-center">
+                                    <h3 class="card-title mb-0">Materials</h3>
+                                    <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                        <span class="copy-text">Copy list</span>
+                                    </button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div id="materials-list" class="list-group list-group-flush"></div>
+                                    <div class="p-3 border-top">
+                                        <small class="text-muted">Block data from <a href="https://blocksitems.com" target="_blank" rel="noopener">blocksitems.com</a></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
         </div>
         {{template "footer.html" .}}
     </div>
 </div>
+
 <style>
-    body .ts-control {
-        background: #ffffff !important;
-        border: none !important;
-    }
-    body .ts-wrapper.multi .ts-control>div {
-        background: #bf9045 !important;
-    }
-
-    body .ts-dropdown {
-        background: #ffffff !important;
-        color: #bf9045 !important;
-    }
-
-    body[data-bs-theme=dark] .ts-control {
-        background: #1f2121 !important;
-        border: none !important;
-    }
-    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
-        background: #bf9045 !important;
-    }
-
-    body[data-bs-theme=dark] .ts-dropdown {
-        background: #1f2121 !important;
-        color: #bf9045 !important;
-    }
+.material-row {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--tblr-border-color);
+}
+.material-row:last-child {
+    border-bottom: none;
+}
+.material-icon-wrap {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tblr-bg-surface-secondary);
+    border-radius: 4px;
+}
+.material-icon-wrap img {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+.material-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.material-name {
+    font-weight: 500;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.material-block-id {
+    font-size: 0.75rem;
+    color: var(--tblr-secondary-color);
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.material-count {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    color: var(--tblr-body-color);
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}
+.material-stacks {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--tblr-body-color);
+    opacity: 0.5;
+    min-width: 70px;
+    text-align: right;
+}
+.copy-success .copy-icon { display: none !important; }
+.copy-success .check-icon { display: inline-block !important; color: #2fb344; }
+.copy-success .copy-text { color: #2fb344; }
+.copy-success { border-color: #2fb344 !important; color: #2fb344 !important; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js" defer crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
+
 <script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function () {
-        var el;
-        window.TomSelect && (new TomSelect(el = document.getElementById('select-tags'), {
-            copyClassesToDropdown: false,
-            dropdownParent: 'body',
-            controlInput: '<input>',
-            render:{
-                item: function(data,escape) {
-                    if( data.customProperties ){
-                        return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
-                    }
-                    return '<div>' + escape(data.text) + '</div>';
-                },
-                option: function(data,escape){
-                    if( data.customProperties ){
-                        return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
-                    }
-                    return '<div>' + escape(data.text) + '</div>';
-                },
-            },
-        }));
-    });
-    // @formatter:on
-</script>
-<script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function () {
-        let options = {
-            license_key: "gpl",
-            selector: '#tinymce-schematic',
-            height: 300,
-            menubar: false,
-            statusbar: false,
-            plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
-                'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-                'bold italic | ' +
-                'link | bullist numlist outdent indent | ' +
-                'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
+var uploadData = null;
+var blockNameMap = {};
+
+function handleFileDrop(files) {
+    if (!files || files.length === 0) return;
+    var file = files[0];
+    if (!file.name.toLowerCase().endsWith('.nbt')) {
+        showUploadError('Please select a .nbt file.');
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        showUploadError('File is too large. Maximum size is 10MB.');
+        return;
+    }
+    uploadFile(file);
+}
+
+function showUploadError(msg) {
+    var el = document.getElementById('upload-error');
+    el.textContent = msg;
+    el.style.display = '';
+}
+
+function hideUploadError() {
+    document.getElementById('upload-error').style.display = 'none';
+}
+
+function uploadFile(file) {
+    hideUploadError();
+    document.getElementById('upload-prompt').style.display = 'none';
+    document.getElementById('upload-spinner').style.display = '';
+    document.getElementById('upload-results').style.display = 'none';
+
+    var formData = new FormData();
+    formData.append('nbt', file);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload/nbt', true);
+    xhr.onload = function() {
+        document.getElementById('upload-spinner').style.display = 'none';
+        if (xhr.status === 200) {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                uploadData = data;
+                document.getElementById('upload-card').style.display = 'none';
+                renderResults(data);
+            } catch(e) {
+                document.getElementById('upload-prompt').style.display = '';
+                showUploadError('Unexpected response from server.');
+            }
+        } else {
+            document.getElementById('upload-prompt').style.display = '';
+            try {
+                var err = JSON.parse(xhr.responseText);
+                showUploadError(err.error || 'Upload failed.');
+            } catch(e) {
+                showUploadError(xhr.responseText || 'Upload failed.');
+            }
         }
-        if (localStorage.getItem("createmodTheme") === 'dark') {
-            options.skin = 'tinymce-5-dark';
-            options.content_css = 'dark';
+    };
+    xhr.onerror = function() {
+        document.getElementById('upload-spinner').style.display = 'none';
+        document.getElementById('upload-prompt').style.display = '';
+        showUploadError('Network error. Please try again.');
+    };
+    xhr.send(formData);
+}
+
+function updateSteps(activeStep) {
+    var steps = document.querySelectorAll('#upload-steps .step-item');
+    for (var i = 0; i < steps.length; i++) {
+        steps[i].classList.remove('active', 'done');
+        if (i < activeStep - 1) {
+            steps[i].classList.add('done');
+        } else if (i === activeStep - 1) {
+            steps[i].classList.add('active');
         }
-        tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
-        tinyMCE.init(options);
-    })
-    // @formatter:on
-</script>
+    }
+}
 
-<script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function() {
-        // based on https://stackoverflow.com/a/61357880/1260548
-        let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
-            url: "/upload/nbt",
-            method: "POST",
-            acceptedFiles: '.nbt',
-            thumbnailMethod: 'crop',
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: false,
-            parallelUploads: 1,
-            maxFiles: 1,
-        })
-        let dropzoneFeatured = new Dropzone("#dropzone-featured", {
-            acceptedFiles: 'image/*',
-            thumbnailMethod: 'crop',
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: false,
-            parallelUploads: 1,
-            maxFiles: 1,
-        })
-        let dropzoneGallery = new Dropzone("#dropzone-gallery", {
-            acceptedFiles: 'image/*',
-            thumbnailMethod: 'crop',
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: true,
-            parallelUploads: 10,
-            maxFiles: 10,
-        })
+function renderResults(data) {
+    document.getElementById('upload-results').style.display = '';
+    updateSteps(2);
 
-        document.getElementById('upload-schematic-btn').addEventListener("click", async function (e) {
-            let titleElement = document.getElementById("schematic-title")
-            let descriptionElement = document.getElementById("tinymce-schematic")
-            document.getElementById("upload-schematic-btn").disabled = true
+    document.getElementById('stat-filename').textContent = data.filename || '';
+    document.getElementById('stat-dimensions').textContent = data.dimensions.x + ' x ' + data.dimensions.y + ' x ' + data.dimensions.z + ' blocks';
+    document.getElementById('stat-blocks').textContent = (data.block_count || 0).toLocaleString();
+    document.getElementById('stat-size').textContent = formatBytes(data.size || 0);
 
-            let errors = []
+    var shareLink = document.getElementById('share-link');
+    if (shareLink) {
+        shareLink.value = location.origin + data.url;
+    }
+    var publishBtn = document.getElementById('publish-btn');
+    if (publishBtn) {
+        publishBtn.href = data.url + '/publish';
+    }
 
-            const formData = new FormData();
-            for (let file of dropzoneSchematic.files) {
-                formData.append("schematic_file", file)
-            }
-            for (let file of dropzoneFeatured.files) {
-                formData.append("featured_image", file)
-            }
-            for (let file of dropzoneGallery.files) {
-                formData.append("gallery", file)
-            }
-            formData.append("title", titleElement.value)
-            formData.append("author", pb.authStore.model.id)
-            formData.append("content", tinyMCE.activeEditor.getContent())
-            formData.append("description", tinyMCE.activeEditor.getContent())
-            formData.append("categories", document.getElementById("schematic-category").value)
-            let tagIDs = getSelectValues(document.getElementById("select-tags"))
-            for (const tid of tagIDs) {
-                formData.append("tags", tid)
-            }
-            formData.append("createmod_version", document.getElementById("create-version").value)
-            formData.append("minecraft_version", document.getElementById("minecraft-version").value)
-            formData.append("video", document.getElementById("video").value)
+    // Bloxelizer 3D viewer link
+    if (data.file_url) {
+        var bloxCard = document.getElementById('bloxelizer-card');
+        var bloxLink = document.getElementById('bloxelizer-link');
+        if (bloxCard && bloxLink) {
+            var fullFileURL = location.origin + data.file_url;
+            bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(fullFileURL);
+            bloxCard.style.display = '';
+        }
+    }
 
-            if (titleElement.value === undefined || titleElement.value === "") {
-                titleElement.classList.add("is-invalid")
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.innerText = "A schematic must have a title"
-                errors.push("A schematic must have a title")
-                titleElement.parentNode.insertAdjacentElement("beforeend", div)
-            }
-            if (descriptionElement === undefined || tinyMCE.activeEditor === null || tinyMCE.activeEditor.getContent() === "") {
-                descriptionElement.classList.add("is-invalid")
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.innerText = "A schematic must have a description"
-                errors.push("A schematic must have a description")
-                descriptionElement.parentNode.insertAdjacentElement("beforeend", div)
-            }
-            if (dropzoneSchematic.files.length === 0) {
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "A schematic must have a schematic file"
-                errors.push("A schematic must have a schematic file")
-                document.getElementById("dropzone-schematic").parentNode.insertAdjacentElement("beforeend", div)
-            }
-            if (dropzoneFeatured.files.length === 0) {
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "A schematic must have a featured image"
-                errors.push("A schematic must have a featured image")
-                document.getElementById("dropzone-featured").parentNode.insertAdjacentElement("beforeend", div)
-            }
-
-            if (errors.length === 0) {
-                let progressBar = document.getElementById("progress-upload")
-                let successAlert = document.getElementById("upload-success")
-                try {
-                    progressBar.style.display = "block"
-                    progressBar.classList.add("progress-bar-indeterminate")
-                const createdRecord = await pb.collection('schematics').create(formData);
-                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
-                    div = document.createElement('div');
-                    div.classList.add("invalid-feedback")
-                    div.style.display = "block"
-                    div.innerText = "An unexpected error occurred, please try again"
-                    document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
-                    document.getElementById("upload-schematic-btn").disabled = false
-                    progressBar.classList.remove("progress-bar-indeterminate")
-                    progressBar.display = "none"
-                } else {
-                    progressBar.classList.remove("progress-bar-indeterminate")
-                    progressBar.style.display = "none"
-                    successAlert.style.display = "block"
-                    try {
-                        const slugOrId = createdRecord?.name || createdRecord?.id;
-                        if (slugOrId) {
-                            const linkUrl = `https://createmod.com/schematics/${slugOrId}`;
-                            const info = document.createElement('div');
-                            info.classList.add('mt-2');
-                            info.innerHTML = `
-                                <p>It may take up to 24 hours for your schematic to pass moderation. You can still freely share the direct link.</p>
-                                <p><a id="uploaded-schematic-link" href="${linkUrl}" class="link-secondary">${linkUrl}</a></p>
-                            `;
-                            successAlert.parentNode.insertAdjacentElement("beforeend", info)
-                        }
-                    } catch (_) {}
-                }
-                } catch(e) {
-                    console.log(e)
-                    div = document.createElement('div');
-                    div.classList.add("invalid-feedback")
-                    div.style.display = "block"
-                    div.innerText = "An unexpected error occurred, please try again"
-                    document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
-                    document.getElementById("upload-schematic-btn").disabled = false
-                    progressBar.classList.remove("progress-bar-indeterminate")
-                    progressBar.display = "none"
-                }
-            } else {
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "There were errors, please check above"
-                document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
-                document.getElementById("upload-schematic-btn").disabled = false
-            }
-
+    if (data.materials && data.materials.length > 0) {
+        document.getElementById('materials-card').style.display = '';
+        var blockIds = data.materials.map(function(m) { return m.block_id; });
+        fetchBlockNames(blockIds, function() {
+            renderMaterials(data.materials);
         });
+    }
 
-        function getSelectValues(select) {
-            var result = [];
-            var options = select && select.options;
-            var opt;
+    if (data.mods && data.mods.length > 0) {
+        document.getElementById('mods-card').style.display = '';
+        renderMods(data.mods);
+    }
 
-            for (var i=0, iLen=options.length; i<iLen; i++) {
-                opt = options[i];
+    // Show "Add More Files" card if authenticated
+    var addMoreCard = document.getElementById('add-more-files-card');
+    if (addMoreCard) {
+        addMoreCard.style.display = '';
+    }
+}
 
-                if (opt.selected) {
-                    result.push(opt.value || opt.text);
-                }
+function createMaterialRow(m) {
+    var row = document.createElement('div');
+    row.className = 'material-row';
+    row.setAttribute('data-block-id', m.block_id);
+
+    var iconWrap = document.createElement('div');
+    iconWrap.className = 'material-icon-wrap';
+
+    var img = document.createElement('img');
+    img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(m.block_id) + '/icon?size=64';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.onerror = function() {
+        this.style.display = 'none';
+        var placeholder = document.createElement('div');
+        placeholder.style.width = '32px';
+        placeholder.style.height = '32px';
+        placeholder.style.background = 'var(--tblr-border-color)';
+        placeholder.style.borderRadius = '2px';
+        this.parentNode.appendChild(placeholder);
+    };
+    iconWrap.appendChild(img);
+
+    var infoDiv = document.createElement('div');
+    infoDiv.className = 'material-info';
+
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'material-name';
+    var displayName = (blockNameMap[m.block_id] && blockNameMap[m.block_id].display_name) || formatBlockName(m.block_id);
+    nameSpan.textContent = displayName;
+
+    var blockIdSpan = document.createElement('span');
+    blockIdSpan.className = 'material-block-id';
+    blockIdSpan.textContent = m.block_id;
+
+    infoDiv.appendChild(nameSpan);
+    infoDiv.appendChild(blockIdSpan);
+
+    var countSpan = document.createElement('span');
+    countSpan.className = 'material-count';
+    countSpan.textContent = 'x' + m.count.toLocaleString();
+
+    var stacksSpan = document.createElement('span');
+    stacksSpan.className = 'material-stacks';
+    var stacks = Math.floor(m.count / 64);
+    var remainder = m.count % 64;
+    if (stacks > 0) {
+        stacksSpan.textContent = stacks + 's' + (remainder > 0 ? ' +' + remainder : '');
+    }
+
+    row.appendChild(iconWrap);
+    row.appendChild(infoDiv);
+    row.appendChild(countSpan);
+    row.appendChild(stacksSpan);
+
+    return row;
+}
+
+function renderMaterials(materials) {
+    var list = document.getElementById('materials-list');
+    list.textContent = '';
+
+    for (var i = 0; i < materials.length; i++) {
+        list.appendChild(createMaterialRow(materials[i]));
+    }
+}
+
+function renderMods(mods) {
+    var container = document.getElementById('mods-list');
+    container.textContent = '';
+    mods.forEach(function(mod) {
+        var badge = document.createElement('span');
+        badge.className = 'badge bg-blue-lt me-1 mb-1';
+        badge.style.fontSize = '0.85rem';
+        badge.textContent = capitalize(mod);
+        container.appendChild(badge);
+    });
+}
+
+function fetchBlockNames(blockIds, callback) {
+    if (!blockIds || blockIds.length === 0) {
+        if (callback) callback();
+        return;
+    }
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://blocksitems.com/api/v1/blocks/lookup', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var result = JSON.parse(xhr.responseText);
+                    if (result.data) {
+                        blockNameMap = result.data;
+                    }
+                } catch(e) {}
             }
-            return result;
+            if (callback) callback();
+        };
+        xhr.onerror = function() {
+            if (callback) callback();
+        };
+        xhr.send(JSON.stringify({ block_ids: blockIds }));
+    } catch(e) {
+        if (callback) callback();
+    }
+}
+
+function formatBlockName(blockId) {
+    if (!blockId) return '';
+    var parts = blockId.split(':');
+    var name = parts.length > 1 ? parts[1] : parts[0];
+    return name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function capitalize(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function animateCopyButton(btn) {
+    btn.classList.add('copy-success');
+    setTimeout(function() {
+        btn.classList.remove('copy-success');
+    }, 2000);
+}
+
+function copyShareLink() {
+    var input = document.getElementById('share-link');
+    var btn = document.getElementById('copy-link-btn');
+    if (!input) return;
+    try {
+        navigator.clipboard.writeText(input.value).then(function() {
+            animateCopyButton(btn);
+        });
+    } catch(e) {
+        input.select();
+        document.execCommand('copy');
+        animateCopyButton(btn);
+    }
+}
+
+var uploadedAdditionalFiles = [];
+
+function submitAdditionalFileUpload() {
+    if (!uploadData || !uploadData.token) return;
+    var fileInput = document.getElementById('add-file-nbt-upload');
+    var descInput = document.getElementById('add-file-desc-upload');
+    var errorEl = document.getElementById('add-file-error-upload');
+    var submitBtn = document.getElementById('add-file-btn-upload');
+    errorEl.style.display = 'none';
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        errorEl.textContent = 'Please select a .nbt file.';
+        errorEl.style.display = '';
+        return;
+    }
+    var file = fileInput.files[0];
+    if (!file.name.toLowerCase().endsWith('.nbt')) {
+        errorEl.textContent = 'Please select a .nbt file.';
+        errorEl.style.display = '';
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        errorEl.textContent = 'File is too large. Maximum size is 10MB.';
+        errorEl.style.display = '';
+        return;
+    }
+
+    submitBtn.disabled = true;
+    var formData = new FormData();
+    formData.append('nbt', file);
+    formData.append('description', descInput.value);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/u/' + uploadData.token + '/add-file', true);
+    xhr.onload = function() {
+        submitBtn.disabled = false;
+        if (xhr.status === 200) {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                uploadedAdditionalFiles.push(data);
+                renderAdditionalFileRow(data);
+                fileInput.value = '';
+                descInput.value = '';
+            } catch(e) {
+                errorEl.textContent = 'Unexpected response.';
+                errorEl.style.display = '';
+            }
+        } else {
+            try {
+                var err = JSON.parse(xhr.responseText);
+                errorEl.textContent = err.error || 'Upload failed.';
+            } catch(e) {
+                errorEl.textContent = 'Upload failed.';
+            }
+            errorEl.style.display = '';
         }
-    })
+    };
+    xhr.onerror = function() {
+        submitBtn.disabled = false;
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.style.display = '';
+    };
+    xhr.send(formData);
+}
+
+function renderAdditionalFileRow(data) {
+    var list = document.getElementById('additional-files-list-upload');
+    var row = document.createElement('div');
+    row.className = 'd-flex align-items-center mb-2 p-2 border rounded additional-file-row-upload';
+    row.setAttribute('data-file-id', data.id);
+
+    var info = document.createElement('div');
+    info.className = 'flex-fill';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'fw-bold';
+    nameEl.textContent = data.filename;
+    info.appendChild(nameEl);
+    if (data.description) {
+        var descEl = document.createElement('div');
+        descEl.className = 'text-secondary small';
+        descEl.textContent = data.description;
+        info.appendChild(descEl);
+    }
+    var statsEl = document.createElement('div');
+    statsEl.className = 'text-muted small';
+    var statsText = '';
+    if (data.dim_x || data.dim_y || data.dim_z) {
+        statsText += data.dim_x + ' x ' + data.dim_y + ' x ' + data.dim_z;
+    }
+    if (data.block_count) {
+        if (statsText) statsText += ' \u00b7 ';
+        statsText += data.block_count + ' blocks';
+    }
+    statsEl.textContent = statsText;
+    info.appendChild(statsEl);
+    row.appendChild(info);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'btn btn-sm btn-outline-danger';
+    removeBtn.title = 'Remove';
+    removeBtn.textContent = 'Remove';
+    removeBtn.onclick = function() {
+        deleteAdditionalFileUpload(data.id, row);
+    };
+    row.appendChild(removeBtn);
+
+    list.appendChild(row);
+}
+
+function deleteAdditionalFileUpload(fileId, rowEl) {
+    if (!uploadData || !uploadData.token) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('DELETE', '/u/' + uploadData.token + '/files/' + fileId, true);
+    xhr.onload = function() {
+        if (xhr.status === 204 && rowEl) {
+            rowEl.remove();
+        }
+    };
+    xhr.send();
+}
+
+function copyMaterialsAsMarkdown() {
+    if (!uploadData || !uploadData.materials) return;
+    var lines = ['| Material | Count | Stacks |', '|---|---|---|'];
+    uploadData.materials.forEach(function(m) {
+        var name = (blockNameMap[m.block_id] && blockNameMap[m.block_id].display_name) || formatBlockName(m.block_id);
+        var stacks = Math.floor(m.count / 64);
+        var remainder = m.count % 64;
+        var stackStr = '';
+        if (stacks > 0) {
+            stackStr = stacks + 's' + (remainder > 0 ? ' +' + remainder : '');
+        } else {
+            stackStr = m.count.toString();
+        }
+        lines.push('| ' + name + ' | x' + m.count.toLocaleString() + ' | ' + stackStr + ' |');
+    });
+    var markdown = lines.join('\n');
+    var btn = document.getElementById('copy-materials-btn');
+    try {
+        navigator.clipboard.writeText(markdown).then(function() {
+            animateCopyButton(btn);
+        });
+    } catch(e) {
+        var textarea = document.createElement('textarea');
+        textarea.value = markdown;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        animateCopyButton(btn);
+    }
+}
 </script>
 {{template "foot.html" .}}
-
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  try {
-    if (window.Dropzone) {
-      Dropzone.autoDiscover = false;
-      var dzEl = document.getElementById('dropzone-schematic');
-      if (dzEl) {
-        var dz = new Dropzone(dzEl, {
-          url: '/upload/nbt',
-          paramName: 'nbt',
-          maxFiles: 1,
-          createImageThumbnails: false,
-          acceptedFiles: '.nbt',
-        });
-        dz.on('success', function(file, response){
-          try {
-            var text = typeof response === 'string' ? response : (response && response.toString ? response.toString() : '');
-            var m = text && text.match(/url=(\/u\/[a-f0-9]+)/i);
-            if (m && m[1]) {
-              var url = m[1];
-              var linkWrap = document.getElementById('upload-preview-link');
-              var link = document.getElementById('upload-preview-url');
-              if (link && linkWrap) {
-                link.href = url;
-                try { link.textContent = (location && location.origin ? location.origin : '') + url; } catch(e) { link.textContent = url; }
-                linkWrap.style.display = '';
-              }
-            } else {
-              if (typeof showToast === 'function') { showToast('Upload succeeded but preview URL not found.', 'warning'); }
-            }
-          } catch (e) {}
-        });
-        dz.on('error', function(file, msg, xhr){
-          var err = msg;
-          if (xhr && xhr.responseText) { err = xhr.responseText; }
-          if (typeof showToast === 'function') { showToast(err || 'Upload failed', 'danger'); }
-        });
-      }
-    }
-  } catch (e) {}
-});
-</script>

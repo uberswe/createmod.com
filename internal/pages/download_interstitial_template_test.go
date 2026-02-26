@@ -29,7 +29,7 @@ func Test_Download_Interstitial_Template_Has_Countdown_And_Links(t *testing.T) {
 	must2 := []string{
 		"Preparing external link",
 		"id=\"countdown-ext\"",
-		"/out?url={{ .ExternalURL | urlquery }}",
+		"SignedOutURL .ExternalURL",
 	}
 	for _, m := range must2 {
 		if !strings.Contains(s, m) {

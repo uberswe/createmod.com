@@ -7,462 +7,261 @@
         {{template "header.html" .}}
         <div class="page-body">
             <div class="container-wide">
-                <div class="row g-2 g-md-3">
-                    <div class="col-lg-7">
-                        <div class="row row-cards">
-                            <div class="col-sm-12 col-lg-12">
-                                <div class="card card-sm mb-4">
-                                    <a data-fslightbox="gallery"
-                                       href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
-                                        <img
-                                                src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080"
-                                                class="card-img-top">
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
+                <div class="row g-3">
+
+                    <!-- Column 1: Main content -->
+                    <div class="col-xl-7">
+
+                        <!-- Image + Description -->
+                        <div class="card card-sm mb-4">
+                            <a data-fslightbox="gallery"
+                               href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
+                                <img
+                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080"
+                                        class="card-img-top">
+                            </a>
+                            <div class="card-body">
+                                {{ if .Schematic.HasGallery}}
+                                <div class="row row-cols-6 g-3 mb-2">
+                                    {{ range .Schematic.Gallery }}
+                                    <div class="col">
+                                        <a data-fslightbox="gallery"
+                                           href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
+                                            <div class="img-responsive img-responsive-1x1 rounded border"
+                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}?thumb=150x150')"></div>
+                                        </a>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                {{ end }}
+                                <!-- Action bar -->
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pb-3 border-bottom">
+                                    <a href="/get/{{ .Schematic.Name }}" class="btn btn-primary" id="download-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                        {{ if .Schematic.Paid }}{{ T .Language "Get Schematic" }}{{ else }}{{ T .Language "Download" }}{{ end }}
                                     </a>
-                                    <div class="card-body">
-                                        {{ if .Schematic.HasGallery}}
-                                        <div class="row row-cols-6 g-3 mb-2">
-                                            {{ range .Schematic.Gallery }}
-                                            <div class="col">
-                                                <a data-fslightbox="gallery"
-                                                   href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
-                                                    <div class="img-responsive img-responsive-1x1 rounded border"
-                                                         style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}?thumb=150x150')"></div>
-                                                </a>
-                                            </div>
-                                            {{ end }}
-                                        </div>
+                                    <a href="#" class="btn btn-outline-secondary" onclick="copyLink(event)" data-link="https://createmod.com/schematics/{{ .Schematic.Name }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>
+                                        {{ T .Language "Copy Link" }}
+                                    </a>
+                                    {{ if .BloxelizerURL }}
+                                    <a href="{{ SignedOutURL .BloxelizerURL "schematic" .Schematic.Name }}" class="btn btn-outline-secondary" target="_blank" rel="noopener">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
+                                        View in 3D
+                                    </a>
+                                    {{ end }}
+                                    {{ if .Schematic.Paid }}
+                                    <span class="badge bg-red-lt">Paid</span>
+                                    {{ end }}
+                                    <div class="ms-auto d-flex align-items-center gap-2">
+                                        <select id="rating-default">
+                                            <option value="">Select a rating</option>
+                                            <option value="5">Excellent</option>
+                                            <option value="4" selected>Very Good</option>
+                                            <option value="3">Average</option>
+                                            <option value="2">Poor</option>
+                                            <option value="1">Terrible</option>
+                                        </select>
+                                        {{ if .IsAuthor }}
+                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-secondary btn-sm" id="edit-btn">
+                                            {{ T .Language "Edit" }}
+                                        </a>
                                         {{ end }}
-                                        <div class="row mt-4">
-                                            <div class="col">
-                                                <h3 class="card-title">Description</h3>
-                                            </div>
-                                            <div class="col-auto pt-2">
-                                                <select id="rating-default">
-                                                    <option value="">Select a rating</option>
-                                                    <option value="5">Excellent</option>
-                                                    <option value="4" selected>Very Good</option>
-                                                    <option value="3">Average</option>
-                                                    <option value="2">Poor</option>
-                                                    <option value="1">Terrible</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-auto">
-                                                <a href="#" class="btn btn-secondary" onclick="copyLink(event)" data-link="https://createmod.com/schematics/{{ .Schematic.Name }}">
-                                                    {{ T .Language "Copy Link" }}
-                                                </a>
-                                            </div>
-                                            <div class="col-auto">
-                                                <a href="/get/{{ .Schematic.Name }}" class="btn btn-primary"
-                                                   id="download-btn">
-                                                    {{ if .Schematic.Paid }}{{ T .Language "Get Schematic" }}{{ else }}{{ T .Language "Download" }}{{ end }}
-                                                </a>
-                                            </div>
-                                            {{ if .BloxelizerURL }}
-                                            <div class="col-auto">
-                                                <a href="/out?url={{ .BloxelizerURL }}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-3d-cube-sphere" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
-                                                    View in 3D
-                                                    <small class="d-block text-muted" style="font-size:0.7em;">via Bloxelizer</small>
-                                                </a>
-                                            </div>
-                                            {{ end }}
-                                            {{ if .Schematic.Paid }}
-                                            <div class="col-auto pt-2">
-                                                <span class="badge badge-outline text-red">Paid</span>
-                                            </div>
-                                            {{ end }}
-                                            <div class="col-auto">
-                                                <a href="#" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal">
-                                                    {{ T .Language "Report" }}
-                                                </a>
-                                            </div>
-                                            {{ if .IsAuthor }}
-                                            <div class="col-auto">
-                                                <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-secondary"
-                                                   id="edit-btn">
-                                                    {{ T .Language "Edit" }}
-                                                </a>
-                                            </div>
-                                            {{ end }}
-                                            {{ if .IsAuthenticated }}
-                                            <div class="col-12 mt-2">
-                                                <form class="row g-2 align-items-center" action="/schematics/{{ .Schematic.Name }}/add-to-collection" method="post">
-                                                    <div class="col-auto">
-                                                        <label for="collection-select" class="form-label mb-0">Add to collection</label>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <select id="collection-select" class="form-select" name="collection">
-                                                            <option value="" disabled selected>Select collection</option>
-                                                            {{ range .UserCollections }}
-                                                            <option value="{{ if .Slug }}{{ .Slug }}{{ else }}{{ .ID }}{{ end }}">{{ .Title }}</option>
-                                                            {{ end }}
-                                                            <option value="__new__">Create new collection…</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-auto" id="new-collection-wrap" style="display:none;">
-                                                        <input type="text" class="form-control" name="new_collection_name" id="new-collection-name" placeholder="New collection name">
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <button type="submit" class="btn btn-outline-primary">Add</button>
-                                                    </div>
-                                                </form>
-                                                <script>
-                                                    (function(){
-                                                      var sel = document.getElementById('collection-select');
-                                                      var wrap = document.getElementById('new-collection-wrap');
-                                                      if (sel && wrap) {
-                                                        sel.addEventListener('change', function(){
-                                                          wrap.style.display = (sel.value === '__new__') ? '' : 'none';
-                                                        });
-                                                      }
-                                                    })();
-                                                </script>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <div>
-                                                <div>{{ .Schematic.HTMLContent }}</div>
-                                            </div>
-                                        </div>
+                                        <a href="#" class="btn btn-ghost-secondary btn-sm text-muted" data-bs-toggle="modal" data-bs-target="#reportModal">
+                                            {{ T .Language "Report" }}
+                                        </a>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        {{ if .HasVersions }}
-                        <div class="row row-cards mb-4">
-                            <div class="col-sm-12 col-lg-12">
-                                <div class="card card-sm">
-                                    <div class="card-header">
-                                        <h3 class="card-title">{{ T .Language "Version history" }}</h3>
-                                    </div>
-                                    <div class="card-body">
-                                        <ul class="list-unstyled mb-0">
-                                            {{ range .Versions }}
-                                            <li>v{{ .Version }} — {{ HumanDate .Created }}{{ if .Note }} — {{ .Note }}{{ end }}</li>
-                                            {{ end }}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {{ end }}
-                        <!-- Materials List -->
-                        {{ if .Materials }}
-                        <div class="row row-cards mb-4">
-                            <div class="col-sm-12 col-lg-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h3 class="card-title">Materials</h3>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="material-list" id="material-list">
-                                            {{ range $i, $m := .Materials }}
-                                            <div class="material-list-item{{ if ge $i 10 }} d-none material-hidden{{ end }}">
-                                                <img loading="lazy" src="https://blocksitems.com/api/v1/blocks/{{ $m.BlockID }}/icon?size=32"
-                                                     alt="{{ $m.BlockID }}" width="32" height="32"
-                                                     onerror="this.style.display='none'">
-                                                <span>{{ $m.BlockID }}</span>
-                                                <span class="material-count">x{{ $m.Count }}</span>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                        {{ if gt (len .Materials) 10 }}
-                                        <button class="btn btn-ghost-primary btn-sm mt-2" onclick="document.querySelectorAll('.material-hidden').forEach(el => el.classList.remove('d-none')); this.remove();">
-                                            Show all ({{ len .Materials }} materials)
-                                        </button>
-                                        {{ end }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {{ end }}
-                        <div class="row row-cards mb-4">
-                            <div class="col-sm-12 col-lg-12">
-                                <div id="schematic-under-images"></div>
-                                <div id="schematic-under-images-mobile"></div>
-                            </div>
-                        </div>
-                        <div class="row row-cards mb-4">
-                            <div class="col-sm-12 col-lg-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="datagrid">
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Mod Version</div>
-                                                <div class="datagrid-content">{{ .Schematic.CreatemodVersion }}</div>
-                                            </div>
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Game Version</div>
-                                                <div class="datagrid-content">{{ .Schematic.MinecraftVersion }}</div>
-                                            </div>
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Category</div>
-                                                <div class="datagrid-content">
-                                                    <div class="avatar-list avatar-list-stacked">
-                                                        {{ range .Schematic.Categories }}
-                                                        <a href="/schematics/category/{{ .Key }}">
-                                                            <span class="badge badge-outline text-blue">{{ .Name }}</span>
-                                                        </a>
-                                                        {{ end }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Uploaded</div>
-                                                <div class="datagrid-content" data-bs-toggle="tooltip" data-bs-placement="top"
-                                                     title="{{ .Schematic.CreatedFormatted }}">{{ .Schematic.CreatedHumanReadable }}</div>
-                                            </div>
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Author</div>
-                                                <div class="datagrid-content">
-                                                    <div class="d-flex align-items-center">
-                                                        {{ if .Schematic.Author.HasAvatar }}
-                                                        <img class="avatar avatar-xs me-2 rounded" src="{{ .Schematic.Author.Avatar }}"></img>
-                                                        {{ else }}
-                                                        <img class="avatar avatar-xs me-2 rounded" src="https://mc-heads.net/avatar/Steve"></img>
-                                                        {{ end }}
-                                                        <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
-                                                            .Schematic.Author.Username }}</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Views</div>
-                                                <div class="datagrid-content">{{ .Schematic.Views }}</div>
-                                            </div>
-                                            {{ if .Schematic.HasRating }}
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Rating</div>
-                                                <div class="datagrid-content">
-                                                    {{ if eq .Schematic.RatingCount 0 }}
-                                                    No rating
-                                                    {{ else }}
-                                                    {{ .Schematic.Rating }} based on {{ .Schematic.RatingCount }}
-                                                    ratings
-                                                    {{ end }}
-                                                </div>
-                                            </div>
-                                            {{ end }}
-                                            {{ if .Schematic.HasTags }}
-                                            <div class="datagrid-item">
-                                                <div class="datagrid-title">Tags</div>
-                                                <div class="datagrid-content">
-                                                    <div class="avatar-list avatar-list-stacked">
-                                                        {{ range .Schematic.Tags }}
-                                                        <a href="/search/?tag={{ .Key }}">
-                                                            <span class="badge badge-outline text-blue">{{ .Name }}</span>
-                                                        </a>
-                                                        {{ end }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                        {{ if .Schematic.HasDependencies }}
-                                        <div class="col-sm-12 col-lg-12 mt-4">
-                                            <h3 class="card-title">Dependencies</h3>
-                                            <div>
-                                                {{ .Schematic.HTMLDependencies }}
-                                            </div>
-                                        </div>
-                                        {{ end }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row row-cards mb-4">
-                            <div class="col-sm-12 col-lg-12">
-                                <div id="schematic-under-info"></div>
-                                <div id="schematic-under-info-mobile"></div>
-                            </div>
-                        </div>
-                        <div class="row row-cards mb-4">
-                            <div class="col-sm-12 col-lg-12">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h3 class="card-title d-flex align-items-center justify-content-between">
-                                            <span>Comments</span>
-                                            <a class="btn btn-sm btn-outline-secondary" hx-get="/schematics/{{ .Schematic.Name }}/comments" hx-target="#comments-list" hx-swap="outerHTML">Refresh</a>
-                                        </h3>
-                                        <div id="comments-list">
-                                        {{range .Comments}}
-                                        <div class="col-12 mb-2">
-                                            <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
-                                                <div class="card-body">
-                                                    <div class="text-secondary">
-                                                        {{ .Content }}
-                                                    </div>
-                                                    <div class="mt-4">
-                                                        <div class="row">
-                                                            <div class="col">
-                                                                <div class="row">
-                                                                    <div class="col-1">
-                                                                        <div class="avatar-list avatar-list-stacked">
-                                                                            {{ if .AuthorHasAvatar }}
-                                                                            <span class="avatar avatar-xs rounded"
-                                                                                  style="background-image: url('{{ .AuthorAvatar }}')"></span>
-                                                                            {{ else }}
-                                                                            <span class="avatar avatar-xs rounded" style="background-image: url('https://mc-heads.net/avatar/Steve')"></span>
-                                                                            {{ end }}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col">
-                                                                        <a href="/author/{{ .AuthorUsername }}"
-                                                                           class="link-blue">
-                                                                            {{ .Author }}
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <a href="#{{ .ID }}" class="link-muted"
-                                                                   data-bs-toggle="tooltip" data-bs-placement="top"
-                                                                   title="{{ .Published }}">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" stroke-width="2"
-                                                                         stroke-linecap="round" stroke-linejoin="round"
-                                                                         class="icon icon-1">
-                                                                        <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/>
-                                                                        <path d="M16 3v4"/>
-                                                                        <path d="M8 3v4"/>
-                                                                        <path d="M4 11h16"/>
-                                                                        <path d="M11 15h1"/>
-                                                                        <path d="M12 15v3"/>
-                                                                    </svg>
-                                                                    {{ .Created }}
-                                                                </a>
-                                                            </div>
-                                                            {{ if $.IsAuthenticated }}
-                                                            <div class="col-auto">
-                                                                <a href="#tinymce-comment"
-                                                                   onclick="commentReply('{{ .ID }}', '{{ .Author }}')"
-                                                                   class="link">
-                                                                    Reply
-                                                                </a>
-                                                            </div>
-                                                            {{ end }}
-                                                            <div class="col-auto">
-                                                                <a id="{{ .ID }}" href="#{{ .ID }}" class="link-muted">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
-                                                                         height="24" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" stroke-width="2"
-                                                                         stroke-linecap="round" stroke-linejoin="round"
-                                                                         class="icon icon-1">
-                                                                        <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
-                                                                        <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
-                                                                        <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
-                                                                        <path d="M8.7 10.7l6.6 -3.4"/>
-                                                                        <path d="M8.7 13.3l6.6 3.4"/>
-                                                                    </svg>
-                                                                </a>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <a href="#reportCommentModal-{{ .ID }}" class="link text-danger" data-bs-toggle="modal" data-bs-target="#reportCommentModal-{{ .ID }}">Report</a>
-                                                            </div>
-                                                        </div>
-                                                        <!-- Comment Report Modal -->
-                                                        <div class="modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog">
-                                                          <div class="modal-dialog modal-dialog-centered" role="document">
-                                                            <div class="modal-content">
-                                                              <form method="post" action="/reports">
-                                                                <div class="modal-header">
-                                                                  <h5 class="modal-title">Report Comment</h5>
-                                                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                  <input type="hidden" name="target_type" value="comment">
-                                                                  <input type="hidden" name="target_id" value="{{ .ID }}">
-                                                                  <input type="hidden" name="return_to" value="/schematics/{{ $.Schematic.Name }}#{{ .ID }}">
-                                                                  <div class="mb-3">
-                                                                    <label class="form-label">Reason</label>
-                                                                    <textarea class="form-control" name="reason" required placeholder="Describe the issue"></textarea>
-                                                                  </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                  <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
-                                                                  <button type="submit" class="btn btn-danger">Submit report</button>
-                                                                </div>
-                                                              </form>
-                                                            </div>
-                                                          </div>
-                                                        </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {{end}}
-                                        </div>
 
-                                        {{ if .IsAuthenticated }}
-                                        <form class="col-12 pt-2" id="comment-section"
-                                              hx-post="/api/collections/comments/records"
-                                              hx-swap="none"
-                                              enctype="multipart/form-data"
-                                              onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
-                                            <div class="mb-12">
-                                                <label id="leave-comment-label" class="form-label">Leave a
-                                                    comment</label>
-                                                <textarea id="tinymce-comment" name="content"
-                                                          placeholder="comment text goes here"></textarea>
-                                            </div>
-                                            <div class="mb-12">
-                                                <button type="submit" class="btn btn-primary w-100" id="post-comment-btn">
-                                                    Post Comment
-                                                </button>
-                                                <input type="hidden" name="parent" id="parent-comment" value="">
-                                                <input type="hidden" name="schematic" value="{{ .Schematic.ID }}">
-                                            </div>
-                                            <div class="mb-12">
-                                                <div id="comment-success" class="alert alert-important alert-success"
-                                                     style="display: none;" role="alert">
-                                                    <div class="d-flex">
-                                                        <div>
-                                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                                 class="icon alert-icon" width="24" height="24"
-                                                                 viewBox="0 0 24 24" stroke-width="2"
-                                                                 stroke="currentColor" fill="none"
-                                                                 stroke-linecap="round" stroke-linejoin="round">
-                                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                                <path d="M5 12l5 5l10 -10"/>
-                                                            </svg>
-                                                        </div>
-                                                        <div>
-                                                            Comment Posted!
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </form>
-
-                                        {{ else }}
-                                        <h4>You must be <a href="/login">logged in</a> to leave a comment.</h4>
-                                        {{ end }}
-                                    </div>
+                                <!-- Description -->
+                                <div class="mt-3">
+                                    <div>{{ .Schematic.HTMLContent }}</div>
                                 </div>
+
+                                {{ if .IsAuthenticated }}
+                                <!-- Add to collection -->
+                                <div class="mt-3 pt-3 border-top">
+                                    <form class="d-flex flex-wrap align-items-center gap-2" action="/schematics/{{ .Schematic.Name }}/add-to-collection" method="post">
+                                        <label for="collection-select" class="form-label mb-0 text-muted small">Add to collection</label>
+                                        <select id="collection-select" class="form-select form-select-sm" name="collection" style="width:auto;">
+                                            <option value="" disabled selected>Select…</option>
+                                            {{ range .UserCollections }}
+                                            <option value="{{ if .Slug }}{{ .Slug }}{{ else }}{{ .ID }}{{ end }}">{{ .Title }}</option>
+                                            {{ end }}
+                                            <option value="__new__">Create new collection…</option>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm" name="new_collection_name" id="new-collection-name" placeholder="Collection name" style="display:none;width:auto;" />
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Add</button>
+                                    </form>
+                                    <script>
+                                        (function(){
+                                          var sel = document.getElementById('collection-select');
+                                          var inp = document.getElementById('new-collection-name');
+                                          if (sel && inp) {
+                                            sel.addEventListener('change', function(){
+                                              inp.style.display = (sel.value === '__new__') ? '' : 'none';
+                                            });
+                                          }
+                                        })();
+                                    </script>
+                                </div>
+                                {{ end }}
                             </div>
                         </div>
 
-                    </div>
-                    <div class="col-lg-5">
-                        {{ if eq .Schematic.Video "" }}
-                        {{ else }}
+                        <!-- Video -->
+                        {{ if ne .Schematic.Video "" }}
                         <div class="card mb-4">
                             <div id="player-youtube" data-plyr-provider="youtube"
                                  data-plyr-embed-id="{{ .Schematic.Video }}"></div>
                         </div>
                         {{ end }}
+
+                        <!-- Promotion -->
                         <div class="card mb-4">
                             {{ .Promotion }}
                         </div>
+
+                        {{ if .HasVersions }}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Version history" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    {{ range .Versions }}
+                                    <li>v{{ .Version }} — {{ HumanDate .Created }}{{ if .Note }} — {{ .Note }}{{ end }}</li>
+                                    {{ end }}
+                                </ul>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Schematic Statistics -->
+                        {{ if or .Schematic.BlockCount .Schematic.DimX .Schematic.DimY .Schematic.DimZ }}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3 class="card-title">Schematic Statistics</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="datagrid">
+                                    {{ if or .Schematic.DimX .Schematic.DimY .Schematic.DimZ }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Dimensions</div>
+                                        <div class="datagrid-content">{{ .Schematic.DimX }} x {{ .Schematic.DimY }} x {{ .Schematic.DimZ }} blocks</div>
+                                    </div>
+                                    {{ end }}
+                                    {{ if .Schematic.BlockCount }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Total Blocks</div>
+                                        <div class="datagrid-content">{{ .Schematic.BlockCount }}</div>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Info Datagrid -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <div class="datagrid">
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Mod Version</div>
+                                        <div class="datagrid-content">{{ .Schematic.CreatemodVersion }}</div>
+                                    </div>
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Game Version</div>
+                                        <div class="datagrid-content">{{ .Schematic.MinecraftVersion }}</div>
+                                    </div>
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Category</div>
+                                        <div class="datagrid-content">
+                                            <div class="avatar-list avatar-list-stacked">
+                                                {{ range .Schematic.Categories }}
+                                                <a href="/schematics/category/{{ .Key }}">
+                                                    <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                </a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Uploaded</div>
+                                        <div class="datagrid-content" data-bs-toggle="tooltip" data-bs-placement="top"
+                                             title="{{ .Schematic.CreatedFormatted }}">{{ .Schematic.CreatedHumanReadable }}</div>
+                                    </div>
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Author</div>
+                                        <div class="datagrid-content">
+                                            <div class="d-flex align-items-center">
+                                                {{ if .Schematic.Author.HasAvatar }}
+                                                <img class="avatar avatar-xs me-2 rounded" src="{{ .Schematic.Author.Avatar }}"></img>
+                                                {{ else }}
+                                                <img class="avatar avatar-xs me-2 rounded" src="https://mc-heads.net/avatar/Steve"></img>
+                                                {{ end }}
+                                                <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
+                                                    .Schematic.Author.Username }}</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Views</div>
+                                        <div class="datagrid-content">{{ .Schematic.Views }}</div>
+                                    </div>
+                                    {{ if .Schematic.Downloads }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Downloads</div>
+                                        <div class="datagrid-content">{{ .Schematic.Downloads }}</div>
+                                    </div>
+                                    {{ end }}
+                                    {{ if .Schematic.HasRating }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Rating</div>
+                                        <div class="datagrid-content">
+                                            {{ if eq .Schematic.RatingCount 0 }}
+                                            No rating
+                                            {{ else }}
+                                            {{ .Schematic.Rating }} based on {{ .Schematic.RatingCount }}
+                                            ratings
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    {{ end }}
+                                    {{ if .Schematic.HasTags }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Tags</div>
+                                        <div class="datagrid-content">
+                                            <div class="avatar-list avatar-list-stacked">
+                                                {{ range .Schematic.Tags }}
+                                                <a href="/search/?tag={{ .Key }}">
+                                                    <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                </a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                {{ if .Schematic.HasDependencies }}
+                                <div class="col-sm-12 col-lg-12 mt-4">
+                                    <h3 class="card-title">Dependencies</h3>
+                                    <div>
+                                        {{ .Schematic.HTMLDependencies }}
+                                    </div>
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+
+                        <!-- More From Author -->
                         {{ if .AuthorHasMore }}
-                        <div class="col-12 mb-4">
+                        <div class="mb-4">
                             <h3>More From <a
                                     href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                 .Schematic.Author.Username }}</a></h3>
-
                             <div class="row row-cards">
                                 {{range .FromAuthor }}
                                 {{ template "schematic_card_full.html" . }}
@@ -470,7 +269,9 @@
                             </div>
                         </div>
                         {{ end }}
-                        <div class="col-12 mb-4">
+
+                        <!-- Similar Schematics -->
+                        <div class="mb-4">
                             <h3>Similar Schematics</h3>
                             <div class="row row-cards">
                                 {{range .Similar }}
@@ -478,9 +279,245 @@
                                 {{end}}
                             </div>
                         </div>
+
+                        <!-- Comments -->
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h3 class="card-title d-flex align-items-center justify-content-between">
+                                    <span>Comments</span>
+                                    <a class="btn btn-sm btn-outline-secondary" hx-get="/schematics/{{ .Schematic.Name }}/comments" hx-target="#comments-list" hx-swap="outerHTML">Refresh</a>
+                                </h3>
+                                <div id="comments-list">
+                                {{range .Comments}}
+                                <div class="col-12 mb-2">
+                                    <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
+                                        <div class="card-body">
+                                            <div class="text-secondary">
+                                                {{ .Content }}
+                                            </div>
+                                            <div class="mt-4">
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <div class="row">
+                                                            <div class="col-1">
+                                                                <div class="avatar-list avatar-list-stacked">
+                                                                    {{ if .AuthorHasAvatar }}
+                                                                    <span class="avatar avatar-xs rounded"
+                                                                          style="background-image: url('{{ .AuthorAvatar }}')"></span>
+                                                                    {{ else }}
+                                                                    <span class="avatar avatar-xs rounded" style="background-image: url('https://mc-heads.net/avatar/Steve')"></span>
+                                                                    {{ end }}
+                                                                </div>
+                                                            </div>
+                                                            <div class="col">
+                                                                <a href="/author/{{ .AuthorUsername }}"
+                                                                   class="link-blue">
+                                                                    {{ .Author }}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <a href="#{{ .ID }}" class="link-muted"
+                                                           data-bs-toggle="tooltip" data-bs-placement="top"
+                                                           title="{{ .Published }}">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                 height="24" viewBox="0 0 24 24" fill="none"
+                                                                 stroke="currentColor" stroke-width="2"
+                                                                 stroke-linecap="round" stroke-linejoin="round"
+                                                                 class="icon icon-1">
+                                                                <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/>
+                                                                <path d="M16 3v4"/>
+                                                                <path d="M8 3v4"/>
+                                                                <path d="M4 11h16"/>
+                                                                <path d="M11 15h1"/>
+                                                                <path d="M12 15v3"/>
+                                                            </svg>
+                                                            {{ .Created }}
+                                                        </a>
+                                                    </div>
+                                                    {{ if $.IsAuthenticated }}
+                                                    <div class="col-auto">
+                                                        <a href="#tinymce-comment"
+                                                           onclick="commentReply('{{ .ID }}', '{{ .Author }}')"
+                                                           class="link">
+                                                            Reply
+                                                        </a>
+                                                    </div>
+                                                    {{ end }}
+                                                    <div class="col-auto">
+                                                        <a id="{{ .ID }}" href="#{{ .ID }}" class="link-muted">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                                                 height="24" viewBox="0 0 24 24" fill="none"
+                                                                 stroke="currentColor" stroke-width="2"
+                                                                 stroke-linecap="round" stroke-linejoin="round"
+                                                                 class="icon icon-1">
+                                                                <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                                                <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                                                <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                                                <path d="M8.7 10.7l6.6 -3.4"/>
+                                                                <path d="M8.7 13.3l6.6 3.4"/>
+                                                            </svg>
+                                                        </a>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <a href="#reportCommentModal-{{ .ID }}" class="link text-danger" data-bs-toggle="modal" data-bs-target="#reportCommentModal-{{ .ID }}">Report</a>
+                                                    </div>
+                                                </div>
+                                                <!-- Comment Report Modal -->
+                                                <div class="modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog">
+                                                  <div class="modal-dialog modal-dialog-centered" role="document">
+                                                    <div class="modal-content">
+                                                      <form method="post" action="/reports">
+                                                        <div class="modal-header">
+                                                          <h5 class="modal-title">Report Comment</h5>
+                                                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                          <input type="hidden" name="target_type" value="comment">
+                                                          <input type="hidden" name="target_id" value="{{ .ID }}">
+                                                          <input type="hidden" name="return_to" value="/schematics/{{ $.Schematic.Name }}#{{ .ID }}">
+                                                          <div class="mb-3">
+                                                            <label class="form-label">Reason</label>
+                                                            <textarea class="form-control" name="reason" required placeholder="Describe the issue"></textarea>
+                                                          </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+                                                          <button type="submit" class="btn btn-danger">Submit report</button>
+                                                        </div>
+                                                      </form>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{end}}
+                                </div>
+
+                                {{ if .IsAuthenticated }}
+                                <form class="col-12 pt-2" id="comment-section"
+                                      hx-post="/api/collections/comments/records"
+                                      hx-swap="none"
+                                      enctype="multipart/form-data"
+                                      onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
+                                    <div class="mb-12">
+                                        <label id="leave-comment-label" class="form-label">Leave a
+                                            comment</label>
+                                        <textarea id="tinymce-comment" name="content"
+                                                  placeholder="comment text goes here"></textarea>
+                                    </div>
+                                    <div class="mb-12">
+                                        <button type="submit" class="btn btn-primary w-100" id="post-comment-btn">
+                                            Post Comment
+                                        </button>
+                                        <input type="hidden" name="parent" id="parent-comment" value="">
+                                        <input type="hidden" name="schematic" value="{{ .Schematic.ID }}">
+                                    </div>
+                                    <div class="mb-12">
+                                        <div id="comment-success" class="alert alert-important alert-success"
+                                             style="display: none;" role="alert">
+                                            <div class="d-flex">
+                                                <div>
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                         class="icon alert-icon" width="24" height="24"
+                                                         viewBox="0 0 24 24" stroke-width="2"
+                                                         stroke="currentColor" fill="none"
+                                                         stroke-linecap="round" stroke-linejoin="round">
+                                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                                        <path d="M5 12l5 5l10 -10"/>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    Comment Posted!
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                {{ else }}
+                                <h4>You must be <a href="/login">logged in</a> to leave a comment.</h4>
+                                {{ end }}
+                            </div>
+                        </div>
+
                     </div>
-                </div>
-                {{template "ad_rail.html" .}}
+
+                    <!-- Column 2: Mods & Materials -->
+                    <div class="col-xl-5">
+
+                        <!-- Required Mods -->
+                        {{ if .Mods }}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">Required Mods</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex flex-wrap gap-2">
+                                    {{ range .Mods }}
+                                    <span class="badge bg-blue-lt">{{ . }}</span>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Materials List -->
+                        {{ if .Materials }}
+                        <div class="card mb-3">
+                            <div class="card-header d-flex align-items-center">
+                                <h3 class="card-title mb-0">Materials</h3>
+                                <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                    <span class="copy-text">Copy list</span>
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="materials-list" class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                                    {{ range .Materials }}
+                                    <div class="material-row" data-block-id="{{ .BlockID }}">
+                                        <div class="material-icon-wrap">
+                                            <img src="https://blocksitems.com/api/v1/blocks/{{ .BlockID }}/icon?size=64" alt="" loading="lazy"
+                                                 onerror="this.style.display='none';var p=document.createElement('div');p.style.cssText='width:32px;height:32px;background:var(--tblr-border-color);border-radius:2px';this.parentNode.appendChild(p);">
+                                        </div>
+                                        <div class="material-info">
+                                            <span class="material-name">{{ .BlockID }}</span>
+                                            <span class="material-block-id">{{ .BlockID }}</span>
+                                        </div>
+                                        <span class="material-count" data-count="{{ .Count }}">x{{ .Count }}</span>
+                                        <span class="material-stacks"></span>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                <div class="p-3 border-top">
+                                    <small class="text-muted">Block data from <a href="https://blocksitems.com" target="_blank" rel="noopener">blocksitems.com</a></small>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                    </div>
+
+                </div><!-- /row -->
+                </div><!-- /flex-grow-1 -->
+
+                    <!-- Column 3: Ad Rails -->
+                    <!-- Narrow 160px rail for lg (992-1199px) -->
+                    <div class="ad-rail-sm d-none d-lg-block d-xl-none">
+                        <div id="ad-rail-lg" class="mb-3"></div>
+                    </div>
+                    <!-- Wide 300px rail for xl+ (1200px+) -->
+                    <div class="ad-rail d-none d-xl-block">
+                        <div id="ad-rail-top" class="mb-3"></div>
+                        <div id="ad-rail-mid" class="mb-3"></div>
+                        <div id="ad-rail-bottom"></div>
+                    </div>
+                </div><!-- /d-flex -->
+
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/fslightbox@3.4.2/index.js" defer crossorigin="anonymous"></script>
@@ -490,16 +527,178 @@
         {{template "footer.html" .}}
     </div>
 </div>
+<!-- Material row styles -->
+<style>
+.material-row {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--tblr-border-color);
+}
+.material-row:last-child {
+    border-bottom: none;
+}
+.material-icon-wrap {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tblr-bg-surface-secondary);
+    border-radius: 4px;
+}
+.material-icon-wrap img {
+    width: 28px;
+    height: 28px;
+    image-rendering: pixelated;
+}
+.material-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.material-name {
+    font-weight: 500;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.material-block-id {
+    font-size: 0.7rem;
+    color: var(--tblr-secondary-color);
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.material-count {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: var(--tblr-body-color);
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}
+.material-stacks {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--tblr-body-color);
+    opacity: 0.5;
+    min-width: 55px;
+    text-align: right;
+}
+.copy-success .copy-icon { display: none !important; }
+.copy-success .check-icon { display: inline-block !important; color: #2fb344; }
+.copy-success .copy-text { color: #2fb344; }
+.copy-success { border-color: #2fb344 !important; color: #2fb344 !important; }
+</style>
+<script>
+var blockNameMap = {};
+document.addEventListener("DOMContentLoaded", function() {
+    var materialRows = document.querySelectorAll('.material-row');
+    if (materialRows.length > 0) {
+        var blockIds = [];
+        var seen = {};
+        for (var i = 0; i < materialRows.length; i++) {
+            var bid = materialRows[i].getAttribute('data-block-id');
+            if (!seen[bid]) { blockIds.push(bid); seen[bid] = true; }
+        }
+        fetchBlockNames(blockIds, function() {
+            for (var i = 0; i < materialRows.length; i++) {
+                var bid = materialRows[i].getAttribute('data-block-id');
+                var nameEl = materialRows[i].querySelector('.material-name');
+                if (nameEl) {
+                    var displayName = (blockNameMap[bid] && blockNameMap[bid].display_name) || formatBlockName(bid);
+                    nameEl.textContent = displayName;
+                }
+            }
+        });
+        for (var i = 0; i < materialRows.length; i++) {
+            var countEl = materialRows[i].querySelector('.material-count');
+            var stacksEl = materialRows[i].querySelector('.material-stacks');
+            if (countEl) {
+                var c = parseInt(countEl.getAttribute('data-count'), 10);
+                if (!isNaN(c)) {
+                    countEl.textContent = 'x' + c.toLocaleString();
+                    if (stacksEl && c > 63) {
+                        var s = Math.floor(c / 64);
+                        var r = c % 64;
+                        stacksEl.textContent = s + 's' + (r > 0 ? ' +' + r : '');
+                    }
+                }
+            }
+        }
+    }
+});
+function fetchBlockNames(blockIds, callback) {
+    if (!blockIds || blockIds.length === 0) { if (callback) callback(); return; }
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://blocksitems.com/api/v1/blocks/lookup', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var result = JSON.parse(xhr.responseText);
+                    if (result.data) { blockNameMap = result.data; }
+                } catch(e) {}
+            }
+            if (callback) callback();
+        };
+        xhr.onerror = function() { if (callback) callback(); };
+        xhr.send(JSON.stringify({ block_ids: blockIds }));
+    } catch(e) { if (callback) callback(); }
+}
+function formatBlockName(blockId) {
+    if (!blockId) return '';
+    var parts = blockId.split(':');
+    var name = parts.length > 1 ? parts[1] : parts[0];
+    return name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+function animateCopyButton(btn) {
+    btn.classList.add('copy-success');
+    setTimeout(function() { btn.classList.remove('copy-success'); }, 2000);
+}
+function copyMaterialsAsMarkdown() {
+    var rows = document.getElementById('materials-list');
+    if (!rows) return;
+    var items = rows.querySelectorAll('.material-row');
+    if (!items.length) return;
+    var lines = ['| Material | Count | Stacks |', '|---|---|---|'];
+    for (var i = 0; i < items.length; i++) {
+        var bid = items[i].getAttribute('data-block-id');
+        var name = (blockNameMap[bid] && blockNameMap[bid].display_name) || formatBlockName(bid);
+        var countText = items[i].querySelector('.material-count').textContent;
+        var stacksText = items[i].querySelector('.material-stacks').textContent;
+        lines.push('| ' + name + ' | ' + countText + ' | ' + stacksText + ' |');
+    }
+    var markdown = lines.join('\n');
+    var btn = document.getElementById('copy-materials-btn');
+    try {
+        navigator.clipboard.writeText(markdown).then(function() { animateCopyButton(btn); });
+    } catch(e) {
+        var textarea = document.createElement('textarea');
+        textarea.value = markdown;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        animateCopyButton(btn);
+    }
+}
+</script>
 {{template "foot.html" .}}
 
-{{ if eq .Schematic.Video "" }}
-{{ else }}
+{{ if ne .Schematic.Video "" }}
 <script>
-    // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
         window.Plyr && (new Plyr('#player-youtube'));
     });
-    // @formatter:on
 </script>
 {{ end }}
 <script>
@@ -507,11 +706,10 @@
         navigator.clipboard.writeText(event.target.dataset.link);
         event.target.classList.remove("btn-secondary")
         event.target.classList.add("btn-green")
-        event.target.innerText = "Copied!"
+        event.target.textContent = "Copied!"
     }
 </script>
 <script>
-    // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
         let options = {
             license_key: "gpl",
@@ -537,7 +735,6 @@
         tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
         tinyMCE.init(options);
     })
-    // @formatter:on
 </script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -545,13 +742,22 @@
             tooltip: false,
             clearable: false,
             stars: function (el, item, index) {
-                el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon gl-star-full icon-1"><path d="M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z" /></svg>`;
+                var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svg.setAttribute("width", "24");
+                svg.setAttribute("height", "24");
+                svg.setAttribute("viewBox", "0 0 24 24");
+                svg.setAttribute("fill", "currentColor");
+                svg.setAttribute("class", "icon gl-star-full icon-1");
+                var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", "M8.243 7.34l-6.38 .925l-.113 .023a1 1 0 0 0 -.44 1.684l4.622 4.499l-1.09 6.355l-.013 .11a1 1 0 0 0 1.464 .944l5.706 -3l5.693 3l.1 .046a1 1 0 0 0 1.352 -1.1l-1.091 -6.355l4.624 -4.5l.078 -.085a1 1 0 0 0 -.633 -1.62l-6.38 -.926l-2.852 -5.78a1 1 0 0 0 -1.794 0l-2.853 5.78z");
+                svg.appendChild(path);
+                el.appendChild(svg);
             },
             classNames: {}
         })
 
         var tooltip = new Tooltip(document.querySelector('.gl-star-rating--stars'), {
-            boundary: document.body, // or document.querySelector('#boundary')
+            boundary: document.body,
             title: "Rating saved!",
             trigger: 'manual',
         })
@@ -582,107 +788,25 @@
         });
     })
 </script>
-<script>
-    window['nitroAds'].createAd('schematic-under-images', {
-        "refreshTime": 30,
-        "sizes": [
-            [
-                "728",
-                "90"
-            ]
-        ],
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        },
-        "mediaQuery": "(min-width: 1025px)"
-    });
-    window['nitroAds'].createAd('schematic-under-info', {
-        "refreshTime": 30,
-        "sizes": [
-            [
-                "728",
-                "90"
-            ]
-        ],
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        },
-        "mediaQuery": "(min-width: 1025px)"
-    });
-    window['nitroAds'].createAd('schematic-right-sidebar', {
-        "sizes": [
-            [
-                "336",
-                "280"
-            ]
-        ],
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        }
-    });
-    window['nitroAds'].createAd('schematic-right-sidebar-sizeless', {
-        "delayLoading": true,
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        }
-    });
-    window['nitroAds'].createAd('schematic-right-sidebar-video', {
-        "format": "video-nc",
-        "video": {}
-    });
-    window['nitroAds'].createAd('schematic-under-images-mobile', {
-        "delayLoading": true,
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        },
-        "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
-    });
-    window['nitroAds'].createAd('schematic-under-info-mobile', {
-        "delayLoading": true,
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        },
-        "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
-    });
-</script>
 {{ if .IsAuthenticated }}
 <script>
     function commentReply(id, username) {
         if (id == null) {
             return false
         }
-        let leaveCommentLabel = document.getElementById('leave-comment-label')
-        let postCommentButton = document.getElementById('post-comment-btn')
+        var leaveCommentLabel = document.getElementById('leave-comment-label');
+        var postCommentButton = document.getElementById('post-comment-btn');
         leaveCommentLabel.scrollIntoView({
             alignToTop: true,
             behavior: 'smooth'
         });
-        leaveCommentLabel.innerHTML = "Reply to " + username
-        postCommentButton.innerHTML = "Post Reply"
-        document.getElementById("parent-comment").value = id
+        leaveCommentLabel.textContent = "Reply to " + username;
+        postCommentButton.textContent = "Post Reply";
+        document.getElementById("parent-comment").value = id;
         return false;
     }
 </script>
 <script>
-// Refresh comments and show success after HTMX comment submit
 document.addEventListener('htmx:afterRequest', function(evt) {
   var form = document.getElementById('comment-section');
   if (!form) return;
@@ -700,6 +824,43 @@ document.addEventListener('htmx:afterRequest', function(evt) {
 });
 </script>
 {{ end }}
+
+<!-- Ad Scripts -->
+<script>
+// Narrow ad rail (lg only: 992-1199px)
+window['nitroAds'].createAd('ad-rail-lg', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["160", "600"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+});
+// Wide ad rail (xl+: 1200px+)
+window['nitroAds'].createAd('ad-rail-top', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+</script>
 
 <!-- Report Modal -->
 <div class="modal" id="reportModal" tabindex="-1" role="dialog">

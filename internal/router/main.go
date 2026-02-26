@@ -5,6 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
+	"createmod/internal/outurl"
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
@@ -44,6 +45,9 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 
 	assetVer := computeAssetVersion()
 
+	// Derive a stable HMAC key for signing outgoing redirect URLs.
+	outSecret := deriveOutSecret(app)
+
 	funcMap := html.FuncMap{
 		"ToLower":   strings.ToLower,
 		"mod":       func(i, j int) bool { return i%j == 0 },
@@ -51,6 +55,12 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 		"printf":    fmt.Sprintf,
 		"T":         func(lang string, key string) string { return i18n.T(lang, key) },
 		"AssetVer":  func() string { return assetVer },
+		"SignedOutURL": func(rawURL string, args ...string) string {
+			if len(args) == 2 {
+				return outurl.BuildPathWithSource(rawURL, outSecret, args[0], args[1])
+			}
+			return outurl.BuildPath(rawURL, outSecret)
+		},
 		"tagSelected": func(selected []string, key string) bool {
 			for _, s := range selected {
 				if s == key {
@@ -95,7 +105,13 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// Private preview URL for temporary uploads
 	e.GET("/u/{token}", pages.UploadPreviewHandler(app, registry, cacheService))
 	// Make public endpoint for temporary uploads
+	e.GET("/u/{token}/download", pages.UploadDownloadHandler(app))
+	e.POST("/u/{token}/add-file", pages.UploadAddFileHandler(app))
+	e.DELETE("/u/{token}/files/{fileId}", pages.UploadDeleteFileHandler(app))
+	e.GET("/u/{token}/files/{fileId}/download", pages.UploadFileDownloadHandler(app))
 	e.POST("/u/{token}/make-public", pages.UploadMakePublicHandler(app, registry, cacheService))
+	// Publish form for temporary uploads (requires auth)
+	e.GET("/u/{token}/publish", pages.UploadPublishHandler(app, registry, cacheService))
 	// Upload moderation pending confirmation page
 	e.GET("/upload/pending", pages.UploadPendingHandler(app, registry, cacheService))
 	e.GET("/contact", pages.ContactHandler(app, registry, cacheService))
@@ -109,6 +125,9 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService))
 	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService))
 	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService))
+	e.GET("/settings/gamification", pages.UserGamificationHandler(app, registry, cacheService))
+	e.GET("/settings/api-keys", pages.UserAPIKeysHandler(app, registry, cacheService))
+	e.GET("/settings/statistics", pages.UserStatsHandler(app, registry, cacheService))
 	// API Docs
 	e.GET("/api", pages.APIDocsHandler(app, registry, cacheService))
 	// Public JSON API (beta)
@@ -145,7 +164,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// Videos listing
 	e.GET("/videos", pages.VideosHandler(app, registry, cacheService))
 	// Guides listing
-	e.GET("/guides", pages.GuidesHandler(app, registry, cacheService))
+	e.GET("/guides", pages.GuidesHandler(app, registry, cacheService, outSecret))
 	// Guide create
 	e.GET("/guides/new", pages.GuidesNewHandler(app, registry, cacheService))
 	e.POST("/guides", pages.GuidesCreateHandler(app, cacheService))
@@ -180,8 +199,8 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/download/{name}", pages.DownloadHandler(app, cacheService))
 	// Download interstitial page
 	e.GET("/get/{name}", pages.DownloadInterstitialHandler(app, registry, cacheService))
-	// External link interstitial
-	e.GET("/out", pages.ExternalLinkInterstitialHandler(app, registry, cacheService))
+	// External link interstitial (encrypted token, no raw URL exposed)
+	e.GET("/out/{token}", pages.ExternalLinkInterstitialHandler(app, registry, cacheService, outSecret))
 	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
 	// Search autocomplete
 	e.GET("/api/search/suggest", pages.SearchSuggestHandler(searchService))
@@ -315,4 +334,15 @@ func getContent(url string) (string, error) {
 	}
 
 	return string(data), nil
+}
+
+// deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.
+// It uses the OUT_SECRET env var if set, otherwise derives one from the
+// PocketBase data directory path so it is stable across restarts.
+func deriveOutSecret(app *pocketbase.PocketBase) string {
+	if s := os.Getenv("OUT_SECRET"); s != "" {
+		return s
+	}
+	h := sha256.Sum256([]byte("createmod-out-url-sign:" + app.DataDir()))
+	return hex.EncodeToString(h[:])
 }

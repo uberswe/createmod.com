@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"createmod/internal/testutil"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -77,14 +78,15 @@ func Test_Upload_HTTP_GzipParsedSummary(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
 	}
 
-	// extract preview url
-	s := string(b)
-	// find trailing " url=/u/{token}"
-	idx := bytes.LastIndex([]byte(s), []byte(" url="))
-	if idx < 0 {
-		t.Fatalf("missing url in response: %q", s)
+	// extract preview url from JSON response
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("expected JSON response, got: %q", string(b))
 	}
-	preview := s[idx+5:]
+	preview, _ := result["url"].(string)
+	if preview == "" {
+		t.Fatalf("missing url in JSON response: %q", string(b))
+	}
 
 	// fetch preview and assert it contains gzip summary
 	resp2, err := client.Get(baseURL + preview)

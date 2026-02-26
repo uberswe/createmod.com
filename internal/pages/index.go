@@ -9,6 +9,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"math"
+	"sort"
+	"time"
+
 	"github.com/drexedam/gravatar"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -16,9 +20,6 @@ import (
 	"github.com/pocketbase/pocketbase/tools/template"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"math"
-	"sort"
-	"time"
 )
 
 var indexTemplates = append([]string{
@@ -66,30 +67,54 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			return renderTabPartial(app, cacheService, registry, e, tab, page)
 		}
 
-		// Full page load
-		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil {
-			return err
-		}
+		// Full page load — serve from pre-warmed cache when available.
+		featuredSchematics, _ := cacheService.GetSchematics(cache.FeaturedSchematicsKey)
+		latestSchematics, latestCached := cacheService.GetSchematics(cache.LatestSchematicsKey)
+		trendingSchematics, _ := cacheService.GetSchematics(cache.TrendingSchematicsKey)
+		highestRated, _ := cacheService.GetSchematics(cache.HighestRatedSchematicsKey)
 
-		// Fetch featured schematics
-		var featuredSchematics []models.Schematic
-		featuredRecords, err := app.FindRecordsByFilter("schematics", "deleted = null && moderated = true && featured = true", "-created", 20, 0)
-		if err == nil && len(featuredRecords) > 0 {
-			// Shuffle and pick up to 3
-			rand.Shuffle(len(featuredRecords), func(i, j int) {
-				featuredRecords[i], featuredRecords[j] = featuredRecords[j], featuredRecords[i]
-			})
-			if len(featuredRecords) > 3 {
-				featuredRecords = featuredRecords[:3]
+		// Determine hasNext flags from cache (default false if not cached)
+		latestHasNext := false
+		trendingHasNext := false
+		highestHasNext := false
+		if v, ok := cacheService.Get(cache.LatestHasNextKey); ok {
+			if b, ok := v.(bool); ok {
+				latestHasNext = b
 			}
-			featuredSchematics = MapResultsToSchematic(app, featuredRecords, cacheService)
+		}
+		if v, ok := cacheService.Get(cache.TrendingHasNextKey); ok {
+			if b, ok := v.(bool); ok {
+				trendingHasNext = b
+			}
+		}
+		if v, ok := cacheService.Get(cache.HighestRatedHasNextKey); ok {
+			if b, ok := v.(bool); ok {
+				highestHasNext = b
+			}
 		}
 
-		// Latest schematics (first page)
-		latestResults, latestHasNext := fetchLatestPage(app, schematicsCollection.Id, 1)
-
-		trendingSchematics, trendingHasNext := getTrendingSchematicsPage(app, cacheService, 1)
+		// Fallback: if cache is cold (first request before warm completes), query directly
+		if !latestCached {
+			schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
+			if err != nil {
+				return err
+			}
+			featuredRecords, err := app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true && featured = true", "-created", 20, 0)
+			if err == nil && len(featuredRecords) > 0 {
+				rand.Shuffle(len(featuredRecords), func(i, j int) {
+					featuredRecords[i], featuredRecords[j] = featuredRecords[j], featuredRecords[i]
+				})
+				if len(featuredRecords) > 3 {
+					featuredRecords = featuredRecords[:3]
+				}
+				featuredSchematics = MapResultsToSchematic(app, featuredRecords, cacheService)
+			}
+			var latestResults []*core.Record
+			latestResults, latestHasNext = fetchLatestPage(app, schematicsCollection.Id, 1)
+			latestSchematics = MapResultsToSchematic(app, latestResults, cacheService)
+			trendingSchematics, trendingHasNext = getTrendingSchematicsPage(app, cacheService, 1)
+			highestRated, highestHasNext = getHighestRatedSchematicsPage(app, cacheService, 1)
+		}
 
 		// Pad featured with trending if fewer than 3
 		if len(featuredSchematics) < 3 && len(trendingSchematics) > 0 {
@@ -110,11 +135,9 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			}
 		}
 
-		highestRated, highestHasNext := getHighestRatedSchematicsPage(app, cacheService, 1)
-
 		d := IndexData{
 			Featured:        featuredSchematics,
-			Schematics:      MapResultsToSchematic(app, latestResults, cacheService),
+			Schematics:      latestSchematics,
 			Trending:        trendingSchematics,
 			HighestRated:    highestRated,
 			HasNext:         latestHasNext,
@@ -196,7 +219,7 @@ func fetchLatestPage(app *pocketbase.PocketBase, collectionID string, page int) 
 	offset := (page - 1) * indexPageSize
 	results, err := app.FindRecordsByFilter(
 		collectionID,
-		"deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
+		"deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
 		"-created",
 		limit,
 		offset,
@@ -245,152 +268,200 @@ func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.S
 	return results
 }
 
-// trendingScore computes a decayed popularity score combining recent views and ratings sum.
-// score = (views48h + ratingWeight*log1p(ratingsSum)) / pow(ageHours+2, decay)
-func trendingScore(now time.Time, created time.Time, views48h float64, ratingsSum float64, decay float64, ratingWeight float64) float64 {
-	ageHours := now.Sub(created).Hours()
-	if ageHours < 0 {
-		ageHours = 0
-	}
-	den := math.Pow(ageHours+2, decay)
-	if den == 0 {
-		den = 1
-	}
-	return (views48h + ratingWeight*math.Log1p(ratingsSum)) / den
+// trendingEpoch is a fixed reference point for the Reddit-style hot score.
+// All scores are relative to this; the exact value doesn't matter as long as it's consistent.
+var trendingEpoch = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+// trendingTimescale controls how quickly newer content displaces older content.
+// Every timescale period, an item needs 10x more engagement to hold its ranking.
+// 365 days in seconds — gives older high-quality content longer shelf life.
+const trendingTimescale = 365 * 24 * 3600.0
+
+// trendingScore computes a Reddit-style hot score.
+//
+// score = log10(max(engagement, 1)) + (created - epoch) / timescale
+//
+// Engagement is an additive combination of recent views, total views (dampened),
+// rating count (deliberate user action), and rating sum (quality signal).
+// When engagement is zero, log10(1) = 0, so items sort purely by creation time (newest first).
+// As engagement grows logarithmically, popular items get boosted above their age peers.
+func trendingScore(created time.Time, recentViews float64, totalViews float64, ratingCount float64, ratingSum float64, recentDownloads float64, totalDownloads float64) float64 {
+	engagement := recentViews + 0.5*math.Log1p(totalViews) + 3.0*ratingCount + ratingSum + 2.0*recentDownloads + 0.5*math.Log1p(totalDownloads)
+	order := math.Log10(math.Max(engagement, 1))
+	seconds := created.Sub(trendingEpoch).Seconds()
+	return order + seconds/trendingTimescale
 }
 
-// ComputeTrendingScores computes trending scores for all recent schematics.
+// ComputeTrendingScores computes trending scores for all moderated schematics.
 // Returns a map of schematic ID to score. This can be passed to search.Service.SetTrendingScores().
 func ComputeTrendingScores(app *pocketbase.PocketBase) map[string]float64 {
-	now := time.Now().UTC()
+	engagement := fetchEngagementData(app)
+	if engagement == nil {
+		return nil
+	}
+	return engagement.computeScores()
+}
+
+// engagementData holds the pre-fetched data needed to compute trending scores.
+type engagementData struct {
+	schemRecs       []*core.Record
+	recentViews     map[string]float64 // 48h views
+	totalViews      map[string]float64 // all-time views
+	ratingSum       map[string]float64
+	ratingCount     map[string]float64
+	recentDownloads map[string]float64 // 48h downloads
+	totalDownloads  map[string]float64 // all-time downloads
+}
+
+func (ed *engagementData) computeScores() map[string]float64 {
+	scores := make(map[string]float64, len(ed.schemRecs))
+	for _, rec := range ed.schemRecs {
+		id := rec.Id
+		created := rec.GetDateTime("created").Time()
+		scores[id] = trendingScore(created, ed.recentViews[id], ed.totalViews[id], ed.ratingCount[id], ed.ratingSum[id], ed.recentDownloads[id], ed.totalDownloads[id])
+	}
+	return scores
+}
+
+// fetchEngagementData queries all the signals needed for trending in bulk.
+func fetchEngagementData(app *pocketbase.PocketBase) *engagementData {
 	var schemRecs []*core.Record
 	err := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
 		Where(dbx.NewExp("(schematics.deleted = '' OR schematics.deleted IS NULL) AND schematics.moderated = 1 AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))")).
 		OrderBy("created DESC").
-		Limit(200).
 		All(&schemRecs)
 	if err != nil || len(schemRecs) == 0 {
 		return nil
 	}
 
-	twoDaysAgo := now.Add(-48 * time.Hour)
-	twoDaysAgoStr := twoDaysAgo.Format("2006-01-02 15:04:05")
 	type kv struct {
 		ID string
 		V  float64
 	}
+
+	// Recent views (last 30 days — matches the 12-month trending timescale)
+	recentCutoff := time.Now().UTC().Add(-30 * 24 * time.Hour).Format("2006-01-02 15:04:05")
 	var viewRows []kv
 	err = app.RecordQuery("schematic_views").
 		Select("schematic as id", "SUM(count) as v").
 		From("schematic_views").
-		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": twoDaysAgoStr})).
+		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": recentCutoff})).
 		GroupBy("schematic").
 		All(&viewRows)
-	views48 := make(map[string]float64, len(viewRows))
+	recentViews := make(map[string]float64, len(viewRows))
 	if err == nil {
 		for _, r := range viewRows {
-			views48[r.ID] = r.V
+			recentViews[r.ID] = r.V
 		}
 	}
 
-	var ratingRows []kv
-	err2 := app.RecordQuery("schematic_ratings").
+	// All-time total views
+	var totalViewRows []kv
+	err = app.RecordQuery("schematic_views").
+		Select("schematic as id", "SUM(count) as v").
+		From("schematic_views").
+		Where(dbx.NewExp("type = 0")).
+		GroupBy("schematic").
+		All(&totalViewRows)
+	totalViews := make(map[string]float64, len(totalViewRows))
+	if err == nil {
+		for _, r := range totalViewRows {
+			totalViews[r.ID] = r.V
+		}
+	}
+
+	// Rating sum
+	var ratingSumRows []kv
+	err = app.RecordQuery("schematic_ratings").
 		Select("schematic as id", "SUM(rating) as v").
 		From("schematic_ratings").
 		GroupBy("schematic").
-		All(&ratingRows)
-	ratingsSum := make(map[string]float64, len(ratingRows))
-	if err2 == nil {
-		for _, r := range ratingRows {
-			ratingsSum[r.ID] = r.V
+		All(&ratingSumRows)
+	ratingSum := make(map[string]float64, len(ratingSumRows))
+	if err == nil {
+		for _, r := range ratingSumRows {
+			ratingSum[r.ID] = r.V
 		}
 	}
 
-	const decay = 1.8
-	const ratingWeight = 2.0
-	scores := make(map[string]float64, len(schemRecs))
-	for _, rec := range schemRecs {
-		id := rec.Id
-		created := rec.GetDateTime("created").Time()
-		v := views48[id]
-		r := ratingsSum[id]
-		scores[id] = trendingScore(now, created, v, r, decay, ratingWeight)
+	// Rating count
+	var ratingCountRows []kv
+	err = app.RecordQuery("schematic_ratings").
+		Select("schematic as id", "COUNT(rating) as v").
+		From("schematic_ratings").
+		GroupBy("schematic").
+		All(&ratingCountRows)
+	ratingCount := make(map[string]float64, len(ratingCountRows))
+	if err == nil {
+		for _, r := range ratingCountRows {
+			ratingCount[r.ID] = r.V
+		}
 	}
-	return scores
+
+	// Recent downloads (last 48h)
+	var recentDlRows []kv
+	err = app.RecordQuery("schematic_downloads").
+		Select("schematic as id", "SUM(count) as v").
+		From("schematic_downloads").
+		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": recentCutoff})).
+		GroupBy("schematic").
+		All(&recentDlRows)
+	recentDownloads := make(map[string]float64, len(recentDlRows))
+	if err == nil {
+		for _, r := range recentDlRows {
+			recentDownloads[r.ID] = r.V
+		}
+	}
+
+	// All-time total downloads
+	var totalDlRows []kv
+	err = app.RecordQuery("schematic_downloads").
+		Select("schematic as id", "SUM(count) as v").
+		From("schematic_downloads").
+		Where(dbx.NewExp("type = 0")).
+		GroupBy("schematic").
+		All(&totalDlRows)
+	totalDownloads := make(map[string]float64, len(totalDlRows))
+	if err == nil {
+		for _, r := range totalDlRows {
+			totalDownloads[r.ID] = r.V
+		}
+	}
+
+	return &engagementData{
+		schemRecs:       schemRecs,
+		recentViews:     recentViews,
+		totalViews:      totalViews,
+		ratingSum:       ratingSum,
+		ratingCount:     ratingCount,
+		recentDownloads: recentDownloads,
+		totalDownloads:  totalDownloads,
+	}
 }
 
-// getAllTrendingSchematics returns the full sorted trending list (up to 200 candidates).
+// getAllTrendingSchematics returns the full sorted trending list for all moderated schematics.
 func getAllTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
 	cached, found := cacheService.GetSchematics(cache.TrendingSchematicsKey)
 	if found {
 		return cached
 	}
 
-	now := time.Now().UTC()
-	var schemRecs []*core.Record
-	err := app.RecordQuery("schematics").
-		Select("schematics.*").
-		From("schematics").
-		Where(dbx.NewExp("(schematics.deleted = '' OR schematics.deleted IS NULL) AND schematics.moderated = 1 AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))")).
-		OrderBy("created DESC").
-		Limit(200).
-		All(&schemRecs)
-	if err != nil || len(schemRecs) == 0 {
+	ed := fetchEngagementData(app)
+	if ed == nil {
 		return nil
 	}
 
-	// Aggregate recent views (last 48h)
-	twoDaysAgo := now.Add(-48 * time.Hour)
-	twoDaysAgoStr := twoDaysAgo.Format("2006-01-02 15:04:05")
-	type kv struct {
-		ID string
-		V  float64
-	}
-	var viewRows []kv
-	err = app.RecordQuery("schematic_views").
-		Select("schematic as id", "SUM(count) as v").
-		From("schematic_views").
-		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": twoDaysAgoStr})).
-		GroupBy("schematic").
-		All(&viewRows)
-	views48 := make(map[string]float64, len(viewRows))
-	if err == nil {
-		for _, r := range viewRows {
-			views48[r.ID] = r.V
-		}
-	}
+	scores := ed.computeScores()
 
-	// Aggregate ratings sum
-	var ratingRows []kv
-	err2 := app.RecordQuery("schematic_ratings").
-		Select("schematic as id", "SUM(rating) as v").
-		From("schematic_ratings").
-		GroupBy("schematic").
-		All(&ratingRows)
-	ratingsSum := make(map[string]float64, len(ratingRows))
-	if err2 == nil {
-		for _, r := range ratingRows {
-			ratingsSum[r.ID] = r.V
-		}
-	}
-
-	// Compute scores, sort
 	type scored struct {
 		rec   *core.Record
 		score float64
 	}
-	scoredList := make([]scored, 0, len(schemRecs))
-	const decay = 1.8
-	const ratingWeight = 2.0
-	for _, rec := range schemRecs {
-		id := rec.Id
-		created := rec.GetDateTime("created").Time()
-		v := views48[id]
-		r := ratingsSum[id]
-		s := trendingScore(now, created, v, r, decay, ratingWeight)
-		scoredList = append(scoredList, scored{rec: rec, score: s})
+	scoredList := make([]scored, 0, len(ed.schemRecs))
+	for _, rec := range ed.schemRecs {
+		scoredList = append(scoredList, scored{rec: rec, score: scores[rec.Id]})
 	}
 	sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
 
@@ -418,10 +489,48 @@ func getTrendingSchematicsPage(app *pocketbase.PocketBase, cacheService *cache.S
 	return all[offset:end], hasNext
 }
 
-// getTrendingSchematics returns the first page of trending for backward compatibility.
-func getTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
-	results, _ := getTrendingSchematicsPage(app, cacheService, 1)
-	return results
+
+// WarmIndexCache pre-computes and caches all data needed for the index page
+// so that no user request ever hits the database for page-1 data.
+// Called at boot and periodically by a background ticker.
+func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
+	app.Logger().Debug("Warming index page cache")
+
+	// 1. Featured schematics
+	featuredRecords, err := app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true && featured = true", "-created", 20, 0)
+	if err == nil && len(featuredRecords) > 0 {
+		rand.Shuffle(len(featuredRecords), func(i, j int) {
+			featuredRecords[i], featuredRecords[j] = featuredRecords[j], featuredRecords[i]
+		})
+		if len(featuredRecords) > 3 {
+			featuredRecords = featuredRecords[:3]
+		}
+		cacheService.SetSchematics(cache.FeaturedSchematicsKey, MapResultsToSchematic(app, featuredRecords, cacheService))
+	}
+
+	// 2. Latest schematics (page 1)
+	col, colErr := app.FindCollectionByNameOrId("schematics")
+	if colErr == nil {
+		latestResults, latestHasNext := fetchLatestPage(app, col.Id, 1)
+		cacheService.SetSchematics(cache.LatestSchematicsKey, MapResultsToSchematic(app, latestResults, cacheService))
+		cacheService.Set(cache.LatestHasNextKey, latestHasNext)
+	}
+
+	// 3. Trending schematics (force recompute by clearing cache first)
+	cacheService.Delete(cache.TrendingSchematicsKey)
+	allTrending := getAllTrendingSchematics(app, cacheService)
+	trendingHasNext := len(allTrending) > indexPageSize
+	cacheService.Set(cache.TrendingHasNextKey, trendingHasNext)
+
+	// 4. Highest rated schematics (page 1)
+	highestRated, highestHasNext := getHighestRatedSchematicsPage(app, cacheService, 1)
+	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
+	cacheService.Set(cache.HighestRatedHasNextKey, highestHasNext)
+
+	// 5. Categories (already self-caching, just ensure warm)
+	allCategories(app, cacheService)
+
+	app.Logger().Debug("Index page cache warmed")
 }
 
 func findUserFromID(app *pocketbase.PocketBase, userID string) *models.User {

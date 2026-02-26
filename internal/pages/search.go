@@ -67,10 +67,16 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			}
 		}
 
-		// Default sort is always BestMatch; explicit ?sort= overrides
+		// Default sort: BestMatch in the UI; actual query uses Trending when
+		// browsing without a search term so results are meaningful.
 		hasSortParam := e.Request.URL.Query().Get("sort") != ""
 		order := search.BestMatchOrder
 		displaySort := search.BestMatchOrder
+		if slugTerm == "" && !hasSortParam {
+			// No search term and no explicit sort: query by trending but
+			// show "Best match" selected in the UI.
+			order = search.TrendingOrder
+		}
 		if hasSortParam {
 			atoi, err := strconv.Atoi(e.Request.URL.Query().Get("sort"))
 			if err != nil {
@@ -132,7 +138,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		err := app.RecordQuery("schematics").
 			Select("schematics.*").
 			From("schematics").
-			Where(dbx.NewExp("deleted = null AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
+			Where(dbx.NewExp("(deleted = '' OR deleted IS NULL) AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
 			Where(dbx.In("id", interfaceIds...)).
 			All(&res)
 

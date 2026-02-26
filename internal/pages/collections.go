@@ -68,7 +68,7 @@ func CollectionsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, 
 		items := make([]CollectionItem, 0, 64)
 		if coll, err := app.FindCollectionByNameOrId("collections"); err == nil && coll != nil {
 			// Fetch recent entries; adapt filter later as schema stabilizes
-			recs, err := app.FindRecordsByFilter(coll.Id, "deleted = null || deleted = ''", "-created", 500, 0)
+			recs, err := app.FindRecordsByFilter(coll.Id, "deleted = ''", "-created", 500, 0)
 			if err == nil {
 				for _, r := range recs {
 					title := r.GetString("title")

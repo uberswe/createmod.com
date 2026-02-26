@@ -40,7 +40,7 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service) fu
 		if err != nil || coll == nil {
 			return e.String(http.StatusInternalServerError, "schematics collection not available")
 		}
-		recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = null", "-created", 1, 0, dbx.Params{"name": name})
+		recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = ''", "-created", 1, 0, dbx.Params{"name": name})
 		if err != nil || len(recs) == 0 {
 			return e.String(http.StatusNotFound, "schematic not found")
 		}
@@ -56,8 +56,8 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service) fu
 			return e.String(http.StatusForbidden, "This schematic has been blacklisted and cannot be downloaded.")
 		}
 
-		// Increment download counter (best-effort)
-		countSchematicDownload(app, rec)
+		// Increment download counter (best-effort, IP-deduped)
+		countSchematicDownload(app, rec, e.RealIP(), cacheService)
 
 		// Determine if there are multiple files associated to this schematic.
 		primary := strings.TrimSpace(rec.GetString("schematic_file"))
@@ -158,7 +158,18 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service) fu
 // countSchematicDownload increments counters in the "schematic_downloads" collection
 // across several periods (total/year/month/week/day), mirroring view counters.
 // If the collection is not present, the function logs and returns silently.
-func countSchematicDownload(app *pocketbase.PocketBase, schematic *core.Record) {
+// clientIP and cacheService are used for IP-based rate limiting.
+func countSchematicDownload(app *pocketbase.PocketBase, schematic *core.Record, clientIP string, cacheService *cache.Service) {
+	// IP-based rate limiting: skip if same IP already downloaded this schematic recently
+	if clientIP != "" && cacheService != nil {
+		ipKey := fmt.Sprintf("dlip:%s:%s", clientIP, schematic.Id)
+		if _, already := cacheService.Get(ipKey); already {
+			return
+		}
+		// Mark this IP+schematic combo for 1 hour
+		cacheService.SetWithTTL(ipKey, true, 1*time.Hour)
+	}
+
 	coll, err := app.FindCollectionByNameOrId("schematic_downloads")
 	if err != nil {
 		app.Logger().Debug("downloads collection missing", "error", err)

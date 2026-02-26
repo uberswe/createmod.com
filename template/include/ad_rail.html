@@ -5,3 +5,24 @@
     <div id="ad-rail-bottom"></div>
 </div>
 {{end}}
+
+{{define "ad_rail_script.html"}}
+<script>
+window['nitroAds'].createAd('ad-rail-top', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+</script>
+{{end}}

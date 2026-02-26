@@ -8,7 +8,7 @@ import (
 )
 
 func Test_User_Settings_Template_Has_API_Keys_Section(t *testing.T) {
-	path := filepath.Join("..", "..", "template", "user-settings.html")
+	path := filepath.Join("..", "..", "template", "user-api-keys.html")
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)

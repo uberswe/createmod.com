@@ -25,15 +25,15 @@ export async function seedTestUser(baseURL?: string): Promise<{ id: string; toke
   const pb = pbURL();
 
   // Try creating the user first
+  const createParams = new URLSearchParams();
+  createParams.set('email', TEST_USER_EMAIL);
+  createParams.set('password', TEST_USER_PASSWORD);
+  createParams.set('passwordConfirm', TEST_USER_PASSWORD);
+  createParams.set('username', 'e2etest');
   const createResp = await fetch(`${pb}/api/collections/users/records`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: TEST_USER_EMAIL,
-      password: TEST_USER_PASSWORD,
-      passwordConfirm: TEST_USER_PASSWORD,
-      username: 'e2etest',
-    }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: createParams.toString(),
   });
 
   if (createResp.ok) {
@@ -51,13 +51,13 @@ export async function seedTestUser(baseURL?: string): Promise<{ id: string; toke
  * Authenticate the test user via PocketBase API and return { id, token }.
  */
 async function authenticateUser(pb: string): Promise<{ id: string; token: string }> {
+  const params = new URLSearchParams();
+  params.set('identity', TEST_USER_EMAIL);
+  params.set('password', TEST_USER_PASSWORD);
   const resp = await fetch(`${pb}/api/collections/users/auth-with-password`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      identity: TEST_USER_EMAIL,
-      password: TEST_USER_PASSWORD,
-    }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
   });
 
   if (!resp.ok) {
@@ -98,13 +98,13 @@ export async function loginViaCookie(page: Page, baseURL?: string): Promise<void
   const appURL = baseURL ?? process.env.APP_BASE_URL ?? 'http://localhost:8080';
   const domain = new URL(appURL).hostname;
 
+  const params = new URLSearchParams();
+  params.set('identity', TEST_USER_EMAIL);
+  params.set('password', TEST_USER_PASSWORD);
   const resp = await fetch(`${pb}/api/collections/users/auth-with-password`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      identity: TEST_USER_EMAIL,
-      password: TEST_USER_PASSWORD,
-    }),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
   });
 
   if (!resp.ok) {

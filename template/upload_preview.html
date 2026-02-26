@@ -1,50 +1,538 @@
-{{template "head.html" .}}
+{{ template "head.html" . }}
 <div class="page">
-  {{template "sidebar.html" .}}
-  <div class="page-wrapper">
-    {{template "header.html" .}}
-    <div class="page-body">
-      <div class="container-wide">
-        <div class="row row-cards">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-body">
-                <h1 class="card-title">Private Preview</h1>
-                <p class="text-secondary">Share this private link to allow others to view and download before publishing.</p>
-                <ul>
-                  <li><strong>Filename:</strong> {{ .Filename }}</li>
-                  <li><strong>Size:</strong> {{ .Size }} bytes</li>
-                  <li><strong>SHA-256:</strong> {{ .Checksum }}</li>
-                  <li><strong>Uploaded:</strong> {{ HumanDate .UploadedAt }}</li>
-                  <li><strong>Parsed:</strong> {{ .ParsedSummary }}</li>
-                  <li><strong>Block Count:</strong> {{ .BlockCount }}</li>
-                  <li><strong>Materials:</strong>
-                    {{ if .Materials }}
-                      <ul>
-                        {{ range .Materials }}
-                          <li>{{ . }}</li>
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-wide">
+
+                <!-- Progress Steps (only for owner) -->
+                {{ if .IsOwner }}
+                <div id="upload-steps">
+                    {{ template "upload_steps.html" . }}
+                </div>
+                {{ end }}
+
+                <div class="row row-cards">
+
+                    <!-- Left column: Stats, Mods, Bloxelizer, Actions -->
+                    <div class="col-lg-5 col-xl-4">
+
+                        <!-- Schematic Statistics Card -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">Schematic Statistics</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="datagrid">
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Filename</div>
+                                        <div class="datagrid-content">{{ .Filename }}</div>
+                                    </div>
+                                    {{ if or .DimX .DimY .DimZ }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Dimensions</div>
+                                        <div class="datagrid-content">{{ .DimX }} x {{ .DimY }} x {{ .DimZ }} blocks</div>
+                                    </div>
+                                    {{ end }}
+                                    {{ if .BlockCount }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">Total Blocks</div>
+                                        <div class="datagrid-content" id="stat-blocks">{{ .BlockCount }}</div>
+                                    </div>
+                                    {{ end }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">File Size</div>
+                                        <div class="datagrid-content" id="stat-size">{{ .Size }} bytes</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Required Mods Card -->
+                        {{ if .Mods }}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">Required Mods</h3>
+                            </div>
+                            <div class="card-body" id="mods-list">
+                                {{ range .Mods }}
+                                <span class="badge bg-blue-lt me-1 mb-1" style="font-size: 0.85rem;">{{ . }}</span>
+                                {{ end }}
+                            </div>
+                        </div>
                         {{ end }}
-                      </ul>
-                    {{ else }}
-                      <em>none</em>
-                    {{ end }}
-                  </li>
-                </ul>
-                <form method="post" action="/u/{{ .Token }}/make-public">
-                  <div class="mb-3">
-                    <label class="form-label" for="scheduled_at">Schedule publish time (optional)</label>
-                    <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="form-control" />
-                    <div class="form-hint">If set, your schematic will be published at this time. Times are interpreted in your local timezone and stored as UTC.</div>
-                  </div>
-                  <button type="submit" class="btn btn-primary">Make Public</button>
-                </form>
-              </div>
+
+                        <!-- Bloxelizer 3D Viewer Link -->
+                        {{ if .FileURL }}
+                        <div class="card mb-3">
+                            <div class="card-body text-center">
+                                <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
+                                    View in 3D on Bloxelizer
+                                </a>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Additional Files Card -->
+                        <div class="card mb-3">
+                            <div class="card-header d-flex align-items-center">
+                                <h3 class="card-title mb-0">Additional Files</h3>
+                                {{ if .IsOwner }}
+                                <button class="btn btn-sm btn-outline-primary ms-auto" type="button" data-bs-toggle="modal" data-bs-target="#add-file-modal">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                                    Add Variation
+                                </button>
+                                {{ end }}
+                            </div>
+                            <div class="card-body">
+                                <div id="additional-files-list">
+                                    {{ if .AdditionalFiles }}
+                                    {{ range .AdditionalFiles }}
+                                    <div class="d-flex align-items-center mb-2 p-2 border rounded additional-file-row" data-file-id="{{ .ID }}">
+                                        <div class="flex-fill">
+                                            <div class="fw-bold">{{ .Filename }}</div>
+                                            {{ if .Description }}<div class="text-secondary small">{{ .Description }}</div>{{ end }}
+                                            <div class="text-muted small">
+                                                {{ if or .DimX .DimY .DimZ }}{{ .DimX }} x {{ .DimY }} x {{ .DimZ }}{{ end }}
+                                                {{ if .BlockCount }}&middot; {{ .BlockCount }} blocks{{ end }}
+                                            </div>
+                                        </div>
+                                        <a href="/u/{{ $.Token }}/files/{{ .ID }}/download" download="{{ .Filename }}" hx-boost="false" class="btn btn-sm btn-outline-secondary me-1" title="Download">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                                        </a>
+                                        {{ if $.IsOwner }}
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAdditionalFile('{{ $.Token }}', '{{ .ID }}', this)" title="Remove">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
+                                        </button>
+                                        {{ end }}
+                                    </div>
+                                    {{ end }}
+                                    {{ else }}
+                                    <p class="text-secondary mb-0" id="no-additional-files">No additional files yet.{{ if .IsOwner }} Click "Add Variation" to upload more .nbt files.{{ end }}</p>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions Card -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                {{ if .IsOwner }}
+                                <div class="mb-3">
+                                    <label class="form-label">Share Link</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="share-link" readonly value="">
+                                        <button class="btn btn-outline-secondary" type="button" id="copy-link-btn" onclick="copyShareLink()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                            <span class="copy-text">Copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <a href="/u/{{ .Token }}/publish" class="btn btn-primary w-100">
+                                    Publish Schematic
+                                </a>
+                                {{ else }}
+                                {{ if .FileURL }}
+                                <a href="/u/{{ .Token }}/download" download="{{ .Filename }}" hx-boost="false" class="btn btn-primary w-100 mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                                    Download Schematic
+                                </a>
+                                {{ end }}
+                                <div class="text-center">
+                                    <p class="text-secondary mb-2">Want to share your own schematics with the community?</p>
+                                    <a href="/upload" class="btn btn-outline-primary">Upload a schematic</a>
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right column: Materials -->
+                    <div class="col-lg-7 col-xl-8">
+                        {{ if .ParsedMaterials }}
+                        <div class="card mb-3">
+                            <div class="card-header d-flex align-items-center">
+                                <h3 class="card-title mb-0">Materials</h3>
+                                <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                    <span class="copy-text">Copy list</span>
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="materials-list" class="list-group list-group-flush">
+                                    {{ range .ParsedMaterials }}
+                                    <div class="material-row" data-block-id="{{ .BlockID }}">
+                                        <div class="material-icon-wrap">
+                                            <img src="https://blocksitems.com/api/v1/blocks/{{ .BlockID }}/icon?size=64" alt="" loading="lazy"
+                                                 onerror="this.style.display='none';var p=document.createElement('div');p.style.cssText='width:32px;height:32px;background:var(--tblr-border-color);border-radius:2px';this.parentNode.appendChild(p);">
+                                        </div>
+                                        <div class="material-info">
+                                            <span class="material-name">{{ .BlockID }}</span>
+                                            <span class="material-block-id">{{ .BlockID }}</span>
+                                        </div>
+                                        <span class="material-count" data-count="{{ .Count }}">x{{ .Count }}</span>
+                                        <span class="material-stacks"></span>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                <div class="p-3 border-top">
+                                    <small class="text-muted">Block data from <a href="https://blocksitems.com" target="_blank" rel="noopener">blocksitems.com</a></small>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+
+                </div>
+
             </div>
-          </div>
         </div>
-      </div>
+        {{template "footer.html" .}}
     </div>
-    {{template "footer.html" .}}
-  </div>
 </div>
+
+<style>
+.material-row {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--tblr-border-color);
+}
+.material-row:last-child {
+    border-bottom: none;
+}
+.material-icon-wrap {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tblr-bg-surface-secondary);
+    border-radius: 4px;
+}
+.material-icon-wrap img {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+.material-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.material-name {
+    font-weight: 500;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.material-block-id {
+    font-size: 0.75rem;
+    color: var(--tblr-secondary-color);
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.material-count {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    color: var(--tblr-body-color);
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}
+.material-stacks {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--tblr-body-color);
+    opacity: 0.5;
+    min-width: 70px;
+    text-align: right;
+}
+.copy-success .copy-icon { display: none !important; }
+.copy-success .check-icon { display: inline-block !important; color: #2fb344; }
+.copy-success .copy-text { color: #2fb344; }
+.copy-success { border-color: #2fb344 !important; color: #2fb344 !important; }
+</style>
+
+<script>
+var blockNameMap = {};
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Set share link value
+    var shareLink = document.getElementById('share-link');
+    if (shareLink) {
+        shareLink.value = location.origin + '/u/{{ .Token }}';
+    }
+
+    // Set Bloxelizer link
+    {{ if .FileURL }}
+    var bloxLink = document.getElementById('bloxelizer-link');
+    if (bloxLink) {
+        bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(location.origin + '{{ .FileURL }}');
+    }
+    {{ end }}
+
+    // Fetch display names for materials from blocksitems.com
+    var materialRows = document.querySelectorAll('.material-row');
+    if (materialRows.length > 0) {
+        var blockIds = [];
+        for (var i = 0; i < materialRows.length; i++) {
+            blockIds.push(materialRows[i].getAttribute('data-block-id'));
+        }
+        fetchBlockNames(blockIds, function() {
+            for (var i = 0; i < materialRows.length; i++) {
+                var bid = materialRows[i].getAttribute('data-block-id');
+                var nameEl = materialRows[i].querySelector('.material-name');
+                if (nameEl) {
+                    var displayName = (blockNameMap[bid] && blockNameMap[bid].display_name) || formatBlockName(bid);
+                    nameEl.textContent = displayName;
+                }
+            }
+        });
+    }
+
+    // Format material counts and stacks
+    for (var i = 0; i < materialRows.length; i++) {
+        var countEl = materialRows[i].querySelector('.material-count');
+        var stacksEl = materialRows[i].querySelector('.material-stacks');
+        if (countEl) {
+            var c = parseInt(countEl.getAttribute('data-count'), 10);
+            if (!isNaN(c)) {
+                countEl.textContent = 'x' + c.toLocaleString();
+                if (stacksEl && c > 63) {
+                    var s = Math.floor(c / 64);
+                    var r = c % 64;
+                    stacksEl.textContent = s + 's' + (r > 0 ? ' +' + r : '');
+                }
+            }
+        }
+    }
+
+    // Format block count with locale separators
+    var blocksEl = document.getElementById('stat-blocks');
+    if (blocksEl) {
+        var num = parseInt(blocksEl.textContent, 10);
+        if (!isNaN(num)) blocksEl.textContent = num.toLocaleString();
+    }
+
+    // Format file size
+    var sizeEl = document.getElementById('stat-size');
+    if (sizeEl) {
+        var raw = parseInt(sizeEl.textContent, 10);
+        if (!isNaN(raw)) sizeEl.textContent = formatBytes(raw);
+    }
+});
+
+function fetchBlockNames(blockIds, callback) {
+    if (!blockIds || blockIds.length === 0) {
+        if (callback) callback();
+        return;
+    }
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://blocksitems.com/api/v1/blocks/lookup', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var result = JSON.parse(xhr.responseText);
+                    if (result.data) {
+                        blockNameMap = result.data;
+                    }
+                } catch(e) {}
+            }
+            if (callback) callback();
+        };
+        xhr.onerror = function() {
+            if (callback) callback();
+        };
+        xhr.send(JSON.stringify({ block_ids: blockIds }));
+    } catch(e) {
+        if (callback) callback();
+    }
+}
+
+function formatBlockName(blockId) {
+    if (!blockId) return '';
+    var parts = blockId.split(':');
+    var name = parts.length > 1 ? parts[1] : parts[0];
+    return name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function animateCopyButton(btn) {
+    btn.classList.add('copy-success');
+    setTimeout(function() {
+        btn.classList.remove('copy-success');
+    }, 2000);
+}
+
+function copyShareLink() {
+    var input = document.getElementById('share-link');
+    var btn = document.getElementById('copy-link-btn');
+    if (!input) return;
+    try {
+        navigator.clipboard.writeText(input.value).then(function() {
+            animateCopyButton(btn);
+        });
+    } catch(e) {
+        input.select();
+        document.execCommand('copy');
+        animateCopyButton(btn);
+    }
+}
+
+function copyMaterialsAsMarkdown() {
+    var rows = document.querySelectorAll('.material-row');
+    if (!rows.length) return;
+    var lines = ['| Material | Count | Stacks |', '|---|---|---|'];
+    for (var i = 0; i < rows.length; i++) {
+        var bid = rows[i].getAttribute('data-block-id');
+        var name = (blockNameMap[bid] && blockNameMap[bid].display_name) || formatBlockName(bid);
+        var countText = rows[i].querySelector('.material-count').textContent;
+        var stacksText = rows[i].querySelector('.material-stacks').textContent;
+        lines.push('| ' + name + ' | ' + countText + ' | ' + stacksText + ' |');
+    }
+    var markdown = lines.join('\n');
+    var btn = document.getElementById('copy-materials-btn');
+    try {
+        navigator.clipboard.writeText(markdown).then(function() {
+            animateCopyButton(btn);
+        });
+    } catch(e) {
+        var textarea = document.createElement('textarea');
+        textarea.value = markdown;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        animateCopyButton(btn);
+    }
+}
+
+function submitAdditionalFile() {
+    var fileInput = document.getElementById('add-file-nbt');
+    var descInput = document.getElementById('add-file-description');
+    var errorEl = document.getElementById('add-file-error');
+    var submitBtn = document.getElementById('add-file-submit');
+    errorEl.style.display = 'none';
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        errorEl.textContent = 'Please select a .nbt file.';
+        errorEl.style.display = '';
+        return;
+    }
+    var file = fileInput.files[0];
+    if (!file.name.toLowerCase().endsWith('.nbt')) {
+        errorEl.textContent = 'Please select a .nbt file.';
+        errorEl.style.display = '';
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        errorEl.textContent = 'File is too large. Maximum size is 10MB.';
+        errorEl.style.display = '';
+        return;
+    }
+
+    submitBtn.disabled = true;
+    var formData = new FormData();
+    formData.append('nbt', file);
+    formData.append('description', descInput.value);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/u/{{ .Token }}/add-file', true);
+    xhr.onload = function() {
+        submitBtn.disabled = false;
+        if (xhr.status === 200) {
+            window.location.reload();
+        } else {
+            try {
+                var err = JSON.parse(xhr.responseText);
+                errorEl.textContent = err.error || 'Upload failed.';
+            } catch(e) {
+                errorEl.textContent = 'Upload failed.';
+            }
+            errorEl.style.display = '';
+        }
+    };
+    xhr.onerror = function() {
+        submitBtn.disabled = false;
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.style.display = '';
+    };
+    xhr.send(formData);
+}
+
+function deleteAdditionalFile(token, fileId, btn) {
+    if (!confirm('Remove this file?')) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('DELETE', '/u/' + token + '/files/' + fileId, true);
+    xhr.onload = function() {
+        if (xhr.status === 204) {
+            var row = btn.closest('.additional-file-row');
+            if (row) row.remove();
+            var remaining = document.querySelectorAll('.additional-file-row');
+            if (remaining.length === 0) {
+                var list = document.getElementById('additional-files-list');
+                while (list.firstChild) list.removeChild(list.firstChild);
+                var p = document.createElement('p');
+                p.className = 'text-secondary mb-0';
+                p.id = 'no-additional-files';
+                p.textContent = 'No additional files yet. Click "Add Variation" to upload more .nbt files.';
+                list.appendChild(p);
+            }
+        }
+    };
+    xhr.send();
+}
+</script>
+
+{{ if .IsOwner }}
+<!-- Add File Modal -->
+<div class="modal modal-blur fade" id="add-file-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Variation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label required">NBT File</label>
+                    <input type="file" id="add-file-nbt" class="form-control" accept=".nbt">
+                    <small class="form-hint">Max file size: 10MB</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" id="add-file-description" class="form-control" placeholder="e.g. Compact version, Mirror variant...">
+                </div>
+                <div id="add-file-error" class="alert alert-danger" style="display:none;" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="add-file-submit" onclick="submitAdditionalFile()">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}
 {{template "foot.html" .}}

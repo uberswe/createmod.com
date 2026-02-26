@@ -148,7 +148,7 @@ func CollectionsDownloadHandler(app *pocketbase.PocketBase, cacheService *cache.
 
 		for _, fi := range files {
 			// Increment per-schematic download counters
-			countSchematicDownload(app, fi.Rec)
+			countSchematicDownload(app, fi.Rec, e.RealIP(), cacheService)
 
 			fw, err := zw.Create(fi.Name)
 			if err != nil {

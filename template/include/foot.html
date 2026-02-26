@@ -3,20 +3,14 @@
 <!-- Theme handling -->
 <script src="/assets/x/theme.js" defer></script>
 <script>
-// Simple toast helper using Tabler alert styles
+// Toast notification helper – centered under header, colored by variant
 (function(){
   function ensureToastContainer(){
     var c = document.getElementById('toast-container');
     if (c) return c;
     c = document.createElement('div');
     c.id = 'toast-container';
-    c.style.position = 'fixed';
-    c.style.top = '1rem';
-    c.style.right = '1rem';
-    c.style.zIndex = '2140';
-    c.style.display = 'flex';
-    c.style.flexDirection = 'column';
-    c.style.gap = '.5rem';
+    c.style.cssText = 'position:fixed;top:4rem;left:50%;transform:translateX(-50%);z-index:2140;display:flex;flex-direction:column;align-items:center;gap:.5rem;width:100%;max-width:600px;padding:0 1rem;pointer-events:none;';
     document.body.appendChild(c);
     return c;
   }
@@ -25,18 +19,35 @@
       var c = ensureToastContainer();
       var v = variant || 'danger';
       var wrap = document.createElement('div');
-      wrap.className = 'alert alert-' + v;
+      wrap.className = 'alert alert-important alert-' + v;
       wrap.role = 'alert';
-      wrap.style.minWidth = '240px';
-      wrap.style.maxWidth = '360px';
-      wrap.style.boxShadow = '0 4px 16px rgba(0,0,0,.2)';
-      wrap.innerHTML = '<div class="d-flex"><div class="flex-fill">' + (message || 'Something went wrong. Please try again.') + '</div>'+
-        '<button type="button" class="btn-close ms-2" aria-label="Close"></button></div>';
-      wrap.querySelector('.btn-close').addEventListener('click', function(){
-        wrap.remove();
-      });
+      wrap.style.cssText = 'width:100%;box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:auto;margin:0;';
+      var icon = '';
+      if (v === 'danger') {
+        icon = '<svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>';
+      } else if (v === 'success') {
+        icon = '<svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>';
+      } else if (v === 'warning') {
+        icon = '<svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>';
+      }
+      var msgEl = document.createElement('span');
+      msgEl.textContent = message || 'Something went wrong. Please try again.';
+      var d = document.createElement('div');
+      d.className = 'd-flex align-items-center';
+      if (icon) d.insertAdjacentHTML('beforeend', icon);
+      var fill = document.createElement('div');
+      fill.className = 'flex-fill';
+      fill.appendChild(msgEl);
+      d.appendChild(fill);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-close ms-2';
+      btn.setAttribute('aria-label', 'Close');
+      btn.addEventListener('click', function(){ wrap.remove(); });
+      d.appendChild(btn);
+      wrap.appendChild(d);
       c.appendChild(wrap);
-      setTimeout(function(){ try{ wrap.remove(); }catch(e){} }, 5000);
+      setTimeout(function(){ try{ wrap.remove(); }catch(e){} }, 6000);
     } catch (e) {
       try { alert(message || 'Something went wrong. Please try again.'); } catch (_) {}
     }
@@ -63,27 +74,36 @@ window.addEventListener('htmx:responseError', function (evt) {
 </script>
 <script>
 // Lazy-load images with class="lazy"
-document.addEventListener('DOMContentLoaded', function () {
-  var lazyImages = document.querySelectorAll('.lazy');
+(function(){
+  var observer;
   if ('IntersectionObserver' in window) {
-    var observer = new IntersectionObserver(function(entries, obs) {
+    observer = new IntersectionObserver(function(entries, obs) {
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           var img = entry.target;
           var src = img.getAttribute('data-src');
-          if (src) { img.src = src; }
+          if (src) { img.src = src; img.removeAttribute('data-src'); }
           obs.unobserve(img);
         }
       });
-    }, { root: null, rootMargin: '0px', threshold: 0.1 });
-    lazyImages.forEach(function(img){ observer.observe(img); });
-  } else {
-    lazyImages.forEach(function(img){
-      var src = img.getAttribute('data-src');
-      if (src) { img.src = src; }
-    });
+    }, { root: null, rootMargin: '1000px', threshold: 0.01 });
   }
-});
+  function observeLazy(root) {
+    var imgs = (root || document).querySelectorAll('.lazy[data-src]');
+    if (observer) {
+      imgs.forEach(function(img){ observer.observe(img); });
+    } else {
+      imgs.forEach(function(img){
+        var src = img.getAttribute('data-src');
+        if (src) { img.src = src; img.removeAttribute('data-src'); }
+      });
+    }
+  }
+  // Initial page load
+  document.addEventListener('DOMContentLoaded', function(){ observeLazy(); });
+  // HTMX navigation (re-observe new lazy images after content swap)
+  document.addEventListener('htmx:afterSettle', function(evt){ observeLazy(evt.detail.elt); });
+})();
 </script>
 <script>
 // Attach PB token to HTMX requests when available
@@ -93,6 +113,25 @@ document.body.addEventListener('htmx:configRequest', function (evt) {
       evt.detail.headers['Authorization'] = 'Bearer ' + pb.authStore.token;
     }
   } catch (e) {}
+});
+</script>
+<!-- Mobile anchor ad (all pages) -->
+<div id="anchor-bottom"></div>
+<script>
+window['nitroAds'].createAd('anchor-bottom', {
+  "format": "anchor-v2",
+  "anchor": "bottom",
+  "anchorBgColor": "rgb(0 0 0 / 80%)",
+  "anchorClose": true,
+  "anchorPersistClose": true,
+  "anchorStickyOffset": 0,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
 });
 </script>
 </body>

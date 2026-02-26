@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -184,8 +185,21 @@ func NewTestServer(t *testing.T) (baseURL string, cleanup func()) {
 		tempUploadStore.Lock()
 		tempUploadStore.m[token] = tempUpload{Filename: name, Size: n, Checksum: checksum, UploadedAt: time.Now(), ParsedSummary: "size=" + formatInt(n) + " bytes; " + parsed, BlockCount: bc, Materials: mats}
 		tempUploadStore.Unlock()
+		// Return JSON response matching production format
+		resp := map[string]interface{}{
+			"token":       token,
+			"url":         "/u/" + token,
+			"checksum":    checksum,
+			"filename":    name,
+			"size":        n,
+			"block_count": bc,
+			"dimensions":  map[string]int{"x": 0, "y": 0, "z": 0},
+			"materials":   []interface{}{},
+			"mods":        []string{},
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok: sha256=" + checksum + " token=" + token + " url=/u/" + token))
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 
 	mux.HandleFunc("/u/", func(w http.ResponseWriter, r *http.Request) {

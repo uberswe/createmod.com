@@ -71,7 +71,7 @@ func (s *Service) ProcessSchematics(app *pocketbase.PocketBase) {
 	// Find schematics with empty ai_description (limit to 100)
 	schematics, err := app.FindRecordsByFilter(
 		"schematics",
-		"(ai_description = '' || ai_description = null) && moderated = 1 && deleted = null",
+		"(ai_description = '' || ai_description = null) && moderated = 1 && deleted = ''",
 		"-created",
 		100,
 		0,
@@ -241,7 +241,7 @@ func (s *Service) BackfillTranslations(app *pocketbase.PocketBase) {
 	// Find schematics needing translation (limit 50 per run)
 	recs, err := app.FindRecordsByFilter(
 		"schematics",
-		"deleted = null && moderated = 1 && detected_language != 'en'",
+		"deleted = '' && moderated = 1 && detected_language != 'en'",
 		"-created",
 		50,
 		0,

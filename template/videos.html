@@ -24,13 +24,13 @@
             {{range .Videos}}
             <div class="col-12 col-sm-6 col-md-4 col-lg-3">
               <div class="card">
-                <a href="/out?url={{ .VideoURL | urlquery }}" class="ratio ratio-16x9">
+                <a href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}" class="ratio ratio-16x9">
                   <img src="{{ .ThumbnailURL }}" alt="{{ .Title }}" class="card-img-top" />
                 </a>
                 <div class="card-body">
                   <div class="card-title h4 text-truncate">{{ .Title }}</div>
                   <div class="btn-list">
-                    <a class="btn btn-primary" href="/out?url={{ .VideoURL | urlquery }}">View on YouTube</a>
+                    <a class="btn btn-primary" href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}">View on YouTube</a>
                     <a class="btn" href="{{ .SchematicURL }}">View schematic</a>
                   </div>
                 </div>

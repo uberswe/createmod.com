@@ -3,6 +3,7 @@ package pages
 import (
 	"bufio"
 	"createmod/internal/testutil"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -62,20 +63,23 @@ func Test_Upload_HTTP_SuccessAndPreview(t *testing.T) {
 
 	b, _ := io.ReadAll(resp.Body)
 	bodyStr := string(b)
-	// Expected format: ok: sha256=... token=... url=/u/{token}
-	if !strings.Contains(bodyStr, "ok: sha256=") || !strings.Contains(bodyStr, " token=") || !strings.Contains(bodyStr, " url=/u/") {
-		t.Fatalf("unexpected response: %q", bodyStr)
-	}
 
-	// Extract preview URL (simple parse)
-	idx := strings.LastIndex(bodyStr, " url=")
-	if idx < 0 {
-		t.Fatalf("failed to extract url from response: %q", bodyStr)
+	// Response should be JSON with token and url fields
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("expected JSON response, got: %q", bodyStr)
 	}
-	previewURL := strings.TrimSpace(bodyStr[idx+5:])
+	token, _ := result["token"].(string)
+	url, _ := result["url"].(string)
+	if token == "" || url == "" {
+		t.Fatalf("expected token and url in JSON response, got: %q", bodyStr)
+	}
+	if !strings.HasPrefix(url, "/u/") {
+		t.Fatalf("expected url to start with /u/, got: %q", url)
+	}
 
 	// GET the preview page
-	req2, _ := http.NewRequest("GET", baseURL+previewURL, nil)
+	req2, _ := http.NewRequest("GET", baseURL+url, nil)
 	resp2, err := client.Do(req2)
 	if err != nil {
 		t.Fatalf("preview request failed: %v", err)
@@ -122,10 +126,7 @@ func Test_Upload_HTTP_Duplicate(t *testing.T) {
 	defer resp2.Body.Close()
 
 	if resp2.StatusCode != http.StatusConflict {
-		t.Fatalf("expected 409 Conflict on duplicate, got %d", resp2.StatusCode)
-	}
-	b2, _ := io.ReadAll(resp2.Body)
-	if !strings.Contains(string(b2), "duplicate upload detected") {
-		t.Fatalf("expected duplicate message, got %q", string(b2))
+		b2, _ := io.ReadAll(resp2.Body)
+		t.Fatalf("expected 409 Conflict on duplicate, got %d: %s", resp2.StatusCode, string(b2))
 	}
 }

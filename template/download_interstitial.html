@@ -13,7 +13,7 @@
                 <h1 class="card-title">Preparing external link...</h1>
                 <p class="text-secondary">You will be redirected in <span id="countdown-ext" aria-live="polite">5</span> seconds.</p>
                 <p>If it doesn't, click the button below:</p>
-                <a id="manual-link-ext" class="btn btn-primary" href="/out?url={{ .ExternalURL | urlquery }}" aria-label="Continue to seller">Continue to seller</a>
+                <a id="manual-link-ext" class="btn btn-primary" href="{{ SignedOutURL .ExternalURL "download" .Name }}" aria-label="Continue to seller">Continue to seller</a>
                 {{else}}
                 <h1 class="card-title">Preparing your download...</h1>
                 <p class="text-secondary">Your download will start automatically in <span id="countdown" aria-live="polite">5</span> seconds.</p>

@@ -170,7 +170,7 @@ func APISchematicsListHandler(app *pocketbase.PocketBase, searchService *search.
 			}
 			limit := pageSize + 1
 			offset := (page - 1) * pageSize
-			recs, err := app.FindRecordsByFilter(coll.Id, "deleted = null && moderated = true && (blacklisted = null || blacklisted = false) && (scheduled_at = null || scheduled_at <= {:now})", "-created", limit, offset, dbx.Params{"now": time.Now()})
+			recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && moderated = true && (blacklisted = null || blacklisted = false) && (scheduled_at = null || scheduled_at <= {:now})", "-created", limit, offset, dbx.Params{"now": time.Now()})
 			if err != nil {
 				success = false
 				return e.String(http.StatusInternalServerError, "failed to list schematics")
@@ -283,7 +283,7 @@ func APISchematicDetailHandler(app *pocketbase.PocketBase, cacheService *cache.S
 			success = false
 			return e.String(http.StatusInternalServerError, "schematics collection not available")
 		}
-		recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = null && moderated = true && (blacklisted = null || blacklisted = false) && (scheduled_at = null || scheduled_at <= {:now})", "-created", 1, 0, dbx.Params{"name": name, "now": time.Now()})
+		recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = '' && moderated = true && (blacklisted = null || blacklisted = false) && (scheduled_at = null || scheduled_at <= {:now})", "-created", 1, 0, dbx.Params{"name": name, "now": time.Now()})
 		if err != nil {
 			success = false
 			return e.String(http.StatusInternalServerError, "failed to query schematic")

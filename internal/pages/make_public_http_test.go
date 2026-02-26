@@ -2,9 +2,9 @@ package pages
 
 import (
 	"createmod/internal/testutil"
+	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
 )
 
@@ -35,16 +35,14 @@ func Test_MakePublic_HTTP_Redirect(t *testing.T) {
 	}
 
 	b, _ := io.ReadAll(upResp.Body)
-	s := string(b)
-	// Response format: ok: sha256=... token=... url=/u/{token}
-	if !strings.Contains(s, " url=/u/") {
-		t.Fatalf("unexpected upload response, missing preview url: %q", s)
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("expected JSON response, got: %q", string(b))
 	}
-	idx := strings.LastIndex(s, " url=")
-	if idx < 0 {
-		t.Fatalf("failed to extract url from response: %q", s)
+	previewURL, _ := result["url"].(string)
+	if previewURL == "" {
+		t.Fatalf("missing url in JSON response: %q", string(b))
 	}
-	previewURL := strings.TrimSpace(s[idx+5:]) // "/u/{token}"
 
 	// 2) POST make-public (non-HTMX) and expect 303 redirect to /upload/pending
 	// Use a client that doesn't follow redirects to inspect Location
@@ -95,12 +93,14 @@ func Test_MakePublic_HTTP_HTMX_Redirect(t *testing.T) {
 		t.Fatalf("expected 200, got %d", upResp.StatusCode)
 	}
 
-	s := string(b)
-	idx := strings.LastIndex(s, " url=")
-	if idx < 0 {
-		t.Fatalf("missing url in response: %q", s)
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("expected JSON response, got: %q", string(b))
 	}
-	previewURL := strings.TrimSpace(s[idx+5:])
+	previewURL, _ := result["url"].(string)
+	if previewURL == "" {
+		t.Fatalf("missing url in JSON response: %q", string(b))
+	}
 
 	// HTMX make-public expects 204 + HX-Redirect
 	mpReq, err := http.NewRequest("POST", baseURL+previewURL+"/make-public", nil)

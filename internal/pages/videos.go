@@ -99,7 +99,7 @@ func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 		qLower := strings.ToLower(q)
 
 		// Fetch recently created schematics with a non-empty video field, only moderated & published
-		recs, err := app.FindRecordsByFilter(coll.Id, "deleted = null && moderated = true && video != '' && (scheduled_at = null || scheduled_at <= {:now})", "-created", 500, 0, dbx.Params{"now": time.Now()})
+		recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && moderated = true && video != '' && (scheduled_at = null || scheduled_at <= {:now})", "-created", 500, 0, dbx.Params{"now": time.Now()})
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to query schematics with videos")
 		}

@@ -65,28 +65,32 @@ func ParseSummary(data []byte) (summary string, ok bool) {
 // ExtractStats parses the NBT using mcnbt and extracts basic statistics.
 // - blockCount: number of blocks in the StandardFormat.Blocks array
 // - materials: a simple frequency list keyed by palette state id (best-effort)
-// If parsing fails, returns zero values with ok=false.
+// If parsing fails via ConvertToStandard, falls back to raw map extraction.
 func ExtractStats(data []byte) (blockCount int, materials []string, ok bool) {
 	if len(data) == 0 {
 		return 0, nil, false
 	}
+
+	// Try the standard path first
 	std, err := mc.ConvertToStandard(data)
 	if err != nil {
-		return 0, nil, false
+		// Fallback: try decoding and extracting from raw map
+		decoded, decErr := mc.DecodeAny(data)
+		if decErr != nil {
+			return 0, nil, false
+		}
+		return extractStatsFromMap(decoded)
 	}
+
 	blockCount = len(std.Blocks)
-	// Count states as a simple proxy for materials. If palette names are available in the
-	// library, this can be upgraded to use readable names.
 	counts := make(map[int]int)
 	for _, b := range std.Blocks {
 		if b.State != 0 {
 			counts[b.State]++
 		} else {
-			// some formats may omit state -> treat as 0 bucket
 			counts[0]++
 		}
 	}
-	// produce stable, sorted output like: state:123 = 45
 	keys := make([]int, 0, len(counts))
 	for k := range counts {
 		keys = append(keys, k)
@@ -99,6 +103,21 @@ func ExtractStats(data []byte) (blockCount int, materials []string, ok bool) {
 	return blockCount, materials, true
 }
 
+// ExtractDimensions parses NBT data and returns the schematic dimensions.
+// Falls back to raw map extraction if ConvertToStandard fails.
+func ExtractDimensions(data []byte) (x, y, z int, ok bool) {
+	decoded, err := mc.DecodeAny(data)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	std, err := mc.ConvertToStandard(decoded)
+	if err == nil {
+		return std.Size.X, std.Size.Y, std.Size.Z, true
+	}
+	// Fallback: extract from raw map
+	return extractDimensionsFromMap(decoded)
+}
+
 // Material represents a block type and its count in a schematic
 type Material struct {
 	BlockID string `json:"block_id"`
@@ -106,7 +125,7 @@ type Material struct {
 }
 
 // ExtractMaterials parses NBT data and returns a list of materials (block types and counts).
-// It uses the mcnbt library to convert to StandardFormat and reads the palette.
+// Falls back to raw map extraction if ConvertToStandard fails.
 func ExtractMaterials(data []byte) ([]Material, error) {
 	decoded, err := mc.DecodeAny(data)
 	if err != nil {
@@ -115,7 +134,12 @@ func ExtractMaterials(data []byte) ([]Material, error) {
 
 	std, err := mc.ConvertToStandard(decoded)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert to standard format: %w", err)
+		// Fallback: extract from raw map
+		mats, fallbackErr := extractMaterialsFromMap(decoded)
+		if fallbackErr != nil {
+			return nil, fmt.Errorf("standard conversion failed: %v; fallback also failed: %w", err, fallbackErr)
+		}
+		return mats, nil
 	}
 
 	// Count blocks by palette state
@@ -152,4 +176,201 @@ func ExtractMaterials(data []byte) ([]Material, error) {
 	})
 
 	return materials, nil
+}
+
+// --- Fallback extraction from raw decoded map ---
+// These functions handle the case where mcnbt.ConvertToStandard fails
+// (e.g. due to type mismatches in entity fields) by reading directly
+// from the decoded map[string]interface{} structure.
+
+// derefMap dereferences *interface{} and returns the underlying map if present.
+func derefMap(v interface{}) map[string]interface{} {
+	if ptr, ok := v.(*interface{}); ok && ptr != nil {
+		return derefMap(*ptr)
+	}
+	if m, ok := v.(map[string]interface{}); ok {
+		return m
+	}
+	return nil
+}
+
+// extractDimensionsFromMap reads the "size" field from a Create-format NBT map.
+// Create format stores size as a list of 3 ints: [x, y, z].
+func extractDimensionsFromMap(decoded interface{}) (x, y, z int, ok bool) {
+	m := derefMap(decoded)
+	if m == nil {
+		return 0, 0, 0, false
+	}
+	sizeVal, exists := m["size"]
+	if !exists {
+		return 0, 0, 0, false
+	}
+	sizeSlice, ok := toIntSlice(sizeVal)
+	if !ok || len(sizeSlice) < 3 {
+		return 0, 0, 0, false
+	}
+	return sizeSlice[0], sizeSlice[1], sizeSlice[2], true
+}
+
+// extractMaterialsFromMap reads "blocks" and "palette" from a Create-format NBT map.
+func extractMaterialsFromMap(decoded interface{}) ([]Material, error) {
+	m := derefMap(decoded)
+	if m == nil {
+		return nil, fmt.Errorf("decoded data is not a map")
+	}
+
+	// Read palette: []map with "Name" key
+	paletteRaw, ok := m["palette"]
+	if !ok {
+		return nil, fmt.Errorf("no palette field found")
+	}
+	paletteSlice, ok := paletteRaw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("palette is not an array")
+	}
+	paletteNames := make([]string, len(paletteSlice))
+	for i, entry := range paletteSlice {
+		if em, ok := entry.(map[string]interface{}); ok {
+			if name, ok := em["Name"].(string); ok {
+				paletteNames[i] = name
+			}
+		}
+	}
+
+	// Read blocks: []map with "state" and optionally "pos"
+	blocksRaw, ok := m["blocks"]
+	if !ok {
+		return nil, fmt.Errorf("no blocks field found")
+	}
+	blocksSlice, ok := blocksRaw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("blocks is not an array")
+	}
+
+	// Count blocks per state
+	stateCounts := make(map[int]int)
+	for _, block := range blocksSlice {
+		bm, ok := block.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		state := toInt(bm["state"])
+		stateCounts[state]++
+	}
+
+	// Map states to block names and aggregate
+	blockCounts := make(map[string]int)
+	for state, count := range stateCounts {
+		name := ""
+		if state >= 0 && state < len(paletteNames) {
+			name = paletteNames[state]
+		}
+		if name == "" {
+			name = fmt.Sprintf("unknown:%d", state)
+		}
+		// Filter air
+		if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" {
+			continue
+		}
+		blockCounts[name] += count
+	}
+
+	materials := make([]Material, 0, len(blockCounts))
+	for blockID, count := range blockCounts {
+		materials = append(materials, Material{
+			BlockID: blockID,
+			Count:   count,
+		})
+	}
+	sort.Slice(materials, func(i, j int) bool {
+		return materials[i].Count > materials[j].Count
+	})
+	return materials, nil
+}
+
+// extractStatsFromMap is the fallback for ExtractStats using raw map data.
+func extractStatsFromMap(decoded interface{}) (blockCount int, materials []string, ok bool) {
+	m := derefMap(decoded)
+	if m == nil {
+		return 0, nil, false
+	}
+	blocksRaw, exists := m["blocks"]
+	if !exists {
+		return 0, nil, false
+	}
+	blocksSlice, isSlice := blocksRaw.([]interface{})
+	if !isSlice {
+		return 0, nil, false
+	}
+	blockCount = len(blocksSlice)
+
+	stateCounts := make(map[int]int)
+	for _, block := range blocksSlice {
+		bm, ok := block.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		state := toInt(bm["state"])
+		stateCounts[state]++
+	}
+	keys := make([]int, 0, len(stateCounts))
+	for k := range stateCounts {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	materials = make([]string, 0, len(keys))
+	for _, k := range keys {
+		materials = append(materials, fmt.Sprintf("state:%d=%d", k, stateCounts[k]))
+	}
+	return blockCount, materials, true
+}
+
+// toInt converts a numeric interface{} value to int.
+func toInt(v interface{}) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int8:
+		return int(n)
+	case int16:
+		return int(n)
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	case float32:
+		return int(n)
+	case float64:
+		return int(n)
+	default:
+		return 0
+	}
+}
+
+// toIntSlice converts a slice interface{} to []int.
+func toIntSlice(v interface{}) ([]int, bool) {
+	switch s := v.(type) {
+	case []interface{}:
+		result := make([]int, len(s))
+		for i, val := range s {
+			result[i] = toInt(val)
+		}
+		return result, true
+	case []int32:
+		result := make([]int, len(s))
+		for i, val := range s {
+			result[i] = int(val)
+		}
+		return result, true
+	case []int64:
+		result := make([]int, len(s))
+		for i, val := range s {
+			result[i] = int(val)
+		}
+		return result, true
+	case []int:
+		return s, true
+	default:
+		return nil, false
+	}
 }

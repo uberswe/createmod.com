@@ -1,17 +1,22 @@
 package search
 
 import (
+	"bytes"
+	"compress/gzip"
 	"createmod/internal/models"
-	"github.com/blevesearch/bleve/v2"
-	"github.com/blevesearch/bleve/v2/search/query"
-	"github.com/pocketbase/pocketbase"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"encoding/json"
+	"io"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
+	"github.com/pocketbase/pocketbase"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -24,6 +29,9 @@ const (
 	LeastViewedOrder   = 7
 	TrendingOrder      = 8
 	regex              = `<.*?>`
+
+	// cacheKey is the storage path for the serialized index cache.
+	cacheKey = "_internal/search_index_cache.json.gz"
 )
 
 type Service struct {
@@ -56,14 +64,19 @@ type bleveIndex struct {
 	Author        string
 }
 
+// indexCacheEntry holds both filter-index and Bleve-index data for one schematic.
+type indexCacheEntry struct {
+	SI schematicIndex `json:"si"`
+	BI bleveIndex     `json:"bi"`
+}
+
 // SetTrendingScores sets the trending scores map used for trending sort order.
 func (s *Service) SetTrendingScores(scores map[string]float64) {
 	s.trendingScores = scores
 }
 
-func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
-	s := Service{}
-	s.app = app
+// newBleveIndex creates a fresh in-memory Bleve index with the schematic mapping.
+func newBleveIndex() bleve.Index {
 	mapping := bleve.NewIndexMapping()
 
 	schematicMapping := bleve.NewDocumentMapping()
@@ -85,12 +98,29 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
 
 	mapping.AddDocumentMapping("schematic", schematicMapping)
-	var err error
-	s.bleveIndex, err = bleve.NewMemOnly(mapping)
+
+	idx, err := bleve.NewMemOnly(mapping)
 	if err != nil {
 		panic(err)
 	}
-	s.BuildIndex(schematics)
+	return idx
+}
+
+// New creates a search Service with an in-memory Bleve index.
+// On startup it attempts to load a cached index snapshot from storage (S3 or
+// local filesystem, depending on PocketBase config) so the server can serve
+// search requests immediately while a background rebuild picks up recent changes.
+func New(app *pocketbase.PocketBase) *Service {
+	s := Service{app: app}
+	s.bleveIndex = newBleveIndex()
+
+	// Try to warm from storage cache.
+	if err := s.loadCacheFromStorage(); err != nil {
+		app.Logger().Info("search: no usable cache in storage, starting empty", "error", err)
+	} else {
+		app.Logger().Info("search: loaded index cache from storage", "docs", len(s.index))
+	}
+
 	return &s
 }
 
@@ -278,6 +308,10 @@ func newestSort(a schematicIndex, b schematicIndex) int {
 }
 
 func trendingSort(scores map[string]float64, a schematicIndex, b schematicIndex) int {
+	if scores == nil {
+		// No trending data available; fall back to newest first
+		return newestSort(a, b)
+	}
 	sa := scores[a.ID]
 	sb := scores[b.ID]
 	if sa > sb {
@@ -286,15 +320,21 @@ func trendingSort(scores map[string]float64, a schematicIndex, b schematicIndex)
 	if sa < sb {
 		return 1
 	}
-	return 0
+	// Equal scores: break tie by newest first
+	return newestSort(a, b)
 }
 
-// BuildIndex takes a set of schematics and prepares a search index
+// BuildIndex takes a set of schematics and rebuilds both the in-memory filter
+// index and the Bleve full-text index. After building, it uploads a compressed
+// cache snapshot to storage so subsequent pod starts can warm from it.
 func (s *Service) BuildIndex(schematics []models.Schematic) {
-	batch := s.bleveIndex.NewBatch()
-	index := make([]schematicIndex, len(schematics))
+	idx := newBleveIndex()
+	batch := idx.NewBatch()
+	filterIndex := make([]schematicIndex, len(schematics))
+	cacheEntries := make([]indexCacheEntry, len(schematics))
+
 	for i := range schematics {
-		index[i] = schematicIndex{
+		si := schematicIndex{
 			ID:          schematics[i].ID,
 			Title:       stripHtmlRegex(schematics[i].Title),
 			Description: stripHtmlRegex(schematics[i].Content),
@@ -303,40 +343,50 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			Author:      schematics[i].Author.Username,
 		}
 		if parsedFloat, err := strconv.ParseFloat(schematics[i].Rating, 64); err == nil {
-			index[i].Rating = parsedFloat
+			si.Rating = parsedFloat
 		}
 		for _, c := range schematics[i].Categories {
-			index[i].Categories = append(index[i].Categories, c.Name)
+			si.Categories = append(si.Categories, c.Name)
 		}
 		for _, t := range schematics[i].Tags {
-			index[i].Tags = append(index[i].Tags, t.Name)
+			si.Tags = append(si.Tags, t.Name)
 		}
-		err := batch.Index(index[i].ID, bleveIndex{
-			Title:         index[i].Title,
-			Description:   index[i].Description,
+
+		bi := bleveIndex{
+			Title:         si.Title,
+			Description:   si.Description,
 			AIDescription: stripHtmlRegex(schematics[i].AIDescription),
-			Tags:          index[i].Tags,
-			Categories:    index[i].Categories,
-			Author:        index[i].Author,
-		})
+			Tags:          si.Tags,
+			Categories:    si.Categories,
+			Author:        si.Author,
+		}
 
-		index[i].MinecraftVersion = schematics[i].MinecraftVersion
-		index[i].CreateVersion = schematics[i].CreatemodVersion
+		si.MinecraftVersion = schematics[i].MinecraftVersion
+		si.CreateVersion = schematics[i].CreatemodVersion
 
-		if err != nil {
+		if err := batch.Index(si.ID, bi); err != nil {
 			s.app.Logger().Error("bleve add index", "error", err.Error())
 		}
+
+		filterIndex[i] = si
+		cacheEntries[i] = indexCacheEntry{SI: si, BI: bi}
 	}
-	err := s.bleveIndex.Batch(batch)
-	if err != nil {
+
+	if err := idx.Batch(batch); err != nil {
 		s.app.Logger().Error("bleve search batching", "error", err.Error())
 		return
 	}
-	ids := make([]string, len(index))
-	for i, in := range index {
-		ids[i] = in.ID
+
+	// Swap in the new index atomically.
+	oldIdx := s.bleveIndex
+	s.bleveIndex = idx
+	s.index = filterIndex
+	if oldIdx != nil {
+		_ = oldIdx.Close()
 	}
-	s.index = index
+
+	// Persist cache to storage in the background.
+	go s.saveCacheToStorage(cacheEntries)
 }
 
 // Suggestion represents an autocomplete suggestion result.
@@ -441,4 +491,105 @@ func (s *Service) Suggest(q string, limit int) []Suggestion {
 func stripHtmlRegex(s string) string {
 	r := regexp.MustCompile(regex)
 	return r.ReplaceAllString(s, " ")
+}
+
+// ---------------------------------------------------------------------------
+// Storage-backed index cache (S3 / local, via PocketBase filesystem)
+// ---------------------------------------------------------------------------
+
+// saveCacheToStorage serializes the index data as gzip-compressed JSON and
+// uploads it to PocketBase's configured storage backend.
+func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
+	data, err := json.Marshal(entries)
+	if err != nil {
+		s.app.Logger().Warn("search: failed to marshal index cache", "error", err)
+		return
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(data); err != nil {
+		s.app.Logger().Warn("search: failed to gzip index cache", "error", err)
+		return
+	}
+	if err := gz.Close(); err != nil {
+		s.app.Logger().Warn("search: failed to close gzip writer", "error", err)
+		return
+	}
+
+	fsys, err := s.app.NewFilesystem()
+	if err != nil {
+		s.app.Logger().Warn("search: failed to create filesystem for cache upload", "error", err)
+		return
+	}
+	defer fsys.Close()
+
+	if err := fsys.Upload(buf.Bytes(), cacheKey); err != nil {
+		s.app.Logger().Warn("search: failed to upload index cache", "error", err)
+		return
+	}
+
+	s.app.Logger().Info("search: uploaded index cache to storage", "entries", len(entries), "bytes", buf.Len())
+}
+
+// loadCacheFromStorage downloads the compressed index cache from storage and
+// populates both the in-memory filter index and the Bleve full-text index.
+func (s *Service) loadCacheFromStorage() error {
+	fsys, err := s.app.NewFilesystem()
+	if err != nil {
+		return err
+	}
+	defer fsys.Close()
+
+	reader, err := fsys.GetReader(cacheKey)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	gz, err := gzip.NewReader(reader)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	data, err := io.ReadAll(gz)
+	if err != nil {
+		return err
+	}
+
+	var entries []indexCacheEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return err
+	}
+
+	if len(entries) == 0 {
+		return nil
+	}
+
+	// Rebuild both indices from the cached data.
+	idx := newBleveIndex()
+	batch := idx.NewBatch()
+	filterIndex := make([]schematicIndex, len(entries))
+
+	for i, e := range entries {
+		filterIndex[i] = e.SI
+		if err := batch.Index(e.SI.ID, e.BI); err != nil {
+			s.app.Logger().Error("search: bleve index from cache", "error", err)
+		}
+	}
+
+	if err := idx.Batch(batch); err != nil {
+		s.app.Logger().Error("search: bleve batch from cache", "error", err)
+		return err
+	}
+
+	oldIdx := s.bleveIndex
+	s.bleveIndex = idx
+	s.index = filterIndex
+	if oldIdx != nil {
+		_ = oldIdx.Close()
+	}
+
+	return nil
 }

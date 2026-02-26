@@ -2,6 +2,7 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/outurl"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	pbtempl "github.com/pocketbase/pocketbase/tools/template"
@@ -37,7 +38,7 @@ type GuidesData struct {
 }
 
 // GuidesHandler renders a simple listing of guides with pagination and optional search by title.
-func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, outSecret string) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		coll, err := app.FindCollectionByNameOrId("guides")
 		if err != nil || coll == nil {
@@ -69,9 +70,9 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 			}
 			excerpt := r.GetString("excerpt")
 			link := r.GetString("wiki_url")
-			// Wrap external links via /out interstitial and attach guide id for view counting
+			// Wrap external links via /out interstitial with source context for click tracking
 			if strings.HasPrefix(strings.ToLower(link), "http://") || strings.HasPrefix(strings.ToLower(link), "https://") {
-				link = "/out?url=" + url.QueryEscape(link) + "&guide=" + r.Id
+				link = outurl.BuildPathWithSource(link, outSecret, "guide", r.Id)
 			}
 			if link == "" {
 				link = "/guide" // fallback to the generic guide page
@@ -80,7 +81,7 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 			video := r.GetString("video_url")
 			videoWrapped := ""
 			if strings.HasPrefix(strings.ToLower(video), "http://") || strings.HasPrefix(strings.ToLower(video), "https://") {
-				videoWrapped = "/out?url=" + url.QueryEscape(video) + "&guide=" + r.Id
+				videoWrapped = outurl.BuildPathWithSource(video, outSecret, "guide", r.Id)
 			}
 			it := GuideItem{Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, Views: r.GetInt("views")}
 			if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {

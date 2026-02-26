@@ -1,32 +1,88 @@
 {{template "head.html" .}}
+<style>
+.explore-grid {
+    columns: 5 220px;
+    column-gap: 0.5rem;
+    padding: 0 0.5rem;
+}
+.explore-item {
+    break-inside: avoid;
+    margin-bottom: 0.5rem;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    display: block;
+}
+.explore-item img {
+    width: 100%;
+    display: block;
+    border-radius: 0.375rem;
+    background: var(--tblr-border-color, #e0e0e0);
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+.explore-item:hover img {
+    transform: scale(1.03);
+}
+</style>
 <div class="page">
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-wide">
-                <div class="row" data-masonry='{"percentPosition": true }'>
-                {{range $i, $image := .Images }}
-                    <div class="card m-2 p-0" style="width: 150px; height: 150px;">
-                    <a href="/schematics/{{ $image.Name }}">
-                        <img class="rounded-3 border lazy"
-                             data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}?thumb=150x150"
-                             src="/assets/x/150x150.png" alt="{{ $image.Title }}">
-                    </a>
-                    </div>
-                {{end}}
-                </div>
-                <div class="row">
-                    <div class="col-md-6 pt-4 m-auto">
-                        <div class="alert alert-info" role="alert">
-                            Reload the page or <a href="/explore">click here</a> for 1000 random images.
-                        </div>
+            <div class="explore-grid">
+            {{range $i, $image := .Images }}
+                <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
+                    <img class="lazy"
+                         data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=240x0{{ end }}"
+                         alt="{{ $image.Title }}">
+                </a>
+            {{end}}
+            </div>
+            <!-- Ad: between gallery and info -->
+            <div id="explore-mid-desktop" class="d-none d-xl-block my-3 text-center"></div>
+            <div id="explore-mid-mobile" class="d-xl-none my-3 text-center"></div>
+            <div class="row">
+                <div class="col-md-6 pt-4 m-auto">
+                    <div class="alert alert-info" role="alert">
+                        Reload the page or <a href="/explore">click here</a> for 1000 random images.
                     </div>
                 </div>
             </div>
         </div>
         {{template "footer.html" .}}
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/masonry-layout@4.2.2/dist/masonry.pkgd.min.js" defer crossorigin="anonymous"></script>
 </div>
 {{template "foot.html" .}}
+<script>
+// Desktop banner at bottom of gallery
+window['nitroAds'].createAd('explore-mid-desktop', {
+  "sizes": [
+    ["728", "90"],
+    ["970", "90"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1025px)"
+});
+// Mobile banner at bottom of gallery
+window['nitroAds'].createAd('explore-mid-mobile', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 1024px)"
+});
+</script>

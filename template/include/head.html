@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="en">
+<script>
+// Inline theme init — runs before any CSS to prevent flash of light background.
+(function(){try{var t=localStorage.getItem("createmodTheme")||"dark";document.documentElement.setAttribute("data-bs-theme",t);if(t==="dark")document.documentElement.style.background="#1f2121";}catch(e){}})();
+</script>
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
@@ -76,6 +80,8 @@
 </script>
 <body hx-boost="true" hx-indicator="#htmx-indicator">
 <script>
+  // Apply theme to body immediately to prevent flash of light content.
+  (function(){try{var t=document.documentElement.getAttribute("data-bs-theme");if(t)document.body.setAttribute("data-bs-theme",t);}catch(e){}})();
   (function(){
     try {
       document.addEventListener('click', function(e){

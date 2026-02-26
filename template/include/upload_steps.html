@@ -1,0 +1,11 @@
+{{ define "upload_steps.html" }}
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8 col-xl-6">
+        <div class="steps steps-green steps-counter">
+            <a href="/upload" class="step-item{{ if eq .UploadStep 1 }} active{{ end }}{{ if ge .UploadStep 2 }} done{{ end }}">Upload</a>
+            <a href="#" class="step-item{{ if eq .UploadStep 2 }} active{{ end }}{{ if ge .UploadStep 3 }} done{{ end }}" onclick="return false;">Review</a>
+            <a href="#" class="step-item{{ if eq .UploadStep 3 }} active{{ end }}" onclick="return false;">Publish</a>
+        </div>
+    </div>
+</div>
+{{ end }}

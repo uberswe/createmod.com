@@ -21,19 +21,22 @@
         }
         selectedTheme = storedTheme ? storedTheme : defaultTheme;
     }
-    console.log("selected theme" + selectedTheme)
     if (selectedTheme === 'dark') {
         document.body.setAttribute("data-bs-theme", selectedTheme);
+        document.documentElement.setAttribute("data-bs-theme", selectedTheme);
         // Remove hide-theme-light classes when theme is dark
         document.querySelectorAll('.hide-theme-light').forEach(function(element) {
             element.classList.remove('hide-theme-light');
         });
     } else {
         document.body.setAttribute("data-bs-theme", selectedTheme);
+        document.documentElement.setAttribute("data-bs-theme", selectedTheme);
         // Remove hide-theme-dark classes when theme is not dark
         document.querySelectorAll('.hide-theme-dark').forEach(function(element) {
             element.classList.remove('hide-theme-dark');
         });
     }
+    // Clear the inline background set by the head script now that CSS has loaded.
+    document.documentElement.style.background = "";
 
 }));

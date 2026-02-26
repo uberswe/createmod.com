@@ -31,6 +31,7 @@ type Schematic struct {
 	CreatemodVersion     string
 	MinecraftVersion     string
 	Views                int
+	Downloads            int
 	HasTags              bool
 	Rating               string
 	HasRating            bool
@@ -41,6 +42,11 @@ type Schematic struct {
 	Featured             bool
 	Materials            string
 	ExternalURL          string
+	BlockCount           int
+	DimX                 int
+	DimY                 int
+	DimZ                 int
+	Mods                 []string
 }
 
 type DatabaseSchematic struct {

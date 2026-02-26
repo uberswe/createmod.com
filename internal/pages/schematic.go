@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
+	"github.com/gosimple/slug"
 	"github.com/mergestat/timediff"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -18,6 +19,8 @@ import (
 	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
+	"net/url"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -51,6 +54,7 @@ type SchematicData struct {
 	UserCollections []CollectionOption
 	Materials       []nbtparser.Material
 	BloxelizerURL   string
+	Mods            []string
 }
 
 func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service) func(e *core.RequestEvent) error {
@@ -61,13 +65,17 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		}
 		results, err := app.FindRecordsByFilter(
 			schematicsCollection.Id,
-			"name = {:name} && deleted = null && (scheduled_at = null || scheduled_at <= {:now})",
+			"name = {:name} && deleted = '' && (scheduled_at = null || scheduled_at <= {:now})",
 			"-created",
 			1,
 			0,
 			dbx.Params{"name": e.Request.PathValue("name"), "now": time.Now()})
 
 		if len(results) != 1 {
+			// Try to find and fix a schematic with percent-encoded characters in its name
+			if newName, found := tryFixEncodedSchematicName(app, e.Request.PathValue("name")); found {
+				return e.Redirect(http.StatusMovedPermanently, "/schematics/"+newName)
+			}
 			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
 			if err != nil {
 				return err
@@ -101,6 +109,9 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 			}
 		}
 
+		// Load mods from the schematic record
+		d.Mods = d.Schematic.Mods
+
 		// Construct Bloxelizer URL (only for free schematics with a file)
 		schematicFileName := results[0].GetString("schematic_file")
 		if schematicFileName != "" && !d.Schematic.Paid {
@@ -110,7 +121,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		// Load collections for the current user (for Add to collection dropdown)
 		if e.Auth != nil {
 			if coll, err := app.FindCollectionByNameOrId("collections"); err == nil && coll != nil {
-				recs, _ := app.FindRecordsByFilter(coll.Id, "author = {:a} && deleted = null", "+title", 200, 0, dbx.Params{"a": e.Auth.Id})
+				recs, _ := app.FindRecordsByFilter(coll.Id, "author = {:a} && deleted = ''", "+title", 200, 0, dbx.Params{"a": e.Auth.Id})
 				opts := make([]CollectionOption, 0, len(recs))
 				for _, r := range recs {
 					t := r.GetString("title")
@@ -138,7 +149,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 			d.HasVersions = true
 		}
 
-		countSchematicView(app, results[0], discordService)
+		countSchematicView(app, results[0], discordService, e.RealIP(), cacheService)
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -154,7 +165,7 @@ func findAuthorSchematics(app *pocketbase.PocketBase, cacheService *cache.Servic
 	}
 	results, err := app.FindRecordsByFilter(
 		schematicsCollection.Id,
-		"id != {:id} && author = {:authorID} && deleted = null && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
+		"id != {:id} && author = {:authorID} && deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
 		sortBy,
 		limit,
 		0,
@@ -201,7 +212,7 @@ func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Servi
 	err := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
-		Where(dbx.NewExp("deleted = null AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
+		Where(dbx.NewExp("(deleted = '' OR deleted IS NULL) AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
 		Where(dbx.In("id", interfaceIds...)).
 		All(&res)
 	if err != nil {
@@ -335,7 +346,17 @@ func mapResultToComment(app *pocketbase.PocketBase, c models.DatabaseComment) mo
 	return comment
 }
 
-func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record, discordService *discord.Service) {
+func countSchematicView(app *pocketbase.PocketBase, schematic *core.Record, discordService *discord.Service, clientIP string, cacheService *cache.Service) {
+	// IP-based rate limiting: skip if same IP already viewed this schematic recently
+	if clientIP != "" && cacheService != nil {
+		ipKey := fmt.Sprintf("viewip:%s:%s", clientIP, schematic.Id)
+		if _, already := cacheService.Get(ipKey); already {
+			return
+		}
+		// Mark this IP+schematic combo for 1 hour
+		cacheService.SetWithTTL(ipKey, true, 1*time.Hour)
+	}
+
 	schematicViewsCollection, err := app.FindCollectionByNameOrId("schematic_views")
 	if err != nil {
 		app.Logger().Error(err.Error())
@@ -502,6 +523,25 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 			}
 		}
 	}
+	dk := cache.DownloadKey(schematicId)
+	downloads, found := cacheService.GetInt(dk)
+	if !found {
+		dlRecords, err := app.FindRecordsByFilter(
+			"schematic_downloads",
+			"period = 'total' && schematic = {:schematic}",
+			"-updated",
+			1,
+			0,
+			dbx.Params{"schematic": schematicId},
+		)
+		if err == nil && len(dlRecords) > 0 {
+			downloads = dlRecords[0].GetInt("count")
+			if downloads > 0 {
+				cacheService.SetInt(dk, downloads)
+			}
+		}
+	}
+
 	rk := cache.RatingKey(schematicId)
 	rck := cache.RatingCountKey(schematicId)
 	rating, found := cacheService.GetFloat(rk)
@@ -563,6 +603,7 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 		CreatemodVersion:     findCreateModVersionFromID(app, result.GetString("createmod_version")),
 		MinecraftVersion:     findMinecraftVersionFromID(app, result.GetString("minecraft_version")),
 		Views:                views,
+		Downloads:            downloads,
 		Rating:               fmt.Sprintf("%.1f", rating),
 		RatingCount:          ratingCount,
 		SchematicFile:        fmt.Sprintf("/api/files/%s/%s", result.BaseFilesPath(), result.GetString("schematic_file")),
@@ -571,6 +612,21 @@ func mapResultToSchematic(app *pocketbase.PocketBase, result *core.Record, cache
 		Featured:             result.GetBool("featured"),
 		Materials:            result.GetString("materials"),
 		ExternalURL:          result.GetString("external_url"),
+		BlockCount:           result.GetInt("block_count"),
+		DimX:                 result.GetInt("dim_x"),
+		DimY:                 result.GetInt("dim_y"),
+		DimZ:                 result.GetInt("dim_z"),
+	}
+
+	// Parse mods from stored JSON
+	modsRaw := result.Get("mods")
+	if modsRaw != nil {
+		if b, err := json.Marshal(modsRaw); err == nil {
+			var mods []string
+			if err := json.Unmarshal(b, &mods); err == nil {
+				s.Mods = mods
+			}
+		}
 	}
 	if len(result.GetStringSlice("categories")) > 0 {
 		s.CategoryId = result.GetStringSlice("categories")[0]
@@ -640,4 +696,97 @@ func mapResultToCategories(records []*core.Record) (categories []models.Schemati
 		})
 	}
 	return categories
+}
+
+// pctEncodedRe matches percent-encoded sequences like %cc%b6
+var pctEncodedRe = regexp.MustCompile(`%[0-9a-fA-F]{2}`)
+
+// cleanSlugName decodes percent-encoded sequences in a schematic name,
+// strips non-slug characters, and produces a clean slug.
+func cleanSlugName(name string) string {
+	decoded, err := url.PathUnescape(name)
+	if err != nil {
+		decoded = name
+	}
+	clean := slug.Make(decoded)
+	// Remove any leftover empty segments from stripping
+	for strings.Contains(clean, "--") {
+		clean = strings.ReplaceAll(clean, "--", "-")
+	}
+	clean = strings.Trim(clean, "-")
+	return clean
+}
+
+// tryFixEncodedSchematicName searches for schematics whose name contains
+// percent-encoded characters. If one is found whose decoded name matches
+// the requested path, it updates the record's name to a clean slug and
+// returns the new name so the caller can redirect.
+func tryFixEncodedSchematicName(app *pocketbase.PocketBase, requestedName string) (string, bool) {
+	coll, err := app.FindCollectionByNameOrId("schematics")
+	if err != nil {
+		return "", false
+	}
+	// Find schematics with literal '%' in the name that are not deleted.
+	// PocketBase's ~ operator treats % as LIKE wildcard, so we use a raw query.
+	var recs []*core.Record
+	err = app.RecordQuery(coll).
+		Where(dbx.And(
+			dbx.NewExp("schematics.name LIKE {:pct} ESCAPE '\\'", dbx.Params{"pct": "%\\%%"}),
+			dbx.NewExp("(schematics.deleted = '' OR schematics.deleted IS NULL)"),
+		)).
+		Limit(200).
+		All(&recs)
+	if err != nil || len(recs) == 0 {
+		return "", false
+	}
+
+	requestedSlug := slug.Make(requestedName)
+
+	for _, rec := range recs {
+		dbName := rec.GetString("name")
+		if !pctEncodedRe.MatchString(dbName) {
+			continue
+		}
+		// Decode the DB name to get the unicode version
+		decoded, err := url.PathUnescape(dbName)
+		if err != nil {
+			continue
+		}
+		decodedSlug := slug.Make(decoded)
+		// The browser decodes %cc%b6 etc. before sending, then Go's router
+		// decodes the path again. Compare using multiple strategies:
+		// 1. Direct match with decoded unicode string
+		// 2. Slugified versions (strips combining chars etc.)
+		// 3. Direct match with raw DB name
+		if decoded != requestedName && decodedSlug != requestedName && decodedSlug != requestedSlug && dbName != requestedName {
+			continue
+		}
+		// Generate a clean name
+		newName := cleanSlugName(dbName)
+		if newName == "" || newName == dbName {
+			continue
+		}
+		// Ensure the new name is unique
+		existing, _ := app.FindRecordsByFilter(coll.Id, "name = {:n} && id != {:id}", "", 1, 0, dbx.Params{"n": newName, "id": rec.Id})
+		if len(existing) > 0 {
+			// Append a suffix to make it unique
+			for i := 2; i < 100; i++ {
+				candidate := fmt.Sprintf("%s-%d", newName, i)
+				existing, _ = app.FindRecordsByFilter(coll.Id, "name = {:n} && id != {:id}", "", 1, 0, dbx.Params{"n": candidate, "id": rec.Id})
+				if len(existing) == 0 {
+					newName = candidate
+					break
+				}
+			}
+		}
+		// Update the record
+		rec.Set("name", newName)
+		if err := app.Save(rec); err != nil {
+			app.Logger().Error("failed to fix encoded schematic name", "id", rec.Id, "old", dbName, "new", newName, "error", err)
+			continue
+		}
+		app.Logger().Info("fixed encoded schematic name", "id", rec.Id, "old", dbName, "new", newName)
+		return newName, true
+	}
+	return "", false
 }

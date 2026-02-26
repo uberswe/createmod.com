@@ -97,6 +97,12 @@ Go-based PocketBase migrations, auto-imported via `_ "createmod/migrations"` in 
 
 Vite builds from `template/src/` to `template/dist/`. CSS uses Tailwind + PurgeCSS via PostCSS. Static libraries (TinyMCE, PocketBase JS SDK, Tom Select, Plyr, Masonry, fslightbox) served from `template/static/`. UI framework is Tabler (Bootstrap-based).
 
+## Common Pitfalls
+
+**Running the server binary from the wrong directory:** PocketBase determines its data directory (`pb_data/`) relative to the working directory. If you build to `/tmp/createmod` and run it from there, PocketBase will create a fresh empty `pb_data/` in `/tmp` instead of using the project's database. Always run the server from the project root, or pass `--dir=./pb_data` explicitly. Symptom: the site loads but shows zero schematics/content with no errors.
+
+**Schematic files are stored via S3:** Both locally and in production, schematic files are stored through PocketBase's S3-compatible filesystem, not on local disk. Use `app.NewFilesystem()` + `fsys.GetReader()` to read files, not `os.ReadFile()`. Use `filesystem.NewFileFromBytes()` to write files back.
+
 ## Testing Patterns
 
 **Template tests** (`*_template_test.go`): Render templates with test data and assert HTML output (presence of elements, attributes, text content).

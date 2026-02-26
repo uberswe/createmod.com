@@ -35,6 +35,13 @@ func main() {
 		envFile = make(map[string]string)
 	}
 
+	// Export .env values to OS environment so os.Getenv works throughout the app
+	for k, v := range envFile {
+		if os.Getenv(k) == "" {
+			_ = os.Setenv(k, v)
+		}
+	}
+
 	s := server.New(server.Config{
 		Dev:               getEnv(envFile, DevEnv) == "true",
 		AutoMigrate:       getEnv(envFile, AutoMigrate) == "true",

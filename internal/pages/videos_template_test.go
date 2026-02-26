@@ -16,7 +16,7 @@ func Test_Videos_Template_Has_Expected_Elements(t *testing.T) {
 	s := string(b)
 	must := []string{
 		"Videos",
-		"/out?url=",
+		"SignedOutURL",
 		"View on YouTube",
 		"View schematic",
 		"ad-slot-videos",
