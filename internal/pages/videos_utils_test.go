@@ -27,7 +27,7 @@ func Test_youtubeThumb(t *testing.T) {
 	}
 	id := "dQw4w9WgXcQ"
 	got := youtubeThumb(id)
-	want := "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg"
+	want := "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"
 	if got != want {
 		t.Fatalf("youtubeThumb(%q) = %q; want %q", id, got, want)
 	}

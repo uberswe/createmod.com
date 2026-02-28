@@ -7,6 +7,7 @@ import (
 	"createmod/internal/nbtparser"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
+	"createmod/internal/translation"
 	"encoding/json"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
@@ -55,9 +56,12 @@ type SchematicData struct {
 	Materials       []nbtparser.Material
 	BloxelizerURL   string
 	Mods            []string
+	// Translation fields
+	IsTranslated     bool
+	OriginalLanguage string
 }
 
-func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service) func(e *core.RequestEvent) error {
+func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -115,7 +119,13 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		// Construct Bloxelizer URL (only for free schematics with a file)
 		schematicFileName := results[0].GetString("schematic_file")
 		if schematicFileName != "" && !d.Schematic.Paid {
-			d.BloxelizerURL = fmt.Sprintf("https://bloxelizer.com/viewer?url=https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, schematicFileName)
+			scheme := "http"
+			if e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
+				scheme = "https"
+			}
+			host := e.Request.Host
+			fileURL := fmt.Sprintf("%s://%s/api/files/schematics/%s/%s", scheme, host, d.Schematic.ID, schematicFileName)
+			d.BloxelizerURL = "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
 		}
 
 		// Load collections for the current user (for Add to collection dropdown)
@@ -149,6 +159,38 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 			d.HasVersions = true
 		}
 
+		// Translation: show translated title/description if user's language differs from detected language
+		detectedLang := results[0].GetString("detected_language")
+		if detectedLang == "" {
+			detectedLang = "en"
+		}
+		d.OriginalLanguage = detectedLang
+		showOriginal := e.Request.URL.Query().Get("lang") == "original"
+		if !showOriginal && translationService != nil && d.Language != "" && d.Language != "en" {
+			// User's UI language is not English - try to show a translation
+			t := translationService.GetTranslation(app, cacheService, d.Schematic.ID, d.Language)
+			if t != nil && t.Title != "" {
+				d.Schematic.Title = t.Title
+				d.Title = t.Title
+				if t.Content != "" {
+					d.Schematic.Content = t.Content
+					d.Schematic.HTMLContent = template.HTML(t.Content)
+				}
+				d.IsTranslated = true
+			}
+		} else if showOriginal && translationService != nil && detectedLang != "en" {
+			// User clicked "show original" - display the original language text
+			t := translationService.GetTranslation(app, cacheService, d.Schematic.ID, detectedLang)
+			if t != nil && t.Title != "" {
+				d.Schematic.Title = t.Title
+				d.Title = t.Title
+				if t.Content != "" {
+					d.Schematic.Content = t.Content
+					d.Schematic.HTMLContent = template.HTML(t.Content)
+				}
+			}
+		}
+
 		countSchematicView(app, results[0], discordService, e.RealIP(), cacheService)
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
@@ -174,60 +216,112 @@ func findAuthorSchematics(app *pocketbase.PocketBase, cacheService *cache.Servic
 }
 
 func findSimilarSchematics(app *pocketbase.PocketBase, cacheService *cache.Service, schematic models.Schematic, author []models.Schematic, searchService *search.Service) []models.Schematic {
-	// Does title and content give the best match? Maybe tags + category?
+	const limit = 5
+
+	// Build exclude set: current schematic + author's schematics.
+	exclude := make(map[string]struct{}, 1+len(author))
+	exclude[schematic.ID] = struct{}{}
+	for _, a := range author {
+		exclude[a.ID] = struct{}{}
+	}
+
+	// Try Bleve full-text search first.
 	keywordString := ""
 	for _, t := range schematic.Tags {
-		keywordString += " "
-		keywordString = keywordString + t.Name
+		keywordString += " " + t.Name
 	}
 	for _, c := range schematic.Categories {
-		keywordString += " "
-		keywordString = keywordString + c.Name
+		keywordString += " " + c.Name
 	}
 	ids := searchService.Search(fmt.Sprintf("%s %s", schematic.Title, keywordString), search.BestMatchOrder, -1, "all", nil, "all", "all")
-	interfaceIds := make([]interface{}, 0, len(ids))
-	limit := 5
-	count := 0
+
+	interfaceIds := make([]interface{}, 0, limit)
 	for _, id := range ids {
-		if count > limit {
+		if len(interfaceIds) >= limit {
 			break
 		}
-		if id == schematic.ID {
-			continue
-		}
-		found := false
-		for _, a := range author {
-			if id == a.ID {
-				found = true
-			}
-		}
-		if found {
+		if _, skip := exclude[id]; skip {
 			continue
 		}
 		interfaceIds = append(interfaceIds, id)
-		count++
 	}
 
-	var res []*core.Record
-	err := app.RecordQuery("schematics").
+	// If search index returned results, query DB and preserve search ranking.
+	if len(interfaceIds) > 0 {
+		var res []*core.Record
+		err := app.RecordQuery("schematics").
+			Select("schematics.*").
+			From("schematics").
+			Where(dbx.NewExp("(deleted = '' OR deleted IS NULL) AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
+			Where(dbx.In("id", interfaceIds...)).
+			All(&res)
+		if err != nil {
+			return nil
+		}
+		schematicModels := MapResultsToSchematic(app, res, cacheService)
+		// Re-sort to match the search ranking order.
+		sortedModels := make([]models.Schematic, 0, len(schematicModels))
+		for _, wantID := range interfaceIds {
+			for i := range schematicModels {
+				if wantID.(string) == schematicModels[i].ID {
+					sortedModels = append(sortedModels, schematicModels[i])
+					break
+				}
+			}
+		}
+		return sortedModels
+	}
+
+	// Fallback: search index empty/unavailable — query DB by shared categories.
+	return findSimilarByCategory(app, cacheService, schematic, exclude, limit)
+}
+
+// findSimilarByCategory returns schematics that share at least one category
+// with the given schematic, ordered by most views. Used as a fallback when the
+// full-text search index is not yet available.
+func findSimilarByCategory(app *pocketbase.PocketBase, cacheService *cache.Service, schematic models.Schematic, exclude map[string]struct{}, limit int) []models.Schematic {
+	if len(schematic.Categories) == 0 {
+		return nil
+	}
+	catIDs := make([]interface{}, 0, len(schematic.Categories))
+	for _, c := range schematic.Categories {
+		catIDs = append(catIDs, c.ID)
+	}
+
+	// PocketBase stores multi-relation fields as JSON arrays in SQLite.
+	// We use a LIKE-based OR query to find schematics that contain any of
+	// the same category IDs.
+	conditions := make([]dbx.Expression, 0, len(catIDs))
+	for _, cid := range catIDs {
+		conditions = append(conditions, dbx.NewExp("categories LIKE {:cat"+cid.(string)+"}", dbx.Params{"cat" + cid.(string): "%" + cid.(string) + "%"}))
+	}
+
+	excludeIDs := make([]interface{}, 0, len(exclude))
+	for id := range exclude {
+		excludeIDs = append(excludeIDs, id)
+	}
+
+	q := app.RecordQuery("schematics").
 		Select("schematics.*").
 		From("schematics").
 		Where(dbx.NewExp("(deleted = '' OR deleted IS NULL) AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
-		Where(dbx.In("id", interfaceIds...)).
-		All(&res)
-	if err != nil {
+		Where(dbx.Or(conditions...)).
+		OrderBy("views DESC").
+		Limit(int64(limit + len(exclude)))
+
+	if len(excludeIDs) > 0 {
+		q = q.Where(dbx.NotIn("id", excludeIDs...))
+	}
+
+	var res []*core.Record
+	if err := q.All(&res); err != nil {
 		return nil
 	}
-	schematicModels := MapResultsToSchematic(app, res, cacheService)
-	sortedModels := make([]models.Schematic, 0)
-	for id := range ids {
-		for i := range schematicModels {
-			if ids[id] == schematicModels[i].ID {
-				sortedModels = append(sortedModels, schematicModels[i])
-			}
-		}
+	results := MapResultsToSchematic(app, res, cacheService)
+	if len(results) > limit {
+		results = results[:limit]
 	}
-	return sortedModels
+	return results
 }
 
 func findSchematicComments(app *pocketbase.PocketBase, id string) []models.Comment {

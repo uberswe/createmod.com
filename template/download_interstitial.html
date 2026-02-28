@@ -5,36 +5,34 @@
     {{template "header.html" .}}
     <div class="page-body" role="main">
       <div class="container-wide">
-        <div class="row row-cards">
-          <div class="col-12">
+        <div class="d-flex gap-3 justify-content-center">
+          <!-- Left Ad Rail (desktop only) -->
+          <div class="ad-rail d-none d-xl-block">
+            <div id="ad-rail-left-top" class="mb-3" style="min-height:250px;"></div>
+            <div id="ad-rail-left-bottom"></div>
+          </div>
+          <div style="max-width:540px; width:100%; padding:2rem 0;">
             <div class="card">
-              <div class="card-body">
+              <div class="card-body text-center">
                 {{if .Paid}}
-                <h1 class="card-title">Preparing external link...</h1>
-                <p class="text-secondary">You will be redirected in <span id="countdown-ext" aria-live="polite">5</span> seconds.</p>
-                <p>If it doesn't, click the button below:</p>
-                <a id="manual-link-ext" class="btn btn-primary" href="{{ SignedOutURL .ExternalURL "download" .Name }}" aria-label="Continue to seller">Continue to seller</a>
+                <h1 class="card-title">{{ T .Language "Preparing external link..." }}</h1>
+                <p class="text-secondary">{{ T .Language "You will be redirected in" }} <span id="countdown-ext" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
+                <p>{{ T .Language "If it doesn't, click the button below:" }}</p>
+                <a id="manual-link-ext" class="btn btn-primary" hx-boost="false" href="{{ SignedOutURL .ExternalURL "download" .Name }}" aria-label="Continue to seller">{{ T .Language "Continue to seller" }}</a>
                 {{else}}
-                <h1 class="card-title">Preparing your download...</h1>
-                <p class="text-secondary">Your download will start automatically in <span id="countdown" aria-live="polite">5</span> seconds.</p>
-                <p>If it doesn't, click the button below:</p>
-                <a id="manual-link" class="btn btn-primary" href="/download/{{ .Name }}?t={{ .Token }}" aria-label="Download now">Download now</a>
+                <h1 class="card-title">{{ T .Language "Preparing your download..." }}</h1>
+                <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
+                <p>{{ T .Language "If it doesn't, click the button below:" }}</p>
+                <a id="manual-link" class="btn btn-primary" hx-boost="false" href="/download/{{ .Name }}?t={{ .Token }}" aria-label="Download now">{{ T .Language "Download now" }}</a>
                 {{end}}
               </div>
             </div>
           </div>
-          {{if not .IsContributor}}
-          <div class="col-12">
-            <div class="card">
-              <div class="card-body">
-                <h2 class="card-title h3 mb-2">Support CreateMod</h2>
-                <div id="ad-slot-download" class="ad-slot" style="min-height:120px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.1);">
-                  <span class="text-secondary">Ad placement (download page)</span>
-                </div>
-              </div>
-            </div>
+          <!-- Right Ad Rail (desktop only) -->
+          <div class="ad-rail d-none d-xl-block">
+            <div id="ad-rail-right-top" class="mb-3" style="min-height:250px;"></div>
+            <div id="ad-rail-right-bottom"></div>
           </div>
-          {{end}}
         </div>
       </div>
     </div>
@@ -44,18 +42,58 @@
 {{template "foot.html" .}}
 <script>
 (function(){
-  var seconds = 5;
+  var seconds = 10;
   var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
   var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
+  var timerId = null;
+  var stopped = false;
+
+  function stop() {
+    stopped = true;
+    if (timerId) { clearTimeout(timerId); timerId = null; }
+  }
+
   function tick(){
+    if (stopped) return;
     seconds -= 1;
     if (el) { el.textContent = String(seconds); }
     if (seconds <= 0) {
+      stop();
       if (link && link.href) { window.location.href = link.href; }
     } else {
-      setTimeout(tick, 1000);
+      timerId = setTimeout(tick, 1000);
     }
   }
-  setTimeout(tick, 1000);
+  timerId = setTimeout(tick, 1000);
+
+  // Stop timer when user clicks the manual download link
+  if (link) {
+    link.addEventListener('click', function() { stop(); });
+  }
+
+  // Stop timer when HTMX navigates away (user clicks back or another link)
+  document.body.addEventListener('htmx:beforeSwap', function() { stop(); });
 })();
+</script>
+<script>
+if (window['nitroAds']) {
+  ['ad-rail-left-top', 'ad-rail-right-top'].forEach(function(id) {
+    window['nitroAds'].createAd(id, {
+      "refreshLimit": 10,
+      "refreshTime": 30,
+      "format": "display",
+      "sizes": [
+        ["300", "600"],
+        ["300", "250"]
+      ],
+      "report": {
+        "enabled": true,
+        "icon": true,
+        "wording": "Report Ad",
+        "position": "top-right"
+      },
+      "mediaQuery": "(min-width: 1200px)"
+    });
+  });
+}
 </script>

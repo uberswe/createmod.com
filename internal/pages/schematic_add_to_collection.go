@@ -149,6 +149,16 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 			}
 		}
 
+		// If this was a newly created collection, redirect to the edit screen
+		if collInput == "__new__" && collection != nil {
+			dest := "/collections/" + collection.Id + "/edit"
+			if e.Request.Header.Get("HX-Request") != "" {
+				e.Response.Header().Set("HX-Redirect", dest)
+				return e.HTML(http.StatusNoContent, "")
+			}
+			return e.Redirect(http.StatusSeeOther, dest)
+		}
+
 		// Redirect back with status flag
 		suffix := "?added=1"
 		if !linked {

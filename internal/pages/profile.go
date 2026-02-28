@@ -12,7 +12,6 @@ import (
 	"golang.org/x/text/language"
 	tmpl "html/template"
 	"net/http"
-	"strings"
 )
 
 // UserAchievement is a minimal UI struct for profile achievements.
@@ -37,9 +36,7 @@ type ProfileData struct {
 	SchematicCount int
 	TotalViews     int
 	TotalDownloads int
-	Points         int
-	Accessories    []string
-	HasAccessories bool
+	Points int
 	// Achievements earned by this user (minimal display)
 	Achievements    []UserAchievement
 	HasAchievements bool
@@ -92,16 +89,8 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, cacheService 
 			AvatarURL()
 		d.UserAvatar = tmpl.URL(url)
 		d.Thumbnail = url
-		// Load points and accessories
+		// Load points
 		d.Points = results[0].GetInt("points")
-		acc := strings.TrimSpace(results[0].GetString("accessories"))
-		if acc != "" {
-			d.Accessories = strings.Split(acc, ",")
-			for i := range d.Accessories {
-				d.Accessories[i] = strings.TrimSpace(d.Accessories[i])
-			}
-			d.HasAccessories = len(d.Accessories) > 0
-		}
 
 		// Usage stats
 		d.SchematicCount = len(d.Schematics)

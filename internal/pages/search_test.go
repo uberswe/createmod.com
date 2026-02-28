@@ -6,8 +6,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
 )
 
 // Reuse the helper to find project root (duplicated here to keep test self-contained).
@@ -22,7 +20,7 @@ func projectRootFromThisFile_search(t *testing.T) string {
 
 func renderTemplate_search(t *testing.T, file string, data any) string {
 	t.Helper()
-	r := pbtempl.NewRegistry()
+	r := NewTestRegistry()
 	full := filepath.Join(projectRootFromThisFile_search(t), file)
 	html, err := r.LoadFiles(full).Render(data)
 	if err != nil {

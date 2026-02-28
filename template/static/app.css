@@ -9,6 +9,40 @@
 }
 
 /**************
+  Dark theme: improve contrast for muted text and secondary buttons
+***************/
+[data-bs-theme=dark] {
+  /* Default --tblr-muted (#49566c) is nearly invisible on dark backgrounds.
+     Lighten to a readable gray that still feels subdued. */
+  --tblr-muted: #8a919b;
+
+  /* Secondary color (used by .text-muted, secondary badges, etc.)
+     Bump opacity from 0.75 to 1 for better readability. */
+  --tblr-secondary-color: rgba(219, 196, 143, 1);
+}
+
+/* btn-outline-secondary and btn-ghost-secondary use --tblr-secondary which
+   is a dark brown (rgb(189,140,62)) — hard to read on dark card surfaces.
+   Override to a lighter neutral that contrasts well with #353838 cards. */
+[data-bs-theme=dark] .btn-outline-secondary {
+  --tblr-btn-color: #a0a6ad;
+  --tblr-btn-border-color: #6c7380;
+  --tblr-btn-hover-color: #fff;
+  --tblr-btn-hover-bg: rgba(160, 166, 173, 0.15);
+  --tblr-btn-hover-border-color: #a0a6ad;
+}
+[data-bs-theme=dark] .btn-ghost-secondary {
+  --tblr-btn-color: #a0a6ad;
+  --tblr-btn-hover-color: #fff;
+  --tblr-btn-hover-bg: rgba(160, 166, 173, 0.1);
+}
+
+/* .text-muted in dark mode — ensure it uses the improved secondary color */
+[data-bs-theme=dark] .text-muted {
+  color: var(--tblr-secondary-color) !important;
+}
+
+/**************
   Light theme: warm beige backgrounds
 ***************/
 :root,
@@ -114,8 +148,8 @@ a:hover {
 ***************/
 .ad-rail {
   position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 100px);
+  top: 110px;
+  max-height: calc(100vh - 120px);
   width: 300px;
   flex-shrink: 0;
 }
@@ -178,8 +212,8 @@ a:hover {
 ***************/
 .ad-rail-sm {
   position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 100px);
+  top: 110px;
+  max-height: calc(100vh - 120px);
   width: 160px;
   flex-shrink: 0;
 }
@@ -432,8 +466,12 @@ a:hover {
 .top-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1.25rem;
   flex-shrink: 0;
+}
+.top-header-actions .lang-flag {
+  font-size: 1.5rem;
+  line-height: 1;
 }
 .sidebar-mobile-toggle {
   background: none;
@@ -449,6 +487,12 @@ a:hover {
 .page-wrapper {
   margin-left: 56px;
   margin-top: 100px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 100px);
+}
+.page-wrapper > .page-body {
+  flex: 1;
 }
 
 /* Hide old Tabler page-header title row — replaced by top header */
@@ -498,12 +542,13 @@ body.sidebar-open::after {
 ***************/
 .search-layout {
   display: grid;
-  grid-template-columns: 260px 1fr 300px;
+  grid-template-columns: 300px 1fr 300px;
   gap: 1.5rem;
 }
 
 .search-sidebar {
   min-width: 0;
+  overflow: hidden;
 }
 
 .search-center {
@@ -512,8 +557,9 @@ body.sidebar-open::after {
 
 .search-ad-rail {
   position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 100px);
+  top: 110px;
+  max-height: calc(100vh - 120px);
+  min-width: 300px;
 }
 
 .search-hero {
@@ -580,7 +626,7 @@ body.sidebar-open::after {
 /* Responsive: tablet */
 @media (max-width: 1199.98px) {
   .search-layout {
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 300px 1fr;
   }
   .search-ad-rail {
     display: none !important;
@@ -600,4 +646,51 @@ body.sidebar-open::after {
 /* Utility: prevent flex children from overflowing */
 .min-width-0 {
   min-width: 0;
+}
+
+/* Guide content styling */
+.guide-content h1, .guide-content h2, .guide-content h3,
+.guide-content h4, .guide-content h5, .guide-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.guide-content h1:first-child, .guide-content h2:first-child,
+.guide-content h3:first-child {
+  margin-top: 0;
+}
+.guide-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.guide-content pre {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 12px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.guide-content blockquote {
+  border-left: 3px solid var(--tblr-border-color);
+  padding-left: 1rem;
+  margin-left: 0;
+  color: var(--tblr-secondary-color);
+}
+.guide-content table {
+  width: 100%;
+  margin-bottom: 1rem;
+  border-collapse: collapse;
+}
+.guide-content table th, .guide-content table td {
+  padding: 0.5rem;
+  border: 1px solid var(--tblr-border-color);
+}
+
+/* Clickable card links */
+a.card-link {
+  color: inherit;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+a.card-link:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }

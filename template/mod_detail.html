@@ -1,0 +1,50 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="d-flex gap-3">
+        <div class="flex-grow-1 min-width-0">
+        <div class="mb-3 d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <div class="mb-1">
+                <a href="/mods" class="text-secondary text-decoration-none">&larr; {{ T .Language "All Mods" }}</a>
+              </div>
+              <h2 class="page-title mb-1">{{ .Mod.Name }}</h2>
+              <div class="text-secondary">{{ .Subtitle }}</div>
+            </div>
+          </div>
+        </div>
+        <div id="mod-results">
+          <div class="row row-cards">
+            {{range .Schematics}}
+              {{template "schematic_card.html" .}}
+            {{end}}
+          </div>
+          {{ if not .Schematics }}
+          <div class="row mt-4">
+            <div class="col-md-6 m-auto">
+              <div class="alert alert-info" role="alert">
+                {{ T .Language "No schematics found for this mod." }}
+              </div>
+            </div>
+          </div>
+          {{ end }}
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+            <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+          </div>
+        </div>
+        </div>
+        {{template "ad_rail.html" .}}
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

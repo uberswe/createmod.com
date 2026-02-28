@@ -8,8 +8,8 @@
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="page-title">Create collection</h2>
-              <div class="text-secondary">Create a new collection of schematics</div>
+              <h2 class="page-title">{{ T .Language "Create collection" }}</h2>
+              <div class="text-secondary">{{ T .Language "Create a new collection of schematics" }}</div>
             </div>
           </div>
         </div>
@@ -20,30 +20,32 @@
         {{end}}
         <div class="row row-cards">
           <div class="col-12 col-md-8">
-            <form class="card" action="/collections" method="post" enctype="multipart/form-data">
-              <div class="card-header"><h3 class="card-title">Collection details</h3></div>
+            <form class="card" action="/collections" method="post" enctype="multipart/form-data" onsubmit="if(window.tinyMCE){tinyMCE.triggerSave(true,true);}">
+              <div class="card-header"><h3 class="card-title">{{ T .Language "Collection details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
-                  <label class="form-label required" for="title">Title</label>
-                  <input type="text" class="form-control" id="title" name="title" placeholder="My awesome collection" required />
+                  <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
+                  <input type="text" class="form-control" id="title" name="title" placeholder="{{ T .Language "My awesome collection" }}" required oninput="updateTitleCount()" />
+                  <small class="form-hint">
+                    <span id="title-count" class="text-danger">0</span> / 10 {{ T .Language "characters minimum" }}
+                  </small>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="description">Description</label>
-                  <textarea class="form-control" id="description" name="description" rows="5" placeholder="Describe your collection"></textarea>
+                  <label class="form-label" for="description">{{ T .Language "Description" }}</label>
+                  <textarea class="form-control" id="description" name="description" rows="5" placeholder="{{ T .Language "Describe your collection" }}"></textarea>
+                  <small class="form-hint">
+                    <span id="desc-count" class="text-danger">0</span> / 100 {{ T .Language "characters minimum" }}
+                  </small>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="banner_url">Banner image URL</label>
-                  <input type="url" class="form-control" id="banner_url" name="banner_url" placeholder="https://..." />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label" for="banner">Banner image file (optional)</label>
+                  <label class="form-label" for="banner">{{ T .Language "Banner image (optional)" }}</label>
                   <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
-                  <small class="form-hint">Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP.</small>
+                  <small class="form-hint">{{ T .Language "Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP." }}</small>
                 </div>
               </div>
               <div class="card-footer text-end">
-                <a href="/collections" class="btn btn-link">Cancel</a>
-                <button type="submit" class="btn btn-primary" {{if not .IsAuthenticated}}disabled{{end}}>Create collection</button>
+                <a href="/collections" class="btn btn-link">{{ T .Language "Cancel" }}</a>
+                <button type="submit" class="btn btn-primary" {{if not .IsAuthenticated}}disabled{{end}}>{{ T .Language "Create collection" }}</button>
               </div>
             </form>
           </div>
@@ -54,3 +56,70 @@
   </div>
 </div>
 {{template "foot.html" .}}
+<script>
+function updateTitleCount(){
+  var el=document.getElementById('title');
+  var span=document.getElementById('title-count');
+  if(!el||!span)return;
+  var len=el.value.trim().length;
+  span.textContent=len;
+  span.className=len>=10?'text-success':'text-danger';
+}
+function updateDescCount(){
+  var span=document.getElementById('desc-count');
+  if(!span)return;
+  var len=0;
+  if(window.tinyMCE&&tinyMCE.get('description')){
+    len=tinyMCE.get('description').getContent({format:'text'}).trim().length;
+  }else{
+    var ta=document.getElementById('description');
+    if(ta) len=ta.value.trim().length;
+  }
+  span.textContent=len;
+  span.className=len>=100?'text-success':'text-danger';
+}
+updateTitleCount();
+updateDescCount();
+</script>
+<script>
+(function initCollectionEditor(retries){
+  retries=retries||0;
+  if(typeof tinyMCE==='undefined'){
+    if(retries<100){
+      if(retries===0){
+        var s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js';
+        document.head.appendChild(s);
+      }
+      setTimeout(function(){initCollectionEditor(retries+1);},100);
+    }
+    return;
+  }
+  var options={
+    license_key:"gpl",
+    selector:'#description',
+    height:300,
+    menubar:false,
+    statusbar:true,
+    promotion:false,
+    branding:false,
+    plugins:'lists link autolink wordcount autoresize',
+    toolbar:'undo redo | bold italic underline strikethrough | bullist numlist | link | removeformat',
+    content_style:'body{font-family:-apple-system,BlinkMacSystemFont,San Francisco,Segoe UI,Roboto,Helvetica Neue,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;max-width:100%;padding:8px 16px;}',
+    autoresize_min_height:200,
+    autoresize_max_height:600,
+    link_default_target:'_blank',
+    link_assume_external_targets:true,
+    setup:function(editor){
+      editor.on('keyup input change',function(){updateDescCount();});
+      editor.on('init',function(){updateDescCount();});
+    }
+  };
+  if(localStorage.getItem("createmodTheme")==='dark'){
+    options.skin='tinymce-5-dark';
+    options.content_css='dark';
+  }
+  tinyMCE.baseURL="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+  tinyMCE.init(options);
+})();
+</script>

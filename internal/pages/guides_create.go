@@ -96,11 +96,11 @@ func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 			rec.Set("wiki_url", link)
 		}
 		rec.Set("author", e.Auth.Id)
-		// If excerpt field exists, try a short preview
+		// If excerpt field exists, try a short preview (strip HTML tags from content)
 		if content != "" {
-			ex := content
+			ex := stripHTMLTags(content)
 			if len(ex) > 180 {
-				ex = ex[:180] + "…"
+				ex = ex[:180] + "..."
 			}
 			rec.Set("excerpt", ex)
 		}
@@ -113,15 +113,12 @@ func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 			}
 			rec.Set("title", title)
 			rec.Set("name", title)
+			rec.Set("author", e.Auth.Id)
 			_ = app.Save(rec) // best-effort; ignore error to avoid blocking UX in early stages
 		}
 
-		dest := "/guides"
-		// Optionally, redirect to filtered list by query title
-		if title != "" {
-			// ensure safe query value
-			dest = "/guides?q=" + urlQueryEscape(title)
-		}
+		// Redirect to the newly created guide's detail page
+		dest := "/guides/" + rec.Id
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", dest)
 			return e.HTML(http.StatusNoContent, "")

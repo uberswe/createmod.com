@@ -20,31 +20,31 @@
                 </div>
                 <!-- Browse column -->
                 <div class="col-6 col-md-3 col-lg-2 offset-lg-1">
-                    <h6 class="footer-heading">Browse</h6>
+                    <h6 class="footer-heading">{{ T .Language "Browse" }}</h6>
                     <ul class="footer-nav">
-                        <li><a href="/">Latest Schematics</a></li>
-                        <li><a href="/explore">Explore</a></li>
-                        <li><a href="/collections">Collections</a></li>
-                        <li><a href="/videos">Videos</a></li>
+                        <li><a href="/">{{ T .Language "Latest Schematics" }}</a></li>
+                        <li><a href="/explore">{{ T .Language "Explore" }}</a></li>
+                        <li><a href="/collections">{{ T .Language "Collections" }}</a></li>
+                        <li><a href="/videos">{{ T .Language "Videos" }}</a></li>
                     </ul>
                 </div>
                 <!-- Community column -->
                 <div class="col-6 col-md-3 col-lg-2">
-                    <h6 class="footer-heading">Community</h6>
+                    <h6 class="footer-heading">{{ T .Language "Community" }}</h6>
                     <ul class="footer-nav">
-                        <li><a href="/guides">Guides</a></li>
-                        <li><a href="/news">News</a></li>
-                        <li><a href="/upload">Upload</a></li>
-                        <li><a href="/contact">Contact</a></li>
+                        <li><a href="/guides">{{ T .Language "Guides" }}</a></li>
+                        <li><a href="/news">{{ T .Language "News" }}</a></li>
+                        <li><a href="/upload">{{ T .Language "Upload" }}</a></li>
+                        <li><a href="/contact">{{ T .Language "Contact" }}</a></li>
                     </ul>
                 </div>
                 <!-- Legal column -->
                 <div class="col-6 col-md-3 col-lg-2">
-                    <h6 class="footer-heading">Legal</h6>
+                    <h6 class="footer-heading">{{ T .Language "Legal" }}</h6>
                     <ul class="footer-nav">
-                        <li><a href="/terms-of-service">Terms of Service</a></li>
-                        <li><a href="/privacy-policy">Privacy Policy</a></li>
-                        <li><a href="/rules">Rules</a></li>
+                        <li><a href="/terms-of-service">{{ T .Language "Terms of Service" }}</a></li>
+                        <li><a href="/privacy-policy">{{ T .Language "Privacy Policy" }}</a></li>
+                        <li><a href="/rules">{{ T .Language "Rules" }}</a></li>
                         <li><span data-ccpa-link="1"></span></li>
                     </ul>
                     <div id="ncmp-consent-link"></div>
@@ -144,7 +144,8 @@
             // The form does a native POST to /login which sets the auth cookie
             // server-side. We only prevent submission if fields are empty.
             let loginForm = document.getElementById("login-form");
-            if (loginForm != null) {
+            if (loginForm != null && !loginForm._bound) {
+                loginForm._bound = true;
                 let username = document.getElementById("username");
                 let password = document.getElementById("password");
                 let errorDivs = [];
@@ -181,7 +182,8 @@
 
             // Discord login
             let discordLogin = document.getElementById("discord-login");
-            if (discordLogin != null) {
+            if (discordLogin != null && !discordLogin._bound) {
+                discordLogin._bound = true;
                 discordLogin.addEventListener("click", async (e) => {
                     e.preventDefault();
                     await pb.collection('users').authWithOAuth2({provider: 'discord'}).then(() => {
@@ -194,7 +196,8 @@
 
             // Github login
             let githubLogin = document.getElementById("github-login");
-            if (githubLogin != null) {
+            if (githubLogin != null && !githubLogin._bound) {
+                githubLogin._bound = true;
                 githubLogin.addEventListener("click", async (e) => {
                     e.preventDefault();
                     await pb.collection('users').authWithOAuth2({provider: 'github'}).then(() => {
@@ -381,6 +384,10 @@
 
         document.addEventListener("DOMContentLoaded", function () {
 // Run everything
+            run()
+        })
+        // Re-run after HTMX page swaps so event listeners are re-attached
+        document.addEventListener("htmx:afterSettle", function () {
             run()
         })
     </script>

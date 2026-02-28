@@ -4,29 +4,21 @@ package i18n
 // It relies on existing language detection (pages.preferredLanguageFromRequest)
 // and exposes a simple T(lang, key) function for templates and handlers.
 
-var translations = map[string]map[string]string{
-	"en": {
-		"Read more":       "Read more",
-		"No news yet":     "No news yet",
-		"Back to News":    "Back to News",
-		"Copy Link":       "Copy Link",
-		"Download":        "Download",
-		"Get Schematic":   "Get Schematic",
-		"Report":          "Report",
-		"Edit":            "Edit",
-		"Version history": "Version history",
-	},
-	"pt-BR": {
-		"Read more":       "Ler mais",
-		"No news yet":     "Ainda não há notícias",
-		"Back to News":    "Voltar para Notícias",
-		"Copy Link":       "Copiar link",
-		"Download":        "Baixar",
-		"Get Schematic":   "Obter Esquemático",
-		"Report":          "Denunciar",
-		"Edit":            "Editar",
-		"Version history": "Histórico de versões",
-	},
+var translations = map[string]map[string]string{}
+
+func init() {
+	register("en", LangEN)
+	register("pt-BR", LangPtBR)
+	register("pt-PT", LangPtPT)
+	register("es", LangES)
+	register("de", LangDE)
+	register("pl", LangPL)
+	register("ru", LangRU)
+	register("zh-Hans", LangZhHans)
+}
+
+func register(lang string, m map[string]string) {
+	translations[lang] = m
 }
 
 // T returns the localized value for the given key in the provided lang.

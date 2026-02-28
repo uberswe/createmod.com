@@ -21,7 +21,7 @@ func Test_Guides_New_Template_Has_Expected_Elements(t *testing.T) {
 		"name=\"content\"",
 		"name=\"video_url\"",
 		"name=\"external_url\"",
-		"Preview",
+		"guide-editor",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

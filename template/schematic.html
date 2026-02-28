@@ -16,7 +16,7 @@
 
                         <!-- Image + Description -->
                         <div class="card card-sm mb-4">
-                            <a data-fslightbox="gallery"
+                            <a data-fslightbox="gallery" hx-boost="false"
                                href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
                                 <img
                                         src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080"
@@ -27,7 +27,7 @@
                                 <div class="row row-cols-6 g-3 mb-2">
                                     {{ range .Schematic.Gallery }}
                                     <div class="col">
-                                        <a data-fslightbox="gallery"
+                                        <a data-fslightbox="gallery" hx-boost="false"
                                            href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
                                             <div class="img-responsive img-responsive-1x1 rounded border"
                                                  style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}?thumb=150x150')"></div>
@@ -49,21 +49,25 @@
                                     {{ if .BloxelizerURL }}
                                     <a href="{{ SignedOutURL .BloxelizerURL "schematic" .Schematic.Name }}" class="btn btn-outline-secondary" target="_blank" rel="noopener">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
-                                        View in 3D
+                                        {{ T .Language "View in 3D" }}
+                                        <small class="text-secondary ms-1" style="font-size:0.75em;">{{ T .Language "on Bloxelizer" }}</small>
                                     </a>
                                     {{ end }}
                                     {{ if .Schematic.Paid }}
-                                    <span class="badge bg-red-lt">Paid</span>
+                                    <span class="badge bg-red-lt">{{ T .Language "Paid" }}</span>
                                     {{ end }}
                                     <div class="ms-auto d-flex align-items-center gap-2">
-                                        <select id="rating-default">
-                                            <option value="">Select a rating</option>
-                                            <option value="5">Excellent</option>
-                                            <option value="4" selected>Very Good</option>
-                                            <option value="3">Average</option>
-                                            <option value="2">Poor</option>
-                                            <option value="1">Terrible</option>
-                                        </select>
+                                        <div style="position:relative;display:inline-block;">
+                                            <select id="rating-default">
+                                                <option value="">Select a rating</option>
+                                                <option value="5">Excellent</option>
+                                                <option value="4" selected>Very Good</option>
+                                                <option value="3">Average</option>
+                                                <option value="2">Poor</option>
+                                                <option value="1">Terrible</option>
+                                            </select>
+                                            <span id="rating-feedback" style="display:none;position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:6px;white-space:nowrap;padding:4px 10px;border-radius:4px;font-size:.75rem;font-weight:500;background:var(--tblr-success);color:#fff;pointer-events:none;z-index:10;"></span>
+                                        </div>
                                         {{ if .IsAuthor }}
                                         <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-secondary btn-sm" id="edit-btn">
                                             {{ T .Language "Edit" }}
@@ -78,22 +82,28 @@
                                 <!-- Description -->
                                 <div class="mt-3">
                                     <div>{{ .Schematic.HTMLContent }}</div>
+                                    {{ if .IsTranslated }}
+                                    <div class="text-muted small mt-2">
+                                        <em>{{ T .Language "Auto translated" }}</em> &mdash;
+                                        <a href="?lang=original" class="text-muted">{{ T .Language "show original" }}</a>
+                                    </div>
+                                    {{ end }}
                                 </div>
 
                                 {{ if .IsAuthenticated }}
                                 <!-- Add to collection -->
                                 <div class="mt-3 pt-3 border-top">
                                     <form class="d-flex flex-wrap align-items-center gap-2" action="/schematics/{{ .Schematic.Name }}/add-to-collection" method="post">
-                                        <label for="collection-select" class="form-label mb-0 text-muted small">Add to collection</label>
+                                        <label for="collection-select" class="form-label mb-0 text-muted small">{{ T .Language "Add to collection" }}</label>
                                         <select id="collection-select" class="form-select form-select-sm" name="collection" style="width:auto;">
-                                            <option value="" disabled selected>Select…</option>
+                                            <option value="" disabled selected>{{ T .Language "Select…" }}</option>
                                             {{ range .UserCollections }}
                                             <option value="{{ if .Slug }}{{ .Slug }}{{ else }}{{ .ID }}{{ end }}">{{ .Title }}</option>
                                             {{ end }}
-                                            <option value="__new__">Create new collection…</option>
+                                            <option value="__new__">{{ T .Language "Create new collection…" }}</option>
                                         </select>
-                                        <input type="text" class="form-control form-control-sm" name="new_collection_name" id="new-collection-name" placeholder="Collection name" style="display:none;width:auto;" />
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Add</button>
+                                        <input type="text" class="form-control form-control-sm" name="new_collection_name" id="new-collection-name" placeholder="{{ T .Language "Collection name" }}" style="display:none;width:auto;" />
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">{{ T .Language "Add" }}</button>
                                     </form>
                                     <script>
                                         (function(){
@@ -111,73 +121,25 @@
                             </div>
                         </div>
 
-                        <!-- Video -->
-                        {{ if ne .Schematic.Video "" }}
-                        <div class="card mb-4">
-                            <div id="player-youtube" data-plyr-provider="youtube"
-                                 data-plyr-embed-id="{{ .Schematic.Video }}"></div>
-                        </div>
-                        {{ end }}
-
                         <!-- Promotion -->
                         <div class="card mb-4">
                             {{ .Promotion }}
                         </div>
-
-                        {{ if .HasVersions }}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h3 class="card-title">{{ T .Language "Version history" }}</h3>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-unstyled mb-0">
-                                    {{ range .Versions }}
-                                    <li>v{{ .Version }} — {{ HumanDate .Created }}{{ if .Note }} — {{ .Note }}{{ end }}</li>
-                                    {{ end }}
-                                </ul>
-                            </div>
-                        </div>
-                        {{ end }}
-
-                        <!-- Schematic Statistics -->
-                        {{ if or .Schematic.BlockCount .Schematic.DimX .Schematic.DimY .Schematic.DimZ }}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h3 class="card-title">Schematic Statistics</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="datagrid">
-                                    {{ if or .Schematic.DimX .Schematic.DimY .Schematic.DimZ }}
-                                    <div class="datagrid-item">
-                                        <div class="datagrid-title">Dimensions</div>
-                                        <div class="datagrid-content">{{ .Schematic.DimX }} x {{ .Schematic.DimY }} x {{ .Schematic.DimZ }} blocks</div>
-                                    </div>
-                                    {{ end }}
-                                    {{ if .Schematic.BlockCount }}
-                                    <div class="datagrid-item">
-                                        <div class="datagrid-title">Total Blocks</div>
-                                        <div class="datagrid-content">{{ .Schematic.BlockCount }}</div>
-                                    </div>
-                                    {{ end }}
-                                </div>
-                            </div>
-                        </div>
-                        {{ end }}
 
                         <!-- Info Datagrid -->
                         <div class="card mb-4">
                             <div class="card-body">
                                 <div class="datagrid">
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Mod Version</div>
+                                        <div class="datagrid-title">{{ T .Language "Mod Version" }}</div>
                                         <div class="datagrid-content">{{ .Schematic.CreatemodVersion }}</div>
                                     </div>
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Game Version</div>
+                                        <div class="datagrid-title">{{ T .Language "Game Version" }}</div>
                                         <div class="datagrid-content">{{ .Schematic.MinecraftVersion }}</div>
                                     </div>
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Category</div>
+                                        <div class="datagrid-title">{{ T .Language "Category" }}</div>
                                         <div class="datagrid-content">
                                             <div class="avatar-list avatar-list-stacked">
                                                 {{ range .Schematic.Categories }}
@@ -189,12 +151,12 @@
                                         </div>
                                     </div>
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Uploaded</div>
+                                        <div class="datagrid-title">{{ T .Language "Uploaded" }}</div>
                                         <div class="datagrid-content" data-bs-toggle="tooltip" data-bs-placement="top"
                                              title="{{ .Schematic.CreatedFormatted }}">{{ .Schematic.CreatedHumanReadable }}</div>
                                     </div>
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Author</div>
+                                        <div class="datagrid-title">{{ T .Language "Author" }}</div>
                                         <div class="datagrid-content">
                                             <div class="d-flex align-items-center">
                                                 {{ if .Schematic.Author.HasAvatar }}
@@ -208,31 +170,31 @@
                                         </div>
                                     </div>
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Views</div>
+                                        <div class="datagrid-title">{{ T .Language "Views" }}</div>
                                         <div class="datagrid-content">{{ .Schematic.Views }}</div>
                                     </div>
                                     {{ if .Schematic.Downloads }}
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Downloads</div>
+                                        <div class="datagrid-title">{{ T .Language "Downloads" }}</div>
                                         <div class="datagrid-content">{{ .Schematic.Downloads }}</div>
                                     </div>
                                     {{ end }}
                                     {{ if .Schematic.HasRating }}
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Rating</div>
+                                        <div class="datagrid-title">{{ T .Language "Rating" }}</div>
                                         <div class="datagrid-content">
                                             {{ if eq .Schematic.RatingCount 0 }}
-                                            No rating
+                                            {{ T .Language "No rating" }}
                                             {{ else }}
-                                            {{ .Schematic.Rating }} based on {{ .Schematic.RatingCount }}
-                                            ratings
+                                            {{ .Schematic.Rating }} {{ T .Language "based on" }} {{ .Schematic.RatingCount }}
+                                            {{ T .Language "ratings" }}
                                             {{ end }}
                                         </div>
                                     </div>
                                     {{ end }}
                                     {{ if .Schematic.HasTags }}
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Tags</div>
+                                        <div class="datagrid-title">{{ T .Language "Tags" }}</div>
                                         <div class="datagrid-content">
                                             <div class="avatar-list avatar-list-stacked">
                                                 {{ range .Schematic.Tags }}
@@ -247,7 +209,7 @@
                                 </div>
                                 {{ if .Schematic.HasDependencies }}
                                 <div class="col-sm-12 col-lg-12 mt-4">
-                                    <h3 class="card-title">Dependencies</h3>
+                                    <h3 class="card-title">{{ T .Language "Dependencies" }}</h3>
                                     <div>
                                         {{ .Schematic.HTMLDependencies }}
                                     </div>
@@ -256,37 +218,22 @@
                             </div>
                         </div>
 
-                        <!-- More From Author -->
-                        {{ if .AuthorHasMore }}
-                        <div class="mb-4">
-                            <h3>More From <a
-                                    href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
-                                .Schematic.Author.Username }}</a></h3>
-                            <div class="row row-cards">
-                                {{range .FromAuthor }}
-                                {{ template "schematic_card_full.html" . }}
-                                {{end}}
-                            </div>
-                        </div>
-                        {{ end }}
-
                         <!-- Similar Schematics -->
+                        {{ if .Similar }}
                         <div class="mb-4">
-                            <h3>Similar Schematics</h3>
+                            <h3>{{ T .Language "Similar Schematics" }}</h3>
                             <div class="row row-cards">
                                 {{range .Similar }}
                                 {{ template "schematic_card_full.html" . }}
                                 {{end}}
                             </div>
                         </div>
+                        {{ end }}
 
                         <!-- Comments -->
                         <div class="card mb-4">
                             <div class="card-body">
-                                <h3 class="card-title d-flex align-items-center justify-content-between">
-                                    <span>Comments</span>
-                                    <a class="btn btn-sm btn-outline-secondary" hx-get="/schematics/{{ .Schematic.Name }}/comments" hx-target="#comments-list" hx-swap="outerHTML">Refresh</a>
-                                </h3>
+                                <h3 class="card-title">{{ T .Language "Comments" }}</h3>
                                 <div id="comments-list">
                                 {{range .Comments}}
                                 <div class="col-12 mb-2">
@@ -341,7 +288,7 @@
                                                         <a href="#tinymce-comment"
                                                            onclick="commentReply('{{ .ID }}', '{{ .Author }}')"
                                                            class="link">
-                                                            Reply
+                                                            {{ T $.Language "Reply" }}
                                                         </a>
                                                     </div>
                                                     {{ end }}
@@ -361,32 +308,47 @@
                                                         </a>
                                                     </div>
                                                     <div class="col-auto">
-                                                        <a href="#reportCommentModal-{{ .ID }}" class="link text-danger" data-bs-toggle="modal" data-bs-target="#reportCommentModal-{{ .ID }}">Report</a>
+                                                        <a href="#reportCommentModal-{{ .ID }}" class="link text-danger" data-bs-toggle="modal" data-bs-target="#reportCommentModal-{{ .ID }}">{{ T $.Language "Report" }}</a>
                                                     </div>
                                                 </div>
                                                 <!-- Comment Report Modal -->
-                                                <div class="modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog">
+                                                <div class="modal report-modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog">
                                                   <div class="modal-dialog modal-dialog-centered" role="document">
                                                     <div class="modal-content">
-                                                      <form method="post" action="/reports">
-                                                        <div class="modal-header">
-                                                          <h5 class="modal-title">Report Comment</h5>
-                                                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                          <input type="hidden" name="target_type" value="comment">
-                                                          <input type="hidden" name="target_id" value="{{ .ID }}">
-                                                          <input type="hidden" name="return_to" value="/schematics/{{ $.Schematic.Name }}#{{ .ID }}">
-                                                          <div class="mb-3">
-                                                            <label class="form-label">Reason</label>
-                                                            <textarea class="form-control" name="reason" required placeholder="Describe the issue"></textarea>
+                                                      <div class="report-form-view">
+                                                        <form class="report-form" method="post" action="/reports">
+                                                          <div class="modal-header">
+                                                            <h5 class="modal-title">{{ T $.Language "Report Comment" }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T $.Language "Close" }}"></button>
                                                           </div>
+                                                          <div class="modal-body">
+                                                            <input type="hidden" name="target_type" value="comment">
+                                                            <input type="hidden" name="target_id" value="{{ .ID }}">
+                                                            <input type="hidden" name="return_to" value="/schematics/{{ $.Schematic.Name }}#{{ .ID }}">
+                                                            <div class="mb-3">
+                                                              <label class="form-label">{{ T $.Language "Reason" }}</label>
+                                                              <textarea class="form-control" name="reason" required placeholder="{{ T $.Language "Describe the issue" }}"></textarea>
+                                                            </div>
+                                                          </div>
+                                                          <div class="modal-footer">
+                                                            <button type="button" class="btn btn-link" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
+                                                            <button type="submit" class="btn btn-danger">{{ T $.Language "Submit report" }}</button>
+                                                          </div>
+                                                        </form>
+                                                      </div>
+                                                      <div class="report-success-view" style="display:none;">
+                                                        <div class="modal-header">
+                                                          <h5 class="modal-title">{{ T $.Language "Report Submitted" }}</h5>
+                                                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T $.Language "Close" }}"></button>
+                                                        </div>
+                                                        <div class="modal-body text-center py-4">
+                                                          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                          <p class="mb-0">{{ T $.Language "Thank you for your report, we will review this within 24 hours." }}</p>
                                                         </div>
                                                         <div class="modal-footer">
-                                                          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
-                                                          <button type="submit" class="btn btn-danger">Submit report</button>
+                                                          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ T $.Language "Close" }}</button>
                                                         </div>
-                                                      </form>
+                                                      </div>
                                                     </div>
                                                   </div>
                                                 </div>
@@ -404,14 +366,13 @@
                                       enctype="multipart/form-data"
                                       onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
                                     <div class="mb-12">
-                                        <label id="leave-comment-label" class="form-label">Leave a
-                                            comment</label>
+                                        <label id="leave-comment-label" class="form-label">{{ T .Language "Leave a comment" }}</label>
                                         <textarea id="tinymce-comment" name="content"
                                                   placeholder="comment text goes here"></textarea>
                                     </div>
                                     <div class="mb-12">
                                         <button type="submit" class="btn btn-primary w-100" id="post-comment-btn">
-                                            Post Comment
+                                            {{ T .Language "Post Comment" }}
                                         </button>
                                         <input type="hidden" name="parent" id="parent-comment" value="">
                                         <input type="hidden" name="schematic" value="{{ .Schematic.ID }}">
@@ -431,7 +392,7 @@
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    Comment Posted!
+                                                    {{ T .Language "Post Comment" }}!
                                                 </div>
                                             </div>
                                         </div>
@@ -439,26 +400,75 @@
                                 </form>
 
                                 {{ else }}
-                                <h4>You must be <a href="/login">logged in</a> to leave a comment.</h4>
+                                <h4>{{ T .Language "You must be logged in to leave a comment." }}</h4>
                                 {{ end }}
                             </div>
                         </div>
 
                     </div>
 
-                    <!-- Column 2: Mods & Materials -->
+                    <!-- Column 2: Video, Mods & Materials -->
                     <div class="col-xl-5">
+
+                        <!-- Video -->
+                        {{ if ne .Schematic.Video "" }}
+                        <div class="card mb-3">
+                            <div id="player-youtube" data-plyr-provider="youtube"
+                                 data-plyr-embed-id="{{ .Schematic.Video }}"></div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Schematic Statistics -->
+                        {{ if or .Schematic.BlockCount .Schematic.DimX .Schematic.DimY .Schematic.DimZ }}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Schematic Statistics" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="datagrid">
+                                    {{ if or .Schematic.DimX .Schematic.DimY .Schematic.DimZ }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">{{ T .Language "Dimensions" }}</div>
+                                        <div class="datagrid-content">{{ .Schematic.DimX }} x {{ .Schematic.DimY }} x {{ .Schematic.DimZ }} {{ T .Language "blocks" }}</div>
+                                    </div>
+                                    {{ end }}
+                                    {{ if .Schematic.BlockCount }}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">{{ T .Language "Total Blocks" }}</div>
+                                        <div class="datagrid-content">{{ .Schematic.BlockCount }}</div>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Version History (only shown when more than one version) -->
+                        {{ if and .HasVersions (gt (len .Versions) 1) }}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Version history" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-unstyled mb-0">
+                                    {{ range .Versions }}
+                                    <li>v{{ .Version }} — {{ HumanDate .Created }}{{ if .Note }} — {{ .Note }}{{ end }}</li>
+                                    {{ end }}
+                                </ul>
+                            </div>
+                        </div>
+                        {{ end }}
 
                         <!-- Required Mods -->
                         {{ if .Mods }}
                         <div class="card mb-3">
                             <div class="card-header">
-                                <h3 class="card-title">Required Mods</h3>
+                                <h3 class="card-title">{{ T .Language "Required Mods" }}</h3>
                             </div>
                             <div class="card-body">
-                                <div class="d-flex flex-wrap gap-2">
+                                <div class="d-flex flex-wrap gap-2" id="mods-list">
                                     {{ range .Mods }}
-                                    <span class="badge bg-blue-lt">{{ . }}</span>
+                                    <a href="/mods/{{ . }}" class="badge bg-blue-lt text-decoration-none" data-mod-id="{{ . }}">{{ . }}</a>
                                     {{ end }}
                                 </div>
                             </div>
@@ -469,11 +479,11 @@
                         {{ if .Materials }}
                         <div class="card mb-3">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title mb-0">Materials</h3>
+                                <h3 class="card-title mb-0">{{ T .Language "Materials" }}</h3>
                                 <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                    <span class="copy-text">Copy list</span>
+                                    <span class="copy-text">{{ T .Language "Copy list" }}</span>
                                 </button>
                             </div>
                             <div class="card-body p-0">
@@ -486,7 +496,7 @@
                                         </div>
                                         <div class="material-info">
                                             <span class="material-name">{{ .BlockID }}</span>
-                                            <span class="material-block-id">{{ .BlockID }}</span>
+                                            <span class="material-block-id" style="display:none;">{{ .BlockID }}</span>
                                         </div>
                                         <span class="material-count" data-count="{{ .Count }}">x{{ .Count }}</span>
                                         <span class="material-stacks"></span>
@@ -496,6 +506,20 @@
                                 <div class="p-3 border-top">
                                     <small class="text-muted">Block data from <a href="https://blocksitems.com" target="_blank" rel="noopener">blocksitems.com</a></small>
                                 </div>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- More From Author -->
+                        {{ if .AuthorHasMore }}
+                        <div class="mb-3">
+                            <h3>{{ T .Language "More From" }} <a
+                                    href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
+                                .Schematic.Author.Username }}</a></h3>
+                            <div class="row row-cards">
+                                {{range .FromAuthor }}
+                                {{ template "schematic_card_full.html" . }}
+                                {{end}}
                             </div>
                         </div>
                         {{ end }}
@@ -520,10 +544,26 @@
 
             </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/fslightbox@3.4.2/index.js" defer crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js" defer crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.js" defer crossorigin="anonymous"></script>
+        <script>
+        // Dynamic script loader for HTMX compatibility — external <script defer> tags
+        // are not re-executed on HTMX boost navigation, so we load them programmatically.
+        (function(){
+            var libs = [
+                { global: 'fsLightbox',  src: 'https://cdn.jsdelivr.net/npm/fslightbox@3.4.2/index.js' },
+                { global: 'Plyr',        src: 'https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js' },
+                { global: 'tinyMCE',     src: 'https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js' },
+                { global: 'StarRating',  src: 'https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.js' }
+            ];
+            libs.forEach(function(lib) {
+                if (window[lib.global]) return; // already loaded
+                if (document.querySelector('script[src="' + lib.src + '"]')) return; // tag exists
+                var s = document.createElement('script');
+                s.src = lib.src;
+                s.async = false;
+                document.head.appendChild(s);
+            });
+        })();
+        </script>
         {{template "footer.html" .}}
     </div>
 </div>
@@ -597,7 +637,7 @@
 </style>
 <script>
 var blockNameMap = {};
-document.addEventListener("DOMContentLoaded", function() {
+(function() {
     var materialRows = document.querySelectorAll('.material-row');
     if (materialRows.length > 0) {
         var blockIds = [];
@@ -610,9 +650,12 @@ document.addEventListener("DOMContentLoaded", function() {
             for (var i = 0; i < materialRows.length; i++) {
                 var bid = materialRows[i].getAttribute('data-block-id');
                 var nameEl = materialRows[i].querySelector('.material-name');
+                var idEl = materialRows[i].querySelector('.material-block-id');
                 if (nameEl) {
-                    var displayName = (blockNameMap[bid] && blockNameMap[bid].display_name) || formatBlockName(bid);
+                    var hasApiName = blockNameMap[bid] && blockNameMap[bid].display_name;
+                    var displayName = hasApiName ? blockNameMap[bid].display_name : formatBlockName(bid);
                     nameEl.textContent = displayName;
+                    if (idEl && hasApiName) { idEl.style.display = ''; }
                 }
             }
         });
@@ -632,7 +675,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
     }
-});
+})();
 function fetchBlockNames(blockIds, callback) {
     if (!blockIds || blockIds.length === 0) { if (callback) callback(); return; }
     try {
@@ -658,6 +701,15 @@ function formatBlockName(blockId) {
     var name = parts.length > 1 ? parts[1] : parts[0];
     return name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
 }
+// Format mod namespace badges into readable names (e.g. "create" → "Create", "create_central_kitchen" → "Create Central Kitchen")
+(function() {
+    var badges = document.querySelectorAll('#mods-list [data-mod-id]');
+    badges.forEach(function(badge) {
+        var modId = badge.getAttribute('data-mod-id');
+        if (!modId) return;
+        badge.textContent = modId.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    });
+})();
 function animateCopyButton(btn) {
     btn.classList.add('copy-success');
     setTimeout(function() { btn.classList.remove('copy-success'); }, 2000);
@@ -696,9 +748,15 @@ function copyMaterialsAsMarkdown() {
 
 {{ if ne .Schematic.Video "" }}
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        window.Plyr && (new Plyr('#player-youtube'));
-    });
+    (function initPlyr(retries) {
+        retries = retries || 0;
+        if (typeof Plyr === 'undefined') {
+            if (retries < 50) { setTimeout(function(){ initPlyr(retries + 1); }, 100); }
+            return;
+        }
+        var el = document.querySelector('#player-youtube');
+        if (el && !el.getAttribute('data-plyr-init')) { el.setAttribute('data-plyr-init','1'); new Plyr(el); }
+    })();
 </script>
 {{ end }}
 <script>
@@ -710,7 +768,12 @@ function copyMaterialsAsMarkdown() {
     }
 </script>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    (function initTinyMCE(retries) {
+        retries = retries || 0;
+        if (typeof tinyMCE === 'undefined') {
+            if (retries < 50) { setTimeout(function(){ initTinyMCE(retries + 1); }, 100); }
+            return;
+        }
         let options = {
             license_key: "gpl",
             selector: '#tinymce-comment',
@@ -734,10 +797,19 @@ function copyMaterialsAsMarkdown() {
         }
         tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
         tinyMCE.init(options);
-    })
+    })()
 </script>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    (function initStarRating(retries) {
+        retries = retries || 0;
+        if (typeof StarRating === 'undefined') {
+            if (retries < 50) { setTimeout(function(){ initStarRating(retries + 1); }, 100); }
+            return;
+        }
+        var el = document.querySelector('#rating-default');
+        if (!el || el.getAttribute('data-star-init')) return;
+        el.setAttribute('data-star-init', '1');
+
         const rating = new StarRating('#rating-default', {
             tooltip: false,
             clearable: false,
@@ -756,37 +828,67 @@ function copyMaterialsAsMarkdown() {
             classNames: {}
         })
 
-        var tooltip = new Tooltip(document.querySelector('.gl-star-rating--stars'), {
-            boundary: document.body,
-            title: "Rating saved!",
-            trigger: 'manual',
-        })
+        var starsEl = document.querySelector('.gl-star-rating--stars');
+        if (!starsEl) return;
 
+        var feedbackEl = document.getElementById('rating-feedback');
+        var hasRated = false;
+        var isAuth = {{ if .IsAuthenticated }}true{{ else }}false{{ end }};
+        var userId = '{{ .UserID }}';
 
-        document.querySelector('.gl-star-rating--stars').addEventListener('click', async function (e) {
-            if (pb.authStore.model == null) {
-                alert("You need to be logged in to rate schematics")
-            } else {
-                for (const span of this.children) {
-                    if (span === e.target) {
-                        const formData = new FormData();
-                        formData.append("schematic", '{{ .Schematic.ID }}')
-                        formData.append("user", pb.authStore.model.id)
-                        formData.append("rating", rating.widgets[0].values[rating.widgets[0].indexActive].value)
-                        const createdRecord = await pb.collection('schematic_ratings').create(formData);
-                        if (createdRecord.code !== undefined && createdRecord.code !== 200) {
-                            alert("You need to be logged in to rate schematics")
+        function showFeedback(msg, variant) {
+            if (!feedbackEl) return;
+            feedbackEl.textContent = msg;
+            feedbackEl.style.background = variant === 'warning' ? 'var(--tblr-warning)' : 'var(--tblr-success)';
+            feedbackEl.style.display = '';
+            clearTimeout(feedbackEl._timer);
+            feedbackEl._timer = setTimeout(function(){ feedbackEl.style.display = 'none'; }, 2500);
+        }
+
+        function getAuthToken() {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var c = cookies[i].trim();
+                if (c.indexOf('create-mod-auth=') === 0) return decodeURIComponent(c.substring(16));
+            }
+            return '';
+        }
+
+        starsEl.addEventListener('click', async function (e) {
+            if (!isAuth) {
+                showFeedback('Log in to rate schematics', 'warning');
+                return;
+            }
+            for (const span of this.children) {
+                if (span === e.target) {
+                    try {
+                        var ratingVal = rating.widgets[0].values[rating.widgets[0].indexActive].value;
+                        var resp = await fetch('/api/collections/schematic_ratings/records', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': getAuthToken()
+                            },
+                            body: JSON.stringify({
+                                schematic: '{{ .Schematic.ID }}',
+                                user: userId,
+                                rating: parseInt(ratingVal, 10)
+                            })
+                        });
+                        if (resp.ok) {
+                            showFeedback(hasRated ? 'Rating updated!' : 'Rating saved!');
+                            hasRated = true;
                         } else {
-                            tooltip.show()
-                            setTimeout(function () {
-                                tooltip.hide()
-                            }, 2000);
+                            var body = await resp.json().catch(function(){ return {}; });
+                            showFeedback(body.message || 'Could not save rating', 'warning');
                         }
+                    } catch(err) {
+                        showFeedback('Could not save rating', 'warning');
                     }
                 }
             }
         });
-    })
+    })();
 </script>
 {{ if .IsAuthenticated }}
 <script>
@@ -863,28 +965,102 @@ window['nitroAds'].createAd('ad-rail-top', {
 </script>
 
 <!-- Report Modal -->
-<div class="modal" id="reportModal" tabindex="-1" role="dialog">
+<div class="modal report-modal" id="reportModal" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
-      <form method="post" action="/reports">
-        <div class="modal-header">
-          <h5 class="modal-title">Report Schematic</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" name="target_type" value="schematic">
-          <input type="hidden" name="target_id" value="{{ .Schematic.ID }}">
-          <input type="hidden" name="return_to" value="/schematics/{{ .Schematic.Name }}">
-          <div class="mb-3">
-            <label class="form-label">Reason</label>
-            <textarea class="form-control" name="reason" required placeholder="Describe the issue"></textarea>
+      <div class="report-form-view">
+        <form class="report-form" method="post" action="/reports">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ T .Language "Report Schematic" }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
           </div>
+          <div class="modal-body">
+            <input type="hidden" name="target_type" value="schematic">
+            <input type="hidden" name="target_id" value="{{ .Schematic.ID }}">
+            <input type="hidden" name="return_to" value="/schematics/{{ .Schematic.Name }}">
+            <div class="mb-3">
+              <label class="form-label">{{ T .Language "Reason" }}</label>
+              <textarea class="form-control" name="reason" required placeholder="{{ T .Language "Describe the issue" }}"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-link" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+            <button type="submit" class="btn btn-danger">{{ T .Language "Submit report" }}</button>
+          </div>
+        </form>
+      </div>
+      <div class="report-success-view" style="display:none;">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ T .Language "Report Submitted" }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+          <p class="mb-0">{{ T .Language "Thank you for your report, we will review this within 24 hours." }}</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-danger">Submit report</button>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ T .Language "Close" }}</button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>
+<script>
+// Handle all report modals (schematic + comments) with confirmation view
+(function() {
+  document.querySelectorAll('.report-modal').forEach(function(modal) {
+    var form = modal.querySelector('.report-form');
+    var formView = modal.querySelector('.report-form-view');
+    var successView = modal.querySelector('.report-success-view');
+    if (!form || !formView || !successView) return;
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+      fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'HX-Request': 'true' }
+      }).then(function(resp) {
+        if (resp.ok || resp.status === 204) {
+          formView.style.display = 'none';
+          successView.style.display = '';
+        } else {
+          if (btn) { btn.disabled = false; btn.textContent = 'Submit report'; }
+          if (typeof showToast === 'function') showToast('Could not submit report. Please try again.', 'danger');
+        }
+      }).catch(function() {
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit report'; }
+        if (typeof showToast === 'function') showToast('Could not submit report. Please try again.', 'danger');
+      });
+    });
+
+    modal.addEventListener('hidden.bs.modal', function() {
+      formView.style.display = '';
+      successView.style.display = 'none';
+      form.reset();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit report'; }
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('added') === '1' && typeof showToast === 'function') {
+    showToast('Schematic added to collection!', 'success');
+    params.delete('added');
+    var clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    window.history.replaceState({}, '', clean);
+  }
+  if (params.get('error') && typeof showToast === 'function') {
+    showToast('Could not add schematic to collection.', 'danger');
+    params.delete('error');
+    var clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    window.history.replaceState({}, '', clean);
+  }
+})();
+</script>

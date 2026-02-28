@@ -16,58 +16,47 @@
                     <div class="col-md-auto align-center">
                         <h2 class="mb-0">{{ .Username }}</h2>
                         {{ if .HasSchematics }}
-                        <span class="badge bg-green ms-2" title="This user has uploaded schematics">Contributor</span>
+                        <span class="badge bg-green ms-2" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
                         {{ end }}
                     </div>
                 </div>
                 {{ if .IsAuthenticated }}
                 <div class="row mb-3">
                     <div class="col">
-                        <a href="/blacklist-request" class="btn btn-outline-danger">Request schematic blacklisting</a>
+                        <a href="/blacklist-request" class="btn btn-outline-danger">{{ T .Language "Request schematic blacklisting" }}</a>
                     </div>
                 </div>
                 {{ end }}
                 <div class="row mb-3">
                     <div class="col-12 col-md-8">
                         <div class="card">
-                            <div class="card-header"><h3 class="card-title mb-0">Usage</h3></div>
+                            <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Usage" }}</h3></div>
                             <div class="card-body">
                                 <div class="row g-3">
                                     <div class="col-12 col-md-3">
-                                        <div class="text-secondary">Total schematics</div>
+                                        <div class="text-secondary">{{ T .Language "Total schematics" }}</div>
                                         <div class="h3 mb-0">{{ .SchematicCount }}</div>
                                     </div>
                                     <div class="col-12 col-md-3">
-                                        <div class="text-secondary">Total views</div>
+                                        <div class="text-secondary">{{ T .Language "Total views" }}</div>
                                         <div class="h3 mb-0">{{ .TotalViews }}</div>
                                     </div>
                                     <div class="col-12 col-md-3">
-                                        <div class="text-secondary">Total downloads</div>
+                                        <div class="text-secondary">{{ T .Language "Total downloads" }}</div>
                                         <div class="h3 mb-0">{{ .TotalDownloads }}</div>
                                     </div>
                                     <div class="col-12 col-md-3">
-                                        <div class="text-secondary">Points</div>
+                                        <div class="text-secondary">{{ T .Language "Points" }}</div>
                                         <div class="h3 mb-0">{{ .Points }}</div>
                                     </div>
                                 </div>
                                 {{ if .HasAchievements }}
                                 <hr />
                                 <div>
-                                    <div class="text-secondary mb-2">Achievements</div>
+                                    <div class="text-secondary mb-2">{{ T .Language "Achievements" }}</div>
                                     <div class="d-flex flex-wrap gap-2">
                                         {{ range .Achievements }}
                                         <span class="badge badge-outline text-yellow" title="{{ .Description }}">{{ .Title }}</span>
-                                        {{ end }}
-                                    </div>
-                                </div>
-                                {{ end }}
-                                {{ if .HasAccessories }}
-                                <hr />
-                                <div>
-                                    <div class="text-secondary mb-2">Accessories</div>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        {{ range .Accessories }}
-                                        <span class="badge">{{ . }}</span>
                                         {{ end }}
                                     </div>
                                 </div>
@@ -82,7 +71,7 @@
                         {{ template "schematic_card_small.html" . }}
                     {{end}}
                     {{ else }}
-                        <h4>This user has not posted any schematics.</h4>
+                        <h4>{{ T .Language "This user has not posted any schematics." }}</h4>
                     {{ end }}
                 </div>
             </div>

@@ -4,13 +4,16 @@ import (
 	"bufio"
 	"bytes"
 	"createmod/internal/cache"
+	"createmod/internal/moderation"
 	"encoding/base64"
+	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	pbtempl "github.com/pocketbase/pocketbase/tools/template"
 	"github.com/sunshineplan/imgconv"
 	"golang.org/x/image/draw"
+	"html/template"
 	"image"
 	"io"
 	"net/http"
@@ -23,13 +26,23 @@ var collectionsEditTemplates = append([]string{
 	"./template/collections_edit.html",
 }, commonTemplates...)
 
+// ReorderSchematic holds lightweight data for the reorder UI.
+type ReorderSchematic struct {
+	ID            string
+	Title         string
+	FeaturedImage string
+}
+
 type CollectionsEditData struct {
 	DefaultData
-	TitleText    string
-	Description  string
-	BannerURL    string
-	Error        string
-	SchematicIDs []string
+	TitleText         string
+	Description       string
+	DescriptionHTML   template.HTML
+	BannerURL         string
+	Error             string
+	Published         bool
+	SchematicIDs      []string
+	ReorderSchematics []ReorderSchematic
 }
 
 // CollectionsEditHandler renders the edit form for a collection (author-only).
@@ -76,8 +89,8 @@ func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 		}
 		d.Description = rec.GetString("description")
 		d.BannerURL = rec.GetString("banner_url")
+		d.Published = rec.GetBool("published")
 		d.Title = "Edit collection"
-		d.Description = "Update your collection"
 
 		// Discover associated schematics to power the reorder UI.
 		// Preference:
@@ -151,6 +164,8 @@ func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 			}
 		}
 		d.SchematicIDs = ids
+		d.DescriptionHTML = template.HTML(d.Description)
+		d.ReorderSchematics = loadReorderSchematics(app, ids)
 
 		html, err := registry.LoadFiles(collectionsEditTemplates...).Render(d)
 		if err != nil {
@@ -160,8 +175,39 @@ func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 	}
 }
 
+// loadReorderSchematics loads lightweight schematic data for the reorder UI.
+func loadReorderSchematics(app *pocketbase.PocketBase, ids []string) []ReorderSchematic {
+	if len(ids) == 0 {
+		return nil
+	}
+	smColl, err := app.FindCollectionByNameOrId("schematics")
+	if err != nil || smColl == nil {
+		return nil
+	}
+	result := make([]ReorderSchematic, 0, len(ids))
+	for _, id := range ids {
+		r, err := app.FindRecordById(smColl.Id, id)
+		if err != nil || r == nil {
+			result = append(result, ReorderSchematic{ID: id, Title: id})
+			continue
+		}
+		title := r.GetString("name")
+		if title == "" {
+			title = id
+		}
+		featuredImage := r.GetString("featured_image")
+		result = append(result, ReorderSchematic{
+			ID:            id,
+			Title:         title,
+			FeaturedImage: featuredImage,
+		})
+	}
+	return result
+}
+
 // CollectionsUpdateHandler handles POST updates to a collection (author-only).
-func CollectionsUpdateHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+// Supports action=save (default), action=publish (with validation + moderation), action=unpublish.
+func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, moderationService *moderation.Service) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -197,13 +243,16 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase) func(e *core.RequestEv
 		// accept up to 4MB multipart form (banner is limited to 2MB below)
 		_ = e.Request.ParseMultipartForm(4 << 20)
 
+		action := strings.TrimSpace(e.Request.FormValue("action"))
+		if action == "" {
+			action = "save"
+		}
+
 		title := e.Request.FormValue("title")
 		if title == "" {
 			title = e.Request.FormValue("name")
 		}
 		description := e.Request.FormValue("description")
-		bannerURL := strings.TrimSpace(e.Request.FormValue("banner_url"))
-
 		if title != "" {
 			rec.Set("title", title)
 			rec.Set("name", title)
@@ -254,14 +303,65 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase) func(e *core.RequestEv
 			_ = bw.Flush()
 			dataURL := "data:image/webp;base64," + base64.StdEncoding.EncodeToString(out.Bytes())
 			rec.Set("banner_url", dataURL)
-		} else if bannerURL != "" {
-			rec.Set("banner_url", bannerURL)
+		}
+
+		// renderEditWithError re-renders the edit form with an error message.
+		renderEditWithError := func(errMsg string) error {
+			d := CollectionsEditData{}
+			d.Populate(e)
+			d.Categories = allCategories(app, cacheService)
+			d.Slug = "/collections/" + slug
+			d.TitleText = title
+			d.Description = description
+			d.DescriptionHTML = template.HTML(description)
+			d.BannerURL = rec.GetString("banner_url")
+			d.Published = rec.GetBool("published")
+			d.Error = errMsg
+			d.Title = "Edit collection"
+			// Reload schematic IDs for the reorder UI
+			ids := rec.GetStringSlice("schematics")
+			d.SchematicIDs = ids
+			d.ReorderSchematics = loadReorderSchematics(app, ids)
+			html, err := registry.LoadFiles(collectionsEditTemplates...).Render(d)
+			if err != nil {
+				return err
+			}
+			return e.HTML(http.StatusOK, html)
+		}
+
+		// Handle publish action with validation and moderation
+		if action == "publish" {
+			if len(strings.TrimSpace(title)) < 10 {
+				return renderEditWithError("Title must be at least 10 characters to publish.")
+			}
+			if len(strings.TrimSpace(description)) < 100 {
+				return renderEditWithError("Description must be at least 100 characters to publish.")
+			}
+			if moderationService != nil {
+				content := fmt.Sprintf("Title: %s\nDescription: %s", title, description)
+				result, err := moderationService.CheckContent(content)
+				if err != nil {
+					app.Logger().Error("collection publish moderation error", "error", err, "id", rec.Id)
+					return renderEditWithError("Content moderation check failed. Please try again later.")
+				}
+				if !result.Approved {
+					return renderEditWithError(fmt.Sprintf("Content did not pass moderation: %s", result.Reason))
+				}
+			}
+			rec.Set("published", true)
+		}
+
+		if action == "unpublish" {
+			rec.Set("published", false)
 		}
 
 		if err := app.Save(rec); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
 		dest := "/collections/" + slug
+		if action == "publish" || action == "unpublish" {
+			dest = "/collections/" + slug + "/edit"
+		}
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", dest)
 			return e.HTML(http.StatusNoContent, "")

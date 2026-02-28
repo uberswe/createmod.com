@@ -13,7 +13,6 @@ import (
 	"image"
 	"io"
 	"net/http"
-	"strings"
 )
 
 const collectionsNewTemplate = "./template/collections_new.html"
@@ -66,8 +65,6 @@ func CollectionsCreateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			title = e.Request.FormValue("name")
 		}
 		description := e.Request.FormValue("description")
-		bannerURL := strings.TrimSpace(e.Request.FormValue("banner_url"))
-
 		coll, err := app.FindCollectionByNameOrId("collections")
 		if err != nil || coll == nil {
 			return e.String(http.StatusInternalServerError, "collections collection not available")
@@ -125,8 +122,6 @@ func CollectionsCreateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			_ = bw.Flush()
 			dataURL := "data:image/webp;base64," + base64.StdEncoding.EncodeToString(out.Bytes())
 			rec.Set("banner_url", dataURL)
-		} else if bannerURL != "" {
-			rec.Set("banner_url", bannerURL)
 		}
 
 		rec.Set("author", e.Auth.Id)

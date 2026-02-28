@@ -5,58 +5,77 @@
     {{template "header.html" .}}
     <div class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
+        <div class="mb-3">
           <div class="row align-items-center">
             <div class="col">
-              <div class="d-flex align-items-center">
-                <h2 class="page-title mb-0">{{ if .TitleText }}{{ .TitleText }}{{ else }}Collection{{ end }}</h2>
-                {{ if .Featured }}<span class="badge bg-yellow-lt ms-2">Featured</span>{{ end }}
+              <h2 class="mb-1">{{ if .TitleText }}{{ .TitleText }}{{ else }}{{ T .Language "Collection" }}{{ end }}</h2>
+              <div class="text-secondary">
+                {{ if .Featured }}<span class="badge bg-yellow-lt me-1">{{ T .Language "Featured" }}</span>{{ end }}
+                {{ if not .Published }}<span class="badge bg-secondary me-1">{{ T .Language "Private" }}</span>{{ end }}
+                {{ if .AuthorName }}{{ T .Language "Created by" }} <a href="/author/{{ .AuthorName | ToLower }}">{{ .AuthorName }}</a> · {{ end }}{{ T .Language "Views" }}: {{ .Views }}
               </div>
-              <div class="text-secondary">Collection details · Views: {{ .Views }}</div>
-            </div>
-            <div class="col-auto ms-auto d-flex align-items-center gap-2">
-              {{ if .IsOwner }}
-              <a class="btn" href="{{ .Slug }}/edit">Edit</a>
-              <form action="{{ .Slug }}/delete" method="post" onsubmit="return confirm('Delete this collection?');">
-                <button type="submit" class="btn btn-outline-danger">Delete</button>
-              </form>
+              {{ if .IsTranslated }}
+              <div class="text-muted small mt-1">
+                <em>{{ T .Language "Auto translated" }}</em> &mdash;
+                <a href="?lang=original" class="text-muted">{{ T .Language "show original" }}</a>
+              </div>
               {{ end }}
-              <a class="btn btn-primary" href="{{ .Slug }}/download">Download all</a>
-              <a class="btn" href="/collections">Back to collections</a>
             </div>
           </div>
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            {{ if .IsOwner }}
+            <a class="btn btn-outline-primary" href="{{ .Slug }}/edit">{{ T .Language "Edit" }}</a>
+            <form action="{{ .Slug }}/delete" method="post" onsubmit="return confirm('Delete this collection?');" class="d-inline">
+              <button type="submit" class="btn btn-outline-danger">{{ T .Language "Delete" }}</button>
+            </form>
+            {{ end }}
+            <a class="btn btn-outline-secondary" href="/collections">{{ T .Language "Back to collections" }}</a>
+          </div>
         </div>
+
+        <!-- Share link -->
+        {{ if .ShareURL }}
+        <div class="mb-3">
+          <div class="input-group" style="max-width: 600px;">
+            <span class="input-group-text">{{ T .Language "Share link" }}</span>
+            <input type="text" class="form-control" id="share-url" value="{{ .ShareURL }}" readonly onclick="this.select()">
+            <button class="btn btn-outline-secondary" type="button" id="copy-share-btn" onclick="copyShareLink()">
+              <span id="copy-label">{{ T .Language "Copy" }}</span>
+            </button>
+          </div>
+        </div>
+        {{ end }}
+
         {{ if .BannerURL }}
         <div class="row mb-3">
           <div class="col-12">
             <img src="{{ .BannerURL }}" alt="Collection banner" class="img-fluid rounded" />
           </div>
         </div>
-        {{ else }}
+        {{ end }}
+        {{ if .DescriptionText }}
         <div class="row mb-3">
-          <div class="col-12">
-            <div class="card card-sm border-dashed text-secondary" style="height: 200px; display:flex; align-items:center; justify-content:center;">
-              <div>
-                <div class="mb-1">No banner image set</div>
-                <div class="small">Recommended size 1600x400 (4:1), max 2MB</div>
+          <div class="col-12 col-md-10 col-lg-8">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">{{ T .Language "Description" }}</h3></div>
+              <div class="card-body">
+                {{ .DescriptionHTML }}
               </div>
             </div>
           </div>
         </div>
         {{ end }}
-        {{ if .Description }}
-        <div class="row">
-          <div class="col-12 col-md-10 col-lg-8">
-            <div class="card">
-              <div class="card-header"><h3 class="card-title">Description</h3></div>
-              <div class="card-body">
-                <p>{{ .Description }}</p>
-              </div>
-            </div>
-          </div>
+
+        <!-- Schematics -->
+        {{ if .Schematics }}
+        <h3 class="mb-3">{{ T .Language "Schematics" }}</h3>
+        <div class="row g-3">
+          {{ range .Schematics }}
+          {{template "schematic_card_small.html" .}}
+          {{ end }}
         </div>
         {{ else }}
-        <div class="alert alert-secondary">No description provided.</div>
+        <div class="alert alert-secondary mt-3">{{ T .Language "No schematics in this collection yet." }}</div>
         {{ end }}
       </div>
     </div>
@@ -64,3 +83,14 @@
   </div>
 </div>
 {{template "foot.html" .}}
+
+<script>
+function copyShareLink() {
+  var input = document.getElementById('share-url');
+  navigator.clipboard.writeText(input.value).then(function() {
+    var label = document.getElementById('copy-label');
+    label.textContent = 'Copied!';
+    setTimeout(function() { label.textContent = 'Copy'; }, 2000);
+  });
+}
+</script>

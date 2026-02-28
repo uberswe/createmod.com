@@ -8,73 +8,98 @@
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="page-title">Edit collection</h2>
-              <div class="text-secondary">Update your collection details</div>
+              <div class="d-flex align-items-center">
+                <h2 class="page-title mb-0">{{ T .Language "Edit collection" }}</h2>
+                {{ if .Published }}
+                <span class="badge bg-green-lt ms-2">{{ T .Language "Published" }}</span>
+                {{ else }}
+                <span class="badge bg-secondary-lt ms-2">{{ T .Language "Private" }}</span>
+                {{ end }}
+              </div>
+              <div class="text-secondary">{{ T .Language "Update your collection details" }}</div>
             </div>
             <div class="col-auto ms-auto">
-              <a class="btn" href="{{ .Slug }}">Back</a>
+              <a class="btn" href="{{ .Slug }}">{{ T .Language "Back" }}</a>
             </div>
           </div>
         </div>
+        {{ if .Error }}
+        <div class="alert alert-danger mb-3">{{ .Error }}</div>
+        {{ end }}
         <div class="row row-cards">
           <div class="col-12 col-md-8">
-            <form class="card" action="{{ .Slug }}" method="post" enctype="multipart/form-data">
-              <div class="card-header"><h3 class="card-title">Collection details</h3></div>
+            <form class="card" action="{{ .Slug }}" method="post" enctype="multipart/form-data" onsubmit="if(window.tinyMCE){tinyMCE.triggerSave(true,true);}">
+              <div class="card-header"><h3 class="card-title">{{ T .Language "Collection details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
-                  <label class="form-label required" for="title">Title</label>
-                  <input type="text" class="form-control" id="title" name="title" value="{{ .TitleText }}" required />
+                  <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
+                  <input type="text" class="form-control" id="title" name="title" value="{{ .TitleText }}" required oninput="updateTitleCount()" />
+                  <small class="form-hint">
+                    <span id="title-count" class="text-danger">0</span> / 10 {{ T .Language "characters minimum" }}
+                  </small>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="description">Description</label>
-                  <textarea class="form-control" id="description" name="description" rows="5">{{ .Description }}</textarea>
+                  <label class="form-label" for="description">{{ T .Language "Description" }}</label>
+                  <textarea class="form-control" id="description" name="description" rows="5">{{ .DescriptionHTML }}</textarea>
+                  <small class="form-hint">
+                    <span id="desc-count" class="text-danger">0</span> / 100 {{ T .Language "characters minimum" }}
+                  </small>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="banner_url">Banner image URL</label>
-                  <input type="url" class="form-control" id="banner_url" name="banner_url" value="{{ .BannerURL }}" />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label" for="banner">Banner image file (optional)</label>
+                  <label class="form-label" for="banner">{{ T .Language "Banner image (optional)" }}</label>
                   <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
-                  <small class="form-hint">Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP.</small>
+                  <small class="form-hint">{{ T .Language "Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP." }}</small>
                 </div>
               </div>
               <div class="card-footer d-flex justify-content-between align-items-center">
-                <div>
-                  <button type="submit" class="btn btn-outline-danger" formaction="{{ .Slug }}/delete" formmethod="post" onclick="return confirm('Delete this collection?');">Delete</button>
+                <div class="d-flex align-items-center gap-2">
+                  <button type="submit" class="btn btn-outline-danger" formaction="{{ .Slug }}/delete" formmethod="post" onclick="return confirm('Delete this collection?');">{{ T .Language "Delete" }}</button>
                 </div>
-                <div>
-                  <a href="{{ .Slug }}" class="btn btn-link">Cancel</a>
-                  <button type="submit" class="btn btn-primary">Save</button>
+                <div class="d-flex align-items-center gap-2">
+                  {{ if .Published }}
+                  <button type="submit" name="action" value="unpublish" class="btn btn-outline-warning">{{ T .Language "Unpublish" }}</button>
+                  {{ else }}
+                  <button type="submit" name="action" value="publish" class="btn btn-success">{{ T .Language "Publish" }}</button>
+                  {{ end }}
+                  <a href="{{ .Slug }}" class="btn btn-link">{{ T .Language "Cancel" }}</a>
+                  <button type="submit" name="action" value="save" class="btn btn-primary">{{ T .Language "Save" }}</button>
                 </div>
               </div>
             </form>
+            {{ if not .Published }}
+            <div class="alert alert-info mt-3">
+              {{ T .Language "To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance." }}
+            </div>
+            {{ end }}
             <form class="card mt-3" action="{{ .Slug }}/reorder" method="post">
-              <div class="card-header"><h3 class="card-title">Reorder schematics</h3></div>
+              <div class="card-header"><h3 class="card-title">{{ T .Language "Reorder schematics" }}</h3></div>
               <div class="card-body">
-                <div class="mb-2 text-secondary">Drag items to reorder. On submit we will save the order. You can also manually edit the CSV below.</div>
-                {{ if .SchematicIDs }}
+                <div class="mb-2 text-secondary">{{ T .Language "Drag items to reorder." }}</div>
+                {{ if .ReorderSchematics }}
                 <ul id="schem-list" class="list-group mb-2">
-                  {{ range .SchematicIDs }}
-                  <li class="list-group-item d-flex align-items-center" draggable="true" data-id="{{ . }}">
-                    <span class="me-2" aria-hidden="true">↕</span>
-                    <code class="flex-fill">{{ . }}</code>
+                  {{ range .ReorderSchematics }}
+                  <li class="list-group-item d-flex align-items-center gap-2"
+                      draggable="true" data-id="{{ .ID }}" style="cursor: grab;">
+                    <span class="me-1 text-secondary" aria-hidden="true">&#x2195;</span>
+                    <img src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=80x45"
+                         alt="" width="80" height="45" class="rounded"
+                         style="object-fit: cover; flex-shrink: 0;" />
+                    <span class="flex-fill text-truncate">{{ .Title }}</span>
                   </li>
                   {{ end }}
                 </ul>
                 {{ end }}
-                <input type="text" class="form-control" name="schematics" id="schematics-input" placeholder="id1,id2,id3" />
-                <small class="form-hint">If the list above is present, it will populate this field automatically.</small>
+                <input type="hidden" name="schematics" id="schematics-input" />
               </div>
               <div class="card-footer">
-                <button type="submit" class="btn btn-primary">Save order</button>
+                <button type="submit" class="btn btn-primary">{{ T .Language "Save order" }}</button>
               </div>
             </form>
             <script>
             (function(){
               var list = document.getElementById('schem-list');
               var input = document.getElementById('schematics-input');
-              if(!list) return; // no preloaded items
+              if(!list) return;
               function serialize(){
                 var ids = [];
                 var items = list.querySelectorAll('li[data-id]');
@@ -93,7 +118,6 @@
                 e.preventDefault();
                 var li = e.target.closest('li[data-id]');
                 if(!li || !dragSrc || li === dragSrc) return;
-                // insert before if dropping above, else after
                 var rect = li.getBoundingClientRect();
                 var before = (e.clientY - rect.top) < (rect.height/2);
                 if(before){ list.insertBefore(dragSrc, li); } else { list.insertBefore(dragSrc, li.nextSibling); }
@@ -111,3 +135,70 @@
   </div>
 </div>
 {{template "foot.html" .}}
+<script>
+function updateTitleCount(){
+  var el=document.getElementById('title');
+  var span=document.getElementById('title-count');
+  if(!el||!span)return;
+  var len=el.value.trim().length;
+  span.textContent=len;
+  span.className=len>=10?'text-success':'text-danger';
+}
+function updateDescCount(){
+  var span=document.getElementById('desc-count');
+  if(!span)return;
+  var len=0;
+  if(window.tinyMCE&&tinyMCE.get('description')){
+    len=tinyMCE.get('description').getContent({format:'text'}).trim().length;
+  }else{
+    var ta=document.getElementById('description');
+    if(ta) len=ta.value.trim().length;
+  }
+  span.textContent=len;
+  span.className=len>=100?'text-success':'text-danger';
+}
+updateTitleCount();
+updateDescCount();
+</script>
+<script>
+(function initCollectionEditor(retries){
+  retries=retries||0;
+  if(typeof tinyMCE==='undefined'){
+    if(retries<100){
+      if(retries===0){
+        var s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js';
+        document.head.appendChild(s);
+      }
+      setTimeout(function(){initCollectionEditor(retries+1);},100);
+    }
+    return;
+  }
+  var options={
+    license_key:"gpl",
+    selector:'#description',
+    height:300,
+    menubar:false,
+    statusbar:true,
+    promotion:false,
+    branding:false,
+    plugins:'lists link autolink wordcount autoresize',
+    toolbar:'undo redo | bold italic underline strikethrough | bullist numlist | link | removeformat',
+    content_style:'body{font-family:-apple-system,BlinkMacSystemFont,San Francisco,Segoe UI,Roboto,Helvetica Neue,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;max-width:100%;padding:8px 16px;}',
+    autoresize_min_height:200,
+    autoresize_max_height:600,
+    link_default_target:'_blank',
+    link_assume_external_targets:true,
+    setup:function(editor){
+      editor.on('keyup input change',function(){updateDescCount();});
+      editor.on('init',function(){updateDescCount();});
+    }
+  };
+  if(localStorage.getItem("createmodTheme")==='dark'){
+    options.skin='tinymce-5-dark';
+    options.content_css='dark';
+  }
+  tinyMCE.baseURL="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+  tinyMCE.init(options);
+})();
+</script>

@@ -217,12 +217,19 @@ func countSchematicDownload(app *pocketbase.PocketBase, schematic *core.Record, 
 			if err := app.Save(rec); err != nil {
 				app.Logger().Error("failed to insert download counter", "error", err)
 			}
+			if t == 4 {
+				cacheService.SetInt(cache.DownloadKey(schematic.Id), 1)
+			}
 			continue
 		}
 		cur := recs[0]
-		cur.Set("count", cur.GetInt("count")+1)
+		newCount := cur.GetInt("count") + 1
+		cur.Set("count", newCount)
 		if err := app.Save(cur); err != nil {
 			app.Logger().Error("failed to update download counter", "error", err)
+		}
+		if t == 4 {
+			cacheService.SetInt(cache.DownloadKey(schematic.Id), newCount)
 		}
 	}
 }

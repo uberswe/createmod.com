@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/i18n"
 	htmltmpl "html/template"
 	"path/filepath"
 	"runtime"
@@ -29,6 +30,8 @@ func renderTemplate(t *testing.T, file string, data any) string {
 	// Register minimal func map to match production (HumanDate used in sidebar).
 	r.AddFuncs(htmltmpl.FuncMap{
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
+		"LangFlag":  func(code string) string { return code },
+		"T":         func(lang, key string) string { return i18n.T(lang, key) },
 	})
 	full := filepath.Join(projectRootFromThisFile(t), file)
 	html, err := r.LoadFiles(full).Render(data)

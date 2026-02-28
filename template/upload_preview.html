@@ -21,28 +21,28 @@
                         <!-- Schematic Statistics Card -->
                         <div class="card mb-3">
                             <div class="card-header">
-                                <h3 class="card-title">Schematic Statistics</h3>
+                                <h3 class="card-title">{{ T .Language "Schematic Statistics" }}</h3>
                             </div>
                             <div class="card-body">
                                 <div class="datagrid">
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Filename</div>
+                                        <div class="datagrid-title">{{ T .Language "Filename" }}</div>
                                         <div class="datagrid-content">{{ .Filename }}</div>
                                     </div>
                                     {{ if or .DimX .DimY .DimZ }}
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Dimensions</div>
+                                        <div class="datagrid-title">{{ T .Language "Dimensions" }}</div>
                                         <div class="datagrid-content">{{ .DimX }} x {{ .DimY }} x {{ .DimZ }} blocks</div>
                                     </div>
                                     {{ end }}
                                     {{ if .BlockCount }}
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">Total Blocks</div>
+                                        <div class="datagrid-title">{{ T .Language "Total Blocks" }}</div>
                                         <div class="datagrid-content" id="stat-blocks">{{ .BlockCount }}</div>
                                     </div>
                                     {{ end }}
                                     <div class="datagrid-item">
-                                        <div class="datagrid-title">File Size</div>
+                                        <div class="datagrid-title">{{ T .Language "File Size" }}</div>
                                         <div class="datagrid-content" id="stat-size">{{ .Size }} bytes</div>
                                     </div>
                                 </div>
@@ -53,11 +53,11 @@
                         {{ if .Mods }}
                         <div class="card mb-3">
                             <div class="card-header">
-                                <h3 class="card-title">Required Mods</h3>
+                                <h3 class="card-title">{{ T .Language "Required Mods" }}</h3>
                             </div>
                             <div class="card-body" id="mods-list">
                                 {{ range .Mods }}
-                                <span class="badge bg-blue-lt me-1 mb-1" style="font-size: 0.85rem;">{{ . }}</span>
+                                <a href="/mods/{{ . }}" class="badge bg-blue-lt me-1 mb-1 text-decoration-none" style="font-size: 0.85rem;" data-mod-id="{{ . }}">{{ . }}</a>
                                 {{ end }}
                             </div>
                         </div>
@@ -78,11 +78,11 @@
                         <!-- Additional Files Card -->
                         <div class="card mb-3">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title mb-0">Additional Files</h3>
+                                <h3 class="card-title mb-0">{{ T .Language "Additional Files" }}</h3>
                                 {{ if .IsOwner }}
                                 <button class="btn btn-sm btn-outline-primary ms-auto" type="button" data-bs-toggle="modal" data-bs-target="#add-file-modal">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
-                                    Add Variation
+                                    {{ T .Language "Add Variation" }}
                                 </button>
                                 {{ end }}
                             </div>
@@ -110,7 +110,7 @@
                                     </div>
                                     {{ end }}
                                     {{ else }}
-                                    <p class="text-secondary mb-0" id="no-additional-files">No additional files yet.{{ if .IsOwner }} Click "Add Variation" to upload more .nbt files.{{ end }}</p>
+                                    <p class="text-secondary mb-0" id="no-additional-files">{{ T .Language "No additional files yet." }}{{ if .IsOwner }} Click "Add Variation" to upload more .nbt files.{{ end }}</p>
                                     {{ end }}
                                 </div>
                             </div>
@@ -121,29 +121,29 @@
                             <div class="card-body">
                                 {{ if .IsOwner }}
                                 <div class="mb-3">
-                                    <label class="form-label">Share Link</label>
+                                    <label class="form-label">{{ T .Language "Share link" }}</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="share-link" readonly value="">
                                         <button class="btn btn-outline-secondary" type="button" id="copy-link-btn" onclick="copyShareLink()">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                            <span class="copy-text">Copy</span>
+                                            <span class="copy-text">{{ T .Language "Copy" }}</span>
                                         </button>
                                     </div>
                                 </div>
                                 <a href="/u/{{ .Token }}/publish" class="btn btn-primary w-100">
-                                    Publish Schematic
+                                    {{ T .Language "Publish Schematic" }}
                                 </a>
                                 {{ else }}
                                 {{ if .FileURL }}
                                 <a href="/u/{{ .Token }}/download" download="{{ .Filename }}" hx-boost="false" class="btn btn-primary w-100 mb-3">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
-                                    Download Schematic
+                                    {{ T .Language "Download Schematic" }}
                                 </a>
                                 {{ end }}
                                 <div class="text-center">
-                                    <p class="text-secondary mb-2">Want to share your own schematics with the community?</p>
-                                    <a href="/upload" class="btn btn-outline-primary">Upload a schematic</a>
+                                    <p class="text-secondary mb-2">{{ T .Language "Want to share your own schematics with the community?" }}</p>
+                                    <a href="/upload" class="btn btn-outline-primary">{{ T .Language "Upload a schematic" }}</a>
                                 </div>
                                 {{ end }}
                             </div>
@@ -156,11 +156,11 @@
                         {{ if .ParsedMaterials }}
                         <div class="card mb-3">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title mb-0">Materials</h3>
+                                <h3 class="card-title mb-0">{{ T .Language "Materials" }}</h3>
                                 <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                    <span class="copy-text">Copy list</span>
+                                    <span class="copy-text">{{ T .Language "Copy list" }}</span>
                                 </button>
                             </div>
                             <div class="card-body p-0">
@@ -173,7 +173,7 @@
                                         </div>
                                         <div class="material-info">
                                             <span class="material-name">{{ .BlockID }}</span>
-                                            <span class="material-block-id">{{ .BlockID }}</span>
+                                            <span class="material-block-id" style="display:none;">{{ .BlockID }}</span>
                                         </div>
                                         <span class="material-count" data-count="{{ .Count }}">x{{ .Count }}</span>
                                         <span class="material-stacks"></span>
@@ -293,9 +293,12 @@ document.addEventListener("DOMContentLoaded", function() {
             for (var i = 0; i < materialRows.length; i++) {
                 var bid = materialRows[i].getAttribute('data-block-id');
                 var nameEl = materialRows[i].querySelector('.material-name');
+                var idEl = materialRows[i].querySelector('.material-block-id');
                 if (nameEl) {
-                    var displayName = (blockNameMap[bid] && blockNameMap[bid].display_name) || formatBlockName(bid);
+                    var hasApiName = blockNameMap[bid] && blockNameMap[bid].display_name;
+                    var displayName = hasApiName ? blockNameMap[bid].display_name : formatBlockName(bid);
                     nameEl.textContent = displayName;
+                    if (idEl && hasApiName) { idEl.style.display = ''; }
                 }
             }
         });
@@ -368,6 +371,15 @@ function formatBlockName(blockId) {
     var name = parts.length > 1 ? parts[1] : parts[0];
     return name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
 }
+// Format mod namespace badges into readable names
+(function() {
+    var badges = document.querySelectorAll('#mods-list [data-mod-id]');
+    badges.forEach(function(badge) {
+        var modId = badge.getAttribute('data-mod-id');
+        if (!modId) return;
+        badge.textContent = modId.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    });
+})();
 
 function formatBytes(bytes) {
     if (bytes === 0) return '0 B';
@@ -512,24 +524,24 @@ function deleteAdditionalFile(token, fileId, btn) {
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Variation</h5>
+                <h5 class="modal-title">{{ T .Language "Add Variation" }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label required">NBT File</label>
+                    <label class="form-label required">{{ T .Language "NBT File" }}</label>
                     <input type="file" id="add-file-nbt" class="form-control" accept=".nbt">
-                    <small class="form-hint">Max file size: 10MB</small>
+                    <small class="form-hint">{{ T .Language "Max file size: 10MB" }}</small>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Description</label>
+                    <label class="form-label">{{ T .Language "Description" }}</label>
                     <input type="text" id="add-file-description" class="form-control" placeholder="e.g. Compact version, Mirror variant...">
                 </div>
                 <div id="add-file-error" class="alert alert-danger" style="display:none;" role="alert"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="add-file-submit" onclick="submitAdditionalFile()">Upload</button>
+                <button type="button" class="btn me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                <button type="button" class="btn btn-primary" id="add-file-submit" onclick="submitAdditionalFile()">{{ T .Language "Upload" }}</button>
             </div>
         </div>
     </div>

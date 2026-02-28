@@ -7,92 +7,79 @@
             <div class="container-wide">
                 <div class="d-flex gap-3">
                     <div class="flex-grow-1 min-width-0">
-                        <!-- Featured Builds -->
-                        {{ if .Featured }}
-                        <div class="mb-4">
-                            <h2 class="mb-3">Featured Builds</h2>
+                        <!-- Trending -->
+                        <h2 class="mb-3">{{ T .Language "Trending" }}</h2>
+                        <div id="tab-panel-trending" class="tab-panel">
                             <div class="row g-3">
-                                {{ range .Featured }}
-                                {{template "schematic_card_featured.html" .}}
+                                {{ range .Trending }}
+                                {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
+                            {{ if .TrendingHasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
+                                <a href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                            </div>
+                            {{ end }}
+                        </div>
+
+                        <!-- Mobile ad between sections -->
+                        <div id="index-mobile-mid" class="d-xl-none mb-3 mt-4 text-center"></div>
+
+                        <!-- Latest -->
+                        <h2 class="mb-3 mt-4">{{ T .Language "Latest" }}</h2>
+                        <div id="tab-panel-latest" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .Schematics }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
+                            </div>
+                            {{ if .HasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
+                                <a href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                            </div>
+                            {{ end }}
+                        </div>
+
+                        <!-- Highest Rated -->
+                        <h2 class="mb-3 mt-4">{{ T .Language "Highest Rated" }}</h2>
+                        <div id="tab-panel-highest" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .HighestRated }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
+                            </div>
+                            {{ if .HighestHasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
+                                <a href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                            </div>
+                            {{ end }}
+                        </div>
+
+                        <!-- Categories -->
+                        <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
+                        {{ range .CategorySections }}
+                        <h3 class="mb-3 mt-4">{{ .Category.Name }}</h3>
+                        <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .Items }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
+                            </div>
+                            {{ if .HasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T $.Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T $.Language "Page" }} 1</div>
+                                <a href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T $.Language "Next" }}</a>
+                            </div>
+                            {{ end }}
                         </div>
                         {{ end }}
-
-                        <!-- Mobile ad -->
-                        <div id="index-mobile-mid" class="d-xl-none mb-3 text-center"></div>
-
-                        <!-- Tabbed section: Latest | Trending | Highest Rated -->
-                        <div class="card">
-                            <div class="card-header" hx-boost="false">
-                                <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <a class="nav-link active" data-bs-toggle="tab" href="#tab-latest" role="tab">Latest</a>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <a class="nav-link" data-bs-toggle="tab" href="#tab-trending" role="tab">Trending</a>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <a class="nav-link" data-bs-toggle="tab" href="#tab-highest" role="tab">Highest Rated</a>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="card-body">
-                                <div class="tab-content">
-                                    <!-- Latest Tab -->
-                                    <div class="tab-pane active show" id="tab-latest" role="tabpanel">
-                                        <div id="tab-panel-latest" class="tab-panel">
-                                            <div class="row g-3">
-                                                {{ range .Schematics }}
-                                                {{template "schematic_card_small.html" .}}
-                                                {{ end }}
-                                            </div>
-                                            {{ if .HasNext }}
-                                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">Previous</a>
-                                                <div class="text-secondary">Page 1</div>
-                                                <a href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">Next</a>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                    </div>
-                                    <!-- Trending Tab -->
-                                    <div class="tab-pane" id="tab-trending" role="tabpanel">
-                                        <div id="tab-panel-trending" class="tab-panel">
-                                            <div class="row g-3">
-                                                {{ range .Trending }}
-                                                {{template "schematic_card_small.html" .}}
-                                                {{ end }}
-                                            </div>
-                                            {{ if .TrendingHasNext }}
-                                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">Previous</a>
-                                                <div class="text-secondary">Page 1</div>
-                                                <a href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">Next</a>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                    </div>
-                                    <!-- Highest Rated Tab -->
-                                    <div class="tab-pane" id="tab-highest" role="tabpanel">
-                                        <div id="tab-panel-highest" class="tab-panel">
-                                            <div class="row g-3">
-                                                {{ range .HighestRated }}
-                                                {{template "schematic_card_small.html" .}}
-                                                {{ end }}
-                                            </div>
-                                            {{ if .HighestHasNext }}
-                                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">Previous</a>
-                                                <div class="text-secondary">Page 1</div>
-                                                <a href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">Next</a>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Ad Rail -->

@@ -3,16 +3,18 @@ package pages
 import (
 	"createmod/internal/cache"
 	"fmt"
+	"net/http"
+	"net/url"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
-	"net/http"
-	"net/url"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var videosTemplates = append([]string{
@@ -39,6 +41,8 @@ type VideosData struct {
 	NextURL  string
 	Query    string
 }
+
+const videosCacheKey = "videos:trending"
 
 var (
 	// regexes to catch common YouTube URL forms
@@ -75,17 +79,119 @@ func youtubeThumb(id string) string {
 	if id == "" {
 		return ""
 	}
-	// using hqdefault for decent quality
-	return "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg"
+	// mqdefault is 320x180 (16:9) — avoids black bars that hqdefault (4:3) causes
+	return "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"
 }
 
-// VideosHandler renders a page of unique YouTube videos referenced by schematics.
+// computeTrendingVideos fetches schematics with videos and sorts them by
+// trending score using real engagement data from aggregate tables.
+func computeTrendingVideos(app *pocketbase.PocketBase) []VideoItem {
+	coll, err := app.FindCollectionByNameOrId("schematics")
+	if err != nil || coll == nil {
+		return nil
+	}
+
+	recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && moderated = true && video != '' && (scheduled_at = null || scheduled_at <= {:now})", "-created", 500, 0, dbx.Params{"now": time.Now()})
+	if err != nil {
+		return nil
+	}
+
+	engagement := fetchEngagementData(app)
+
+	type scoredVideo struct {
+		item  VideoItem
+		score float64
+	}
+	seen := make(map[string]int)
+	scoredItems := make([]scoredVideo, 0, len(recs))
+	for _, r := range recs {
+		vid := youtubeID(r.GetString("video"))
+		if vid == "" {
+			continue
+		}
+		id := r.Id
+		created := r.GetDateTime("created").Time()
+
+		var score float64
+		if engagement != nil {
+			score = trendingScore(created, engagement.recentViews[id], engagement.totalViews[id], engagement.ratingCount[id], engagement.ratingSum[id], engagement.recentDownloads[id], engagement.totalDownloads[id])
+		} else {
+			score = created.Sub(trendingEpoch).Seconds() / trendingTimescale
+		}
+
+		if idx, exists := seen[vid]; exists {
+			if score > scoredItems[idx].score {
+				name := r.GetString("name")
+				scoredItems[idx] = scoredVideo{
+					item: VideoItem{
+						ID:           vid,
+						Title:        r.GetString("title"),
+						ThumbnailURL: youtubeThumb(vid),
+						VideoURL:     "https://www.youtube.com/watch?v=" + vid,
+						SchematicURL: "/schematics/" + name,
+					},
+					score: score,
+				}
+			}
+			continue
+		}
+		seen[vid] = len(scoredItems)
+		name := r.GetString("name")
+		scoredItems = append(scoredItems, scoredVideo{
+			item: VideoItem{
+				ID:           vid,
+				Title:        r.GetString("title"),
+				ThumbnailURL: youtubeThumb(vid),
+				VideoURL:     "https://www.youtube.com/watch?v=" + vid,
+				SchematicURL: "/schematics/" + name,
+			},
+			score: score,
+		})
+	}
+
+	sort.SliceStable(scoredItems, func(i, j int) bool {
+		return scoredItems[i].score > scoredItems[j].score
+	})
+
+	items := make([]VideoItem, 0, len(scoredItems))
+	for _, sv := range scoredItems {
+		items = append(items, sv.item)
+	}
+	return items
+}
+
+// WarmVideosCache precomputes the trending videos list and stores it in the
+// cache so no user request has to pay the cost of the DB queries and scoring.
+// Called at startup and periodically from a background ticker.
+func WarmVideosCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
+	app.Logger().Debug("Warming videos page cache")
+	items := computeTrendingVideos(app)
+	if items != nil {
+		cacheService.Set(videosCacheKey, items)
+	}
+	app.Logger().Debug("Videos page cache warmed", "count", len(items))
+}
+
+// getCachedVideos returns the cached trending videos list, computing it on
+// cache miss (should only happen if the warm function hasn't run yet).
+func getCachedVideos(app *pocketbase.PocketBase, cacheService *cache.Service) []VideoItem {
+	if cached, ok := cacheService.Get(videosCacheKey); ok {
+		if items, ok := cached.([]VideoItem); ok {
+			return items
+		}
+	}
+	// Cache miss — compute and store
+	items := computeTrendingVideos(app)
+	if items != nil {
+		cacheService.Set(videosCacheKey, items)
+	}
+	return items
+}
+
+// VideosHandler renders a page of unique YouTube videos referenced by schematics,
+// sorted by trending score. Reads from a preemptively warmed cache.
 func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		coll, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "schematics collection not available")
-		}
 		// Pagination params
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -93,42 +199,27 @@ func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 				page = v
 			}
 		}
-		pageSize := 24
+		pageSize := 9
 		// Query filter
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))
 		qLower := strings.ToLower(q)
 
-		// Fetch recently created schematics with a non-empty video field, only moderated & published
-		recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && moderated = true && video != '' && (scheduled_at = null || scheduled_at <= {:now})", "-created", 500, 0, dbx.Params{"now": time.Now()})
-		if err != nil {
-			return e.String(http.StatusInternalServerError, "failed to query schematics with videos")
-		}
-		// Deduplicate by YouTube ID while preserving order
-		seen := make(map[string]bool)
-		items := make([]VideoItem, 0, len(recs))
-		for _, r := range recs {
-			vid := youtubeID(r.GetString("video"))
-			if vid == "" || seen[vid] {
-				continue
+		allItems := getCachedVideos(app, cacheService)
+
+		// Apply search filter
+		var items []VideoItem
+		if q == "" {
+			items = allItems
+		} else {
+			items = make([]VideoItem, 0, len(allItems))
+			for _, it := range allItems {
+				if strings.Contains(strings.ToLower(it.Title), qLower) {
+					items = append(items, it)
+				}
 			}
-			seen[vid] = true
-			name := r.GetString("name")
-			title := r.GetString("title")
-			it := VideoItem{
-				ID:           vid,
-				Title:        title,
-				ThumbnailURL: youtubeThumb(vid),
-				VideoURL:     "https://www.youtube.com/watch?v=" + vid,
-				SchematicURL: "/schematics/" + name,
-			}
-			// Filter by q if provided (title contains q, case-insensitive)
-			if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
-				continue
-			}
-			items = append(items, it)
 		}
 
-		// Apply pagination on unique videos
+		// Apply pagination
 		start := (page - 1) * pageSize
 		if start > len(items) {
 			start = len(items)
@@ -164,7 +255,7 @@ func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 
 		d.Populate(e)
 		d.Title = "Videos"
-		d.Description = "Unique YouTube videos referenced by schematics"
+		d.Description = "Videos from published schematics"
 		d.Slug = "/videos"
 		d.Categories = allCategories(app, cacheService)
 

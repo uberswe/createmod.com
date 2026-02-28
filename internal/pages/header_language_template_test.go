@@ -14,9 +14,9 @@ func Test_Header_Language_Dropdown_And_Links(t *testing.T) {
 	}
 	html := renderTemplate(t, "template/include/header.html", d)
 
-	// Shows current language code in dropdown trigger
-	if !strings.Contains(html, ">en<") {
-		t.Fatalf("header should display current language 'en'")
+	// Shows current language flag in dropdown trigger
+	if !strings.Contains(html, "title=\"en\"") {
+		t.Fatalf("header should display current language flag with title='en'")
 	}
 
 	// Contains language options and return_to param; be tolerant to HTML escaping

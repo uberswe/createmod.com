@@ -30,30 +30,38 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="explore-grid">
-            {{range $i, $image := .Images }}
-                <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
-                    <img class="lazy"
-                         data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=240x0{{ end }}"
-                         alt="{{ $image.Title }}">
-                </a>
-            {{end}}
-            </div>
-            <!-- Ad: between gallery and info -->
-            <div id="explore-mid-desktop" class="d-none d-xl-block my-3 text-center"></div>
-            <div id="explore-mid-mobile" class="d-xl-none my-3 text-center"></div>
-            <div class="row">
-                <div class="col-md-6 pt-4 m-auto">
-                    <div class="alert alert-info" role="alert">
-                        Reload the page or <a href="/explore">click here</a> for 1000 random images.
+            <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
+                    <div class="explore-grid">
+                    {{range $i, $image := .Images }}
+                        <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
+                            <img class="lazy"
+                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=240x0{{ end }}"
+                                 alt="{{ $image.Title }}">
+                        </a>
+                    {{end}}
+                    </div>
+                    <!-- Ad: between gallery and info -->
+                    <div id="explore-mid-desktop" class="d-none d-xl-block my-3 text-center"></div>
+                    <div id="explore-mid-mobile" class="d-xl-none my-3 text-center"></div>
+                    <div class="row">
+                        <div class="col-md-6 pt-4 m-auto">
+                            <div class="alert alert-info" role="alert">
+                                {{ T .Language "Reload the page or" }} <a href="/explore">{{ T .Language "click here" }}</a> {{ T .Language "for 1000 random images." }}
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Ad Rail -->
+                {{template "ad_rail.html" .}}
             </div>
         </div>
         {{template "footer.html" .}}
     </div>
 </div>
 {{template "foot.html" .}}
+{{template "ad_rail_script.html" .}}
 <script>
 // Desktop banner at bottom of gallery
 window['nitroAds'].createAd('explore-mid-desktop', {

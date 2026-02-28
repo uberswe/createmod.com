@@ -16,8 +16,8 @@
                     <div class="col-lg-8 col-xl-6">
                         <div class="card mb-3" id="upload-card">
                             <div class="card-body">
-                                <h3 class="card-title">Upload Schematic</h3>
-                                <p class="text-secondary">Upload a Create Mod schematic to analyze it and share it with the community.</p>
+                                <h3 class="card-title">{{ T .Language "Upload Schematic" }}</h3>
+                                <p class="text-secondary">{{ T .Language "Upload a Create Mod schematic to analyze it, get a private share link, or publish it to the community." }}</p>
 
                                 <div id="upload-zone" style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;"
                                      ondragover="event.preventDefault(); this.style.borderColor='var(--tblr-primary)'; this.style.backgroundColor='rgba(191,144,69,0.05)';"
@@ -26,13 +26,13 @@
                                     <input type="file" id="nbt-file-input" accept=".nbt" style="display:none;" onchange="handleFileDrop(this.files);">
                                     <div id="upload-prompt" onclick="document.getElementById('nbt-file-input').click();">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 9l5 -5l5 5" /><path d="M12 4l0 12" /></svg>
-                                        <h4 class="text-secondary">Drop your .nbt schematic file here</h4>
-                                        <p class="text-secondary">or click to select a file</p>
-                                        <small class="text-muted">Max file size: 10MB</small>
+                                        <h4 class="text-secondary">{{ T .Language "Drop your .nbt schematic file here" }}</h4>
+                                        <p class="text-secondary">{{ T .Language "or click to select a file" }}</p>
+                                        <small class="text-muted">{{ T .Language "Max file size: 10MB" }}</small>
                                     </div>
                                     <div id="upload-spinner" style="display:none;">
                                         <div class="spinner-border text-primary" role="status"></div>
-                                        <p class="text-secondary mt-2">Uploading and analyzing schematic...</p>
+                                        <p class="text-secondary mt-2">{{ T .Language "Uploading and analyzing schematic..." }}</p>
                                     </div>
                                 </div>
 
@@ -52,24 +52,24 @@
                             <!-- Schematic Statistics Card -->
                             <div class="card mb-3">
                                 <div class="card-header">
-                                    <h3 class="card-title">Schematic Statistics</h3>
+                                    <h3 class="card-title">{{ T .Language "Schematic Statistics" }}</h3>
                                 </div>
                                 <div class="card-body">
                                     <div class="datagrid">
                                         <div class="datagrid-item">
-                                            <div class="datagrid-title">Filename</div>
+                                            <div class="datagrid-title">{{ T .Language "Filename" }}</div>
                                             <div class="datagrid-content" id="stat-filename"></div>
                                         </div>
                                         <div class="datagrid-item">
-                                            <div class="datagrid-title">Dimensions</div>
+                                            <div class="datagrid-title">{{ T .Language "Dimensions" }}</div>
                                             <div class="datagrid-content" id="stat-dimensions"></div>
                                         </div>
                                         <div class="datagrid-item">
-                                            <div class="datagrid-title">Total Blocks</div>
+                                            <div class="datagrid-title">{{ T .Language "Total Blocks" }}</div>
                                             <div class="datagrid-content" id="stat-blocks"></div>
                                         </div>
                                         <div class="datagrid-item">
-                                            <div class="datagrid-title">File Size</div>
+                                            <div class="datagrid-title">{{ T .Language "File Size" }}</div>
                                             <div class="datagrid-content" id="stat-size"></div>
                                         </div>
                                     </div>
@@ -79,7 +79,7 @@
                             <!-- Required Mods Card -->
                             <div class="card mb-3" id="mods-card" style="display:none;">
                                 <div class="card-header">
-                                    <h3 class="card-title">Required Mods</h3>
+                                    <h3 class="card-title">{{ T .Language "Required Mods" }}</h3>
                                 </div>
                                 <div class="card-body">
                                     <div id="mods-list"></div>
@@ -101,23 +101,23 @@
                                 <div class="card-body">
                                     {{ if .IsAuthenticated }}
                                     <div class="mb-3">
-                                        <label class="form-label">Share Link</label>
+                                        <label class="form-label">{{ T .Language "Share link" }}</label>
                                         <div class="input-group">
                                             <input type="text" class="form-control" id="share-link" readonly>
                                             <button class="btn btn-outline-secondary" type="button" id="copy-link-btn" onclick="copyShareLink()">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                                <span class="copy-text">Copy</span>
+                                                <span class="copy-text">{{ T .Language "Copy" }}</span>
                                             </button>
                                         </div>
                                     </div>
                                     <a id="publish-btn" href="#" class="btn btn-primary w-100">
-                                        Publish Schematic
+                                        {{ T .Language "Publish Schematic" }}
                                     </a>
                                     {{ else }}
                                     <div class="text-center">
-                                        <p class="text-secondary mb-2">Want to share this schematic and publish it to the community?</p>
-                                        <a href="/login" class="btn btn-primary">Login to publish</a>
+                                        <p class="text-secondary mb-2">{{ T .Language "Want to share this schematic and publish it to the community?" }}</p>
+                                        <a href="/login" class="btn btn-primary">{{ T .Language "Login to publish" }}</a>
                                     </div>
                                     {{ end }}
                                 </div>
@@ -127,23 +127,23 @@
                             {{ if .IsAuthenticated }}
                             <div class="card mb-3" id="add-more-files-card" style="display:none;">
                                 <div class="card-header d-flex align-items-center">
-                                    <h3 class="card-title mb-0">Additional Files (Variations)</h3>
+                                    <h3 class="card-title mb-0">{{ T .Language "Additional Files (Variations)" }}</h3>
                                 </div>
                                 <div class="card-body">
-                                    <p class="text-secondary">Optionally add more .nbt files as variations or sets for this schematic.</p>
+                                    <p class="text-secondary">{{ T .Language "Optionally add more .nbt files as variations or sets for this schematic." }}</p>
                                     <div id="additional-files-list-upload"></div>
                                     <div class="border rounded p-3 mt-2">
                                         <div class="mb-2">
-                                            <label class="form-label">NBT File</label>
+                                            <label class="form-label">{{ T .Language "NBT File" }}</label>
                                             <input type="file" id="add-file-nbt-upload" class="form-control" accept=".nbt">
                                         </div>
                                         <div class="mb-2">
-                                            <label class="form-label">Description</label>
+                                            <label class="form-label">{{ T .Language "Description" }}</label>
                                             <input type="text" id="add-file-desc-upload" class="form-control" placeholder="e.g. Compact version, Mirror variant...">
                                         </div>
                                         <div id="add-file-error-upload" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
                                         <button class="btn btn-sm btn-outline-primary mt-2" id="add-file-btn-upload" onclick="submitAdditionalFileUpload()">
-                                            Add File
+                                            {{ T .Language "Add File" }}
                                         </button>
                                     </div>
                                 </div>
@@ -156,11 +156,11 @@
                         <div class="col-lg-7 col-xl-8">
                             <div class="card mb-3" id="materials-card" style="display:none;">
                                 <div class="card-header d-flex align-items-center">
-                                    <h3 class="card-title mb-0">Materials</h3>
+                                    <h3 class="card-title mb-0">{{ T .Language "Materials" }}</h3>
                                     <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                        <span class="copy-text">Copy list</span>
+                                        <span class="copy-text">{{ T .Language "Copy list" }}</span>
                                     </button>
                                 </div>
                                 <div class="card-body p-0">
@@ -413,6 +413,8 @@ function createMaterialRow(m) {
     var blockIdSpan = document.createElement('span');
     blockIdSpan.className = 'material-block-id';
     blockIdSpan.textContent = m.block_id;
+    var hasApiName = blockNameMap[m.block_id] && blockNameMap[m.block_id].display_name;
+    if (!hasApiName) { blockIdSpan.style.display = 'none'; }
 
     infoDiv.appendChild(nameSpan);
     infoDiv.appendChild(blockIdSpan);
@@ -450,11 +452,12 @@ function renderMods(mods) {
     var container = document.getElementById('mods-list');
     container.textContent = '';
     mods.forEach(function(mod) {
-        var badge = document.createElement('span');
-        badge.className = 'badge bg-blue-lt me-1 mb-1';
-        badge.style.fontSize = '0.85rem';
-        badge.textContent = capitalize(mod);
-        container.appendChild(badge);
+        var link = document.createElement('a');
+        link.href = '/mods/' + mod;
+        link.className = 'badge bg-blue-lt me-1 mb-1 text-decoration-none';
+        link.style.fontSize = '0.85rem';
+        link.textContent = capitalize(mod);
+        container.appendChild(link);
     });
 }
 

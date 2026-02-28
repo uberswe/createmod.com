@@ -5,9 +5,9 @@ import (
 	"createmod/internal/models"
 	"fmt"
 	tmpl "html/template"
-	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"math"
 	"sort"
@@ -28,7 +28,6 @@ var indexTemplates = append([]string{
 	"./template/include/schematic_card_full.html",
 	"./template/include/schematic_card_medium.html",
 	"./template/include/schematic_card_small.html",
-	"./template/include/schematic_card_featured.html",
 }, commonTemplates...)
 
 var indexTabTemplates = append([]string{
@@ -37,17 +36,24 @@ var indexTabTemplates = append([]string{
 	"./template/include/schematic_card_small.html",
 }, commonTemplates...)
 
-const indexPageSize = 12
+const indexPageSize = 8
+
+// CategorySection holds one category's schematics for the index page.
+type CategorySection struct {
+	Category models.SchematicCategory
+	Items    []models.Schematic
+	HasNext  bool
+}
 
 type IndexData struct {
 	DefaultData
-	Featured        []models.Schematic
-	Schematics      []models.Schematic
-	Trending        []models.Schematic
-	HighestRated    []models.Schematic
-	HasNext         bool // latest tab
-	TrendingHasNext bool
-	HighestHasNext  bool
+	Schematics       []models.Schematic
+	Trending         []models.Schematic
+	HighestRated     []models.Schematic
+	HasNext          bool // latest tab
+	TrendingHasNext  bool
+	HighestHasNext   bool
+	CategorySections []CategorySection
 }
 
 func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
@@ -68,10 +74,14 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		}
 
 		// Full page load — serve from pre-warmed cache when available.
-		featuredSchematics, _ := cacheService.GetSchematics(cache.FeaturedSchematicsKey)
 		latestSchematics, latestCached := cacheService.GetSchematics(cache.LatestSchematicsKey)
 		trendingSchematics, _ := cacheService.GetSchematics(cache.TrendingSchematicsKey)
 		highestRated, _ := cacheService.GetSchematics(cache.HighestRatedSchematicsKey)
+
+		// The trending cache stores the full sorted list; slice to page 1.
+		if len(trendingSchematics) > indexPageSize {
+			trendingSchematics = trendingSchematics[:indexPageSize]
+		}
 
 		// Determine hasNext flags from cache (default false if not cached)
 		latestHasNext := false
@@ -99,16 +109,6 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			if err != nil {
 				return err
 			}
-			featuredRecords, err := app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true && featured = true", "-created", 20, 0)
-			if err == nil && len(featuredRecords) > 0 {
-				rand.Shuffle(len(featuredRecords), func(i, j int) {
-					featuredRecords[i], featuredRecords[j] = featuredRecords[j], featuredRecords[i]
-				})
-				if len(featuredRecords) > 3 {
-					featuredRecords = featuredRecords[:3]
-				}
-				featuredSchematics = MapResultsToSchematic(app, featuredRecords, cacheService)
-			}
 			var latestResults []*core.Record
 			latestResults, latestHasNext = fetchLatestPage(app, schematicsCollection.Id, 1)
 			latestSchematics = MapResultsToSchematic(app, latestResults, cacheService)
@@ -116,33 +116,38 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			highestRated, highestHasNext = getHighestRatedSchematicsPage(app, cacheService, 1)
 		}
 
-		// Pad featured with trending if fewer than 3
-		if len(featuredSchematics) < 3 && len(trendingSchematics) > 0 {
-			for _, t := range trendingSchematics {
-				if len(featuredSchematics) >= 3 {
-					break
-				}
-				found := false
-				for _, f := range featuredSchematics {
-					if f.ID == t.ID {
-						found = true
-						break
+		// Build category sections
+		categories := allCategories(app, cacheService)
+		categorySections := make([]CategorySection, 0, len(categories))
+		for _, cat := range categories {
+			cacheKey := fmt.Sprintf("CategorySection:%s", cat.Key)
+			cacheHasNextKey := fmt.Sprintf("CategorySectionHasNext:%s", cat.Key)
+			items, cached := cacheService.GetSchematics(cacheKey)
+			catHasNext := false
+			if cached {
+				if v, ok := cacheService.Get(cacheHasNextKey); ok {
+					if b, ok := v.(bool); ok {
+						catHasNext = b
 					}
 				}
-				if !found {
-					featuredSchematics = append(featuredSchematics, t)
-				}
+			} else {
+				items, catHasNext = getCategoryTrendingPage(app, cacheService, cat.ID, 1)
 			}
+			categorySections = append(categorySections, CategorySection{
+				Category: cat,
+				Items:    items,
+				HasNext:  catHasNext,
+			})
 		}
 
 		d := IndexData{
-			Featured:        featuredSchematics,
-			Schematics:      latestSchematics,
-			Trending:        trendingSchematics,
-			HighestRated:    highestRated,
-			HasNext:         latestHasNext,
-			TrendingHasNext: trendingHasNext,
-			HighestHasNext:  highestHasNext,
+			Schematics:       latestSchematics,
+			Trending:         trendingSchematics,
+			HighestRated:     highestRated,
+			HasNext:          latestHasNext,
+			TrendingHasNext:  trendingHasNext,
+			HighestHasNext:   highestHasNext,
+			CategorySections: categorySections,
 		}
 		d.Populate(e)
 		d.Title = "Minecraft Schematics"
@@ -176,11 +181,25 @@ func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, r
 	var items []models.Schematic
 	var hasNext bool
 
-	switch tab {
-	case "trending":
+	switch {
+	case tab == "trending":
 		items, hasNext = getTrendingSchematicsPage(app, cacheService, page)
-	case "highest":
+	case tab == "highest":
 		items, hasNext = getHighestRatedSchematicsPage(app, cacheService, page)
+	case strings.HasPrefix(tab, "cat-"):
+		catKey := strings.TrimPrefix(tab, "cat-")
+		categories := allCategories(app, cacheService)
+		var catID string
+		for _, c := range categories {
+			if c.Key == catKey {
+				catID = c.ID
+				break
+			}
+		}
+		if catID == "" {
+			return e.NotFoundError("", nil)
+		}
+		items, hasNext = getCategoryTrendingPage(app, cacheService, catID, page)
 	default:
 		tab = "latest"
 		col, err := app.FindCollectionByNameOrId("schematics")
@@ -489,6 +508,29 @@ func getTrendingSchematicsPage(app *pocketbase.PocketBase, cacheService *cache.S
 	return all[offset:end], hasNext
 }
 
+// getCategoryTrendingPage returns a page of trending schematics filtered to a specific category.
+func getCategoryTrendingPage(app *pocketbase.PocketBase, cacheService *cache.Service, categoryID string, page int) ([]models.Schematic, bool) {
+	all := getAllTrendingSchematics(app, cacheService)
+	var filtered []models.Schematic
+	for _, s := range all {
+		for _, c := range s.Categories {
+			if c.ID == categoryID {
+				filtered = append(filtered, s)
+				break
+			}
+		}
+	}
+	offset := (page - 1) * indexPageSize
+	if offset >= len(filtered) {
+		return nil, false
+	}
+	end := offset + indexPageSize
+	hasNext := end < len(filtered)
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], hasNext
+}
 
 // WarmIndexCache pre-computes and caches all data needed for the index page
 // so that no user request ever hits the database for page-1 data.
@@ -496,19 +538,7 @@ func getTrendingSchematicsPage(app *pocketbase.PocketBase, cacheService *cache.S
 func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
 	app.Logger().Debug("Warming index page cache")
 
-	// 1. Featured schematics
-	featuredRecords, err := app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true && featured = true", "-created", 20, 0)
-	if err == nil && len(featuredRecords) > 0 {
-		rand.Shuffle(len(featuredRecords), func(i, j int) {
-			featuredRecords[i], featuredRecords[j] = featuredRecords[j], featuredRecords[i]
-		})
-		if len(featuredRecords) > 3 {
-			featuredRecords = featuredRecords[:3]
-		}
-		cacheService.SetSchematics(cache.FeaturedSchematicsKey, MapResultsToSchematic(app, featuredRecords, cacheService))
-	}
-
-	// 2. Latest schematics (page 1)
+	// 1. Latest schematics (page 1)
 	col, colErr := app.FindCollectionByNameOrId("schematics")
 	if colErr == nil {
 		latestResults, latestHasNext := fetchLatestPage(app, col.Id, 1)
@@ -516,19 +546,26 @@ func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
 		cacheService.Set(cache.LatestHasNextKey, latestHasNext)
 	}
 
-	// 3. Trending schematics (force recompute by clearing cache first)
+	// 2. Trending schematics (force recompute by clearing cache first)
 	cacheService.Delete(cache.TrendingSchematicsKey)
 	allTrending := getAllTrendingSchematics(app, cacheService)
 	trendingHasNext := len(allTrending) > indexPageSize
 	cacheService.Set(cache.TrendingHasNextKey, trendingHasNext)
 
-	// 4. Highest rated schematics (page 1)
+	// 3. Highest rated schematics (page 1)
 	highestRated, highestHasNext := getHighestRatedSchematicsPage(app, cacheService, 1)
 	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
 	cacheService.Set(cache.HighestRatedHasNextKey, highestHasNext)
 
-	// 5. Categories (already self-caching, just ensure warm)
-	allCategories(app, cacheService)
+	// 4. Categories (already self-caching, just ensure warm)
+	categories := allCategories(app, cacheService)
+
+	// 5. Category sections — cache page-1 trending items per category
+	for _, cat := range categories {
+		items, catHasNext := getCategoryTrendingPage(app, cacheService, cat.ID, 1)
+		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
+		cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
+	}
 
 	app.Logger().Debug("Index page cache warmed")
 }

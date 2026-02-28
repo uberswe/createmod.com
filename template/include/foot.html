@@ -21,7 +21,8 @@
       var wrap = document.createElement('div');
       wrap.className = 'alert alert-important alert-' + v;
       wrap.role = 'alert';
-      wrap.style.cssText = 'width:100%;box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:auto;margin:0;';
+      var bg = v === 'success' ? '#2fb344' : v === 'warning' ? '#f76707' : '#d63939';
+      wrap.style.cssText = 'width:100%;box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:auto;margin:0;background:' + bg + ';color:#fff;border:none;';
       var icon = '';
       if (v === 'danger') {
         icon = '<svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>';
@@ -103,6 +104,34 @@ window.addEventListener('htmx:responseError', function (evt) {
   document.addEventListener('DOMContentLoaded', function(){ observeLazy(); });
   // HTMX navigation (re-observe new lazy images after content swap)
   document.addEventListener('htmx:afterSettle', function(evt){ observeLazy(evt.detail.elt); });
+})();
+</script>
+<script>
+// Re-initialize Bootstrap dropdowns & tooltips after HTMX page swaps.
+// Tabler/Bootstrap sets up event delegation on document during initial load,
+// but after HTMX body swaps the new elements need explicit initialization.
+(function(){
+  function reinit() {
+    try {
+      if (typeof bootstrap === 'undefined') return;
+      document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el) {
+        // Dispose stale instance if any, then create fresh
+        var inst = bootstrap.Dropdown.getInstance(el);
+        if (inst) { try { inst.dispose(); } catch(e){} }
+        new bootstrap.Dropdown(el);
+      });
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        var inst = bootstrap.Tooltip.getInstance(el);
+        if (inst) { try { inst.dispose(); } catch(e){} }
+        new bootstrap.Tooltip(el);
+      });
+    } catch(e) {}
+  }
+  // Run on HTMX settle for future swaps
+  document.addEventListener('htmx:afterSettle', reinit);
+  // Run immediately — this script executes inside swapped content,
+  // so the new DOM is in place but Bootstrap hasn't seen it yet.
+  reinit();
 })();
 </script>
 <script>

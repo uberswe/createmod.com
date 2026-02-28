@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_Index_Template_Shows_Trending_First(t *testing.T) {
+func Test_Index_Template_Shows_Sections(t *testing.T) {
 	path := filepath.Join("..", "..", "template", "index.html")
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -16,21 +16,36 @@ func Test_Index_Template_Shows_Trending_First(t *testing.T) {
 	s := string(b)
 
 	if !strings.Contains(s, "Trending") {
-		t.Fatalf("index.html should contain 'Trending' tab")
+		t.Fatalf("index.html should contain 'Trending' heading")
+	}
+	if !strings.Contains(s, "Latest") {
+		t.Fatalf("index.html should contain 'Latest' heading")
 	}
 	if !strings.Contains(s, "Highest Rated") {
-		t.Fatalf("index.html should contain 'Highest Rated' tab")
+		t.Fatalf("index.html should contain 'Highest Rated' heading")
 	}
-	if !strings.Contains(s, "Featured Builds") {
-		t.Fatalf("index.html should contain 'Featured Builds' section")
+	if !strings.Contains(s, "Categories") {
+		t.Fatalf("index.html should contain 'Categories' heading")
 	}
-	// Ensure tabbed sections use the small card template
+	// Ensure sections use the small card template
 	if !strings.Contains(s, `template "schematic_card_small.html"`) {
 		t.Fatalf("index.html should use schematic_card_small.html template")
 	}
-	// Ensure featured section uses the featured card template
-	if !strings.Contains(s, `template "schematic_card_featured.html"`) {
-		t.Fatalf("index.html should use schematic_card_featured.html template")
+}
+
+func Test_Index_Template_No_Featured(t *testing.T) {
+	path := filepath.Join("..", "..", "template", "index.html")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	s := string(b)
+
+	if strings.Contains(s, "Featured Builds") {
+		t.Fatalf("index.html should not contain 'Featured Builds' section")
+	}
+	if strings.Contains(s, `template "schematic_card_featured.html"`) {
+		t.Fatalf("index.html should not use schematic_card_featured.html template")
 	}
 }
 

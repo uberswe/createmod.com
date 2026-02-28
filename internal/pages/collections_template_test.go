@@ -17,14 +17,14 @@ func Test_Collections_Template_Has_Expected_Elements(t *testing.T) {
 	must := []string{
 		"Collections",
 		"name=\"q\"",
-		"name=\"s\"",
 		"hx-target=\"#collections-results\"",
 		"hx-select=\"#collections-results\"",
-		"Most viewed",
-		"Most recent",
 		"View collection",
 		"ad-slot-collections",
 		"Featured",
+		"nav-tabs",
+		"Public",
+		"My Collections",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

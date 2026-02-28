@@ -5,10 +5,12 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
+	"createmod/internal/moderation"
 	"createmod/internal/outurl"
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
+	"createmod/internal/translation"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -39,7 +41,7 @@ func computeAssetVersion() string {
 	return hex.EncodeToString(h.Sum(nil))[:8]
 }
 
-func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service) {
+func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service, moderationService *moderation.Service, translationService *translation.Service) {
 	promotionService := promotion.New()
 	registry := template.NewRegistry()
 
@@ -52,6 +54,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 		"ToLower":   strings.ToLower,
 		"mod":       func(i, j int) bool { return i%j == 0 },
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
+		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
 		"printf":    fmt.Sprintf,
 		"T":         func(lang string, key string) string { return i18n.T(lang, key) },
 		"AssetVer":  func() string { return assetVer },
@@ -68,6 +71,28 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 				}
 			}
 			return false
+		},
+		"LangFlag": func(code string) string {
+			switch code {
+			case "en":
+				return "\U0001F1EC\U0001F1E7"
+			case "pt-BR":
+				return "\U0001F1E7\U0001F1F7"
+			case "pt-PT":
+				return "\U0001F1F5\U0001F1F9"
+			case "es":
+				return "\U0001F1EA\U0001F1F8"
+			case "de":
+				return "\U0001F1E9\U0001F1EA"
+			case "pl":
+				return "\U0001F1F5\U0001F1F1"
+			case "ru":
+				return "\U0001F1F7\U0001F1FA"
+			case "zh-Hans":
+				return "\U0001F1E8\U0001F1F3"
+			default:
+				return "\U0001F310"
+			}
 		},
 	}
 
@@ -125,7 +150,10 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService))
 	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService))
 	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService))
-	e.GET("/settings/gamification", pages.UserGamificationHandler(app, registry, cacheService))
+	e.GET("/settings/points", pages.UserPointsHandler(app, registry, cacheService))
+	e.GET("/settings/gamification", func(e *core.RequestEvent) error {
+		return e.Redirect(http.StatusMovedPermanently, "/settings/points")
+	})
 	e.GET("/settings/api-keys", pages.UserAPIKeysHandler(app, registry, cacheService))
 	e.GET("/settings/statistics", pages.UserStatsHandler(app, registry, cacheService))
 	// API Docs
@@ -168,21 +196,27 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	// Guide create
 	e.GET("/guides/new", pages.GuidesNewHandler(app, registry, cacheService))
 	e.POST("/guides", pages.GuidesCreateHandler(app, cacheService))
+	// Guide detail/edit/update/delete
+	e.GET("/guides/{id}", pages.GuidesShowHandler(app, registry, cacheService, translationService))
+	e.GET("/guides/{id}/edit", pages.GuidesEditHandler(app, registry, cacheService))
+	e.POST("/guides/{id}", pages.GuidesUpdateHandler(app, cacheService))
+	e.POST("/guides/{id}/delete", pages.GuidesDeleteHandler(app))
 	// Collections listing
+	// Mods
+	e.GET("/mods", pages.ModsHandler(app, cacheService, registry))
+	e.GET("/mods/{slug}", pages.ModDetailHandler(app, cacheService, registry))
 	e.GET("/collections", pages.CollectionsHandler(app, registry, cacheService))
 	// Collections create flow
 	e.GET("/collections/new", pages.CollectionsNewHandler(app, registry, cacheService))
 	e.POST("/collections", pages.CollectionsCreateHandler(app, registry, cacheService))
 	// Collections detail
-	e.GET("/collections/{slug}", pages.CollectionsShowHandler(app, registry, cacheService))
+	e.GET("/collections/{slug}", pages.CollectionsShowHandler(app, registry, cacheService, translationService))
 	// Collections edit/update/delete
 	e.GET("/collections/{slug}/edit", pages.CollectionsEditHandler(app, registry, cacheService))
-	e.POST("/collections/{slug}", pages.CollectionsUpdateHandler(app))
+	e.POST("/collections/{slug}", pages.CollectionsUpdateHandler(app, registry, cacheService, moderationService))
 	e.POST("/collections/{slug}/delete", pages.CollectionsDeleteHandler(app))
 	// Collections reorder (author-only)
 	e.POST("/collections/{slug}/reorder", pages.CollectionsReorderHandler(app))
-	// Collections download (zip)
-	e.GET("/collections/{slug}/download", pages.CollectionsDownloadHandler(app, cacheService))
 	// API keys (user settings)
 	e.POST("/settings/api-keys/new", pages.APIKeyCreateHandler(app, cacheService))
 	e.POST("/settings/api-keys/{id}/revoke", pages.APIKeyRevokeHandler(app))
@@ -190,7 +224,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.GET("/lang", pages.SetLanguageHandler())
 	// Schematics
 	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
-	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService))
+	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService, translationService))
 	// Partial comments endpoint for HTMX refresh
 	e.GET("/schematics/{name}/comments", pages.SchematicCommentsHandler(app, searchService, cacheService, registry, discordService))
 	// Add to collection

@@ -5,47 +5,42 @@
     {{template "header.html" .}}
     <div class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
+        <div class="mb-3">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="page-title">New Guide</h2>
-              <div class="text-secondary">Create a new guide using Markdown</div>
+              <h2 class="mb-1">{{ T .Language "New Guide" }}</h2>
+              <div class="text-secondary">{{ T .Language "Create a new guide" }}</div>
             </div>
             <div class="col-auto ms-auto">
-              <a class="btn" href="/guides">Back</a>
+              <a class="btn btn-outline-secondary" href="/guides">{{ T .Language "Back" }}</a>
             </div>
           </div>
         </div>
-        <div class="row row-cards">
-          <div class="col-12 col-md-9">
-            <form class="card" action="/guides" method="post">
-              <div class="card-header"><h3 class="card-title">Guide details</h3></div>
+        <div class="row">
+          <div class="col-12 col-lg-9">
+            <form class="card" action="/guides" method="post" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
+              <div class="card-header"><h3 class="card-title">{{ T .Language "Guide details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
-                  <label class="form-label required" for="title">Title</label>
-                  <input type="text" class="form-control" id="title" name="title" placeholder="My first guide" required />
+                  <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
+                  <input type="text" class="form-control" id="title" name="title" placeholder="{{ T .Language "My first guide" }}" required />
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="content">Content (Markdown)</label>
-                  <textarea class="form-control" id="content" name="content" rows="12" placeholder="# Heading\nWrite your guide here..."></textarea>
+                  <label class="form-label" for="guide-editor">{{ T .Language "Content" }}</label>
+                  <textarea class="form-control" id="guide-editor" name="content" rows="16" placeholder="{{ T .Language "Write your guide here..." }}"></textarea>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="video_url">Optional video link (YouTube)</label>
+                  <label class="form-label" for="video_url">{{ T .Language "Optional video link (YouTube)" }}</label>
                   <input type="url" class="form-control" id="video_url" name="video_url" placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
                 <div class="mb-3">
-                  <label class="form-label" for="external_url">Optional external guide link</label>
+                  <label class="form-label" for="external_url">{{ T .Language "Optional external guide link" }}</label>
                   <input type="url" class="form-control" id="external_url" name="external_url" placeholder="https://example.com/your-guide" />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Preview</label>
-                  <div id="md-preview" class="card card-body" style="min-height:120px; background: rgba(0,0,0,0.02);"></div>
-                  <small class="form-hint">Live preview renders basic Markdown (headings, bold, italics, links).</small>
                 </div>
               </div>
               <div class="card-footer d-flex justify-content-end">
-                <a href="/guides" class="btn btn-link">Cancel</a>
-                <button type="submit" class="btn btn-primary ms-2">Publish</button>
+                <a href="/guides" class="btn btn-link">{{ T .Language "Cancel" }}</a>
+                <button type="submit" class="btn btn-primary ms-2">{{ T .Language "Publish" }}</button>
               </div>
             </form>
           </div>
@@ -57,30 +52,42 @@
 </div>
 {{template "foot.html" .}}
 <script>
-// very small Markdown preview (basic) to avoid extra deps
-(function(){
-  var input = document.getElementById('content');
-  var out = document.getElementById('md-preview');
-  function esc(s){return s.replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]||c;});}
-  function md(s){
-    s = esc(s);
-    // headings
-    s = s.replace(/^######\s(.+)$/mg, '<h6>$1</h6>')
-         .replace(/^#####\s(.+)$/mg, '<h5>$1</h5>')
-         .replace(/^####\s(.+)$/mg, '<h4>$1</h4>')
-         .replace(/^###\s(.+)$/mg, '<h3>$1</h3>')
-         .replace(/^##\s(.+)$/mg, '<h2>$1</h2>')
-         .replace(/^#\s(.+)$/mg, '<h1>$1</h1>');
-    // bold/italic
-    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-         .replace(/\*(.+?)\*/g, '<em>$1</em>');
-    // links
-    s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1<\/a>');
-    // paragraphs
-    s = s.replace(/\n{2,}/g, '</p><p>');
-    return '<p>'+s+'</p>';
+(function initGuideEditor(retries) {
+  retries = retries || 0;
+  if (typeof tinyMCE === 'undefined') {
+    if (retries < 100) {
+      // Load TinyMCE if not already loaded
+      if (retries === 0) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js';
+        document.head.appendChild(s);
+      }
+      setTimeout(function(){ initGuideEditor(retries + 1); }, 100);
+    }
+    return;
   }
-  function render(){ out.innerHTML = md(input.value || ''); }
-  if (input && out){ input.addEventListener('input', render); render(); }
+  var options = {
+    license_key: "gpl",
+    selector: '#guide-editor',
+    height: 500,
+    menubar: true,
+    statusbar: true,
+    promotion: false,
+    branding: false,
+    plugins: 'lists link image table code wordcount help autolink autoresize',
+    toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link image table | code | help',
+    block_formats: 'Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4; Blockquote=blockquote; Code=pre',
+    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; max-width: 100%; padding: 8px 16px; } img { max-width: 100%; height: auto; } pre { background: #f4f4f5; padding: 12px; border-radius: 6px; overflow-x: auto; } blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 16px; color: #666; }',
+    autoresize_min_height: 400,
+    autoresize_max_height: 800,
+    link_default_target: '_blank',
+    link_assume_external_targets: true
+  };
+  if (localStorage.getItem("createmodTheme") === 'dark') {
+    options.skin = 'tinymce-5-dark';
+    options.content_css = 'dark';
+  }
+  tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+  tinyMCE.init(options);
 })();
 </script>

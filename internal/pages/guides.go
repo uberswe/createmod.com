@@ -18,9 +18,10 @@ var guidesTemplates = append([]string{
 
 // GuideItem represents a lightweight guide entry.
 type GuideItem struct {
+	ID       string
 	Title    string
 	Excerpt  string
-	URL      string // already wrapped via /out?url=... when external
+	URL      string // internal detail page URL
 	VideoURL string // optional external video link wrapped via /out?url=...&guide={id}
 	Views    int
 }
@@ -69,21 +70,15 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 				title = r.GetString("name")
 			}
 			excerpt := r.GetString("excerpt")
-			link := r.GetString("wiki_url")
-			// Wrap external links via /out interstitial with source context for click tracking
-			if strings.HasPrefix(strings.ToLower(link), "http://") || strings.HasPrefix(strings.ToLower(link), "https://") {
-				link = outurl.BuildPathWithSource(link, outSecret, "guide", r.Id)
-			}
-			if link == "" {
-				link = "/guide" // fallback to the generic guide page
-			}
+			// Link to the internal detail page
+			link := "/guides/" + r.Id
 			// Optional video url
 			video := r.GetString("video_url")
 			videoWrapped := ""
 			if strings.HasPrefix(strings.ToLower(video), "http://") || strings.HasPrefix(strings.ToLower(video), "https://") {
 				videoWrapped = outurl.BuildPathWithSource(video, outSecret, "guide", r.Id)
 			}
-			it := GuideItem{Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, Views: r.GetInt("views")}
+			it := GuideItem{ID: r.Id, Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, Views: r.GetInt("views")}
 			if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
 				continue
 			}
@@ -126,7 +121,7 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 
 		d.Populate(e)
 		d.Title = "Guides"
-		d.Description = "Guides for using Create Mod schematics"
+		d.Description = "Guides for the Create mod and Minecraft"
 		d.Slug = "/guides"
 		d.Categories = allCategories(app, cacheService)
 

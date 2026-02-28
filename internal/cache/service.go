@@ -14,7 +14,6 @@ const (
 	HighestRatedSchematicsKey = "HighestRatedSchematics"
 	TrendingSchematicsKey     = "TrendingSchematics"
 	AllCategoriesKey          = "AllCategories"
-	FeaturedSchematicsKey     = "FeaturedSchematics"
 	LatestSchematicsKey       = "LatestSchematics"
 	LatestHasNextKey          = "LatestHasNext"
 	HighestRatedHasNextKey    = "HighestRatedHasNext"
@@ -61,6 +60,18 @@ func RatingKey(schematicId string) string {
 
 func RatingCountKey(schematicId string) string {
 	return fmt.Sprintf("ratingCount:%s", schematicId)
+}
+
+func TranslationKey(schematicId, lang string) string {
+	return fmt.Sprintf("translation:%s:%s", schematicId, lang)
+}
+
+func GuideTranslationKey(guideId, lang string) string {
+	return fmt.Sprintf("guide_translation:%s:%s", guideId, lang)
+}
+
+func CollectionTranslationKey(collectionId, lang string) string {
+	return fmt.Sprintf("collection_translation:%s:%s", collectionId, lang)
 }
 
 func (s *Service) Set(key string, value interface{}) {

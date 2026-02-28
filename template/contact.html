@@ -9,26 +9,25 @@
                     <div class="col-md-6">
                         <form class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Contact CreateMod.com</h3>
+                                <h3 class="card-title">{{ T .Language "Contact CreateMod.com" }}</h3>
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label class="form-label required">Email address</label>
+                                    <label class="form-label required">{{ T .Language "Email address" }}</label>
                                     <div>
                                         <input type="email" class="form-control" aria-describedby="emailHelp"
-                                               placeholder="Enter email" id="contact-email">
-                                        <small class="form-hint">We'll never share your email with anyone
-                                            else.</small>
+                                               placeholder="{{ T .Language "Enter email" }}" id="contact-email">
+                                        <small class="form-hint">{{ T .Language "We'll never share your email with anyone else." }}</small>
                                     </div>
                                 </div>
                                 <div class="mb-3 mb-0">
-                                    <label class="form-label">Message</label>
+                                    <label class="form-label">{{ T .Language "Message" }}</label>
                                     <textarea id="contact-content" rows="10" class="form-control"
-                                              placeholder="Type your message here"></textarea>
+                                              placeholder="{{ T .Language "Type your message here" }}"></textarea>
                                 </div>
                             </div>
                             <div class="card-footer text-end">
-                                <button type="submit" class="btn btn-primary" id="contact-form-btn">Send</button>
+                                <button type="submit" class="btn btn-primary" id="contact-form-btn">{{ T .Language "Send" }}</button>
                             </div>
                             <div class="mb-12">
                                 <div id="contact-success" class="alert alert-important alert-success"
@@ -45,7 +44,7 @@
                                             </svg>
                                         </div>
                                         <div>
-                                            Message sent, you can expect a response within 24 hours!
+                                            {{ T .Language "Message sent, you can expect a response within 24 hours!" }}
                                         </div>
                                     </div>
                                 </div>
@@ -68,10 +67,10 @@
                                             </div>
                                             <div class="col">
                                                 <div class="font-weight-medium">
-                                                    Click to Join Uberswe's Discord
+                                                    {{ T .Language "Click to Join Uberswe's Discord" }}
                                                 </div>
                                                 <div class="text-secondary">
-                                                    To get in touch more quickly
+                                                    {{ T .Language "To get in touch more quickly" }}
                                                 </div>
                                             </div>
                                         </div>
@@ -84,8 +83,8 @@
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-auto">
-                                            <p>This site is <b>NOT</b> associated with the Create mod dev team.</p>
-                                            <p>You can join the official Create mod Discord via this link: <b><a
+                                            <p>{{ T .Language "This site is NOT associated with the Create mod dev team." }}</p>
+                                            <p>{{ T .Language "You can join the official Create mod Discord via this link:" }} <b><a
                                                     href="https://discord.gg/P8Z56ashyS">https://discord.gg/P8Z56ashyS</a></b>.
                                             </p>
                                         </div>

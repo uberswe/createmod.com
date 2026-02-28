@@ -20,9 +20,9 @@ func Test_Guides_Template_Has_Expected_Elements(t *testing.T) {
 		"hx-target=\"#guides-results\"",
 		"hx-select=\"#guides-results\"",
 		"Read guide",
-		"Watch video",
-		"ad-slot-guides",
-		"Views:",
+		"card-link",
+		"ad-rail-guides",
+		"Views",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

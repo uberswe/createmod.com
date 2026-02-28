@@ -61,7 +61,7 @@ func init() {
 					"name": "type",
 					"onlyInt": true,
 					"presentable": false,
-					"required": true,
+					"required": false,
 					"system": false,
 					"type": "number"
 				},

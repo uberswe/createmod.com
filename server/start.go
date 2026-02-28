@@ -10,9 +10,11 @@ import (
 	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
 	"createmod/internal/pages"
+	"createmod/internal/pointlog"
 	"createmod/internal/router"
 	"createmod/internal/search"
 	"createmod/internal/sitemap"
+	"createmod/internal/translation"
 	_ "createmod/migrations"
 	"encoding/json"
 	"errors"
@@ -31,6 +33,7 @@ import (
 	"github.com/sym01/htmlsanitizer"
 	"log"
 	"math/rand"
+	"sync"
 	"net/http"
 	"net/mail"
 	"path/filepath"
@@ -57,7 +60,21 @@ type Server struct {
 	discordService       *discord.Service
 	moderationService    *moderation.Service
 	aiDescriptionService *aidescription.Service
+	translationService   *translation.Service
+	pointLogService      *pointlog.Service
 }
+
+// pendingOriginals temporarily stores original (pre-translation) text between the
+// OnRecordCreateRequest and OnRecordAfterCreateSuccess hooks for schematics.
+// Entries are removed immediately after use.
+type originalText struct {
+	Title       string
+	Description string
+	Content     string
+	Language    string
+}
+
+var pendingOriginals sync.Map // map[schematicID]originalText
 
 // detectLanguageFromRequest returns a normalized language code based on the
 // incoming request Accept-Language header. Falls back to "en".
@@ -102,6 +119,7 @@ func New(conf Config) *Server {
 	discordService := discord.New(conf.DiscordWebhookUrl)
 	moderationService := moderation.NewService(conf.OpenAIApiKey, app.Logger())
 	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, app.Logger())
+	translationService := translation.New(conf.OpenAIApiKey, app.Logger())
 	return &Server{
 		conf:                 conf,
 		app:                  app,
@@ -110,6 +128,8 @@ func New(conf Config) *Server {
 		discordService:       discordService,
 		moderationService:    moderationService,
 		aiDescriptionService: aiDescriptionService,
+		translationService:   translationService,
+		pointLogService:      pointlog.New(),
 	}
 }
 
@@ -155,8 +175,9 @@ func (s *Server) Start() {
 			s.app.Logger().Info("search: background index rebuild complete")
 		}()
 
-		// Warm index page cache so the first visitor never waits
+		// Warm page caches so the first visitor never waits
 		pages.WarmIndexCache(s.app, s.cacheService)
+		pages.WarmVideosCache(s.app, s.cacheService)
 
 		// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
 		go pages.RepairSchematics(s.app)
@@ -171,15 +192,19 @@ func (s *Server) Start() {
 					s.searchService.SetTrendingScores(scores)
 				}
 				pages.WarmIndexCache(s.app, s.cacheService)
+				pages.WarmVideosCache(s.app, s.cacheService)
 			}
 		}()
 
 		// Start the AI description service scheduler (polls every 30 minutes)
 		if s.conf.OpenAIApiKey != "" {
 			s.aiDescriptionService.StartScheduler(s.app)
-			// Kick off a one-time translation backfill for existing non-English schematics (non-blocking)
-			go s.aiDescriptionService.BackfillTranslations(s.app)
+			// Start the translation scheduler (polls every 30 minutes for missing translations)
+			s.translationService.StartScheduler(s.app)
 		}
+
+		// Start the point log scheduler (backfills point_log entries from achievements)
+		s.pointLogService.StartScheduler(s.app)
 
 		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
 			if !validNBT(e) {
@@ -272,11 +297,12 @@ func (s *Server) Start() {
 										rec.Set("user", authorID)
 										rec.Set("achievement", achID)
 										_ = e.App.Save(rec)
-										// award points for first guide
+										// award points for first upload bonus
 										if u, err := e.App.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
 											u.Set("points", u.GetInt("points")+30)
 											_ = e.App.Save(u)
 										}
+										pointlog.CreateLogEntry(e.App, authorID, 30, "first_upload_bonus", "First upload bonus")
 									}
 								}
 								// award points for first upload
@@ -284,6 +310,7 @@ func (s *Server) Start() {
 									u.Set("points", u.GetInt("points")+50)
 									_ = e.App.Save(u)
 								}
+								pointlog.CreateLogEntry(e.App, authorID, 50, "first_upload", "Uploaded your first schematic")
 							}
 						}
 					}
@@ -506,6 +533,7 @@ func (s *Server) Start() {
 										u.Set("points", u.GetInt("points")+10)
 										_ = e.App.Save(u)
 									}
+									pointlog.CreateLogEntry(e.App, authorID, 10, "first_comment", "Posted your first comment")
 								}
 							}
 						}
@@ -656,14 +684,20 @@ func (s *Server) Start() {
 				return err
 			}
 
-			// If upload language is not English, attempt lightweight translations for title and summary fields
+			// Capture the original text before any translation
+			origTitle := strings.TrimSpace(e.Record.GetString("title"))
+			origDescription := strings.TrimSpace(e.Record.GetString("description"))
+			origContent := strings.TrimSpace(e.Record.GetString("content"))
 			lang := e.Record.GetString("detected_language")
 			if lang == "" {
 				lang = detectLanguageFromRequest(e.Request)
 			}
+
+			// If upload language is not English, translate to English for the main record
+			// (used by Bleve search index and as source for other translations)
 			if strings.ToLower(lang) != "en" && s.aiDescriptionService != nil {
-				if t := strings.TrimSpace(e.Record.GetString("title")); t != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(t); err == nil && strings.TrimSpace(tx) != "" {
+				if origTitle != "" {
+					if tx, err := s.aiDescriptionService.TranslateToEnglish(origTitle); err == nil && strings.TrimSpace(tx) != "" {
 						e.Record.Set("title", tx)
 					}
 				}
@@ -672,13 +706,13 @@ func (s *Server) Start() {
 						e.Record.Set("excerpt", tx)
 					}
 				}
-				if desc := strings.TrimSpace(e.Record.GetString("description")); desc != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(desc); err == nil && strings.TrimSpace(tx) != "" {
+				if origDescription != "" {
+					if tx, err := s.aiDescriptionService.TranslateToEnglish(origDescription); err == nil && strings.TrimSpace(tx) != "" {
 						e.Record.Set("description", tx)
 					}
 				}
-				if html := strings.TrimSpace(e.Record.GetString("content")); html != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(html); err == nil && strings.TrimSpace(tx) != "" {
+				if origContent != "" {
+					if tx, err := s.aiDescriptionService.TranslateToEnglish(origContent); err == nil && strings.TrimSpace(tx) != "" {
 						e.Record.Set("content", tx)
 					}
 				}
@@ -686,6 +720,17 @@ func (s *Server) Start() {
 
 			// Initially set as unmoderated (pending moderation)
 			e.Record.Set("moderated", false)
+
+			// Store original text temporarily so the AfterCreateSuccess hook can
+			// persist it as a translation record (keyed by slug, unique per schematic).
+			if lang != "en" && (origTitle != "" || origDescription != "" || origContent != "") {
+				pendingOriginals.Store(e.Record.GetString("name"), originalText{
+					Title:       origTitle,
+					Description: origDescription,
+					Content:     origContent,
+					Language:    lang,
+				})
+			}
 
 			return e.Next()
 		})
@@ -848,6 +893,29 @@ func (s *Server) Start() {
 				}
 			}()
 
+			// Create translation records for the original language (if non-English)
+			// and save the English version as a translation record too.
+			go func() {
+				schematicID := e.Record.Id
+				slug := e.Record.GetString("name")
+				englishTitle := e.Record.GetString("title")
+				englishDescription := e.Record.GetString("description")
+				englishContent := e.Record.GetString("content")
+
+				// Save English translation record (from the main record)
+				if err := s.translationService.SaveOriginalLanguage(s.app, schematicID, "en", englishTitle, englishDescription, englishContent); err != nil {
+					s.app.Logger().Debug("Failed to save English translation", "error", err, "id", schematicID)
+				}
+
+				// If original was non-English, save the original text as a translation record
+				if v, ok := pendingOriginals.LoadAndDelete(slug); ok {
+					orig := v.(originalText)
+					if err := s.translationService.SaveOriginalLanguage(s.app, schematicID, orig.Language, orig.Title, orig.Description, orig.Content); err != nil {
+						s.app.Logger().Debug("Failed to save original language translation", "error", err, "id", schematicID, "lang", orig.Language)
+					}
+				}
+			}()
+
 			return s.app.NewMailClient().Send(message)
 		})
 
@@ -886,7 +954,7 @@ func (s *Server) Start() {
 
 		// ROUTES
 
-		router.Register(s.app, e.Router, s.searchService, s.cacheService, s.discordService)
+		router.Register(s.app, e.Router, s.searchService, s.cacheService, s.discordService, s.moderationService, s.translationService)
 
 		// END ROUTES
 

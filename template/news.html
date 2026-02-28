@@ -5,8 +5,10 @@
         {{template "header.html" .}}
         <div class="page-body">
             <div class="container-wide">
-                <div class="row justify-content-center">
-                    <div class="col-lg-10 col-xl-9">
+                <div class="row g-3">
+                    <!-- Left column: News posts -->
+                    <div class="col-lg-8">
+                        <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
                         {{ if .Posts }}
                             {{ $root := . }}
                             {{ range .Posts }}
@@ -15,15 +17,15 @@
                                     <h2 class="card-title"><a href="{{ .URL }}">{{ .Title }}</a></h2>
                                 </div>
                                 <div class="card-body">
-                                    {{ if .Excerpt }}
+                                    {{ if .FirstParagraph }}
+                                        {{ .FirstParagraph }}
+                                    {{ else if .Excerpt }}
                                         <p>{{ .Excerpt }}</p>
-                                    {{ else }}
-                                        <p>No excerpt provided.</p>
                                     {{ end }}
-                                    <p><a href="{{ .URL }}" class="btn btn-primary">{{ T $root.Language "Read more" }}</a></p>
+                                    <p class="mb-0"><a href="{{ .URL }}" class="btn btn-primary">{{ T $root.Language "Read more" }}</a></p>
                                 </div>
-                                <div class="card-footer">
-                                    {{ HumanDate .PostDate }}
+                                <div class="card-footer text-secondary">
+                                    {{ DateOnly .PostDate }}
                                 </div>
                             </div>
                             {{ end }}
@@ -33,11 +35,68 @@
                                     <h2 class="card-title">{{ T .Language "No news yet" }}</h2>
                                 </div>
                                 <div class="card-body">
-                                    <p>There are no news posts available at the moment. Please check back later.</p>
-                                    <p><a href="/" class="btn btn-outline-secondary">Go to Home</a></p>
+                                    <p>{{ T .Language "There are no news posts available at the moment. Please check back later." }}</p>
+                                    <p><a href="/" class="btn btn-outline-secondary">{{ T .Language "Go to Home" }}</a></p>
                                 </div>
                             </div>
                         {{ end }}
+                    </div>
+
+                    <!-- Right column: Site stats -->
+                    <div class="col-lg-4">
+                        <h2 class="page-title mb-3">{{ T .Language "Site Stats (24h)" }}</h2>
+
+                        <!-- Views chart -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Views" }}</h3>
+                                <span class="ms-auto text-secondary">{{ .TotalViews24 }} {{ T .Language "total" }}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="stats-chart" id="views-chart">
+                                    <div class="stats-bars">
+                                        {{ range .HourlyViews }}
+                                        <div class="stats-bar-col" title="{{ .Hour }}: {{ .Count }} views">
+                                            <div class="stats-bar" data-count="{{ .Count }}"></div>
+                                        </div>
+                                        {{ end }}
+                                    </div>
+                                    <div class="stats-labels">
+                                        {{ range $i, $s := .HourlyViews }}
+                                        {{ if mod $i 6 }}
+                                        <span>{{ $s.Hour }}</span>
+                                        {{ end }}
+                                        {{ end }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Downloads chart -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Downloads" }}</h3>
+                                <span class="ms-auto text-secondary">{{ .TotalDL24 }} {{ T .Language "total" }}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="stats-chart" id="downloads-chart">
+                                    <div class="stats-bars">
+                                        {{ range .HourlyDL }}
+                                        <div class="stats-bar-col" title="{{ .Hour }}: {{ .Count }} downloads">
+                                            <div class="stats-bar" data-count="{{ .Count }}"></div>
+                                        </div>
+                                        {{ end }}
+                                    </div>
+                                    <div class="stats-labels">
+                                        {{ range $i, $s := .HourlyDL }}
+                                        {{ if mod $i 6 }}
+                                        <span>{{ $s.Hour }}</span>
+                                        {{ end }}
+                                        {{ end }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -46,3 +105,100 @@
     </div>
     {{template "foot.html" .}}
 </div>
+<style>
+.stats-chart { width: 100%; position: relative; }
+.stats-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 120px;
+    padding-bottom: 4px;
+}
+.stats-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    cursor: pointer;
+}
+.stats-bar-col:hover .stats-bar {
+    opacity: 0.8;
+}
+.stats-bar {
+    width: 100%;
+    min-height: 2px;
+    background: var(--tblr-primary);
+    border-radius: 2px 2px 0 0;
+    transition: height 0.3s ease;
+}
+.stats-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 0.7rem;
+    color: var(--tblr-secondary);
+}
+.stats-tooltip {
+    position: absolute;
+    background: var(--tblr-bg-surface, #fff);
+    color: var(--tblr-body-color, #1e293b);
+    border: 1px solid var(--tblr-border-color, #e6e7e9);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 10;
+    transform: translateX(-50%);
+    display: none;
+}
+</style>
+<script>
+(function(){
+    document.querySelectorAll('.stats-chart').forEach(function(chart) {
+        var bars = chart.querySelectorAll('.stats-bar');
+        var cols = chart.querySelectorAll('.stats-bar-col');
+        var max = 0;
+        bars.forEach(function(b) {
+            var c = parseInt(b.getAttribute('data-count'), 10) || 0;
+            if (c > max) max = c;
+        });
+        bars.forEach(function(b) {
+            var c = parseInt(b.getAttribute('data-count'), 10) || 0;
+            var pct = max > 0 ? (c / max) * 100 : 0;
+            b.style.height = Math.max(pct, 2) + '%';
+        });
+
+        // Create a single tooltip element per chart
+        var tip = document.createElement('div');
+        tip.className = 'stats-tooltip';
+        chart.appendChild(tip);
+
+        cols.forEach(function(col) {
+            col.addEventListener('mouseenter', function() {
+                var t = col.getAttribute('title');
+                if (!t) return;
+                tip.textContent = t;
+                tip.style.display = 'block';
+                var chartRect = chart.getBoundingClientRect();
+                var colRect = col.getBoundingClientRect();
+                var left = (colRect.left + colRect.width / 2) - chartRect.left;
+                var bar = col.querySelector('.stats-bar');
+                var barH = bar ? bar.offsetHeight : 0;
+                var top = (colRect.top - chartRect.top) + (colRect.height - barH) - tip.offsetHeight - 6;
+                // Clamp horizontally within chart
+                var tipW = tip.offsetWidth;
+                if (left - tipW / 2 < 0) left = tipW / 2;
+                if (left + tipW / 2 > chartRect.width) left = chartRect.width - tipW / 2;
+                tip.style.left = left + 'px';
+                tip.style.top = Math.max(0, top) + 'px';
+            });
+            col.addEventListener('mouseleave', function() {
+                tip.style.display = 'none';
+            });
+        });
+    });
+})();
+</script>
