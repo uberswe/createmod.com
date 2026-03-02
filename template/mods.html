@@ -20,12 +20,19 @@
               <div class="card card-sm card-hover-lift">
                 <div class="card-body">
                   <div class="d-flex align-items-center justify-content-between">
-                    <h4 class="card-title mb-0 text-truncate">{{ .Name }}</h4>
-                    <span class="badge bg-blue-lt ms-2">{{ .Count }}</span>
+                    <div class="d-flex align-items-center min-width-0">
+                      {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" class="mod-card-icon me-2" loading="lazy">{{ end }}
+                      <h4 class="card-title mb-0 text-truncate">{{ .Name }}</h4>
+                    </div>
+                    <span class="badge bg-blue-lt ms-2 flex-shrink-0">{{ .Count }}</span>
                   </div>
+                  {{ if .Description }}
+                  <div class="text-muted small mt-1 text-truncate">{{ .Description }}</div>
+                  {{ else }}
                   <div class="text-muted small mt-1">
                     {{ if .IsVanilla }}{{ T $.Language "No mods required" }}{{ else }}{{ .Count }} {{ T $.Language "schematics" }}{{ end }}
                   </div>
+                  {{ end }}
                 </div>
               </div>
             </a>

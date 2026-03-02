@@ -2,8 +2,10 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/nbtparser"
+	"createmod/internal/store"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -118,16 +120,16 @@ type UploadPreviewData struct {
 	AdditionalFiles  []tempUploadFile // extra NBT files (variations/sets)
 }
 
-func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		d := UploadData{}
 		d.Populate(e)
 		d.UploadStep = 1
-		d.Title = "Upload A Schematic"
-		d.Description = "Upload a Create Mod schematic to share it with others."
+		d.Title = i18n.T(d.Language, "Upload A Schematic")
+		d.Description = i18n.T(d.Language, "page.upload.description")
 		d.Slug = "/upload"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		html, err := registry.LoadFiles(uploadTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -137,15 +139,15 @@ func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 }
 
 // UploadPendingHandler renders a simple moderation pending confirmation page.
-func UploadPendingHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UploadPendingHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		d := DefaultData{}
 		d.Populate(e)
-		d.Title = "Upload Pending Moderation"
-		d.Description = "Your schematic has been queued for moderation and will appear soon."
+		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
+		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -157,7 +159,7 @@ func UploadPendingHandler(app *pocketbase.PocketBase, registry *template.Registr
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Minimal implementation: validate the token exists (PB or in-memory) and redirect to the
 // moderation pending page. Future work will create the schematic record and move the file.
-func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -205,10 +207,10 @@ func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Regi
 
 		// HTMX-aware redirect to avoid partial update mismatch
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", "/upload/pending")
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/upload/pending"))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, "/upload/pending")
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/upload/pending"))
 	}
 }
 
@@ -259,7 +261,7 @@ func mapResultToMinecraftVersions(records []*core.Record) []models.MinecraftVers
 }
 
 // UploadPreviewHandler serves a minimal private preview page for a given token.
-func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		if token == "" {
@@ -280,7 +282,7 @@ func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registr
 		}
 		// Determine ownership
 		isOwner := false
-		if e.Auth != nil && entry.UploadedBy != "" && e.Auth.Id == entry.UploadedBy {
+		if isAuthenticated(e) && entry.UploadedBy != "" && authenticatedUserID(e) == entry.UploadedBy {
 			isOwner = true
 		}
 
@@ -293,10 +295,10 @@ func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registr
 		// Render template with review data
 		d := UploadPreviewData{}
 		d.Populate(e)
-		d.Title = "Schematic Review"
-		d.Description = "Review your uploaded schematic."
+		d.Title = i18n.T(d.Language, "Schematic Review")
+		d.Description = i18n.T(d.Language, "page.upload_review.description")
 		d.Slug = "/u/" + token
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.UploadStep = 2
 		d.Token = token
 		d.Filename = entry.Filename
@@ -323,7 +325,7 @@ func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registr
 }
 
 // UploadDownloadHandler serves the NBT file for a given token as a download.
-func UploadDownloadHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func UploadDownloadHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		if token == "" {
@@ -399,7 +401,7 @@ type uploadNBTResponse struct {
 
 // UploadNBTHandler validates an uploaded .nbt file, parses stats, and returns
 // a JSON response with token, dimensions, materials, and detected mods.
-func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		_ = e.Request.ParseMultipartForm(maxUploadSize + 1<<20) // slight overhead for multipart framing
 		// Attempt to read the file field (common names: "nbt" or "file").
@@ -476,8 +478,8 @@ func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 			if coll, err := app.FindCollectionByNameOrId("nbt_hashes"); err == nil && coll != nil {
 				rec := core.NewRecord(coll)
 				rec.Set("checksum", checksum)
-				if e.Auth != nil {
-					rec.Set("uploaded_by", e.Auth.Id)
+				if isAuthenticated(e) {
+					rec.Set("uploaded_by", authenticatedUserID(e))
 				}
 				_ = app.Save(rec)
 			}
@@ -537,7 +539,7 @@ func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 			DimZ:            dimZ,
 			Mods:            mods,
 			NBTData:         data,
-			UploadedBy:      func() string { if e.Auth != nil { return e.Auth.Id }; return "" }(),
+			UploadedBy:      authenticatedUserID(e),
 		}
 		entry := tempUploadStore.m[token]
 		tempUploadStore.Unlock()

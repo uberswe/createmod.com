@@ -3,8 +3,10 @@ package pages
 import (
 	"createmod/content"
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/news"
+	"createmod/internal/store"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -38,15 +40,15 @@ type NewsData struct {
 	TotalDL24    int
 }
 
-func NewsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func NewsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		d := NewsData{}
 		d.Populate(e)
-		d.Title = "News"
-		d.Description = "CreateMod.com news features the latest developments on the website."
+		d.Title = i18n.T(d.Language, "News")
+		d.Description = i18n.T(d.Language, "page.news.description")
 		d.Slug = "/news"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		// Load news from embedded markdown files
 		all, err := news.LoadAll(content.NewsFS, "news")

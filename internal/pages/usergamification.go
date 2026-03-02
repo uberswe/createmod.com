@@ -2,12 +2,13 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -46,28 +47,26 @@ type UserPointsData struct {
 	NextURL      string
 }
 
-func UserPointsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UserPointsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		// Require auth
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
+
+		userID := authenticatedUserID(e)
 
 		d := UserPointsData{}
 		d.Populate(e)
-		d.Title = "Points"
-		d.Description = "Your points and earning history."
+		d.Title = i18n.T(d.Language, "Points")
+		d.Description = i18n.T(d.Language, "page.usergamification.description")
 		d.Slug = "/settings/points"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		// Load user points
-		if urec, err := app.FindRecordById("_pb_users_auth_", e.Auth.Id); err == nil && urec != nil {
-			d.Points = urec.GetInt("points")
+		ctx := e.Request.Context()
+		if user, err := appStore.Users.GetUserByID(ctx, userID); err == nil && user != nil {
+			d.Points = user.Points
 		}
 
 		// How to earn table
@@ -86,10 +85,10 @@ func UserPointsHandler(app *pocketbase.PocketBase, registry *template.Registry, 
 			}
 		}
 
-		// Query point_log for this user
 		offset := (d.Page - 1) * d.PageSize
-		allRecs, _ := app.FindRecordsByFilter("point_log", "user = {:u}", "-earned_at", -1, 0, dbx.Params{"u": e.Auth.Id})
-		totalCount := len(allRecs)
+
+		allEntries, _ := appStore.Achievements.GetPointLog(ctx, userID)
+		totalCount := len(allEntries)
 
 		d.TotalPages = (totalCount + d.PageSize - 1) / d.PageSize
 		if d.TotalPages < 1 {
@@ -99,19 +98,24 @@ func UserPointsHandler(app *pocketbase.PocketBase, registry *template.Registry, 
 			d.Page = d.TotalPages
 		}
 
-		// Get the page slice
-		recs, _ := app.FindRecordsByFilter("point_log", "user = {:u}", "-earned_at", d.PageSize, offset, dbx.Params{"u": e.Auth.Id})
-
-		entries := make([]PointLogEntry, 0, len(recs))
-		for _, r := range recs {
-			entries = append(entries, PointLogEntry{
-				Points:      r.GetInt("points"),
-				Reason:      r.GetString("reason"),
-				Description: r.GetString("description"),
-				EarnedAt:    r.GetDateTime("earned_at").Time(),
-			})
+		// Slice to page
+		end := offset + d.PageSize
+		if end > totalCount {
+			end = totalCount
 		}
-		d.PointLog = entries
+		if offset < totalCount {
+			pageEntries := allEntries[offset:end]
+			entries := make([]PointLogEntry, 0, len(pageEntries))
+			for _, pe := range pageEntries {
+				entries = append(entries, PointLogEntry{
+					Points:      pe.Points,
+					Reason:      pe.Reason,
+					Description: pe.Description,
+					EarnedAt:    pe.EarnedAt,
+				})
+			}
+			d.PointLog = entries
+		}
 
 		d.HasPrev = d.Page > 1
 		d.HasNext = d.Page < d.TotalPages

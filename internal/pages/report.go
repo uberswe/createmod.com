@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/store"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -12,7 +13,7 @@ import (
 )
 
 // ReportSubmitHandler handles POST /reports to create a simple report record in PB.
-func ReportSubmitHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func ReportSubmitHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -31,18 +32,16 @@ func ReportSubmitHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) 
 			return e.String(http.StatusBadRequest, "missing required fields")
 		}
 
-		coll, err := app.FindCollectionByNameOrId("reports")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "reports collection not available")
+		reporterID := authenticatedUserID(e)
+
+		ctx := e.Request.Context()
+		r := &store.Report{
+			TargetType: targetType,
+			TargetID:   targetID,
+			Reason:     reason,
+			Reporter:   reporterID,
 		}
-		rec := core.NewRecord(coll)
-		rec.Set("target_type", targetType)
-		rec.Set("target_id", targetID)
-		rec.Set("reason", reason)
-		if e.Auth != nil {
-			rec.Set("reporter", e.Auth.Id)
-		}
-		if err := app.Save(rec); err != nil {
+		if err := appStore.Reports.Create(ctx, r); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save report")
 		}
 
@@ -56,8 +55,8 @@ func ReportSubmitHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) 
 			to := []mail.Address{{Address: super}}
 			subject := fmt.Sprintf("New Report: %s %s", targetType, targetID)
 			body := fmt.Sprintf("<p>Target: %s (%s)</p><p>Reason: %s</p>", targetID, targetType, reason)
-			if e.Auth != nil {
-				body += fmt.Sprintf("<p>Reporter: %s</p>", e.Auth.Id)
+			if reporterID != "" {
+				body += fmt.Sprintf("<p>Reporter: %s</p>", reporterID)
 			}
 			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
 			if err := app.NewMailClient().Send(msg); err != nil {
@@ -67,9 +66,9 @@ func ReportSubmitHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) 
 
 		// HTMX-aware redirect
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", returnTo)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, returnTo)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo))
 	}
 }

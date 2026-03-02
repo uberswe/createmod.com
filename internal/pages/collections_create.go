@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"encoding/base64"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -27,14 +29,14 @@ type CollectionsNewData struct {
 }
 
 // CollectionsNewHandler renders the new collection form.
-func CollectionsNewHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func CollectionsNewHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		d := CollectionsNewData{}
 		d.Populate(e)
-		d.Title = "Create collection"
-		d.Description = "Create a new collection of schematics"
+		d.Title = i18n.T(d.Language, "Create collection")
+		d.Description = i18n.T(d.Language, "Create a new collection of schematics")
 		d.Slug = "/collections/new"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		html, err := registry.LoadFiles(collectionsNewTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -44,18 +46,13 @@ func CollectionsNewHandler(app *pocketbase.PocketBase, registry *pbtempl.Registr
 }
 
 // CollectionsCreateHandler handles POST /collections to create a collection record in PB.
-func CollectionsCreateHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func CollectionsCreateHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
-		if e.Auth == nil {
-			// Require login to create a collection
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		// accept up to 4MB multipart form (banner is limited to 2MB below)
 		_ = e.Request.ParseMultipartForm(4 << 20)
@@ -124,15 +121,15 @@ func CollectionsCreateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			rec.Set("banner_url", dataURL)
 		}
 
-		rec.Set("author", e.Auth.Id)
+		rec.Set("author", authenticatedUserID(e))
 		if err := app.Save(rec); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
 		// After create, go back to listing (detail page may not exist yet)
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", "/collections")
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/collections"))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, "/collections")
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/collections"))
 	}
 }

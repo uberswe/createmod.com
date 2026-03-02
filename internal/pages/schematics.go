@@ -2,7 +2,9 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -30,7 +32,7 @@ type SchematicsData struct {
 	NextURL    string
 }
 
-func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		// Pagination params
 		page := 1
@@ -79,9 +81,9 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		}
 
 		d.Populate(e)
-		d.Title = "Create Mod Schematics"
-		d.Categories = allCategories(app, cacheService)
-		d.Description = "Find the latest Create Mod schematics listed here."
+		d.Title = i18n.T(d.Language, "page.schematics.title")
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Description = i18n.T(d.Language, "page.schematics.description")
 		d.Slug = "/schematics"
 		if len(d.Schematics) > 0 {
 			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)

@@ -17,67 +17,67 @@
             </div>
         </div>
         {{ end }}
-        <a href="/" class="sidebar-item" title="Home">
+        <a href="{{ LangURL .Language "/" }}" class="sidebar-item" title="Home">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
             <span class="sidebar-label">{{ T .Language "Home" }}</span>
         </a>
-        <a href="/search" class="sidebar-item" title="{{ T .Language "Search" }}">
+        <a href="{{ LangURL .Language "/search" }}" class="sidebar-item" title="{{ T .Language "Search" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
             <span class="sidebar-label">{{ T .Language "Search" }}</span>
         </a>
-        <a href="/upload" class="sidebar-item" title="{{ T .Language "Upload" }}">
+        <a href="{{ LangURL .Language "/upload" }}" class="sidebar-item" title="{{ T .Language "Upload" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11l3 3l8 -8" /><path d="M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9" /></svg>
             <span class="sidebar-label">{{ T .Language "Upload" }}</span>
         </a>
-        <a href="/rules" class="sidebar-item" title="{{ T .Language "Rules" }}">
+        <a href="{{ LangURL .Language "/rules" }}" class="sidebar-item" title="{{ T .Language "Rules" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 3l4 4l-14 14l-4 -4z" /><path d="M16 7l-1.5 -1.5" /><path d="M13 10l-1.5 -1.5" /><path d="M10 13l-1.5 -1.5" /><path d="M7 16l-1.5 -1.5" /></svg>
             <span class="sidebar-label">{{ T .Language "Rules" }}</span>
         </a>
-        <a href="/news" class="sidebar-item" title="{{ T .Language "News" }}">
+        <a href="{{ LangURL .Language "/news" }}" class="sidebar-item" title="{{ T .Language "News" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M16 6h3a1 1 0 0 1 1 1v11a2 2 0 0 1 -4 0v-13a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1v12a3 3 0 0 0 3 3h11" /><path d="M8 8l4 0" /><path d="M8 12l4 0" /><path d="M8 16l4 0" /></svg>
             <span class="sidebar-label">{{ T .Language "News" }}</span>
         </a>
-        <a href="/guides" class="sidebar-item" title="{{ T .Language "Guides" }}">
+        <a href="{{ LangURL .Language "/guides" }}" class="sidebar-item" title="{{ T .Language "Guides" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 4a2 2 0 0 0 -2 2v12a2 2 0 0 1 2 -2h12"/><path d="M16 4a2 2 0 0 1 2 2v12"/><path d="M8 6h10"/></svg>
             <span class="sidebar-label">{{ T .Language "Guides" }}</span>
         </a>
-        <a href="/videos" class="sidebar-item" title="{{ T .Language "Videos" }}">
+        <a href="{{ LangURL .Language "/videos" }}" class="sidebar-item" title="{{ T .Language "Videos" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z" /></svg>
             <span class="sidebar-label">{{ T .Language "Videos" }}</span>
         </a>
-        <a href="/collections" class="sidebar-item" title="{{ T .Language "Collections" }}">
+        <a href="{{ LangURL .Language "/collections" }}" class="sidebar-item" title="{{ T .Language "Collections" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 19h14a2 2 0 0 0 2 -2v-7a2 2 0 0 0 -2 -2h-7l-2 -2h-5a2 2 0 0 0 -2 2v11a2 2 0 0 0 2 2" /></svg>
             <span class="sidebar-label">{{ T .Language "Collections" }}</span>
         </a>
-        <a href="/mods" class="sidebar-item" title="{{ T .Language "Mods" }}">
+        <a href="{{ LangURL .Language "/mods" }}" class="sidebar-item" title="{{ T .Language "Mods" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h3a1 1 0 0 0 1 -1v-1a2 2 0 0 1 4 0v1a1 1 0 0 0 1 1h3a1 1 0 0 1 1 1v3a1 1 0 0 0 1 1h1a2 2 0 0 1 0 4h-1a1 1 0 0 0 -1 1v3a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-1a2 2 0 0 0 -4 0v1a1 1 0 0 1 -1 1h-3a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h1a2 2 0 0 0 0 -4h-1a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1" /></svg>
             <span class="sidebar-label">{{ T .Language "Mods" }}</span>
         </a>
-        <a href="/explore" class="sidebar-item" title="{{ T .Language "Explore" }}">
+        <a href="{{ LangURL .Language "/explore" }}" class="sidebar-item" title="{{ T .Language "Explore" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 3m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 7.26a2.005 2.005 0 0 0 -1.012 1.737v10c0 1.1 .9 2 2 2h10c.75 0 1.158 -.385 1.5 -1" /><path d="M17 7h.01" /><path d="M7 13l3.644 -3.644a1.21 1.21 0 0 1 1.712 0l3.644 3.644" /><path d="M15 12l1.644 -1.644a1.21 1.21 0 0 1 1.712 0l2.644 2.644" /></svg>
             <span class="sidebar-label">{{ T .Language "Explore" }}</span>
         </a>
-        <a href="/contact" class="sidebar-item" title="{{ T .Language "Contact" }}">
+        <a href="{{ LangURL .Language "/contact" }}" class="sidebar-item" title="{{ T .Language "Contact" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z" /><path d="M3 7l9 6l9 -6" /></svg>
             <span class="sidebar-label">{{ T .Language "Contact" }}</span>
         </a>
     </nav>
     <div class="sidebar-bottom">
         {{ if eq .IsAuthenticated false }}
-        <a href="/login" class="sidebar-item" title="{{ T .Language "Login" }}">
+        <a href="{{ LangURL .Language "/login" }}" class="sidebar-item" title="{{ T .Language "Login" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M21 12h-13l3 -3" /><path d="M11 15l-3 -3" /></svg>
             <span class="sidebar-label">{{ T .Language "Login" }}</span>
         </a>
         {{ else }}
-        <a href="/profile" class="sidebar-item" title="{{ T .Language "Profile" }}">
+        <a href="{{ LangURL .Language "/profile" }}" class="sidebar-item" title="{{ T .Language "Profile" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg>
             <span class="sidebar-label">{{ T .Language "Profile" }}</span>
         </a>
-        <a href="/settings" class="sidebar-item" title="{{ T .Language "Settings" }}">
+        <a href="{{ LangURL .Language "/settings" }}" class="sidebar-item" title="{{ T .Language "Settings" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>
             <span class="sidebar-label">{{ T .Language "Settings" }}</span>
         </a>
-        <a href="/logout" class="sidebar-item" title="{{ T .Language "Logout" }}">
+        <a href="{{ LangURL .Language "/logout" }}" class="sidebar-item" title="{{ T .Language "Logout" }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M21 12h-13l3 -3" /><path d="M11 15l-3 -3" /></svg>
             <span class="sidebar-label">{{ T .Language "Logout" }}</span>
         </a>

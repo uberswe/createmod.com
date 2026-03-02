@@ -1,28 +1,33 @@
 package server
 
 import (
+	"context"
 	"bufio"
 	"bytes"
 	"createmod/internal/aidescription"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
+	"createmod/internal/jobs"
 	"createmod/internal/moderation"
+	"createmod/internal/modmeta"
 	"createmod/internal/nbtparser"
 	"createmod/internal/pages"
 	"createmod/internal/pointlog"
-	"createmod/internal/router"
+	irouter "createmod/internal/router"
 	"createmod/internal/search"
+	"createmod/internal/session"
 	"createmod/internal/sitemap"
+	"createmod/internal/store"
 	"createmod/internal/translation"
 	_ "createmod/migrations"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"github.com/apokalyptik/phpass"
 	"github.com/drexedam/gravatar"
 	"github.com/gosimple/slug"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -44,16 +49,28 @@ import (
 )
 
 type Config struct {
-	AutoMigrate       bool
-	CreateAdmin       bool
-	DiscordWebhookUrl string
-	OpenAIApiKey      string
-	Dev               bool
+	AutoMigrate         bool
+	CreateAdmin         bool
+	DiscordWebhookUrl   string
+	OpenAIApiKey        string
+	CurseForgeApiKey    string
+	Dev                 bool
+	DatabaseURL         string
+	Store               *store.Store
+	Pool                *pgxpool.Pool
+	DiscordClientID     string
+	DiscordClientSecret string
+	GithubClientID      string
+	GithubClientSecret  string
+	BaseURL             string
 }
 
 type Server struct {
 	conf                 Config
 	app                  *pocketbase.PocketBase
+	store                *store.Store
+	pool                 *pgxpool.Pool
+	sessionStore         *session.Store
 	searchService        *search.Service
 	sitemapService       *sitemap.Service
 	cacheService         *cache.Service
@@ -62,6 +79,10 @@ type Server struct {
 	aiDescriptionService *aidescription.Service
 	translationService   *translation.Service
 	pointLogService      *pointlog.Service
+	modMetaService       *modmeta.Service
+	jobWorker            *jobs.Worker
+	discordOAuth         *auth.OAuthProvider
+	githubOAuth          *auth.OAuthProvider
 }
 
 // pendingOriginals temporarily stores original (pre-translation) text between the
@@ -120,9 +141,12 @@ func New(conf Config) *Server {
 	moderationService := moderation.NewService(conf.OpenAIApiKey, app.Logger())
 	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, app.Logger())
 	translationService := translation.New(conf.OpenAIApiKey, app.Logger())
-	return &Server{
+
+	srv := &Server{
 		conf:                 conf,
 		app:                  app,
+		store:                conf.Store,
+		pool:                 conf.Pool,
 		sitemapService:       sitemapService,
 		cacheService:         cache.New(),
 		discordService:       discordService,
@@ -130,7 +154,27 @@ func New(conf Config) *Server {
 		aiDescriptionService: aiDescriptionService,
 		translationService:   translationService,
 		pointLogService:      pointlog.New(),
+		modMetaService:       modmeta.New(conf.CurseForgeApiKey),
 	}
+
+	srv.sessionStore = session.NewStore(conf.Pool)
+	pages.SetPasswordResetPool(conf.Pool)
+
+	// Build OAuth providers if credentials are configured
+	if conf.DiscordClientID != "" && conf.DiscordClientSecret != "" {
+		srv.discordOAuth = auth.NewDiscordProvider(
+			conf.DiscordClientID, conf.DiscordClientSecret,
+			conf.BaseURL+"/auth/discord/callback",
+		)
+	}
+	if conf.GithubClientID != "" && conf.GithubClientSecret != "" {
+		srv.githubOAuth = auth.NewGitHubProvider(
+			conf.GithubClientID, conf.GithubClientSecret,
+			conf.BaseURL+"/auth/github/callback",
+		)
+	}
+
+	return srv
 }
 
 func (s *Server) Start() {
@@ -176,35 +220,39 @@ func (s *Server) Start() {
 		}()
 
 		// Warm page caches so the first visitor never waits
-		pages.WarmIndexCache(s.app, s.cacheService)
+		pages.WarmIndexCache(s.app, s.cacheService, s.store)
 		pages.WarmVideosCache(s.app, s.cacheService)
 
 		// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
 		go pages.RepairSchematics(s.app)
 
-		// Background ticker: recompute trending scores and refresh index cache every 10 minutes
-		go func() {
-			ticker := time.NewTicker(10 * time.Minute)
-			defer ticker.Stop()
-			for range ticker.C {
-				s.app.Logger().Debug("Background: refreshing trending scores and index cache")
-				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
-					s.searchService.SetTrendingScores(scores)
-				}
-				pages.WarmIndexCache(s.app, s.cacheService)
-				pages.WarmVideosCache(s.app, s.cacheService)
+		// Start River job worker for periodic background jobs.
+		jobCtx := context.Background()
+		w, err := jobs.New(jobCtx, jobs.Config{
+			Pool: s.pool,
+			Deps: jobs.Deps{
+				App:          s.app,
+				Store:        s.store,
+				Search:       s.searchService,
+				Cache:        s.cacheService,
+				Sitemap:      s.sitemapService,
+				AIDesc:       s.aiDescriptionService,
+				Translation:  s.translationService,
+				PointLog:     s.pointLogService,
+				ModMeta:      s.modMetaService,
+				SessionStore: s.sessionStore,
+			},
+		})
+		if err != nil {
+			s.app.Logger().Error("failed to create River job worker", "error", err)
+		} else {
+			if err := w.Start(jobCtx); err != nil {
+				s.app.Logger().Error("failed to start River job worker", "error", err)
+			} else {
+				s.jobWorker = w
+				s.app.Logger().Info("River job worker started")
 			}
-		}()
-
-		// Start the AI description service scheduler (polls every 30 minutes)
-		if s.conf.OpenAIApiKey != "" {
-			s.aiDescriptionService.StartScheduler(s.app)
-			// Start the translation scheduler (polls every 30 minutes for missing translations)
-			s.translationService.StartScheduler(s.app)
 		}
-
-		// Start the point log scheduler (backfills point_log entries from achievements)
-		s.pointLogService.StartScheduler(s.app)
 
 		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
 			if !validNBT(e) {
@@ -275,42 +323,31 @@ func (s *Server) Start() {
 				// Count author's schematics (not deleted)
 				if recs, err := e.App.FindRecordsByFilter("schematics", "deleted = '' && author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
 					if len(recs) == 1 { // this is the first one
-						if achColl, err := e.App.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
-							// ensure achievement exists
-							achID := ""
-							if a, _ := e.App.FindRecordsByFilter(achColl.Id, "key = {:k}", "-created", 1, 0, dbx.Params{"k": "first_upload"}); len(a) > 0 {
-								achID = a[0].Id
-							} else {
-								rec := core.NewRecord(achColl)
-								rec.Set("key", "first_upload")
-								rec.Set("title", "First Upload")
-								rec.Set("description", "Uploaded your first schematic")
-								rec.Set("icon", "badge")
-								if err := e.App.Save(rec); err == nil {
-									achID = rec.Id
+						ctx := context.Background()
+						if ach, err := s.store.Achievements.GetByKey(ctx, "first_upload"); err == nil && ach != nil {
+							has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
+							if !has {
+								_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
+								if u, err := s.store.Users.GetUserByID(ctx, authorID); err == nil {
+									_ = s.store.Users.UpdateUserPoints(ctx, authorID, u.Points+50)
 								}
-							}
-							if achID != "" {
-								if uaColl, err := e.App.FindCollectionByNameOrId("user_achievements"); err == nil && uaColl != nil {
-									if ua, _ := e.App.FindRecordsByFilter(uaColl.Id, "user = {:u} && achievement = {:a}", "-created", 1, 0, dbx.Params{"u": authorID, "a": achID}); len(ua) == 0 {
-										rec := core.NewRecord(uaColl)
-										rec.Set("user", authorID)
-										rec.Set("achievement", achID)
-										_ = e.App.Save(rec)
-										// award points for first upload bonus
-										if u, err := e.App.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
-											u.Set("points", u.GetInt("points")+30)
-											_ = e.App.Save(u)
-										}
-										pointlog.CreateLogEntry(e.App, authorID, 30, "first_upload_bonus", "First upload bonus")
-									}
+								_ = s.store.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
+									UserID:      authorID,
+									Points:      50,
+									Reason:      "first_upload",
+									Description: "Uploaded your first schematic",
+									EarnedAt:    time.Now(),
+								})
+								if u, err := s.store.Users.GetUserByID(ctx, authorID); err == nil {
+									_ = s.store.Users.UpdateUserPoints(ctx, authorID, u.Points+30)
 								}
-								// award points for first upload
-								if u, err := e.App.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
-									u.Set("points", u.GetInt("points")+50)
-									_ = e.App.Save(u)
-								}
-								pointlog.CreateLogEntry(e.App, authorID, 50, "first_upload", "Uploaded your first schematic")
+								_ = s.store.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
+									UserID:      authorID,
+									Points:      30,
+									Reason:      "first_upload_bonus",
+									Description: "First upload bonus",
+									EarnedAt:    time.Now(),
+								})
 							}
 						}
 					}
@@ -368,75 +405,25 @@ func (s *Server) Start() {
 				}
 				data, _ := json.Marshal(snapshot)
 
-				// Determine next version number
-				verNum := 1
-				verRecs, _ := e.App.FindRecordsByFilter("schematic_versions", "schematic = {:id}", "-version", 1, 0, dbx.Params{"id": e.Record.Id})
-				if len(verRecs) > 0 {
-					verNum = verRecs[0].GetInt("version") + 1
+				// Compute diff note
+				changed := computeSchematicDiff(prevRec, e.Record)
+				note := ""
+				if len(changed) > 0 {
+					note = "Fields changed: " + strings.Join(changed, ", ")
 				}
 
-				if coll, err := e.App.FindCollectionByNameOrId("schematic_versions"); err == nil {
-					// Compute a minimal diff-based note between prevRec (before update) and e.Record (after update)
-					changed := make([]string, 0, 8)
-					cmpStr := func(a, b string, name string) {
-						if a != b {
-							changed = append(changed, name)
-						}
-					}
-					cmpBool := func(a, b bool, name string) {
-						if a != b {
-							changed = append(changed, name)
-						}
-					}
-					eqSlice := func(a, b []string) bool {
-						if len(a) != len(b) {
-							return false
-						}
-						m := make(map[string]int, len(a))
-						for _, v := range a {
-							m[v]++
-						}
-						for _, v := range b {
-							if m[v] == 0 {
-								return false
-							}
-							m[v]--
-						}
-						return true
-					}
-					if !eqSlice(prevRec.GetStringSlice("gallery"), e.Record.GetStringSlice("gallery")) {
-						changed = append(changed, "gallery")
-					}
-					if !eqSlice(prevRec.GetStringSlice("categories"), e.Record.GetStringSlice("categories")) {
-						changed = append(changed, "categories")
-					}
-					if !eqSlice(prevRec.GetStringSlice("tags"), e.Record.GetStringSlice("tags")) {
-						changed = append(changed, "tags")
-					}
-					cmpStr(prevRec.GetString("title"), e.Record.GetString("title"), "title")
-					cmpStr(prevRec.GetString("content"), e.Record.GetString("content"), "content")
-					cmpStr(prevRec.GetString("excerpt"), e.Record.GetString("excerpt"), "excerpt")
-					cmpStr(prevRec.GetString("featured_image"), e.Record.GetString("featured_image"), "featured_image")
-					cmpStr(prevRec.GetString("video"), e.Record.GetString("video"), "video")
-					cmpBool(prevRec.GetBool("has_dependencies"), e.Record.GetBool("has_dependencies"), "has_dependencies")
-					cmpStr(prevRec.GetString("dependencies"), e.Record.GetString("dependencies"), "dependencies")
-					cmpStr(prevRec.GetString("createmod_version"), e.Record.GetString("createmod_version"), "createmod_version")
-					cmpStr(prevRec.GetString("minecraft_version"), e.Record.GetString("minecraft_version"), "minecraft_version")
-					cmpBool(prevRec.GetBool("paid"), e.Record.GetBool("paid"), "paid")
-					cmpStr(prevRec.GetString("external_url"), e.Record.GetString("external_url"), "external_url")
-					cmpStr(prevRec.GetString("schematic_file"), e.Record.GetString("schematic_file"), "schematic_file")
-					note := ""
-					if len(changed) > 0 {
-						note = "Fields changed: " + strings.Join(changed, ", ")
-					}
-					rec := core.NewRecord(coll)
-					rec.Set("schematic", e.Record.Id)
-					rec.Set("version", verNum)
-					rec.Set("note", note)
-					rec.Set("snapshot", string(data))
-					if err := e.App.Save(rec); err != nil {
-						e.App.Logger().Warn("failed to save schematic version", "error", err)
-					}
+				ctx := context.Background()
+				verNum := 1
+				if latest, err := s.store.Versions.GetLatestVersion(ctx, e.Record.Id); err == nil {
+					verNum = latest + 1
+				}
+				if err := s.store.Versions.Create(ctx, &store.SchematicVersion{
+					SchematicID: e.Record.Id,
+					Version:     verNum,
+					Snapshot:    string(data),
+					Note:        note,
+				}); err != nil {
+					e.App.Logger().Warn("failed to save schematic version", "error", err)
 				}
 			}
 
@@ -506,36 +493,21 @@ func (s *Server) Start() {
 			// count approved comments by this user (up to 2 to check if first)
 			if recs, err := e.App.FindRecordsByFilter("comments", "author = {:a} && approved = 1", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
 				if len(recs) == 1 {
-					// ensure the achievement exists
-					achID := ""
-					if achColl, err := e.App.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
-						if a, _ := e.App.FindRecordsByFilter(achColl.Id, "key = {:k}", "-created", 1, 0, dbx.Params{"k": "first_comment"}); len(a) > 0 {
-							achID = a[0].Id
-						} else {
-							rec := core.NewRecord(achColl)
-							rec.Set("key", "first_comment")
-							rec.Set("title", "First Comment")
-							rec.Set("description", "Posted your first comment")
-							rec.Set("icon", "message")
-							if err := e.App.Save(rec); err == nil {
-								achID = rec.Id
+					ctx := context.Background()
+					if ach, err := s.store.Achievements.GetByKey(ctx, "first_comment"); err == nil && ach != nil {
+						has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
+						if !has {
+							_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
+							if u, err := s.store.Users.GetUserByID(ctx, authorID); err == nil {
+								_ = s.store.Users.UpdateUserPoints(ctx, authorID, u.Points+10)
 							}
-						}
-						if achID != "" {
-							if uaColl, err := e.App.FindCollectionByNameOrId("user_achievements"); err == nil && uaColl != nil {
-								if ua, _ := e.App.FindRecordsByFilter(uaColl.Id, "user = {:u} && achievement = {:a}", "-created", 1, 0, dbx.Params{"u": authorID, "a": achID}); len(ua) == 0 {
-									rec := core.NewRecord(uaColl)
-									rec.Set("user", authorID)
-									rec.Set("achievement", achID)
-									_ = e.App.Save(rec)
-									// award points for first comment
-									if u, err := e.App.FindRecordById("_pb_users_auth_", authorID); err == nil && u != nil {
-										u.Set("points", u.GetInt("points")+10)
-										_ = e.App.Save(u)
-									}
-									pointlog.CreateLogEntry(e.App, authorID, 10, "first_comment", "Posted your first comment")
-								}
-							}
+							_ = s.store.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
+								UserID:      authorID,
+								Points:      10,
+								Reason:      "first_comment",
+								Description: "Posted your first comment",
+								EarnedAt:    time.Now(),
+							})
 						}
 					}
 				}
@@ -556,29 +528,11 @@ func (s *Server) Start() {
 			// count guides by this user to check if first
 			if recs, err := e.App.FindRecordsByFilter("guides", "author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
 				if len(recs) == 1 {
-					achID := ""
-					if achColl, err := e.App.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
-						if a, _ := e.App.FindRecordsByFilter(achColl.Id, "key = {:k}", "-created", 1, 0, dbx.Params{"k": "first_guide"}); len(a) > 0 {
-							achID = a[0].Id
-						} else {
-							rec := core.NewRecord(achColl)
-							rec.Set("key", "first_guide")
-							rec.Set("title", "First Guide")
-							rec.Set("description", "Published your first guide")
-							rec.Set("icon", "book")
-							if err := e.App.Save(rec); err == nil {
-								achID = rec.Id
-							}
-						}
-						if achID != "" {
-							if uaColl, err := e.App.FindCollectionByNameOrId("user_achievements"); err == nil && uaColl != nil {
-								if ua, _ := e.App.FindRecordsByFilter(uaColl.Id, "user = {:u} && achievement = {:a}", "-created", 1, 0, dbx.Params{"u": authorID, "a": achID}); len(ua) == 0 {
-									rec := core.NewRecord(uaColl)
-									rec.Set("user", authorID)
-									rec.Set("achievement", achID)
-									_ = e.App.Save(rec)
-								}
-							}
+					ctx := context.Background()
+					if ach, err := s.store.Achievements.GetByKey(ctx, "first_guide"); err == nil && ach != nil {
+						has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
+						if !has {
+							_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
 						}
 					}
 				}
@@ -599,29 +553,11 @@ func (s *Server) Start() {
 			// count collections by this user to check if first
 			if recs, err := e.App.FindRecordsByFilter("collections", "author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
 				if len(recs) == 1 {
-					achID := ""
-					if achColl, err := e.App.FindCollectionByNameOrId("achievements"); err == nil && achColl != nil {
-						if a, _ := e.App.FindRecordsByFilter(achColl.Id, "key = {:k}", "-created", 1, 0, dbx.Params{"k": "first_collection"}); len(a) > 0 {
-							achID = a[0].Id
-						} else {
-							rec := core.NewRecord(achColl)
-							rec.Set("key", "first_collection")
-							rec.Set("title", "First Collection")
-							rec.Set("description", "Created your first collection")
-							rec.Set("icon", "collection")
-							if err := e.App.Save(rec); err == nil {
-								achID = rec.Id
-							}
-						}
-						if achID != "" {
-							if uaColl, err := e.App.FindCollectionByNameOrId("user_achievements"); err == nil && uaColl != nil {
-								if ua, _ := e.App.FindRecordsByFilter(uaColl.Id, "user = {:u} && achievement = {:a}", "-created", 1, 0, dbx.Params{"u": authorID, "a": achID}); len(ua) == 0 {
-									rec := core.NewRecord(uaColl)
-									rec.Set("user", authorID)
-									rec.Set("achievement", achID)
-									_ = e.App.Save(rec)
-								}
-							}
+					ctx := context.Background()
+					if ach, err := s.store.Achievements.GetByKey(ctx, "first_collection"); err == nil && ach != nil {
+						has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
+						if !has {
+							_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
 						}
 					}
 				}
@@ -919,47 +855,26 @@ func (s *Server) Start() {
 			return s.app.NewMailClient().Send(message)
 		})
 
-		s.app.OnRecordAuthRequest().BindFunc(func(e *core.RecordAuthRequestEvent) error {
-			// prevent deleted users from logging in
-			if !e.Record.GetDateTime("deleted").IsZero() {
-				return fmt.Errorf("deleted user can not login")
-			}
-			// COOKIES
-			e.SetCookie(&http.Cookie{
-				Name:     auth.CookieName,
-				Value:    e.Token,
-				Expires:  time.Now().Add(time.Second * time.Duration(e.Record.Collection().AuthToken.Duration)),
-				Path:     "/",
-				HttpOnly: true,
-				Secure:   !s.conf.Dev,
-				SameSite: http.SameSiteLaxMode,
-			})
-			// END COOKIES
-			return e.Next()
-		})
-
-		// PASSWORD BACKWARDS COMPATIBILITY
-		s.app.OnRecordAuthWithPasswordRequest("users").BindFunc(func(e *core.RecordAuthWithPasswordRequestEvent) error {
-			s.app.Logger().Debug("OnRecordAuthWithPasswordRequest", "record", e.Record)
-			if e.Record != nil && e.Record.GetString("old_password") != "" {
-				p := phpass.New(nil)
-				if p.Check([]byte(e.Password), []byte(e.Record.GetString("old_password"))) {
-					e.Record.SetPassword(e.Password)
-					e.Record.Set("old_password", "")
-				}
-			}
-			return e.Next()
-		})
-		// END PASSWORD BACKWARDS COMPATIBILITY
-
 		// ROUTES
 
-		router.Register(s.app, e.Router, s.searchService, s.cacheService, s.discordService, s.moderationService, s.translationService)
+		irouter.Register(s.app, e.Router, s.searchService, s.cacheService, s.discordService, s.moderationService, s.translationService, s.modMetaService, s.store, s.sessionStore, s.discordOAuth, s.githubOAuth)
 
 		// END ROUTES
 
 		log.Println("CreateMod.com Running!")
-		return e.Next()
+
+		// Call e.Next() first so PocketBase's internal handler builds the mux
+		// and assigns e.Server.Handler. Only then can we wrap it.
+		if err := e.Next(); err != nil {
+			return err
+		}
+
+		// Wrap the HTTP handler with the language prefix stripper.
+		// This runs at the transport level, BEFORE http.ServeMux route
+		// matching, so /de/schematics is seen as /schematics by the router.
+		e.Server.Handler = irouter.LangPrefixHandler(e.Server.Handler)
+
+		return nil
 	})
 
 	log.Println("Initializing...")
@@ -1222,6 +1137,60 @@ func uniqueSlug(app *pocketbase.PocketBase, s string) string {
 		return uniqueSlug(app, fmt.Sprintf("%s%s", s, randSeq(4)))
 	}
 	return s
+}
+
+// computeSchematicDiff computes a list of field names that changed between
+// prevRec (before update) and newRec (after update) for a schematic record.
+func computeSchematicDiff(prevRec, newRec *core.Record) []string {
+	changed := make([]string, 0, 8)
+	cmpStr := func(a, b string, name string) {
+		if a != b {
+			changed = append(changed, name)
+		}
+	}
+	cmpBool := func(a, b bool, name string) {
+		if a != b {
+			changed = append(changed, name)
+		}
+	}
+	eqSlice := func(a, b []string) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		m := make(map[string]int, len(a))
+		for _, v := range a {
+			m[v]++
+		}
+		for _, v := range b {
+			if m[v] == 0 {
+				return false
+			}
+			m[v]--
+		}
+		return true
+	}
+	if !eqSlice(prevRec.GetStringSlice("gallery"), newRec.GetStringSlice("gallery")) {
+		changed = append(changed, "gallery")
+	}
+	if !eqSlice(prevRec.GetStringSlice("categories"), newRec.GetStringSlice("categories")) {
+		changed = append(changed, "categories")
+	}
+	if !eqSlice(prevRec.GetStringSlice("tags"), newRec.GetStringSlice("tags")) {
+		changed = append(changed, "tags")
+	}
+	cmpStr(prevRec.GetString("title"), newRec.GetString("title"), "title")
+	cmpStr(prevRec.GetString("content"), newRec.GetString("content"), "content")
+	cmpStr(prevRec.GetString("excerpt"), newRec.GetString("excerpt"), "excerpt")
+	cmpStr(prevRec.GetString("featured_image"), newRec.GetString("featured_image"), "featured_image")
+	cmpStr(prevRec.GetString("video"), newRec.GetString("video"), "video")
+	cmpBool(prevRec.GetBool("has_dependencies"), newRec.GetBool("has_dependencies"), "has_dependencies")
+	cmpStr(prevRec.GetString("dependencies"), newRec.GetString("dependencies"), "dependencies")
+	cmpStr(prevRec.GetString("createmod_version"), newRec.GetString("createmod_version"), "createmod_version")
+	cmpStr(prevRec.GetString("minecraft_version"), newRec.GetString("minecraft_version"), "minecraft_version")
+	cmpBool(prevRec.GetBool("paid"), newRec.GetBool("paid"), "paid")
+	cmpStr(prevRec.GetString("external_url"), newRec.GetString("external_url"), "external_url")
+	cmpStr(prevRec.GetString("schematic_file"), newRec.GetString("schematic_file"), "schematic_file")
+	return changed
 }
 
 func anyLetter(r rune) bool {

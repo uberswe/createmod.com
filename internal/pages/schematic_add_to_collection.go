@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/store"
 	"net/http"
 	"strings"
 
@@ -19,20 +20,15 @@ import (
 //     {collection, schematic}. If not present, attempts to append schematic id
 //     to a multi-rel field "schematics" on the target collection.
 //   - HTMX-aware redirect back to the schematic page.
-func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func SchematicAddToCollectionHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
 		name := e.Request.PathValue("name")
 		returnTo := "/schematics/" + name
-		if e.Auth == nil {
-			// Require login
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
@@ -41,10 +37,10 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 		if collInput == "" {
 			// Nothing to do
 			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", returnTo+"?error=missing_collection")
+				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=missing_collection"))
 				return e.HTML(http.StatusNoContent, "")
 			}
-			return e.Redirect(http.StatusSeeOther, returnTo+"?error=missing_collection")
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=missing_collection"))
 		}
 
 		// Resolve schematic record by name
@@ -68,23 +64,23 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 			newName := strings.TrimSpace(e.Request.FormValue("new_collection_name"))
 			if newName == "" {
 				if e.Request.Header.Get("HX-Request") != "" {
-					e.Response.Header().Set("HX-Redirect", returnTo+"?error=new_name_required")
+					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=new_name_required"))
 					return e.HTML(http.StatusNoContent, "")
 				}
-				return e.Redirect(http.StatusSeeOther, returnTo+"?error=new_name_required")
+				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=new_name_required"))
 			}
 			rec := core.NewRecord(collsColl)
 			rec.Set("title", newName)
 			rec.Set("name", newName)
-			rec.Set("author", e.Auth.Id)
+			rec.Set("author", authenticatedUserID(e))
 			if err := app.Save(rec); err == nil {
 				collection = rec
 			} else {
 				if e.Request.Header.Get("HX-Request") != "" {
-					e.Response.Header().Set("HX-Redirect", returnTo+"?error=failed_create_collection")
+					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=failed_create_collection"))
 					return e.HTML(http.StatusNoContent, "")
 				}
-				return e.Redirect(http.StatusSeeOther, returnTo+"?error=failed_create_collection")
+				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=failed_create_collection"))
 			}
 		} else {
 			if recs, err := app.FindRecordsByFilter(collsColl.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": collInput}); err == nil && len(recs) > 0 {
@@ -97,10 +93,10 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 			}
 			if collection == nil {
 				if e.Request.Header.Get("HX-Request") != "" {
-					e.Response.Header().Set("HX-Redirect", returnTo+"?error=collection_not_found")
+					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=collection_not_found"))
 					return e.HTML(http.StatusNoContent, "")
 				}
-				return e.Redirect(http.StatusSeeOther, returnTo+"?error=collection_not_found")
+				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=collection_not_found"))
 			}
 		}
 
@@ -153,10 +149,10 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 		if collInput == "__new__" && collection != nil {
 			dest := "/collections/" + collection.Id + "/edit"
 			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", dest)
+				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 				return e.HTML(http.StatusNoContent, "")
 			}
-			return e.Redirect(http.StatusSeeOther, dest)
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 		}
 
 		// Redirect back with status flag
@@ -165,9 +161,9 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase) func(e *core.Re
 			suffix = "?error=unsupported"
 		}
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", returnTo+suffix)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+suffix))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, returnTo+suffix)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+suffix))
 	}
 }

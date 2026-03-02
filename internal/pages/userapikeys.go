@@ -2,7 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
-	"github.com/pocketbase/dbx"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -19,44 +20,42 @@ type UserAPIKeysData struct {
 	NewAPIKey string
 }
 
-func UserAPIKeysHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UserAPIKeysHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		// Require auth
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
+
+		userID := authenticatedUserID(e)
 
 		d := UserAPIKeysData{}
 		d.Populate(e)
-		d.Title = "API Keys"
-		d.Description = "Manage your API keys."
+		d.Title = i18n.T(d.Language, "API Keys")
+		d.Description = i18n.T(d.Language, "page.userapikeys.description")
 		d.Slug = "/settings/api-keys"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
-		// Load user's API keys (best-effort)
-		if coll, err := app.FindCollectionByNameOrId("api_keys"); err == nil && coll != nil {
-			recs, _ := app.FindRecordsByFilter(coll.Id, "user = {:u}", "-created", 200, 0, dbx.Params{"u": e.Auth.Id})
-			items := make([]APIKeyItem, 0, len(recs))
-			for _, r := range recs {
+		// Load user's API keys
+		ctx := e.Request.Context()
+		keys, err := appStore.APIKeys.ListByUser(ctx, userID)
+		if err == nil {
+			items := make([]APIKeyItem, 0, len(keys))
+			for _, k := range keys {
 				items = append(items, APIKeyItem{
-					ID:      r.Id,
-					Label:   r.GetString("label"),
-					Last8:   r.GetString("last8"),
-					Created: r.GetDateTime("created").Time(),
+					ID:      k.ID,
+					Label:   k.Label,
+					Last8:   k.Last8,
+					Created: k.Created,
 				})
 			}
 			d.APIKeys = items
 		}
 
 		// One-time new API key display
-		if key, ok := cacheService.GetString("apikey:new:" + e.Auth.Id); ok && key != "" {
+		if key, ok := cacheService.GetString("apikey:new:" + userID); ok && key != "" {
 			d.NewAPIKey = key
-			cacheService.Delete("apikey:new:" + e.Auth.Id)
+			cacheService.Delete("apikey:new:" + userID)
 		}
 
 		html, err := registry.LoadFiles(userAPIKeysTemplates...).Render(d)

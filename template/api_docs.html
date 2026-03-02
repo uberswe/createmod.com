@@ -5,51 +5,396 @@
     {{template "header.html" .}}
     <div class="page-body">
       <div class="container-wide">
-        <div class="row row-cards">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-body">
-                <h1 class="card-title">API Documentation</h1>
-                <p class="text-secondary">Welcome to the createmod.com API. This page provides a quick overview and examples. More endpoints will be added over time.</p>
 
-                <h2 class="h3 mt-4" id="auth">Authentication & API keys</h2>
-                <p>Authentication uses API keys via the HTTP Authorization header.</p>
-                <pre><code>Authorization: Bearer &lt;API_KEY&gt;</code></pre>
-                <h3 class="h4 mt-3" id="keys">How to generate API keys</h3>
-                <ol>
-                  <li>Go to <a href="/settings">Settings</a> when logged in.</li>
-                  <li>Find the "API Keys" section and click "Generate new key".</li>
-                  <li>Copy the key and store it securely. You won't be able to view it again.</li>
-                </ol>
-                <p class="text-secondary">Note: key revocation and usage tracking per key will be rolled out gradually.</p>
+        <!-- Hero -->
+        <div class="api-hero mb-3">
+          <h1 class="mb-2">{{ T .Language "API Documentation" }}</h1>
+          <p class="text-secondary mb-2">{{ T .Language "Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically." }}</p>
+          <code class="api-base-url">{{ T .Language "Base URL" }}: https://createmod.com</code>
+        </div>
 
-                <h2 class="h3 mt-4">Endpoints</h2>
-                <ul>
-                  <li><strong>Search schematics</strong>: <code>GET /api/schematics?query=&lt;term&gt;&amp;page=1</code></li>
-                  <li><strong>Schematic detail</strong>: <code>GET /api/schematics/{name}</code> — returns images, size, blocks, materials list (no full NBT)</li>
-                </ul>
+        <div class="api-usage-notice mb-4">
+          <strong>{{ T .Language "Usage policy" }}:</strong>
+          {{ T .Language "Bulk downloading schematics, building databases of site content, and using the API to create competing services are prohibited." }}
+          <a href="/terms-of-service">{{ T .Language "Terms of Service" }}</a> &middot;
+          <a href="mailto:hello@createmod.com">hello@createmod.com</a>
+        </div>
 
-                <h2 class="h3 mt-4">Examples</h2>
-                <p>Search for schematics with the term "windmill":</p>
-                <pre><code>curl -H "Authorization: Bearer &lt;API_KEY&gt;" \
-  "https://createmod.com/api/schematics?query=windmill&amp;page=1"</code></pre>
+        <div class="api-docs-layout">
+          <!-- Left Nav -->
+          <nav class="api-docs-nav">
+            <ul class="nav flex-column">
+              <li class="nav-item"><a class="nav-link" href="#authentication">{{ T .Language "Authentication" }}</a></li>
+              <li class="nav-item"><a class="nav-link" href="#rate-limits">{{ T .Language "Rate Limits" }}</a></li>
+              <li class="nav-item"><a class="nav-link" href="#errors">{{ T .Language "Error Codes" }}</a></li>
+              <li class="nav-item api-nav-divider"></li>
+              <li class="nav-item"><a class="nav-link" href="#list-schematics"><span class="api-method-badge api-method-get">GET</span> /api/schematics</a></li>
+              <li class="nav-item"><a class="nav-link" href="#get-schematic"><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}</a></li>
+              <li class="nav-item"><a class="nav-link" href="#upload-schematic"><span class="api-method-badge api-method-post">POST</span> /api/schematics/upload</a></li>
+            </ul>
+          </nav>
 
-                <p>Fetch a schematic detail by name:</p>
-                <pre><code>curl -H "Authorization: Bearer &lt;API_KEY&gt;" \
-  "https://createmod.com/api/schematics/&lt;name&gt;"</code></pre>
+          <!-- Main content -->
+          <div class="api-docs-content">
 
-                <h2 class="h3 mt-4">Rate limits</h2>
-                <p>To keep the service reliable, requests may be rate-limited per API key. Limits and usage tracking will be documented here.</p>
-
-                <h2 class="h3 mt-4">Code samples</h2>
-                <p>Go example:</p>
-                <pre><code>req, _ := http.NewRequest("GET", "https://createmod.com/api/schematics?query=gear", nil)
-req.Header.Set("Authorization", "Bearer &lt;API_KEY&gt;")
-resp, _ := http.DefaultClient.Do(req)
-// handle resp
-</code></pre>
+            <!-- Authentication + API Key card side by side -->
+            <section id="authentication" class="api-section api-section-with-panel">
+              <div class="api-section-docs">
+                <h2>{{ T .Language "Authentication" }}</h2>
+                <p>{{ T .Language "All API requests require an API key. Pass it via the" }} <code>X-API-Key</code> {{ T .Language "header." }}</p>
+                <div class="api-code-block">
+                  <pre><code>X-API-Key: your_api_key_here</code></pre>
+                </div>
+                <p>{{ T .Language "Generate API keys from your" }} <a href="/settings/api-keys">{{ T .Language "account settings" }}</a>. {{ T .Language "Keys are shown once at creation, store them securely." }}</p>
               </div>
-            </div>
+              <div class="api-section-panel">
+                <div class="api-try-card">
+                  <h5>{{ T .Language "API Key" }}</h5>
+                  <div class="mb-2">
+                    <input type="text" class="form-control form-control-sm api-global-key" id="api-key-input" placeholder="your_api_key">
+                  </div>
+                  {{ if .IsAuthenticated }}
+                  <button class="btn btn-sm btn-outline-primary w-100" id="generate-test-key" onclick="generateTestKey()">{{ T .Language "Generate test key" }}</button>
+                  {{ else }}
+                  <p class="text-secondary mb-0" style="font-size: 0.8rem;"><a href="/login">{{ T .Language "Log in" }}</a> {{ T .Language "to generate a test key instantly." }}</p>
+                  {{ end }}
+                </div>
+              </div>
+            </section>
+
+            <!-- Rate Limits -->
+            <section id="rate-limits" class="api-section">
+              <h2>{{ T .Language "Rate Limits" }}</h2>
+              <p>{{ T .Language "Each API key is limited to" }} <strong>120 {{ T .Language "requests per minute" }}</strong>. {{ T .Language "Exceeding the limit returns" }} <code>429 Too Many Requests</code> {{ T .Language "with a" }} <code>Retry-After</code> {{ T .Language "header indicating seconds to wait." }}</p>
+            </section>
+
+            <!-- Error Codes -->
+            <section id="errors" class="api-section">
+              <h2>{{ T .Language "Error Codes" }}</h2>
+              <div class="table-responsive">
+                <table class="table api-param-table">
+                  <thead>
+                    <tr><th>{{ T .Language "Status" }}</th><th>{{ T .Language "Meaning" }}</th><th>{{ T .Language "Description" }}</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td><code>400</code></td><td>Bad Request</td><td>{{ T .Language "Invalid parameters or missing required fields" }}</td></tr>
+                    <tr><td><code>401</code></td><td>Unauthorized</td><td>{{ T .Language "Missing or invalid API key" }}</td></tr>
+                    <tr><td><code>404</code></td><td>Not Found</td><td>{{ T .Language "The requested resource does not exist" }}</td></tr>
+                    <tr><td><code>409</code></td><td>Conflict</td><td>{{ T .Language "Duplicate upload detected" }}</td></tr>
+                    <tr><td><code>429</code></td><td>Too Many Requests</td><td>{{ T .Language "Rate limit exceeded" }}</td></tr>
+                    <tr><td><code>500</code></td><td>Server Error</td><td>{{ T .Language "Internal server error" }}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>{{ T .Language "All error responses return JSON:" }}</p>
+              <div class="api-code-block"><pre><code>{"error": "description of the error"}</code></pre></div>
+            </section>
+
+            <!-- GET /api/schematics -->
+            <section id="list-schematics" class="api-section api-section-with-panel">
+              <div class="api-section-docs">
+                <div class="api-endpoint-header">
+                  <span class="api-method-badge api-method-get">GET</span>
+                  <code class="api-endpoint-url">/api/schematics</code>
+                </div>
+                <p>{{ T .Language "Search or list schematics. Returns newest schematics when no query is provided." }}</p>
+
+                <h4>{{ T .Language "Parameters" }}</h4>
+                <div class="table-responsive">
+                  <table class="table api-param-table">
+                    <thead>
+                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>query</code> / <code>q</code></td><td>string</td><td><span class="text-secondary">{{ T .Language "Optional" }}</span></td><td>{{ T .Language "Search term" }}</td></tr>
+                      <tr><td><code>page</code> / <code>p</code></td><td>integer</td><td><span class="text-secondary">{{ T .Language "Optional" }}</span></td><td>{{ T .Language "Page number (default: 1)" }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>{{ T .Language "Code Samples" }}</h4>
+                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
+                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#list-curl" type="button">curl</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#list-js" type="button">JavaScript</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#list-python" type="button">Python</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#list-go" type="button">Go</button></li>
+                </ul>
+                <div class="tab-content">
+                  <div class="tab-pane fade show active" id="list-curl">
+                    <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/schematics?query=windmill&amp;page=1"</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="list-js">
+                    <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics?query=windmill", {
+  headers: { "X-API-Key": "YOUR_KEY" }
+});
+const data = await resp.json();
+console.log(data.items);</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="list-python">
+                    <div class="api-code-block"><pre><code>import requests
+
+resp = requests.get(
+    "https://createmod.com/api/schematics",
+    params={"query": "windmill"},
+    headers={"X-API-Key": "YOUR_KEY"}
+)
+data = resp.json()
+print(data["items"])</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="list-go">
+                    <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
+    "https://createmod.com/api/schematics?query=windmill", nil)
+req.Header.Set("X-API-Key", "YOUR_KEY")
+resp, _ := http.DefaultClient.Do(req)
+defer resp.Body.Close()
+// decode resp.Body as JSON</code></pre></div>
+                  </div>
+                </div>
+
+                <h4>{{ T .Language "Response" }}</h4>
+                <div class="api-code-block"><pre><code>{
+  "items": [
+    {
+      "name": "windmill-farm",
+      "title": "Windmill Farm",
+      "author": "builder123",
+      "views": 1500,
+      "downloads": 320,
+      "rating": 4.5,
+      "images": ["..."],
+      "categories": ["automation"],
+      "tags": ["windmill", "farm"]
+    }
+  ],
+  "page": 1,
+  "pageSize": 24,
+  "hasPrev": false,
+  "hasNext": true,
+  "total": 48,
+  "term": "windmill"
+}</code></pre></div>
+              </div>
+              <div class="api-section-panel">
+                <div class="api-try-card" id="try-panel-list">
+                  <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics</h6>
+                  <div class="mb-2">
+                    <label class="form-label">query</label>
+                    <input type="text" class="form-control form-control-sm" id="try-list-query" placeholder="windmill">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">page</label>
+                    <input type="number" class="form-control form-control-sm" id="try-list-page" value="1" min="1">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" onclick="tryListSchematics()">{{ T .Language "Send Request" }}</button>
+                  <div class="api-try-response mt-2" id="try-list-response" style="display:none;">
+                    <pre class="api-code-block mb-0"><code id="try-list-output"></code></pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- GET /api/schematics/{name} -->
+            <section id="get-schematic" class="api-section api-section-with-panel">
+              <div class="api-section-docs">
+                <div class="api-endpoint-header">
+                  <span class="api-method-badge api-method-get">GET</span>
+                  <code class="api-endpoint-url">/api/schematics/{name}</code>
+                </div>
+                <p>{{ T .Language "Get detailed information about a single schematic by its URL name." }}</p>
+
+                <h4>{{ T .Language "Parameters" }}</h4>
+                <div class="table-responsive">
+                  <table class="table api-param-table">
+                    <thead>
+                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>name</code></td><td>string</td><td><strong>{{ T .Language "Required" }}</strong></td><td>{{ T .Language "The URL slug of the schematic" }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>{{ T .Language "Code Samples" }}</h4>
+                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
+                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#detail-curl" type="button">curl</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-js" type="button">JavaScript</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-python" type="button">Python</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-go" type="button">Go</button></li>
+                </ul>
+                <div class="tab-content">
+                  <div class="tab-pane fade show active" id="detail-curl">
+                    <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/schematics/windmill-farm"</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="detail-js">
+                    <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics/windmill-farm", {
+  headers: { "X-API-Key": "YOUR_KEY" }
+});
+const schematic = await resp.json();
+console.log(schematic.title);</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="detail-python">
+                    <div class="api-code-block"><pre><code>import requests
+
+resp = requests.get(
+    "https://createmod.com/api/schematics/windmill-farm",
+    headers={"X-API-Key": "YOUR_KEY"}
+)
+schematic = resp.json()
+print(schematic["title"])</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="detail-go">
+                    <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
+    "https://createmod.com/api/schematics/windmill-farm", nil)
+req.Header.Set("X-API-Key", "YOUR_KEY")
+resp, _ := http.DefaultClient.Do(req)
+defer resp.Body.Close()
+// decode resp.Body as JSON</code></pre></div>
+                  </div>
+                </div>
+
+                <h4>{{ T .Language "Response" }}</h4>
+                <div class="api-code-block"><pre><code>{
+  "name": "windmill-farm",
+  "title": "Windmill Farm",
+  "author": "builder123",
+  "description": "A beautiful windmill farm...",
+  "views": 1500,
+  "downloads": 320,
+  "rating": 4.5,
+  "images": ["..."],
+  "categories": ["automation"],
+  "tags": ["windmill", "farm"],
+  "materials": [
+    {"block_id": "create:shaft", "name": "Shaft", "count": 12}
+  ],
+  "mods": ["create"],
+  "dimensions": {"x": 15, "y": 20, "z": 15},
+  "block_count": 450
+}</code></pre></div>
+              </div>
+              <div class="api-section-panel">
+                <div class="api-try-card" id="try-panel-detail">
+                  <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}</h6>
+                  <div class="mb-2">
+                    <label class="form-label">name</label>
+                    <input type="text" class="form-control form-control-sm" id="try-detail-name" placeholder="windmill-farm">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" onclick="tryGetSchematic()">{{ T .Language "Send Request" }}</button>
+                  <div class="api-try-response mt-2" id="try-detail-response" style="display:none;">
+                    <pre class="api-code-block mb-0"><code id="try-detail-output"></code></pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- POST /api/schematics/upload -->
+            <section id="upload-schematic" class="api-section api-section-with-panel">
+              <div class="api-section-docs">
+                <div class="api-endpoint-header">
+                  <span class="api-method-badge api-method-post">POST</span>
+                  <code class="api-endpoint-url">/api/schematics/upload</code>
+                </div>
+                <p>{{ T .Language "Upload a .nbt schematic file. Returns a preview token. The schematic is not published until you complete the publish flow via the web UI." }}</p>
+
+                <h4>{{ T .Language "Parameters" }}</h4>
+                <p class="text-secondary">{{ T .Language "Send as" }} <code>multipart/form-data</code></p>
+                <div class="table-responsive">
+                  <table class="table api-param-table">
+                    <thead>
+                      <tr><th>{{ T .Language "Field" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>file</code> / <code>nbt</code></td><td>file</td><td><strong>{{ T .Language "Required" }}</strong></td><td>{{ T .Language "The .nbt schematic file (max 10MB)" }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>{{ T .Language "Code Samples" }}</h4>
+                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
+                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#upload-curl" type="button">curl</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#upload-js" type="button">JavaScript</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#upload-python" type="button">Python</button></li>
+                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#upload-go" type="button">Go</button></li>
+                </ul>
+                <div class="tab-content">
+                  <div class="tab-pane fade show active" id="upload-curl">
+                    <div class="api-code-block"><pre><code>curl -X POST \
+  -H "X-API-Key: YOUR_KEY" \
+  -F "file=@my_schematic.nbt" \
+  "https://createmod.com/api/schematics/upload"</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="upload-js">
+                    <div class="api-code-block"><pre><code>const form = new FormData();
+form.append("file", fileInput.files[0]);
+
+const resp = await fetch("https://createmod.com/api/schematics/upload", {
+  method: "POST",
+  headers: { "X-API-Key": "YOUR_KEY" },
+  body: form
+});
+const data = await resp.json();
+console.log(data.token, data.url);</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="upload-python">
+                    <div class="api-code-block"><pre><code>import requests
+
+with open("my_schematic.nbt", "rb") as f:
+    resp = requests.post(
+        "https://createmod.com/api/schematics/upload",
+        files={"file": f},
+        headers={"X-API-Key": "YOUR_KEY"}
+    )
+data = resp.json()
+print(data["token"], data["url"])</code></pre></div>
+                  </div>
+                  <div class="tab-pane fade" id="upload-go">
+                    <div class="api-code-block"><pre><code>body := &amp;bytes.Buffer{}
+writer := multipart.NewWriter(body)
+part, _ := writer.CreateFormFile("file", "my_schematic.nbt")
+io.Copy(part, fileReader)
+writer.Close()
+
+req, _ := http.NewRequest("POST",
+    "https://createmod.com/api/schematics/upload", body)
+req.Header.Set("X-API-Key", "YOUR_KEY")
+req.Header.Set("Content-Type", writer.FormDataContentType())
+resp, _ := http.DefaultClient.Do(req)
+// decode resp.Body as JSON</code></pre></div>
+                  </div>
+                </div>
+
+                <h4>{{ T .Language "Response" }}</h4>
+                <div class="api-code-block"><pre><code>{
+  "token": "a1b2c3d4e5f67890...",
+  "url": "/u/a1b2c3d4e5f67890...",
+  "checksum": "sha256...",
+  "filename": "my_schematic.nbt",
+  "size": 12345,
+  "dimensions": {"x": 10, "y": 20, "z": 30},
+  "block_count": 500,
+  "materials": [
+    {"block_id": "create:shaft", "name": "Shaft", "count": 12}
+  ],
+  "mods": ["create"]
+}</code></pre></div>
+              </div>
+              <div class="api-section-panel">
+                <div class="api-try-card" id="try-panel-upload">
+                  <h6><span class="api-method-badge api-method-post">POST</span> /api/schematics/upload</h6>
+                  <div class="mb-2">
+                    <label class="form-label">.nbt {{ T .Language "file" }}</label>
+                    <input type="file" class="form-control form-control-sm" id="try-upload-file" accept=".nbt">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" onclick="tryUploadSchematic()">{{ T .Language "Send Request" }}</button>
+                  <div class="api-try-response mt-2" id="try-upload-response" style="display:none;">
+                    <pre class="api-code-block mb-0"><code id="try-upload-output"></code></pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+
           </div>
         </div>
       </div>
@@ -57,4 +402,75 @@ resp, _ := http.DefaultClient.Do(req)
     {{template "footer.html" .}}
   </div>
 </div>
+
+<script>
+function getApiKey() {
+  var el = document.getElementById('api-key-input');
+  return el ? el.value.trim() : '';
+}
+
+function showResponse(outputId, responseId, status, data) {
+  var el = document.getElementById(outputId);
+  var container = document.getElementById(responseId);
+  el.textContent = 'HTTP ' + status + '\n' + JSON.stringify(data, null, 2);
+  container.style.display = 'block';
+}
+
+function generateTestKey() {
+  var btn = document.getElementById('generate-test-key');
+  btn.disabled = true;
+  btn.textContent = '...';
+  fetch('/api/keys/generate', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.key) {
+        document.getElementById('api-key-input').value = d.key;
+        btn.textContent = '{{ T .Language "Key generated" }}';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-outline-success');
+      } else {
+        btn.textContent = d.error || 'Error';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-outline-danger');
+      }
+    })
+    .catch(function() {
+      btn.textContent = 'Error';
+      btn.classList.remove('btn-outline-primary');
+      btn.classList.add('btn-outline-danger');
+    });
+}
+
+function tryListSchematics() {
+  var key = getApiKey();
+  var query = document.getElementById('try-list-query').value;
+  var page = document.getElementById('try-list-page').value || '1';
+  var url = '/api/schematics?page=' + encodeURIComponent(page);
+  if (query) url += '&query=' + encodeURIComponent(query);
+  fetch(url, { headers: { 'X-API-Key': key } })
+    .then(function(r) { return r.json().then(function(d) { showResponse('try-list-output', 'try-list-response', r.status, d); }); })
+    .catch(function(e) { showResponse('try-list-output', 'try-list-response', 'ERR', { error: e.message }); });
+}
+
+function tryGetSchematic() {
+  var key = getApiKey();
+  var name = document.getElementById('try-detail-name').value;
+  if (!name) { alert('Enter a schematic name'); return; }
+  fetch('/api/schematics/' + encodeURIComponent(name), { headers: { 'X-API-Key': key } })
+    .then(function(r) { return r.json().then(function(d) { showResponse('try-detail-output', 'try-detail-response', r.status, d); }); })
+    .catch(function(e) { showResponse('try-detail-output', 'try-detail-response', 'ERR', { error: e.message }); });
+}
+
+function tryUploadSchematic() {
+  var key = getApiKey();
+  var fileInput = document.getElementById('try-upload-file');
+  if (!fileInput.files.length) { alert('Select a .nbt file'); return; }
+  var form = new FormData();
+  form.append('file', fileInput.files[0]);
+  fetch('/api/schematics/upload', { method: 'POST', headers: { 'X-API-Key': key }, body: form })
+    .then(function(r) { return r.json().then(function(d) { showResponse('try-upload-output', 'try-upload-response', r.status, d); }); })
+    .catch(function(e) { showResponse('try-upload-output', 'try-upload-response', 'ERR', { error: e.message }); });
+}
+</script>
+
 {{template "foot.html" .}}

@@ -2,7 +2,9 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/translation"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -34,20 +36,20 @@ type GuideShowData struct {
 }
 
 // GuidesShowHandler renders an individual guide page by record ID.
-func GuidesShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, translationService *translation.Service) func(e *core.RequestEvent) error {
+func GuidesShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		id := e.Request.PathValue("id")
 
 		d := GuideShowData{}
 		d.Populate(e)
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Slug = "/guides/" + id
 
 		coll, err := app.FindCollectionByNameOrId("guides")
 		if err != nil || coll == nil {
 			d.NotFound = true
-			d.Title = "Guide not found"
-			d.Description = "We couldn't find this guide."
+			d.Title = i18n.T(d.Language, "Guide not found")
+			d.Description = i18n.T(d.Language, "We couldn't find this guide.")
 			html, err := registry.LoadFiles(guidesShowTemplates...).Render(d)
 			if err != nil {
 				return err
@@ -66,8 +68,8 @@ func GuidesShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 
 		if rec == nil {
 			d.NotFound = true
-			d.Title = "Guide not found"
-			d.Description = "We couldn't find this guide."
+			d.Title = i18n.T(d.Language, "Guide not found")
+			d.Description = i18n.T(d.Language, "We couldn't find this guide.")
 			html, err := registry.LoadFiles(guidesShowTemplates...).Render(d)
 			if err != nil {
 				return err
@@ -95,7 +97,7 @@ func GuidesShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 		d.Content = template.HTML(content)
 
 		// Owner check
-		if e.Auth != nil && rec.GetString("author") == e.Auth.Id {
+		if isAuthenticated(e) && rec.GetString("author") == authenticatedUserID(e) {
 			d.IsOwner = true
 		}
 
@@ -146,12 +148,12 @@ func GuidesShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 		// SEO
 		d.Title = d.GuideTitle
 		if d.Title == "" {
-			d.Title = "Guide"
+			d.Title = i18n.T(d.Language, "page.guide.title")
 		}
 		if d.Excerpt != "" {
 			d.Description = d.Excerpt
 		} else {
-			d.Description = "Guide on CreateMod.com"
+			d.Description = i18n.T(d.Language, "page.guides_show.description")
 		}
 
 		html, err := registry.LoadFiles(guidesShowTemplates...).Render(d)

@@ -135,14 +135,19 @@ window.addEventListener('htmx:responseError', function (evt) {
 })();
 </script>
 <script>
-// Attach PB token to HTMX requests when available
-document.body.addEventListener('htmx:configRequest', function (evt) {
-  try {
-    if (typeof pb !== 'undefined' && pb.authStore && pb.authStore.token) {
-      evt.detail.headers['Authorization'] = 'Bearer ' + pb.authStore.token;
-    }
-  } catch (e) {}
-});
+// Auto-prefix HTMX requests with the current language subdirectory
+(function(){
+  var prefix = document.documentElement.getAttribute('data-lang-prefix');
+  if (!prefix) return;
+  prefix = '/' + prefix;
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    var path = evt.detail.path;
+    if (!path || path.charAt(0) !== '/') return;
+    if (path.indexOf(prefix + '/') === 0 || path === prefix) return;
+    if (/^\/(api|_|assets|sitemaps)\//.test(path)) return;
+    evt.detail.path = prefix + path;
+  });
+})();
 </script>
 <!-- Mobile anchor ad (all pages) -->
 <div id="anchor-bottom"></div>

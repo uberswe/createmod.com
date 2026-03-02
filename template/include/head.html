@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ .Language }}" data-lang-prefix="{{ .LangPrefix }}">
 <script>
 // Inline theme init — runs before any CSS to prevent flash of light background.
 (function(){try{var t=localStorage.getItem("createmodTheme")||"dark";document.documentElement.setAttribute("data-bs-theme",t);if(t==="dark")document.documentElement.style.background="#1f2121";}catch(e){}})();
@@ -11,7 +11,7 @@
     <title>CreateMod.com - {{ .Title }}</title>
 
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://createmod.com/{{ .Slug }}">
+    <meta property="og:url" content="https://createmod.com{{ LangURL .Language .Slug }}">
     <meta property="og:title" content="{{ .Title }} - CreateMod.com">
     <meta property="og:description" content="{{ .Description }}">
     <meta property="og:image" itemprop="image" content="{{ .Thumbnail }}">
@@ -27,6 +27,9 @@
     {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ end }}
     {{ if .PrevPageURL }}<link rel="prev" href="{{ .PrevPageURL }}">{{ end }}
     {{ if .NextPageURL }}<link rel="next" href="{{ .NextPageURL }}">{{ end }}
+    {{ $slug := .Slug }}{{ range Hreflangs $slug }}
+    <link rel="alternate" hreflang="{{ .HreflangCode }}" href="https://createmod.com{{ .FullPath $slug }}">{{ end }}
+    <link rel="alternate" hreflang="x-default" href="https://createmod.com{{ $slug }}">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemaps/sitemap.xml">
     {{ if .NoIndex }}<meta name="robots" content="noindex, follow">{{ else }}<meta name="robots" content="all">{{ end }}
     <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
@@ -41,6 +44,8 @@
 
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.12" defer crossorigin="anonymous" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"></script>
+    <!-- DOMPurify – client-side HTML sanitization for defense-in-depth -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer crossorigin="anonymous"></script>
 
     <script data-cfasync="false">window.nitroAds=window.nitroAds||{createAd:function(){return new Promise(e=>{window.nitroAds.queue.push(["createAd",arguments,e])})},addUserToken:function(){window.nitroAds.queue.push(["addUserToken",arguments])},queue:[]};</script>
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js"></script>

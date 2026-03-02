@@ -37,18 +37,18 @@ func Test_Header_Search_HTMX_Attributes(t *testing.T) {
 func Test_Header_Has_Logout_Link(t *testing.T) {
 	path := filepath.Join("..", "..", "template", "include", "header.html")
 	s := mustRead(t, path)
-	if !strings.Contains(s, `href="/logout"`) {
-		t.Fatalf("header.html expected to contain href=\"/logout\"")
+	if !strings.Contains(s, `/logout`) {
+		t.Fatalf("header.html expected to contain /logout reference")
 	}
 }
 
 func Test_Sidebar_Has_Logout_And_Profile_Links(t *testing.T) {
 	path := filepath.Join("..", "..", "template", "include", "sidebar.html")
 	s := mustRead(t, path)
-	if !strings.Contains(s, `href="/logout"`) {
-		t.Fatalf("sidebar.html expected to contain href=\"/logout\"")
+	if !strings.Contains(s, `/logout`) {
+		t.Fatalf("sidebar.html expected to contain /logout reference")
 	}
-	if !strings.Contains(s, `href="/profile"`) {
-		t.Fatalf("sidebar.html expected to contain href=\"/profile\"")
+	if !strings.Contains(s, `/profile`) {
+		t.Fatalf("sidebar.html expected to contain /profile reference")
 	}
 }

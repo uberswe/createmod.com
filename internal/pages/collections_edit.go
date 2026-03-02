@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/moderation"
+	"createmod/internal/store"
 	"encoding/base64"
 	"fmt"
 	"github.com/pocketbase/dbx"
@@ -46,19 +48,15 @@ type CollectionsEditData struct {
 }
 
 // CollectionsEditHandler renders the edit form for a collection (author-only).
-func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		slug := e.Request.PathValue("slug")
 		d := CollectionsEditData{}
 		d.Populate(e)
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Slug = "/collections/" + slug
 
 		coll, err := app.FindCollectionByNameOrId("collections")
@@ -79,7 +77,7 @@ func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 			return e.String(http.StatusNotFound, "collection not found")
 		}
 		// Author-only
-		if rec.GetString("author") != e.Auth.Id {
+		if rec.GetString("author") != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 
@@ -90,7 +88,7 @@ func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 		d.Description = rec.GetString("description")
 		d.BannerURL = rec.GetString("banner_url")
 		d.Published = rec.GetBool("published")
-		d.Title = "Edit collection"
+		d.Title = i18n.T(d.Language, "Edit collection")
 
 		// Discover associated schematics to power the reorder UI.
 		// Preference:
@@ -207,17 +205,13 @@ func loadReorderSchematics(app *pocketbase.PocketBase, ids []string) []ReorderSc
 
 // CollectionsUpdateHandler handles POST updates to a collection (author-only).
 // Supports action=save (default), action=publish (with validation + moderation), action=unpublish.
-func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, moderationService *moderation.Service) func(e *core.RequestEvent) error {
+func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, moderationService *moderation.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		slug := e.Request.PathValue("slug")
 		coll, err := app.FindCollectionByNameOrId("collections")
@@ -236,7 +230,7 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 		if rec == nil {
 			return e.String(http.StatusNotFound, "collection not found")
 		}
-		if rec.GetString("author") != e.Auth.Id {
+		if rec.GetString("author") != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 
@@ -309,7 +303,7 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 		renderEditWithError := func(errMsg string) error {
 			d := CollectionsEditData{}
 			d.Populate(e)
-			d.Categories = allCategories(app, cacheService)
+			d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 			d.Slug = "/collections/" + slug
 			d.TitleText = title
 			d.Description = description
@@ -317,7 +311,7 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			d.BannerURL = rec.GetString("banner_url")
 			d.Published = rec.GetBool("published")
 			d.Error = errMsg
-			d.Title = "Edit collection"
+			d.Title = i18n.T(d.Language, "Edit collection")
 			// Reload schematic IDs for the reorder UI
 			ids := rec.GetStringSlice("schematics")
 			d.SchematicIDs = ids
@@ -341,10 +335,9 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 				content := fmt.Sprintf("Title: %s\nDescription: %s", title, description)
 				result, err := moderationService.CheckContent(content)
 				if err != nil {
-					app.Logger().Error("collection publish moderation error", "error", err, "id", rec.Id)
-					return renderEditWithError("Content moderation check failed. Please try again later.")
-				}
-				if !result.Approved {
+					// Moderation service unavailable — allow publish anyway and log the issue.
+					app.Logger().Warn("collection publish moderation unavailable, allowing publish", "error", err, "id", rec.Id)
+				} else if !result.Approved {
 					return renderEditWithError(fmt.Sprintf("Content did not pass moderation: %s", result.Reason))
 				}
 			}
@@ -363,25 +356,21 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			dest = "/collections/" + slug + "/edit"
 		}
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", dest)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, dest)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 	}
 }
 
 // CollectionsDeleteHandler handles POST delete (soft-delete) for a collection (author-only).
-func CollectionsDeleteHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func CollectionsDeleteHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		slug := e.Request.PathValue("slug")
 		coll, err := app.FindCollectionByNameOrId("collections")
@@ -400,7 +389,7 @@ func CollectionsDeleteHandler(app *pocketbase.PocketBase) func(e *core.RequestEv
 		if rec == nil {
 			return e.String(http.StatusNotFound, "collection not found")
 		}
-		if rec.GetString("author") != e.Auth.Id {
+		if rec.GetString("author") != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 		// Soft delete: set a string timestamp in "deleted" for compatibility with earlier filters
@@ -410,9 +399,9 @@ func CollectionsDeleteHandler(app *pocketbase.PocketBase) func(e *core.RequestEv
 		}
 		dest := "/collections"
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", dest)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, dest)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 	}
 }

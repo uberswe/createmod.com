@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
@@ -36,7 +38,7 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-func DownloadInterstitialHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func DownloadInterstitialHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		if name == "" {
@@ -58,21 +60,21 @@ func DownloadInterstitialHandler(app *pocketbase.PocketBase, registry *template.
 		d := DownloadInterstitialData{}
 		d.Populate(e)
 		d.Slug = "/get/" + name
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Name = name
 
 		if paid && external != "" {
 			// Paid: do not mint token; route to external interstitial
 			d.Paid = true
 			d.ExternalURL = external
-			d.Title = "Preparing External Link"
-			d.Description = "You will be redirected to the seller's site shortly."
+			d.Title = i18n.T(d.Language, "Preparing External Link")
+			d.Description = i18n.T(d.Language, "page.download.external.description")
 		} else {
 			// Free: generate one-time token and store with TTL
 			token := randomHex(24)
 			cacheService.SetWithTTL("dl:"+token, name, 2*time.Minute)
-			d.Title = "Preparing Download"
-			d.Description = "Your download will begin shortly."
+			d.Title = i18n.T(d.Language, "Preparing Download")
+			d.Description = i18n.T(d.Language, "page.download.file.description")
 			d.Token = token
 		}
 

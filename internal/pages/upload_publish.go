@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -17,14 +19,10 @@ var uploadPublishTemplates = append([]string{
 
 // UploadPublishHandler renders the publish form for a previously uploaded temp schematic.
 // Requires authentication; redirects to /login if not logged in.
-func UploadPublishHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UploadPublishHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusFound, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 
 		token := e.Request.PathValue("token")
@@ -49,11 +47,11 @@ func UploadPublishHandler(app *pocketbase.PocketBase, registry *template.Registr
 		d := UploadPublishData{}
 		d.Populate(e)
 		d.UploadStep = 3
-		d.Title = "Publish Schematic"
-		d.Description = "Add details and publish your schematic to the community."
+		d.Title = i18n.T(d.Language, "Publish Schematic")
+		d.Description = i18n.T(d.Language, "page.upload.publish.description")
 		d.Slug = "/u/" + token + "/publish"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Token = token
 		d.Filename = entry.Filename
 		d.Size = entry.Size

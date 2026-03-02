@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -30,7 +32,7 @@ type AdminReportsData struct {
 }
 
 func isSuperAdmin(e *core.RequestEvent, app *pocketbase.PocketBase) bool {
-	if e.Auth == nil {
+	if !isAuthenticated(e) {
 		return false
 	}
 	super := os.Getenv("SUPERADMIN_EMAIL")
@@ -38,11 +40,11 @@ func isSuperAdmin(e *core.RequestEvent, app *pocketbase.PocketBase) bool {
 		// do not fallback to sender for access control; require explicit env to avoid accidental exposure
 		return false
 	}
-	return e.Auth.GetString("email") == super
+	return authenticatedUserEmail(e) == super
 }
 
 // AdminReportsHandler renders a simple admin page listing recent reports.
-func AdminReportsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func AdminReportsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if !isSuperAdmin(e, app) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -68,9 +70,9 @@ func AdminReportsHandler(app *pocketbase.PocketBase, registry *template.Registry
 		}
 		d := AdminReportsData{Reports: items}
 		d.Populate(e)
-		d.Title = "Admin: Reports"
+		d.Title = i18n.T(d.Language, "Admin: Reports")
 		d.SubCategory = "Admin"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		html, err := registry.LoadFiles(adminReportsTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -80,7 +82,7 @@ func AdminReportsHandler(app *pocketbase.PocketBase, registry *template.Registry
 }
 
 // AdminReportResolveHandler deletes a report by id (acts as resolve) and redirects back to /admin/reports.
-func AdminReportResolveHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func AdminReportResolveHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if !isSuperAdmin(e, app) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -100,19 +102,19 @@ func AdminReportResolveHandler(app *pocketbase.PocketBase) func(e *core.RequestE
 		if err != nil || rec == nil {
 			// treat as already resolved
 			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/admin/reports")
+				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/admin/reports"))
 				return e.HTML(http.StatusNoContent, "")
 			}
-			return e.Redirect(http.StatusSeeOther, "/admin/reports")
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/admin/reports"))
 		}
 		if err := app.Delete(rec); err != nil {
 			// best-effort; show error
 			return e.String(http.StatusInternalServerError, fmt.Sprintf("failed to resolve: %v", err))
 		}
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", "/admin/reports")
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/admin/reports"))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, "/admin/reports")
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/admin/reports"))
 	}
 }

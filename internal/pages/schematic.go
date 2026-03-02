@@ -3,11 +3,13 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/nbtparser"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
 	"createmod/internal/translation"
+	"createmod/internal/store"
 	"encoding/json"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
@@ -26,6 +28,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var schematicTemplates = append([]string{
@@ -56,12 +61,20 @@ type SchematicData struct {
 	Materials       []nbtparser.Material
 	BloxelizerURL   string
 	Mods            []string
+	ModInfoList     []ModInfo
 	// Translation fields
 	IsTranslated     bool
 	OriginalLanguage string
 }
 
-func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service) func(e *core.RequestEvent) error {
+// ModInfo holds display info for a mod in the Required Mods section.
+type ModInfo struct {
+	Namespace string
+	Name      string
+	IconURL   string
+}
+
+func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -78,9 +91,12 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		if len(results) != 1 {
 			// Try to find and fix a schematic with percent-encoded characters in its name
 			if newName, found := tryFixEncodedSchematicName(app, e.Request.PathValue("name")); found {
-				return e.Redirect(http.StatusMovedPermanently, "/schematics/"+newName)
+				return e.Redirect(http.StatusMovedPermanently, LangRedirectURL(e, "/schematics/"+newName))
 			}
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
+			nd := DefaultData{}
+			nd.Populate(e)
+			nd.Title = i18n.T(nd.Language, "Page Not Found")
+			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
 			if err != nil {
 				return err
 			}
@@ -96,7 +112,7 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		d.Description = strip.StripTags(d.Schematic.Content)
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Comments = findSchematicComments(app, d.Schematic.ID)
 		d.FromAuthor = findAuthorSchematics(app, cacheService, d.Schematic.ID, d.Schematic.Author.ID, 5, "@random")
 		d.Similar = findSimilarSchematics(app, cacheService, d.Schematic, d.FromAuthor, searchService)
@@ -116,6 +132,9 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		// Load mods from the schematic record
 		d.Mods = d.Schematic.Mods
 
+		// Build enriched mod info list for display
+		d.ModInfoList = buildModInfoList(app, d.Mods)
+
 		// Construct Bloxelizer URL (only for free schematics with a file)
 		schematicFileName := results[0].GetString("schematic_file")
 		if schematicFileName != "" && !d.Schematic.Paid {
@@ -129,9 +148,9 @@ func SchematicHandler(app *pocketbase.PocketBase, searchService *search.Service,
 		}
 
 		// Load collections for the current user (for Add to collection dropdown)
-		if e.Auth != nil {
+		if isAuthenticated(e) {
 			if coll, err := app.FindCollectionByNameOrId("collections"); err == nil && coll != nil {
-				recs, _ := app.FindRecordsByFilter(coll.Id, "author = {:a} && deleted = ''", "+title", 200, 0, dbx.Params{"a": e.Auth.Id})
+				recs, _ := app.FindRecordsByFilter(coll.Id, "author = {:a} && deleted = ''", "+title", 200, 0, dbx.Params{"a": authenticatedUserID(e)})
 				opts := make([]CollectionOption, 0, len(recs))
 				for _, r := range recs {
 					t := r.GetString("title")
@@ -883,4 +902,32 @@ func tryFixEncodedSchematicName(app *pocketbase.PocketBase, requestedName string
 		return newName, true
 	}
 	return "", false
+}
+
+// buildModInfoList builds an enriched list of mod display info from namespaces.
+func buildModInfoList(app *pocketbase.PocketBase, mods []string) []ModInfo {
+	caser := cases.Title(language.English)
+	list := make([]ModInfo, 0, len(mods))
+	for _, ns := range mods {
+		info := ModInfo{
+			Namespace: ns,
+			Name:      caser.String(strings.ReplaceAll(ns, "_", " ")),
+		}
+		records, err := app.FindRecordsByFilter(
+			"mod_metadata",
+			"namespace = {:ns}",
+			"",
+			1,
+			0,
+			dbx.Params{"ns": ns},
+		)
+		if err == nil && len(records) > 0 {
+			if dn := records[0].GetString("display_name"); dn != "" {
+				info.Name = dn
+			}
+			info.IconURL = records[0].GetString("icon_url")
+		}
+		list = append(list, info)
+	}
+	return list
 }

@@ -2,7 +2,9 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/outurl"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	pbtempl "github.com/pocketbase/pocketbase/tools/template"
@@ -39,7 +41,7 @@ type GuidesData struct {
 }
 
 // GuidesHandler renders a simple listing of guides with pagination and optional search by title.
-func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, outSecret string) func(e *core.RequestEvent) error {
+func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, outSecret string, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		coll, err := app.FindCollectionByNameOrId("guides")
 		if err != nil || coll == nil {
@@ -120,10 +122,10 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 		}
 
 		d.Populate(e)
-		d.Title = "Guides"
-		d.Description = "Guides for the Create mod and Minecraft"
+		d.Title = i18n.T(d.Language, "Guides")
+		d.Description = i18n.T(d.Language, "Guides for the Create mod and Minecraft")
 		d.Slug = "/guides"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(guidesTemplates...).Render(d)
 		if err != nil {

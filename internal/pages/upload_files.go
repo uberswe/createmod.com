@@ -2,6 +2,7 @@ package pages
 
 import (
 	"createmod/internal/nbtparser"
+	"createmod/internal/store"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -98,9 +99,9 @@ type addFileResponse struct {
 
 // UploadAddFileHandler accepts a POST with an additional .nbt file and description
 // for a given temp upload token. Requires auth + ownership.
-func UploadAddFileHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func UploadAddFileHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
+		if !isAuthenticated(e) {
 			return e.JSON(http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		}
 
@@ -114,7 +115,7 @@ func UploadAddFileHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent)
 		if !ok {
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "invalid or expired token"})
 		}
-		if parentEntry.UploadedBy == "" || parentEntry.UploadedBy != e.Auth.Id {
+		if parentEntry.UploadedBy == "" || parentEntry.UploadedBy != authenticatedUserID(e) {
 			return e.JSON(http.StatusForbidden, map[string]string{"error": "you do not own this upload"})
 		}
 
@@ -237,9 +238,9 @@ func UploadAddFileHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent)
 
 // UploadDeleteFileHandler deletes an additional file from a temp upload.
 // Requires auth + ownership.
-func UploadDeleteFileHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func UploadDeleteFileHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
+		if !isAuthenticated(e) {
 			return e.JSON(http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		}
 
@@ -254,7 +255,7 @@ func UploadDeleteFileHandler(app *pocketbase.PocketBase) func(e *core.RequestEve
 		if !ok {
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "invalid or expired token"})
 		}
-		if parentEntry.UploadedBy == "" || parentEntry.UploadedBy != e.Auth.Id {
+		if parentEntry.UploadedBy == "" || parentEntry.UploadedBy != authenticatedUserID(e) {
 			return e.JSON(http.StatusForbidden, map[string]string{"error": "you do not own this upload"})
 		}
 
@@ -279,7 +280,7 @@ func UploadDeleteFileHandler(app *pocketbase.PocketBase) func(e *core.RequestEve
 
 // UploadFileDownloadHandler serves an additional NBT file for download.
 // Public access (no auth required), matching primary file behavior.
-func UploadFileDownloadHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func UploadFileDownloadHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		fileId := e.Request.PathValue("fileId")

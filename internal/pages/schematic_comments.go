@@ -3,7 +3,9 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
+	"createmod/internal/i18n"
 	"createmod/internal/search"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -18,7 +20,7 @@ var schematicCommentsTemplates = []string{
 
 // SchematicCommentsHandler returns only the comments list for a schematic.
 // Useful for HTMX partial refresh of comments.
-func SchematicCommentsHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, _ *discord.Service) func(e *core.RequestEvent) error {
+func SchematicCommentsHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, _ *discord.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -33,7 +35,10 @@ func SchematicCommentsHandler(app *pocketbase.PocketBase, searchService *search.
 			dbx.Params{"name": e.Request.PathValue("name")})
 
 		if len(results) != 1 {
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
+			nd := DefaultData{}
+			nd.Populate(e)
+			nd.Title = i18n.T(nd.Language, "Page Not Found")
+			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
 			if err != nil {
 				return err
 			}

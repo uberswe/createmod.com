@@ -321,7 +321,7 @@
                 formData.append("gallery", file)
             }
             formData.append("title", titleElement.value)
-            formData.append("author", pb.authStore.model.id)
+            formData.append("author", "{{ .UserID }}")
             formData.append("content", tinyMCE.activeEditor.getContent())
             formData.append("description", tinyMCE.activeEditor.getContent())
             formData.append("categories", document.getElementById("schematic-category").value)

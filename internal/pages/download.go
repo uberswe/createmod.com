@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"createmod/internal/cache"
+	"createmod/internal/store"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -18,7 +19,7 @@ import (
 
 // DownloadHandler redirects to the schematic file and increments a download counter.
 // Requires a valid one-time token (?t=) issued by the interstitial page.
-func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		if name == "" {

@@ -5,7 +5,7 @@
             <div class="row g-4">
                 <!-- Brand column -->
                 <div class="col-12 col-md-6 col-lg-3">
-                    <a href="/" class="footer-brand">
+                    <a href="{{ LangURL .Language "/" }}" class="footer-brand">
                         <img src="/assets/x/logo.png" alt="CreateMod.com" height="32">
                     </a>
                     <p class="footer-tagline">The Create Mod Schematics Repository. Download and share community-built schematics for Minecraft.</p>
@@ -22,37 +22,38 @@
                 <div class="col-6 col-md-3 col-lg-2 offset-lg-1">
                     <h6 class="footer-heading">{{ T .Language "Browse" }}</h6>
                     <ul class="footer-nav">
-                        <li><a href="/">{{ T .Language "Latest Schematics" }}</a></li>
-                        <li><a href="/explore">{{ T .Language "Explore" }}</a></li>
-                        <li><a href="/collections">{{ T .Language "Collections" }}</a></li>
-                        <li><a href="/videos">{{ T .Language "Videos" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/" }}">{{ T .Language "Latest Schematics" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/explore" }}">{{ T .Language "Explore" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/collections" }}">{{ T .Language "Collections" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/videos" }}">{{ T .Language "Videos" }}</a></li>
                     </ul>
                 </div>
                 <!-- Community column -->
                 <div class="col-6 col-md-3 col-lg-2">
                     <h6 class="footer-heading">{{ T .Language "Community" }}</h6>
                     <ul class="footer-nav">
-                        <li><a href="/guides">{{ T .Language "Guides" }}</a></li>
-                        <li><a href="/news">{{ T .Language "News" }}</a></li>
-                        <li><a href="/upload">{{ T .Language "Upload" }}</a></li>
-                        <li><a href="/contact">{{ T .Language "Contact" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/guides" }}">{{ T .Language "Guides" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/news" }}">{{ T .Language "News" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/upload" }}">{{ T .Language "Upload" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/contact" }}">{{ T .Language "Contact" }}</a></li>
                     </ul>
                 </div>
                 <!-- Legal column -->
                 <div class="col-6 col-md-3 col-lg-2">
                     <h6 class="footer-heading">{{ T .Language "Legal" }}</h6>
                     <ul class="footer-nav">
-                        <li><a href="/terms-of-service">{{ T .Language "Terms of Service" }}</a></li>
-                        <li><a href="/privacy-policy">{{ T .Language "Privacy Policy" }}</a></li>
-                        <li><a href="/rules">{{ T .Language "Rules" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/terms-of-service" }}">{{ T .Language "Terms of Service" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/privacy-policy" }}">{{ T .Language "Privacy Policy" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/rules" }}">{{ T .Language "Rules" }}</a></li>
                         <li><span data-ccpa-link="1"></span></li>
                     </ul>
                     <div id="ncmp-consent-link"></div>
                 </div>
                 <!-- Open Source column -->
                 <div class="col-6 col-md-3 col-lg-2">
-                    <h6 class="footer-heading">Open Source</h6>
+                    <h6 class="footer-heading">{{ T .Language "Developers" }}</h6>
                     <ul class="footer-nav">
+                        <li><a href="{{ LangURL .Language "/api" }}">{{ T .Language "API Docs" }}</a></li>
                         <li><a href="https://github.com/uberswe/createmod" target="_blank" rel="noopener">Source Code</a></li>
                         <li><a href="https://github.com/uberswe/createmod/issues" target="_blank" rel="noopener">Report a Bug</a></li>
                     </ul>
@@ -71,6 +72,7 @@
             </div>
         </div>
     </div>
+    <script>var langPrefix = '{{ if .LangPrefix }}/{{ .LangPrefix }}{{ end }}';</script>
     <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.26.0/dist/pocketbase.umd.js" crossorigin="anonymous" integrity="sha384-Xf1OcXEVWauA5CD3AztHqIy5tUPx6rk2hp0h5giz/jXpnZo7KCh9v2VWXOQYZVWM"></script>
     <script>
         let url = "https://createmod.com"
@@ -106,40 +108,6 @@
         }
 
         let run = function () {
-            let isAuthenticated = function (_callback) {
-                if (pb.authStore.isValid) {
-                    authRefresh().then(() => {
-                        if (pb.authStore.isValid) {
-                            _callback(true)
-                        } else {
-                            pb.authStore.clear()
-                            // clear cookie
-                            deleteCookie("create-mod-auth")
-                            _callback(false)
-                        }
-                    }).catch(() => {
-                        pb.authStore.clear()
-                        deleteCookie("create-mod-auth")
-                        _callback(false)
-                    })
-                    _callback(true)
-                    return true
-                }
-                _callback(false)
-                return false
-            }
-
-            let authRefresh = async function () {
-                return pb.collection('users').authRefresh();
-            }
-
-            function ignore(loggedIn) {
-                // do nothing
-            }
-
-            const dropdownSvg = '<svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="currentColor"  class="icon icon-tabler icons-tabler-filled icon-tabler-caret-down"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 9c.852 0 1.297 .986 .783 1.623l-.076 .084l-6 6a1 1 0 0 1 -1.32 .083l-.094 -.083l-6 -6l-.083 -.094l-.054 -.077l-.054 -.096l-.017 -.036l-.027 -.067l-.032 -.108l-.01 -.053l-.01 -.06l-.004 -.057v-.118l.005 -.058l.009 -.06l.01 -.052l.032 -.108l.027 -.067l.07 -.132l.065 -.09l.073 -.081l.094 -.083l.077 -.054l.096 -.054l.036 -.017l.067 -.027l.108 -.032l.053 -.01l.06 -.01l.057 -.004l12.059 -.002z" /></svg>'
-
-
             // Login Handler — client-side validation only.
             // The form does a native POST to /login which sets the auth cookie
             // server-side. We only prevent submission if fields are empty.
@@ -180,187 +148,53 @@
                 });
             }
 
-            // Discord login
-            let discordLogin = document.getElementById("discord-login");
-            if (discordLogin != null && !discordLogin._bound) {
-                discordLogin._bound = true;
-                discordLogin.addEventListener("click", async (e) => {
-                    e.preventDefault();
-                    await pb.collection('users').authWithOAuth2({provider: 'discord'}).then(() => {
-                        location.href = '/'
-                    }).catch(() => {
-                        // Throw some error
-                    });
-                })
-            }
-
-            // Github login
-            let githubLogin = document.getElementById("github-login");
-            if (githubLogin != null && !githubLogin._bound) {
-                githubLogin._bound = true;
-                githubLogin.addEventListener("click", async (e) => {
-                    e.preventDefault();
-                    await pb.collection('users').authWithOAuth2({provider: 'github'}).then(() => {
-                        location.href = '/'
-                    }).catch(() => {
-                        // Throw some error
-                    });
-                })
-            }
-
-            // Signup Handler
+            // Signup Handler — client-side validation only.
+            // The form does a native POST to /register.
             let signupForm = document.getElementById("signup-form");
-            if (signupForm != null) {
+            if (signupForm != null && !signupForm._bound) {
+                signupForm._bound = true;
                 let username = document.getElementById("username");
                 let password = document.getElementById("password");
                 let email = document.getElementById("email");
                 let terms = document.getElementById("terms");
                 let errorDivs = [];
-                signupForm.addEventListener("submit", async (e) => {
-                        e.preventDefault();
-                        let errors = [];
-                        errorDivs.forEach((ed) => {
-                            ed.remove()
-                        })
-                        errorDivs = []
-                        username.classList.remove("is-invalid")
-                        password.classList.remove("is-invalid")
-                        email.classList.remove("is-invalid")
-                        terms.classList.remove("is-invalid")
-                        if (username.value === "") {
-                            username.classList.add("is-invalid")
-                            errors.push("Invalid username")
-                        }
-                        if (password.value === "") {
-                            password.classList.add("is-invalid")
-                            errors.push("Invalid password")
-
-                        }
-                        if (email.value === "") {
-                            email.classList.add("is-invalid")
-                            errors.push("Invalid email")
-                        }
-                        if (!terms.checked) {
-                            terms.classList.add("is-invalid")
-                            errors.push("You must agree to the Terms Of Service")
-                        }
-                        if (errors.length === 0) {
-                            const data = {
-                                "username": username.value,
-                                "email": email.value,
-                                "emailVisibility": false,
-                                "password": password.value,
-                                "passwordConfirm": password.value,
-                                "terms": terms.checked
-                            };
-
-                            pb.collection('users').create(data).then((record) => {
-                                pb.collection('users').requestVerification(email.value);
-                                let successModal = new Modal(document.getElementById('modal-success'), {});
-                                successModal.show();
-                                // Log the user in automatically
-                                pb.collection('users').authWithPassword(
-                                    username.value,
-                                    password.value,
-                                ).then((authData) => {
-                                    location.href = '/'
-                                });
-                            }).catch((e) => {
-                                if (e.data === undefined || e.data.data === undefined) {
-                                    if (typeof showToast === 'function') { showToast('Something went wrong, please reload the page and try again', 'danger'); } else { alert('Something went wrong, please reload the page and try again'); }
-                                } else {
-                                    for (const [key, value] of Object.entries(e.data.data)) {
-                                        let div = document.createElement('div');
-                                        div.classList.add("invalid-feedback")
-                                        div.innerText = value.message
-                                        let element = document.getElementById(key);
-                                        element.classList.add("is-invalid")
-                                        element.parentNode.insertAdjacentElement("beforeend", div)
-                                        errorDivs.push(div)
-                                    }
-                                }
-                            });
-                        } else {
-                            errors.forEach((error) => {
-                                let div = document.createElement('div');
-                                div.classList.add("invalid-feedback")
-                                div.innerText = error
-                                password.parentNode.insertAdjacentElement("beforeend", div)
-                                errorDivs.push(div)
-                            });
-                        }
+                signupForm.addEventListener("submit", function(e) {
+                    let errors = [];
+                    errorDivs.forEach((ed) => { ed.remove() })
+                    errorDivs = []
+                    if (username) username.classList.remove("is-invalid")
+                    if (password) password.classList.remove("is-invalid")
+                    if (email) email.classList.remove("is-invalid")
+                    if (terms) terms.classList.remove("is-invalid")
+                    if (username && username.value === "") {
+                        username.classList.add("is-invalid")
+                        errors.push("Invalid username")
                     }
-                )
-                ;
-            }
-
-// Forgot Password Handler
-            let forgotPasswordForm = document.getElementById("forgot-password-form");
-            if (forgotPasswordForm != null) {
-                let div = document.createElement('div');
-                let email = document.getElementById("email");
-                forgotPasswordForm.addEventListener("submit", async (e) => {
-                    e.preventDefault();
-                    div.remove()
-                    if (email.value === "") {
+                    if (password && password.value === "") {
+                        password.classList.add("is-invalid")
+                        errors.push("Invalid password")
+                    }
+                    if (email && email.value === "") {
                         email.classList.add("is-invalid")
-                        div = document.createElement('div');
-                        div.classList.add("invalid-feedback")
-                        div.innerText = "Invalid email"
-                        email.parentNode.insertAdjacentElement("beforeend", div)
-                    } else {
-                        pb.collection('users').requestPasswordReset(email.value).then((record) => {
-                            let successModal = new Modal(document.getElementById('modal-success'), {});
-                            successModal.show();
-                        }).catch((e) => {
-                            email.classList.add("is-invalid")
-                            div = document.createElement('div');
+                        errors.push("Invalid email")
+                    }
+                    if (terms && !terms.checked) {
+                        terms.classList.add("is-invalid")
+                        errors.push("You must agree to the Terms Of Service")
+                    }
+                    if (errors.length > 0) {
+                        e.preventDefault();
+                        errors.forEach((error) => {
+                            let div = document.createElement('div');
                             div.classList.add("invalid-feedback")
-                            div.innerText = e.data.data.email.message
-                            email.parentNode.insertAdjacentElement("beforeend", div)
+                            div.innerText = error
+                            if (password) password.parentNode.insertAdjacentElement("beforeend", div)
+                            errorDivs.push(div)
                         });
                     }
+                    // If no errors, allow the native form POST to proceed
                 });
             }
-
-
-            isAuthenticated(function renderDropdown(isLoggedIn) {
-                if (isLoggedIn) {
-                    let authAvatars = document.getElementsByClassName("auth-avatar")
-                    let authUsernames = document.getElementsByClassName("auth-username")
-                    if (authAvatars != null && authUsernames != null) {
-
-                        for (let i = 0; i < authAvatars.length; i++) {
-                            if (pb.authStore.model.avatar === "") {
-                                authAvatars.item(i).remove()
-                            } else {
-                                authAvatars.item(i).style.backgroundImage = "url('" + pb.authStore.model.avatar + "')"
-                            }
-                        }
-                        for (let i = 0; i < authUsernames.length; i++) {
-                            authUsernames.item(i).innerHTML = pb.authStore.model.username + " " + dropdownSvg
-                        }
-                    }
-                } else {
-                    // Only replace the auth section if the server did NOT render an
-                    // authenticated dropdown (i.e. there is no dropdown toggle inside).
-                    // The server sets the auth cookie and renders the header based on it;
-                    // the JS SDK authStore (localStorage) may not be in sync, so we must
-                    // not clobber a valid server-rendered authenticated header.
-                    let authDropdowns = document.getElementsByClassName("auth-section")
-                    for (let i = 0; i < authDropdowns.length; i++) {
-                        let el = authDropdowns.item(i)
-                        if (!el.querySelector('[data-bs-toggle="dropdown"]')) {
-                            while (el.firstChild) el.removeChild(el.firstChild)
-                            let link = document.createElement("a")
-                            link.href = "/login"
-                            link.textContent = "Login"
-                            el.appendChild(link)
-                        }
-                    }
-                }
-            })
-
 
             let searchForm = document.getElementById("search-form")
             let searchField = document.getElementById("search-field")
@@ -368,7 +202,7 @@
                 searchForm.addEventListener("submit", async (e) => {
                     e.preventDefault();
                     let slug = slugify(searchField.value)
-                    location.href = "/search/" + slug
+                    location.href = langPrefix + "/search/" + slug
                 })
             }
 

@@ -41,6 +41,12 @@ func NewTestRegistry() *template.Registry {
 			}
 			return false
 		},
+		"LangURL": func(lang string, path string) string {
+			return PrefixedPath(lang, path)
+		},
+		"Hreflangs": func(barePath string) []HreflangEntry {
+			return AllHreflangs()
+		},
 		"LangFlag": func(code string) string {
 			switch code {
 			case "en":

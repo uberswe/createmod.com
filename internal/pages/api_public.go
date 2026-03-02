@@ -4,6 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/models"
 	"createmod/internal/search"
+	"createmod/internal/store"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -56,16 +57,44 @@ func verifyAPIKey(app *pocketbase.PocketBase, plaintext string) (string, bool) {
 	return recs[0].Id, true
 }
 
-// recordAPIKeyUsage increments counters in api_key_usage for the provided key id.
-func recordAPIKeyUsage(app *pocketbase.PocketBase, keyID string, isError bool) {
+// writeJSON is a small helper for JSON error/success responses.
+func writeJSON(e *core.RequestEvent, status int, data interface{}) error {
+	e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	e.Response.WriteHeader(status)
+	return json.NewEncoder(e.Response).Encode(data)
+}
+
+// requireAPIKey extracts and validates the API key from the request.
+// Returns (keyID, nil) on success or ("", error-already-written) on failure.
+func requireAPIKey(app *pocketbase.PocketBase, e *core.RequestEvent) (string, error) {
+	apiKey := getAPIKeyFromRequest(e.Request)
+	if apiKey == "" {
+		_ = writeJSON(e, http.StatusUnauthorized, map[string]string{
+			"error": "API key required. Get one at /settings/api-keys",
+		})
+		return "", fmt.Errorf("missing api key")
+	}
+	keyID, ok := verifyAPIKey(app, apiKey)
+	if !ok {
+		_ = writeJSON(e, http.StatusUnauthorized, map[string]string{
+			"error": "invalid API key",
+		})
+		return "", fmt.Errorf("invalid api key")
+	}
+	return keyID, nil
+}
+
+// recordAPIKeyUsage increments counters in api_key_usage for the provided key id and endpoint.
+func recordAPIKeyUsage(app *pocketbase.PocketBase, keyID string, endpoint string, isError bool) {
 	coll, err := app.FindCollectionByNameOrId("api_key_usage")
 	if err != nil || coll == nil {
 		return
 	}
-	recs, _ := app.FindRecordsByFilter(coll.Id, "key = {:k}", "-created", 1, 0, dbx.Params{"k": keyID})
+	recs, _ := app.FindRecordsByFilter(coll.Id, "key = {:k} && endpoint = {:ep}", "-created", 1, 0, dbx.Params{"k": keyID, "ep": endpoint})
 	if len(recs) == 0 {
 		r := core.NewRecord(coll)
 		r.Set("key", keyID)
+		r.Set("endpoint", endpoint)
 		r.Set("total_requests", 1)
 		r.Set("total_errors", 0)
 		if isError {
@@ -114,31 +143,19 @@ func rateLimitAllow(cacheService *cache.Service, keyID string, limit int) (bool,
 // Query parameters:
 //   - query (or q): search term; if absent, returns newest schematics
 //   - page (or p): 1-based page index (default 1)
-func APISchematicsListHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func APISchematicsListHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		apiKey := getAPIKeyFromRequest(e.Request)
-		keyID := ""
+		const endpoint = "GET /api/schematics"
+		keyID, err := requireAPIKey(app, e)
+		if err != nil {
+			return nil
+		}
 		success := true
-		if apiKey != "" {
-			if id, ok := verifyAPIKey(app, apiKey); !ok {
-				e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-				e.Response.WriteHeader(http.StatusUnauthorized)
-				_, _ = e.Response.Write([]byte(`{"error":"invalid api key"}`))
-				return nil
-			} else {
-				keyID = id
-				// record usage best-effort at the end of handler
-				defer func() { recordAPIKeyUsage(app, keyID, !success) }()
-				// rate limit per key per minute (simple in-memory)
-				if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
-					success = false
-					e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-					e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-					e.Response.WriteHeader(http.StatusTooManyRequests)
-					_, _ = e.Response.Write([]byte(`{"error":"rate limit exceeded"}`))
-					return nil
-				}
-			}
+		defer func() { recordAPIKeyUsage(app, keyID, endpoint, !success) }()
+		if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
+			success = false
+			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
 		q := e.Request.URL.Query().Get("query")
 		if q == "" {
@@ -251,27 +268,19 @@ func APISchematicsListHandler(app *pocketbase.PocketBase, searchService *search.
 }
 
 // APISchematicDetailHandler serves GET /api/schematics/{name} returning one schematic by name.
-func APISchematicDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func APISchematicDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		apiKey := getAPIKeyFromRequest(e.Request)
+		const endpoint = "GET /api/schematics/{name}"
+		keyID, err := requireAPIKey(app, e)
+		if err != nil {
+			return nil
+		}
 		success := true
-		if apiKey != "" {
-			if id, ok := verifyAPIKey(app, apiKey); !ok {
-				e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-				e.Response.WriteHeader(http.StatusUnauthorized)
-				_, _ = e.Response.Write([]byte(`{"error":"invalid api key"}`))
-				return nil
-			} else {
-				defer func() { recordAPIKeyUsage(app, id, !success) }()
-				if ok, retry := rateLimitAllow(cacheService, id, 120); !ok {
-					success = false
-					e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-					e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-					e.Response.WriteHeader(http.StatusTooManyRequests)
-					_, _ = e.Response.Write([]byte(`{"error":"rate limit exceeded"}`))
-					return nil
-				}
-			}
+		defer func() { recordAPIKeyUsage(app, keyID, endpoint, !success) }()
+		if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
+			success = false
+			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
 		name := e.Request.PathValue("name")
 		if strings.TrimSpace(name) == "" {

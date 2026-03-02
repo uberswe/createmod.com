@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"createmod/internal/store"
 	"net/http"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 // Accepts a comma-separated list of schematic IDs via form field "schematics" (or alias "ids").
 // Author-only. Best-effort persists order to a multi-rel field on the collection
 // and, if a join table exists with a numeric "position" field, updates those as well.
-func CollectionsReorderHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func CollectionsReorderHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -23,12 +24,8 @@ func CollectionsReorderHandler(app *pocketbase.PocketBase) func(e *core.RequestE
 		if slug == "" {
 			return e.String(http.StatusBadRequest, "missing slug")
 		}
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
@@ -77,7 +74,7 @@ func CollectionsReorderHandler(app *pocketbase.PocketBase) func(e *core.RequestE
 			return e.String(http.StatusNotFound, "collection not found")
 		}
 		// Author-only
-		if rec.GetString("author") != e.Auth.Id {
+		if rec.GetString("author") != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 
@@ -119,9 +116,9 @@ func CollectionsReorderHandler(app *pocketbase.PocketBase) func(e *core.RequestE
 
 		dest := "/collections/" + slug + "/edit"
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", dest)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, dest)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 	}
 }

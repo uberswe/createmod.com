@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	pbtempl "github.com/pocketbase/pocketbase/tools/template"
@@ -21,21 +23,17 @@ type GuidesNewData struct {
 }
 
 // GuidesNewHandler renders a simple Markdown editor form for creating guides (auth required).
-func GuidesNewHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func GuidesNewHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		d := GuidesNewData{}
 		d.Populate(e)
-		d.Title = "New Guide"
-		d.Description = "Create a new guide (Markdown)"
+		d.Title = i18n.T(d.Language, "New Guide")
+		d.Description = i18n.T(d.Language, "page.guides_create.description")
 		d.Slug = "/guides/new"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		html, err := registry.LoadFiles(guidesNewTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -45,17 +43,13 @@ func GuidesNewHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, ca
 }
 
 // GuidesCreateHandler handles POST /guides to insert a new guide record (best-effort schema compatible).
-func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
@@ -68,10 +62,10 @@ func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 			// nothing to save
 			dest := "/guides/new?error=missing_title_or_content"
 			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", dest)
+				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 				return e.HTML(http.StatusNoContent, "")
 			}
-			return e.Redirect(http.StatusSeeOther, dest)
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 		}
 
 		coll, err := app.FindCollectionByNameOrId("guides")
@@ -95,7 +89,7 @@ func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 		if link != "" {
 			rec.Set("wiki_url", link)
 		}
-		rec.Set("author", e.Auth.Id)
+		rec.Set("author", authenticatedUserID(e))
 		// If excerpt field exists, try a short preview (strip HTML tags from content)
 		if content != "" {
 			ex := stripHTMLTags(content)
@@ -113,17 +107,17 @@ func GuidesCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 			}
 			rec.Set("title", title)
 			rec.Set("name", title)
-			rec.Set("author", e.Auth.Id)
+			rec.Set("author", authenticatedUserID(e))
 			_ = app.Save(rec) // best-effort; ignore error to avoid blocking UX in early stages
 		}
 
 		// Redirect to the newly created guide's detail page
 		dest := "/guides/" + rec.Id
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", dest)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, dest)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 	}
 }
 

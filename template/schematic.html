@@ -460,7 +460,23 @@
                         {{ end }}
 
                         <!-- Required Mods -->
-                        {{ if .Mods }}
+                        {{ if .ModInfoList }}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Required Mods" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex flex-wrap gap-2" id="mods-list">
+                                    {{ range .ModInfoList }}
+                                    <a href="/mods/{{ .Namespace }}" class="badge bg-blue-lt text-decoration-none d-inline-flex align-items-center gap-1">
+                                        {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" class="mod-badge-icon" loading="lazy">{{ end }}
+                                        {{ .Name }}
+                                    </a>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        {{ else if .Mods }}
                         <div class="card mb-3">
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Required Mods" }}</h3>

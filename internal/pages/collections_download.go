@@ -3,6 +3,7 @@ package pages
 import (
 	"archive/zip"
 	"createmod/internal/cache"
+	"createmod/internal/store"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,7 +22,7 @@ import (
 // with fields {collection, schematic}; falls back to a multi-rel field "schematics" on the collection.
 // Counters: increments a simple "downloads" int field on the collection if present, and increments
 // each included schematic's download counters via countSchematicDownload.
-func CollectionsDownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func CollectionsDownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		slug := e.Request.PathValue("slug")
 		if slug == "" {

@@ -6,10 +6,13 @@ import (
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
 	"createmod/internal/moderation"
+	"createmod/internal/modmeta"
 	"createmod/internal/outurl"
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
+	"createmod/internal/session"
+	"createmod/internal/store"
 	"createmod/internal/translation"
 	"crypto/sha256"
 	"encoding/hex"
@@ -41,7 +44,7 @@ func computeAssetVersion() string {
 	return hex.EncodeToString(h.Sum(nil))[:8]
 }
 
-func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service, moderationService *moderation.Service, translationService *translation.Service) {
+func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service, moderationService *moderation.Service, translationService *translation.Service, modMetaService *modmeta.Service, appStore *store.Store, sessionStore *session.Store, discordOAuth *auth.OAuthProvider, githubOAuth *auth.OAuthProvider) {
 	promotionService := promotion.New()
 	registry := template.NewRegistry()
 
@@ -71,6 +74,12 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 				}
 			}
 			return false
+		},
+		"LangURL": func(lang string, path string) string {
+			return pages.PrefixedPath(lang, path)
+		},
+		"Hreflangs": func(barePath string) []pages.HreflangEntry {
+			return pages.AllHreflangs()
 		},
 		"LangFlag": func(code string) string {
 			switch code {
@@ -102,7 +111,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 	e.BindFunc(legacySearchCompat())
 	e.BindFunc(legacyCategoryCompat())
 	e.BindFunc(legacyTagCompat())
-	e.BindFunc(cookieAuth(app))
+	e.BindFunc(cookieAuth(app, sessionStore))
 	// Frontend routes
 	e.GET("/sitemaps/{path...}", apis.Static(os.DirFS("./template/dist/sitemaps"), false))
 	e.GET("/assets/x/{path...}", apis.Static(os.DirFS("./template/static"), false))
@@ -123,134 +132,156 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 		return e.String(200, s)
 	})
 	// Index
-	e.GET("/", pages.IndexHandler(app, cacheService, registry))
+	e.GET("/", pages.IndexHandler(app, cacheService, registry, appStore))
 	// Removed the about page, not relevant anymore
-	e.GET("/upload", pages.UploadHandler(app, registry, cacheService))
-	e.POST("/upload/nbt", pages.UploadNBTHandler(app, registry, cacheService))
+	e.GET("/upload", pages.UploadHandler(app, registry, cacheService, appStore))
+	e.POST("/upload/nbt", pages.UploadNBTHandler(app, registry, cacheService, appStore))
 	// Private preview URL for temporary uploads
-	e.GET("/u/{token}", pages.UploadPreviewHandler(app, registry, cacheService))
+	e.GET("/u/{token}", pages.UploadPreviewHandler(app, registry, cacheService, appStore))
 	// Make public endpoint for temporary uploads
-	e.GET("/u/{token}/download", pages.UploadDownloadHandler(app))
-	e.POST("/u/{token}/add-file", pages.UploadAddFileHandler(app))
-	e.DELETE("/u/{token}/files/{fileId}", pages.UploadDeleteFileHandler(app))
-	e.GET("/u/{token}/files/{fileId}/download", pages.UploadFileDownloadHandler(app))
-	e.POST("/u/{token}/make-public", pages.UploadMakePublicHandler(app, registry, cacheService))
+	e.GET("/u/{token}/download", pages.UploadDownloadHandler(app, appStore))
+	e.POST("/u/{token}/add-file", pages.UploadAddFileHandler(app, appStore))
+	e.DELETE("/u/{token}/files/{fileId}", pages.UploadDeleteFileHandler(app, appStore))
+	e.GET("/u/{token}/files/{fileId}/download", pages.UploadFileDownloadHandler(app, appStore))
+	e.POST("/u/{token}/make-public", pages.UploadMakePublicHandler(app, registry, cacheService, appStore))
 	// Publish form for temporary uploads (requires auth)
-	e.GET("/u/{token}/publish", pages.UploadPublishHandler(app, registry, cacheService))
+	e.GET("/u/{token}/publish", pages.UploadPublishHandler(app, registry, cacheService, appStore))
 	// Upload moderation pending confirmation page
-	e.GET("/upload/pending", pages.UploadPendingHandler(app, registry, cacheService))
-	e.GET("/contact", pages.ContactHandler(app, registry, cacheService))
-	e.GET("/blacklist-request", pages.BlacklistRequestHandler(app, registry, cacheService))
+	e.GET("/upload/pending", pages.UploadPendingHandler(app, registry, cacheService, appStore))
+	e.GET("/contact", pages.ContactHandler(app, registry, cacheService, appStore))
+	e.GET("/blacklist-request", func(e *core.RequestEvent) error {
+		return e.Redirect(http.StatusMovedPermanently, pages.LangRedirectURL(e, "/settings/blacklist"))
+	})
 	// Redirect legacy single guide page to the guides listing
 	e.GET("/guide", func(e *core.RequestEvent) error {
-		return e.Redirect(http.StatusMovedPermanently, "/guides")
+		return e.Redirect(http.StatusMovedPermanently, pages.LangRedirectURL(e, "/guides"))
 	})
-	e.GET("/rules", pages.RulesHandler(app, registry, cacheService))
-	e.GET("/explore", pages.ExploreHandler(app, cacheService, registry))
-	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService))
-	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService))
-	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService))
-	e.GET("/settings/points", pages.UserPointsHandler(app, registry, cacheService))
+	e.GET("/rules", pages.RulesHandler(app, registry, cacheService, appStore))
+	e.GET("/explore", pages.ExploreHandler(app, cacheService, registry, appStore))
+	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService, appStore))
+	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService, appStore))
+	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService, appStore))
+	e.GET("/settings/password", pages.UserPasswordHandler(app, registry, cacheService, appStore))
+	e.POST("/settings/password", pages.UserPasswordPostHandler(app, registry, cacheService, appStore))
+	e.GET("/settings/points", pages.UserPointsHandler(app, registry, cacheService, appStore))
 	e.GET("/settings/gamification", func(e *core.RequestEvent) error {
-		return e.Redirect(http.StatusMovedPermanently, "/settings/points")
+		return e.Redirect(http.StatusMovedPermanently, pages.LangRedirectURL(e, "/settings/points"))
 	})
-	e.GET("/settings/api-keys", pages.UserAPIKeysHandler(app, registry, cacheService))
-	e.GET("/settings/statistics", pages.UserStatsHandler(app, registry, cacheService))
+	e.GET("/settings/api-keys", pages.UserAPIKeysHandler(app, registry, cacheService, appStore))
+	e.GET("/settings/statistics", pages.UserStatsHandler(app, registry, cacheService, appStore))
+	e.GET("/settings/blacklist", pages.BlacklistRequestHandler(app, registry, cacheService, appStore))
 	// API Docs
-	e.GET("/api", pages.APIDocsHandler(app, registry, cacheService))
+	e.GET("/api", pages.APIDocsHandler(app, registry, cacheService, appStore))
 	// Public JSON API (beta)
-	e.GET("/api/schematics", pages.APISchematicsListHandler(app, searchService, cacheService))
-	e.GET("/api/schematics/{name}", pages.APISchematicDetailHandler(app, cacheService))
+	e.GET("/api/schematics", pages.APISchematicsListHandler(app, searchService, cacheService, appStore))
+	e.GET("/api/schematics/{name}", pages.APISchematicDetailHandler(app, cacheService, appStore))
+	e.POST("/api/schematics/upload", pages.APIUploadHandler(app, cacheService, appStore))
 	// Reports
-	e.POST("/reports", pages.ReportSubmitHandler(app))
+	e.POST("/reports", pages.ReportSubmitHandler(app, appStore))
 	// Admin
-	e.GET("/admin/reports", pages.AdminReportsHandler(app, registry, cacheService))
-	e.POST("/admin/reports/{id}/resolve", pages.AdminReportResolveHandler(app))
+	e.GET("/admin/reports", pages.AdminReportsHandler(app, registry, cacheService, appStore))
+	e.POST("/admin/reports/{id}/resolve", pages.AdminReportResolveHandler(app, appStore))
 	// Auth
-	e.GET("/login", pages.LoginHandler(app, registry))
+	e.GET("/login", pages.LoginHandler(app, registry, appStore))
 	// Handle login form submissions
-	e.POST("/login", pages.LoginPostHandler(app))
-	e.GET("/register", pages.RegisterHandler(app, registry))
-	e.GET("/reset-password", pages.PasswordResetHandler(app, registry))
+	e.POST("/login", pages.LoginPostHandler(app, appStore, sessionStore))
+	e.GET("/register", pages.RegisterHandler(app, registry, appStore))
+	e.POST("/register", pages.RegisterPostHandler(app, appStore, sessionStore))
+	e.GET("/reset-password", pages.PasswordResetHandler(app, registry, appStore))
+	e.POST("/reset-password", pages.PasswordResetPostHandler(app, registry, appStore))
+	e.GET("/reset-password/{token}", pages.PasswordResetConfirmHandler(app, registry, appStore))
+	e.POST("/reset-password/{token}", pages.PasswordResetConfirmPostHandler(app, registry, appStore, sessionStore))
+	// OAuth routes
+	e.GET("/auth/discord", pages.OAuthRedirectHandler(discordOAuth))
+	e.GET("/auth/discord/callback", pages.OAuthCallbackHandler(app, discordOAuth, appStore, sessionStore))
+	e.GET("/auth/github", pages.OAuthRedirectHandler(githubOAuth))
+	e.GET("/auth/github/callback", pages.OAuthCallbackHandler(app, githubOAuth, appStore, sessionStore))
 	e.GET("/logout", func(e *core.RequestEvent) error {
 		secure := e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https")
+
+		// Delete PostgreSQL session
+		if cookie, err := e.Request.Cookie(auth.CookieName); err == nil {
+			_ = sessionStore.Delete(e.Request.Context(), cookie.Value)
+		}
+
 		auth.ClearAuthCookie(e.Response, secure)
 		// Clear server-side auth for this request context
 		e.Auth = nil
 		if e.Request.Header.Get("HX-Request") != "" {
 			// HTMX request: instruct client to navigate
-			e.Response.Header().Set("HX-Redirect", "/")
+			e.Response.Header().Set("HX-Redirect", pages.LangRedirectURL(e, "/"))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusFound, "/")
+		return e.Redirect(http.StatusFound, pages.LangRedirectURL(e, "/"))
 	})
 	// News
-	e.GET("/news", pages.NewsHandler(app, registry, cacheService))
-	e.GET("/news/{slug}", pages.NewsPostHandler(app, registry, cacheService))
+	e.GET("/news", pages.NewsHandler(app, registry, cacheService, appStore))
+	e.GET("/news/{slug}", pages.NewsPostHandler(app, registry, cacheService, appStore))
 	// Users listing
-	e.GET("/users", pages.UsersHandler(app, registry, cacheService))
+	e.GET("/users", pages.UsersHandler(app, registry, cacheService, appStore))
 	// Videos listing
-	e.GET("/videos", pages.VideosHandler(app, registry, cacheService))
+	e.GET("/videos", pages.VideosHandler(app, registry, cacheService, appStore))
 	// Guides listing
-	e.GET("/guides", pages.GuidesHandler(app, registry, cacheService, outSecret))
+	e.GET("/guides", pages.GuidesHandler(app, registry, cacheService, outSecret, appStore))
 	// Guide create
-	e.GET("/guides/new", pages.GuidesNewHandler(app, registry, cacheService))
-	e.POST("/guides", pages.GuidesCreateHandler(app, cacheService))
+	e.GET("/guides/new", pages.GuidesNewHandler(app, registry, cacheService, appStore))
+	e.POST("/guides", pages.GuidesCreateHandler(app, cacheService, appStore))
 	// Guide detail/edit/update/delete
-	e.GET("/guides/{id}", pages.GuidesShowHandler(app, registry, cacheService, translationService))
-	e.GET("/guides/{id}/edit", pages.GuidesEditHandler(app, registry, cacheService))
-	e.POST("/guides/{id}", pages.GuidesUpdateHandler(app, cacheService))
-	e.POST("/guides/{id}/delete", pages.GuidesDeleteHandler(app))
+	e.GET("/guides/{id}", pages.GuidesShowHandler(app, registry, cacheService, translationService, appStore))
+	e.GET("/guides/{id}/edit", pages.GuidesEditHandler(app, registry, cacheService, appStore))
+	e.POST("/guides/{id}", pages.GuidesUpdateHandler(app, cacheService, appStore))
+	e.POST("/guides/{id}/delete", pages.GuidesDeleteHandler(app, appStore))
 	// Collections listing
 	// Mods
-	e.GET("/mods", pages.ModsHandler(app, cacheService, registry))
-	e.GET("/mods/{slug}", pages.ModDetailHandler(app, cacheService, registry))
-	e.GET("/collections", pages.CollectionsHandler(app, registry, cacheService))
+	e.GET("/mods", pages.ModsHandler(app, cacheService, registry, modMetaService, appStore))
+	e.GET("/mods/{slug}", pages.ModDetailHandler(app, cacheService, registry, modMetaService, appStore))
+	e.GET("/collections", pages.CollectionsHandler(app, registry, cacheService, appStore))
 	// Collections create flow
-	e.GET("/collections/new", pages.CollectionsNewHandler(app, registry, cacheService))
-	e.POST("/collections", pages.CollectionsCreateHandler(app, registry, cacheService))
+	e.GET("/collections/new", pages.CollectionsNewHandler(app, registry, cacheService, appStore))
+	e.POST("/collections", pages.CollectionsCreateHandler(app, registry, cacheService, appStore))
 	// Collections detail
-	e.GET("/collections/{slug}", pages.CollectionsShowHandler(app, registry, cacheService, translationService))
+	e.GET("/collections/{slug}", pages.CollectionsShowHandler(app, registry, cacheService, translationService, appStore))
 	// Collections edit/update/delete
-	e.GET("/collections/{slug}/edit", pages.CollectionsEditHandler(app, registry, cacheService))
-	e.POST("/collections/{slug}", pages.CollectionsUpdateHandler(app, registry, cacheService, moderationService))
-	e.POST("/collections/{slug}/delete", pages.CollectionsDeleteHandler(app))
+	e.GET("/collections/{slug}/edit", pages.CollectionsEditHandler(app, registry, cacheService, appStore))
+	e.POST("/collections/{slug}", pages.CollectionsUpdateHandler(app, registry, cacheService, moderationService, appStore))
+	e.POST("/collections/{slug}/delete", pages.CollectionsDeleteHandler(app, appStore))
 	// Collections reorder (author-only)
-	e.POST("/collections/{slug}/reorder", pages.CollectionsReorderHandler(app))
+	e.POST("/collections/{slug}/reorder", pages.CollectionsReorderHandler(app, appStore))
 	// API keys (user settings)
-	e.POST("/settings/api-keys/new", pages.APIKeyCreateHandler(app, cacheService))
-	e.POST("/settings/api-keys/{id}/revoke", pages.APIKeyRevokeHandler(app))
+	e.POST("/settings/api-keys/new", pages.APIKeyCreateHandler(app, cacheService, appStore))
+	e.POST("/settings/api-keys/{id}/revoke", pages.APIKeyRevokeHandler(app, appStore))
+	e.POST("/api/keys/generate", pages.APIKeyCreateJSONHandler(app, appStore))
 	// Language setter
 	e.GET("/lang", pages.SetLanguageHandler())
 	// Schematics
-	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry))
-	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService, translationService))
+	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry, appStore))
+	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService, translationService, appStore))
 	// Partial comments endpoint for HTMX refresh
-	e.GET("/schematics/{name}/comments", pages.SchematicCommentsHandler(app, searchService, cacheService, registry, discordService))
+	e.GET("/schematics/{name}/comments", pages.SchematicCommentsHandler(app, searchService, cacheService, registry, discordService, appStore))
 	// Add to collection
-	e.POST("/schematics/{name}/add-to-collection", pages.SchematicAddToCollectionHandler(app))
+	e.POST("/schematics/{name}/add-to-collection", pages.SchematicAddToCollectionHandler(app, appStore))
 	// Download endpoint to track download metrics separately
-	e.GET("/download/{name}", pages.DownloadHandler(app, cacheService))
+	e.GET("/download/{name}", pages.DownloadHandler(app, cacheService, appStore))
 	// Download interstitial page
-	e.GET("/get/{name}", pages.DownloadInterstitialHandler(app, registry, cacheService))
+	e.GET("/get/{name}", pages.DownloadInterstitialHandler(app, registry, cacheService, appStore))
 	// External link interstitial (encrypted token, no raw URL exposed)
-	e.GET("/out/{token}", pages.ExternalLinkInterstitialHandler(app, registry, cacheService, outSecret))
-	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry))
+	e.GET("/out/{token}", pages.ExternalLinkInterstitialHandler(app, registry, cacheService, outSecret, appStore))
+	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry, appStore))
 	// Search autocomplete
 	e.GET("/api/search/suggest", pages.SearchSuggestHandler(searchService))
-	e.GET("/search/{term}/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.GET("/search/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService, registry))
-	e.POST("/search", pages.SearchPostHandler(app, cacheService, registry))
+	e.GET("/search/{term}/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.GET("/search/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
+	e.POST("/search", pages.SearchPostHandler(app, cacheService, registry, appStore))
 	// User
-	e.GET("/author/{username}", pages.ProfileHandler(app, cacheService, registry))
-	e.GET("/profile", pages.ProfileHandler(app, cacheService, registry))
+	e.GET("/author/{username}", pages.ProfileHandler(app, cacheService, registry, appStore))
+	e.GET("/profile", pages.ProfileHandler(app, cacheService, registry, appStore))
 	// Fallback
-	e.GET("/{any}", pages.FourOhFourHandler(app, registry))
+	e.GET("/{any}", pages.FourOhFourHandler(app, registry, appStore))
 
 }
 
@@ -271,8 +302,10 @@ func legacyCategoryCompat() func(e *core.RequestEvent) error {
 	}
 }
 
-// cookieAuth was added so that requests can be authenticated on the backend when HTML templates are rendered
-func cookieAuth(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+// cookieAuth authenticates requests using PostgreSQL sessions.
+// It populates the request context with the session and bridges to PocketBase's
+// e.Auth by looking up the PB user record, so PB hooks still work.
+func cookieAuth(app *pocketbase.PocketBase, sessStore *session.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		if e.Auth != nil {
 			return e.Next()
@@ -284,11 +317,28 @@ func cookieAuth(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
 		}
 
 		token := strings.TrimSpace(cookie.Value)
-
-		record, err := app.FindAuthRecordByToken(token, core.TokenTypeAuth)
-		if err == nil && record != nil {
-			e.Auth = record
+		if token == "" {
+			return e.Next()
 		}
+
+		// Validate session in PostgreSQL
+		sess, err := sessStore.Validate(e.Request.Context(), token)
+		if err != nil || sess == nil {
+			return e.Next()
+		}
+
+		// Put session in request context for handlers
+		ctx := session.ContextWithSession(e.Request.Context(), sess)
+		e.Request = e.Request.WithContext(ctx)
+
+		// Bridge: populate e.Auth from PB so PB API hooks (comments, ratings, schematics) still work
+		if sess.UserID != "" {
+			record, err := app.FindRecordById("users", sess.UserID)
+			if err == nil && record != nil {
+				e.Auth = record
+			}
+		}
+
 		return e.Next()
 	}
 }

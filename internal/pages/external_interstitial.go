@@ -2,7 +2,9 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/outurl"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -20,7 +22,7 @@ type ExternalInterstitialData struct {
 	Target string
 }
 
-func ExternalLinkInterstitialHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, outSecret string) func(e *core.RequestEvent) error {
+func ExternalLinkInterstitialHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, outSecret string, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		if token == "" {
@@ -34,10 +36,10 @@ func ExternalLinkInterstitialHandler(app *pocketbase.PocketBase, registry *templ
 
 		d := ExternalInterstitialData{}
 		d.Populate(e)
-		d.Title = "You are leaving createmod.com"
-		d.Description = "External link warning"
+		d.Title = i18n.T(d.Language, "You are leaving createmod.com")
+		d.Description = i18n.T(d.Language, "page.external.description")
 		d.Slug = "/out"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Target = payload.URL
 
 		// Record the click asynchronously so the user is never delayed

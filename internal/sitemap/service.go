@@ -186,6 +186,8 @@ func (s *Service) Generate(app *pocketbase.PocketBase) {
 
 	app.Logger().Info("Sitemap generated", "filename", filename)
 
+	// Generate hreflang sitemaps with xhtml:link alternates for all languages
+	s.GenerateHreflang(app)
 }
 
 func addPage(app *pocketbase.PocketBase, now time.Time, pages *smg.Sitemap, s string, i float32, c smg.ChangeFreq) {

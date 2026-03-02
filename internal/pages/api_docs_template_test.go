@@ -17,10 +17,13 @@ func Test_APIDocs_Template_Has_Expected_Elements(t *testing.T) {
 
 	must := []string{
 		"API Documentation",
-		"Authentication & API keys",
-		"Endpoints",
-		"Authorization: Bearer",
+		"Authentication",
+		"Rate Limits",
+		"Error Codes",
 		"/api/schematics",
+		"X-API-Key",
+		"/api/schematics/upload",
+		"Send Request",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

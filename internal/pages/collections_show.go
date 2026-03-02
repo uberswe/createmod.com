@@ -2,8 +2,10 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/translation"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -41,13 +43,13 @@ type CollectionsShowData struct {
 
 // CollectionsShowHandler renders a basic collection detail page by slug or id.
 // It degrades gracefully if the PocketBase collection is not available yet.
-func CollectionsShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, translationService *translation.Service) func(e *core.RequestEvent) error {
+func CollectionsShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		slug := e.Request.PathValue("slug")
 
 		d := CollectionsShowData{}
 		d.Populate(e)
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Slug = "/collections/" + slug
 
 		if coll, err := app.FindCollectionByNameOrId("collections"); err == nil && coll != nil {
@@ -73,7 +75,7 @@ func CollectionsShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 				d.DescriptionHTML = template.HTML(d.DescriptionText)
 				d.BannerURL = rec.GetString("banner_url")
 				d.Featured = rec.GetBool("featured")
-				if e.Auth != nil && rec.GetString("author") == e.Auth.Id {
+				if isAuthenticated(e) && rec.GetString("author") == authenticatedUserID(e) {
 					d.IsOwner = true
 				}
 
@@ -152,22 +154,22 @@ func CollectionsShowHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 				// SEO/meta
 				d.Title = d.TitleText
 				if d.Title == "" {
-					d.Title = "Collection"
+					d.Title = i18n.T(d.Language, "Collection")
 				}
 				if d.DescriptionText != "" {
 					d.Description = d.DescriptionText
 				} else {
-					d.Description = "Collection details"
+					d.Description = i18n.T(d.Language, "page.collections.description")
 				}
 			} else {
 				// Not found
-				d.Title = "Collection not found"
-				d.Description = "We couldn't find this collection."
+				d.Title = i18n.T(d.Language, "page.collections.notfound.title")
+				d.Description = i18n.T(d.Language, "page.collections.notfound.description")
 			}
 		} else {
 			// No PB schema available yet
-			d.Title = "Collection"
-			d.Description = "Collection details"
+			d.Title = i18n.T(d.Language, "Collection")
+			d.Description = i18n.T(d.Language, "page.collections.description")
 		}
 
 		html, err := registry.LoadFiles(collectionsShowTemplates...).Render(d)

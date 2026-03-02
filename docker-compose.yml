@@ -1,48 +1,117 @@
 services:
-  pocketbase:
-    platform: linux/amd64
-    build:
-      context: .
-      dockerfile: dev/pocketbase.Dockerfile
-      args:
-        PB_VERSION: 0.30.0
+  postgres:
+    image: postgres:17-alpine
     ports:
-      - "8090:8090"
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: createmod
+      POSTGRES_USER: createmod
+      POSTGRES_PASSWORD: localdev
     volumes:
-      - ./dev/pb_data:/pb_data
-      - ./dev/pb_migrations:/pb_migrations
-      - ./dev/pb_hooks:/pb_hooks
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      test: ["CMD-SHELL", "pg_isready -U createmod"]
       interval: 2s
       timeout: 2s
       retries: 30
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/createmod &&
+      exit 0
+      "
+
   mailhog:
     image: mailhog/mailhog:latest
     ports:
-      - "8025:8025" # UI
-      - "1025:1025" # SMTP
+      - "8025:8025"
+      - "1025:1025"
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      - POCKETBASE_URL=http://pocketbase:8090
+      - DATABASE_URL=postgres://createmod:localdev@postgres:5432/createmod?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - S3_ENDPOINT=minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_BUCKET=createmod
+      - S3_USE_SSL=false
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
-      - APP_BASE_URL=http://localhost:8080
-      - ENV=local
+      - BASE_URL=http://localhost:8080
+      - PORT=8080
+      - DEV=true
+      - CREATE_ADMIN=true
+      - DUMMY_DATA=true
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/robots.txt"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
       interval: 2s
       timeout: 2s
       retries: 60
     depends_on:
-      pocketbase:
+      postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       mailhog:
         condition: service_started
+
+  migrate-data:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/migrate-data"]
+    environment:
+      - DATABASE_URL=postgres://createmod:localdev@postgres:5432/createmod?sslmode=disable
+      - SQLITE_PATH=/pb_data/data.db
+    volumes:
+      - ./pb_data:/pb_data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  minio_data:

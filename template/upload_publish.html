@@ -296,9 +296,7 @@ document.addEventListener("DOMContentLoaded", function() {
             formData.append("gallery", dropzoneGallery.files[j]);
         }
         formData.append("title", titleElement.value);
-        if (typeof pb !== 'undefined' && pb.authStore && pb.authStore.model) {
-            formData.append("author", pb.authStore.model.id);
-        }
+        formData.append("author", "{{ .UserID }}");
         var content = '';
         if (tinyMCE && tinyMCE.activeEditor) {
             content = tinyMCE.activeEditor.getContent();

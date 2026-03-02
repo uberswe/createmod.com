@@ -60,8 +60,8 @@
   --tblr-border-color-translucent: rgba(80, 60, 20, 0.1);
   --tblr-light-bg-subtle: #f8f4ed;
   --tblr-light-border-subtle: #e0d7c8;
-  --tblr-bg-surface: #faf7f2;
-  --tblr-bg-surface-secondary: #f0eadf;
+  --tblr-bg-surface: #eee8dc;
+  --tblr-bg-surface-secondary: #e8e1d4;
   --tblr-card-bg: #faf7f2;
   --tblr-card-border-color: #e4daca;
 }
@@ -694,3 +694,220 @@ a.card-link:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
 }
+
+/***************
+  API Docs
+***************/
+.api-hero {
+  padding: 2rem 0 0.5rem;
+}
+.api-base-url {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  background: rgba(128, 128, 128, 0.08);
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+}
+.api-usage-notice {
+  padding: 0.6rem 1rem;
+  background: rgba(255, 193, 7, 0.08);
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  border-radius: 0.4rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-width: 720px;
+}
+.api-usage-notice a {
+  font-weight: 600;
+}
+
+/* Two-column layout: nav | docs */
+.api-docs-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.api-docs-nav {
+  position: sticky;
+  top: 116px;
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
+  padding: 1rem 0;
+}
+.api-docs-nav .nav-link {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--tblr-body-color);
+  border-radius: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.api-docs-nav .nav-link:hover {
+  background: rgba(128, 128, 128, 0.08);
+  color: var(--tblr-primary);
+}
+.api-nav-divider {
+  border-top: 1px solid rgba(128, 128, 128, 0.12);
+  margin: 0.5rem 0;
+}
+
+.api-docs-content {
+  min-width: 0;
+}
+
+.api-section {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+.api-section:last-child {
+  border-bottom: none;
+}
+
+/* Sections with a side panel: docs left, try-it right */
+.api-section-with-panel {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+  align-items: start;
+}
+.api-section-docs {
+  min-width: 0;
+}
+.api-section-panel {
+  position: sticky;
+  top: 116px;
+}
+
+.api-endpoint-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.api-endpoint-url {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.api-method-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.api-method-get {
+  background: rgba(40, 167, 69, 0.12);
+  color: #28a745;
+}
+.api-method-post {
+  background: rgba(0, 123, 255, 0.12);
+  color: #007bff;
+}
+
+.api-code-block {
+  background: #1e1e2e;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+.api-code-block pre {
+  margin: 0;
+  padding: 1rem;
+  color: #cdd6f4;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.api-code-block code {
+  color: inherit;
+  background: none;
+  padding: 0;
+}
+
+.api-param-table {
+  font-size: 0.875rem;
+}
+.api-param-table th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.api-param-table code {
+  font-size: 0.8rem;
+}
+
+.api-tabs {
+  gap: 0.25rem;
+}
+.api-tabs .nav-link {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.3rem;
+}
+
+/* Try-it cards */
+.api-try-card {
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 0.5rem;
+  padding: 0.85rem;
+  background: rgba(128, 128, 128, 0.02);
+}
+.api-try-card h5 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.api-try-card h6 {
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.api-try-card .form-label {
+  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+}
+.api-try-response .api-code-block {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.api-try-response .api-code-block pre {
+  padding: 0.6rem;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1199.98px) {
+  .api-docs-layout {
+    grid-template-columns: 1fr;
+  }
+  .api-docs-nav {
+    display: none;
+  }
+}
+@media (max-width: 991.98px) {
+  .api-section-with-panel {
+    grid-template-columns: 1fr;
+  }
+  .api-section-panel {
+    position: static;
+  }
+}
+
+/***************
+  Mod metadata
+***************/
+.mod-card-icon { width: 32px; height: 32px; border-radius: 4px; flex-shrink: 0; }
+.mod-detail-icon { width: 64px; height: 64px; border-radius: 8px; flex-shrink: 0; }
+.mod-badge-icon { width: 20px; height: 20px; border-radius: 3px; vertical-align: middle; }
+
+/* Download buttons */
+.btn-modrinth { background: #1bd96a; color: #fff; border: none; }
+.btn-modrinth:hover { background: #18c25f; color: #fff; }
+.btn-curseforge { background: #f16436; color: #fff; border: none; }
+.btn-curseforge:hover { background: #d9552d; color: #fff; }

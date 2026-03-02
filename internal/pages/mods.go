@@ -2,7 +2,10 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/modmeta"
+	"createmod/internal/store"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -29,10 +32,14 @@ var modDetailTemplates = append([]string{
 
 // ModEntry represents a single mod with its display info and schematic count.
 type ModEntry struct {
-	Slug      string
-	Name      string
-	Count     int
-	IsVanilla bool
+	Slug          string
+	Name          string
+	Description   string
+	IconURL       string
+	ModrinthURL   string
+	CurseForgeURL string
+	Count         int
+	IsVanilla     bool
 }
 
 // ModsListData holds the data for the mods listing page.
@@ -59,7 +66,7 @@ type ModDetailData struct {
 const modsCacheKey = "mods_listing"
 
 // ModsHandler renders the mods listing page at GET /mods.
-func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, modMetaService *modmeta.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		mods, found := getCachedMods(cacheService)
 		if !found {
@@ -68,6 +75,7 @@ func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regist
 			if err != nil {
 				return err
 			}
+			enrichModEntries(app, mods, modMetaService)
 			cacheService.SetWithTTL(modsCacheKey, mods, 30*time.Minute)
 		}
 
@@ -76,10 +84,10 @@ func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regist
 			TotalMods: len(mods),
 		}
 		d.Populate(e)
-		d.Title = "Mods"
-		d.Description = "Browse schematics by mod"
+		d.Title = i18n.T(d.Language, "Mods")
+		d.Description = i18n.T(d.Language, "Browse schematics by mod")
 		d.Slug = "/mods"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(modsTemplates...).Render(d)
 		if err != nil {
@@ -90,11 +98,11 @@ func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regist
 }
 
 // ModDetailHandler renders a specific mod's schematics at GET /mods/{slug}.
-func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, modMetaService *modmeta.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		slug := e.Request.PathValue("slug")
 		if slug == "" {
-			return e.Redirect(http.StatusFound, "/mods")
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/mods"))
 		}
 
 		page := 1
@@ -139,6 +147,19 @@ func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, r
 			IsVanilla: isVanilla,
 		}
 
+		// Enrich with metadata from Modrinth/CurseForge
+		if !isVanilla && modMetaService != nil {
+			if meta := modMetaService.GetMetadata(app, slug); meta != nil {
+				if meta.DisplayName != "" {
+					mod.Name = meta.DisplayName
+				}
+				mod.Description = meta.Description
+				mod.IconURL = meta.IconURL
+				mod.ModrinthURL = meta.ModrinthURL
+				mod.CurseForgeURL = meta.CurseForgeURL
+			}
+		}
+
 		d := ModDetailData{
 			Mod:        mod,
 			Schematics: MapResultsToSchematic(app, results, cacheService),
@@ -155,16 +176,16 @@ func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, r
 		}
 
 		d.Populate(e)
-		d.Title = modName + " Schematics"
+		d.Title = mod.Name + " " + i18n.T(d.Language, "Schematics")
 		if isVanilla {
-			d.Subtitle = "Schematics that require no mods in Minecraft"
+			d.Subtitle = i18n.T(d.Language, "Schematics that require no mods in Minecraft")
 			d.Description = d.Subtitle
 		} else {
-			d.Subtitle = fmt.Sprintf("Schematics using the %s mod in Minecraft", modName)
+			d.Subtitle = fmt.Sprintf(i18n.T(d.Language, "Schematics using the %s mod in Minecraft"), mod.Name)
 			d.Description = d.Subtitle
 		}
 		d.Slug = "/mods/" + slug
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(modDetailTemplates...).Render(d)
 		if err != nil {
@@ -333,6 +354,34 @@ func queryVanillaSchematics(app *pocketbase.PocketBase, limit, offset int) ([]*c
 	}
 
 	return results, totalCount, nil
+}
+
+// enrichModEntries populates metadata fields on mod entries from the mod_metadata collection.
+func enrichModEntries(app *pocketbase.PocketBase, entries []ModEntry, modMetaService *modmeta.Service) {
+	if modMetaService == nil {
+		return
+	}
+	namespaces := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsVanilla {
+			namespaces = append(namespaces, e.Slug)
+		}
+	}
+	metaMap := modMetaService.GetMetadataMap(app, namespaces)
+	for i := range entries {
+		if entries[i].IsVanilla {
+			continue
+		}
+		if meta, ok := metaMap[entries[i].Slug]; ok {
+			if meta.DisplayName != "" {
+				entries[i].Name = meta.DisplayName
+			}
+			entries[i].Description = meta.Description
+			entries[i].IconURL = meta.IconURL
+			entries[i].ModrinthURL = meta.ModrinthURL
+			entries[i].CurseForgeURL = meta.CurseForgeURL
+		}
+	}
 }
 
 // orderRecordsByIDs returns records in the order specified by ids.

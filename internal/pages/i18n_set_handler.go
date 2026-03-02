@@ -7,7 +7,8 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-// SetLanguageHandler sets a cookie with the selected language and redirects back.
+// SetLanguageHandler sets a cookie with the selected language and redirects
+// to the language-prefixed URL for the requested page.
 func SetLanguageHandler() func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		// get lang param and validate
@@ -34,11 +35,19 @@ func SetLanguageHandler() func(e *core.RequestEvent) error {
 			returnTo = "/"
 		}
 
+		// Strip any existing language prefix from returnTo, then re-prefix
+		// with the newly selected language.
+		_, barePath := StripLangPrefix(returnTo)
+		if barePath == "" {
+			barePath = "/"
+		}
+		target := PrefixedPath(l, barePath)
+
 		// Support HTMX redirect
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", returnTo)
+			e.Response.Header().Set("HX-Redirect", target)
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusFound, returnTo)
+		return e.Redirect(http.StatusFound, target)
 	}
 }

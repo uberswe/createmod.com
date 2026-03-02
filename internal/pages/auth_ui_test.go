@@ -32,6 +32,12 @@ func renderTemplate(t *testing.T, file string, data any) string {
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"LangFlag":  func(code string) string { return code },
 		"T":         func(lang, key string) string { return i18n.T(lang, key) },
+		"LangURL": func(lang string, path string) string {
+			return PrefixedPath(lang, path)
+		},
+		"Hreflangs": func(barePath string) []HreflangEntry {
+			return AllHreflangs()
+		},
 	})
 	full := filepath.Join(projectRootFromThisFile(t), file)
 	html, err := r.LoadFiles(full).Render(data)

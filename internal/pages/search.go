@@ -2,8 +2,10 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/search"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/gosimple/slug"
 	"github.com/pocketbase/dbx"
@@ -56,7 +58,7 @@ type SearchData struct {
 	ViewMode          string
 }
 
-func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
@@ -277,22 +279,22 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		d.Populate(e)
 		// Dynamic title based on search context
 		if term != "" && page > 1 {
-			d.Title = fmt.Sprintf("%s Schematics - Page %d", term, page)
+			d.Title = fmt.Sprintf("%s "+i18n.T(d.Language, "Schematics - Page")+" %d", term, page)
 		} else if term != "" {
-			d.Title = fmt.Sprintf("%s Schematics", term)
+			d.Title = fmt.Sprintf("%s "+i18n.T(d.Language, "Schematics"), term)
 		} else {
-			d.Title = "Search"
+			d.Title = i18n.T(d.Language, "Search")
 		}
-		d.Categories = allCategories(app, cacheService)
-		d.Description = fmt.Sprintf("Search results for %s Create Mod Schematics.", d.Term)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Description = fmt.Sprintf(i18n.T(d.Language, "page.search.description"), d.Term)
 		d.Slug = fmt.Sprintf("/search/%s", slugTerm)
 		d.CanonicalURL = canonicalURL
 		d.NoIndex = seoNoIndex
 		if prevURL != "" {
-			d.PrevPageURL = fmt.Sprintf("https://createmod.com%s", prevURL)
+			d.PrevPageURL = fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, prevURL))
 		}
 		if nextURL != "" {
-			d.NextPageURL = fmt.Sprintf("https://createmod.com%s", nextURL)
+			d.NextPageURL = fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, nextURL))
 		}
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		if d.SearchResultCount > 0 {
@@ -381,7 +383,7 @@ func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searc
 	return app.Save(record)
 }
 
-func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		data := struct {
 			Term             string `json:"q" form:"q"`
@@ -409,7 +411,7 @@ func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, regis
 			tagParam = "all"
 		}
 		term := slug.Make(data.Term)
-		return e.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, tagParam, data.MinecraftVersion, data.CreateVersion))
+		return e.Redirect(http.StatusTemporaryRedirect, LangRedirectURL(e, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, tagParam, data.MinecraftVersion, data.CreateVersion)))
 	}
 }
 

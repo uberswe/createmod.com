@@ -2,8 +2,10 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/search"
+	"createmod/internal/store"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/pocketbase/dbx"
@@ -35,7 +37,7 @@ type SchematicTagWithSelected struct {
 	Selected bool
 }
 
-func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry) func(e *core.RequestEvent) error {
+func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -50,7 +52,10 @@ func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Serv
 			dbx.Params{"name": e.Request.PathValue("name")})
 
 		if len(results) != 1 {
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nil)
+			nd := DefaultData{}
+			nd.Populate(e)
+			nd.Title = i18n.T(nd.Language, "Page Not Found")
+			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
 			if err != nil {
 				return err
 			}
@@ -61,12 +66,12 @@ func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Serv
 			Schematic: mapResultToSchematic(app, results[0], cacheService),
 		}
 		d.Populate(e)
-		d.Title = fmt.Sprintf("Editing %s", d.Schematic.Title)
+		d.Title = fmt.Sprintf("%s %s", i18n.T(d.Language, "Editing"), d.Schematic.Title)
 		d.Slug = fmt.Sprintf("schematics/%s/edit", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 		d.Tags = allTags(app)
 		d.MinecraftVersions = allMinecraftVersions(app)
 		d.CreatemodVersions = allCreatemodVersions(app)

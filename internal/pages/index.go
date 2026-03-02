@@ -2,7 +2,9 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/store"
 	"fmt"
 	tmpl "html/template"
 	"net/http"
@@ -56,7 +58,7 @@ type IndexData struct {
 	CategorySections []CategorySection
 }
 
-func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		q := e.Request.URL.Query()
 		tab := q.Get("tab")
@@ -70,7 +72,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 
 		// HTMX tab request — return just the tab panel partial
 		if isHTMX && tab != "" {
-			return renderTabPartial(app, cacheService, registry, e, tab, page)
+			return renderTabPartial(app, cacheService, registry, appStore, e, tab, page)
 		}
 
 		// Full page load — serve from pre-warmed cache when available.
@@ -117,7 +119,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		}
 
 		// Build category sections
-		categories := allCategories(app, cacheService)
+		categories := allCategoriesFromStore(appStore, app, cacheService)
 		categorySections := make([]CategorySection, 0, len(categories))
 		for _, cat := range categories {
 			cacheKey := fmt.Sprintf("CategorySection:%s", cat.Key)
@@ -150,12 +152,12 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 			CategorySections: categorySections,
 		}
 		d.Populate(e)
-		d.Title = "Minecraft Schematics"
-		d.Description = "The Create Schematics Repository. Download user-created Create Mod Schematics. Upload your own for others to see."
+		d.Title = i18n.T(d.Language, "page.index.title")
+		d.Description = i18n.T(d.Language, "page.index.description")
 		d.Slug = "/"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.SubCategory = "Home"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(indexTemplates...).Render(d)
 		if err != nil {
@@ -177,7 +179,7 @@ type TabData struct {
 	NextURL string
 }
 
-func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, e *core.RequestEvent, tab string, page int) error {
+func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store, e *core.RequestEvent, tab string, page int) error {
 	var items []models.Schematic
 	var hasNext bool
 
@@ -188,7 +190,7 @@ func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, r
 		items, hasNext = getHighestRatedSchematicsPage(app, cacheService, page)
 	case strings.HasPrefix(tab, "cat-"):
 		catKey := strings.TrimPrefix(tab, "cat-")
-		categories := allCategories(app, cacheService)
+		categories := allCategoriesFromStore(appStore, app, cacheService)
 		var catID string
 		for _, c := range categories {
 			if c.Key == catKey {
@@ -535,7 +537,7 @@ func getCategoryTrendingPage(app *pocketbase.PocketBase, cacheService *cache.Ser
 // WarmIndexCache pre-computes and caches all data needed for the index page
 // so that no user request ever hits the database for page-1 data.
 // Called at boot and periodically by a background ticker.
-func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
+func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) {
 	app.Logger().Debug("Warming index page cache")
 
 	// 1. Latest schematics (page 1)
@@ -558,7 +560,7 @@ func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
 	cacheService.Set(cache.HighestRatedHasNextKey, highestHasNext)
 
 	// 4. Categories (already self-caching, just ensure warm)
-	categories := allCategories(app, cacheService)
+	categories := allCategoriesFromStore(appStore, app, cacheService)
 
 	// 5. Category sections — cache page-1 trending items per category
 	for _, cat := range categories {

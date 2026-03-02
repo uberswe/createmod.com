@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"fmt"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
@@ -28,7 +30,7 @@ type ExploreData struct {
 	Images []ExploreImage
 }
 
-func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
+func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
 		if err != nil {
@@ -101,9 +103,9 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 			Images: dest,
 		}
 		d.Populate(e)
-		d.Title = "Explore Create Mod Schematics"
-		d.Categories = allCategories(app, cacheService)
-		d.Description = "Explore a random gallery of Create Mod schematics"
+		d.Title = i18n.T(d.Language, "page.explore.title")
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Description = i18n.T(d.Language, "page.explore.description")
 		d.Slug = "/explore"
 		if len(dest) > 0 {
 			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", dest[0].ID, dest[0].Image)

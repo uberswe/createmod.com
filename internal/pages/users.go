@@ -2,7 +2,9 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/template"
@@ -26,7 +28,7 @@ type UsersData struct {
 }
 
 // UsersHandler renders a paginated list of users.
-func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		// pagination
 		page := 1
@@ -75,10 +77,10 @@ func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cache
 			d.NextURL = "/users?p=" + strconv.Itoa(page+1)
 		}
 		d.Populate(e)
-		d.Title = "Users"
-		d.Description = "Browse users on CreateMod.com"
+		d.Title = i18n.T(d.Language, "Users")
+		d.Description = i18n.T(d.Language, "Browse users on CreateMod.com")
 		d.Slug = "/users"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(usersTemplates...).Render(d)
 		if err != nil {

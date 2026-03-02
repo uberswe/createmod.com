@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"fmt"
 	html "html/template"
 	"net/http"
@@ -35,31 +37,28 @@ type UserStatsData struct {
 	DownloadValuesJSON html.JS
 }
 
-func UserStatsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func UserStatsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		// Require auth
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
+
+		userID := authenticatedUserID(e)
 
 		d := UserStatsData{}
 		d.Populate(e)
-		d.Title = "Statistics"
-		d.Description = "Your schematic statistics."
+		d.Title = i18n.T(d.Language, "Statistics")
+		d.Description = i18n.T(d.Language, "page.userstats.description")
 		d.Slug = "/settings/statistics"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		now := time.Now().UTC()
 		start := now.AddDate(0, -11, 0)
 		startPeriod := fmt.Sprintf("%d%02d", start.Year(), int(start.Month()))
 
-		views := fetchMonthlyStats(app, "schematic_views", e.Auth.Id, startPeriod)
-		downloads := fetchMonthlyStats(app, "schematic_downloads", e.Auth.Id, startPeriod)
+		views := fetchMonthlyStats(app, "schematic_views", userID, startPeriod)
+		downloads := fetchMonthlyStats(app, "schematic_downloads", userID, startPeriod)
 
 		d.MonthlyViews = fillMissingMonths(views, start, now)
 		d.MonthlyDownloads = fillMissingMonths(downloads, start, now)

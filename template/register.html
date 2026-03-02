@@ -6,21 +6,21 @@
                 <img src="/assets/x/logo.png">
             </a>
         </div>
-        <form class="card card-md" autocomplete="off" id="signup-form" novalidate>
+        <form class="card card-md" method="post" action="/register" autocomplete="off" id="signup-form" novalidate hx-boost="false">
             <div class="card-body">
                 <h2 class="card-title text-center mb-4">Create new account</h2>
                 <div class="mb-3">
                     <label class="form-label">Username</label>
-                    <input id="username" type="text" class="form-control" placeholder="Enter username">
+                    <input name="username" id="username" type="text" class="form-control" placeholder="Enter username" required minlength="3" maxlength="30">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Email address</label>
-                    <input id="email" type="email" class="form-control" placeholder="Enter email">
+                    <input name="email" id="email" type="email" class="form-control" placeholder="Enter email" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
                     <div class="input-group input-group-flat">
-                        <input id="password" type="password" class="form-control"  placeholder="Password"  autocomplete="off">
+                        <input name="password" id="password" type="password" class="form-control"  placeholder="Password (min 8 characters)"  autocomplete="new-password" required minlength="8">
                         <span class="input-group-text">
                   <a href="#" class="link-secondary" title="Show password" data-bs-toggle="tooltip">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>
@@ -30,7 +30,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-check">
-                        <input id="terms" type="checkbox" class="form-check-input"/>
+                        <input name="terms" id="terms" type="checkbox" class="form-check-input"/>
                         <span class="form-check-label">Agree to the <a href="/terms-of-service" tabindex="-1">terms of service</a>.</span>
                     </label>
                 </div>

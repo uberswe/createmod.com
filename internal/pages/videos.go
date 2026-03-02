@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -190,7 +192,7 @@ func getCachedVideos(app *pocketbase.PocketBase, cacheService *cache.Service) []
 
 // VideosHandler renders a page of unique YouTube videos referenced by schematics,
 // sorted by trending score. Reads from a preemptively warmed cache.
-func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
 		// Pagination params
 		page := 1
@@ -254,10 +256,10 @@ func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 		}
 
 		d.Populate(e)
-		d.Title = "Videos"
-		d.Description = "Videos from published schematics"
+		d.Title = i18n.T(d.Language, "Videos")
+		d.Description = i18n.T(d.Language, "Videos from published schematics")
 		d.Slug = "/videos"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(videosTemplates...).Render(d)
 		if err != nil {

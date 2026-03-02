@@ -15,12 +15,16 @@
                                         <div class="list-group list-group-transparent">
                                             <a href="/settings"
                                                class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "My Account" }}</a>
+                                            <a href="/settings/password"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Password" }}</a>
                                             <a href="/settings/points"
                                                class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Points" }}</a>
                                             <a href="/settings/api-keys"
                                                class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "API Keys" }}</a>
                                             <a href="/settings/statistics"
                                                class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Statistics" }}</a>
+                                            <a href="/settings/blacklist"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Blacklist Request" }}</a>
                                         </div>
                                     </div>
                                 </div>
@@ -79,7 +83,7 @@
                                         <h3 class="card-title mt-4">{{ T .Language "Alternate Login Options" }}</h3>
                                         <div class="row g-3 mb-2">
                                             <div class="col-md">
-                                                <a href="#" id="discord-login" class="btn w-100">
+                                                <a href="/auth/discord" class="btn w-100">
                                                     <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-brand-discord text-discord"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
                                                     {{ T .Language "Link your Discord account" }}
                                                 </a>
@@ -87,7 +91,7 @@
                                         </div>
                                         <div class="row g-3">
                                             <div class="col-md">
-                                                <a href="#" id="github-login" class="btn w-100">
+                                                <a href="/auth/github" class="btn w-100">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon text-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" /></svg>
                                                     {{ T .Language "Link your Github account" }}
                                                 </a>
@@ -96,8 +100,8 @@
                                         <h3 class="card-title mt-4">{{ T .Language "Password" }}</h3>
                                         <p class="card-subtitle">{{ T .Language "If you need to change your password you can do so here." }}</p>
                                         <div>
-                                            <a href="/reset-password" class="btn btn-1">
-                                                {{ T .Language "Set new password" }}
+                                            <a href="/settings/password" class="btn btn-primary">
+                                                {{ T .Language "Change Password" }}
                                             </a>
                                         </div>
                                         <h3 class="card-title mt-4">{{ T .Language "Account Actions" }}</h3>
@@ -132,12 +136,11 @@
             </div>
         </div>
         <script>
-            // After successful deletion via HTMX, clear auth and redirect
+            // After successful deletion via HTMX, clear cookie and redirect
             document.addEventListener('htmx:afterRequest', function(evt) {
               var form = document.getElementById('delete-account-form');
               if (evt.target === form) {
                 try {
-                  if (typeof pb !== 'undefined') { pb.authStore.clear(); }
                   deleteCookie('create-mod-auth');
                 } catch (e) {}
                 window.location = '/';

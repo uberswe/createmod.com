@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	pbtempl "github.com/pocketbase/pocketbase/tools/template"
@@ -26,14 +28,10 @@ type GuideEditData struct {
 }
 
 // GuidesEditHandler renders the edit form for an existing guide (owner-only).
-func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 
 		id := e.Request.PathValue("id")
@@ -43,12 +41,12 @@ func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 		}
 		rec, err := app.FindRecordById(coll.Id, id)
 		if err != nil || rec == nil {
-			return e.Redirect(http.StatusSeeOther, "/guides")
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
 
 		// Owner check
-		if rec.GetString("author") != e.Auth.Id {
-			return e.Redirect(http.StatusSeeOther, "/guides/"+id)
+		if rec.GetString("author") != authenticatedUserID(e) {
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides/"+id))
 		}
 
 		content := rec.GetString("content")
@@ -71,10 +69,10 @@ func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 			d.GuideTitle = rec.GetString("name")
 		}
 		d.Populate(e)
-		d.Title = "Edit Guide"
-		d.Description = "Edit your guide"
+		d.Title = i18n.T(d.Language, "Edit Guide")
+		d.Description = i18n.T(d.Language, "page.guides_edit.description")
 		d.Slug = "/guides/" + id + "/edit"
-		d.Categories = allCategories(app, cacheService)
+		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
 
 		html, err := registry.LoadFiles(guidesEditTemplates...).Render(d)
 		if err != nil {
@@ -85,14 +83,10 @@ func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 }
 
 // GuidesUpdateHandler handles POST /guides/{id} to update an existing guide (owner-only).
-func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service) func(e *core.RequestEvent) error {
+func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 
 		id := e.Request.PathValue("id")
@@ -102,12 +96,12 @@ func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 		}
 		rec, err := app.FindRecordById(coll.Id, id)
 		if err != nil || rec == nil {
-			return e.Redirect(http.StatusSeeOther, "/guides")
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
 
 		// Owner check
-		if rec.GetString("author") != e.Auth.Id {
-			return e.Redirect(http.StatusSeeOther, "/guides/"+id)
+		if rec.GetString("author") != authenticatedUserID(e) {
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides/"+id))
 		}
 
 		if err := e.Request.ParseForm(); err != nil {
@@ -151,22 +145,18 @@ func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 
 		dest := "/guides/" + id
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", dest)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, dest)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 	}
 }
 
 // GuidesDeleteHandler handles POST /guides/{id}/delete to delete a guide (owner-only).
-func GuidesDeleteHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) error {
+func GuidesDeleteHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
 	return func(e *core.RequestEvent) error {
-		if e.Auth == nil {
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", "/login")
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, "/login")
+		if ok, err := requireAuth(e); !ok {
+			return err
 		}
 
 		id := e.Request.PathValue("id")
@@ -176,10 +166,10 @@ func GuidesDeleteHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) 
 		}
 		rec, err := app.FindRecordById(coll.Id, id)
 		if err != nil || rec == nil {
-			return e.Redirect(http.StatusSeeOther, "/guides")
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
-		if rec.GetString("author") != e.Auth.Id {
-			return e.Redirect(http.StatusSeeOther, "/guides")
+		if rec.GetString("author") != authenticatedUserID(e) {
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
 
 		if err := app.Delete(rec); err != nil {
@@ -188,10 +178,10 @@ func GuidesDeleteHandler(app *pocketbase.PocketBase) func(e *core.RequestEvent) 
 
 		dest := "/guides"
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", dest)
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, dest)
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 	}
 }
 
