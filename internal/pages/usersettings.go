@@ -4,9 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 	"time"
 )
@@ -26,8 +24,8 @@ type UserSettingsData struct {
 	DefaultData
 }
 
-func UserSettingsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UserSettingsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
@@ -38,7 +36,7 @@ func UserSettingsHandler(app *pocketbase.PocketBase, registry *template.Registry
 		d.Description = i18n.T(d.Language, "page.usersettings.description")
 		d.Slug = "/settings"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(userSettingsTemplates...).Render(d)
 		if err != nil {

@@ -3,10 +3,11 @@ package pages
 import (
 	"createmod/internal/i18n"
 	html "html/template"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 // commonTemplates lists shared include fragments used by most pages.
@@ -21,8 +22,8 @@ var commonTemplates = []string{
 
 // NewTestRegistry creates a template registry with the FuncMap needed
 // by common templates. Use in tests that render full pages.
-func NewTestRegistry() *template.Registry {
-	r := template.NewRegistry()
+func NewTestRegistry() *server.Registry {
+	r := server.NewRegistry()
 	r.AddFuncs(html.FuncMap{
 		"AssetVer":  func() string { return "test" },
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
@@ -47,6 +48,7 @@ func NewTestRegistry() *template.Registry {
 		"Hreflangs": func(barePath string) []HreflangEntry {
 			return AllHreflangs()
 		},
+		"externalDomain": ExternalDomain,
 		"LangFlag": func(code string) string {
 			switch code {
 			case "en":
@@ -71,4 +73,29 @@ func NewTestRegistry() *template.Registry {
 		},
 	})
 	return r
+}
+
+// ExternalDomain extracts a human-friendly platform name from a URL.
+func ExternalDomain(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return rawURL
+	}
+	host := strings.ToLower(u.Host)
+	host = strings.TrimPrefix(host, "www.")
+
+	switch {
+	case strings.Contains(host, "patreon.com"):
+		return "Patreon"
+	case strings.Contains(host, "ko-fi.com"):
+		return "Ko-fi"
+	case strings.Contains(host, "discord.gg"), strings.Contains(host, "discord.com"):
+		return "Discord"
+	case strings.Contains(host, "gumroad.com"):
+		return "Gumroad"
+	case strings.Contains(host, "buymeacoffee.com"):
+		return "Buy Me a Coffee"
+	default:
+		return host
+	}
 }

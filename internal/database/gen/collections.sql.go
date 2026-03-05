@@ -305,6 +305,52 @@ func (q *Queries) ListFeaturedCollections(ctx context.Context, limit int32) ([]C
 	return items, nil
 }
 
+const listPublishedCollections = `-- name: ListPublishedCollections :many
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated FROM collections
+WHERE deleted = '' AND published = true
+ORDER BY created DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListPublishedCollectionsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListPublishedCollections(ctx context.Context, arg ListPublishedCollectionsParams) ([]Collection, error) {
+	rows, err := q.db.Query(ctx, listPublishedCollections, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Collection{}
+	for rows.Next() {
+		var i Collection
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Title,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.BannerUrl,
+			&i.Featured,
+			&i.Views,
+			&i.Published,
+			&i.Deleted,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeSchematicFromCollection = `-- name: RemoveSchematicFromCollection :exec
 DELETE FROM collections_schematics
 WHERE collection_id = $1 AND schematic_id = $2

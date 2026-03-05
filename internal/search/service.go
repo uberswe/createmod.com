@@ -3,9 +3,13 @@ package search
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"createmod/internal/models"
+	"createmod/internal/storage"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strconv"
@@ -14,7 +18,6 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search/query"
-	"github.com/pocketbase/pocketbase"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -37,7 +40,7 @@ const (
 type Service struct {
 	index          []schematicIndex
 	bleveIndex     bleve.Index
-	app            *pocketbase.PocketBase
+	storage        *storage.Service
 	trendingScores map[string]float64
 }
 
@@ -53,6 +56,7 @@ type schematicIndex struct {
 	Author           string
 	MinecraftVersion string
 	CreateVersion    string
+	Paid             bool
 }
 
 type bleveIndex struct {
@@ -107,18 +111,18 @@ func newBleveIndex() bleve.Index {
 }
 
 // New creates a search Service with an in-memory Bleve index.
-// On startup it attempts to load a cached index snapshot from storage (S3 or
-// local filesystem, depending on PocketBase config) so the server can serve
-// search requests immediately while a background rebuild picks up recent changes.
-func New(app *pocketbase.PocketBase) *Service {
-	s := Service{app: app}
+// On startup it attempts to load a cached index snapshot from storage (S3)
+// so the server can serve search requests immediately while a background
+// rebuild picks up recent changes.
+func New(storageSvc *storage.Service) *Service {
+	s := Service{storage: storageSvc}
 	s.bleveIndex = newBleveIndex()
 
 	// Try to warm from storage cache.
 	if err := s.loadCacheFromStorage(); err != nil {
-		app.Logger().Info("search: no usable cache in storage, starting empty", "error", err)
+		slog.Info("search: no usable cache in storage, starting empty", "error", err)
 	} else {
-		app.Logger().Info("search: loaded index cache from storage", "docs", len(s.index))
+		slog.Info("search: loaded index cache from storage", "docs", len(s.index))
 	}
 
 	return &s
@@ -127,18 +131,18 @@ func New(app *pocketbase.PocketBase) *Service {
 // Search takes a term and returns schematic ids in the specified order.
 // tags is a list of tags to filter by (AND logic — result must match ALL selected tags).
 // Pass nil or empty slice for no tag filtering.
-func (s *Service) Search(term string, order int, rating int, category string, tags []string, minecraftVersion string, createVersion string) []string {
+func (s *Service) Search(term string, order int, rating int, category string, tags []string, minecraftVersion string, createVersion string, hidePaid bool) []string {
 	// If search hasn't had time to initialize, usually after a reboot
-	s.app.Logger().Debug("starting search service - check if initialized")
+	slog.Debug("starting search service - check if initialized")
 	if s == nil || s.index == nil {
-		s.app.Logger().Debug("search service is down", "search", s)
+		slog.Debug("search service is down")
 		return nil
 	}
 
 	// Ratings
 	result := make([]schematicIndex, len(s.index))
 	copy(result, s.index)
-	s.app.Logger().Debug("searching schematics", "index count", len(s.index), "result", len(result))
+	slog.Debug("searching schematics", "index count", len(s.index), "result", len(result))
 	if rating > 0 {
 		ratingFloat := float64(rating)
 		ratingResult := make([]schematicIndex, 0)
@@ -150,7 +154,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		result = ratingResult
 	}
 
-	s.app.Logger().Debug("filtered by rating", "count", len(result), "rating", rating)
+	slog.Debug("filtered by rating", "count", len(result), "rating", rating)
 	// Category
 	if category != "all" {
 		categoryResult := make([]schematicIndex, 0)
@@ -163,7 +167,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = categoryResult
 	}
-	s.app.Logger().Debug("filtered by category", "count", len(result), "category", category)
+	slog.Debug("filtered by category", "count", len(result), "category", category)
 	// Tags (AND logic: result must match ALL selected tags)
 	if len(tags) > 0 && !(len(tags) == 1 && tags[0] == "all") {
 		caser := cases.Title(language.English)
@@ -183,7 +187,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = tagResult
 	}
-	s.app.Logger().Debug("filtered by tags", "count", len(result), "tags", tags)
+	slog.Debug("filtered by tags", "count", len(result), "tags", tags)
 	// Create Mod Version
 	if createVersion != "all" {
 		cvResult := make([]schematicIndex, 0)
@@ -194,7 +198,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = cvResult
 	}
-	s.app.Logger().Debug("filtered by create mod version", "count", len(result), "createVersion", createVersion)
+	slog.Debug("filtered by create mod version", "count", len(result), "createVersion", createVersion)
 	// Minecraft version
 	if minecraftVersion != "all" {
 		mcvResult := make([]schematicIndex, 0)
@@ -205,7 +209,18 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = mcvResult
 	}
-	s.app.Logger().Debug("filtered by minecraft version", "count", len(result), "minecraftVersion", minecraftVersion)
+	slog.Debug("filtered by minecraft version", "count", len(result), "minecraftVersion", minecraftVersion)
+	// Hide paid
+	if hidePaid {
+		filtered := make([]schematicIndex, 0, len(result))
+		for i := range result {
+			if !result[i].Paid {
+				filtered = append(filtered, result[i])
+			}
+		}
+		result = filtered
+	}
+	slog.Debug("filtered by paid", "count", len(result), "hidePaid", hidePaid)
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
@@ -236,11 +251,11 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
 		if err != nil {
-			s.app.Logger().Error("error for bleve search query", "error", err.Error())
+			slog.Error("error for bleve search query", "error", err.Error())
 		}
 		if searchResult != nil {
 			count, err := s.bleveIndex.DocCount()
-			s.app.Logger().Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
+			slog.Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
 			for _, si := range searchResult.Hits {
 				for i := range result {
 					if result[i].ID == si.ID {
@@ -250,7 +265,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 			}
 		}
 		result = newResult
-		s.app.Logger().Debug("filtered by bleve", "count", len(result))
+		slog.Debug("filtered by bleve", "count", len(result))
 	}
 	// Order
 	slices.SortFunc(result, func(a, b schematicIndex) int {
@@ -276,13 +291,13 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 			return 0
 		}
 	})
-	s.app.Logger().Debug("sorted", "count", len(result))
+	slog.Debug("sorted", "count", len(result))
 
 	ids := make([]string, len(result))
 	for i := range result {
 		ids[i] = result[i].ID
 	}
-	s.app.Logger().Debug("returning ids", "count", len(ids))
+	slog.Debug("returning ids", "count", len(ids))
 	return ids
 }
 
@@ -334,13 +349,17 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 	cacheEntries := make([]indexCacheEntry, len(schematics))
 
 	for i := range schematics {
+		authorName := ""
+		if schematics[i].Author != nil {
+			authorName = schematics[i].Author.Username
+		}
 		si := schematicIndex{
 			ID:          schematics[i].ID,
 			Title:       stripHtmlRegex(schematics[i].Title),
 			Description: stripHtmlRegex(schematics[i].Content),
 			Created:     schematics[i].Created,
 			Views:       int64(schematics[i].Views),
-			Author:      schematics[i].Author.Username,
+			Author:      authorName,
 		}
 		if parsedFloat, err := strconv.ParseFloat(schematics[i].Rating, 64); err == nil {
 			si.Rating = parsedFloat
@@ -363,9 +382,10 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 
 		si.MinecraftVersion = schematics[i].MinecraftVersion
 		si.CreateVersion = schematics[i].CreatemodVersion
+		si.Paid = schematics[i].Paid
 
 		if err := batch.Index(si.ID, bi); err != nil {
-			s.app.Logger().Error("bleve add index", "error", err.Error())
+			slog.Error("bleve add index", "error", err.Error())
 		}
 
 		filterIndex[i] = si
@@ -373,7 +393,7 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 	}
 
 	if err := idx.Batch(batch); err != nil {
-		s.app.Logger().Error("bleve search batching", "error", err.Error())
+		slog.Error("bleve search batching", "error", err.Error())
 		return
 	}
 
@@ -494,54 +514,50 @@ func stripHtmlRegex(s string) string {
 }
 
 // ---------------------------------------------------------------------------
-// Storage-backed index cache (S3 / local, via PocketBase filesystem)
+// Storage-backed index cache (direct S3 via storage.Service)
 // ---------------------------------------------------------------------------
 
 // saveCacheToStorage serializes the index data as gzip-compressed JSON and
-// uploads it to PocketBase's configured storage backend.
+// uploads it to S3.
 func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
+	if s.storage == nil {
+		slog.Warn("search: storage service not configured, skipping cache save")
+		return
+	}
+
 	data, err := json.Marshal(entries)
 	if err != nil {
-		s.app.Logger().Warn("search: failed to marshal index cache", "error", err)
+		slog.Warn("search: failed to marshal index cache", "error", err)
 		return
 	}
 
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	if _, err := gz.Write(data); err != nil {
-		s.app.Logger().Warn("search: failed to gzip index cache", "error", err)
+		slog.Warn("search: failed to gzip index cache", "error", err)
 		return
 	}
 	if err := gz.Close(); err != nil {
-		s.app.Logger().Warn("search: failed to close gzip writer", "error", err)
+		slog.Warn("search: failed to close gzip writer", "error", err)
 		return
 	}
 
-	fsys, err := s.app.NewFilesystem()
-	if err != nil {
-		s.app.Logger().Warn("search: failed to create filesystem for cache upload", "error", err)
-		return
-	}
-	defer fsys.Close()
-
-	if err := fsys.Upload(buf.Bytes(), cacheKey); err != nil {
-		s.app.Logger().Warn("search: failed to upload index cache", "error", err)
+	if err := s.storage.UploadRawBytes(context.Background(), cacheKey, buf.Bytes(), "application/gzip"); err != nil {
+		slog.Warn("search: failed to upload index cache", "error", err)
 		return
 	}
 
-	s.app.Logger().Info("search: uploaded index cache to storage", "entries", len(entries), "bytes", buf.Len())
+	slog.Info("search: uploaded index cache to storage", "entries", len(entries), "bytes", buf.Len())
 }
 
-// loadCacheFromStorage downloads the compressed index cache from storage and
+// loadCacheFromStorage downloads the compressed index cache from S3 and
 // populates both the in-memory filter index and the Bleve full-text index.
 func (s *Service) loadCacheFromStorage() error {
-	fsys, err := s.app.NewFilesystem()
-	if err != nil {
-		return err
+	if s.storage == nil {
+		return fmt.Errorf("storage service not configured")
 	}
-	defer fsys.Close()
 
-	reader, err := fsys.GetReader(cacheKey)
+	reader, err := s.storage.DownloadRaw(context.Background(), cacheKey)
 	if err != nil {
 		return err
 	}
@@ -575,12 +591,12 @@ func (s *Service) loadCacheFromStorage() error {
 	for i, e := range entries {
 		filterIndex[i] = e.SI
 		if err := batch.Index(e.SI.ID, e.BI); err != nil {
-			s.app.Logger().Error("search: bleve index from cache", "error", err)
+			slog.Error("search: bleve index from cache", "error", err)
 		}
 	}
 
 	if err := idx.Batch(batch); err != nil {
-		s.app.Logger().Error("search: bleve batch from cache", "error", err)
+		slog.Error("search: bleve batch from cache", "error", err)
 		return err
 	}
 

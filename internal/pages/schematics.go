@@ -1,18 +1,15 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/store"
 	"fmt"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 var schematicsTemplates = append([]string{
@@ -32,8 +29,8 @@ type SchematicsData struct {
 	NextURL    string
 }
 
-func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		// Pagination params
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -45,18 +42,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		limit := pageSize + 1 // fetch one extra to detect next page
 		offset := (page - 1) * pageSize
 
-		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil {
-			return err
-		}
-		results, err := app.FindRecordsByFilter(
-			schematicsCollection.Id,
-			"deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
-			"-created",
-			limit,
-			offset,
-			dbx.Params{"now": time.Now()},
-		)
+		results, err := appStore.Schematics.ListApproved(context.Background(), limit, offset)
 		if err != nil {
 			return err
 		}
@@ -67,7 +53,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 		}
 
 		d := SchematicsData{
-			Schematics: MapResultsToSchematic(app, results, cacheService),
+			Schematics: MapStoreSchematics(appStore, results, cacheService),
 			Page:       page,
 			PageSize:   pageSize,
 			HasPrev:    page > 1,
@@ -82,7 +68,7 @@ func SchematicsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, 
 
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "page.schematics.title")
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Description = i18n.T(d.Language, "page.schematics.description")
 		d.Slug = "/schematics"
 		if len(d.Schematics) > 0 {

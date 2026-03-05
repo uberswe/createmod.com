@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -12,14 +13,12 @@ import (
 
 	"createmod/internal/auth"
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/session"
 	"createmod/internal/store"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/mailer"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 // pool is set by SetPasswordResetPool so handlers can access it.
@@ -54,8 +53,8 @@ type passwordResetConfirmData struct {
 	Success bool
 }
 
-func PasswordResetHandler(app *pocketbase.PocketBase, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func PasswordResetHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := passwordResetData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "page.passwordreset.title")
@@ -72,8 +71,8 @@ func PasswordResetHandler(app *pocketbase.PocketBase, registry *template.Registr
 
 // PasswordResetPostHandler handles POST /reset-password.
 // It sends a password reset email if the user exists.
-func PasswordResetPostHandler(app *pocketbase.PocketBase, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func PasswordResetPostHandler(mailService *mailer.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
 		}
@@ -112,7 +111,7 @@ func PasswordResetPostHandler(app *pocketbase.PocketBase, registry *template.Reg
 					user.ID, tokenHash, time.Now().Add(1*time.Hour),
 				)
 				if err != nil {
-					app.Logger().Error("failed to create password reset token", "error", err)
+					slog.Error("failed to create password reset token", "error", err)
 				} else {
 					// Send email
 					baseURL := "https://createmod.com"
@@ -128,8 +127,8 @@ func PasswordResetPostHandler(app *pocketbase.PocketBase, registry *template.Reg
 
 					message := &mailer.Message{
 						From: mail.Address{
-							Address: app.Settings().Meta.SenderAddress,
-							Name:    app.Settings().Meta.SenderName,
+							Address: mailService.SenderAddress,
+							Name:    mailService.SenderName,
 						},
 						To:      []mail.Address{{Address: user.Email}},
 						Subject: "Password Reset - CreateMod.com",
@@ -138,8 +137,8 @@ func PasswordResetPostHandler(app *pocketbase.PocketBase, registry *template.Reg
 <p>This link will expire in 1 hour.</p>
 <p>If you did not request this, please ignore this email.</p>`, resetURL),
 					}
-					if err := app.NewMailClient().Send(message); err != nil {
-						app.Logger().Error("failed to send password reset email", "error", err)
+					if err := mailService.Send(message); err != nil {
+						slog.Error("failed to send password reset email", "error", err)
 					}
 				}
 			}
@@ -154,8 +153,8 @@ func PasswordResetPostHandler(app *pocketbase.PocketBase, registry *template.Reg
 }
 
 // PasswordResetConfirmHandler renders the new password form.
-func PasswordResetConfirmHandler(app *pocketbase.PocketBase, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func PasswordResetConfirmHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		d := passwordResetConfirmData{Token: token}
 		d.Populate(e)
@@ -170,8 +169,8 @@ func PasswordResetConfirmHandler(app *pocketbase.PocketBase, registry *template.
 }
 
 // PasswordResetConfirmPostHandler handles POST /reset-password/{token}.
-func PasswordResetConfirmPostHandler(app *pocketbase.PocketBase, registry *template.Registry, appStore *store.Store, sessStore *session.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func PasswordResetConfirmPostHandler(registry *server.Registry, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")

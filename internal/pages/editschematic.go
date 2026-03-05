@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
@@ -8,10 +9,7 @@ import (
 	"createmod/internal/store"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	template2 "github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 )
 
@@ -37,21 +35,11 @@ type SchematicTagWithSelected struct {
 	Selected bool
 }
 
-func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template2.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil {
-			return err
-		}
-		results, err := app.FindRecordsByFilter(
-			schematicsCollection.Id,
-			"name = {:name}",
-			"-created",
-			1,
-			0,
-			dbx.Params{"name": e.Request.PathValue("name")})
-
-		if len(results) != 1 {
+func EditSchematicHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		name := e.Request.PathValue("name")
+		storeSchematic, err := appStore.Schematics.GetByName(context.Background(), name)
+		if err != nil || storeSchematic == nil {
 			nd := DefaultData{}
 			nd.Populate(e)
 			nd.Title = i18n.T(nd.Language, "Page Not Found")
@@ -63,20 +51,22 @@ func EditSchematicHandler(app *pocketbase.PocketBase, searchService *search.Serv
 		}
 
 		d := EditSchematicData{
-			Schematic: mapResultToSchematic(app, results[0], cacheService),
+			Schematic: MapStoreSchematicToModel(appStore, *storeSchematic, cacheService),
 		}
 		d.Populate(e)
 		d.Title = fmt.Sprintf("%s %s", i18n.T(d.Language, "Editing"), d.Schematic.Title)
-		d.Slug = fmt.Sprintf("schematics/%s/edit", d.Schematic.Name)
+		d.Slug = fmt.Sprintf("/schematics/%s/edit", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
 		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
 		d.SubCategory = "Schematic"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
-		d.Tags = allTags(app)
-		d.MinecraftVersions = allMinecraftVersions(app)
-		d.CreatemodVersions = allCreatemodVersions(app)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.Tags = allTagsFromStore(appStore)
+		d.MinecraftVersions = allMinecraftVersionsFromStore(appStore)
+		d.CreatemodVersions = allCreatemodVersionsFromStore(appStore)
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
-		d.CreateModVersionId = results[0].GetString("createmod_version")
+		if storeSchematic.CreatemodVersionID != nil {
+			d.CreateModVersionId = *storeSchematic.CreatemodVersionID
+		}
 
 		for _, t := range d.Tags {
 			selected := false

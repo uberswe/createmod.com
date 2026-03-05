@@ -17,7 +17,7 @@
               {{ if .IsTranslated }}
               <div class="text-muted small mt-1">
                 <em>{{ T .Language "Auto translated" }}</em> &mdash;
-                <a href="?lang=original" class="text-muted">{{ T .Language "show original" }}</a>
+                <a href="?lang=original" class="text-muted" hx-boost="false">{{ T .Language "show original" }}</a>
               </div>
               {{ end }}
             </div>

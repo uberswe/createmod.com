@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 var userPasswordTemplates = append([]string{
@@ -23,8 +21,8 @@ type UserPasswordData struct {
 	Error   string
 }
 
-func UserPasswordHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UserPasswordHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
@@ -34,7 +32,7 @@ func UserPasswordHandler(app *pocketbase.PocketBase, registry *template.Registry
 		d.Title = i18n.T(d.Language, "Change Password")
 		d.Description = i18n.T(d.Language, "page.userpassword.description")
 		d.Slug = "/settings/password"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(userPasswordTemplates...).Render(d)
 		if err != nil {
@@ -44,8 +42,8 @@ func UserPasswordHandler(app *pocketbase.PocketBase, registry *template.Registry
 	}
 }
 
-func UserPasswordPostHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UserPasswordPostHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
@@ -63,7 +61,7 @@ func UserPasswordPostHandler(app *pocketbase.PocketBase, registry *template.Regi
 		d.Title = i18n.T(d.Language, "Change Password")
 		d.Description = i18n.T(d.Language, "page.userpassword.description")
 		d.Slug = "/settings/password"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		renderError := func(msg string) error {
 			d.Error = msg

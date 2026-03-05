@@ -5,12 +5,12 @@
         {{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 0 }} {{ T .Language "of" }} {{ .TotalPages }}{{ end }} &middot; {{ .SearchResultCount }} {{ T .Language "results" }}
     </div>
     <div class="d-flex align-items-center gap-2">
-        <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary btn-sm"{{ else }}class="btn btn-outline-secondary btn-sm disabled" tabindex="-1" aria-disabled="true"{{ end }}>
+        <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true" class="btn btn-outline-secondary btn-sm"{{ else }}class="btn btn-outline-secondary btn-sm disabled" tabindex="-1" aria-disabled="true"{{ end }}>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 6l-6 6l6 6" /></svg>
             {{ T .Language "Previous" }}
         </a>
         <span class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</span>
-        <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary btn-sm"{{ else }}class="btn btn-outline-secondary btn-sm disabled" tabindex="-1" aria-disabled="true"{{ end }}>
+        <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true" class="btn btn-outline-secondary btn-sm"{{ else }}class="btn btn-outline-secondary btn-sm disabled" tabindex="-1" aria-disabled="true"{{ end }}>
             {{ T .Language "Next" }}
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
         </a>

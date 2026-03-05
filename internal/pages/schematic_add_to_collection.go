@@ -1,27 +1,18 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/store"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // SchematicAddToCollectionHandler handles POST /schematics/{name}/add-to-collection
-// Minimal, best-effort implementation:
-//   - Requires auth
-//   - Resolves schematic by {name}
-//   - Resolves collection by provided slug or id
-//   - Tries to create a link record in one of the expected join collections
-//     ("collections_schematics" or "collection_schematics") with fields
-//     {collection, schematic}. If not present, attempts to append schematic id
-//     to a multi-rel field "schematics" on the target collection.
-//   - HTMX-aware redirect back to the schematic page.
-func SchematicAddToCollectionHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func SchematicAddToCollectionHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -35,7 +26,6 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase, appStore *store
 		}
 		collInput := e.Request.FormValue("collection")
 		if collInput == "" {
-			// Nothing to do
 			if e.Request.Header.Get("HX-Request") != "" {
 				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=missing_collection"))
 				return e.HTML(http.StatusNoContent, "")
@@ -43,23 +33,16 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase, appStore *store
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=missing_collection"))
 		}
 
-		// Resolve schematic record by name
-		schemColl, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil || schemColl == nil {
-			return e.String(http.StatusInternalServerError, "schematics collection not available")
-		}
-		schemRecs, err := app.FindRecordsByFilter(schemColl.Id, "name = {:name}", "-created", 1, 0, dbx.Params{"name": name})
-		if err != nil || len(schemRecs) == 0 {
+		ctx := context.Background()
+
+		// Resolve schematic by name
+		schematic, err := appStore.Schematics.GetByName(ctx, name)
+		if err != nil || schematic == nil {
 			return e.String(http.StatusNotFound, "schematic not found")
 		}
-		schematic := schemRecs[0]
 
-		// Resolve collection by slug first, then id, or create if requested
-		collsColl, err := app.FindCollectionByNameOrId("collections")
-		if err != nil || collsColl == nil {
-			return e.String(http.StatusInternalServerError, "collections collection not available")
-		}
-		var collection *core.Record
+		var collectionID string
+
 		if collInput == "__new__" {
 			newName := strings.TrimSpace(e.Request.FormValue("new_collection_name"))
 			if newName == "" {
@@ -69,85 +52,44 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase, appStore *store
 				}
 				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=new_name_required"))
 			}
-			rec := core.NewRecord(collsColl)
-			rec.Set("title", newName)
-			rec.Set("name", newName)
-			rec.Set("author", authenticatedUserID(e))
-			if err := app.Save(rec); err == nil {
-				collection = rec
-			} else {
+			newColl := &store.Collection{
+				Title: newName,
+				Name:  newName,
+			}
+			authorID := authenticatedUserID(e)
+			newColl.AuthorID = &authorID
+			if err := appStore.Collections.Create(ctx, newColl); err != nil {
 				if e.Request.Header.Get("HX-Request") != "" {
 					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=failed_create_collection"))
 					return e.HTML(http.StatusNoContent, "")
 				}
 				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=failed_create_collection"))
 			}
+			collectionID = newColl.ID
 		} else {
-			if recs, err := app.FindRecordsByFilter(collsColl.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": collInput}); err == nil && len(recs) > 0 {
-				collection = recs[0]
+			// Try to find by slug first, then by ID
+			coll, err := appStore.Collections.GetBySlug(ctx, collInput)
+			if err != nil || coll == nil {
+				coll, err = appStore.Collections.GetByID(ctx, collInput)
 			}
-			if collection == nil {
-				if rec, err := app.FindRecordById(collsColl.Id, collInput); err == nil {
-					collection = rec
-				}
-			}
-			if collection == nil {
+			if coll == nil {
 				if e.Request.Header.Get("HX-Request") != "" {
 					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+"?error=collection_not_found"))
 					return e.HTML(http.StatusNoContent, "")
 				}
 				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=collection_not_found"))
 			}
+			collectionID = coll.ID
 		}
 
-		// Try join table variants
-		joinNames := []string{"collections_schematics", "collection_schematics"}
-		linked := false
-		for _, jn := range joinNames {
-			if joinColl, jerr := app.FindCollectionByNameOrId(jn); jerr == nil && joinColl != nil {
-				// avoid duplicate
-				if existing, _ := app.FindRecordsByFilter(joinColl.Id, "collection = {:c} && schematic = {:s}", "-created", 1, 0, dbx.Params{"c": collection.Id, "s": schematic.Id}); len(existing) > 0 {
-					linked = true
-					break
-				}
-				rec := core.NewRecord(joinColl)
-				rec.Set("collection", collection.Id)
-				rec.Set("schematic", schematic.Id)
-				if saveErr := app.Save(rec); saveErr == nil {
-					linked = true
-					break
-				} else {
-					// continue to try other strategies
-					app.Logger().Warn("add-to-collection: join save failed", "error", saveErr, "join", jn)
-				}
-			}
-		}
-
-		if !linked {
-			// Try appending to a multi-rel field on the collection: schematics
-			ids := collection.GetStringSlice("schematics")
-			// Prevent duplicates
-			already := false
-			for _, id := range ids {
-				if id == schematic.Id {
-					already = true
-					break
-				}
-			}
-			if !already {
-				ids = append(ids, schematic.Id)
-			}
-			collection.Set("schematics", ids)
-			if err := app.Save(collection); err == nil {
-				linked = true
-			} else {
-				app.Logger().Warn("add-to-collection: fallback save failed", "error", err)
-			}
+		// Add schematic to collection (AddSchematic handles duplicate prevention)
+		if err := appStore.Collections.AddSchematic(ctx, collectionID, schematic.ID, 0); err != nil {
+			slog.Warn("add-to-collection: failed", "error", err)
 		}
 
 		// If this was a newly created collection, redirect to the edit screen
-		if collInput == "__new__" && collection != nil {
-			dest := "/collections/" + collection.Id + "/edit"
+		if collInput == "__new__" {
+			dest := "/collections/" + collectionID + "/edit"
 			if e.Request.Header.Get("HX-Request") != "" {
 				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 				return e.HTML(http.StatusNoContent, "")
@@ -155,11 +97,7 @@ func SchematicAddToCollectionHandler(app *pocketbase.PocketBase, appStore *store
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 		}
 
-		// Redirect back with status flag
 		suffix := "?added=1"
-		if !linked {
-			suffix = "?error=unsupported"
-		}
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo+suffix))
 			return e.HTML(http.StatusNoContent, "")

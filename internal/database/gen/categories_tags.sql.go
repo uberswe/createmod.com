@@ -9,20 +9,44 @@ import (
 	"context"
 )
 
+const approveCategoryByID = `-- name: ApproveCategoryByID :exec
+UPDATE schematic_categories SET public = true WHERE id = $1
+`
+
+func (q *Queries) ApproveCategoryByID(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, approveCategoryByID, id)
+	return err
+}
+
+const approveTagByID = `-- name: ApproveTagByID :exec
+UPDATE schematic_tags SET public = true WHERE id = $1
+`
+
+func (q *Queries) ApproveTagByID(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, approveTagByID, id)
+	return err
+}
+
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO schematic_categories (id, key, name)
-VALUES ($1, $2, $3)
-RETURNING id, key, name, created, updated
+INSERT INTO schematic_categories (id, key, name, public)
+VALUES ($1, $2, $3, $4)
+RETURNING id, key, name, created, updated, public
 `
 
 type CreateCategoryParams struct {
-	ID   string `json:"id"`
-	Key  string `json:"key"`
-	Name string `json:"name"`
+	ID     string `json:"id"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Public bool   `json:"public"`
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (SchematicCategory, error) {
-	row := q.db.QueryRow(ctx, createCategory, arg.ID, arg.Key, arg.Name)
+	row := q.db.QueryRow(ctx, createCategory,
+		arg.ID,
+		arg.Key,
+		arg.Name,
+		arg.Public,
+	)
 	var i SchematicCategory
 	err := row.Scan(
 		&i.ID,
@@ -30,24 +54,31 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Public,
 	)
 	return i, err
 }
 
 const createTag = `-- name: CreateTag :one
-INSERT INTO schematic_tags (id, key, name)
-VALUES ($1, $2, $3)
-RETURNING id, key, name, created, updated
+INSERT INTO schematic_tags (id, key, name, public)
+VALUES ($1, $2, $3, $4)
+RETURNING id, key, name, created, updated, public
 `
 
 type CreateTagParams struct {
-	ID   string `json:"id"`
-	Key  string `json:"key"`
-	Name string `json:"name"`
+	ID     string `json:"id"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Public bool   `json:"public"`
 }
 
 func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error) {
-	row := q.db.QueryRow(ctx, createTag, arg.ID, arg.Key, arg.Name)
+	row := q.db.QueryRow(ctx, createTag,
+		arg.ID,
+		arg.Key,
+		arg.Name,
+		arg.Public,
+	)
 	var i SchematicTag
 	err := row.Scan(
 		&i.ID,
@@ -55,12 +86,31 @@ func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (Schematic
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Public,
 	)
 	return i, err
 }
 
+const deleteCategoryByID = `-- name: DeleteCategoryByID :exec
+DELETE FROM schematic_categories WHERE id = $1
+`
+
+func (q *Queries) DeleteCategoryByID(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteCategoryByID, id)
+	return err
+}
+
+const deleteTagByID = `-- name: DeleteTagByID :exec
+DELETE FROM schematic_tags WHERE id = $1
+`
+
+func (q *Queries) DeleteTagByID(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteTagByID, id)
+	return err
+}
+
 const getCategoriesByIDs = `-- name: GetCategoriesByIDs :many
-SELECT id, key, name, created, updated FROM schematic_categories WHERE id = ANY($1::text[])
+SELECT id, key, name, created, updated, public FROM schematic_categories WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) GetCategoriesByIDs(ctx context.Context, dollar_1 []string) ([]SchematicCategory, error) {
@@ -78,6 +128,7 @@ func (q *Queries) GetCategoriesByIDs(ctx context.Context, dollar_1 []string) ([]
 			&i.Name,
 			&i.Created,
 			&i.Updated,
+			&i.Public,
 		); err != nil {
 			return nil, err
 		}
@@ -90,7 +141,7 @@ func (q *Queries) GetCategoriesByIDs(ctx context.Context, dollar_1 []string) ([]
 }
 
 const getCategoryByID = `-- name: GetCategoryByID :one
-SELECT id, key, name, created, updated FROM schematic_categories WHERE id = $1
+SELECT id, key, name, created, updated, public FROM schematic_categories WHERE id = $1
 `
 
 func (q *Queries) GetCategoryByID(ctx context.Context, id string) (SchematicCategory, error) {
@@ -102,12 +153,13 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (SchematicCate
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Public,
 	)
 	return i, err
 }
 
 const getCategoryByKey = `-- name: GetCategoryByKey :one
-SELECT id, key, name, created, updated FROM schematic_categories WHERE key = $1
+SELECT id, key, name, created, updated, public FROM schematic_categories WHERE key = $1 AND public = true
 `
 
 func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (SchematicCategory, error) {
@@ -119,12 +171,31 @@ func (q *Queries) GetCategoryByKey(ctx context.Context, key string) (SchematicCa
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Public,
+	)
+	return i, err
+}
+
+const getCategoryByKeyIncludingPending = `-- name: GetCategoryByKeyIncludingPending :one
+SELECT id, key, name, created, updated, public FROM schematic_categories WHERE key = $1
+`
+
+func (q *Queries) GetCategoryByKeyIncludingPending(ctx context.Context, key string) (SchematicCategory, error) {
+	row := q.db.QueryRow(ctx, getCategoryByKeyIncludingPending, key)
+	var i SchematicCategory
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.Name,
+		&i.Created,
+		&i.Updated,
+		&i.Public,
 	)
 	return i, err
 }
 
 const getTagByID = `-- name: GetTagByID :one
-SELECT id, key, name, created, updated FROM schematic_tags WHERE id = $1
+SELECT id, key, name, created, updated, public FROM schematic_tags WHERE id = $1
 `
 
 func (q *Queries) GetTagByID(ctx context.Context, id string) (SchematicTag, error) {
@@ -136,12 +207,13 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (SchematicTag, erro
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Public,
 	)
 	return i, err
 }
 
 const getTagByKey = `-- name: GetTagByKey :one
-SELECT id, key, name, created, updated FROM schematic_tags WHERE key = $1
+SELECT id, key, name, created, updated, public FROM schematic_tags WHERE key = $1 AND public = true
 `
 
 func (q *Queries) GetTagByKey(ctx context.Context, key string) (SchematicTag, error) {
@@ -153,12 +225,31 @@ func (q *Queries) GetTagByKey(ctx context.Context, key string) (SchematicTag, er
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Public,
+	)
+	return i, err
+}
+
+const getTagByKeyIncludingPending = `-- name: GetTagByKeyIncludingPending :one
+SELECT id, key, name, created, updated, public FROM schematic_tags WHERE key = $1
+`
+
+func (q *Queries) GetTagByKeyIncludingPending(ctx context.Context, key string) (SchematicTag, error) {
+	row := q.db.QueryRow(ctx, getTagByKeyIncludingPending, key)
+	var i SchematicTag
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.Name,
+		&i.Created,
+		&i.Updated,
+		&i.Public,
 	)
 	return i, err
 }
 
 const getTagsByIDs = `-- name: GetTagsByIDs :many
-SELECT id, key, name, created, updated FROM schematic_tags WHERE id = ANY($1::text[])
+SELECT id, key, name, created, updated, public FROM schematic_tags WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) GetTagsByIDs(ctx context.Context, dollar_1 []string) ([]SchematicTag, error) {
@@ -176,6 +267,69 @@ func (q *Queries) GetTagsByIDs(ctx context.Context, dollar_1 []string) ([]Schema
 			&i.Name,
 			&i.Created,
 			&i.Updated,
+			&i.Public,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllCategories = `-- name: ListAllCategories :many
+SELECT id, key, name, created, updated, public FROM schematic_categories ORDER BY key
+`
+
+func (q *Queries) ListAllCategories(ctx context.Context) ([]SchematicCategory, error) {
+	rows, err := q.db.Query(ctx, listAllCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SchematicCategory{}
+	for rows.Next() {
+		var i SchematicCategory
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.Name,
+			&i.Created,
+			&i.Updated,
+			&i.Public,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllTags = `-- name: ListAllTags :many
+SELECT id, key, name, created, updated, public FROM schematic_tags ORDER BY key
+`
+
+func (q *Queries) ListAllTags(ctx context.Context) ([]SchematicTag, error) {
+	rows, err := q.db.Query(ctx, listAllTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SchematicTag{}
+	for rows.Next() {
+		var i SchematicTag
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.Name,
+			&i.Created,
+			&i.Updated,
+			&i.Public,
 		); err != nil {
 			return nil, err
 		}
@@ -188,7 +342,7 @@ func (q *Queries) GetTagsByIDs(ctx context.Context, dollar_1 []string) ([]Schema
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, key, name, created, updated FROM schematic_categories ORDER BY key
+SELECT id, key, name, created, updated, public FROM schematic_categories WHERE public = true ORDER BY key
 `
 
 func (q *Queries) ListCategories(ctx context.Context) ([]SchematicCategory, error) {
@@ -206,6 +360,69 @@ func (q *Queries) ListCategories(ctx context.Context) ([]SchematicCategory, erro
 			&i.Name,
 			&i.Created,
 			&i.Updated,
+			&i.Public,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingCategories = `-- name: ListPendingCategories :many
+SELECT id, key, name, created, updated, public FROM schematic_categories WHERE public = false ORDER BY created DESC
+`
+
+func (q *Queries) ListPendingCategories(ctx context.Context) ([]SchematicCategory, error) {
+	rows, err := q.db.Query(ctx, listPendingCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SchematicCategory{}
+	for rows.Next() {
+		var i SchematicCategory
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.Name,
+			&i.Created,
+			&i.Updated,
+			&i.Public,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingTags = `-- name: ListPendingTags :many
+SELECT id, key, name, created, updated, public FROM schematic_tags WHERE public = false ORDER BY created DESC
+`
+
+func (q *Queries) ListPendingTags(ctx context.Context) ([]SchematicTag, error) {
+	rows, err := q.db.Query(ctx, listPendingTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SchematicTag{}
+	for rows.Next() {
+		var i SchematicTag
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.Name,
+			&i.Created,
+			&i.Updated,
+			&i.Public,
 		); err != nil {
 			return nil, err
 		}
@@ -218,7 +435,7 @@ func (q *Queries) ListCategories(ctx context.Context) ([]SchematicCategory, erro
 }
 
 const listTags = `-- name: ListTags :many
-SELECT id, key, name, created, updated FROM schematic_tags ORDER BY key
+SELECT id, key, name, created, updated, public FROM schematic_tags WHERE public = true ORDER BY key
 `
 
 func (q *Queries) ListTags(ctx context.Context) ([]SchematicTag, error) {
@@ -236,6 +453,7 @@ func (q *Queries) ListTags(ctx context.Context) ([]SchematicTag, error) {
 			&i.Name,
 			&i.Created,
 			&i.Updated,
+			&i.Public,
 		); err != nil {
 			return nil, err
 		}
@@ -253,6 +471,7 @@ FROM schematic_tags t
 LEFT JOIN schematics_tags st ON st.tag_id = t.id
 LEFT JOIN schematics s ON s.id = st.schematic_id
     AND s.deleted IS NULL AND s.moderated = true
+WHERE t.public = true
 GROUP BY t.id, t.key, t.name
 ORDER BY count DESC
 `

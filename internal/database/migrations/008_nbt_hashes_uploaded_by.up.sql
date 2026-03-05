@@ -1,0 +1,1 @@
+ALTER TABLE nbt_hashes ADD COLUMN uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL;

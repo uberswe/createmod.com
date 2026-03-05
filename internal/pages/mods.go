@@ -1,22 +1,18 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
-	"createmod/internal/modmeta"
 	"createmod/internal/store"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -66,16 +62,16 @@ type ModDetailData struct {
 const modsCacheKey = "mods_listing"
 
 // ModsHandler renders the mods listing page at GET /mods.
-func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, modMetaService *modmeta.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func ModsHandler(cacheService *cache.Service, registry *server.Registry, modMetaService interface{}, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		mods, found := getCachedMods(cacheService)
 		if !found {
 			var err error
-			mods, err = queryModEntries(app)
+			mods, err = queryModEntriesFromStore(appStore)
 			if err != nil {
 				return err
 			}
-			enrichModEntries(app, mods, modMetaService)
+			enrichModEntriesFromStore(appStore, mods)
 			cacheService.SetWithTTL(modsCacheKey, mods, 30*time.Minute)
 		}
 
@@ -87,7 +83,7 @@ func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regist
 		d.Title = i18n.T(d.Language, "Mods")
 		d.Description = i18n.T(d.Language, "Browse schematics by mod")
 		d.Slug = "/mods"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(modsTemplates...).Render(d)
 		if err != nil {
@@ -98,8 +94,8 @@ func ModsHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regist
 }
 
 // ModDetailHandler renders a specific mod's schematics at GET /mods/{slug}.
-func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, modMetaService *modmeta.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, modMetaService interface{}, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		slug := e.Request.PathValue("slug")
 		if slug == "" {
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/mods"))
@@ -115,23 +111,24 @@ func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, r
 		limit := pageSize + 1
 		offset := (page - 1) * pageSize
 
+		ctx := context.Background()
 		isVanilla := slug == "vanilla"
-		var results []*core.Record
+		var storeSchematics []store.Schematic
 		var totalCount int
 		var err error
 
 		if isVanilla {
-			results, totalCount, err = queryVanillaSchematics(app, limit, offset)
+			storeSchematics, totalCount, err = appStore.Schematics.ListVanilla(ctx, limit, offset)
 		} else {
-			results, totalCount, err = queryModSchematics(app, slug, limit, offset)
+			storeSchematics, totalCount, err = appStore.Schematics.ListByMod(ctx, slug, limit, offset)
 		}
 		if err != nil {
 			return err
 		}
 
-		hasNext := len(results) > pageSize
+		hasNext := len(storeSchematics) > pageSize
 		if hasNext {
-			results = results[:pageSize]
+			storeSchematics = storeSchematics[:pageSize]
 		}
 
 		caser := cases.Title(language.English)
@@ -147,22 +144,23 @@ func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, r
 			IsVanilla: isVanilla,
 		}
 
-		// Enrich with metadata from Modrinth/CurseForge
-		if !isVanilla && modMetaService != nil {
-			if meta := modMetaService.GetMetadata(app, slug); meta != nil {
+		// Enrich with metadata from store
+		if !isVanilla {
+			meta, mErr := appStore.ModMetadata.GetByNamespace(ctx, slug)
+			if mErr == nil && meta != nil {
 				if meta.DisplayName != "" {
 					mod.Name = meta.DisplayName
 				}
 				mod.Description = meta.Description
 				mod.IconURL = meta.IconURL
 				mod.ModrinthURL = meta.ModrinthURL
-				mod.CurseForgeURL = meta.CurseForgeURL
+				mod.CurseForgeURL = meta.CurseforgeURL
 			}
 		}
 
 		d := ModDetailData{
 			Mod:        mod,
-			Schematics: MapResultsToSchematic(app, results, cacheService),
+			Schematics: MapStoreSchematics(appStore, storeSchematics, cacheService),
 			Page:       page,
 			HasPrev:    page > 1,
 			HasNext:    hasNext,
@@ -185,7 +183,7 @@ func ModDetailHandler(app *pocketbase.PocketBase, cacheService *cache.Service, r
 			d.Description = d.Subtitle
 		}
 		d.Slug = "/mods/" + slug
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(modDetailTemplates...).Render(d)
 		if err != nil {
@@ -208,44 +206,22 @@ func getCachedMods(cacheService *cache.Service) ([]ModEntry, bool) {
 	return mods, true
 }
 
-// queryModEntries fetches all mods and their schematic counts from the database.
-func queryModEntries(app *pocketbase.PocketBase) ([]ModEntry, error) {
+// queryModEntriesFromStore fetches all mods and their schematic counts from PostgreSQL.
+func queryModEntriesFromStore(appStore *store.Store) ([]ModEntry, error) {
+	ctx := context.Background()
 	caser := cases.Title(language.English)
 
-	// Query mod names and counts using json_each
-	modRows := []struct {
-		ModName string `db:"mod_name"`
-		Count   int    `db:"count"`
-	}{}
-
-	err := app.DB().NewQuery(`
-		SELECT j.value AS mod_name, COUNT(DISTINCT schematics.id) AS count
-		FROM schematics, json_each(schematics.mods) AS j
-		WHERE (schematics.deleted = '' OR schematics.deleted IS NULL)
-		  AND schematics.moderated = 1
-		  AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))
-		GROUP BY j.value
-		ORDER BY count DESC
-	`).All(&modRows)
+	modCounts, err := appStore.Schematics.ListModCounts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("querying mod entries: %w", err)
 	}
 
-	// Query vanilla count
-	var vanillaCount int
-	err = app.DB().NewQuery(`
-		SELECT COUNT(*) FROM schematics
-		WHERE (deleted = '' OR deleted IS NULL)
-		  AND moderated = 1
-		  AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))
-		  AND (mods IS NULL OR mods = '' OR mods = '[]' OR mods = 'null')
-	`).Row(&vanillaCount)
-	if err != nil && err != sql.ErrNoRows {
+	vanillaCount, err := appStore.Schematics.CountVanilla(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("querying vanilla count: %w", err)
 	}
 
-	// Build entries: Vanilla first, then mods sorted by count desc
-	entries := make([]ModEntry, 0, len(modRows)+1)
+	entries := make([]ModEntry, 0, len(modCounts)+1)
 	if vanillaCount > 0 {
 		entries = append(entries, ModEntry{
 			Slug:      "vanilla",
@@ -255,146 +231,38 @@ func queryModEntries(app *pocketbase.PocketBase) ([]ModEntry, error) {
 		})
 	}
 
-	for _, row := range modRows {
-		name := strings.TrimSpace(row.ModName)
+	for _, mc := range modCounts {
+		name := strings.TrimSpace(mc.ModName)
 		if name == "" {
 			continue
 		}
 		entries = append(entries, ModEntry{
 			Slug:  strings.ToLower(strings.ReplaceAll(name, " ", "_")),
 			Name:  caser.String(strings.ReplaceAll(name, "_", " ")),
-			Count: row.Count,
+			Count: mc.Count,
 		})
 	}
 
 	return entries, nil
 }
 
-// queryModSchematics fetches schematics that include the given mod.
-func queryModSchematics(app *pocketbase.PocketBase, mod string, limit, offset int) ([]*core.Record, int, error) {
-	// Get the total count for this mod
-	var totalCount int
-	err := app.DB().NewQuery(`
-		SELECT COUNT(DISTINCT schematics.id)
-		FROM schematics, json_each(schematics.mods) AS j
-		WHERE j.value = {:mod}
-		  AND (schematics.deleted = '' OR schematics.deleted IS NULL)
-		  AND schematics.moderated = 1
-		  AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))
-	`).Bind(dbx.Params{"mod": mod}).Row(&totalCount)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, 0, fmt.Errorf("counting mod schematics: %w", err)
-	}
-
-	// Get the IDs for this page
-	idRows := []struct {
-		ID string `db:"id"`
-	}{}
-	err = app.DB().NewQuery(`
-		SELECT DISTINCT schematics.id
-		FROM schematics, json_each(schematics.mods) AS j
-		WHERE j.value = {:mod}
-		  AND (schematics.deleted = '' OR schematics.deleted IS NULL)
-		  AND schematics.moderated = 1
-		  AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))
-		ORDER BY schematics.created DESC
-		LIMIT {:limit} OFFSET {:offset}
-	`).Bind(dbx.Params{"mod": mod, "limit": limit, "offset": offset}).All(&idRows)
-	if err != nil {
-		return nil, 0, fmt.Errorf("querying mod schematics: %w", err)
-	}
-
-	if len(idRows) == 0 {
-		return nil, totalCount, nil
-	}
-
-	// Fetch full records by IDs
-	ids := make([]string, len(idRows))
-	for i, row := range idRows {
-		ids[i] = row.ID
-	}
-
-	results, err := app.FindRecordsByIds("schematics", ids)
-	if err != nil {
-		return nil, 0, fmt.Errorf("fetching schematic records: %w", err)
-	}
-
-	// Preserve the order from the query
-	ordered := orderRecordsByIDs(results, ids)
-	return ordered, totalCount, nil
-}
-
-// queryVanillaSchematics fetches schematics with no mods.
-func queryVanillaSchematics(app *pocketbase.PocketBase, limit, offset int) ([]*core.Record, int, error) {
-	vanillaFilter := "deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now}) && (mods = null || mods = '' || mods = '[]' || mods = 'null')"
-
-	// Get total count
-	var totalCount int
-	err := app.DB().NewQuery(`
-		SELECT COUNT(*) FROM schematics
-		WHERE (deleted = '' OR deleted IS NULL)
-		  AND moderated = 1
-		  AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))
-		  AND (mods IS NULL OR mods = '' OR mods = '[]' OR mods = 'null')
-	`).Row(&totalCount)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, 0, fmt.Errorf("counting vanilla schematics: %w", err)
-	}
-
-	results, err := app.FindRecordsByFilter(
-		"schematics",
-		vanillaFilter,
-		"-created",
-		limit,
-		offset,
-		dbx.Params{"now": time.Now()},
-	)
-	if err != nil {
-		return nil, 0, fmt.Errorf("querying vanilla schematics: %w", err)
-	}
-
-	return results, totalCount, nil
-}
-
-// enrichModEntries populates metadata fields on mod entries from the mod_metadata collection.
-func enrichModEntries(app *pocketbase.PocketBase, entries []ModEntry, modMetaService *modmeta.Service) {
-	if modMetaService == nil {
-		return
-	}
-	namespaces := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if !e.IsVanilla {
-			namespaces = append(namespaces, e.Slug)
-		}
-	}
-	metaMap := modMetaService.GetMetadataMap(app, namespaces)
+// enrichModEntriesFromStore populates metadata fields on mod entries from the store.
+func enrichModEntriesFromStore(appStore *store.Store, entries []ModEntry) {
+	ctx := context.Background()
 	for i := range entries {
 		if entries[i].IsVanilla {
 			continue
 		}
-		if meta, ok := metaMap[entries[i].Slug]; ok {
-			if meta.DisplayName != "" {
-				entries[i].Name = meta.DisplayName
-			}
-			entries[i].Description = meta.Description
-			entries[i].IconURL = meta.IconURL
-			entries[i].ModrinthURL = meta.ModrinthURL
-			entries[i].CurseForgeURL = meta.CurseForgeURL
+		meta, err := appStore.ModMetadata.GetByNamespace(ctx, entries[i].Slug)
+		if err != nil || meta == nil {
+			continue
 		}
-	}
-}
-
-// orderRecordsByIDs returns records in the order specified by ids.
-func orderRecordsByIDs(records []*core.Record, ids []string) []*core.Record {
-	byID := make(map[string]*core.Record, len(records))
-	for _, r := range records {
-		byID[r.Id] = r
-	}
-	ordered := make([]*core.Record, 0, len(ids))
-	for _, id := range ids {
-		if r, ok := byID[id]; ok {
-			ordered = append(ordered, r)
+		if meta.DisplayName != "" {
+			entries[i].Name = meta.DisplayName
 		}
+		entries[i].Description = meta.Description
+		entries[i].IconURL = meta.IconURL
+		entries[i].ModrinthURL = meta.ModrinthURL
+		entries[i].CurseForgeURL = meta.CurseforgeURL
 	}
-	return ordered
 }

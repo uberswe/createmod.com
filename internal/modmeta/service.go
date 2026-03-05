@@ -1,30 +1,30 @@
 package modmeta
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/store"
 )
 
 // ModMetadata holds enriched mod information from Modrinth/CurseForge.
 type ModMetadata struct {
-	Namespace    string
-	DisplayName  string
-	Description  string
-	IconURL      string
-	ModrinthSlug string
-	ModrinthURL  string
-	CurseForgeID string
+	Namespace     string
+	DisplayName   string
+	Description   string
+	IconURL       string
+	ModrinthSlug  string
+	ModrinthURL   string
+	CurseForgeID  string
 	CurseForgeURL string
-	SourceURL    string
+	SourceURL     string
 }
 
 // Service fetches and caches mod metadata from Modrinth and CurseForge.
@@ -32,33 +32,35 @@ type Service struct {
 	curseForgeKey string
 	httpClient    *http.Client
 	stopChan      chan struct{}
+	appStore      *store.Store
 }
 
 // New creates a new mod metadata service.
-func New(curseForgeKey string) *Service {
+func New(curseForgeKey string, appStore *store.Store) *Service {
 	return &Service{
 		curseForgeKey: curseForgeKey,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
 		stopChan: make(chan struct{}),
+		appStore: appStore,
 	}
 }
 
 // StartScheduler runs the enrichment scheduler in a background goroutine.
 // It enriches mods on startup then every 6 hours.
-func (s *Service) StartScheduler(app *pocketbase.PocketBase) {
+func (s *Service) StartScheduler() {
 	go func() {
 		// Initial enrichment after a short delay to let boot complete
 		time.Sleep(30 * time.Second)
-		s.EnrichAll(app)
+		s.EnrichAll()
 
 		ticker := time.NewTicker(6 * time.Hour)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				s.EnrichAll(app)
+				s.EnrichAll()
 			case <-s.stopChan:
 				return
 			}
@@ -72,42 +74,34 @@ func (s *Service) Stop() {
 }
 
 // GetMetadata retrieves cached metadata for a namespace from the database.
-func (s *Service) GetMetadata(app *pocketbase.PocketBase, namespace string) *ModMetadata {
-	records, err := app.FindRecordsByFilter(
-		"mod_metadata",
-		"namespace = {:ns}",
-		"",
-		1,
-		0,
-		dbx.Params{"ns": namespace},
-	)
-	if err != nil || len(records) == 0 {
+func (s *Service) GetMetadata(namespace string) *ModMetadata {
+	ctx := context.Background()
+	m, err := s.appStore.ModMetadata.GetByNamespace(ctx, namespace)
+	if err != nil || m == nil {
 		return nil
 	}
-	r := records[0]
 	return &ModMetadata{
-		Namespace:    r.GetString("namespace"),
-		DisplayName:  r.GetString("display_name"),
-		Description:  r.GetString("description"),
-		IconURL:      r.GetString("icon_url"),
-		ModrinthSlug: r.GetString("modrinth_slug"),
-		ModrinthURL:  r.GetString("modrinth_url"),
-		CurseForgeID: r.GetString("curseforge_id"),
-		CurseForgeURL: r.GetString("curseforge_url"),
-		SourceURL:    r.GetString("source_url"),
+		Namespace:     m.Namespace,
+		DisplayName:   m.DisplayName,
+		Description:   m.Description,
+		IconURL:       m.IconURL,
+		ModrinthSlug:  m.ModrinthSlug,
+		ModrinthURL:   m.ModrinthURL,
+		CurseForgeID:  m.CurseforgeID,
+		CurseForgeURL: m.CurseforgeURL,
+		SourceURL:     m.SourceURL,
 	}
 }
 
 // GetMetadataMap retrieves metadata for a list of namespaces as a map.
-func (s *Service) GetMetadataMap(app *pocketbase.PocketBase, namespaces []string) map[string]*ModMetadata {
+func (s *Service) GetMetadataMap(namespaces []string) map[string]*ModMetadata {
 	result := make(map[string]*ModMetadata, len(namespaces))
 	if len(namespaces) == 0 {
 		return result
 	}
 
-	// Build filter with OR conditions
 	for _, ns := range namespaces {
-		meta := s.GetMetadata(app, ns)
+		meta := s.GetMetadata(ns)
 		if meta != nil {
 			result[ns] = meta
 		}
@@ -116,17 +110,12 @@ func (s *Service) GetMetadataMap(app *pocketbase.PocketBase, namespaces []string
 }
 
 // EnrichMod fetches metadata for a single mod namespace from external APIs.
-func (s *Service) EnrichMod(app *pocketbase.PocketBase, namespace string) error {
-	// Check if manually set — skip if so
-	existing, _ := app.FindRecordsByFilter(
-		"mod_metadata",
-		"namespace = {:ns}",
-		"",
-		1,
-		0,
-		dbx.Params{"ns": namespace},
-	)
-	if len(existing) > 0 && existing[0].GetBool("manually_set") {
+func (s *Service) EnrichMod(namespace string) error {
+	ctx := context.Background()
+
+	// Check if manually set - skip if so
+	existing, err := s.appStore.ModMetadata.GetByNamespace(ctx, namespace)
+	if err == nil && existing != nil && existing.ManuallySet {
 		return nil
 	}
 
@@ -134,80 +123,65 @@ func (s *Service) EnrichMod(app *pocketbase.PocketBase, namespace string) error 
 
 	// 1. Try Modrinth direct lookup
 	if err := s.tryModrinthDirect(namespace, meta); err != nil {
-		app.Logger().Debug("modmeta: Modrinth direct lookup failed", "namespace", namespace, "error", err)
+		slog.Debug("modmeta: Modrinth direct lookup failed", "namespace", namespace, "error", err)
 
 		// 2. Try Modrinth search fallback
 		if err := s.tryModrinthSearch(namespace, meta); err != nil {
-			app.Logger().Debug("modmeta: Modrinth search failed", "namespace", namespace, "error", err)
+			slog.Debug("modmeta: Modrinth search failed", "namespace", namespace, "error", err)
 		}
 	}
 
 	// 3. Try CurseForge if we don't have a CurseForge URL yet
 	if meta.CurseForgeURL == "" && s.curseForgeKey != "" {
 		if err := s.tryCurseForgeSlug(namespace, meta); err != nil {
-			app.Logger().Debug("modmeta: CurseForge slug lookup failed", "namespace", namespace, "error", err)
+			slog.Debug("modmeta: CurseForge slug lookup failed", "namespace", namespace, "error", err)
 
 			// 4. Try CurseForge text search
 			if err := s.tryCurseForgeSearch(namespace, meta); err != nil {
-				app.Logger().Debug("modmeta: CurseForge search failed", "namespace", namespace, "error", err)
+				slog.Debug("modmeta: CurseForge search failed", "namespace", namespace, "error", err)
 			}
 		}
 	}
 
 	// If we got nothing useful, still save the record so we don't retry too often
-	return s.upsertMetadata(app, existing, meta)
+	return s.upsertMetadata(meta)
 }
 
-func (s *Service) EnrichAll(app *pocketbase.PocketBase) {
-	app.Logger().Info("modmeta: starting enrichment run")
+func (s *Service) EnrichAll() {
+	slog.Info("modmeta: starting enrichment run")
+
+	ctx := context.Background()
 
 	// Get all unique mod namespaces from schematics
-	modRows := []struct {
-		ModName string `db:"mod_name"`
-	}{}
-	err := app.DB().NewQuery(`
-		SELECT DISTINCT j.value AS mod_name
-		FROM schematics, json_each(schematics.mods) AS j
-		WHERE (schematics.deleted = '' OR schematics.deleted IS NULL)
-		  AND schematics.moderated = 1
-	`).All(&modRows)
+	modCounts, err := s.appStore.Schematics.ListModCounts(ctx)
 	if err != nil {
-		app.Logger().Error("modmeta: failed to query mod namespaces", "error", err)
+		slog.Error("modmeta: failed to query mod namespaces", "error", err)
 		return
 	}
 
 	enriched := 0
 	skipped := 0
-	for _, row := range modRows {
-		ns := strings.TrimSpace(row.ModName)
+	for _, mc := range modCounts {
+		ns := strings.TrimSpace(mc.ModName)
 		if ns == "" {
 			continue
 		}
 
 		// Check if we already have a recent record
-		records, _ := app.FindRecordsByFilter(
-			"mod_metadata",
-			"namespace = {:ns}",
-			"",
-			1,
-			0,
-			dbx.Params{"ns": ns},
-		)
-		if len(records) > 0 {
-			r := records[0]
-			if r.GetBool("manually_set") {
+		existing, err := s.appStore.ModMetadata.GetByNamespace(ctx, ns)
+		if err == nil && existing != nil {
+			if existing.ManuallySet {
 				skipped++
 				continue
 			}
-			lastFetched := r.GetDateTime("last_fetched").Time()
-			if time.Since(lastFetched) < 7*24*time.Hour {
+			if existing.LastFetched != nil && time.Since(*existing.LastFetched) < 7*24*time.Hour {
 				skipped++
 				continue
 			}
 		}
 
-		if err := s.EnrichMod(app, ns); err != nil {
-			app.Logger().Warn("modmeta: failed to enrich mod", "namespace", ns, "error", err)
+		if err := s.EnrichMod(ns); err != nil {
+			slog.Warn("modmeta: failed to enrich mod", "namespace", ns, "error", err)
 		} else {
 			enriched++
 		}
@@ -216,7 +190,7 @@ func (s *Service) EnrichAll(app *pocketbase.PocketBase) {
 		time.Sleep(1 * time.Second)
 	}
 
-	app.Logger().Info("modmeta: enrichment run complete", "enriched", enriched, "skipped", skipped, "total", len(modRows))
+	slog.Info("modmeta: enrichment run complete", "enriched", enriched, "skipped", skipped, "total", len(modCounts))
 }
 
 // --- Modrinth API ---
@@ -367,11 +341,11 @@ type curseForgeSearchResponse struct {
 }
 
 type curseForgeProject struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Slug    string `json:"slug"`
 	Summary string `json:"summary"`
-	Logo  struct {
+	Logo    struct {
 		URL string `json:"url"`
 	} `json:"logo"`
 	Links struct {
@@ -448,44 +422,17 @@ func (s *Service) doCurseForgeSearch(cfURL string, meta *ModMetadata) error {
 
 // --- Database ---
 
-func (s *Service) upsertMetadata(app *pocketbase.PocketBase, existing []*core.Record, meta *ModMetadata) error {
-	var record *core.Record
-	if len(existing) > 0 {
-		record = existing[0]
-	} else {
-		coll, err := app.FindCollectionByNameOrId("mod_metadata")
-		if err != nil {
-			return err
-		}
-		record = core.NewRecord(coll)
-		record.Set("namespace", meta.Namespace)
-	}
-
-	if meta.DisplayName != "" {
-		record.Set("display_name", meta.DisplayName)
-	}
-	if meta.Description != "" {
-		record.Set("description", meta.Description)
-	}
-	if meta.IconURL != "" {
-		record.Set("icon_url", meta.IconURL)
-	}
-	if meta.ModrinthSlug != "" {
-		record.Set("modrinth_slug", meta.ModrinthSlug)
-	}
-	if meta.ModrinthURL != "" {
-		record.Set("modrinth_url", meta.ModrinthURL)
-	}
-	if meta.CurseForgeID != "" {
-		record.Set("curseforge_id", meta.CurseForgeID)
-	}
-	if meta.CurseForgeURL != "" {
-		record.Set("curseforge_url", meta.CurseForgeURL)
-	}
-	if meta.SourceURL != "" {
-		record.Set("source_url", meta.SourceURL)
-	}
-	record.Set("last_fetched", time.Now().UTC().Format("2006-01-02 15:04:05.000Z"))
-
-	return app.Save(record)
+func (s *Service) upsertMetadata(meta *ModMetadata) error {
+	ctx := context.Background()
+	return s.appStore.ModMetadata.Upsert(ctx, &store.ModMetadata{
+		Namespace:     meta.Namespace,
+		DisplayName:   meta.DisplayName,
+		Description:   meta.Description,
+		IconURL:       meta.IconURL,
+		ModrinthSlug:  meta.ModrinthSlug,
+		ModrinthURL:   meta.ModrinthURL,
+		CurseforgeID:  meta.CurseForgeID,
+		CurseforgeURL: meta.CurseForgeURL,
+		SourceURL:     meta.SourceURL,
+	})
 }

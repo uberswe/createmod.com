@@ -1,11 +1,11 @@
 package pointlog
 
 import (
+	"context"
+	"log/slog"
 	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/store"
 )
 
 // pointDef maps an achievement key to the points awarded and a human description.
@@ -24,12 +24,14 @@ var achievementPoints = map[string]pointDef{
 
 // Service manages the point log background recalculation.
 type Service struct {
+	appStore *store.Store
 	stopChan chan struct{}
 }
 
 // New creates a new point log service.
-func New() *Service {
+func New(appStore *store.Store) *Service {
 	return &Service{
+		appStore: appStore,
 		stopChan: make(chan struct{}),
 	}
 }
@@ -40,9 +42,9 @@ func (s *Service) Stop() {
 }
 
 // StartScheduler runs RecalculateAll immediately, then every hour.
-func (s *Service) StartScheduler(app *pocketbase.PocketBase) {
+func (s *Service) StartScheduler() {
 	go func() {
-		RecalculateAll(app)
+		s.RecalculateAll()
 
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
@@ -50,132 +52,120 @@ func (s *Service) StartScheduler(app *pocketbase.PocketBase) {
 		for {
 			select {
 			case <-ticker.C:
-				RecalculateAll(app)
+				s.RecalculateAll()
 			case <-s.stopChan:
-				app.Logger().Info("Point log scheduler stopped")
+				slog.Info("Point log scheduler stopped")
 				return
 			}
 		}
 	}()
-	app.Logger().Info("Point log scheduler started (polling every hour)")
+	slog.Info("Point log scheduler started (polling every hour)")
 }
 
-// RecalculateAll finds all users with achievements and backfills their point log.
-func RecalculateAll(app *pocketbase.PocketBase) {
-	app.Logger().Info("Point log recalculation started")
+// RecalculateAll finds all users and backfills their point log.
+func (s *Service) RecalculateAll() {
+	slog.Info("Point log recalculation started")
 
-	uaColl, err := app.FindCollectionByNameOrId("user_achievements")
-	if err != nil {
-		app.Logger().Debug("point_log: user_achievements collection not found", "error", err)
-		return
-	}
+	ctx := context.Background()
+	const pageSize = 500
+	offset := 0
+	count := 0
 
-	// Find all user_achievements records (limit 10000)
-	uas, err := app.FindRecordsByFilter(uaColl.Id, "1=1", "-created", 10000, 0)
-	if err != nil {
-		app.Logger().Debug("point_log: failed to query user_achievements", "error", err)
-		return
-	}
-
-	// Collect distinct user IDs
-	userSet := make(map[string]struct{})
-	for _, ua := range uas {
-		uid := ua.GetString("user")
-		if uid != "" {
-			userSet[uid] = struct{}{}
+	for {
+		users, err := s.appStore.Users.ListUsers(ctx, pageSize, offset)
+		if err != nil {
+			slog.Error("point_log: failed to list users", "error", err)
+			return
 		}
+		if len(users) == 0 {
+			break
+		}
+
+		for _, u := range users {
+			s.RecalculateUser(u.ID)
+			count++
+		}
+
+		if len(users) < pageSize {
+			break
+		}
+		offset += pageSize
 	}
 
-	for uid := range userSet {
-		RecalculateUser(app, uid)
-	}
-
-	app.Logger().Info("Point log recalculation completed", "users", len(userSet))
+	slog.Info("Point log recalculation completed", "users", count)
 }
 
 // RecalculateUser backfills point_log entries for a single user based on their achievements,
 // and corrects the user.points total if needed.
-func RecalculateUser(app *pocketbase.PocketBase, userID string) {
-	achColl, err := app.FindCollectionByNameOrId("achievements")
-	if err != nil {
-		return
-	}
-	uaColl, err := app.FindCollectionByNameOrId("user_achievements")
+func (s *Service) RecalculateUser(userID string) {
+	ctx := context.Background()
+
+	// Load achievements for this user
+	achs, err := s.appStore.Achievements.ListUserAchievements(ctx, userID)
 	if err != nil {
 		return
 	}
 
-	// Load user_achievements for this user
-	uas, err := app.FindRecordsByFilter(uaColl.Id, "user = {:u}", "-created", 100, 0, dbx.Params{"u": userID})
+	// Load existing point_log entries once to avoid repeated queries
+	existingEntries, err := s.appStore.Achievements.GetPointLog(ctx, userID)
 	if err != nil {
-		return
+		existingEntries = nil
+	}
+	loggedReasons := make(map[string]bool, len(existingEntries))
+	for _, e := range existingEntries {
+		loggedReasons[e.Reason] = true
 	}
 
-	for _, ua := range uas {
-		achID := ua.GetString("achievement")
-		if achID == "" {
-			continue
-		}
-		achRec, err := app.FindRecordById(achColl.Id, achID)
-		if err != nil {
-			continue
-		}
-		key := achRec.GetString("key")
-		def, ok := achievementPoints[key]
+	for _, ach := range achs {
+		def, ok := achievementPoints[ach.Key]
 		if !ok || def.Points <= 0 {
 			continue
 		}
 
-		// Check if point_log entry already exists
-		existing, _ := app.FindRecordsByFilter("point_log", "user = {:u} && reason = {:r}", "-created", 1, 0, dbx.Params{"u": userID, "r": key})
-		if len(existing) > 0 {
+		// Check if point_log entry already exists for this reason
+		if loggedReasons[ach.Key] {
 			continue
 		}
 
-		// Create the missing entry with earned_at = user_achievement.created
-		earnedAt := ua.GetDateTime("created").Time()
-		if earnedAt.IsZero() {
-			earnedAt = time.Now()
-		}
-		createLogEntryDirect(app, userID, def.Points, key, def.Description, earnedAt)
+		// Create the missing entry
+		_ = s.appStore.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
+			UserID:      userID,
+			Points:      def.Points,
+			Reason:      ach.Key,
+			Description: def.Description,
+			EarnedAt:    time.Now(),
+		})
 	}
 
 	// Sum all point_log entries and reconcile user.points
-	plRecs, err := app.FindRecordsByFilter("point_log", "user = {:u}", "-earned_at", 10000, 0, dbx.Params{"u": userID})
+	total, err := s.appStore.Achievements.SumUserPoints(ctx, userID)
 	if err != nil {
 		return
-	}
-	total := 0
-	for _, pl := range plRecs {
-		total += pl.GetInt("points")
 	}
 
-	u, err := app.FindRecordById("_pb_users_auth_", userID)
+	u, err := s.appStore.Users.GetUserByID(ctx, userID)
 	if err != nil {
 		return
 	}
-	if u.GetInt("points") != total {
-		u.Set("points", total)
-		_ = app.Save(u)
+
+	if u.Points != total {
+		_ = s.appStore.Users.UpdateUserPoints(ctx, userID, total)
 	}
 }
 
 // CreateLogEntry creates a point_log entry with earned_at = now.
 // Call this from hooks when awarding points in real-time.
-func CreateLogEntry(app core.App, userID string, points int, reason, description string) {
-	createLogEntryDirect(app, userID, points, reason, description, time.Now())
+func CreateLogEntry(appStore *store.Store, userID string, points int, reason, description string) {
+	createLogEntryDirect(appStore, userID, points, reason, description, time.Now())
 }
 
-func createLogEntryDirect(app core.App, userID string, points int, reason, description string, earnedAt time.Time) {
-	coll, err := app.FindCollectionByNameOrId("point_log")
-	if err != nil {
-		return
-	}
-	rec := core.NewRecord(coll)
-	rec.Set("user", userID)
-	rec.Set("points", points)
-	rec.Set("reason", reason)
-	rec.Set("description", description)
-	rec.Set("earned_at", earnedAt)
-	_ = app.Save(rec)
+func createLogEntryDirect(appStore *store.Store, userID string, points int, reason, description string, earnedAt time.Time) {
+	ctx := context.Background()
+	_ = appStore.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
+		UserID:      userID,
+		Points:      points,
+		Reason:      reason,
+		Description: description,
+		EarnedAt:    earnedAt,
+	})
 }

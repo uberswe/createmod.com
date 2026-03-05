@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const countUserGuides = `-- name: CountUserGuides :one
@@ -23,7 +24,7 @@ func (q *Queries) CountUserGuides(ctx context.Context, authorID *string) (int64,
 const createGuide = `-- name: CreateGuide :one
 INSERT INTO guides (id, author_id, title, description, content, slug, upload_link)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, author_id, title, description, content, slug, upload_link, created, updated
+RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views
 `
 
 type CreateGuideParams struct {
@@ -57,6 +58,7 @@ func (q *Queries) CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide
 		&i.UploadLink,
 		&i.Created,
 		&i.Updated,
+		&i.Views,
 	)
 	return i, err
 }
@@ -71,7 +73,7 @@ func (q *Queries) DeleteGuide(ctx context.Context, id string) error {
 }
 
 const getGuideByID = `-- name: GetGuideByID :one
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated FROM guides WHERE id = $1
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views FROM guides WHERE id = $1
 `
 
 func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
@@ -87,12 +89,13 @@ func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
 		&i.UploadLink,
 		&i.Created,
 		&i.Updated,
+		&i.Views,
 	)
 	return i, err
 }
 
 const getGuideBySlug = `-- name: GetGuideBySlug :one
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated FROM guides WHERE slug = $1
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views FROM guides WHERE slug = $1
 `
 
 func (q *Queries) GetGuideBySlug(ctx context.Context, slug string) (Guide, error) {
@@ -108,12 +111,22 @@ func (q *Queries) GetGuideBySlug(ctx context.Context, slug string) (Guide, error
 		&i.UploadLink,
 		&i.Created,
 		&i.Updated,
+		&i.Views,
 	)
 	return i, err
 }
 
+const incrementGuideViews = `-- name: IncrementGuideViews :exec
+UPDATE guides SET views = views + 1 WHERE id = $1
+`
+
+func (q *Queries) IncrementGuideViews(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, incrementGuideViews, id)
+	return err
+}
+
 const listGuides = `-- name: ListGuides :many
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated FROM guides ORDER BY created DESC LIMIT $1 OFFSET $2
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views FROM guides ORDER BY created DESC LIMIT $1 OFFSET $2
 `
 
 type ListGuidesParams struct {
@@ -140,7 +153,38 @@ func (q *Queries) ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide
 			&i.UploadLink,
 			&i.Created,
 			&i.Updated,
+			&i.Views,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGuidesForSitemap = `-- name: ListGuidesForSitemap :many
+SELECT id, slug, updated FROM guides ORDER BY updated DESC
+`
+
+type ListGuidesForSitemapRow struct {
+	ID      string    `json:"id"`
+	Slug    string    `json:"slug"`
+	Updated time.Time `json:"updated"`
+}
+
+func (q *Queries) ListGuidesForSitemap(ctx context.Context) ([]ListGuidesForSitemapRow, error) {
+	rows, err := q.db.Query(ctx, listGuidesForSitemap)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGuidesForSitemapRow{}
+	for rows.Next() {
+		var i ListGuidesForSitemapRow
+		if err := rows.Scan(&i.ID, &i.Slug, &i.Updated); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -158,7 +202,7 @@ UPDATE guides SET
     content = COALESCE($4, content),
     upload_link = COALESCE($5, upload_link)
 WHERE id = $1
-RETURNING id, author_id, title, description, content, slug, upload_link, created, updated
+RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views
 `
 
 type UpdateGuideParams struct {
@@ -188,6 +232,7 @@ func (q *Queries) UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide
 		&i.UploadLink,
 		&i.Created,
 		&i.Updated,
+		&i.Views,
 	)
 	return i, err
 }

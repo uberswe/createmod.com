@@ -20,12 +20,12 @@ type TranslationWorker struct {
 
 func (w *TranslationWorker) Work(ctx context.Context, job *river.Job[TranslationArgs]) error {
 	slog.Info("backfilling translations")
-	if w.deps.App == nil || w.deps.Translation == nil {
+	if w.deps.Translation == nil {
 		slog.Warn("translation backfill skipped: missing dependencies")
 		return nil
 	}
 
-	w.deps.Translation.BackfillMissingTranslations(w.deps.App)
+	w.deps.Translation.BackfillMissingTranslations()
 	slog.Info("translation backfill complete")
 	return nil
 }

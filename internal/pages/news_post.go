@@ -5,9 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/news"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"html/template"
 	"net/http"
 )
@@ -24,11 +22,11 @@ type NewsPostData struct {
 	Content  template.HTML
 }
 
-func NewsPostHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func NewsPostHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := NewsPostData{}
 		d.Populate(e)
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		slug := e.Request.PathValue("slug")
 		if slug != "" {

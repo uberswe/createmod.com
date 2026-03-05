@@ -7,7 +7,197 @@ package db
 
 import (
 	"context"
+	"time"
 )
+
+const fetchRatingCountBySchematic = `-- name: FetchRatingCountBySchematic :many
+SELECT schematic_id AS id, COUNT(rating)::REAL AS v
+FROM schematic_ratings
+GROUP BY schematic_id
+`
+
+type FetchRatingCountBySchematicRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatingCountBySchematicRow, error) {
+	rows, err := q.db.Query(ctx, fetchRatingCountBySchematic)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchRatingCountBySchematicRow{}
+	for rows.Next() {
+		var i FetchRatingCountBySchematicRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchRatingSumBySchematic = `-- name: FetchRatingSumBySchematic :many
+SELECT schematic_id AS id, SUM(rating)::REAL AS v
+FROM schematic_ratings
+GROUP BY schematic_id
+`
+
+type FetchRatingSumBySchematicRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchRatingSumBySchematic(ctx context.Context) ([]FetchRatingSumBySchematicRow, error) {
+	rows, err := q.db.Query(ctx, fetchRatingSumBySchematic)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchRatingSumBySchematicRow{}
+	for rows.Next() {
+		var i FetchRatingSumBySchematicRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchRecentDownloadsBySchematic = `-- name: FetchRecentDownloadsBySchematic :many
+SELECT schematic_id AS id, COUNT(*)::REAL AS v
+FROM schematic_downloads
+WHERE created > $1
+GROUP BY schematic_id
+`
+
+type FetchRecentDownloadsBySchematicRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchRecentDownloadsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentDownloadsBySchematicRow, error) {
+	rows, err := q.db.Query(ctx, fetchRecentDownloadsBySchematic, created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchRecentDownloadsBySchematicRow{}
+	for rows.Next() {
+		var i FetchRecentDownloadsBySchematicRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchRecentViewsBySchematic = `-- name: FetchRecentViewsBySchematic :many
+SELECT schematic_id AS id, SUM(count)::REAL AS v
+FROM schematic_views
+WHERE type = '0' AND created > $1
+GROUP BY schematic_id
+`
+
+type FetchRecentViewsBySchematicRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchRecentViewsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentViewsBySchematicRow, error) {
+	rows, err := q.db.Query(ctx, fetchRecentViewsBySchematic, created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchRecentViewsBySchematicRow{}
+	for rows.Next() {
+		var i FetchRecentViewsBySchematicRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchTotalDownloadsBySchematic = `-- name: FetchTotalDownloadsBySchematic :many
+SELECT schematic_id AS id, COUNT(*)::REAL AS v
+FROM schematic_downloads
+GROUP BY schematic_id
+`
+
+type FetchTotalDownloadsBySchematicRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchTotalDownloadsBySchematic(ctx context.Context) ([]FetchTotalDownloadsBySchematicRow, error) {
+	rows, err := q.db.Query(ctx, fetchTotalDownloadsBySchematic)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchTotalDownloadsBySchematicRow{}
+	for rows.Next() {
+		var i FetchTotalDownloadsBySchematicRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchTotalViewsBySchematic = `-- name: FetchTotalViewsBySchematic :many
+SELECT schematic_id AS id, SUM(count)::REAL AS v
+FROM schematic_views
+WHERE type = '0'
+GROUP BY schematic_id
+`
+
+type FetchTotalViewsBySchematicRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchTotalViewsBySchematic(ctx context.Context) ([]FetchTotalViewsBySchematicRow, error) {
+	rows, err := q.db.Query(ctx, fetchTotalViewsBySchematic)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchTotalViewsBySchematicRow{}
+	for rows.Next() {
+		var i FetchTotalViewsBySchematicRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const getSchematicDownloadCount = `-- name: GetSchematicDownloadCount :one
 SELECT COUNT(*)::INTEGER AS download_count
@@ -54,6 +244,20 @@ func (q *Queries) GetSchematicViewCount(ctx context.Context, schematicID string)
 	var view_count int32
 	err := row.Scan(&view_count)
 	return view_count, err
+}
+
+const getTotalViewCount = `-- name: GetTotalViewCount :one
+SELECT COALESCE(count, 0)::INTEGER AS total_count
+FROM schematic_views
+WHERE schematic_id = $1 AND type = '4' AND period = 'total'
+LIMIT 1
+`
+
+func (q *Queries) GetTotalViewCount(ctx context.Context, schematicID string) (int32, error) {
+	row := q.db.QueryRow(ctx, getTotalViewCount, schematicID)
+	var total_count int32
+	err := row.Scan(&total_count)
+	return total_count, err
 }
 
 const recordSchematicDownload = `-- name: RecordSchematicDownload :exec
@@ -118,6 +322,30 @@ func (q *Queries) UpsertSchematicView(ctx context.Context, arg UpsertSchematicVi
 		arg.Period,
 		arg.Type,
 		arg.Count,
+	)
+	return err
+}
+
+const upsertSchematicViewCount = `-- name: UpsertSchematicViewCount :exec
+INSERT INTO schematic_views (id, schematic_id, type, period, count)
+VALUES ($1, $2, $3, $4, 1)
+ON CONFLICT (schematic_id, type, period)
+DO UPDATE SET count = schematic_views.count + 1, updated = NOW()
+`
+
+type UpsertSchematicViewCountParams struct {
+	ID          string `json:"id"`
+	SchematicID string `json:"schematic_id"`
+	Type        string `json:"type"`
+	Period      string `json:"period"`
+}
+
+func (q *Queries) UpsertSchematicViewCount(ctx context.Context, arg UpsertSchematicViewCountParams) error {
+	_, err := q.db.Exec(ctx, upsertSchematicViewCount,
+		arg.ID,
+		arg.SchematicID,
+		arg.Type,
+		arg.Period,
 	)
 	return err
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"createmod/internal/migrate"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -55,15 +56,11 @@ func main() {
 	}
 	log.Println("Connected to PostgreSQL")
 
-	m := &Migrator{
-		sqlite: sqliteDB,
-		pg:     pool,
-		dryRun: *dryRun,
-	}
+	m := migrate.New(sqliteDB, pool, *dryRun)
 
 	if *dryRun {
 		log.Println("=== DRY RUN MODE — no data will be written ===")
-		m.printCounts(ctx)
+		m.PrintCounts(ctx)
 		return
 	}
 
@@ -72,5 +69,5 @@ func main() {
 	}
 
 	log.Println("=== Migration complete ===")
-	m.validate(ctx)
+	m.Validate(ctx)
 }

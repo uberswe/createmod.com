@@ -2,14 +2,13 @@ package pages
 
 import (
 	"createmod/internal/i18n"
+	"createmod/internal/server"
 	htmltmpl "html/template"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
-
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
 )
 
 func projectRootFromThisFile(t *testing.T) string {
@@ -26,7 +25,7 @@ func projectRootFromThisFile(t *testing.T) string {
 // with the given data using PocketBase's template registry.
 func renderTemplate(t *testing.T, file string, data any) string {
 	t.Helper()
-	r := pbtempl.NewRegistry()
+	r := server.NewRegistry()
 	// Register minimal func map to match production (HumanDate used in sidebar).
 	r.AddFuncs(htmltmpl.FuncMap{
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },

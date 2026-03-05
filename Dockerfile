@@ -1,11 +1,11 @@
-FROM node:alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/template
 
 # Copy package files for dependency installation
-COPY template/package*.json ./
+COPY template/package.json ./
 
-# Install dependencies
+# Install dependencies fresh (no lock file) to get correct platform binaries
 RUN npm install
 
 # Copy template source files
@@ -17,7 +17,7 @@ RUN npm run build
 FROM golang:alpine
 
 RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh
+    apk add --no-cache bash git openssh wget
 
 LABEL maintainer="Uberswe <admin@uberswe.com>"
 
@@ -38,9 +38,10 @@ COPY --from=frontend-builder /app/template/dist ./template/dist
 
 # Build the Go app
 RUN go build -o main ./cmd/server/main.go
+RUN go build -o migrate-data ./cmd/migrate-data/
 
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
 # Run the executable
-CMD ["./main","serve","--http", "0.0.0.0:8080"]
+CMD ["./main"]

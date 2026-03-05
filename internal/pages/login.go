@@ -3,9 +3,7 @@ package pages
 import (
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 )
 
@@ -19,8 +17,8 @@ type LoginData struct {
 	DefaultData
 }
 
-func LoginHandler(app *pocketbase.PocketBase, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func LoginHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := LoginData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Login")

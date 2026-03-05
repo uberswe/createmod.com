@@ -2,105 +2,54 @@ package pages
 
 import (
 	"createmod/internal/nbtparser"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
+	"createmod/internal/server"
 )
 
 // tempUploadFile represents an additional NBT file attached to a temp upload.
 type tempUploadFile struct {
-	ID           string
-	Token        string
-	Filename     string
-	Description  string
-	Size         int64
-	Checksum     string
-	BlockCount   int
-	DimX         int
-	DimY         int
-	DimZ         int
-	Mods         []string
-	Materials    []nbtparser.Material
-	PBRecordID   string
-	NBTStoredName string
-}
-
-// loadTempUploadFiles queries the temp_upload_files collection for all files
-// belonging to the given token, ordered by creation time.
-func loadTempUploadFiles(app *pocketbase.PocketBase, token string) []tempUploadFile {
-	if app == nil || token == "" {
-		return nil
-	}
-	coll, err := app.FindCollectionByNameOrId("temp_upload_files")
-	if err != nil || coll == nil {
-		return nil
-	}
-	recs, err := app.FindRecordsByFilter(coll.Id, "token = {:t}", "created", -1, 0, dbx.Params{"t": token})
-	if err != nil || len(recs) == 0 {
-		return nil
-	}
-	files := make([]tempUploadFile, 0, len(recs))
-	for _, r := range recs {
-		var materials []nbtparser.Material
-		rawMat := r.Get("materials")
-		if rawMat != nil {
-			if b, err := json.Marshal(rawMat); err == nil {
-				_ = json.Unmarshal(b, &materials)
-			}
-		}
-		var mods []string
-		rawMods := r.Get("mods")
-		if rawMods != nil {
-			if b, err := json.Marshal(rawMods); err == nil {
-				_ = json.Unmarshal(b, &mods)
-			}
-		}
-		files = append(files, tempUploadFile{
-			ID:            r.Id,
-			Token:         r.GetString("token"),
-			Filename:      r.GetString("filename"),
-			Description:   r.GetString("description"),
-			Size:          int64(r.GetInt("size")),
-			Checksum:      r.GetString("checksum"),
-			BlockCount:    r.GetInt("block_count"),
-			DimX:          r.GetInt("dim_x"),
-			DimY:          r.GetInt("dim_y"),
-			DimZ:          r.GetInt("dim_z"),
-			Mods:          mods,
-			Materials:     materials,
-			PBRecordID:    r.Id,
-			NBTStoredName: r.GetString("nbt_file"),
-		})
-	}
-	return files
+	ID          string
+	Token       string
+	Filename    string
+	Description string
+	Size        int64
+	Checksum    string
+	BlockCount  int
+	DimX        int
+	DimY        int
+	DimZ        int
+	Mods        []string
+	Materials   []nbtparser.Material
+	NbtS3Key    string
 }
 
 // addFileResponse is the JSON response for a successful additional file upload.
 type addFileResponse struct {
-	ID         string `json:"id"`
-	Filename   string `json:"filename"`
+	ID          string `json:"id"`
+	Filename    string `json:"filename"`
 	Description string `json:"description"`
-	Size       int64  `json:"size"`
-	BlockCount int    `json:"block_count"`
-	DimX       int    `json:"dim_x"`
-	DimY       int    `json:"dim_y"`
-	DimZ       int    `json:"dim_z"`
-	FileURL    string `json:"file_url,omitempty"`
+	Size        int64  `json:"size"`
+	BlockCount  int    `json:"block_count"`
+	DimX        int    `json:"dim_x"`
+	DimY        int    `json:"dim_y"`
+	DimZ        int    `json:"dim_z"`
+	FileURL     string `json:"file_url,omitempty"`
 }
 
 // UploadAddFileHandler accepts a POST with an additional .nbt file and description
 // for a given temp upload token. Requires auth + ownership.
-func UploadAddFileHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// Uses PostgreSQL store for metadata and direct S3 for file storage.
+func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if !isAuthenticated(e) {
 			return e.JSON(http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		}
@@ -111,8 +60,8 @@ func UploadAddFileHandler(app *pocketbase.PocketBase, appStore *store.Store) fun
 		}
 
 		// Verify ownership: the parent temp upload must belong to this user
-		parentEntry, ok := loadTempUploadPB(app, token)
-		if !ok {
+		parentEntry, err := appStore.TempUploads.GetByToken(e.Request.Context(), token)
+		if err != nil {
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "invalid or expired token"})
 		}
 		if parentEntry.UploadedBy == "" || parentEntry.UploadedBy != authenticatedUserID(e) {
@@ -157,7 +106,7 @@ func UploadAddFileHandler(app *pocketbase.PocketBase, appStore *store.Store) fun
 		checksum := hex.EncodeToString(sum[:])
 
 		// Duplicate detection within the same token
-		existing := loadTempUploadFiles(app, token)
+		existing, _ := appStore.TempUploadFiles.ListByToken(e.Request.Context(), token)
 		for _, ef := range existing {
 			if ef.Checksum == checksum {
 				return e.JSON(http.StatusConflict, map[string]string{"error": "this file has already been added to this upload"})
@@ -184,46 +133,47 @@ func UploadAddFileHandler(app *pocketbase.PocketBase, appStore *store.Store) fun
 
 		description := strings.TrimSpace(e.Request.FormValue("description"))
 
-		// Persist to PocketBase
-		coll, err := app.FindCollectionByNameOrId("temp_upload_files")
-		if err != nil {
-			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "temp_upload_files collection not found"})
+		// Marshal materials and mods to JSON
+		materialsJSON, _ := json.Marshal(parsedMaterials)
+		modsJSON, _ := json.Marshal(mods)
+
+		// Create the store record (to get the ID for S3 key)
+		tempFile := &store.TempUploadFile{
+			Token:       token,
+			Filename:    header.Filename,
+			Description: description,
+			Size:        n,
+			Checksum:    checksum,
+			BlockCount:  blockCount,
+			DimX:        dimX,
+			DimY:        dimY,
+			DimZ:        dimZ,
+			Mods:        modsJSON,
+			Materials:   materialsJSON,
 		}
 
-		rec := core.NewRecord(coll)
-		rec.Set("token", token)
-		rec.Set("filename", header.Filename)
-		rec.Set("description", description)
-		rec.Set("size", n)
-		rec.Set("checksum", checksum)
-		rec.Set("block_count", blockCount)
-		rec.Set("dim_x", dimX)
-		rec.Set("dim_y", dimY)
-		rec.Set("dim_z", dimZ)
-		if mods != nil {
-			rec.Set("mods", mods)
+		// Upload NBT file to S3 using a temporary key based on checksum
+		nbtS3Key := s3CollectionTempUploadFiles + "/" + token + "/" + header.Filename
+		if storageSvc != nil {
+			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
+				slog.Error("failed to upload additional NBT to S3", "error", err, "token", token)
+				return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
+			}
 		}
-		if parsedMaterials != nil {
-			rec.Set("materials", parsedMaterials)
-		}
+		tempFile.NbtS3Key = nbtS3Key
 
-		f, fErr := filesystem.NewFileFromBytes(data, header.Filename)
-		if fErr == nil {
-			rec.Set("nbt_file", f)
-		}
-
-		if err := app.Save(rec); err != nil {
+		if err := appStore.TempUploadFiles.Create(e.Request.Context(), tempFile); err != nil {
+			slog.Error("failed to persist temp upload file", "error", err, "token", token)
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save file record"})
 		}
 
-		storedName := rec.GetString("nbt_file")
 		var fileURL string
-		if storedName != "" {
-			fileURL = "/api/files/temp_upload_files/" + rec.Id + "/" + storedName
+		if nbtS3Key != "" {
+			fileURL = "/api/files/" + nbtS3Key
 		}
 
 		return e.JSON(http.StatusOK, addFileResponse{
-			ID:          rec.Id,
+			ID:          tempFile.ID,
 			Filename:    header.Filename,
 			Description: description,
 			Size:        n,
@@ -238,8 +188,9 @@ func UploadAddFileHandler(app *pocketbase.PocketBase, appStore *store.Store) fun
 
 // UploadDeleteFileHandler deletes an additional file from a temp upload.
 // Requires auth + ownership.
-func UploadDeleteFileHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// Uses PostgreSQL store for metadata and direct S3 for file deletion.
+func UploadDeleteFileHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if !isAuthenticated(e) {
 			return e.JSON(http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 		}
@@ -251,8 +202,8 @@ func UploadDeleteFileHandler(app *pocketbase.PocketBase, appStore *store.Store) 
 		}
 
 		// Verify ownership
-		parentEntry, ok := loadTempUploadPB(app, token)
-		if !ok {
+		parentEntry, err := appStore.TempUploads.GetByToken(e.Request.Context(), token)
+		if err != nil {
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "invalid or expired token"})
 		}
 		if parentEntry.UploadedBy == "" || parentEntry.UploadedBy != authenticatedUserID(e) {
@@ -260,17 +211,25 @@ func UploadDeleteFileHandler(app *pocketbase.PocketBase, appStore *store.Store) 
 		}
 
 		// Find the file record
-		rec, err := app.FindRecordById("temp_upload_files", fileId)
+		fileRec, err := appStore.TempUploadFiles.GetByID(e.Request.Context(), fileId)
 		if err != nil {
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "file not found"})
 		}
 
 		// Verify the file belongs to this token
-		if rec.GetString("token") != token {
+		if fileRec.Token != token {
 			return e.JSON(http.StatusForbidden, map[string]string{"error": "file does not belong to this upload"})
 		}
 
-		if err := app.Delete(rec); err != nil {
+		// Delete from S3
+		if fileRec.NbtS3Key != "" && storageSvc != nil {
+			if err := storageSvc.DeleteRaw(e.Request.Context(), fileRec.NbtS3Key); err != nil {
+				slog.Error("failed to delete file from S3", "error", err, "key", fileRec.NbtS3Key)
+			}
+		}
+
+		// Delete from store
+		if err := appStore.TempUploadFiles.Delete(e.Request.Context(), fileId); err != nil {
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete file"})
 		}
 
@@ -280,49 +239,28 @@ func UploadDeleteFileHandler(app *pocketbase.PocketBase, appStore *store.Store) 
 
 // UploadFileDownloadHandler serves an additional NBT file for download.
 // Public access (no auth required), matching primary file behavior.
-func UploadFileDownloadHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// Uses PostgreSQL store for metadata and direct S3 for file access.
+func UploadFileDownloadHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		fileId := e.Request.PathValue("fileId")
 		if token == "" || fileId == "" {
 			return e.String(http.StatusBadRequest, "missing token or file ID")
 		}
 
-		rec, err := app.FindRecordById("temp_upload_files", fileId)
+		fileRec, err := appStore.TempUploadFiles.GetByID(e.Request.Context(), fileId)
 		if err != nil {
 			return e.String(http.StatusNotFound, "file not found")
 		}
 
-		if rec.GetString("token") != token {
+		if fileRec.Token != token {
 			return e.String(http.StatusNotFound, "file not found")
 		}
 
-		storedName := rec.GetString("nbt_file")
-		if storedName == "" {
+		if fileRec.NbtS3Key == "" {
 			return e.String(http.StatusNotFound, "file not available")
 		}
 
-		coll, err := app.FindCollectionByNameOrId("temp_upload_files")
-		if err != nil {
-			return e.String(http.StatusInternalServerError, "collection not found")
-		}
-
-		fileKey := coll.Id + "/" + rec.Id + "/" + storedName
-		fsys, err := app.NewFilesystem()
-		if err != nil {
-			return e.String(http.StatusInternalServerError, "storage error")
-		}
-		defer fsys.Close()
-
-		blob, err := fsys.GetReader(fileKey)
-		if err != nil {
-			return e.String(http.StatusNotFound, "file not found in storage")
-		}
-		defer blob.Close()
-
-		filename := rec.GetString("filename")
-		e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
-		e.Response.Header().Set("Content-Type", "application/octet-stream")
-		return e.Stream(http.StatusOK, "application/octet-stream", blob)
+		return streamFromS3(e, storageSvc, fileRec.NbtS3Key, fileRec.Filename)
 	}
 }

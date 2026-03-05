@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const countUsers = `-- name: CountUsers :one
@@ -186,6 +187,38 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.Created,
 			&i.Updated,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersForSitemap = `-- name: ListUsersForSitemap :many
+SELECT id, username, updated FROM users
+WHERE deleted IS NULL
+ORDER BY updated DESC
+`
+
+type ListUsersForSitemapRow struct {
+	ID       string    `json:"id"`
+	Username string    `json:"username"`
+	Updated  time.Time `json:"updated"`
+}
+
+func (q *Queries) ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error) {
+	rows, err := q.db.Query(ctx, listUsersForSitemap)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsersForSitemapRow{}
+	for rows.Next() {
+		var i ListUsersForSitemapRow
+		if err := rows.Scan(&i.ID, &i.Username, &i.Updated); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

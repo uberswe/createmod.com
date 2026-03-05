@@ -5,13 +5,12 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
 
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 const registerTemplate = "./template/register.html"
@@ -29,8 +28,8 @@ type registerData struct {
 	Email    string
 }
 
-func RegisterHandler(app *pocketbase.PocketBase, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func RegisterHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := registerData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "page.register.title")
@@ -46,8 +45,8 @@ func RegisterHandler(app *pocketbase.PocketBase, registry *template.Registry, ap
 }
 
 // RegisterPostHandler handles POST /register by creating a new user account.
-func RegisterPostHandler(app *pocketbase.PocketBase, appStore *store.Store, sessStore *session.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func RegisterPostHandler(appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
 		}
@@ -97,12 +96,9 @@ func RegisterPostHandler(app *pocketbase.PocketBase, appStore *store.Store, sess
 			PasswordHash: hash,
 		}
 		if err := appStore.Users.CreateUser(ctx, newUser); err != nil {
-			app.Logger().Error("registration failed", "error", err)
+			slog.Error("registration failed", "error", err)
 			return registerError(e, "Registration failed. Please try again.")
 		}
-
-		// Sync to PocketBase (transition bridge)
-		syncUserToPocketBase(app, newUser)
 
 		// Create session
 		token, err := sessStore.Create(ctx, newUser.ID)
@@ -121,7 +117,7 @@ func RegisterPostHandler(app *pocketbase.PocketBase, appStore *store.Store, sess
 	}
 }
 
-func registerError(e *core.RequestEvent, msg string) error {
+func registerError(e *server.RequestEvent, msg string) error {
 	if e.Request.Header.Get("HX-Request") != "" {
 		return e.String(http.StatusBadRequest, msg)
 	}

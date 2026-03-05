@@ -7,14 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // LoginPostHandler handles POST /login by authenticating against PostgreSQL
 // and creating a session.
-func LoginPostHandler(app *pocketbase.PocketBase, appStore *store.Store, sessStore *session.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func LoginPostHandler(appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		// Parse form fields
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
@@ -33,7 +32,7 @@ func LoginPostHandler(app *pocketbase.PocketBase, appStore *store.Store, sessSto
 }
 
 // loginWithStore authenticates against the PostgreSQL database directly.
-func loginWithStore(e *core.RequestEvent, appStore *store.Store, sessStore *session.Store, identity, password string) error {
+func loginWithStore(e *server.RequestEvent, appStore *store.Store, sessStore *session.Store, identity, password string) error {
 	ctx := e.Request.Context()
 
 	// Try to find user by email first, then by username
@@ -77,7 +76,7 @@ func loginWithStore(e *core.RequestEvent, appStore *store.Store, sessStore *sess
 }
 
 
-func loginSuccess(e *core.RequestEvent) error {
+func loginSuccess(e *server.RequestEvent) error {
 	returnTo := strings.TrimSpace(e.Request.Form.Get("return_to"))
 	if returnTo == "" {
 		returnTo = "/"
@@ -89,7 +88,7 @@ func loginSuccess(e *core.RequestEvent) error {
 	return e.Redirect(http.StatusFound, LangRedirectURL(e, returnTo))
 }
 
-func loginFailed(e *core.RequestEvent) error {
+func loginFailed(e *server.RequestEvent) error {
 	if e.Request.Header.Get("HX-Request") != "" {
 		return e.String(http.StatusUnauthorized, "invalid username or password")
 	}

@@ -3,25 +3,23 @@ package pages
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/moderation"
+	"createmod/internal/storage"
 	"createmod/internal/store"
-	"encoding/base64"
 	"fmt"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
-	"github.com/sunshineplan/imgconv"
-	"golang.org/x/image/draw"
 	"html/template"
 	"image"
 	"io"
+	"log/slog"
 	"net/http"
-	"sort"
 	"strings"
-	"time"
+
+	"createmod/internal/server"
+	"github.com/sunshineplan/imgconv"
+	"golang.org/x/image/draw"
 )
 
 var collectionsEditTemplates = append([]string{
@@ -48,122 +46,46 @@ type CollectionsEditData struct {
 }
 
 // CollectionsEditHandler renders the edit form for a collection (author-only).
-func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func CollectionsEditHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
 		slug := e.Request.PathValue("slug")
 		d := CollectionsEditData{}
 		d.Populate(e)
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Slug = "/collections/" + slug
 
-		coll, err := app.FindCollectionByNameOrId("collections")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "collections collection not available")
-		}
+		ctx := context.Background()
+
 		// Find by slug first, fallback to id
-		var rec *core.Record
-		if r, err := app.FindRecordsByFilter(coll.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": slug}); err == nil && len(r) > 0 {
-			rec = r[0]
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
+		if err != nil || coll == nil {
+			coll, err = appStore.Collections.GetByID(ctx, slug)
 		}
-		if rec == nil {
-			if r, err := app.FindRecordById(coll.Id, slug); err == nil {
-				rec = r
-			}
-		}
-		if rec == nil {
+		if coll == nil {
 			return e.String(http.StatusNotFound, "collection not found")
 		}
 		// Author-only
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 
-		d.TitleText = rec.GetString("title")
+		d.TitleText = coll.Title
 		if d.TitleText == "" {
-			d.TitleText = rec.GetString("name")
+			d.TitleText = coll.Name
 		}
-		d.Description = rec.GetString("description")
-		d.BannerURL = rec.GetString("banner_url")
-		d.Published = rec.GetBool("published")
+		d.Description = coll.Description
+		d.BannerURL = coll.BannerURL
+		d.Published = coll.Published
 		d.Title = i18n.T(d.Language, "Edit collection")
 
-		// Discover associated schematics to power the reorder UI.
-		// Preference:
-		//  1) If join table exists with optional numeric position, use it (ascending by position if present).
-		//  2) Else use the collection's multi-rel field "schematics" as-is.
-		ids := make([]string, 0, 64)
-		// Start with multi-rel field as fallback.
-		if rel := rec.GetStringSlice("schematics"); len(rel) > 0 {
-			// copy to avoid mutating underlying slice
-			tmp := make([]string, 0, len(rel))
-			seen := make(map[string]struct{}, len(rel))
-			for _, s := range rel {
-				if s == "" {
-					continue
-				}
-				if _, ok := seen[s]; ok {
-					continue
-				}
-				seen[s] = struct{}{}
-				tmp = append(tmp, s)
-			}
-			ids = tmp
-		}
-		// Try join associations
-		type pair struct {
-			sid string
-			pos int
-			idx int
-		}
-		best := make([]pair, 0, 128)
-		for _, jn := range []string{"collections_schematics", "collection_schematics"} {
-			if jcoll, jerr := app.FindCollectionByNameOrId(jn); jerr == nil && jcoll != nil {
-				// Load links. Sort by -created to get deterministic latest-first; we'll re-sort by position if present.
-				if links, _ := app.FindRecordsByFilter(jcoll.Id, "collection = {:c}", "-created", 5000, 0, dbx.Params{"c": rec.Id}); len(links) > 0 {
-					best = best[:0]
-					seen := make(map[string]struct{}, len(links))
-					for i, l := range links {
-						sid := l.GetString("schematic")
-						if sid == "" {
-							continue
-						}
-						if _, ok := seen[sid]; ok {
-							continue
-						}
-						seen[sid] = struct{}{}
-						p := l.GetInt("position")
-						best = append(best, pair{sid: sid, pos: p, idx: i})
-					}
-					// If any position > 0, sort by pos ascending then idx to stabilize.
-					anyPos := false
-					for _, it := range best {
-						if it.pos > 0 {
-							anyPos = true
-							break
-						}
-					}
-					if anyPos {
-						sort.SliceStable(best, func(i, j int) bool {
-							if best[i].pos != best[j].pos {
-								return best[i].pos < best[j].pos
-							}
-							return best[i].idx < best[j].idx
-						})
-					}
-					ids = ids[:0]
-					for _, it := range best {
-						ids = append(ids, it.sid)
-					}
-					break // prefer the first join table found
-				}
-			}
-		}
+		// Load associated schematics via the join table (store handles position ordering)
+		ids, _ := appStore.Collections.GetSchematicIDs(ctx, coll.ID)
 		d.SchematicIDs = ids
 		d.DescriptionHTML = template.HTML(d.Description)
-		d.ReorderSchematics = loadReorderSchematics(app, ids)
+		d.ReorderSchematics = loadReorderSchematicsFromStore(appStore, ids)
 
 		html, err := registry.LoadFiles(collectionsEditTemplates...).Render(d)
 		if err != nil {
@@ -173,64 +95,62 @@ func CollectionsEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Regist
 	}
 }
 
-// loadReorderSchematics loads lightweight schematic data for the reorder UI.
-func loadReorderSchematics(app *pocketbase.PocketBase, ids []string) []ReorderSchematic {
+// loadReorderSchematicsFromStore loads lightweight schematic data for the reorder UI.
+func loadReorderSchematicsFromStore(appStore *store.Store, ids []string) []ReorderSchematic {
 	if len(ids) == 0 {
 		return nil
 	}
-	smColl, err := app.FindCollectionByNameOrId("schematics")
-	if err != nil || smColl == nil {
+	ctx := context.Background()
+	schematics, err := appStore.Schematics.ListByIDs(ctx, ids)
+	if err != nil {
 		return nil
+	}
+	// Build lookup map
+	byID := make(map[string]store.Schematic, len(schematics))
+	for _, s := range schematics {
+		byID[s.ID] = s
 	}
 	result := make([]ReorderSchematic, 0, len(ids))
 	for _, id := range ids {
-		r, err := app.FindRecordById(smColl.Id, id)
-		if err != nil || r == nil {
+		if s, ok := byID[id]; ok {
+			title := s.Name
+			if title == "" {
+				title = id
+			}
+			result = append(result, ReorderSchematic{
+				ID:            id,
+				Title:         title,
+				FeaturedImage: s.FeaturedImage,
+			})
+		} else {
 			result = append(result, ReorderSchematic{ID: id, Title: id})
-			continue
 		}
-		title := r.GetString("name")
-		if title == "" {
-			title = id
-		}
-		featuredImage := r.GetString("featured_image")
-		result = append(result, ReorderSchematic{
-			ID:            id,
-			Title:         title,
-			FeaturedImage: featuredImage,
-		})
 	}
 	return result
 }
 
 // CollectionsUpdateHandler handles POST updates to a collection (author-only).
 // Supports action=save (default), action=publish (with validation + moderation), action=unpublish.
-func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, moderationService *moderation.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Service, moderationService *moderation.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
+		ctx := context.Background()
 		slug := e.Request.PathValue("slug")
-		coll, err := app.FindCollectionByNameOrId("collections")
+
+		// Find collection by slug first, fallback to id
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
 		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "collections collection not available")
+			coll, err = appStore.Collections.GetByID(ctx, slug)
 		}
-		var rec *core.Record
-		if r, err := app.FindRecordsByFilter(coll.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": slug}); err == nil && len(r) > 0 {
-			rec = r[0]
-		}
-		if rec == nil {
-			if r, err := app.FindRecordById(coll.Id, slug); err == nil {
-				rec = r
-			}
-		}
-		if rec == nil {
+		if coll == nil {
 			return e.String(http.StatusNotFound, "collection not found")
 		}
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 
@@ -248,10 +168,10 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 		}
 		description := e.Request.FormValue("description")
 		if title != "" {
-			rec.Set("title", title)
-			rec.Set("name", title)
+			coll.Title = title
+			coll.Name = title
 		}
-		rec.Set("description", description)
+		coll.Description = description
 
 		// If a banner file is provided, process it and set banner_url to a WebP data URL
 		if file, header, err := e.Request.FormFile("banner"); err == nil && header != nil {
@@ -273,12 +193,10 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			targetRatio := 4.0
 			var crop image.Rectangle
 			if float64(w)/float64(h) > targetRatio {
-				// too wide, crop width
 				newW := int(float64(h) * targetRatio)
 				x0 := b.Min.X + (w-newW)/2
 				crop = image.Rect(x0, b.Min.Y, x0+newW, b.Min.Y+h)
 			} else {
-				// too tall, crop height
 				newH := int(float64(w) / targetRatio)
 				y0 := b.Min.Y + (h-newH)/2
 				crop = image.Rect(b.Min.X, y0, b.Min.X+w, y0+newH)
@@ -286,7 +204,6 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 			cropped := img.(interface {
 				SubImage(r image.Rectangle) image.Image
 			}).SubImage(crop)
-			// resize to 1600x400
 			dst := image.NewRGBA(image.Rect(0, 0, 1600, 400))
 			draw.CatmullRom.Scale(dst, dst.Bounds(), cropped, cropped.Bounds(), draw.Over, nil)
 			var out bytes.Buffer
@@ -295,27 +212,33 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 				return e.String(http.StatusInternalServerError, "failed to encode banner image")
 			}
 			_ = bw.Flush()
-			dataURL := "data:image/webp;base64," + base64.StdEncoding.EncodeToString(out.Bytes())
-			rec.Set("banner_url", dataURL)
+			imageID, err := generateImageID()
+			if err != nil {
+				return e.String(http.StatusInternalServerError, "failed to generate image ID")
+			}
+			filename := "banner.webp"
+			if err := storageSvc.UploadBytes(ctx, "images", imageID, filename, out.Bytes(), "image/webp"); err != nil {
+				return e.String(http.StatusInternalServerError, "failed to upload banner")
+			}
+			coll.BannerURL = fmt.Sprintf("/api/files/images/%s/%s", imageID, filename)
 		}
 
 		// renderEditWithError re-renders the edit form with an error message.
 		renderEditWithError := func(errMsg string) error {
 			d := CollectionsEditData{}
 			d.Populate(e)
-			d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+			d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 			d.Slug = "/collections/" + slug
 			d.TitleText = title
 			d.Description = description
 			d.DescriptionHTML = template.HTML(description)
-			d.BannerURL = rec.GetString("banner_url")
-			d.Published = rec.GetBool("published")
+			d.BannerURL = coll.BannerURL
+			d.Published = coll.Published
 			d.Error = errMsg
 			d.Title = i18n.T(d.Language, "Edit collection")
-			// Reload schematic IDs for the reorder UI
-			ids := rec.GetStringSlice("schematics")
+			ids, _ := appStore.Collections.GetSchematicIDs(ctx, coll.ID)
 			d.SchematicIDs = ids
-			d.ReorderSchematics = loadReorderSchematics(app, ids)
+			d.ReorderSchematics = loadReorderSchematicsFromStore(appStore, ids)
 			html, err := registry.LoadFiles(collectionsEditTemplates...).Render(d)
 			if err != nil {
 				return err
@@ -335,20 +258,19 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 				content := fmt.Sprintf("Title: %s\nDescription: %s", title, description)
 				result, err := moderationService.CheckContent(content)
 				if err != nil {
-					// Moderation service unavailable — allow publish anyway and log the issue.
-					app.Logger().Warn("collection publish moderation unavailable, allowing publish", "error", err, "id", rec.Id)
+					slog.Warn("collection publish moderation unavailable, allowing publish", "error", err, "id", coll.ID)
 				} else if !result.Approved {
 					return renderEditWithError(fmt.Sprintf("Content did not pass moderation: %s", result.Reason))
 				}
 			}
-			rec.Set("published", true)
+			coll.Published = true
 		}
 
 		if action == "unpublish" {
-			rec.Set("published", false)
+			coll.Published = false
 		}
 
-		if err := app.Save(rec); err != nil {
+		if err := appStore.Collections.Update(ctx, coll); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
 		dest := "/collections/" + slug
@@ -364,37 +286,28 @@ func CollectionsUpdateHandler(app *pocketbase.PocketBase, registry *pbtempl.Regi
 }
 
 // CollectionsDeleteHandler handles POST delete (soft-delete) for a collection (author-only).
-func CollectionsDeleteHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func CollectionsDeleteHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
+		ctx := context.Background()
 		slug := e.Request.PathValue("slug")
-		coll, err := app.FindCollectionByNameOrId("collections")
+
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
 		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "collections collection not available")
+			coll, err = appStore.Collections.GetByID(ctx, slug)
 		}
-		var rec *core.Record
-		if r, err := app.FindRecordsByFilter(coll.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": slug}); err == nil && len(r) > 0 {
-			rec = r[0]
-		}
-		if rec == nil {
-			if r, err := app.FindRecordById(coll.Id, slug); err == nil {
-				rec = r
-			}
-		}
-		if rec == nil {
+		if coll == nil {
 			return e.String(http.StatusNotFound, "collection not found")
 		}
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
-		// Soft delete: set a string timestamp in "deleted" for compatibility with earlier filters
-		rec.Set("deleted", time.Now().UTC().Format(time.RFC3339))
-		if err := app.Save(rec); err != nil {
+		if err := appStore.Collections.SoftDelete(ctx, coll.ID); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to delete collection")
 		}
 		dest := "/collections"

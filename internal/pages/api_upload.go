@@ -1,40 +1,40 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/nbtparser"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // APIUploadHandler serves POST /api/schematics/upload as a JSON API for uploading schematics.
 // Requires API key authentication. Accepts multipart/form-data with an .nbt file.
-// The upload goes through the same pipeline as web uploads — returns a preview token, not a published schematic.
-func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// The upload goes through the same pipeline as web uploads -- returns a preview token, not a published schematic.
+// Uses PostgreSQL store for metadata and direct S3 for file storage.
+func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		const endpoint = "POST /api/schematics/upload"
 
-		keyID, err := requireAPIKey(app, e)
+		keyID, err := requireAPIKeyFromStore(appStore, e)
 		if err != nil {
 			return nil
 		}
-		success := true
-		defer func() { recordAPIKeyUsage(app, keyID, endpoint, !success) }()
+		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
 
 		if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
-			success = false
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
@@ -46,7 +46,6 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 		if err != nil {
 			file, header, err = e.Request.FormFile("nbt")
 			if err != nil {
-				success = false
 				return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "missing NBT file in form (expected field 'file' or 'nbt')"})
 			}
 		}
@@ -56,22 +55,18 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 
 		// Validate filename
 		if header == nil || header.Filename == "" || !strings.HasSuffix(strings.ToLower(header.Filename), ".nbt") {
-			success = false
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "invalid file type: expected .nbt"})
 		}
 		if header.Size > maxUploadSize {
-			success = false
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
 		}
 
 		// Read file data
 		data, err := io.ReadAll(io.LimitReader(file, maxUploadSize+1))
 		if err != nil {
-			success = false
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read uploaded file"})
 		}
 		if int64(len(data)) > maxUploadSize {
-			success = false
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
 		}
 
@@ -81,7 +76,6 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 			if reason != "" {
 				msg += ": " + reason
 			}
-			success = false
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": msg})
 		}
 
@@ -93,43 +87,32 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 		isDev := os.Getenv("DEV") == "true"
 		if !isDev {
 			dupMsg := "This schematic already exists (duplicate upload detected by checksum). If you recently uploaded this it may be pending moderation."
-			if coll, err := app.FindCollectionByNameOrId("temp_uploads"); err == nil && coll != nil {
-				recs, err := app.FindRecordsByFilter(coll.Id, "checksum = {:c}", "-created", 1, 0, dbx.Params{"c": checksum})
-				if err == nil && len(recs) > 0 {
-					success = false
-					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-			if schemColl, err := app.FindCollectionByNameOrId("schematics"); err == nil && schemColl != nil {
-				recs, err := app.FindRecordsByFilter(schemColl.Id, "checksum = {:c}", "-created", 1, 0, dbx.Params{"c": checksum})
-				if err == nil && len(recs) > 0 {
-					success = false
+
+			// Check published schematics via store
+			if appStore != nil {
+				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
 					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
 				}
 			}
 
-			tempUploadStore.RLock()
-			for _, entry := range tempUploadStore.m {
-				if entry.Checksum == checksum {
-					tempUploadStore.RUnlock()
-					success = false
+			// Check temp uploads via PostgreSQL store
+			if appStore != nil {
+				if existing, err := appStore.TempUploads.GetByChecksum(e.Request.Context(), checksum); err == nil && existing != nil {
 					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
 				}
 			}
-			tempUploadStore.RUnlock()
-		}
 
-		// Persist hash to nbt_hashes
-		if coll, err := app.FindCollectionByNameOrId("nbt_hashes"); err == nil && coll != nil {
-			rec := core.NewRecord(coll)
-			rec.Set("checksum", checksum)
-			_ = app.Save(rec)
+			// Check blacklist hashes
+			if appStore != nil {
+				if blacklisted, err := appStore.NBTHashes.IsBlacklisted(context.Background(), checksum); err == nil && blacklisted {
+					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
+				}
+			}
 		}
 
 		// Generate token
 		buf := make([]byte, 16)
 		if _, err := rand.Read(buf); err != nil {
-			success = false
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to generate preview token"})
 		}
 		token := hex.EncodeToString(buf)
@@ -144,7 +127,7 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 		}
 
 		// Extract stats
-		blockCount, legacyMaterials, _ := nbtparser.ExtractStats(data)
+		blockCount, _, _ := nbtparser.ExtractStats(data)
 		parsedMaterials, _ := nbtparser.ExtractMaterials(data)
 		dimX, dimY, dimZ, _ := nbtparser.ExtractDimensions(data)
 
@@ -161,36 +144,39 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 			mods = append(mods, mod)
 		}
 
-		// Store in-memory
-		tempUploadStore.Lock()
-		tempUploadStore.m[token] = tempUpload{
-			Filename:        header.Filename,
-			Size:            n,
-			Checksum:        checksum,
-			UploadedAt:      time.Now(),
-			ParsedSummary:   parsed,
-			BlockCount:      blockCount,
-			Materials:       legacyMaterials,
-			ParsedMaterials: parsedMaterials,
-			DimX:            dimX,
-			DimY:            dimY,
-			DimZ:            dimZ,
-			Mods:            mods,
-			NBTData:         data,
-		}
-		entry := tempUploadStore.m[token]
-		tempUploadStore.Unlock()
+		// Marshal materials and mods to JSON for storage
+		materialsJSON, _ := json.Marshal(parsedMaterials)
+		modsJSON, _ := json.Marshal(mods)
 
-		// Persist to PocketBase
-		recID, storedName := persistTempUploadPB(app, token, entry)
-		if recID != "" {
-			tempUploadStore.Lock()
-			e2 := tempUploadStore.m[token]
-			e2.PBRecordID = recID
-			e2.NBTStoredName = storedName
-			e2.NBTData = nil
-			tempUploadStore.m[token] = e2
-			tempUploadStore.Unlock()
+		// Upload NBT file to S3
+		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + header.Filename
+		if storageSvc != nil {
+			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
+				slog.Error("failed to upload NBT to S3 (API)", "error", err, "token", token)
+				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
+			}
+		}
+
+		// Persist to PostgreSQL store
+		tempUpload := &store.TempUpload{
+			Token:         token,
+			UploadedBy:    authenticatedUserID(e),
+			Filename:      header.Filename,
+			Size:          n,
+			Checksum:      checksum,
+			BlockCount:    blockCount,
+			DimX:          dimX,
+			DimY:          dimY,
+			DimZ:          dimZ,
+			Mods:          modsJSON,
+			Materials:     materialsJSON,
+			NbtS3Key:      nbtS3Key,
+			ParsedSummary: parsed,
+		}
+
+		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
+			slog.Error("failed to persist temp upload (API)", "error", err, "token", token)
+			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
 		// Build response
@@ -207,9 +193,7 @@ func APIUploadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, a
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
 		resp.Dimensions.Z = dimZ
-		if recID != "" && storedName != "" {
-			resp.FileURL = "/api/files/temp_uploads/" + recID + "/" + storedName
-		}
+		resp.FileURL = "/api/files/" + nbtS3Key
 		if resp.Materials == nil {
 			resp.Materials = []nbtparser.Material{}
 		}

@@ -2,12 +2,13 @@ package aidescription
 
 import (
 	"createmod/internal/openai"
+	"createmod/internal/storage"
+	"createmod/internal/store"
+	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/filesystem/blob"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -29,11 +30,11 @@ func New(apiKey string, logger openai.Logger) *Service {
 	}
 }
 
-// StartScheduler starts a background goroutine that runs the service every 30 minutes
-func (s *Service) StartScheduler(app *pocketbase.PocketBase) {
+// StartScheduler starts a background goroutine that runs the service every 30 minutes.
+func (s *Service) StartScheduler(storageSvc *storage.Service, appStore *store.Store) {
 	go func() {
 		// Run immediately on start
-		s.ProcessSchematics(app)
+		s.ProcessSchematics(storageSvc, appStore)
 
 		// Then run every 30 minutes
 		ticker := time.NewTicker(30 * time.Minute)
@@ -42,15 +43,15 @@ func (s *Service) StartScheduler(app *pocketbase.PocketBase) {
 		for {
 			select {
 			case <-ticker.C:
-				s.ProcessSchematics(app)
+				s.ProcessSchematics(storageSvc, appStore)
 			case <-s.stopChan:
-				app.Logger().Info("AI description scheduler stopped")
+				slog.Info("AI description scheduler stopped")
 				return
 			}
 		}
 	}()
 
-	app.Logger().Info("AI description scheduler started (polling every 30 minutes)")
+	slog.Info("AI description scheduler started (polling every 30 minutes)")
 }
 
 // Stop stops the background goroutine
@@ -58,106 +59,105 @@ func (s *Service) Stop() {
 	close(s.stopChan)
 }
 
-// ProcessSchematics processes schematics without AI descriptions
-func (s *Service) ProcessSchematics(app *pocketbase.PocketBase) {
-	app.Logger().Info("AI description generation started")
+// ProcessSchematics processes schematics without AI descriptions.
+func (s *Service) ProcessSchematics(storageSvc *storage.Service, appStore *store.Store) {
+	slog.Info("AI description generation started")
 
 	if !s.openaiClient.HasApiKey() {
-		app.Logger().Error("OpenAI API key is required")
+		slog.Error("OpenAI API key is required")
 		return
 	}
+
+	ctx := context.Background()
 
 	// Find schematics with empty ai_description (limit to 100)
-	schematics, err := app.FindRecordsByFilter(
-		"schematics",
-		"(ai_description = '' || ai_description = null) && moderated = 1 && deleted = ''",
-		"-created",
-		100,
-		0,
-	)
+	schematics, err := appStore.Schematics.ListAllForIndex(ctx)
 	if err != nil {
-		app.Logger().Error("Failed to find schematics without AI descriptions", "error", err)
+		slog.Error("Failed to find schematics for AI descriptions", "error", err)
 		return
 	}
 
-	app.Logger().Info("Found schematics without AI descriptions", "count", len(schematics))
+	// Filter to those without AI descriptions, moderated, and not deleted
+	var pending []store.Schematic
+	for _, sc := range schematics {
+		if sc.AIDescription == "" && sc.Moderated && sc.Deleted == nil {
+			pending = append(pending, sc)
+		}
+		if len(pending) >= 100 {
+			break
+		}
+	}
+
+	slog.Info("Found schematics without AI descriptions", "count", len(pending))
 
 	// Process only one schematic in test mode
-	if s.testMode && len(schematics) > 0 {
-		app.Logger().Info("Test mode: processing only one schematic")
-		s.processSchematic(app, schematics[0])
+	if s.testMode && len(pending) > 0 {
+		slog.Info("Test mode: processing only one schematic")
+		s.processSchematic(storageSvc, appStore, &pending[0])
 		return
 	}
 
 	// Process schematics with rate limiting (1 request per second)
-	for i, schematic := range schematics {
-		s.processSchematic(app, schematic)
+	for i := range pending {
+		s.processSchematic(storageSvc, appStore, &pending[i])
 
 		// Rate limiting: wait 1 second between requests
-		if i < len(schematics)-1 {
+		if i < len(pending)-1 {
 			time.Sleep(time.Second)
 		}
 	}
 
-	app.Logger().Info("AI description generation completed")
+	slog.Info("AI description generation completed")
 }
 
-// processSchematic processes a single schematic
-func (s *Service) processSchematic(app *pocketbase.PocketBase, schematic *core.Record) {
-	schematicID := schematic.Id
-	app.Logger().Info("Processing schematic", "id", schematicID, "title", schematic.GetString("title"))
+// processSchematic processes a single schematic.
+func (s *Service) processSchematic(storageSvc *storage.Service, appStore *store.Store, schematic *store.Schematic) {
+	slog.Info("Processing schematic", "id", schematic.ID, "title", schematic.Title)
 
-	// construct the full file key by concatenating the record storage path with the specific filename
-	imgPath := schematic.BaseFilesPath() + "/" + schematic.GetString("featured_image")
-
-	// initialize the filesystem
-	fsys, err := app.NewFilesystem()
-	if err != nil {
-		app.Logger().Error("Failed to make new filesystem",
-			"error", err,
-			"id", schematicID)
+	if storageSvc == nil || schematic.FeaturedImage == "" {
+		slog.Warn("Skipping schematic: no storage or no featured image", "id", schematic.ID)
 		return
 	}
-	defer fsys.Close()
 
-	// retrieve a file reader for the avatar key
-	r, err := fsys.GetReader(imgPath)
+	// Use legacy PB collection ID prefix for S3 key lookup
+	collPrefix := storage.CollectionPrefix("schematics")
+
+	ctx := context.Background()
+	r, err := storageSvc.Download(ctx, collPrefix, schematic.ID, schematic.FeaturedImage)
 	if err != nil {
-		app.Logger().Error("Failed to get reader",
+		slog.Error("Failed to download featured image",
 			"error", err,
-			"id", schematicID)
+			"id", schematic.ID)
 		return
 	}
 	defer r.Close()
+
 	// Generate description for the featured image
-	description, err := s.generateDescription(app, r)
+	description, err := s.generateDescription(r)
 	if err != nil {
-		app.Logger().Error("Failed to generate description for featured image",
+		slog.Error("Failed to generate description for featured image",
 			"error", err,
-			"id", schematicID)
+			"id", schematic.ID)
 		return
 	}
 
-	// Tried looping all gallery images here but in 90% of cases the featured image will be sufficient
-
-	// Update the schematic with the generated description and
-	schematic.Set("ai_description", description)
-
-	if err := app.Save(schematic); err != nil {
-		app.Logger().Error("Failed to save schematic with AI description",
+	// Update the schematic with the generated description
+	schematic.AIDescription = description
+	if err := appStore.Schematics.Update(ctx, schematic); err != nil {
+		slog.Error("Failed to save schematic with AI description",
 			"error", err,
-			"id", schematicID)
+			"id", schematic.ID)
 		return
 	}
 
-	app.Logger().Info("Successfully updated schematic with AI description",
-		"id", schematicID,
+	slog.Info("Successfully updated schematic with AI description",
+		"id", schematic.ID,
 		"description_length", len(description))
 }
 
-// generateDescription generates a description for an image
-func (s *Service) generateDescription(app *pocketbase.PocketBase, r *blob.Reader) (string, error) {
-	app.Logger().Debug("Generating description for image")
+// generateDescription generates a description for an image.
+func (s *Service) generateDescription(r io.Reader) (string, error) {
+	slog.Debug("Generating description for image")
 
 	// Read the image data
 	imageData, err := io.ReadAll(r)
@@ -177,8 +177,8 @@ func (s *Service) generateDescription(app *pocketbase.PocketBase, r *blob.Reader
 	return description, nil
 }
 
-// DownloadAndProcessImage downloads an image and processes it
-func (s *Service) DownloadAndProcessImage(app *pocketbase.PocketBase, imageURL string, tempFilePath string) (string, error) {
+// DownloadAndProcessImage downloads an image and processes it.
+func (s *Service) DownloadAndProcessImage(imageURL string, tempFilePath string) (string, error) {
 	// Download the image
 	resp, err := http.Get(imageURL)
 	if err != nil {
@@ -230,6 +230,6 @@ func (s *Service) TranslateToEnglish(text string) (string, error) {
 
 // BackfillTranslations is deprecated and has been replaced by the translation.Service scheduler.
 // This method is kept as a no-op for backwards compatibility.
-func (s *Service) BackfillTranslations(app *pocketbase.PocketBase) {
-	app.Logger().Info("BackfillTranslations is deprecated; use translation.Service instead")
+func (s *Service) BackfillTranslations() {
+	slog.Info("BackfillTranslations is deprecated; use translation.Service instead")
 }

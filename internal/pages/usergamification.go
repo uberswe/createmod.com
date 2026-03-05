@@ -9,9 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 var userPointsTemplates = append([]string{
@@ -47,8 +45,8 @@ type UserPointsData struct {
 	NextURL      string
 }
 
-func UserPointsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UserPointsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
@@ -61,7 +59,7 @@ func UserPointsHandler(app *pocketbase.PocketBase, registry *template.Registry, 
 		d.Description = i18n.T(d.Language, "page.usergamification.description")
 		d.Slug = "/settings/points"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		// Load user points
 		ctx := e.Request.Context()

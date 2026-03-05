@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
@@ -9,10 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 const downloadInterstitialTemplate = "./template/download_interstitial.html"
@@ -38,8 +36,8 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
-func DownloadInterstitialHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		if name == "" {
 			return e.String(http.StatusBadRequest, "missing name")
@@ -48,19 +46,15 @@ func DownloadInterstitialHandler(app *pocketbase.PocketBase, registry *template.
 		// Try to load schematic to determine if it's paid and already published
 		paid := false
 		external := ""
-		if coll, err := app.FindCollectionByNameOrId("schematics"); err == nil && coll != nil {
-			recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})", "-created", 1, 0, dbx.Params{"name": name, "now": time.Now()})
-			if err == nil && len(recs) > 0 {
-				rec := recs[0]
-				paid = rec.GetBool("paid")
-				external = rec.GetString("external_url")
-			}
+		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && s.Moderated && (s.Deleted == nil || s.Deleted.IsZero()) {
+			paid = s.Paid
+			external = s.ExternalURL
 		}
 
 		d := DownloadInterstitialData{}
 		d.Populate(e)
 		d.Slug = "/get/" + name
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Name = name
 
 		if paid && external != "" {

@@ -62,6 +62,7 @@ type Schematic struct {
 	Materials          json.RawMessage
 	Mods               json.RawMessage
 	Paid               bool
+	ExternalURL        string
 	Featured           bool
 	AIDescription      string
 	Moderated          bool
@@ -78,16 +79,18 @@ type Schematic struct {
 
 // Category represents a schematic category.
 type Category struct {
-	ID   string
-	Key  string
-	Name string
+	ID     string
+	Key    string
+	Name   string
+	Public bool
 }
 
 // Tag represents a schematic tag.
 type Tag struct {
-	ID   string
-	Key  string
-	Name string
+	ID     string
+	Key    string
+	Name   string
+	Public bool
 }
 
 // TagWithCount is a tag with the number of schematics using it.
@@ -121,9 +124,13 @@ type Guide struct {
 	AuthorID    *string
 	Title       string
 	Description string
+	Excerpt     string
 	Content     string
 	Slug        string
+	VideoURL    string
+	WikiURL     string
 	UploadLink  string
+	Views       int
 	Created     time.Time
 	Updated     time.Time
 }
@@ -218,6 +225,70 @@ type APIKey struct {
 	Created  time.Time
 }
 
+// GameVersion represents a Minecraft or Create mod version entry.
+type GameVersion struct {
+	ID      string
+	Version string
+	Created time.Time
+}
+
+// TrendingData holds pre-fetched engagement signals for computing trending scores.
+type TrendingData struct {
+	SchematicIDs     []string
+	SchematicCreated map[string]time.Time
+	RecentViews      map[string]float64 // views in the recent period
+	TotalViews       map[string]float64 // all-time views
+	RatingSum        map[string]float64
+	RatingCount      map[string]float64
+	RecentDownloads  map[string]float64 // downloads in the recent period
+	TotalDownloads   map[string]float64 // all-time downloads
+}
+
+// HourlyStat holds an hourly aggregation row.
+type HourlyStat struct {
+	Hour  string
+	Count int64
+}
+
+// MonthlyDataPoint holds monthly stats for a user.
+type MonthlyDataPoint struct {
+	Month     string
+	Uploads   int64
+	Downloads int64
+	Views     int64
+}
+
+// SearchEntry represents a recorded search query.
+type SearchEntry struct {
+	ID           string
+	Query        string
+	ResultsCount int
+	UserID       string
+	IPAddress    string
+	Created      time.Time
+}
+
+// SitemapSchematic is a lightweight schematic entry for sitemap generation.
+type SitemapSchematic struct {
+	ID      string
+	Name    string
+	Updated time.Time
+}
+
+// SitemapUser is a lightweight user entry for sitemap generation.
+type SitemapUser struct {
+	ID       string
+	Username string
+	Updated  time.Time
+}
+
+// SitemapGuide is a lightweight guide entry for sitemap generation.
+type SitemapGuide struct {
+	ID      string
+	Slug    string
+	Updated time.Time
+}
+
 // ModMetadata represents mod info from Modrinth/CurseForge.
 type ModMetadata struct {
 	ID            string
@@ -234,6 +305,12 @@ type ModMetadata struct {
 	ManuallySet   bool
 }
 
+// ModCount represents a mod namespace with its schematic count.
+type ModCount struct {
+	ModName string
+	Count   int
+}
+
 // UserStore handles user persistence.
 type UserStore interface {
 	GetUserByID(ctx context.Context, id string) (*User, error)
@@ -248,6 +325,7 @@ type UserStore interface {
 	IsContributor(ctx context.Context, userID string) (bool, error)
 	ListUsers(ctx context.Context, limit, offset int) ([]User, error)
 	CountUsers(ctx context.Context) (int64, error)
+	ListForSitemap(ctx context.Context) ([]SitemapUser, error)
 }
 
 // SessionStore handles session persistence.
@@ -278,6 +356,25 @@ type SchematicStore interface {
 	GetTagIDs(ctx context.Context, schematicID string) ([]string, error)
 	SetCategories(ctx context.Context, schematicID string, categoryIDs []string) error
 	SetTags(ctx context.Context, schematicID string, tagIDs []string) error
+	// Extended queries for migration
+	ListApprovedWithVideo(ctx context.Context, limit, offset int) ([]Schematic, error)
+	ListRandomApproved(ctx context.Context, limit int) ([]Schematic, error)
+	ListByCategoryIDs(ctx context.Context, categoryIDs []string, excludeIDs []string, limit int) ([]Schematic, error)
+	ListHighestRated(ctx context.Context, limit, offset int) ([]Schematic, error)
+	ListForSitemap(ctx context.Context) ([]SitemapSchematic, error)
+	CountByAuthor(ctx context.Context, authorID string) (int64, error)
+	GetByChecksum(ctx context.Context, checksum string) (string, error) // returns schematic ID
+	UpdateName(ctx context.Context, id, name string) error
+	ListByNamePattern(ctx context.Context, pattern string, limit int) ([]Schematic, error)
+	// Admin queries
+	ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]Schematic, error)
+	CountForAdmin(ctx context.Context, filter string) (int64, error)
+	GetByIDAdmin(ctx context.Context, id string) (*Schematic, error)
+	// Mod-related queries
+	ListModCounts(ctx context.Context) ([]ModCount, error)
+	CountVanilla(ctx context.Context) (int, error)
+	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
+	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
 }
 
 // CategoryStore handles categories.
@@ -286,6 +383,11 @@ type CategoryStore interface {
 	GetByID(ctx context.Context, id string) (*Category, error)
 	GetByIDs(ctx context.Context, ids []string) ([]Category, error)
 	Create(ctx context.Context, c *Category) error
+	ListAll(ctx context.Context) ([]Category, error)
+	ListPending(ctx context.Context) ([]Category, error)
+	Approve(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string) error
+	GetByKey(ctx context.Context, key string) (*Category, error)
 }
 
 // TagStore handles tags.
@@ -295,6 +397,11 @@ type TagStore interface {
 	GetByIDs(ctx context.Context, ids []string) ([]Tag, error)
 	ListWithCount(ctx context.Context) ([]TagWithCount, error)
 	Create(ctx context.Context, t *Tag) error
+	ListAll(ctx context.Context) ([]Tag, error)
+	ListPending(ctx context.Context) ([]Tag, error)
+	Approve(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string) error
+	GetByKey(ctx context.Context, key string) (*Tag, error)
 }
 
 // CommentStore handles comments.
@@ -317,6 +424,8 @@ type GuideStore interface {
 	Update(ctx context.Context, g *Guide) error
 	Delete(ctx context.Context, id string) error
 	CountByUser(ctx context.Context, userID string) (int64, error)
+	IncrementViews(ctx context.Context, id string) error
+	ListForSitemap(ctx context.Context) ([]SitemapGuide, error)
 }
 
 // CollectionStore handles collections.
@@ -326,6 +435,7 @@ type CollectionStore interface {
 	List(ctx context.Context, limit, offset int) ([]Collection, error)
 	ListByAuthor(ctx context.Context, authorID string) ([]Collection, error)
 	ListFeatured(ctx context.Context, limit int) ([]Collection, error)
+	ListPublished(ctx context.Context, limit, offset int) ([]Collection, error)
 	Create(ctx context.Context, c *Collection) error
 	Update(ctx context.Context, c *Collection) error
 	SoftDelete(ctx context.Context, id string) error
@@ -368,6 +478,12 @@ type ViewRatingStore interface {
 	RecordDownload(ctx context.Context, schematicID string, userID *string) error
 	GetRating(ctx context.Context, schematicID string) (*SchematicRating, error)
 	UpsertRating(ctx context.Context, userID, schematicID string, rating float64) error
+	// RecordView upserts view counts for all period types (daily, weekly, monthly, yearly, total).
+	RecordView(ctx context.Context, schematicID string) error
+	// GetTotalViewCount returns the total (all-time) view count from the type=4 row.
+	GetTotalViewCount(ctx context.Context, schematicID string) (int, error)
+	// FetchTrendingData returns bulk engagement signals for computing trending scores.
+	FetchTrendingData(ctx context.Context, recentDays int) (*TrendingData, error)
 }
 
 // VersionStore handles schematic version history.
@@ -407,22 +523,138 @@ type ModMetadataStore interface {
 	ListStale(ctx context.Context, limit int) ([]ModMetadata, error)
 }
 
+// VersionLookupStore handles game version lists.
+type VersionLookupStore interface {
+	ListMinecraftVersions(ctx context.Context) ([]GameVersion, error)
+	ListCreatemodVersions(ctx context.Context) ([]GameVersion, error)
+	GetMinecraftVersionByID(ctx context.Context, id string) (*GameVersion, error)
+	GetCreatemodVersionByID(ctx context.Context, id string) (*GameVersion, error)
+}
+
+// SearchTrackingStore handles search query persistence.
+type SearchTrackingStore interface {
+	RecordSearch(ctx context.Context, query string, resultsCount int, userID, ip string) error
+	ListTopSearches(ctx context.Context, limit int) ([]SearchEntry, error)
+}
+
+// OutgoingClickStore handles external link click tracking.
+type OutgoingClickStore interface {
+	RecordClick(ctx context.Context, url, source, sourceID string, userID *string) error
+}
+
+// ContactStore handles contact form submissions.
+type ContactStore interface {
+	CreateSubmission(ctx context.Context, authorID *string, title, content, name string) error
+}
+
+// StatsStore handles aggregation queries for dashboards.
+type StatsStore interface {
+	HourlyStats(ctx context.Context, table string, cutoff time.Time) ([]HourlyStat, error)
+	MonthlyUserStats(ctx context.Context, userID string, months int) ([]MonthlyDataPoint, error)
+}
+
+// NBTHash represents a stored NBT file hash for duplicate/blacklist detection.
+type NBTHash struct {
+	ID          string
+	Hash        string
+	SchematicID *string
+	UploadedBy  *string
+	Created     time.Time
+}
+
+// NBTHashStore handles NBT hash operations for blacklisting.
+type NBTHashStore interface {
+	Create(ctx context.Context, h *NBTHash) error
+	ListByUser(ctx context.Context, userID string) ([]NBTHash, error)
+	Delete(ctx context.Context, id, userID string) error
+	IsBlacklisted(ctx context.Context, hash string) (bool, error)
+}
+
 // Store aggregates all sub-stores for dependency injection.
+// TempUpload represents a temporarily uploaded schematic awaiting publishing.
+type TempUpload struct {
+	ID               string
+	Token            string
+	UploadedBy       string
+	Filename         string
+	Description      string
+	Size             int64
+	Checksum         string
+	BlockCount       int
+	DimX             int
+	DimY             int
+	DimZ             int
+	Mods             json.RawMessage
+	Materials        json.RawMessage
+	MinecraftVersion string
+	CreatemodVersion string
+	NbtS3Key         string
+	ImageS3Key       string
+	ParsedSummary    string
+	Created          time.Time
+	Updated          time.Time
+}
+
+// TempUploadFile represents an additional NBT file attached to a temp upload.
+type TempUploadFile struct {
+	ID          string
+	Token       string
+	Filename    string
+	Description string
+	Size        int64
+	Checksum    string
+	BlockCount  int
+	DimX        int
+	DimY        int
+	DimZ        int
+	Mods        json.RawMessage
+	Materials   json.RawMessage
+	NbtS3Key    string
+	Created     time.Time
+}
+
+// TempUploadStore manages temporary upload persistence.
+type TempUploadStore interface {
+	Create(ctx context.Context, t *TempUpload) error
+	GetByToken(ctx context.Context, token string) (*TempUpload, error)
+	GetByChecksum(ctx context.Context, checksum string) (*TempUpload, error)
+	Update(ctx context.Context, t *TempUpload) error
+	Delete(ctx context.Context, token string) error
+	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
+}
+
+// TempUploadFileStore manages additional files for temp uploads.
+type TempUploadFileStore interface {
+	Create(ctx context.Context, f *TempUploadFile) error
+	ListByToken(ctx context.Context, token string) ([]TempUploadFile, error)
+	GetByID(ctx context.Context, id string) (*TempUploadFile, error)
+	Delete(ctx context.Context, id string) error
+	DeleteByToken(ctx context.Context, token string) error
+}
+
 type Store struct {
-	Users        UserStore
-	Sessions     SessionStore
-	Schematics   SchematicStore
-	Categories   CategoryStore
-	Tags         TagStore
-	Comments     CommentStore
-	Guides       GuideStore
-	Collections  CollectionStore
-	Achievements AchievementStore
-	Translations TranslationStore
-	ViewRatings  ViewRatingStore
-	Versions     VersionStore
-	APIKeys      APIKeyStore
-	Auth         AuthStore
-	Reports      ReportStore
-	ModMetadata  ModMetadataStore
+	Users           UserStore
+	Sessions        SessionStore
+	Schematics      SchematicStore
+	Categories      CategoryStore
+	Tags            TagStore
+	Comments        CommentStore
+	Guides          GuideStore
+	Collections     CollectionStore
+	Achievements    AchievementStore
+	Translations    TranslationStore
+	ViewRatings     ViewRatingStore
+	Versions        VersionStore
+	APIKeys         APIKeyStore
+	Auth            AuthStore
+	Reports         ReportStore
+	ModMetadata     ModMetadataStore
+	VersionLookup   VersionLookupStore
+	SearchTracking  SearchTrackingStore
+	OutgoingClicks  OutgoingClickStore
+	Contact         ContactStore
+	Stats           StatsStore
+	TempUploads     TempUploadStore
+	TempUploadFiles TempUploadFileStore
+	NBTHashes       NBTHashStore
 }

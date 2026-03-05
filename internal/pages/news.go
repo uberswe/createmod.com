@@ -1,22 +1,19 @@
 package pages
 
 import (
+	"context"
 	"createmod/content"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/news"
 	"createmod/internal/store"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 const newsTemplate = "./template/news.html"
@@ -40,15 +37,15 @@ type NewsData struct {
 	TotalDL24    int
 }
 
-func NewsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func NewsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := NewsData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "News")
 		d.Description = i18n.T(d.Language, "page.news.description")
 		d.Slug = "/news"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		// Load news from embedded markdown files
 		all, err := news.LoadAll(content.NewsFS, "news")
@@ -68,8 +65,8 @@ func NewsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheSe
 		}
 
 		// Load 24-hour sitewide stats (cached for 5 minutes)
-		d.HourlyViews, d.TotalViews24 = cachedHourlyStats(app, cacheService, "schematic_views")
-		d.HourlyDL, d.TotalDL24 = cachedHourlyStats(app, cacheService, "schematic_downloads")
+		d.HourlyViews, d.TotalViews24 = cachedHourlyStats(appStore, cacheService, "schematic_views")
+		d.HourlyDL, d.TotalDL24 = cachedHourlyStats(appStore, cacheService, "schematic_downloads")
 
 		html, err := registry.LoadFiles(newsTemplates...).Render(d)
 		if err != nil {
@@ -101,40 +98,31 @@ type hourlyStatsResult struct {
 }
 
 // cachedHourlyStats returns hourly stats from cache (5-min TTL) or queries the DB.
-func cachedHourlyStats(app *pocketbase.PocketBase, cacheService *cache.Service, table string) ([]HourlyStat, int) {
+func cachedHourlyStats(appStore *store.Store, cacheService *cache.Service, table string) ([]HourlyStat, int) {
 	key := "hourlyStats:" + table
 	if v, ok := cacheService.Get(key); ok {
 		if r, ok := v.(hourlyStatsResult); ok {
 			return r.Stats, r.Total
 		}
 	}
-	stats, total := loadHourlyStats(app, table)
+	stats, total := loadHourlyStats(appStore, table)
 	cacheService.SetWithTTL(key, hourlyStatsResult{Stats: stats, Total: total}, 5*time.Minute)
 	return stats, total
 }
 
 // loadHourlyStats queries an aggregate table (schematic_views or
 // schematic_downloads) and returns per-hour totals for the last 24 hours.
-func loadHourlyStats(app *pocketbase.PocketBase, table string) ([]HourlyStat, int) {
+func loadHourlyStats(appStore *store.Store, table string) ([]HourlyStat, int) {
 	now := time.Now().UTC()
-	cutoff := now.Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
+	cutoff := now.Add(-24 * time.Hour)
 
-	type row struct {
-		H string  `db:"h" json:"h"`
-		V float64 `db:"v" json:"v"`
-	}
-
-	var rows []row
-	err := app.DB().NewQuery(fmt.Sprintf(
-		"SELECT strftime('%%Y-%%m-%%d %%H', created) AS h, SUM(count) AS v FROM %s WHERE created > {:cutoff} AND type = 0 GROUP BY h ORDER BY h ASC",
-		table,
-	)).Bind(dbx.Params{"cutoff": cutoff}).All(&rows)
+	rows, err := appStore.Stats.HourlyStats(context.Background(), table, cutoff)
 
 	// Build a map of hour -> count
 	hourMap := make(map[string]int, 24)
 	if err == nil {
 		for _, r := range rows {
-			hourMap[r.H] = int(r.V)
+			hourMap[r.Hour] = int(r.Count)
 		}
 	}
 

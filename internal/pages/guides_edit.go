@@ -1,14 +1,15 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
+	"log/slog"
 	"net/http"
 	"strings"
+
+	"createmod/internal/server"
 )
 
 var guidesEditTemplates = append([]string{
@@ -28,51 +29,38 @@ type GuideEditData struct {
 }
 
 // GuidesEditHandler renders the edit form for an existing guide (owner-only).
-func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func GuidesEditHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
 
 		id := e.Request.PathValue("id")
-		coll, err := app.FindCollectionByNameOrId("guides")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "guides collection not available")
-		}
-		rec, err := app.FindRecordById(coll.Id, id)
-		if err != nil || rec == nil {
+		ctx := context.Background()
+
+		guide, err := appStore.Guides.GetByID(ctx, id)
+		if err != nil || guide == nil {
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
 
 		// Owner check
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if guide.AuthorID == nil || *guide.AuthorID != authenticatedUserID(e) {
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides/"+id))
 		}
 
-		content := rec.GetString("content")
-		if content == "" {
-			content = rec.GetString("content_markdown")
-		}
-		if content == "" {
-			content = rec.GetString("markdown")
-		}
-
 		d := GuideEditData{
-			GuideID:    rec.Id,
-			GuideTitle: rec.GetString("title"),
-			Content:    content,
-			VideoURL:   rec.GetString("video_url"),
-			WikiURL:    rec.GetString("wiki_url"),
-			Excerpt:    rec.GetString("excerpt"),
-		}
-		if d.GuideTitle == "" {
-			d.GuideTitle = rec.GetString("name")
+			GuideID:    guide.ID,
+			GuideTitle: guide.Title,
+			Content:    guide.Content,
+			VideoURL:   guide.VideoURL,
+			WikiURL:    guide.WikiURL,
+			Excerpt:    guide.Excerpt,
 		}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Edit Guide")
 		d.Description = i18n.T(d.Language, "page.guides_edit.description")
 		d.Slug = "/guides/" + id + "/edit"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(guidesEditTemplates...).Render(d)
 		if err != nil {
@@ -83,24 +71,22 @@ func GuidesEditHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, c
 }
 
 // GuidesUpdateHandler handles POST /guides/{id} to update an existing guide (owner-only).
-func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
 
 		id := e.Request.PathValue("id")
-		coll, err := app.FindCollectionByNameOrId("guides")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "guides collection not available")
-		}
-		rec, err := app.FindRecordById(coll.Id, id)
-		if err != nil || rec == nil {
+		ctx := context.Background()
+
+		guide, err := appStore.Guides.GetByID(ctx, id)
+		if err != nil || guide == nil {
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
 
 		// Owner check
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if guide.AuthorID == nil || *guide.AuthorID != authenticatedUserID(e) {
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides/"+id))
 		}
 
@@ -115,32 +101,27 @@ func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 		excerpt := strings.TrimSpace(e.Request.FormValue("excerpt"))
 
 		if title != "" {
-			rec.Set("title", title)
-			rec.Set("name", title)
+			guide.Title = title
 		}
-		rec.Set("content", content)
-		rec.Set("content_markdown", content)
-		rec.Set("markdown", content)
+		guide.Content = content
 		if video != "" {
-			rec.Set("video_url", video)
+			guide.VideoURL = video
 		}
 		if link != "" {
-			rec.Set("wiki_url", link)
+			guide.WikiURL = link
 		}
 		if excerpt != "" {
-			rec.Set("excerpt", excerpt)
+			guide.Excerpt = excerpt
 		} else if content != "" {
-			ex := content
-			// Strip HTML tags for auto-excerpt
-			ex = stripHTMLTags(ex)
+			ex := stripHTMLTags(content)
 			if len(ex) > 180 {
 				ex = ex[:180] + "..."
 			}
-			rec.Set("excerpt", ex)
+			guide.Excerpt = ex
 		}
 
-		if err := app.Save(rec); err != nil {
-			app.Logger().Warn("guides: failed to update", "error", err)
+		if err := appStore.Guides.Update(ctx, guide); err != nil {
+			slog.Warn("guides: failed to update", "error", err)
 		}
 
 		dest := "/guides/" + id
@@ -153,27 +134,25 @@ func GuidesUpdateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 }
 
 // GuidesDeleteHandler handles POST /guides/{id}/delete to delete a guide (owner-only).
-func GuidesDeleteHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func GuidesDeleteHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
 
 		id := e.Request.PathValue("id")
-		coll, err := app.FindCollectionByNameOrId("guides")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "guides collection not available")
-		}
-		rec, err := app.FindRecordById(coll.Id, id)
-		if err != nil || rec == nil {
+		ctx := context.Background()
+
+		guide, err := appStore.Guides.GetByID(ctx, id)
+		if err != nil || guide == nil {
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if guide.AuthorID == nil || *guide.AuthorID != authenticatedUserID(e) {
 			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/guides"))
 		}
 
-		if err := app.Delete(rec); err != nil {
-			app.Logger().Warn("guides: failed to delete", "error", err)
+		if err := appStore.Guides.Delete(ctx, guide.ID); err != nil {
+			slog.Warn("guides: failed to delete", "error", err)
 		}
 
 		dest := "/guides"

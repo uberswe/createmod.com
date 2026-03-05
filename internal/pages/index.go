@@ -1,12 +1,14 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/store"
 	"fmt"
 	tmpl "html/template"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,10 +18,7 @@ import (
 	"time"
 
 	"github.com/drexedam/gravatar"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -58,8 +57,8 @@ type IndexData struct {
 	CategorySections []CategorySection
 }
 
-func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		q := e.Request.URL.Query()
 		tab := q.Get("tab")
 		page := 1
@@ -72,7 +71,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 
 		// HTMX tab request — return just the tab panel partial
 		if isHTMX && tab != "" {
-			return renderTabPartial(app, cacheService, registry, appStore, e, tab, page)
+			return renderTabPartial(cacheService, registry, appStore, e, tab, page)
 		}
 
 		// Full page load — serve from pre-warmed cache when available.
@@ -107,19 +106,15 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 
 		// Fallback: if cache is cold (first request before warm completes), query directly
 		if !latestCached {
-			schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-			if err != nil {
-				return err
-			}
-			var latestResults []*core.Record
-			latestResults, latestHasNext = fetchLatestPage(app, schematicsCollection.Id, 1)
-			latestSchematics = MapResultsToSchematic(app, latestResults, cacheService)
-			trendingSchematics, trendingHasNext = getTrendingSchematicsPage(app, cacheService, 1)
-			highestRated, highestHasNext = getHighestRatedSchematicsPage(app, cacheService, 1)
+			latestStoreResults, lhn := fetchLatestPageFromStore(appStore, 1)
+			latestSchematics = MapStoreSchematics(appStore, latestStoreResults, cacheService)
+			latestHasNext = lhn
+			trendingSchematics, trendingHasNext = getTrendingSchematicsPageFromStore(appStore, cacheService, 1)
+			highestRated, highestHasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
 		}
 
 		// Build category sections
-		categories := allCategoriesFromStore(appStore, app, cacheService)
+		categories := allCategoriesFromStoreOnly(appStore, cacheService)
 		categorySections := make([]CategorySection, 0, len(categories))
 		for _, cat := range categories {
 			cacheKey := fmt.Sprintf("CategorySection:%s", cat.Key)
@@ -133,7 +128,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 					}
 				}
 			} else {
-				items, catHasNext = getCategoryTrendingPage(app, cacheService, cat.ID, 1)
+				items, catHasNext = getCategoryTrendingPageFromStore(appStore, cacheService, cat.ID, 1)
 			}
 			categorySections = append(categorySections, CategorySection{
 				Category: cat,
@@ -157,7 +152,7 @@ func IndexHandler(app *pocketbase.PocketBase, cacheService *cache.Service, regis
 		d.Slug = "/"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.SubCategory = "Home"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(indexTemplates...).Render(d)
 		if err != nil {
@@ -179,18 +174,18 @@ type TabData struct {
 	NextURL string
 }
 
-func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store, e *core.RequestEvent, tab string, page int) error {
+func renderTabPartial(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, e *server.RequestEvent, tab string, page int) error {
 	var items []models.Schematic
 	var hasNext bool
 
 	switch {
 	case tab == "trending":
-		items, hasNext = getTrendingSchematicsPage(app, cacheService, page)
+		items, hasNext = getTrendingSchematicsPageFromStore(appStore, cacheService, page)
 	case tab == "highest":
-		items, hasNext = getHighestRatedSchematicsPage(app, cacheService, page)
+		items, hasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, page)
 	case strings.HasPrefix(tab, "cat-"):
 		catKey := strings.TrimPrefix(tab, "cat-")
-		categories := allCategoriesFromStore(appStore, app, cacheService)
+		categories := allCategoriesFromStoreOnly(appStore, cacheService)
 		var catID string
 		for _, c := range categories {
 			if c.Key == catKey {
@@ -201,16 +196,12 @@ func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, r
 		if catID == "" {
 			return e.NotFoundError("", nil)
 		}
-		items, hasNext = getCategoryTrendingPage(app, cacheService, catID, page)
+		items, hasNext = getCategoryTrendingPageFromStore(appStore, cacheService, catID, page)
 	default:
 		tab = "latest"
-		col, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil {
-			return err
-		}
-		var results []*core.Record
-		results, hasNext = fetchLatestPage(app, col.Id, page)
-		items = MapResultsToSchematic(app, results, cacheService)
+		storeResults, hn := fetchLatestPageFromStore(appStore, page)
+		items = MapStoreSchematics(appStore, storeResults, cacheService)
+		hasNext = hn
 	}
 
 	d := TabData{
@@ -235,59 +226,6 @@ func renderTabPartial(app *pocketbase.PocketBase, cacheService *cache.Service, r
 	return e.HTML(http.StatusOK, html)
 }
 
-func fetchLatestPage(app *pocketbase.PocketBase, collectionID string, page int) ([]*core.Record, bool) {
-	limit := indexPageSize + 1
-	offset := (page - 1) * indexPageSize
-	results, err := app.FindRecordsByFilter(
-		collectionID,
-		"deleted = '' && moderated = true && (scheduled_at = null || scheduled_at <= {:now})",
-		"-created",
-		limit,
-		offset,
-		dbx.Params{"now": time.Now()},
-	)
-	if err != nil {
-		return nil, false
-	}
-	hasNext := len(results) > indexPageSize
-	if hasNext {
-		results = results[:indexPageSize]
-	}
-	return results, hasNext
-}
-
-func getHighestRatedSchematicsPage(app *pocketbase.PocketBase, cacheService *cache.Service, page int) ([]models.Schematic, bool) {
-	limit := indexPageSize + 1
-	offset := (page - 1) * indexPageSize
-
-	var res []*core.Record
-	err := app.RecordQuery("schematics").
-		Select("schematics.*", "avg(schematic_ratings.rating) as avg_rating", "count(schematic_ratings.rating) as total_rating").
-		From("schematics").
-		LeftJoin("schematic_ratings", dbx.NewExp("schematic_ratings.schematic = schematics.id")).
-		Where(dbx.NewExp("(schematics.deleted = '' OR schematics.deleted IS NULL) AND schematics.moderated = 1 AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))")).
-		OrderBy("avg_rating DESC").
-		AndOrderBy("total_rating DESC").
-		GroupBy("schematics.id").
-		Having(dbx.NewExp("count(schematic_ratings.rating) > 0")).
-		Limit(int64(limit)).
-		Offset(int64(offset)).
-		All(&res)
-	if err != nil {
-		app.Logger().Debug("could not fetch highest rated", "error", err.Error())
-		return nil, false
-	}
-	hasNext := len(res) > indexPageSize
-	if hasNext {
-		res = res[:indexPageSize]
-	}
-	return MapResultsToSchematic(app, res, cacheService), hasNext
-}
-
-func getHighestRatedSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
-	results, _ := getHighestRatedSchematicsPage(app, cacheService, 1)
-	return results
-}
 
 // trendingEpoch is a fixed reference point for the Reddit-style hot score.
 // All scores are relative to this; the exact value doesn't matter as long as it's consistent.
@@ -313,191 +251,114 @@ func trendingScore(created time.Time, recentViews float64, totalViews float64, r
 	return order + seconds/trendingTimescale
 }
 
-// ComputeTrendingScores computes trending scores for all moderated schematics.
-// Returns a map of schematic ID to score. This can be passed to search.Service.SetTrendingScores().
-func ComputeTrendingScores(app *pocketbase.PocketBase) map[string]float64 {
-	engagement := fetchEngagementData(app)
-	if engagement == nil {
+// WarmIndexCache pre-computes and caches all data needed for the index page
+// so that no user request ever hits the database for page-1 data.
+// Called at boot and periodically by a background ticker.
+func WarmIndexCache(cacheService *cache.Service, appStore *store.Store) {
+	// Delegate to the store-based implementation
+	WarmIndexCacheFromStore(appStore, cacheService, slog.Default())
+}
+
+
+// ComputeTrendingScoresFromStore computes trending scores using the PostgreSQL store.
+// Returns a map of schematic ID to score.
+func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
+	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), 30)
+	if err != nil || td == nil {
 		return nil
 	}
-	return engagement.computeScores()
-}
-
-// engagementData holds the pre-fetched data needed to compute trending scores.
-type engagementData struct {
-	schemRecs       []*core.Record
-	recentViews     map[string]float64 // 48h views
-	totalViews      map[string]float64 // all-time views
-	ratingSum       map[string]float64
-	ratingCount     map[string]float64
-	recentDownloads map[string]float64 // 48h downloads
-	totalDownloads  map[string]float64 // all-time downloads
-}
-
-func (ed *engagementData) computeScores() map[string]float64 {
-	scores := make(map[string]float64, len(ed.schemRecs))
-	for _, rec := range ed.schemRecs {
-		id := rec.Id
-		created := rec.GetDateTime("created").Time()
-		scores[id] = trendingScore(created, ed.recentViews[id], ed.totalViews[id], ed.ratingCount[id], ed.ratingSum[id], ed.recentDownloads[id], ed.totalDownloads[id])
+	scores := make(map[string]float64, len(td.SchematicIDs))
+	for _, id := range td.SchematicIDs {
+		created := td.SchematicCreated[id]
+		scores[id] = trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
 	}
 	return scores
 }
 
-// fetchEngagementData queries all the signals needed for trending in bulk.
-func fetchEngagementData(app *pocketbase.PocketBase) *engagementData {
-	var schemRecs []*core.Record
-	err := app.RecordQuery("schematics").
-		Select("schematics.*").
-		From("schematics").
-		Where(dbx.NewExp("(schematics.deleted = '' OR schematics.deleted IS NULL) AND schematics.moderated = 1 AND (schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))")).
-		OrderBy("created DESC").
-		All(&schemRecs)
-	if err != nil || len(schemRecs) == 0 {
-		return nil
+// fetchLatestPageFromStore fetches a page of latest approved schematics from the PostgreSQL store.
+func fetchLatestPageFromStore(appStore *store.Store, page int) ([]store.Schematic, bool) {
+	limit := indexPageSize + 1
+	offset := (page - 1) * indexPageSize
+	results, err := appStore.Schematics.ListApproved(context.Background(), limit, offset)
+	if err != nil {
+		return nil, false
 	}
-
-	type kv struct {
-		ID string
-		V  float64
+	hasNext := len(results) > indexPageSize
+	if hasNext {
+		results = results[:indexPageSize]
 	}
-
-	// Recent views (last 30 days — matches the 12-month trending timescale)
-	recentCutoff := time.Now().UTC().Add(-30 * 24 * time.Hour).Format("2006-01-02 15:04:05")
-	var viewRows []kv
-	err = app.RecordQuery("schematic_views").
-		Select("schematic as id", "SUM(count) as v").
-		From("schematic_views").
-		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": recentCutoff})).
-		GroupBy("schematic").
-		All(&viewRows)
-	recentViews := make(map[string]float64, len(viewRows))
-	if err == nil {
-		for _, r := range viewRows {
-			recentViews[r.ID] = r.V
-		}
-	}
-
-	// All-time total views
-	var totalViewRows []kv
-	err = app.RecordQuery("schematic_views").
-		Select("schematic as id", "SUM(count) as v").
-		From("schematic_views").
-		Where(dbx.NewExp("type = 0")).
-		GroupBy("schematic").
-		All(&totalViewRows)
-	totalViews := make(map[string]float64, len(totalViewRows))
-	if err == nil {
-		for _, r := range totalViewRows {
-			totalViews[r.ID] = r.V
-		}
-	}
-
-	// Rating sum
-	var ratingSumRows []kv
-	err = app.RecordQuery("schematic_ratings").
-		Select("schematic as id", "SUM(rating) as v").
-		From("schematic_ratings").
-		GroupBy("schematic").
-		All(&ratingSumRows)
-	ratingSum := make(map[string]float64, len(ratingSumRows))
-	if err == nil {
-		for _, r := range ratingSumRows {
-			ratingSum[r.ID] = r.V
-		}
-	}
-
-	// Rating count
-	var ratingCountRows []kv
-	err = app.RecordQuery("schematic_ratings").
-		Select("schematic as id", "COUNT(rating) as v").
-		From("schematic_ratings").
-		GroupBy("schematic").
-		All(&ratingCountRows)
-	ratingCount := make(map[string]float64, len(ratingCountRows))
-	if err == nil {
-		for _, r := range ratingCountRows {
-			ratingCount[r.ID] = r.V
-		}
-	}
-
-	// Recent downloads (last 48h)
-	var recentDlRows []kv
-	err = app.RecordQuery("schematic_downloads").
-		Select("schematic as id", "SUM(count) as v").
-		From("schematic_downloads").
-		Where(dbx.NewExp("type = 0 AND created > {:ts}", dbx.Params{"ts": recentCutoff})).
-		GroupBy("schematic").
-		All(&recentDlRows)
-	recentDownloads := make(map[string]float64, len(recentDlRows))
-	if err == nil {
-		for _, r := range recentDlRows {
-			recentDownloads[r.ID] = r.V
-		}
-	}
-
-	// All-time total downloads
-	var totalDlRows []kv
-	err = app.RecordQuery("schematic_downloads").
-		Select("schematic as id", "SUM(count) as v").
-		From("schematic_downloads").
-		Where(dbx.NewExp("type = 0")).
-		GroupBy("schematic").
-		All(&totalDlRows)
-	totalDownloads := make(map[string]float64, len(totalDlRows))
-	if err == nil {
-		for _, r := range totalDlRows {
-			totalDownloads[r.ID] = r.V
-		}
-	}
-
-	return &engagementData{
-		schemRecs:       schemRecs,
-		recentViews:     recentViews,
-		totalViews:      totalViews,
-		ratingSum:       ratingSum,
-		ratingCount:     ratingCount,
-		recentDownloads: recentDownloads,
-		totalDownloads:  totalDownloads,
-	}
+	return results, hasNext
 }
 
-// getAllTrendingSchematics returns the full sorted trending list for all moderated schematics.
-func getAllTrendingSchematics(app *pocketbase.PocketBase, cacheService *cache.Service) []models.Schematic {
+// getHighestRatedSchematicsPageFromStore fetches a page of highest rated schematics from the PostgreSQL store.
+func getHighestRatedSchematicsPageFromStore(appStore *store.Store, cacheService *cache.Service, page int) ([]models.Schematic, bool) {
+	limit := indexPageSize + 1
+	offset := (page - 1) * indexPageSize
+	results, err := appStore.Schematics.ListHighestRated(context.Background(), limit, offset)
+	if err != nil {
+		return nil, false
+	}
+	hasNext := len(results) > indexPageSize
+	if hasNext {
+		results = results[:indexPageSize]
+	}
+	return MapStoreSchematics(appStore, results, cacheService), hasNext
+}
+
+// getAllTrendingSchematicsFromStore returns the full sorted trending list using the PostgreSQL store.
+func getAllTrendingSchematicsFromStore(appStore *store.Store, cacheService *cache.Service) []models.Schematic {
 	cached, found := cacheService.GetSchematics(cache.TrendingSchematicsKey)
 	if found {
 		return cached
 	}
 
-	ed := fetchEngagementData(app)
-	if ed == nil {
+	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), 30)
+	if err != nil || td == nil || len(td.SchematicIDs) == 0 {
 		return nil
 	}
 
-	scores := ed.computeScores()
-
+	// Compute scores
 	type scored struct {
-		rec   *core.Record
+		id    string
 		score float64
 	}
-	scoredList := make([]scored, 0, len(ed.schemRecs))
-	for _, rec := range ed.schemRecs {
-		scoredList = append(scoredList, scored{rec: rec, score: scores[rec.Id]})
+	scoredList := make([]scored, 0, len(td.SchematicIDs))
+	for _, id := range td.SchematicIDs {
+		created := td.SchematicCreated[id]
+		s := trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
+		scoredList = append(scoredList, scored{id: id, score: s})
 	}
 	sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
 
-	ordered := make([]*core.Record, 0, len(scoredList))
-	for _, it := range scoredList {
-		ordered = append(ordered, it.rec)
+	// Fetch full schematics in sorted order
+	ids := make([]string, len(scoredList))
+	for i, s := range scoredList {
+		ids[i] = s.id
+	}
+	storeSchematics, err := appStore.Schematics.ListByIDs(context.Background(), ids)
+	if err != nil {
+		return nil
+	}
+	// ListByIDs does not preserve order; re-sort
+	schematicMap := make(map[string]store.Schematic, len(storeSchematics))
+	for _, s := range storeSchematics {
+		schematicMap[s.ID] = s
+	}
+	ordered := make([]store.Schematic, 0, len(ids))
+	for _, id := range ids {
+		if s, ok := schematicMap[id]; ok {
+			ordered = append(ordered, s)
+		}
 	}
 
-	all := MapResultsToSchematic(app, ordered, cacheService)
+	all := MapStoreSchematics(appStore, ordered, cacheService)
 	cacheService.SetSchematics(cache.TrendingSchematicsKey, all)
 	return all
 }
 
-func getTrendingSchematicsPage(app *pocketbase.PocketBase, cacheService *cache.Service, page int) ([]models.Schematic, bool) {
-	all := getAllTrendingSchematics(app, cacheService)
+// getTrendingSchematicsPageFromStore returns a page of trending schematics from the PostgreSQL store.
+func getTrendingSchematicsPageFromStore(appStore *store.Store, cacheService *cache.Service, page int) ([]models.Schematic, bool) {
+	all := getAllTrendingSchematicsFromStore(appStore, cacheService)
 	offset := (page - 1) * indexPageSize
 	if offset >= len(all) {
 		return nil, false
@@ -510,9 +371,9 @@ func getTrendingSchematicsPage(app *pocketbase.PocketBase, cacheService *cache.S
 	return all[offset:end], hasNext
 }
 
-// getCategoryTrendingPage returns a page of trending schematics filtered to a specific category.
-func getCategoryTrendingPage(app *pocketbase.PocketBase, cacheService *cache.Service, categoryID string, page int) ([]models.Schematic, bool) {
-	all := getAllTrendingSchematics(app, cacheService)
+// getCategoryTrendingPageFromStore returns a page of trending schematics filtered to a specific category from the PostgreSQL store.
+func getCategoryTrendingPageFromStore(appStore *store.Store, cacheService *cache.Service, categoryID string, page int) ([]models.Schematic, bool) {
+	all := getAllTrendingSchematicsFromStore(appStore, cacheService)
 	var filtered []models.Schematic
 	for _, s := range all {
 		for _, c := range s.Categories {
@@ -534,67 +395,64 @@ func getCategoryTrendingPage(app *pocketbase.PocketBase, cacheService *cache.Ser
 	return filtered[offset:end], hasNext
 }
 
-// WarmIndexCache pre-computes and caches all data needed for the index page
-// so that no user request ever hits the database for page-1 data.
-// Called at boot and periodically by a background ticker.
-func WarmIndexCache(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) {
-	app.Logger().Debug("Warming index page cache")
-
-	// 1. Latest schematics (page 1)
-	col, colErr := app.FindCollectionByNameOrId("schematics")
-	if colErr == nil {
-		latestResults, latestHasNext := fetchLatestPage(app, col.Id, 1)
-		cacheService.SetSchematics(cache.LatestSchematicsKey, MapResultsToSchematic(app, latestResults, cacheService))
-		cacheService.Set(cache.LatestHasNextKey, latestHasNext)
-	}
-
-	// 2. Trending schematics (force recompute by clearing cache first)
-	cacheService.Delete(cache.TrendingSchematicsKey)
-	allTrending := getAllTrendingSchematics(app, cacheService)
-	trendingHasNext := len(allTrending) > indexPageSize
-	cacheService.Set(cache.TrendingHasNextKey, trendingHasNext)
-
-	// 3. Highest rated schematics (page 1)
-	highestRated, highestHasNext := getHighestRatedSchematicsPage(app, cacheService, 1)
-	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
-	cacheService.Set(cache.HighestRatedHasNextKey, highestHasNext)
-
-	// 4. Categories (already self-caching, just ensure warm)
-	categories := allCategoriesFromStore(appStore, app, cacheService)
-
-	// 5. Category sections — cache page-1 trending items per category
-	for _, cat := range categories {
-		items, catHasNext := getCategoryTrendingPage(app, cacheService, cat.ID, 1)
-		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
-		cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
-	}
-
-	app.Logger().Debug("Index page cache warmed")
-}
-
-func findUserFromID(app *pocketbase.PocketBase, userID string) *models.User {
-	userCollection, err := app.FindCollectionByNameOrId("users")
-	if err != nil {
+// findUserFromStore looks up a user by ID from the PostgreSQL store and returns a models.User.
+func findUserFromStore(appStore *store.Store, userID string) *models.User {
+	if userID == "" {
 		return nil
 	}
-	record, err := app.FindRecordById(userCollection.Id, userID)
-	if err != nil || record == nil {
+	u, err := appStore.Users.GetUserByID(context.Background(), userID)
+	if err != nil || u == nil {
 		return nil
 	}
-	return mapResultToUser(record)
-}
-
-func mapResultToUser(record *core.Record) *models.User {
 	caser := cases.Title(language.English)
-	avatarUrl := gravatar.New(record.GetString("email")).
-		Size(200).
-		Default(gravatar.MysteryMan).
-		Rating(gravatar.Pg).
-		AvatarURL()
+	avatarUrl := u.Avatar
+	if avatarUrl == "" {
+		avatarUrl = gravatar.New(u.Email).
+			Size(200).
+			Default(gravatar.MysteryMan).
+			Rating(gravatar.Pg).
+			AvatarURL()
+	}
 	return &models.User{
-		ID:        record.Id,
-		Username:  caser.String(record.GetString("username")),
+		ID:        u.ID,
+		Username:  caser.String(u.Username),
 		Avatar:    tmpl.URL(avatarUrl),
 		HasAvatar: len(avatarUrl) > 0,
 	}
 }
+
+// WarmIndexCacheFromStore pre-computes and caches all data needed for the index page
+// using only the PostgreSQL store (no PocketBase dependency).
+func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service, logger interface{ Debug(string, ...any) }) {
+	logger.Debug("Warming index page cache (store)")
+
+	// 1. Latest schematics (page 1)
+	latestResults, latestHasNext := fetchLatestPageFromStore(appStore, 1)
+	cacheService.SetSchematics(cache.LatestSchematicsKey, MapStoreSchematics(appStore, latestResults, cacheService))
+	cacheService.Set(cache.LatestHasNextKey, latestHasNext)
+
+	// 2. Trending schematics
+	cacheService.Delete(cache.TrendingSchematicsKey)
+	allTrending := getAllTrendingSchematicsFromStore(appStore, cacheService)
+	trendingHasNext := len(allTrending) > indexPageSize
+	cacheService.Set(cache.TrendingHasNextKey, trendingHasNext)
+
+	// 3. Highest rated schematics (page 1)
+	highestRated, highestHasNext := getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
+	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
+	cacheService.Set(cache.HighestRatedHasNextKey, highestHasNext)
+
+	// 4. Categories
+	allCategoriesFromStoreOnly(appStore, cacheService)
+
+	// 5. Category sections
+	categories := allCategoriesFromStoreOnly(appStore, cacheService)
+	for _, cat := range categories {
+		items, catHasNext := getCategoryTrendingPageFromStore(appStore, cacheService, cat.ID, 1)
+		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
+		cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
+	}
+
+	logger.Debug("Index page cache warmed (store)")
+}
+

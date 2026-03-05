@@ -7,9 +7,7 @@ import (
 	"createmod/internal/session"
 	"createmod/internal/store"
 	"github.com/drexedam/gravatar"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	tmpl "html/template"
@@ -45,25 +43,25 @@ type ProfileData struct {
 	DefaultData
 }
 
-func ProfileHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		username := e.Request.PathValue("username")
 		if username == "" {
 			if u := session.UserFromContext(e.Request.Context()); u != nil {
-				return showProfile(e, app, appStore, cacheService, registry, u.Username)
+				return showProfile(e, appStore, cacheService, registry, u.Username)
 			}
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
 		}
-		return showProfile(e, app, appStore, cacheService, registry, username)
+		return showProfile(e, appStore, cacheService, registry, username)
 	}
 }
 
-func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, appStore *store.Store, cacheService *cache.Service, registry *template.Registry, username string) error {
+func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *cache.Service, registry *server.Registry, username string) error {
 	d := ProfileData{}
 	d.Populate(e)
 	caser := cases.Title(language.English)
 	d.Title = i18n.T(d.Language, "Schematics by") + " " + caser.String(username)
-	d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 	d.Username = caser.String(username)
 	d.Description = i18n.T(d.Language, "Find Create Mod schematics by") + " " + caser.String(username) + " " + i18n.T(d.Language, "on CreateMod.com")
 	d.Slug = "/author/" + username
@@ -74,7 +72,7 @@ func showProfile(e *core.RequestEvent, app *pocketbase.PocketBase, appStore *sto
 		return e.HTML(http.StatusNotFound, "User not found")
 	}
 
-	d.Schematics = findAuthorSchematics(app, cacheService, "", user.ID, 1000, "-created")
+	d.Schematics = findAuthorSchematicsFromStore(appStore, cacheService, "", user.ID, 1000)
 	if user.Avatar != "" {
 		d.UserAvatar = tmpl.URL(user.Avatar)
 		d.Thumbnail = user.Avatar

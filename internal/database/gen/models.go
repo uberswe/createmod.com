@@ -126,6 +126,7 @@ type Guide struct {
 	UploadLink  string    `json:"upload_link"`
 	Created     time.Time `json:"created"`
 	Updated     time.Time `json:"updated"`
+	Views       int32     `json:"views"`
 }
 
 type GuideTranslation struct {
@@ -168,6 +169,7 @@ type NbtHash struct {
 	Hash        string    `json:"hash"`
 	SchematicID *string   `json:"schematic_id"`
 	Created     time.Time `json:"created"`
+	UploadedBy  *string   `json:"uploaded_by"`
 }
 
 type News struct {
@@ -208,6 +210,14 @@ type Page struct {
 	CommentCount int32              `json:"comment_count"`
 	Created      time.Time          `json:"created"`
 	Updated      time.Time          `json:"updated"`
+}
+
+type PasswordResetToken struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Created   time.Time `json:"created"`
 }
 
 type PointLog struct {
@@ -272,6 +282,7 @@ type Schematic struct {
 	Type               string             `json:"type"`
 	Created            time.Time          `json:"created"`
 	Updated            time.Time          `json:"updated"`
+	ExternalUrl        string             `json:"external_url"`
 }
 
 type SchematicCategory struct {
@@ -280,6 +291,7 @@ type SchematicCategory struct {
 	Name    string    `json:"name"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
+	Public  bool      `json:"public"`
 }
 
 type SchematicDownload struct {
@@ -316,6 +328,7 @@ type SchematicTag struct {
 	Name    string    `json:"name"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
+	Public  bool      `json:"public"`
 }
 
 type SchematicTranslation struct {
@@ -376,31 +389,44 @@ type Session struct {
 }
 
 type TempUpload struct {
-	ID            string          `json:"id"`
-	Token         string          `json:"token"`
-	Filename      string          `json:"filename"`
-	Size          int64           `json:"size"`
-	Checksum      string          `json:"checksum"`
-	ParsedSummary string          `json:"parsed_summary"`
-	NbtFile       string          `json:"nbt_file"`
-	BlockCount    int32           `json:"block_count"`
-	DimX          int32           `json:"dim_x"`
-	DimY          int32           `json:"dim_y"`
-	DimZ          int32           `json:"dim_z"`
-	Materials     json.RawMessage `json:"materials"`
-	Mods          json.RawMessage `json:"mods"`
-	Created       time.Time       `json:"created"`
-	Updated       time.Time       `json:"updated"`
+	ID               string          `json:"id"`
+	Token            string          `json:"token"`
+	Filename         string          `json:"filename"`
+	Size             int64           `json:"size"`
+	Checksum         string          `json:"checksum"`
+	ParsedSummary    string          `json:"parsed_summary"`
+	NbtFile          string          `json:"nbt_file"`
+	BlockCount       int32           `json:"block_count"`
+	DimX             int32           `json:"dim_x"`
+	DimY             int32           `json:"dim_y"`
+	DimZ             int32           `json:"dim_z"`
+	Materials        json.RawMessage `json:"materials"`
+	Mods             json.RawMessage `json:"mods"`
+	Created          time.Time       `json:"created"`
+	Updated          time.Time       `json:"updated"`
+	UploadedBy       string          `json:"uploaded_by"`
+	Description      string          `json:"description"`
+	MinecraftVersion string          `json:"minecraft_version"`
+	CreatemodVersion string          `json:"createmod_version"`
+	NbtS3Key         string          `json:"nbt_s3_key"`
+	ImageS3Key       string          `json:"image_s3_key"`
 }
 
 type TempUploadFile struct {
-	ID           string    `json:"id"`
-	TempUploadID string    `json:"temp_upload_id"`
-	Filename     string    `json:"filename"`
-	OriginalName string    `json:"original_name"`
-	Size         int64     `json:"size"`
-	MimeType     string    `json:"mime_type"`
-	Created      time.Time `json:"created"`
+	ID          string    `json:"id"`
+	Token       string    `json:"token"`
+	Filename    string    `json:"filename"`
+	Description string    `json:"description"`
+	Size        int64     `json:"size"`
+	Checksum    string    `json:"checksum"`
+	BlockCount  int32     `json:"block_count"`
+	DimX        int32     `json:"dim_x"`
+	DimY        int32     `json:"dim_y"`
+	DimZ        int32     `json:"dim_z"`
+	Mods        []byte    `json:"mods"`
+	Materials   []byte    `json:"materials"`
+	NbtS3Key    string    `json:"nbt_s3_key"`
+	Created     time.Time `json:"created"`
 }
 
 type User struct {

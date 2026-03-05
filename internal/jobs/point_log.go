@@ -4,8 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	"createmod/internal/pointlog"
-
 	"github.com/riverqueue/river"
 )
 
@@ -22,12 +20,12 @@ type PointLogWorker struct {
 
 func (w *PointLogWorker) Work(ctx context.Context, job *river.Job[PointLogArgs]) error {
 	slog.Info("reconciling point logs")
-	if w.deps.App == nil {
+	if w.deps.PointLog == nil {
 		slog.Warn("point log reconciliation skipped: missing dependencies")
 		return nil
 	}
 
-	pointlog.RecalculateAll(w.deps.App)
+	w.deps.PointLog.RecalculateAll()
 	slog.Info("point log reconciliation complete")
 	return nil
 }

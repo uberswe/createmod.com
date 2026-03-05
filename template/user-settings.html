@@ -42,7 +42,7 @@
                                             </div>
                                             <div class="col-auto">We use Gravatar for profile pictures, <a href="https://gravatar.com/site/check/">change your avatar via the Gravatar website</a>.</div>
                                         </div>
-                                        <form id="profile-form" hx-patch="/api/collections/users/records/{{ .UserID }}" hx-swap="none">
+                                        <form id="profile-form" hx-patch="/api/users/{{ .UserID }}" hx-swap="none">
                                             <div class="mb-3">
                                                 <label class="form-label" for="settings-username">{{ T .Language "Username" }}</label>
                                                 <input id="settings-username" name="username" type="text" class="form-control" value="{{ .Username }}" required>
@@ -128,7 +128,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
-                        <form id="delete-account-form" hx-delete="/api/collections/users/records/{{ .UserID }}" hx-swap="none">
+                        <form id="delete-account-form" hx-delete="/api/users/{{ .UserID }}" hx-swap="none">
                             <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">{{ T .Language "Yes, delete my account" }}</button>
                         </form>
                     </div>

@@ -2,48 +2,35 @@ package server
 
 import (
 	"context"
-	"bufio"
-	"bytes"
 	"createmod/internal/aidescription"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/jobs"
+	appmailer "createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
-	"createmod/internal/nbtparser"
 	"createmod/internal/pages"
 	"createmod/internal/pointlog"
 	irouter "createmod/internal/router"
 	"createmod/internal/search"
 	"createmod/internal/session"
 	"createmod/internal/sitemap"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
-	_ "createmod/migrations"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"github.com/drexedam/gravatar"
-	"github.com/gosimple/slug"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/plugins/migratecmd"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
-	"github.com/pocketbase/pocketbase/tools/mailer"
-	"github.com/sunshineplan/imgconv"
-	"github.com/sym01/htmlsanitizer"
 	"log"
+	"log/slog"
 	"math/rand"
-	"sync"
 	"net/http"
-	"net/mail"
-	"path/filepath"
+	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 	"unicode"
 )
@@ -58,18 +45,20 @@ type Config struct {
 	DatabaseURL         string
 	Store               *store.Store
 	Pool                *pgxpool.Pool
+	Storage             *storage.Service
 	DiscordClientID     string
 	DiscordClientSecret string
 	GithubClientID      string
 	GithubClientSecret  string
 	BaseURL             string
+	MaintenanceMode     *atomic.Bool // runtime-togglable maintenance flag
 }
 
 type Server struct {
 	conf                 Config
-	app                  *pocketbase.PocketBase
 	store                *store.Store
 	pool                 *pgxpool.Pool
+	storageService       *storage.Service
 	sessionStore         *session.Store
 	searchService        *search.Service
 	sitemapService       *sitemap.Service
@@ -84,18 +73,6 @@ type Server struct {
 	discordOAuth         *auth.OAuthProvider
 	githubOAuth          *auth.OAuthProvider
 }
-
-// pendingOriginals temporarily stores original (pre-translation) text between the
-// OnRecordCreateRequest and OnRecordAfterCreateSuccess hooks for schematics.
-// Entries are removed immediately after use.
-type originalText struct {
-	Title       string
-	Description string
-	Content     string
-	Language    string
-}
-
-var pendingOriginals sync.Map // map[schematicID]originalText
 
 // detectLanguageFromRequest returns a normalized language code based on the
 // incoming request Accept-Language header. Falls back to "en".
@@ -135,26 +112,25 @@ func detectLanguageFromRequest(r *http.Request) string {
 }
 
 func New(conf Config) *Server {
-	app := pocketbase.New()
 	sitemapService := sitemap.New(conf.Dev)
 	discordService := discord.New(conf.DiscordWebhookUrl)
-	moderationService := moderation.NewService(conf.OpenAIApiKey, app.Logger())
-	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, app.Logger())
-	translationService := translation.New(conf.OpenAIApiKey, app.Logger())
+	moderationService := moderation.NewService(conf.OpenAIApiKey, slog.Default())
+	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, slog.Default())
+	translationService := translation.New(conf.OpenAIApiKey, slog.Default(), conf.Store)
 
 	srv := &Server{
 		conf:                 conf,
-		app:                  app,
 		store:                conf.Store,
 		pool:                 conf.Pool,
+		storageService:       conf.Storage,
 		sitemapService:       sitemapService,
 		cacheService:         cache.New(),
 		discordService:       discordService,
 		moderationService:    moderationService,
 		aiDescriptionService: aiDescriptionService,
 		translationService:   translationService,
-		pointLogService:      pointlog.New(),
-		modMetaService:       modmeta.New(conf.CurseForgeApiKey),
+		pointLogService:      pointlog.New(conf.Store),
+		modMetaService:       modmeta.New(conf.CurseForgeApiKey, conf.Store),
 	}
 
 	srv.sessionStore = session.NewStore(conf.Pool)
@@ -180,942 +156,132 @@ func New(conf Config) *Server {
 func (s *Server) Start() {
 	log.Println("Launching...")
 
-	migratecmd.MustRegister(s.app, s.app.RootCmd, migratecmd.Config{
-		// enable auto creation of migration files when making collection changes in the Admin UI
-		Automigrate: s.conf.AutoMigrate,
+	// Initialise the search service. It attempts to load a cached index
+	// snapshot from storage (S3) so the server can serve search
+	// requests immediately. A background goroutine then does a full
+	// rebuild from the database to pick up any recent changes.
+	log.Println("Starting Search Server")
+	s.searchService = search.New(s.storageService)
+
+	// Full index rebuild + trending scores + sitemap in the background
+	// so the server is available to handle requests right away.
+	go func() {
+		slog.Info("search: background index rebuild starting")
+		s.rebuildSearchIndexFromStore()
+		s.sitemapService.Generate(s.store)
+		slog.Info("search: background index rebuild complete")
+	}()
+
+	// Warm page caches so the first visitor never waits
+	pages.WarmIndexCache(s.cacheService, s.store)
+	pages.WarmVideosCache(s.cacheService, s.store)
+
+	// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
+	go pages.RepairSchematics(s.storageService, s.store)
+
+	// Background: periodically clean up expired temp uploads from PostgreSQL
+	pages.StartTempUploadCleanup(s.store)
+
+	// Start River job worker for periodic background jobs.
+	jobCtx := context.Background()
+	w, err := jobs.New(jobCtx, jobs.Config{
+		Pool: s.pool,
+		Deps: jobs.Deps{
+			Store:        s.store,
+			Storage:      s.storageService,
+			Search:       s.searchService,
+			Cache:        s.cacheService,
+			Sitemap:      s.sitemapService,
+			AIDesc:       s.aiDescriptionService,
+			Translation:  s.translationService,
+			PointLog:     s.pointLogService,
+			ModMeta:      s.modMetaService,
+			SessionStore: s.sessionStore,
+		},
 	})
-
-	s.app.OnBootstrap().BindFunc(func(e *core.BootstrapEvent) error {
-		log.Println("Bootstrapping...")
-		return e.Next()
-	})
-
-	s.app.OnServe().BindFunc(func(e *core.ServeEvent) error {
-		log.Println("Running Before Serve Logic")
-
-		// Initialise the search service. It attempts to load a cached index
-		// snapshot from storage (S3 / local) so the server can serve search
-		// requests immediately. A background goroutine then does a full
-		// rebuild from the database to pick up any recent changes.
-		log.Println("Starting Search Server")
-		s.searchService = search.New(s.app)
-
-		// Full index rebuild + trending scores + sitemap in the background
-		// so the server is available to handle requests right away.
-		go func() {
-			s.app.Logger().Info("search: background index rebuild starting")
-			schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
-			if err != nil {
-				s.app.Logger().Error(err.Error())
-				return
-			}
-			mappedSchematics := pages.MapResultsToSchematic(s.app, schematics, s.cacheService)
-			s.app.Logger().Debug("search service mapped schematics", "mapped schematic count", len(mappedSchematics))
-			s.searchService.BuildIndex(mappedSchematics)
-			if scores := pages.ComputeTrendingScores(s.app); scores != nil {
-				s.searchService.SetTrendingScores(scores)
-			}
-			s.sitemapService.Generate(s.app)
-			s.app.Logger().Info("search: background index rebuild complete")
-		}()
-
-		// Warm page caches so the first visitor never waits
-		pages.WarmIndexCache(s.app, s.cacheService, s.store)
-		pages.WarmVideosCache(s.app, s.cacheService)
-
-		// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
-		go pages.RepairSchematics(s.app)
-
-		// Start River job worker for periodic background jobs.
-		jobCtx := context.Background()
-		w, err := jobs.New(jobCtx, jobs.Config{
-			Pool: s.pool,
-			Deps: jobs.Deps{
-				App:          s.app,
-				Store:        s.store,
-				Search:       s.searchService,
-				Cache:        s.cacheService,
-				Sitemap:      s.sitemapService,
-				AIDesc:       s.aiDescriptionService,
-				Translation:  s.translationService,
-				PointLog:     s.pointLogService,
-				ModMeta:      s.modMetaService,
-				SessionStore: s.sessionStore,
-			},
-		})
-		if err != nil {
-			s.app.Logger().Error("failed to create River job worker", "error", err)
+	if err != nil {
+		slog.Error("failed to create River job worker", "error", err)
+	} else {
+		if err := w.Start(jobCtx); err != nil {
+			slog.Error("failed to start River job worker", "error", err)
 		} else {
-			if err := w.Start(jobCtx); err != nil {
-				s.app.Logger().Error("failed to start River job worker", "error", err)
-			} else {
-				s.jobWorker = w
-				s.app.Logger().Info("River job worker started")
-			}
+			s.jobWorker = w
+			slog.Info("River job worker started")
 		}
+	}
 
-		s.app.OnRecordCreateExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
-			if !validNBT(e) {
-				return fmt.Errorf("invalid NBT file")
-			}
+	// ROUTES
 
-			// Extract and store materials, dimensions, block count, and mods from NBT file
-			files := e.Record.GetUnsavedFiles("schematic_file")
-			for _, f := range files {
-				if f.Size > 0 && strings.HasSuffix(f.OriginalName, ".nbt") {
-					rsc, err := f.Reader.Open()
-					if err == nil {
-						data, err := io.ReadAll(rsc)
-						rsc.Close()
-						if err == nil {
-							materials, err := nbtparser.ExtractMaterials(data)
-							if err == nil && len(materials) > 0 {
-								materialsJSON, err := json.Marshal(materials)
-								if err == nil {
-									e.Record.Set("materials", string(materialsJSON))
-								}
+	mailService := appmailer.New()
 
-								// Extract mod namespaces from materials
-								modSet := make(map[string]struct{})
-								for _, m := range materials {
-									parts := strings.SplitN(m.BlockID, ":", 2)
-									if len(parts) == 2 && parts[0] != "minecraft" && parts[0] != "" {
-										modSet[parts[0]] = struct{}{}
-									}
-								}
-								if len(modSet) > 0 {
-									mods := make([]string, 0, len(modSet))
-									for mod := range modSet {
-										mods = append(mods, mod)
-									}
-									modsJSON, err := json.Marshal(mods)
-									if err == nil {
-										e.Record.Set("mods", string(modsJSON))
-									}
-								}
-							}
-
-							blockCount, _, _ := nbtparser.ExtractStats(data)
-							if blockCount > 0 {
-								e.Record.Set("block_count", blockCount)
-							}
-
-							dimX, dimY, dimZ, _ := nbtparser.ExtractDimensions(data)
-							if dimX > 0 || dimY > 0 || dimZ > 0 {
-								e.Record.Set("dim_x", dimX)
-								e.Record.Set("dim_y", dimY)
-								e.Record.Set("dim_z", dimZ)
-							}
-						}
-					}
-				}
-			}
-
-			// Rebuild the search index every time a schematic is created
-			err := e.Next()
-			if err != nil {
-				return err
-			}
-
-			// Award "First Upload" achievement if this is the user's first schematic
-			authorID := e.Record.GetString("author")
-			if authorID != "" {
-				// Count author's schematics (not deleted)
-				if recs, err := e.App.FindRecordsByFilter("schematics", "deleted = '' && author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
-					if len(recs) == 1 { // this is the first one
-						ctx := context.Background()
-						if ach, err := s.store.Achievements.GetByKey(ctx, "first_upload"); err == nil && ach != nil {
-							has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
-							if !has {
-								_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
-								if u, err := s.store.Users.GetUserByID(ctx, authorID); err == nil {
-									_ = s.store.Users.UpdateUserPoints(ctx, authorID, u.Points+50)
-								}
-								_ = s.store.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
-									UserID:      authorID,
-									Points:      50,
-									Reason:      "first_upload",
-									Description: "Uploaded your first schematic",
-									EarnedAt:    time.Now(),
-								})
-								if u, err := s.store.Users.GetUserByID(ctx, authorID); err == nil {
-									_ = s.store.Users.UpdateUserPoints(ctx, authorID, u.Points+30)
-								}
-								_ = s.store.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
-									UserID:      authorID,
-									Points:      30,
-									Reason:      "first_upload_bonus",
-									Description: "First upload bonus",
-									EarnedAt:    time.Now(),
-								})
-							}
-						}
-					}
-				}
-			}
-
-			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
-				if err != nil {
-					s.app.Logger().Warn(err.Error())
-				}
-				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
-				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
-					s.searchService.SetTrendingScores(scores)
-				}
-				s.sitemapService.Generate(s.app)
-			}()
-			return nil
-		})
-
-		s.app.OnRecordUpdate("schematics").BindFunc(func(e *core.RecordEvent) error {
-			if !validNBT(e) {
-				return fmt.Errorf("invalid NBT file")
-			}
-
-			// Capture previous state before update
-			prevRec, _ := e.App.FindRecordById("schematics", e.Record.Id)
-
-			err := e.Next()
-			if err != nil {
-				return err
-			}
-
-			// After successful update, persist a version snapshot from prevRec
-			if prevRec != nil && prevRec.Id != "" {
-				// Build a minimal snapshot of relevant fields
-				snapshot := map[string]any{
-					"title":             prevRec.GetString("title"),
-					"content":           prevRec.GetString("content"),
-					"excerpt":           prevRec.GetString("excerpt"),
-					"featured_image":    prevRec.GetString("featured_image"),
-					"gallery":           prevRec.GetStringSlice("gallery"),
-					"video":             prevRec.GetString("video"),
-					"has_dependencies":  prevRec.GetBool("has_dependencies"),
-					"dependencies":      prevRec.GetString("dependencies"),
-					"categories":        prevRec.GetStringSlice("categories"),
-					"tags":              prevRec.GetStringSlice("tags"),
-					"createmod_version": prevRec.GetString("createmod_version"),
-					"minecraft_version": prevRec.GetString("minecraft_version"),
-					"paid":              prevRec.GetBool("paid"),
-					"external_url":      prevRec.GetString("external_url"),
-					"schematic_file":    prevRec.GetString("schematic_file"),
-					"postdate":          prevRec.GetDateTime("postdate").Time(),
-					"updated":           prevRec.GetDateTime("updated").Time(),
-				}
-				data, _ := json.Marshal(snapshot)
-
-				// Compute diff note
-				changed := computeSchematicDiff(prevRec, e.Record)
-				note := ""
-				if len(changed) > 0 {
-					note = "Fields changed: " + strings.Join(changed, ", ")
-				}
-
-				ctx := context.Background()
-				verNum := 1
-				if latest, err := s.store.Versions.GetLatestVersion(ctx, e.Record.Id); err == nil {
-					verNum = latest + 1
-				}
-				if err := s.store.Versions.Create(ctx, &store.SchematicVersion{
-					SchematicID: e.Record.Id,
-					Version:     verNum,
-					Snapshot:    string(data),
-					Note:        note,
-				}); err != nil {
-					e.App.Logger().Warn("failed to save schematic version", "error", err)
-				}
-			}
-
-			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
-			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
-				if err != nil {
-					s.app.Logger().Warn(err.Error())
-				}
-				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
-				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
-					s.searchService.SetTrendingScores(scores)
-				}
-				s.sitemapService.Generate(s.app)
-			}()
-			return nil
-		})
-
-		s.app.OnRecordDeleteExecute("schematics").BindFunc(func(e *core.RecordEvent) error {
-			e.Record.Set("deleted", time.Now())
-			err := e.App.Save(e.Record)
-			if err != nil {
-				return err
-			}
-			s.cacheService.DeleteSchematic(cache.SchematicKey(e.Record.Id))
-			// Prevent actual deletion
-			go func() {
-				schematics, err := s.app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
-				if err != nil {
-					s.app.Logger().Warn(err.Error())
-				}
-				s.searchService.BuildIndex(pages.MapResultsToSchematic(s.app, schematics, s.cacheService))
-				if scores := pages.ComputeTrendingScores(s.app); scores != nil {
-					s.searchService.SetTrendingScores(scores)
-				}
-				s.sitemapService.Generate(s.app)
-			}()
-			return nil
-		})
-
-		s.app.OnRecordCreateExecute("users").BindFunc(func(e *core.RecordEvent) error {
-			avatarUrl := gravatar.New(e.Record.GetString("email")).
-				Size(200).
-				Default(gravatar.NotFound).
-				Rating(gravatar.Pg).
-				AvatarURL()
-			e.Record.Set("avatar", avatarUrl)
-			err := e.Next()
-			if err != nil {
-				return err
-			}
-			// Rebuild the sitemap every time a user is created
-			go s.sitemapService.Generate(s.app)
-			return nil
-		})
-
-		// Award achievement for first approved comment
-		s.app.OnRecordCreateExecute("comments").BindFunc(func(e *core.RecordEvent) error {
-			// proceed with creation first
-			if err := e.Next(); err != nil {
-				return err
-			}
-			authorID := e.Record.GetString("author")
-			if authorID == "" {
-				return nil
-			}
-			// count approved comments by this user (up to 2 to check if first)
-			if recs, err := e.App.FindRecordsByFilter("comments", "author = {:a} && approved = 1", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
-				if len(recs) == 1 {
-					ctx := context.Background()
-					if ach, err := s.store.Achievements.GetByKey(ctx, "first_comment"); err == nil && ach != nil {
-						has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
-						if !has {
-							_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
-							if u, err := s.store.Users.GetUserByID(ctx, authorID); err == nil {
-								_ = s.store.Users.UpdateUserPoints(ctx, authorID, u.Points+10)
-							}
-							_ = s.store.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
-								UserID:      authorID,
-								Points:      10,
-								Reason:      "first_comment",
-								Description: "Posted your first comment",
-								EarnedAt:    time.Now(),
-							})
-						}
-					}
-				}
-			}
-			return nil
-		})
-
-		// Award achievement for first guide
-		s.app.OnRecordCreateExecute("guides").BindFunc(func(e *core.RecordEvent) error {
-			// proceed with creation first
-			if err := e.Next(); err != nil {
-				return err
-			}
-			authorID := e.Record.GetString("author")
-			if authorID == "" {
-				return nil
-			}
-			// count guides by this user to check if first
-			if recs, err := e.App.FindRecordsByFilter("guides", "author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
-				if len(recs) == 1 {
-					ctx := context.Background()
-					if ach, err := s.store.Achievements.GetByKey(ctx, "first_guide"); err == nil && ach != nil {
-						has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
-						if !has {
-							_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
-						}
-					}
-				}
-			}
-			return nil
-		})
-
-		// Award achievement for first collection
-		s.app.OnRecordCreateExecute("collections").BindFunc(func(e *core.RecordEvent) error {
-			// proceed with creation first
-			if err := e.Next(); err != nil {
-				return err
-			}
-			authorID := e.Record.GetString("author")
-			if authorID == "" {
-				return nil
-			}
-			// count collections by this user to check if first
-			if recs, err := e.App.FindRecordsByFilter("collections", "author = {:a}", "-created", 2, 0, dbx.Params{"a": authorID}); err == nil {
-				if len(recs) == 1 {
-					ctx := context.Background()
-					if ach, err := s.store.Achievements.GetByKey(ctx, "first_collection"); err == nil && ach != nil {
-						has, _ := s.store.Achievements.HasAchievement(ctx, authorID, ach.ID)
-						if !has {
-							_ = s.store.Achievements.Award(ctx, authorID, ach.ID)
-						}
-					}
-				}
-			}
-			return nil
-		})
-
-		s.app.OnRecordUpdate("users").BindFunc(func(e *core.RecordEvent) error {
-			avatarUrl := gravatar.New(e.Record.GetString("email")).
-				Size(200).
-				Default(gravatar.MysteryMan).
-				Rating(gravatar.Pg).
-				AvatarURL()
-			e.Record.Set("avatar", avatarUrl)
-			err := e.Next()
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
-		s.app.OnRecordDeleteExecute("users").BindFunc(func(e *core.RecordEvent) error {
-			schemRes, err := e.App.FindRecordsByFilter("schematics", "deleted = '' && author = {:author}", "-created", -1, 0, dbx.Params{"author": e.Record.Id})
-			if err != nil {
-				return err
-			}
-			// Delete all schematics if a user is deleted
-			for _, r := range schemRes {
-				s.cacheService.DeleteSchematic(cache.SchematicKey(r.Id))
-				r.Set("deleted", time.Now())
-				err = e.App.Save(r)
-				if err != nil {
-					return err
-				}
-			}
-			e.Record.Set("deleted", time.Now())
-			err = e.App.Save(e.Record)
-			if err != nil {
-				return err
-			}
-			// Prevent actual deletion
-			go func() {
-				s.sitemapService.Generate(s.app)
-			}()
-			return nil
-		})
-
-		s.app.OnRecordCreateRequest("schematics").BindFunc(func(e *core.RecordRequestEvent) error {
-			if e.Auth == nil {
-				return fmt.Errorf("user is not authenticated")
-			}
-			s.app.Logger().Debug("setting author", "id", e.Auth.Id, "username", e.Auth.GetString("username"))
-			e.Record.Set("author", e.Auth.Id)
-			e.Record.Set("postdate", time.Now())
-			e.Record.Set("modified", time.Now())
-			// Set detected language from request
-			e.Record.Set("detected_language", detectLanguageFromRequest(e.Request))
-
-			if err := validateAndPopulateSchematic(s.app, e.Record, e); err != nil {
-				return err
-			}
-
-			// Capture the original text before any translation
-			origTitle := strings.TrimSpace(e.Record.GetString("title"))
-			origDescription := strings.TrimSpace(e.Record.GetString("description"))
-			origContent := strings.TrimSpace(e.Record.GetString("content"))
-			lang := e.Record.GetString("detected_language")
-			if lang == "" {
-				lang = detectLanguageFromRequest(e.Request)
-			}
-
-			// If upload language is not English, translate to English for the main record
-			// (used by Bleve search index and as source for other translations)
-			if strings.ToLower(lang) != "en" && s.aiDescriptionService != nil {
-				if origTitle != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(origTitle); err == nil && strings.TrimSpace(tx) != "" {
-						e.Record.Set("title", tx)
-					}
-				}
-				if ex := strings.TrimSpace(e.Record.GetString("excerpt")); ex != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(ex); err == nil && strings.TrimSpace(tx) != "" {
-						e.Record.Set("excerpt", tx)
-					}
-				}
-				if origDescription != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(origDescription); err == nil && strings.TrimSpace(tx) != "" {
-						e.Record.Set("description", tx)
-					}
-				}
-				if origContent != "" {
-					if tx, err := s.aiDescriptionService.TranslateToEnglish(origContent); err == nil && strings.TrimSpace(tx) != "" {
-						e.Record.Set("content", tx)
-					}
-				}
-			}
-
-			// Initially set as unmoderated (pending moderation)
-			e.Record.Set("moderated", false)
-
-			// Store original text temporarily so the AfterCreateSuccess hook can
-			// persist it as a translation record (keyed by slug, unique per schematic).
-			if lang != "en" && (origTitle != "" || origDescription != "" || origContent != "") {
-				pendingOriginals.Store(e.Record.GetString("name"), originalText{
-					Title:       origTitle,
-					Description: origDescription,
-					Content:     origContent,
-					Language:    lang,
-				})
-			}
-
-			return e.Next()
-		})
-
-		// Set detected_language on HTTP update requests as well
-		s.app.OnRecordUpdateRequest("schematics").BindFunc(func(e *core.RecordRequestEvent) error {
-			e.Record.Set("detected_language", detectLanguageFromRequest(e.Request))
-			return e.Next()
-		})
-
-		s.app.OnRecordCreateRequest("comments").BindFunc(func(e *core.RecordRequestEvent) error {
-			if e.Auth == nil {
-				return fmt.Errorf("user is not authenticated")
-			}
-			s.app.Logger().Debug("setting author", "id", e.Auth.Id, "username", e.Auth.GetString("username"))
-			e.Record.Set("author", e.Auth.Id)
-
-			if err := validateAndSaveComment(s.app, e.Record, e.Auth); err != nil {
-				return err
-			}
-			return e.Next()
-		})
-
-		s.app.OnRecordCreateRequest("schematic_ratings").BindFunc(func(e *core.RecordRequestEvent) error {
-			if e.Auth == nil {
-				return fmt.Errorf("user is not authenticated")
-			}
-			schematicRatingsCollection, err := s.app.FindCollectionByNameOrId("schematic_ratings")
-			if err != nil {
-				return err
-			}
-			results, _ := s.app.FindRecordsByFilter(
-				schematicRatingsCollection.Id,
-				"schematic = {:schematic} && user = {:user}",
-				"-created",
-				10,
-				0,
-				dbx.Params{"schematic": e.Record.GetString("schematic"), "user": e.Auth.Id})
-			if len(results) > 0 {
-				for _, r := range results {
-					// When a rating is changed we simply delete the old record
-					err := s.app.Delete(r)
-					if err != nil {
-						return err
-					}
-				}
-			}
-			e.Record.Set("user", e.Auth.Id)
-			e.Record.Set("rated_at", time.Now())
-			return e.Next()
-		})
-
-		s.app.OnRecordAfterCreateSuccess("contact_form_submissions").BindFunc(func(e *core.RecordEvent) error {
-			message := &mailer.Message{
-				From: mail.Address{
-					Address: s.app.Settings().Meta.SenderAddress,
-					Name:    s.app.Settings().Meta.SenderName,
-				},
-				To:      []mail.Address{{Address: s.app.Settings().Meta.SenderAddress}},
-				Subject: fmt.Sprintf("New CreateMod.com Contact Form Submission"),
-				HTML:    fmt.Sprintf("<p>Email: %s</p><p>Content: %s</p>", e.Record.GetString("email"), e.Record.GetString("content")),
-			}
-
-			return s.app.NewMailClient().Send(message)
-		})
-
-		s.app.OnRecordAfterCreateSuccess("schematics").BindFunc(func(e *core.RecordEvent) error {
-			message := &mailer.Message{
-				From: mail.Address{
-					Address: s.app.Settings().Meta.SenderAddress,
-					Name:    s.app.Settings().Meta.SenderName,
-				},
-				To:      []mail.Address{{Address: s.app.Settings().Meta.SenderAddress}},
-				Subject: "New CreateMod.com Schematic",
-				HTML:    fmt.Sprintf("<p>Title: <a href=\"https://createmod.com/schematics/%s\">%s</a></p><p>Description: %s</p>", e.Record.GetString("name"), e.Record.GetString("title"), e.Record.GetString("description")),
-			}
-
-			// Start asynchronous moderation check
-			go func() {
-				title := e.Record.GetString("title")
-				description := e.Record.GetString("description")
-				featuredImage := fmt.Sprintf("https://createmod.com/api/files/%s/%s", e.Record.BaseFilesPath(), e.Record.GetString("featured_image"))
-
-				s.app.Logger().Debug("Starting async moderation check for schematic",
-					"id", e.Record.Id,
-					"title", title,
-					"featured_image", featuredImage)
-
-				result, err := s.moderationService.CheckSchematic(title, description, featuredImage)
-				if err != nil {
-					s.app.Logger().Error("Failed to check schematic content", "error", err, "id", e.Record.Id)
-					// If moderation fails, we'll leave the schematic as unmoderated
-					return
-				}
-
-				// Get a fresh copy of the record to update
-				record, err := s.app.FindRecordById("schematics", e.Record.Id)
-				if err != nil {
-					s.app.Logger().Error("Failed to find schematic record for moderation update", "error", err, "id", e.Record.Id)
-					return
-				}
-
-				if result.Approved {
-					// Content is approved by moderation service, now check quality
-					s.app.Logger().Debug("Schematic content approved by moderation service, checking quality", "id", e.Record.Id)
-
-					// Perform quality check
-					qualityResult, err := s.moderationService.CheckSchematicQuality(title, description)
-					if err != nil {
-						s.app.Logger().Error("Failed to check schematic quality", "error", err, "id", e.Record.Id)
-						// If quality check fails, we'll approve the schematic as a fallback
-						record.Set("moderated", true)
-					} else if qualityResult.Approved {
-						// Schematic text passed quality check, now check image
-						s.app.Logger().Debug("Schematic passed quality check, checking image", "id", e.Record.Id)
-
-						// Perform image quality check
-						imageQualityResult, err := s.moderationService.CheckImageQuality(featuredImage)
-						if err != nil {
-							s.app.Logger().Error("Failed to check image quality", "error", err, "id", e.Record.Id)
-							// If image quality check fails, we'll approve the schematic as a fallback
-							record.Set("moderated", true)
-						} else if imageQualityResult.Approved {
-							// Image passed quality check
-							s.app.Logger().Debug("Image passed quality check", "id", e.Record.Id)
-							record.Set("moderated", true)
-						} else {
-							// Image failed quality check
-							s.app.Logger().Debug("Image failed quality check",
-								"id", e.Record.Id,
-								"reason", imageQualityResult.Reason)
-							record.Set("moderated", false)
-							record.Set("deleted_at", time.Now())
-							record.Set("moderation_reason", imageQualityResult.Reason)
-						}
-					} else {
-						// Schematic failed quality check
-						s.app.Logger().Debug("Schematic failed quality check",
-							"id", e.Record.Id,
-							"reason", qualityResult.Reason)
-						record.Set("moderated", false)
-						record.Set("deleted_at", time.Now())
-						record.Set("moderation_reason", qualityResult.Reason)
-					}
-				} else {
-					// Content is not approved by moderation service
-					s.app.Logger().Debug("Schematic content rejected by moderation service",
-						"id", e.Record.Id,
-						"reason", result.Reason)
-					record.Set("moderated", false)
-					record.Set("deleted_at", time.Now())
-					record.Set("moderation_reason", result.Reason)
-				}
-
-				// Save the updated record
-				if err := s.app.Save(record); err != nil {
-					s.app.Logger().Error("Failed to save schematic record after moderation",
-						"error", err,
-						"id", e.Record.Id)
-				}
-			}()
-
-			// Create translation records for the original language (if non-English)
-			// and save the English version as a translation record too.
-			go func() {
-				schematicID := e.Record.Id
-				slug := e.Record.GetString("name")
-				englishTitle := e.Record.GetString("title")
-				englishDescription := e.Record.GetString("description")
-				englishContent := e.Record.GetString("content")
-
-				// Save English translation record (from the main record)
-				if err := s.translationService.SaveOriginalLanguage(s.app, schematicID, "en", englishTitle, englishDescription, englishContent); err != nil {
-					s.app.Logger().Debug("Failed to save English translation", "error", err, "id", schematicID)
-				}
-
-				// If original was non-English, save the original text as a translation record
-				if v, ok := pendingOriginals.LoadAndDelete(slug); ok {
-					orig := v.(originalText)
-					if err := s.translationService.SaveOriginalLanguage(s.app, schematicID, orig.Language, orig.Title, orig.Description, orig.Content); err != nil {
-						s.app.Logger().Debug("Failed to save original language translation", "error", err, "id", schematicID, "lang", orig.Language)
-					}
-				}
-			}()
-
-			return s.app.NewMailClient().Send(message)
-		})
-
-		// ROUTES
-
-		irouter.Register(s.app, e.Router, s.searchService, s.cacheService, s.discordService, s.moderationService, s.translationService, s.modMetaService, s.store, s.sessionStore, s.discordOAuth, s.githubOAuth)
-
-		// END ROUTES
-
-		log.Println("CreateMod.com Running!")
-
-		// Call e.Next() first so PocketBase's internal handler builds the mux
-		// and assigns e.Server.Handler. Only then can we wrap it.
-		if err := e.Next(); err != nil {
-			return err
-		}
-
-		// Wrap the HTTP handler with the language prefix stripper.
-		// This runs at the transport level, BEFORE http.ServeMux route
-		// matching, so /de/schematics is seen as /schematics by the router.
-		e.Server.Handler = irouter.LangPrefixHandler(e.Server.Handler)
-
-		return nil
+	chiRouter := irouter.Register(irouter.RegisterParams{
+		SearchService:      s.searchService,
+		CacheService:       s.cacheService,
+		DiscordService:     s.discordService,
+		ModerationService:  s.moderationService,
+		TranslationService: s.translationService,
+		ModMetaService:     s.modMetaService,
+		AppStore:           s.store,
+		SessionStore:       s.sessionStore,
+		StorageService:     s.storageService,
+		DiscordOAuth:       s.discordOAuth,
+		GithubOAuth:        s.githubOAuth,
+		MailService:        mailService,
+		MaintenanceMode:    s.conf.MaintenanceMode,
 	})
 
-	log.Println("Initializing...")
-	if err := s.app.Start(); err != nil {
-		panic(err)
-	}
-}
+	// Wrap the chi router with the language prefix stripper
+	handler := irouter.LangPrefixHandler(chiRouter)
 
-func validNBT(e *core.RecordEvent) bool {
-	files := e.Record.GetUnsavedFiles("schematic_file")
-	for _, f := range files {
-		if f.Size == 0 || !strings.HasSuffix(f.OriginalName, ".nbt") {
-			return false
+	// Determine listen address
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		if port := os.Getenv("PORT"); port != "" {
+			addr = ":" + port
+		} else {
+			addr = ":8090"
 		}
 	}
-	// no files may be submitted on update
-	return true
-}
 
-func validateAndSaveComment(app *pocketbase.PocketBase, record *core.Record, authrecord *core.Record) error {
-	replyToUser := ""
-	if record.GetString("parent") != "" {
-		// Validate parent is a comment for the same schematic
-		commentsCollection, err := app.FindCollectionByNameOrId("comments")
-		if err != nil {
-			return nil
-		}
-		// Limit comments to 1000 for now, will add pagination later
-		results, err := app.FindRecordsByFilter(
-			commentsCollection.Id,
-			"schematic = {:id} && approved = 1",
-			"-created",
-			1000,
-			0,
-			dbx.Params{"id": record.GetString("schematic")})
+	httpServer := &http.Server{
+		Addr:         addr,
+		Handler:      handler,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
 
-		for _, result := range results {
-			if result.GetString("id") == record.GetString("parent") {
-				replyToUser = result.GetString("author")
+	// Graceful shutdown
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+
+		log.Println("Shutting down...")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if s.jobWorker != nil {
+			if err := s.jobWorker.Stop(shutdownCtx); err != nil {
+				slog.Error("failed to stop job worker", "error", err)
 			}
 		}
-		if replyToUser == "" {
-			return errors.New("Tried to reply to an invalid comment")
+
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("HTTP server shutdown error", "error", err)
 		}
+	}()
+
+	log.Printf("CreateMod.com Running on %s", addr)
+
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("HTTP server error: %v", err)
 	}
-
-	// Validate that schematic exists
-	schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-	if err != nil {
-		return err
-	}
-	results, err := app.FindRecordsByFilter(
-		schematicsCollection.Id,
-		"id = {:id}",
-		"-created",
-		1,
-		0,
-		dbx.Params{"id": record.GetString("schematic")})
-
-	if len(results) != 1 {
-		return errors.New("Tried to comment on an invalid schematic")
-	}
-
-	// Sanitize content
-	content := record.GetString("content")
-	if content == "" {
-		return fmt.Errorf("comment can not be empty")
-	}
-	// Sanitize description
-	sanitizer := htmlsanitizer.NewHTMLSanitizer()
-	description, err := sanitizer.SanitizeString(content)
-	if err != nil {
-		return err
-	}
-	record.Set("content", description)
-	record.Set("published", time.Now().Format("2006-01-02 15:04:05.999Z07:00"))
-	record.Set("type", "comment")
-	record.Set("approved", true)
-
-	message := &mailer.Message{}
-
-	if replyToUser == "" {
-
-		u, err := app.FindRecordById("users", results[0].GetString("author"))
-		if err != nil {
-			return err
-		}
-
-		message = &mailer.Message{
-			From: mail.Address{
-				Address: app.Settings().Meta.SenderAddress,
-				Name:    app.Settings().Meta.SenderName,
-			},
-			To:      []mail.Address{{Address: u.Email()}},
-			Subject: fmt.Sprintf("New comment on %s", results[0].GetString("title")),
-			HTML:    fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a></p>", results[0].GetString("name"), results[0].GetString("name")),
-		}
-	} else {
-		u, err := app.FindRecordById("users", replyToUser)
-		if err != nil {
-			return err
-		}
-
-		message = &mailer.Message{
-			From: mail.Address{
-				Address: app.Settings().Meta.SenderAddress,
-				Name:    app.Settings().Meta.SenderName,
-			},
-			To:      []mail.Address{{Address: u.Email()}},
-			Subject: fmt.Sprintf("New reply on %s", results[0].GetString("title")),
-			HTML:    fmt.Sprintf("<p>A new reply has been posted to your comment on CreateMod.com: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a><p>", results[0].GetString("name"), results[0].GetString("name")),
-		}
-	}
-
-	return app.NewMailClient().Send(message)
 }
 
-func validateAndPopulateSchematic(app *pocketbase.PocketBase, record *core.Record, e *core.RecordRequestEvent) error {
-	// Title and slug
-	schematicSlug := slug.Make(record.GetString("title"))
-	if schematicSlug == "" || !strings.ContainsFunc(schematicSlug, anyLetter) {
-		return fmt.Errorf("title is invalid, please use alphanumeric characters")
-	}
-	// Make slug unique
-	uSlug := uniqueSlug(app, schematicSlug)
-	app.Logger().Debug("slug failed", "slug", schematicSlug, "unique", uSlug)
-	if uSlug == "" {
-		return fmt.Errorf("could not generate a unique slug")
-	}
-	record.Set("name", uSlug)
-
-	// Validate description
-	description := record.GetString("description")
-	if description == "" {
-		return fmt.Errorf("description can not be empty")
-	}
-	// Sanitize description
-	sanitizer := htmlsanitizer.NewHTMLSanitizer()
-	description, err := sanitizer.SanitizeString(description)
-	if err != nil {
-		return err
-	}
-	record.Set("description", description)
-
-	// Check valid video url
-	vidUrl := record.GetString("video")
-	if vidUrl != "" {
-		vidUrl = ToYoutubeEmbedUrl(vidUrl)
-		record.Set("video", vidUrl)
-	}
-
-	files := make(map[string][]*filesystem.File, 0)
-
-	// Check valid schematic file
-	// TODO this can be improved by parsing the file
-	if sf, err := e.FindUploadedFiles("schematic_file"); err == nil {
-		if len(sf) == 0 || sf[0].Size <= 1 {
-			return fmt.Errorf("schematic file invalid")
-		}
-		files["schematic_file"] = sf
-	} else {
-		return fmt.Errorf("schematic file missing or invalid")
-	}
-
-	// Check valid featured image
-	if fi, err := e.FindUploadedFiles("featured_image"); err == nil {
-		if len(fi) == 0 || fi[0].Size <= 1 {
-			return fmt.Errorf("featured image invalid")
-		}
-		files["featured_image"] = fi
-	} else {
-		return fmt.Errorf("featured image missing or invalid")
-	}
-
-	if g, err := e.FindUploadedFiles("gallery"); err == nil {
-		files["gallery"] = g
-	}
-
-	record, err = convertToJpg(app, record)
-
-	if err != nil {
-		return err
-	}
-
-	// return nil if all is ok
-	return nil
-}
-
-func convertToJpg(app *pocketbase.PocketBase, record *core.Record) (*core.Record, error) {
-	var err error
-	unsavedFiles := record.GetUnsavedFiles("featured_image")
-	record, err = convertInLoop("featured_image", unsavedFiles, record)
-	if err != nil {
-		return record, err
-	}
-	unsavedFiles = record.GetUnsavedFiles("gallery")
-	record, err = convertInLoop("gallery", unsavedFiles, record)
-	if err != nil {
-		return record, err
-	}
-
-	return record, nil
-}
-
-func convertInLoop(key string, unsavedFiles []*filesystem.File, record *core.Record) (*core.Record, error) {
-	var convertedFiles []*filesystem.File
-	for _, f := range unsavedFiles {
-		rsc, err := f.Reader.Open()
-		if err != nil {
-			return record, err
-		}
-		decode, err := imgconv.Decode(rsc)
-		if err != nil {
-			return record, err
-		}
-
-		var jpgBuffer bytes.Buffer
-		err = imgconv.Write(bufio.NewWriter(&jpgBuffer), decode, &imgconv.FormatOption{
-			Format: imgconv.JPEG,
-			EncodeOption: []imgconv.EncodeOption{
-				imgconv.Quality(80),
-			},
-		})
-
-		filename := strings.TrimSuffix(f.Name, filepath.Ext(f.Name)) + ".jpg"
-		if err != nil {
-			return record, err
-		}
-
-		newFile, err := filesystem.NewFileFromBytes(jpgBuffer.Bytes(), filename)
-		if err != nil {
-			return record, err
-		}
-
-		convertedFiles = append(convertedFiles, newFile)
-
-	}
-	record.Set(key, convertedFiles)
-	return record, nil
-}
-
+// ToYoutubeEmbedUrl extracts a YouTube video ID from a URL and returns
+// the embed URL format. Returns empty string if no valid ID is found.
 func ToYoutubeEmbedUrl(url string) string {
 	r, err := regexp.Compile("(?:youtube\\.com\\/(?:[^\\/]+\\/.+\\/|(?:v|e(?:mbed)?)\\/|.*[?&]v=)|youtu\\.be\\/)([^\"&?\\/\\s]{11})")
 	if err != nil {
@@ -1128,73 +294,48 @@ func ToYoutubeEmbedUrl(url string) string {
 	return ""
 }
 
-func uniqueSlug(app *pocketbase.PocketBase, s string) string {
-	records, err := app.FindRecordsByFilter("schematics", "name={:slug}", "-created", 1, 0, dbx.Params{"slug": s})
+func uniqueSlug(appStore *store.Store, s string) string {
+	schem, err := appStore.Schematics.GetByName(context.Background(), s)
 	if err != nil {
-		return ""
+		// GetByName returns error when not found — slug is available
+		return s
 	}
-	if len(records) > 0 {
-		return uniqueSlug(app, fmt.Sprintf("%s%s", s, randSeq(4)))
+	if schem != nil {
+		return uniqueSlug(appStore, fmt.Sprintf("%s%s", s, randSeq(4)))
 	}
 	return s
 }
 
-// computeSchematicDiff computes a list of field names that changed between
-// prevRec (before update) and newRec (after update) for a schematic record.
-func computeSchematicDiff(prevRec, newRec *core.Record) []string {
-	changed := make([]string, 0, 8)
-	cmpStr := func(a, b string, name string) {
-		if a != b {
-			changed = append(changed, name)
-		}
-	}
-	cmpBool := func(a, b bool, name string) {
-		if a != b {
-			changed = append(changed, name)
-		}
-	}
-	eqSlice := func(a, b []string) bool {
-		if len(a) != len(b) {
-			return false
-		}
-		m := make(map[string]int, len(a))
-		for _, v := range a {
-			m[v]++
-		}
-		for _, v := range b {
-			if m[v] == 0 {
-				return false
-			}
-			m[v]--
-		}
-		return true
-	}
-	if !eqSlice(prevRec.GetStringSlice("gallery"), newRec.GetStringSlice("gallery")) {
-		changed = append(changed, "gallery")
-	}
-	if !eqSlice(prevRec.GetStringSlice("categories"), newRec.GetStringSlice("categories")) {
-		changed = append(changed, "categories")
-	}
-	if !eqSlice(prevRec.GetStringSlice("tags"), newRec.GetStringSlice("tags")) {
-		changed = append(changed, "tags")
-	}
-	cmpStr(prevRec.GetString("title"), newRec.GetString("title"), "title")
-	cmpStr(prevRec.GetString("content"), newRec.GetString("content"), "content")
-	cmpStr(prevRec.GetString("excerpt"), newRec.GetString("excerpt"), "excerpt")
-	cmpStr(prevRec.GetString("featured_image"), newRec.GetString("featured_image"), "featured_image")
-	cmpStr(prevRec.GetString("video"), newRec.GetString("video"), "video")
-	cmpBool(prevRec.GetBool("has_dependencies"), newRec.GetBool("has_dependencies"), "has_dependencies")
-	cmpStr(prevRec.GetString("dependencies"), newRec.GetString("dependencies"), "dependencies")
-	cmpStr(prevRec.GetString("createmod_version"), newRec.GetString("createmod_version"), "createmod_version")
-	cmpStr(prevRec.GetString("minecraft_version"), newRec.GetString("minecraft_version"), "minecraft_version")
-	cmpBool(prevRec.GetBool("paid"), newRec.GetBool("paid"), "paid")
-	cmpStr(prevRec.GetString("external_url"), newRec.GetString("external_url"), "external_url")
-	cmpStr(prevRec.GetString("schematic_file"), newRec.GetString("schematic_file"), "schematic_file")
-	return changed
-}
-
 func anyLetter(r rune) bool {
 	return unicode.IsLetter(r)
+}
+
+// PostMigrationRebuild rebuilds the search index, sitemaps, and page caches
+// after a data migration has populated the database. Call this when
+// maintenance mode is disabled following a SQLite-to-PostgreSQL migration.
+func (s *Server) PostMigrationRebuild() {
+	slog.Info("post-migration: rebuilding search index, sitemaps, and caches")
+	s.rebuildSearchIndexFromStore()
+	s.sitemapService.Generate(s.store)
+	pages.WarmIndexCache(s.cacheService, s.store)
+	pages.WarmVideosCache(s.cacheService, s.store)
+	slog.Info("post-migration: rebuild complete")
+}
+
+// rebuildSearchIndexFromStore rebuilds the search index using the PostgreSQL store.
+func (s *Server) rebuildSearchIndexFromStore() {
+	ctx := context.Background()
+	storeSchematics, err := s.store.Schematics.ListAllForIndex(ctx)
+	if err != nil {
+		slog.Warn("search rebuild: failed to list schematics", "error", err)
+		return
+	}
+	mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
+	slog.Debug("search service mapped schematics", "mapped schematic count", len(mapped))
+	s.searchService.BuildIndex(mapped)
+	if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
+		s.searchService.SetTrendingScores(scores)
+	}
 }
 
 func init() {

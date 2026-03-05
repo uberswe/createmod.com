@@ -1,9 +1,10 @@
 {{define "schematic_card.html"}}
 <a href="/schematics/{{ .Name }}" class="d-block text-decoration-none">
   <div class="card card-sm card-hover-lift overflow-hidden">
-    <div class="card-body-borderless ratio ratio-16x9">
+    <div class="card-body-borderless ratio ratio-16x9" style="position:relative;">
       <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360"
            alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover">
+      {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:8px;left:8px;z-index:1;">Paid</span>{{ end }}
     </div>
     <div class="card-body p-2">
       <div class="d-flex align-items-start justify-content-between">

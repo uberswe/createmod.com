@@ -24,24 +24,66 @@
                                             <a href="/settings/statistics"
                                                class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Statistics" }}</a>
                                             <a href="/settings/blacklist"
-                                               class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "Blacklist Request" }}</a>
+                                               class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "Blacklist Schematics" }}</a>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-12 col-md-9 d-flex flex-column">
                                     <div class="card-body">
-                                        <h2 class="mb-4">{{ T .Language "Request schematic blacklisting" }}</h2>
-                                        <p class="text-secondary">{{ T .Language "If someone has uploaded your schematic without permission, you can request a blacklist. Please include links, names, and any proof of ownership." }}</p>
-                                        <form method="post" action="/reports">
-                                            <input type="hidden" name="target_type" value="blacklist">
-                                            <input type="hidden" name="target_id" value="{{ .UserID }}">
-                                            <input type="hidden" name="return_to" value="/settings/blacklist">
-                                            <div class="mb-3">
-                                                <label class="form-label" for="reason">{{ T .Language "Details" }}</label>
-                                                <textarea id="reason" name="reason" class="form-control" rows="6" placeholder="{{ T .Language "Describe the schematics to blacklist and why" }}" required></textarea>
+                                        <h2 class="mb-4">{{ T .Language "Blacklist Schematics" }}</h2>
+
+                                        <div class="alert alert-info">
+                                            <h4 class="alert-title">{{ T .Language "How blacklisting works" }}</h4>
+                                            <ul class="mt-2 mb-0">
+                                                <li>{{ T .Language "Upload your .nbt schematic files to prevent them from being shared on CreateMod.com." }}</li>
+                                                <li>{{ T .Language "Files are validated and a unique fingerprint (hash) is stored. The actual schematic files are NOT stored and cannot be downloaded by anyone." }}</li>
+                                                <li>{{ T .Language "When someone tries to upload a matching schematic, they will be blocked." }}</li>
+                                                <li>{{ T .Language "Only exact matches are detected. Partial match support may be added in the future." }}</li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="form-label" for="blacklist-files">{{ T .Language "Upload .nbt files to blacklist" }}</label>
+                                            <input type="file" id="blacklist-files" class="form-control" accept=".nbt" multiple>
+                                            <div class="mt-2">
+                                                <button id="blacklist-upload-btn" class="btn btn-danger" disabled>{{ T .Language "Upload to Blacklist" }}</button>
                                             </div>
-                                            <button type="submit" class="btn btn-danger">{{ T .Language "Submit request" }}</button>
-                                        </form>
+                                        </div>
+
+                                        <div id="blacklist-results" class="mb-4" style="display:none;">
+                                            <h4>{{ T .Language "Results" }}</h4>
+                                            <div id="blacklist-results-list"></div>
+                                        </div>
+
+                                        {{ if .Hashes }}
+                                        <h3 class="mt-4 mb-3">{{ T .Language "Blacklisted Hashes" }}</h3>
+                                        <div class="table-responsive">
+                                            <table class="table table-vcenter">
+                                                <thead>
+                                                    <tr>
+                                                        <th>{{ T .Language "Hash" }}</th>
+                                                        <th>{{ T .Language "Date Added" }}</th>
+                                                        <th class="w-1"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="blacklist-table-body">
+                                                    {{ range .Hashes }}
+                                                    <tr id="hash-row-{{ .ID }}">
+                                                        <td><code title="{{ .Hash }}">{{ printf "%.16s" .Hash }}...</code></td>
+                                                        <td>{{ HumanDate .Created }}</td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-outline-danger blacklist-delete-btn" data-id="{{ .ID }}">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-trash" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {{ end }}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {{ else }}
+                                        <p class="text-secondary mt-4" id="no-hashes-msg">{{ T .Language "No blacklisted hashes yet. Upload .nbt files above to get started." }}</p>
+                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -53,4 +95,103 @@
         {{template "footer.html" .}}
     </div>
 </div>
+<script>
+(function() {
+    var fileInput = document.getElementById('blacklist-files');
+    var uploadBtn = document.getElementById('blacklist-upload-btn');
+    var resultsDiv = document.getElementById('blacklist-results');
+    var resultsList = document.getElementById('blacklist-results-list');
+
+    function createAlert(className, message) {
+        var div = document.createElement('div');
+        div.className = 'alert ' + className;
+        div.textContent = message;
+        return div;
+    }
+
+    fileInput.addEventListener('change', function() {
+        uploadBtn.disabled = fileInput.files.length === 0;
+    });
+
+    uploadBtn.addEventListener('click', function() {
+        var files = fileInput.files;
+        if (!files.length) return;
+
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+
+        var formData = new FormData();
+        for (var i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+
+        fetch('/settings/blacklist/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            resultsDiv.style.display = '';
+            while (resultsList.firstChild) resultsList.removeChild(resultsList.firstChild);
+
+            if (data.results) {
+                data.results.forEach(function(r) {
+                    var msg = r.filename + ': ';
+                    var alertClass;
+                    if (r.status === 'ok') {
+                        alertClass = 'alert-success';
+                        msg += 'Blacklisted successfully';
+                        if (r.hash) msg += ' (' + r.hash.substring(0, 16) + '...)';
+                    } else if (r.status === 'exists') {
+                        alertClass = 'alert-warning';
+                        msg += r.error || 'Already exists';
+                    } else {
+                        alertClass = 'alert-danger';
+                        msg += r.error || 'Error';
+                    }
+                    resultsList.appendChild(createAlert(alertClass, msg));
+                });
+
+                var anyOk = data.results.some(function(r) { return r.status === 'ok'; });
+                if (anyOk) {
+                    setTimeout(function() { window.location.reload(); }, 1500);
+                }
+            }
+        })
+        .catch(function(err) {
+            resultsDiv.style.display = '';
+            while (resultsList.firstChild) resultsList.removeChild(resultsList.firstChild);
+            resultsList.appendChild(createAlert('alert-danger', 'Upload failed: ' + err.message));
+        })
+        .finally(function() {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload to Blacklist';
+            fileInput.value = '';
+        });
+    });
+
+    document.querySelectorAll('.blacklist-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-id');
+            if (!confirm('Remove this blacklisted hash?')) return;
+
+            fetch('/settings/blacklist/' + id, { method: 'DELETE' })
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (data.status === 'ok') {
+                    var row = document.getElementById('hash-row-' + id);
+                    if (row) row.remove();
+                    var tbody = document.getElementById('blacklist-table-body');
+                    if (tbody && tbody.children.length === 0) {
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(function(err) {
+                alert('Failed to delete: ' + err.message);
+            });
+        });
+    });
+})();
+</script>
 {{template "foot.html" .}}

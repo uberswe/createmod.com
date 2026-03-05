@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
@@ -13,9 +14,7 @@ import (
 	"time"
 
 	strip "github.com/grokify/html-strip-tags-go"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 var collectionsTemplates = append([]string{
@@ -58,8 +57,8 @@ func collectionTrendingScore(created time.Time, views float64) float64 {
 }
 
 // CollectionsHandler renders collections with two tabs: public (trending) and mine (user's own).
-func CollectionsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		// Pagination params
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -82,20 +81,15 @@ func CollectionsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, 
 			tab = "public"
 		}
 
+		ctx := context.Background()
 		items := make([]CollectionItem, 0, 64)
-
-		coll, collErr := app.FindCollectionByNameOrId("collections")
-		if collErr != nil || coll == nil {
-			// No PB schema available; render empty list
-			return renderCollectionsPage(e, app, registry, cacheService, appStore, items, tab, q, page, pageSize)
-		}
 
 		if tab == "mine" {
 			// Show all of the authenticated user's collections (published and private)
-			recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && author = {:author}", "-created", 500, 0, map[string]any{"author": authenticatedUserID(e)})
+			colls, err := appStore.Collections.ListByAuthor(ctx, authenticatedUserID(e))
 			if err == nil {
-				for _, r := range recs {
-					it := recordToCollectionItem(r)
+				for _, c := range colls {
+					it := storeCollectionToItem(c)
 					it.IsOwner = true
 					if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
 						continue
@@ -120,16 +114,16 @@ func CollectionsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, 
 			}
 
 			if len(items) == 0 {
-				recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && published = true", "-created", 500, 0)
+				colls, err := appStore.Collections.ListPublished(ctx, 500, 0)
 				if err == nil {
 					type scored struct {
 						item  CollectionItem
 						score float64
 					}
-					scoredItems := make([]scored, 0, len(recs))
-					for _, r := range recs {
-						it := recordToCollectionItem(r)
-						s := collectionTrendingScore(r.GetDateTime("created").Time(), float64(it.Views))
+					scoredItems := make([]scored, 0, len(colls))
+					for _, c := range colls {
+						it := storeCollectionToItem(c)
+						s := collectionTrendingScore(c.Created, float64(it.Views))
 						scoredItems = append(scoredItems, scored{item: it, score: s})
 					}
 					sort.SliceStable(scoredItems, func(i, j int) bool {
@@ -153,31 +147,30 @@ func CollectionsHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, 
 			}
 		}
 
-		return renderCollectionsPage(e, app, registry, cacheService, appStore, items, tab, q, page, pageSize)
+		return renderCollectionsPage(e, registry, cacheService, appStore, items, tab, q, page, pageSize)
 	}
 }
 
-func recordToCollectionItem(r *core.Record) CollectionItem {
-	title := r.GetString("title")
+func storeCollectionToItem(c store.Collection) CollectionItem {
+	title := c.Title
 	if title == "" {
-		title = r.GetString("name")
+		title = c.Name
 	}
-	slug := r.GetString("slug")
-	link := "/collections/" + r.Id
-	if slug != "" {
-		link = "/collections/" + slug
+	link := "/collections/" + c.ID
+	if c.Slug != "" {
+		link = "/collections/" + c.Slug
 	}
 	return CollectionItem{
 		Title:       title,
-		Description: strip.StripTags(r.GetString("description")),
+		Description: strip.StripTags(c.Description),
 		URL:         link,
-		Views:       r.GetInt("views"),
-		Featured:    r.GetBool("featured"),
-		Published:   r.GetBool("published"),
+		Views:       c.Views,
+		Featured:    c.Featured,
+		Published:   c.Published,
 	}
 }
 
-func renderCollectionsPage(e *core.RequestEvent, app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, appStore *store.Store, items []CollectionItem, tab, q string, page, pageSize int) error {
+func renderCollectionsPage(e *server.RequestEvent, registry *server.Registry, cacheService *cache.Service, appStore *store.Store, items []CollectionItem, tab, q string, page, pageSize int) error {
 	// Pagination on items
 	start := (page - 1) * pageSize
 	if start > len(items) {
@@ -215,11 +208,11 @@ func renderCollectionsPage(e *core.RequestEvent, app *pocketbase.PocketBase, reg
 		d.NextURL = buildURL(page + 1)
 	}
 
-	d.Populate(e)
+	d.PopulateWithStore(e, appStore)
 	d.Title = i18n.T(d.Language, "Collections")
 	d.Description = i18n.T(d.Language, "Community-created collections of schematics")
 	d.Slug = "/collections"
-	d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 	html, err := registry.LoadFiles(collectionsTemplates...).Render(d)
 	if err != nil {

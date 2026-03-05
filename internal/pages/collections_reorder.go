@@ -1,22 +1,19 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/store"
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // CollectionsReorderHandler handles POST /collections/{slug}/reorder
-// Minimal implementation to support drag-and-drop reorder in the future.
 // Accepts a comma-separated list of schematic IDs via form field "schematics" (or alias "ids").
-// Author-only. Best-effort persists order to a multi-rel field on the collection
-// and, if a join table exists with a numeric "position" field, updates those as well.
-func CollectionsReorderHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// Author-only. Clears existing join table entries and re-creates them with position ordering.
+func CollectionsReorderHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -56,62 +53,25 @@ func CollectionsReorderHandler(app *pocketbase.PocketBase, appStore *store.Store
 			return e.String(http.StatusBadRequest, "no valid ids provided")
 		}
 
+		ctx := context.Background()
+
 		// Resolve collection by slug first, then by id
-		coll, err := app.FindCollectionByNameOrId("collections")
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
 		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "collections collection not available")
+			coll, err = appStore.Collections.GetByID(ctx, slug)
 		}
-		var rec *core.Record
-		if r, err := app.FindRecordsByFilter(coll.Id, "slug = {:slug}", "-created", 1, 0, dbx.Params{"slug": slug}); err == nil && len(r) > 0 {
-			rec = r[0]
-		}
-		if rec == nil {
-			if r, err := app.FindRecordById(coll.Id, slug); err == nil {
-				rec = r
-			}
-		}
-		if rec == nil {
+		if coll == nil {
 			return e.String(http.StatusNotFound, "collection not found")
 		}
 		// Author-only
-		if rec.GetString("author") != authenticatedUserID(e) {
+		if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
 			return e.String(http.StatusForbidden, "not allowed")
 		}
 
-		// Best-effort: set the multi-rel field "schematics" to the ordered list
-		// (PocketBase will enforce relation validity; unknown ids will error out, so we attempt save and fallback.)
-		{
-			original := rec.GetStringSlice("schematics")
-			rec.Set("schematics", ordered)
-			if err := app.Save(rec); err != nil {
-				// restore on failure (field may not exist in schema)
-				rec.Set("schematics", original)
-			}
-		}
-
-		// Best-effort: update join table positions if available
-		for _, jn := range []string{"collections_schematics", "collection_schematics"} {
-			if jcoll, jerr := app.FindCollectionByNameOrId(jn); jerr == nil && jcoll != nil {
-				// Load existing links for this collection
-				links, _ := app.FindRecordsByFilter(jcoll.Id, "collection = {:c}", "-created", 5000, 0, dbx.Params{"c": rec.Id})
-				if len(links) == 0 {
-					continue
-				}
-				// Map for quick lookup
-				byS := make(map[string]*core.Record, len(links))
-				for _, l := range links {
-					byS[l.GetString("schematic")] = l
-				}
-				posField := "position"
-				// Try to set position if the field is present; PocketBase Save will fail otherwise.
-				for i, id := range ordered {
-					if link, ok := byS[id]; ok {
-						// 1-based position for human-friendly ordering
-						link.Set(posField, i+1)
-						_ = app.Save(link) // ignore errors; schema may not have the field
-					}
-				}
-			}
+		// Clear existing associations and re-add with position
+		_ = appStore.Collections.ClearSchematics(ctx, coll.ID)
+		for i, id := range ordered {
+			_ = appStore.Collections.AddSchematic(ctx, coll.ID, id, i+1)
 		}
 
 		dest := "/collections/" + slug + "/edit"

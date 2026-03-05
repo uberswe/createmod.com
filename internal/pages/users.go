@@ -1,13 +1,12 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 	"strconv"
 )
@@ -28,8 +27,8 @@ type UsersData struct {
 }
 
 // UsersHandler renders a paginated list of users.
-func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UsersHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		// pagination
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -41,25 +40,20 @@ func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cache
 		limit := pageSize + 1
 		offset := (page - 1) * pageSize
 
-		coll, err := app.FindCollectionByNameOrId("users")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "users collection not available")
-		}
-		recs, err := app.FindRecordsByFilter(coll.Id, "deleted = ''", "-created", limit, offset)
+		storeUsers, err := appStore.Users.ListUsers(context.Background(), limit, offset)
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to query users")
 		}
-		hasNext := len(recs) > pageSize
+		hasNext := len(storeUsers) > pageSize
 		if hasNext {
-			recs = recs[:pageSize]
+			storeUsers = storeUsers[:pageSize]
 		}
 		// map users (minimal fields)
-		users := make([]models.User, 0, len(recs))
-		for _, r := range recs {
+		users := make([]models.User, 0, len(storeUsers))
+		for _, u := range storeUsers {
 			users = append(users, models.User{
-				ID:       r.Id,
-				Username: r.GetString("username"),
-				// avatar is computed via gravatar elsewhere; we can use stored avatar field if present
+				ID:       u.ID,
+				Username: u.Username,
 			})
 		}
 
@@ -80,7 +74,7 @@ func UsersHandler(app *pocketbase.PocketBase, registry *template.Registry, cache
 		d.Title = i18n.T(d.Language, "Users")
 		d.Description = i18n.T(d.Language, "Browse users on CreateMod.com")
 		d.Slug = "/users"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(usersTemplates...).Render(d)
 		if err != nil {

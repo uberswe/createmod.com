@@ -2,8 +2,10 @@ package pages
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,15 +14,14 @@ import (
 
 	"createmod/internal/cache"
 	"createmod/internal/store"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+
+	"createmod/internal/server"
 )
 
 // DownloadHandler redirects to the schematic file and increments a download counter.
 // Requires a valid one-time token (?t=) issued by the interstitial page.
-func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func DownloadHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		if name == "" {
 			return e.String(http.StatusBadRequest, "missing name")
@@ -37,44 +38,30 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, ap
 		// consume token
 		cacheService.Delete("dl:" + token)
 
-		coll, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "schematics collection not available")
-		}
-		recs, err := app.FindRecordsByFilter(coll.Id, "name = {:name} && deleted = ''", "-created", 1, 0, dbx.Params{"name": name})
-		if err != nil || len(recs) == 0 {
+		s, err := appStore.Schematics.GetByName(context.Background(), name)
+		if err != nil || s == nil || (s.Deleted != nil && !s.Deleted.IsZero()) {
 			return e.String(http.StatusNotFound, "schematic not found")
 		}
-		rec := recs[0]
 
 		// Block site download for paid schematics
-		if rec.GetBool("paid") {
+		if s.Paid {
 			return e.String(http.StatusForbidden, "This schematic is paid; please use the external link on the schematic page.")
 		}
 
 		// Block download for blacklisted schematics
-		if rec.GetBool("blacklisted") {
+		if s.Blacklisted {
 			return e.String(http.StatusForbidden, "This schematic has been blacklisted and cannot be downloaded.")
 		}
 
 		// Increment download counter (best-effort, IP-deduped)
-		countSchematicDownload(app, rec, e.RealIP(), cacheService)
+		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), cacheService)
 
 		// Determine if there are multiple files associated to this schematic.
-		primary := strings.TrimSpace(rec.GetString("schematic_file"))
-		base := rec.BaseFilesPath() // e.g. "schematics/<id>"
+		primary := strings.TrimSpace(s.SchematicFile)
+		base := "schematics/" + s.ID
 
-		// Try to load additional files from schematic_files collection
-		multi := make([]string, 0, 8)
-		if sfColl, err := app.FindCollectionByNameOrId("schematic_files"); err == nil && sfColl != nil {
-			recs2, _ := app.FindRecordsByFilter(sfColl.Id, "schematic = {:s}", "-created", 200, 0, dbx.Params{"s": rec.Id})
-			for _, r2 := range recs2 {
-				fname := strings.TrimSpace(r2.GetString("file"))
-				if fname != "" {
-					multi = append(multi, fname)
-				}
-			}
-		}
+		// TODO: schematic_files collection not yet in store; multi-file zip disabled for now
+		multi := make([]string, 0)
 
 		// If we have additional files and at least one existing on disk (including primary), stream a zip
 		// Otherwise, fallback to single file redirect as before.
@@ -89,16 +76,15 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, ap
 			if primary != "" {
 				full := filepath.Join("pb_data", "storage", filepath.FromSlash(base), primary)
 				if st, err := os.Stat(full); err == nil && !st.IsDir() {
-					name := primary
-					// prefer pretty name if schema has Title/Name
-					if n := strings.TrimSpace(rec.GetString("name")); n != "" {
+					fname := primary
+					if n := strings.TrimSpace(s.Name); n != "" {
 						if ext := filepath.Ext(primary); ext != "" {
-							name = n + ext
+							fname = n + ext
 						} else {
-							name = n
+							fname = n
 						}
 					}
-					files = append(files, fileItem{Path: full, Name: name})
+					files = append(files, fileItem{Path: full, Name: fname})
 					seen[primary] = struct{}{}
 				}
 			}
@@ -113,9 +99,9 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, ap
 				}
 			}
 			if len(files) > 0 {
-				zipName := rec.GetString("name")
+				zipName := s.Name
 				if zipName == "" {
-					zipName = rec.GetString("title")
+					zipName = s.Title
 				}
 				if zipName == "" {
 					zipName = "schematic"
@@ -128,18 +114,18 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, ap
 				for _, fi := range files {
 					fw, err := zw.Create(fi.Name)
 					if err != nil {
-						app.Logger().Error("zip: create entry failed", "file", fi.Name, "error", err)
+						slog.Error("zip: create entry failed", "file", fi.Name, "error", err)
 						continue
 					}
 					f, err := os.Open(fi.Path)
 					if err != nil {
-						app.Logger().Error("zip: open file failed", "path", fi.Path, "error", err)
+						slog.Error("zip: open file failed", "path", fi.Path, "error", err)
 						continue
 					}
 					_, err = io.Copy(fw, f)
 					_ = f.Close()
 					if err != nil {
-						app.Logger().Error("zip: copy failed", "file", fi.Name, "error", err)
+						slog.Error("zip: copy failed", "file", fi.Name, "error", err)
 						continue
 					}
 				}
@@ -151,19 +137,17 @@ func DownloadHandler(app *pocketbase.PocketBase, cacheService *cache.Service, ap
 		if primary == "" {
 			return e.String(http.StatusNotFound, "schematic file not found")
 		}
-		fileURL := fmt.Sprintf("/api/files/%s/%s", rec.BaseFilesPath(), primary)
+		fileURL := fmt.Sprintf("/api/files/%s/%s", base, primary)
 		return e.Redirect(http.StatusFound, fileURL)
 	}
 }
 
-// countSchematicDownload increments counters in the "schematic_downloads" collection
-// across several periods (total/year/month/week/day), mirroring view counters.
-// If the collection is not present, the function logs and returns silently.
+// countSchematicDownloadStore increments download counters via the PostgreSQL store.
 // clientIP and cacheService are used for IP-based rate limiting.
-func countSchematicDownload(app *pocketbase.PocketBase, schematic *core.Record, clientIP string, cacheService *cache.Service) {
+func countSchematicDownloadStore(appStore *store.Store, schematicID string, clientIP string, cacheService *cache.Service) {
 	// IP-based rate limiting: skip if same IP already downloaded this schematic recently
 	if clientIP != "" && cacheService != nil {
-		ipKey := fmt.Sprintf("dlip:%s:%s", clientIP, schematic.Id)
+		ipKey := fmt.Sprintf("dlip:%s:%s", clientIP, schematicID)
 		if _, already := cacheService.Get(ipKey); already {
 			return
 		}
@@ -171,66 +155,11 @@ func countSchematicDownload(app *pocketbase.PocketBase, schematic *core.Record, 
 		cacheService.SetWithTTL(ipKey, true, 1*time.Hour)
 	}
 
-	coll, err := app.FindCollectionByNameOrId("schematic_downloads")
-	if err != nil {
-		app.Logger().Debug("downloads collection missing", "error", err)
+	if err := appStore.ViewRatings.RecordDownload(context.Background(), schematicID, nil); err != nil {
 		return
 	}
-	if coll == nil {
-		return
-	}
-
-	now := time.Now()
-	year, week := now.ISOWeek()
-	month := now.Month()
-	day := now.Day()
-
-	types := map[int]string{
-		4: "total",
-		3: fmt.Sprintf("%d", year),
-		2: fmt.Sprintf("%d%02d", year, month),
-		1: fmt.Sprintf("%d%02d", year, week),
-		0: fmt.Sprintf("%d%02d%02d", year, month, day),
-	}
-
-	for t, p := range types {
-		recs, err := app.FindRecordsByFilter(
-			coll.Id,
-			"schematic = {:schematic} && type = {:type} && period = {:period}",
-			"-created",
-			1,
-			0,
-			dbx.Params{
-				"schematic": schematic.Id,
-				"type":      t,
-				"period":    p,
-			},
-		)
-		if err != nil || len(recs) == 0 {
-			if err != nil {
-				app.Logger().Debug("downloads query failed", "error", err)
-			}
-			rec := core.NewRecord(coll)
-			rec.Set("schematic", schematic.Id)
-			rec.Set("count", 1)
-			rec.Set("type", t)
-			rec.Set("period", p)
-			if err := app.Save(rec); err != nil {
-				app.Logger().Error("failed to insert download counter", "error", err)
-			}
-			if t == 4 {
-				cacheService.SetInt(cache.DownloadKey(schematic.Id), 1)
-			}
-			continue
-		}
-		cur := recs[0]
-		newCount := cur.GetInt("count") + 1
-		cur.Set("count", newCount)
-		if err := app.Save(cur); err != nil {
-			app.Logger().Error("failed to update download counter", "error", err)
-		}
-		if t == 4 {
-			cacheService.SetInt(cache.DownloadKey(schematic.Id), newCount)
-		}
+	// Update cache with new total
+	if total, err := appStore.ViewRatings.GetDownloadCount(context.Background(), schematicID); err == nil {
+		cacheService.SetInt(cache.DownloadKey(schematicID), total)
 	}
 }

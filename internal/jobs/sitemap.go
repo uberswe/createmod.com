@@ -20,12 +20,12 @@ type SitemapWorker struct {
 
 func (w *SitemapWorker) Work(ctx context.Context, job *river.Job[SitemapArgs]) error {
 	slog.Info("generating sitemaps")
-	if w.deps.App == nil || w.deps.Sitemap == nil {
+	if w.deps.Store == nil || w.deps.Sitemap == nil {
 		slog.Warn("sitemap generation skipped: missing dependencies")
 		return nil
 	}
 
-	w.deps.Sitemap.Generate(w.deps.App)
+	w.deps.Sitemap.Generate(w.deps.Store)
 	slog.Info("sitemap generation complete")
 	return nil
 }

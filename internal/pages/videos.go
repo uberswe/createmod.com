@@ -1,22 +1,20 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 var videosTemplates = append([]string{
@@ -87,50 +85,42 @@ func youtubeThumb(id string) string {
 
 // computeTrendingVideos fetches schematics with videos and sorts them by
 // trending score using real engagement data from aggregate tables.
-func computeTrendingVideos(app *pocketbase.PocketBase) []VideoItem {
-	coll, err := app.FindCollectionByNameOrId("schematics")
-	if err != nil || coll == nil {
-		return nil
-	}
-
-	recs, err := app.FindRecordsByFilter(coll.Id, "deleted = '' && moderated = true && video != '' && (scheduled_at = null || scheduled_at <= {:now})", "-created", 500, 0, dbx.Params{"now": time.Now()})
+func computeTrendingVideos(appStore *store.Store) []VideoItem {
+	schematics, err := appStore.Schematics.ListApprovedWithVideo(context.Background(), 500, 0)
 	if err != nil {
 		return nil
 	}
 
-	engagement := fetchEngagementData(app)
+	engagement, _ := appStore.ViewRatings.FetchTrendingData(context.Background(), 7)
 
 	type scoredVideo struct {
 		item  VideoItem
 		score float64
 	}
 	seen := make(map[string]int)
-	scoredItems := make([]scoredVideo, 0, len(recs))
-	for _, r := range recs {
-		vid := youtubeID(r.GetString("video"))
+	scoredItems := make([]scoredVideo, 0, len(schematics))
+	for _, s := range schematics {
+		vid := youtubeID(s.Video)
 		if vid == "" {
 			continue
 		}
-		id := r.Id
-		created := r.GetDateTime("created").Time()
 
 		var score float64
 		if engagement != nil {
-			score = trendingScore(created, engagement.recentViews[id], engagement.totalViews[id], engagement.ratingCount[id], engagement.ratingSum[id], engagement.recentDownloads[id], engagement.totalDownloads[id])
+			score = trendingScore(s.Created, engagement.RecentViews[s.ID], engagement.TotalViews[s.ID], engagement.RatingCount[s.ID], engagement.RatingSum[s.ID], engagement.RecentDownloads[s.ID], engagement.TotalDownloads[s.ID])
 		} else {
-			score = created.Sub(trendingEpoch).Seconds() / trendingTimescale
+			score = s.Created.Sub(trendingEpoch).Seconds() / trendingTimescale
 		}
 
 		if idx, exists := seen[vid]; exists {
 			if score > scoredItems[idx].score {
-				name := r.GetString("name")
 				scoredItems[idx] = scoredVideo{
 					item: VideoItem{
 						ID:           vid,
-						Title:        r.GetString("title"),
+						Title:        s.Title,
 						ThumbnailURL: youtubeThumb(vid),
 						VideoURL:     "https://www.youtube.com/watch?v=" + vid,
-						SchematicURL: "/schematics/" + name,
+						SchematicURL: "/schematics/" + s.Name,
 					},
 					score: score,
 				}
@@ -138,14 +128,13 @@ func computeTrendingVideos(app *pocketbase.PocketBase) []VideoItem {
 			continue
 		}
 		seen[vid] = len(scoredItems)
-		name := r.GetString("name")
 		scoredItems = append(scoredItems, scoredVideo{
 			item: VideoItem{
 				ID:           vid,
-				Title:        r.GetString("title"),
+				Title:        s.Title,
 				ThumbnailURL: youtubeThumb(vid),
 				VideoURL:     "https://www.youtube.com/watch?v=" + vid,
-				SchematicURL: "/schematics/" + name,
+				SchematicURL: "/schematics/" + s.Name,
 			},
 			score: score,
 		})
@@ -165,25 +154,25 @@ func computeTrendingVideos(app *pocketbase.PocketBase) []VideoItem {
 // WarmVideosCache precomputes the trending videos list and stores it in the
 // cache so no user request has to pay the cost of the DB queries and scoring.
 // Called at startup and periodically from a background ticker.
-func WarmVideosCache(app *pocketbase.PocketBase, cacheService *cache.Service) {
-	app.Logger().Debug("Warming videos page cache")
-	items := computeTrendingVideos(app)
+func WarmVideosCache(cacheService *cache.Service, appStore *store.Store) {
+	slog.Debug("Warming videos page cache")
+	items := computeTrendingVideos(appStore)
 	if items != nil {
 		cacheService.Set(videosCacheKey, items)
 	}
-	app.Logger().Debug("Videos page cache warmed", "count", len(items))
+	slog.Debug("Videos page cache warmed", "count", len(items))
 }
 
 // getCachedVideos returns the cached trending videos list, computing it on
 // cache miss (should only happen if the warm function hasn't run yet).
-func getCachedVideos(app *pocketbase.PocketBase, cacheService *cache.Service) []VideoItem {
+func getCachedVideos(appStore *store.Store, cacheService *cache.Service) []VideoItem {
 	if cached, ok := cacheService.Get(videosCacheKey); ok {
 		if items, ok := cached.([]VideoItem); ok {
 			return items
 		}
 	}
 	// Cache miss — compute and store
-	items := computeTrendingVideos(app)
+	items := computeTrendingVideos(appStore)
 	if items != nil {
 		cacheService.Set(videosCacheKey, items)
 	}
@@ -192,8 +181,8 @@ func getCachedVideos(app *pocketbase.PocketBase, cacheService *cache.Service) []
 
 // VideosHandler renders a page of unique YouTube videos referenced by schematics,
 // sorted by trending score. Reads from a preemptively warmed cache.
-func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func VideosHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		// Pagination params
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -206,7 +195,7 @@ func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))
 		qLower := strings.ToLower(q)
 
-		allItems := getCachedVideos(app, cacheService)
+		allItems := getCachedVideos(appStore, cacheService)
 
 		// Apply search filter
 		var items []VideoItem
@@ -259,7 +248,7 @@ func VideosHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 		d.Title = i18n.T(d.Language, "Videos")
 		d.Description = i18n.T(d.Language, "Videos from published schematics")
 		d.Slug = "/videos"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(videosTemplates...).Render(d)
 		if err != nil {

@@ -22,19 +22,19 @@ type TrendingWorker struct {
 
 func (w *TrendingWorker) Work(ctx context.Context, job *river.Job[TrendingArgs]) error {
 	slog.Info("computing trending scores")
-	if w.deps.App == nil || w.deps.Search == nil {
+	if w.deps.Store == nil || w.deps.Search == nil {
 		slog.Warn("trending scores skipped: missing dependencies")
 		return nil
 	}
 
-	if scores := pages.ComputeTrendingScores(w.deps.App); scores != nil {
+	if scores := pages.ComputeTrendingScoresFromStore(w.deps.Store); scores != nil {
 		w.deps.Search.SetTrendingScores(scores)
 	}
 
 	// Warm caches
 	if w.deps.Cache != nil {
-		pages.WarmIndexCache(w.deps.App, w.deps.Cache, w.deps.Store)
-		pages.WarmVideosCache(w.deps.App, w.deps.Cache)
+		pages.WarmIndexCache(w.deps.Cache, w.deps.Store)
+		pages.WarmVideosCache(w.deps.Cache, w.deps.Store)
 	}
 
 	slog.Info("trending scores updated")

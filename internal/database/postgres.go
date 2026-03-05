@@ -114,6 +114,7 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		Materials:          json.RawMessage(s.Materials),
 		Mods:               json.RawMessage(s.Mods),
 		Paid:               s.Paid,
+		ExternalURL:        s.ExternalUrl,
 		Featured:           s.Featured,
 		AIDescription:      s.AiDescription,
 		Moderated:          s.Moderated,
@@ -270,38 +271,43 @@ func ptrInt32ToInt(p *int32) *int {
 }
 
 // ============================================================================
-// UserStore implementation
+// UserStoreImpl implements store.UserStore.
+// Separated from PostgresStore to avoid method name collision with
+// SchematicStore.ListForSitemap.
 // ============================================================================
 
-func (ps *PostgresStore) GetUserByID(ctx context.Context, id string) (*store.User, error) {
-	u, err := ps.q.GetUserByID(ctx, id)
+// UserStoreImpl implements store.UserStore.
+type UserStoreImpl struct{ q *db.Queries }
+
+func (us *UserStoreImpl) GetUserByID(ctx context.Context, id string) (*store.User, error) {
+	u, err := us.q.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return userFromDB(u), nil
 }
 
-func (ps *PostgresStore) GetUserByEmail(ctx context.Context, email string) (*store.User, error) {
-	u, err := ps.q.GetUserByEmail(ctx, email)
+func (us *UserStoreImpl) GetUserByEmail(ctx context.Context, email string) (*store.User, error) {
+	u, err := us.q.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
 	return userFromDB(u), nil
 }
 
-func (ps *PostgresStore) GetUserByUsername(ctx context.Context, username string) (*store.User, error) {
-	u, err := ps.q.GetUserByUsername(ctx, username)
+func (us *UserStoreImpl) GetUserByUsername(ctx context.Context, username string) (*store.User, error) {
+	u, err := us.q.GetUserByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}
 	return userFromDB(u), nil
 }
 
-func (ps *PostgresStore) CreateUser(ctx context.Context, u *store.User) error {
+func (us *UserStoreImpl) CreateUser(ctx context.Context, u *store.User) error {
 	if u.ID == "" {
 		u.ID = generateID()
 	}
-	created, err := ps.q.CreateUser(ctx, db.CreateUserParams{
+	created, err := us.q.CreateUser(ctx, db.CreateUserParams{
 		ID:           u.ID,
 		Email:        u.Email,
 		Username:     u.Username,
@@ -318,8 +324,8 @@ func (ps *PostgresStore) CreateUser(ctx context.Context, u *store.User) error {
 	return nil
 }
 
-func (ps *PostgresStore) UpdateUser(ctx context.Context, u *store.User) error {
-	_, err := ps.q.UpdateUser(ctx, db.UpdateUserParams{
+func (us *UserStoreImpl) UpdateUser(ctx context.Context, u *store.User) error {
+	_, err := us.q.UpdateUser(ctx, db.UpdateUserParams{
 		ID:           u.ID,
 		Email:        ptrStr(u.Email),
 		Username:     ptrStr(u.Username),
@@ -333,37 +339,37 @@ func (ps *PostgresStore) UpdateUser(ctx context.Context, u *store.User) error {
 	return err
 }
 
-func (ps *PostgresStore) UpdateUserPoints(ctx context.Context, id string, points int) error {
-	return ps.q.UpdateUserPoints(ctx, db.UpdateUserPointsParams{
+func (us *UserStoreImpl) UpdateUserPoints(ctx context.Context, id string, points int) error {
+	return us.q.UpdateUserPoints(ctx, db.UpdateUserPointsParams{
 		ID:     id,
 		Points: int32(points),
 	})
 }
 
-func (ps *PostgresStore) UpdateUserPassword(ctx context.Context, id string, hash string) error {
-	return ps.q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+func (us *UserStoreImpl) UpdateUserPassword(ctx context.Context, id string, hash string) error {
+	return us.q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
 		ID:           id,
 		PasswordHash: hash,
 	})
 }
 
-func (ps *PostgresStore) UpdateUserAvatar(ctx context.Context, id string, avatar string) error {
-	return ps.q.UpdateUserAvatar(ctx, db.UpdateUserAvatarParams{
+func (us *UserStoreImpl) UpdateUserAvatar(ctx context.Context, id string, avatar string) error {
+	return us.q.UpdateUserAvatar(ctx, db.UpdateUserAvatarParams{
 		ID:     id,
 		Avatar: avatar,
 	})
 }
 
-func (ps *PostgresStore) SoftDeleteUser(ctx context.Context, id string) error {
-	return ps.q.SoftDeleteUser(ctx, id)
+func (us *UserStoreImpl) SoftDeleteUser(ctx context.Context, id string) error {
+	return us.q.SoftDeleteUser(ctx, id)
 }
 
-func (ps *PostgresStore) IsContributor(ctx context.Context, userID string) (bool, error) {
-	return ps.q.GetUserIsContributor(ctx, &userID)
+func (us *UserStoreImpl) IsContributor(ctx context.Context, userID string) (bool, error) {
+	return us.q.GetUserIsContributor(ctx, &userID)
 }
 
-func (ps *PostgresStore) ListUsers(ctx context.Context, limit, offset int) ([]store.User, error) {
-	rows, err := ps.q.ListUsers(ctx, db.ListUsersParams{
+func (us *UserStoreImpl) ListUsers(ctx context.Context, limit, offset int) ([]store.User, error) {
+	rows, err := us.q.ListUsers(ctx, db.ListUsersParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	})
@@ -377,8 +383,24 @@ func (ps *PostgresStore) ListUsers(ctx context.Context, limit, offset int) ([]st
 	return result, nil
 }
 
-func (ps *PostgresStore) CountUsers(ctx context.Context) (int64, error) {
-	return ps.q.CountUsers(ctx)
+func (us *UserStoreImpl) CountUsers(ctx context.Context) (int64, error) {
+	return us.q.CountUsers(ctx)
+}
+
+func (us *UserStoreImpl) ListForSitemap(ctx context.Context) ([]store.SitemapUser, error) {
+	rows, err := us.q.ListUsersForSitemap(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SitemapUser, len(rows))
+	for i, r := range rows {
+		result[i] = store.SitemapUser{
+			ID:       r.ID,
+			Username: r.Username,
+			Updated:  r.Updated,
+		}
+	}
+	return result, nil
 }
 
 // ============================================================================
@@ -587,12 +609,39 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		DimZ:               ptrInt32(int32(s.DimZ)),
 		Materials:          s.Materials,
 		Mods:               s.Mods,
+		Paid:               ptrBool(s.Paid),
+		ExternalUrl:        ptrStr(s.ExternalURL),
 	})
 	return err
 }
 
 func (ps *PostgresStore) SoftDelete(ctx context.Context, id string) error {
 	return ps.q.SoftDeleteSchematic(ctx, id)
+}
+
+func (ps *PostgresStore) ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListSchematicsForAdmin(ctx, db.ListSchematicsForAdminParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+		Filter: filter,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) CountForAdmin(ctx context.Context, filter string) (int64, error) {
+	return ps.q.CountSchematicsForAdmin(ctx, filter)
+}
+
+func (ps *PostgresStore) GetByIDAdmin(ctx context.Context, id string) (*store.Schematic, error) {
+	row, err := ps.q.GetSchematicByIDAdmin(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	s := schematicFromDB(row)
+	return &s, nil
 }
 
 func (ps *PostgresStore) GetCategoryIDs(ctx context.Context, schematicID string) ([]string, error) {
@@ -634,6 +683,247 @@ func (ps *PostgresStore) SetTags(ctx context.Context, schematicID string, tagIDs
 	return nil
 }
 
+func (ps *PostgresStore) ListApprovedWithVideo(ctx context.Context, limit, offset int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListApprovedSchematicsWithVideo(ctx, db.ListApprovedSchematicsWithVideoParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) ListRandomApproved(ctx context.Context, limit int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListRandomApprovedSchematics(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) ListByCategoryIDs(ctx context.Context, categoryIDs []string, excludeIDs []string, limit int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListSchematicsByCategoryIDs(ctx, db.ListSchematicsByCategoryIDsParams{
+		Column1: categoryIDs,
+		Column2: excludeIDs,
+		Limit:   int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) ListHighestRated(ctx context.Context, limit, offset int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListHighestRatedSchematics(ctx, db.ListHighestRatedSchematicsParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) ListForSitemap(ctx context.Context) ([]store.SitemapSchematic, error) {
+	rows, err := ps.q.ListSchematicsForSitemap(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SitemapSchematic, len(rows))
+	for i, r := range rows {
+		result[i] = store.SitemapSchematic{
+			ID:      r.ID,
+			Name:    r.Name,
+			Updated: r.Updated,
+		}
+	}
+	return result, nil
+}
+
+func (ps *PostgresStore) CountByAuthor(ctx context.Context, authorID string) (int64, error) {
+	return ps.q.CountSchematicsByAuthor(ctx, &authorID)
+}
+
+func (ps *PostgresStore) GetByChecksum(ctx context.Context, checksum string) (string, error) {
+	id, err := ps.q.GetSchematicByChecksum(ctx, checksum)
+	if err != nil {
+		return "", err
+	}
+	if id == nil {
+		return "", nil
+	}
+	return *id, nil
+}
+
+func (ps *PostgresStore) UpdateName(ctx context.Context, id, name string) error {
+	return ps.q.UpdateSchematicName(ctx, db.UpdateSchematicNameParams{
+		ID:   id,
+		Name: name,
+	})
+}
+
+func (ps *PostgresStore) ListByNamePattern(ctx context.Context, pattern string, limit int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListSchematicsByNamePattern(ctx, db.ListSchematicsByNamePatternParams{
+		Name:  pattern,
+		Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) ListModCounts(ctx context.Context) ([]store.ModCount, error) {
+	rows, err := ps.pool.Query(ctx, `
+		SELECT j.mod_name, COUNT(DISTINCT s.id)::int AS count
+		FROM schematics s,
+		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
+		WHERE s.deleted IS NULL
+		  AND s.moderated = true
+		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+		GROUP BY j.mod_name
+		ORDER BY count DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("listing mod counts: %w", err)
+	}
+	defer rows.Close()
+
+	var result []store.ModCount
+	for rows.Next() {
+		var mc store.ModCount
+		if err := rows.Scan(&mc.ModName, &mc.Count); err != nil {
+			return nil, fmt.Errorf("scanning mod count: %w", err)
+		}
+		result = append(result, mc)
+	}
+	return result, rows.Err()
+}
+
+func (ps *PostgresStore) CountVanilla(ctx context.Context) (int, error) {
+	var count int
+	err := ps.pool.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM schematics
+		WHERE deleted IS NULL
+		  AND moderated = true
+		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
+	`).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("counting vanilla schematics: %w", err)
+	}
+	return count, nil
+}
+
+func (ps *PostgresStore) ListByMod(ctx context.Context, mod string, limit, offset int) ([]store.Schematic, int, error) {
+	// Get total count
+	var totalCount int
+	err := ps.pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT s.id)::int
+		FROM schematics s,
+		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
+		WHERE j.mod_name = $1
+		  AND s.deleted IS NULL
+		  AND s.moderated = true
+		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+	`, mod).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("counting mod schematics: %w", err)
+	}
+
+	// Get IDs for this page
+	idRows, err := ps.pool.Query(ctx, `
+		SELECT DISTINCT s.id
+		FROM schematics s,
+		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
+		WHERE j.mod_name = $1
+		  AND s.deleted IS NULL
+		  AND s.moderated = true
+		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+		ORDER BY s.id
+		LIMIT $2 OFFSET $3
+	`, mod, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("querying mod schematics: %w", err)
+	}
+	defer idRows.Close()
+
+	var ids []string
+	for idRows.Next() {
+		var id string
+		if err := idRows.Scan(&id); err != nil {
+			return nil, 0, err
+		}
+		ids = append(ids, id)
+	}
+	if err := idRows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if len(ids) == 0 {
+		return nil, totalCount, nil
+	}
+
+	schematics, err := ps.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	return schematics, totalCount, nil
+}
+
+func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]store.Schematic, int, error) {
+	// Get total count
+	var totalCount int
+	err := ps.pool.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM schematics
+		WHERE deleted IS NULL
+		  AND moderated = true
+		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
+	`).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("counting vanilla schematics: %w", err)
+	}
+
+	// Get IDs for this page
+	idRows, err := ps.pool.Query(ctx, `
+		SELECT id FROM schematics
+		WHERE deleted IS NULL
+		  AND moderated = true
+		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
+		ORDER BY created DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("querying vanilla schematics: %w", err)
+	}
+	defer idRows.Close()
+
+	var ids []string
+	for idRows.Next() {
+		var id string
+		if err := idRows.Scan(&id); err != nil {
+			return nil, 0, err
+		}
+		ids = append(ids, id)
+	}
+	if err := idRows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	if len(ids) == 0 {
+		return nil, totalCount, nil
+	}
+
+	schematics, err := ps.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	return schematics, totalCount, nil
+}
+
 // ============================================================================
 // Separate store implementations to avoid method name collisions.
 // CategoryStore, TagStore, etc. share method names (List, GetByID, Create)
@@ -650,7 +940,7 @@ func (cs *CategoryStoreImpl) List(ctx context.Context) ([]store.Category, error)
 	}
 	result := make([]store.Category, len(rows))
 	for i, r := range rows {
-		result[i] = store.Category{ID: r.ID, Key: r.Key, Name: r.Name}
+		result[i] = store.Category{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
 	}
 	return result, nil
 }
@@ -660,7 +950,7 @@ func (cs *CategoryStoreImpl) GetByID(ctx context.Context, id string) (*store.Cat
 	if err != nil {
 		return nil, err
 	}
-	return &store.Category{ID: row.ID, Key: row.Key, Name: row.Name}, nil
+	return &store.Category{ID: row.ID, Key: row.Key, Name: row.Name, Public: row.Public}, nil
 }
 
 func (cs *CategoryStoreImpl) GetByIDs(ctx context.Context, ids []string) ([]store.Category, error) {
@@ -670,7 +960,7 @@ func (cs *CategoryStoreImpl) GetByIDs(ctx context.Context, ids []string) ([]stor
 	}
 	result := make([]store.Category, len(rows))
 	for i, r := range rows {
-		result[i] = store.Category{ID: r.ID, Key: r.Key, Name: r.Name}
+		result[i] = store.Category{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
 	}
 	return result, nil
 }
@@ -680,11 +970,52 @@ func (cs *CategoryStoreImpl) Create(ctx context.Context, c *store.Category) erro
 		c.ID = generateID()
 	}
 	_, err := cs.q.CreateCategory(ctx, db.CreateCategoryParams{
-		ID:   c.ID,
-		Key:  c.Key,
-		Name: c.Name,
+		ID:     c.ID,
+		Key:    c.Key,
+		Name:   c.Name,
+		Public: c.Public,
 	})
 	return err
+}
+
+func (cs *CategoryStoreImpl) ListAll(ctx context.Context) ([]store.Category, error) {
+	rows, err := cs.q.ListAllCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Category, len(rows))
+	for i, r := range rows {
+		result[i] = store.Category{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
+	}
+	return result, nil
+}
+
+func (cs *CategoryStoreImpl) ListPending(ctx context.Context) ([]store.Category, error) {
+	rows, err := cs.q.ListPendingCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Category, len(rows))
+	for i, r := range rows {
+		result[i] = store.Category{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
+	}
+	return result, nil
+}
+
+func (cs *CategoryStoreImpl) Approve(ctx context.Context, id string) error {
+	return cs.q.ApproveCategoryByID(ctx, id)
+}
+
+func (cs *CategoryStoreImpl) Delete(ctx context.Context, id string) error {
+	return cs.q.DeleteCategoryByID(ctx, id)
+}
+
+func (cs *CategoryStoreImpl) GetByKey(ctx context.Context, key string) (*store.Category, error) {
+	row, err := cs.q.GetCategoryByKeyIncludingPending(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return &store.Category{ID: row.ID, Key: row.Key, Name: row.Name, Public: row.Public}, nil
 }
 
 // TagStoreImpl implements store.TagStore.
@@ -697,7 +1028,7 @@ func (ts *TagStoreImpl) List(ctx context.Context) ([]store.Tag, error) {
 	}
 	result := make([]store.Tag, len(rows))
 	for i, r := range rows {
-		result[i] = store.Tag{ID: r.ID, Key: r.Key, Name: r.Name}
+		result[i] = store.Tag{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
 	}
 	return result, nil
 }
@@ -707,7 +1038,7 @@ func (ts *TagStoreImpl) GetByID(ctx context.Context, id string) (*store.Tag, err
 	if err != nil {
 		return nil, err
 	}
-	return &store.Tag{ID: row.ID, Key: row.Key, Name: row.Name}, nil
+	return &store.Tag{ID: row.ID, Key: row.Key, Name: row.Name, Public: row.Public}, nil
 }
 
 func (ts *TagStoreImpl) GetByIDs(ctx context.Context, ids []string) ([]store.Tag, error) {
@@ -717,7 +1048,7 @@ func (ts *TagStoreImpl) GetByIDs(ctx context.Context, ids []string) ([]store.Tag
 	}
 	result := make([]store.Tag, len(rows))
 	for i, r := range rows {
-		result[i] = store.Tag{ID: r.ID, Key: r.Key, Name: r.Name}
+		result[i] = store.Tag{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
 	}
 	return result, nil
 }
@@ -744,11 +1075,52 @@ func (ts *TagStoreImpl) Create(ctx context.Context, t *store.Tag) error {
 		t.ID = generateID()
 	}
 	_, err := ts.q.CreateTag(ctx, db.CreateTagParams{
-		ID:   t.ID,
-		Key:  t.Key,
-		Name: t.Name,
+		ID:     t.ID,
+		Key:    t.Key,
+		Name:   t.Name,
+		Public: t.Public,
 	})
 	return err
+}
+
+func (ts *TagStoreImpl) ListAll(ctx context.Context) ([]store.Tag, error) {
+	rows, err := ts.q.ListAllTags(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Tag, len(rows))
+	for i, r := range rows {
+		result[i] = store.Tag{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
+	}
+	return result, nil
+}
+
+func (ts *TagStoreImpl) ListPending(ctx context.Context) ([]store.Tag, error) {
+	rows, err := ts.q.ListPendingTags(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Tag, len(rows))
+	for i, r := range rows {
+		result[i] = store.Tag{ID: r.ID, Key: r.Key, Name: r.Name, Public: r.Public}
+	}
+	return result, nil
+}
+
+func (ts *TagStoreImpl) Approve(ctx context.Context, id string) error {
+	return ts.q.ApproveTagByID(ctx, id)
+}
+
+func (ts *TagStoreImpl) Delete(ctx context.Context, id string) error {
+	return ts.q.DeleteTagByID(ctx, id)
+}
+
+func (ts *TagStoreImpl) GetByKey(ctx context.Context, key string) (*store.Tag, error) {
+	row, err := ts.q.GetTagByKeyIncludingPending(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	return &store.Tag{ID: row.ID, Key: row.Key, Name: row.Name, Public: row.Public}, nil
 }
 
 // CommentStoreImpl implements store.CommentStore.
@@ -893,6 +1265,26 @@ func (gs *GuideStoreImpl) CountByUser(ctx context.Context, userID string) (int64
 	return gs.q.CountUserGuides(ctx, &userID)
 }
 
+func (gs *GuideStoreImpl) IncrementViews(ctx context.Context, id string) error {
+	return gs.q.IncrementGuideViews(ctx, id)
+}
+
+func (gs *GuideStoreImpl) ListForSitemap(ctx context.Context) ([]store.SitemapGuide, error) {
+	rows, err := gs.q.ListGuidesForSitemap(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SitemapGuide, len(rows))
+	for i, r := range rows {
+		result[i] = store.SitemapGuide{
+			ID:      r.ID,
+			Slug:    r.Slug,
+			Updated: r.Updated,
+		}
+	}
+	return result, nil
+}
+
 // CollectionStoreImpl implements store.CollectionStore.
 type CollectionStoreImpl struct{ q *db.Queries }
 
@@ -943,6 +1335,21 @@ func (cs *CollectionStoreImpl) ListByAuthor(ctx context.Context, authorID string
 
 func (cs *CollectionStoreImpl) ListFeatured(ctx context.Context, limit int) ([]store.Collection, error) {
 	rows, err := cs.q.ListFeaturedCollections(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Collection, len(rows))
+	for i, r := range rows {
+		result[i] = collectionFromDB(r)
+	}
+	return result, nil
+}
+
+func (cs *CollectionStoreImpl) ListPublished(ctx context.Context, limit, offset int) ([]store.Collection, error) {
+	rows, err := cs.q.ListPublishedCollections(ctx, db.ListPublishedCollectionsParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1293,6 +1700,127 @@ func (vs *ViewRatingStoreImpl) UpsertRating(ctx context.Context, userID, schemat
 	})
 }
 
+func (vs *ViewRatingStoreImpl) RecordView(ctx context.Context, schematicID string) error {
+	now := time.Now().UTC()
+	year, week := now.ISOWeek()
+
+	periods := []struct {
+		typ    string
+		period string
+	}{
+		{"0", now.Format("20060102")},                    // daily: YYYYMMDD
+		{"1", fmt.Sprintf("%d%02d", year, week)},         // weekly: YYYYWW
+		{"2", now.Format("200601")},                      // monthly: YYYYMM
+		{"3", now.Format("2006")},                        // yearly: YYYY
+		{"4", "total"},                                    // all-time
+	}
+
+	for _, p := range periods {
+		if err := vs.q.UpsertSchematicViewCount(ctx, db.UpsertSchematicViewCountParams{
+			ID:          generateID(),
+			SchematicID: schematicID,
+			Type:        p.typ,
+			Period:      p.period,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (vs *ViewRatingStoreImpl) GetTotalViewCount(ctx context.Context, schematicID string) (int, error) {
+	count, err := vs.q.GetTotalViewCount(ctx, schematicID)
+	return int(count), err
+}
+
+func (vs *ViewRatingStoreImpl) FetchTrendingData(ctx context.Context, recentDays int) (*store.TrendingData, error) {
+	cutoff := time.Now().UTC().Add(-time.Duration(recentDays) * 24 * time.Hour)
+
+	// Fetch all approved schematics
+	schematics, err := vs.q.ListAllApprovedSchematicsForIndex(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list schematics for trending: %w", err)
+	}
+
+	ids := make([]string, len(schematics))
+	createdMap := make(map[string]time.Time, len(schematics))
+	for i, s := range schematics {
+		ids[i] = s.ID
+		createdMap[s.ID] = s.Created
+	}
+
+	// Fetch recent views
+	recentViewRows, err := vs.q.FetchRecentViewsBySchematic(ctx, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("fetch recent views: %w", err)
+	}
+	recentViews := make(map[string]float64, len(recentViewRows))
+	for _, r := range recentViewRows {
+		recentViews[r.ID] = float64(r.V)
+	}
+
+	// Fetch total views
+	totalViewRows, err := vs.q.FetchTotalViewsBySchematic(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetch total views: %w", err)
+	}
+	totalViews := make(map[string]float64, len(totalViewRows))
+	for _, r := range totalViewRows {
+		totalViews[r.ID] = float64(r.V)
+	}
+
+	// Fetch rating sums
+	ratingSumRows, err := vs.q.FetchRatingSumBySchematic(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetch rating sums: %w", err)
+	}
+	ratingSum := make(map[string]float64, len(ratingSumRows))
+	for _, r := range ratingSumRows {
+		ratingSum[r.ID] = float64(r.V)
+	}
+
+	// Fetch rating counts
+	ratingCountRows, err := vs.q.FetchRatingCountBySchematic(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetch rating counts: %w", err)
+	}
+	ratingCount := make(map[string]float64, len(ratingCountRows))
+	for _, r := range ratingCountRows {
+		ratingCount[r.ID] = float64(r.V)
+	}
+
+	// Fetch recent downloads
+	recentDownloadRows, err := vs.q.FetchRecentDownloadsBySchematic(ctx, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("fetch recent downloads: %w", err)
+	}
+	recentDownloads := make(map[string]float64, len(recentDownloadRows))
+	for _, r := range recentDownloadRows {
+		recentDownloads[r.ID] = float64(r.V)
+	}
+
+	// Fetch total downloads
+	totalDownloadRows, err := vs.q.FetchTotalDownloadsBySchematic(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetch total downloads: %w", err)
+	}
+	totalDownloads := make(map[string]float64, len(totalDownloadRows))
+	for _, r := range totalDownloadRows {
+		totalDownloads[r.ID] = float64(r.V)
+	}
+
+	return &store.TrendingData{
+		SchematicIDs:     ids,
+		SchematicCreated: createdMap,
+		RecentViews:      recentViews,
+		TotalViews:       totalViews,
+		RatingSum:        ratingSum,
+		RatingCount:      ratingCount,
+		RecentDownloads:  recentDownloads,
+		TotalDownloads:   totalDownloads,
+	}, nil
+}
+
 // VersionStoreImpl implements store.VersionStore.
 type VersionStoreImpl struct{ q *db.Queries }
 
@@ -1508,6 +2036,286 @@ func (ms *ModMetadataStoreImpl) ListStale(ctx context.Context, limit int) ([]sto
 	return result, nil
 }
 
+// VersionLookupStoreImpl implements store.VersionLookupStore.
+type VersionLookupStoreImpl struct{ q *db.Queries }
+
+func (vl *VersionLookupStoreImpl) ListMinecraftVersions(ctx context.Context) ([]store.GameVersion, error) {
+	rows, err := vl.q.ListMinecraftVersions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.GameVersion, len(rows))
+	for i, r := range rows {
+		result[i] = store.GameVersion{
+			ID:      r.ID,
+			Version: r.Version,
+			Created: r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (vl *VersionLookupStoreImpl) ListCreatemodVersions(ctx context.Context) ([]store.GameVersion, error) {
+	rows, err := vl.q.ListVersions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.GameVersion, len(rows))
+	for i, r := range rows {
+		result[i] = store.GameVersion{
+			ID:      r.ID,
+			Version: r.Version,
+			Created: r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (vl *VersionLookupStoreImpl) GetMinecraftVersionByID(ctx context.Context, id string) (*store.GameVersion, error) {
+	row, err := vl.q.GetMinecraftVersionByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.GameVersion{
+		ID:      row.ID,
+		Version: row.Version,
+		Created: row.Created,
+	}, nil
+}
+
+func (vl *VersionLookupStoreImpl) GetCreatemodVersionByID(ctx context.Context, id string) (*store.GameVersion, error) {
+	row, err := vl.q.GetCreatemodVersionByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.GameVersion{
+		ID:      row.ID,
+		Version: row.Version,
+		Created: row.Created,
+	}, nil
+}
+
+// SearchTrackingStoreImpl implements store.SearchTrackingStore.
+type SearchTrackingStoreImpl struct{ q *db.Queries }
+
+func (st *SearchTrackingStoreImpl) RecordSearch(ctx context.Context, query string, resultsCount int, userID, ip string) error {
+	var uid *string
+	if userID != "" {
+		uid = &userID
+	}
+	return st.q.CreateSearch(ctx, db.CreateSearchParams{
+		ID:           generateID(),
+		Query:        query,
+		ResultsCount: int32(resultsCount),
+		UserID:       uid,
+		IpAddress:    ip,
+	})
+}
+
+func (st *SearchTrackingStoreImpl) ListTopSearches(ctx context.Context, limit int) ([]store.SearchEntry, error) {
+	rows, err := st.q.ListTopSearches(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchEntry, len(rows))
+	for i, r := range rows {
+		result[i] = store.SearchEntry{
+			Query:        r.Query,
+			ResultsCount: int(r.SearchCount),
+		}
+	}
+	return result, nil
+}
+
+// OutgoingClickStoreImpl implements store.OutgoingClickStore.
+type OutgoingClickStoreImpl struct{ q *db.Queries }
+
+func (oc *OutgoingClickStoreImpl) RecordClick(ctx context.Context, url, source, sourceID string, userID *string) error {
+	return oc.q.RecordOutgoingClick(ctx, db.RecordOutgoingClickParams{
+		ID:       generateID(),
+		Url:      url,
+		Source:   source,
+		SourceID: sourceID,
+		UserID:   userID,
+	})
+}
+
+// ContactStoreImpl implements store.ContactStore.
+type ContactStoreImpl struct{ q *db.Queries }
+
+func (cs *ContactStoreImpl) CreateSubmission(ctx context.Context, authorID *string, title, content, name string) error {
+	now := time.Now().UTC()
+	_, err := cs.q.CreateContactFormSubmission(ctx, db.CreateContactFormSubmissionParams{
+		ID:       generateID(),
+		AuthorID: authorID,
+		Title:    title,
+		Content:  content,
+		Name:     name,
+		Postdate: pgtype.Timestamptz{Time: now, Valid: true},
+		Status:   "new",
+		Type:     "contact",
+	})
+	return err
+}
+
+// StatsStoreImpl implements store.StatsStore.
+type StatsStoreImpl struct{ q *db.Queries }
+
+func (ss *StatsStoreImpl) HourlyStats(ctx context.Context, table string, cutoff time.Time) ([]store.HourlyStat, error) {
+	var result []store.HourlyStat
+
+	switch table {
+	case "schematics":
+		rows, err := ss.q.HourlySchematicStats(ctx, cutoff)
+		if err != nil {
+			return nil, err
+		}
+		result = make([]store.HourlyStat, len(rows))
+		for i, r := range rows {
+			result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Count}
+		}
+	case "comments":
+		rows, err := ss.q.HourlyCommentStats(ctx, cutoff)
+		if err != nil {
+			return nil, err
+		}
+		result = make([]store.HourlyStat, len(rows))
+		for i, r := range rows {
+			result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Count}
+		}
+	case "users":
+		rows, err := ss.q.HourlyUserStats(ctx, cutoff)
+		if err != nil {
+			return nil, err
+		}
+		result = make([]store.HourlyStat, len(rows))
+		for i, r := range rows {
+			result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Count}
+		}
+	default:
+		return nil, fmt.Errorf("unknown table for hourly stats: %s", table)
+	}
+
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) MonthlyUserStats(ctx context.Context, userID string, months int) ([]store.MonthlyDataPoint, error) {
+	uid := &userID
+
+	uploadsRows, err := ss.q.MonthlyUserUploads(ctx, db.MonthlyUserUploadsParams{
+		AuthorID: uid,
+		Column2:  int32(months),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("monthly uploads: %w", err)
+	}
+
+	downloadsRows, err := ss.q.MonthlyUserDownloads(ctx, db.MonthlyUserDownloadsParams{
+		AuthorID: uid,
+		Column2:  int32(months),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("monthly downloads: %w", err)
+	}
+
+	viewsRows, err := ss.q.MonthlyUserViews(ctx, db.MonthlyUserViewsParams{
+		AuthorID: uid,
+		Column2:  int32(months),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("monthly views: %w", err)
+	}
+
+	// Merge into a single slice keyed by month
+	monthMap := make(map[string]*store.MonthlyDataPoint)
+	for _, r := range uploadsRows {
+		dp := monthMap[r.Month]
+		if dp == nil {
+			dp = &store.MonthlyDataPoint{Month: r.Month}
+			monthMap[r.Month] = dp
+		}
+		dp.Uploads = r.Count
+	}
+	for _, r := range downloadsRows {
+		dp := monthMap[r.Month]
+		if dp == nil {
+			dp = &store.MonthlyDataPoint{Month: r.Month}
+			monthMap[r.Month] = dp
+		}
+		dp.Downloads = r.Count
+	}
+	for _, r := range viewsRows {
+		dp := monthMap[r.Month]
+		if dp == nil {
+			dp = &store.MonthlyDataPoint{Month: r.Month}
+			monthMap[r.Month] = dp
+		}
+		dp.Views = r.Count
+	}
+
+	// Collect and sort by month
+	result := make([]store.MonthlyDataPoint, 0, len(monthMap))
+	for _, dp := range monthMap {
+		result = append(result, *dp)
+	}
+	// Sort ascending by month string (YYYY-MM sorts lexicographically)
+	for i := 0; i < len(result); i++ {
+		for j := i + 1; j < len(result); j++ {
+			if result[j].Month < result[i].Month {
+				result[i], result[j] = result[j], result[i]
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// --------------------------------------------------------------------------
+// NBTHashStoreImpl
+// --------------------------------------------------------------------------
+
+type NBTHashStoreImpl struct {
+	q *db.Queries
+}
+
+func (s *NBTHashStoreImpl) Create(ctx context.Context, h *store.NBTHash) error {
+	return s.q.CreateNBTHash(ctx, db.CreateNBTHashParams{
+		ID:          h.ID,
+		Hash:        h.Hash,
+		SchematicID: h.SchematicID,
+		UploadedBy:  h.UploadedBy,
+	})
+}
+
+func (s *NBTHashStoreImpl) ListByUser(ctx context.Context, userID string) ([]store.NBTHash, error) {
+	rows, err := s.q.ListNBTHashesByUser(ctx, &userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.NBTHash, len(rows))
+	for i, r := range rows {
+		result[i] = store.NBTHash{
+			ID:          r.ID,
+			Hash:        r.Hash,
+			SchematicID: r.SchematicID,
+			UploadedBy:  r.UploadedBy,
+			Created:     r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (s *NBTHashStoreImpl) Delete(ctx context.Context, id, userID string) error {
+	return s.q.DeleteNBTHash(ctx, db.DeleteNBTHashParams{
+		ID:         id,
+		UploadedBy: &userID,
+	})
+}
+
+func (s *NBTHashStoreImpl) IsBlacklisted(ctx context.Context, hash string) (bool, error) {
+	return s.q.CheckHashIsBlacklisted(ctx, hash)
+}
+
 // --------------------------------------------------------------------------
 // Updated NewStore that uses separate impl types to avoid method collisions
 // --------------------------------------------------------------------------
@@ -1517,22 +2325,30 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 	q := db.New(pool)
 	ps := &PostgresStore{q: q, pool: pool}
 	return &store.Store{
-		Users:        ps,
-		Sessions:     ps,
-		Schematics:   ps,
-		Categories:   &CategoryStoreImpl{q: q},
-		Tags:         &TagStoreImpl{q: q},
-		Comments:     &CommentStoreImpl{q: q},
-		Guides:       &GuideStoreImpl{q: q},
-		Collections:  &CollectionStoreImpl{q: q},
-		Achievements: &AchievementStoreImpl{q: q},
-		Translations: &TranslationStoreImpl{q: q},
-		ViewRatings:  &ViewRatingStoreImpl{q: q},
-		Versions:     &VersionStoreImpl{q: q},
-		APIKeys:      &APIKeyStoreImpl{q: q},
-		Auth:         &AuthStoreImpl{q: q},
-		Reports:      &ReportStoreImpl{q: q},
-		ModMetadata:  &ModMetadataStoreImpl{q: q},
+		Users:          &UserStoreImpl{q: q},
+		Sessions:       ps,
+		Schematics:     ps,
+		Categories:     &CategoryStoreImpl{q: q},
+		Tags:           &TagStoreImpl{q: q},
+		Comments:       &CommentStoreImpl{q: q},
+		Guides:         &GuideStoreImpl{q: q},
+		Collections:    &CollectionStoreImpl{q: q},
+		Achievements:   &AchievementStoreImpl{q: q},
+		Translations:   &TranslationStoreImpl{q: q},
+		ViewRatings:    &ViewRatingStoreImpl{q: q},
+		Versions:       &VersionStoreImpl{q: q},
+		APIKeys:        &APIKeyStoreImpl{q: q},
+		Auth:           &AuthStoreImpl{q: q},
+		Reports:        &ReportStoreImpl{q: q},
+		ModMetadata:    &ModMetadataStoreImpl{q: q},
+		VersionLookup:  &VersionLookupStoreImpl{q: q},
+		SearchTracking: &SearchTrackingStoreImpl{q: q},
+		OutgoingClicks: &OutgoingClickStoreImpl{q: q},
+		Contact:        &ContactStoreImpl{q: q},
+		Stats:           &StatsStoreImpl{q: q},
+		TempUploads:     &TempUploadStoreImpl{q: q},
+		TempUploadFiles: &TempUploadFileStoreImpl{q: q},
+		NBTHashes:       &NBTHashStoreImpl{q: q},
 	}
 }
 
@@ -1557,27 +2373,232 @@ func ptrStrNonEmpty(s string) *string {
 
 // Ensure compile-time interface satisfaction for the types on PostgresStore.
 var (
-	_ store.UserStore      = (*PostgresStore)(nil)
 	_ store.SessionStore   = (*PostgresStore)(nil)
 	_ store.SchematicStore = (*PostgresStore)(nil)
 )
 
 // Ensure compile-time interface satisfaction for the separate impl types.
 var (
-	_ store.CategoryStore    = (*CategoryStoreImpl)(nil)
-	_ store.TagStore         = (*TagStoreImpl)(nil)
-	_ store.CommentStore     = (*CommentStoreImpl)(nil)
-	_ store.GuideStore       = (*GuideStoreImpl)(nil)
-	_ store.CollectionStore  = (*CollectionStoreImpl)(nil)
-	_ store.AchievementStore = (*AchievementStoreImpl)(nil)
-	_ store.TranslationStore = (*TranslationStoreImpl)(nil)
-	_ store.ViewRatingStore  = (*ViewRatingStoreImpl)(nil)
-	_ store.VersionStore     = (*VersionStoreImpl)(nil)
-	_ store.APIKeyStore      = (*APIKeyStoreImpl)(nil)
-	_ store.AuthStore        = (*AuthStoreImpl)(nil)
-	_ store.ReportStore      = (*ReportStoreImpl)(nil)
-	_ store.ModMetadataStore = (*ModMetadataStoreImpl)(nil)
+	_ store.UserStore          = (*UserStoreImpl)(nil)
+	_ store.CategoryStore      = (*CategoryStoreImpl)(nil)
+	_ store.TagStore           = (*TagStoreImpl)(nil)
+	_ store.CommentStore       = (*CommentStoreImpl)(nil)
+	_ store.GuideStore         = (*GuideStoreImpl)(nil)
+	_ store.CollectionStore    = (*CollectionStoreImpl)(nil)
+	_ store.AchievementStore   = (*AchievementStoreImpl)(nil)
+	_ store.TranslationStore   = (*TranslationStoreImpl)(nil)
+	_ store.ViewRatingStore    = (*ViewRatingStoreImpl)(nil)
+	_ store.VersionStore       = (*VersionStoreImpl)(nil)
+	_ store.APIKeyStore        = (*APIKeyStoreImpl)(nil)
+	_ store.AuthStore          = (*AuthStoreImpl)(nil)
+	_ store.ReportStore        = (*ReportStoreImpl)(nil)
+	_ store.ModMetadataStore   = (*ModMetadataStoreImpl)(nil)
+	_ store.VersionLookupStore = (*VersionLookupStoreImpl)(nil)
+	_ store.SearchTrackingStore = (*SearchTrackingStoreImpl)(nil)
+	_ store.OutgoingClickStore = (*OutgoingClickStoreImpl)(nil)
+	_ store.ContactStore       = (*ContactStoreImpl)(nil)
+	_ store.StatsStore          = (*StatsStoreImpl)(nil)
+	_ store.TempUploadStore     = (*TempUploadStoreImpl)(nil)
+	_ store.TempUploadFileStore = (*TempUploadFileStoreImpl)(nil)
 )
 
 // Ensure unused import is satisfied.
 var _ = fmt.Sprintf
+
+// --------------------------------------------------------------------------
+// TempUpload Store Implementation
+// --------------------------------------------------------------------------
+
+type TempUploadStoreImpl struct{ q *db.Queries }
+
+func (s *TempUploadStoreImpl) Create(ctx context.Context, t *store.TempUpload) error {
+	row, err := s.q.CreateTempUpload(ctx, db.CreateTempUploadParams{
+		Token:            t.Token,
+		UploadedBy:       t.UploadedBy,
+		Filename:         t.Filename,
+		Description:      t.Description,
+		Size:             t.Size,
+		Checksum:         t.Checksum,
+		BlockCount:       int32(t.BlockCount),
+		DimX:             int32(t.DimX),
+		DimY:             int32(t.DimY),
+		DimZ:             int32(t.DimZ),
+		Mods:             t.Mods,
+		Materials:        t.Materials,
+		MinecraftVersion: t.MinecraftVersion,
+		CreatemodVersion: t.CreatemodVersion,
+		NbtS3Key:         t.NbtS3Key,
+		ImageS3Key:       t.ImageS3Key,
+		ParsedSummary:    t.ParsedSummary,
+	})
+	if err != nil {
+		return err
+	}
+	t.ID = row.ID
+	t.Created = row.Created
+	t.Updated = row.Updated
+	return nil
+}
+
+func (s *TempUploadStoreImpl) GetByToken(ctx context.Context, token string) (*store.TempUpload, error) {
+	row, err := s.q.GetTempUploadByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	return &store.TempUpload{
+		ID:               row.ID,
+		Token:            row.Token,
+		UploadedBy:       row.UploadedBy,
+		Filename:         row.Filename,
+		Description:      row.Description,
+		Size:             row.Size,
+		Checksum:         row.Checksum,
+		BlockCount:       int(row.BlockCount),
+		DimX:             int(row.DimX),
+		DimY:             int(row.DimY),
+		DimZ:             int(row.DimZ),
+		Mods:             row.Mods,
+		Materials:        row.Materials,
+		MinecraftVersion: row.MinecraftVersion,
+		CreatemodVersion: row.CreatemodVersion,
+		NbtS3Key:         row.NbtS3Key,
+		ImageS3Key:       row.ImageS3Key,
+		ParsedSummary:    row.ParsedSummary,
+		Created:          row.Created,
+		Updated:          row.Updated,
+	}, nil
+}
+
+func (s *TempUploadStoreImpl) GetByChecksum(ctx context.Context, checksum string) (*store.TempUpload, error) {
+	row, err := s.q.GetTempUploadByChecksum(ctx, checksum)
+	if err != nil {
+		return nil, err
+	}
+	return &store.TempUpload{
+		ID:               row.ID,
+		Token:            row.Token,
+		UploadedBy:       row.UploadedBy,
+		Filename:         row.Filename,
+		Description:      row.Description,
+		Size:             row.Size,
+		Checksum:         row.Checksum,
+		BlockCount:       int(row.BlockCount),
+		DimX:             int(row.DimX),
+		DimY:             int(row.DimY),
+		DimZ:             int(row.DimZ),
+		Mods:             row.Mods,
+		Materials:        row.Materials,
+		MinecraftVersion: row.MinecraftVersion,
+		CreatemodVersion: row.CreatemodVersion,
+		NbtS3Key:         row.NbtS3Key,
+		ImageS3Key:       row.ImageS3Key,
+		ParsedSummary:    row.ParsedSummary,
+		Created:          row.Created,
+		Updated:          row.Updated,
+	}, nil
+}
+
+func (s *TempUploadStoreImpl) Update(ctx context.Context, t *store.TempUpload) error {
+	return s.q.UpdateTempUpload(ctx, db.UpdateTempUploadParams{
+		Token:       t.Token,
+		Filename:    t.Filename,
+		Description: t.Description,
+		NbtS3Key:    t.NbtS3Key,
+		ImageS3Key:  t.ImageS3Key,
+	})
+}
+
+func (s *TempUploadStoreImpl) Delete(ctx context.Context, token string) error {
+	return s.q.DeleteTempUpload(ctx, token)
+}
+
+func (s *TempUploadStoreImpl) DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error) {
+	return s.q.DeleteExpiredTempUploads(ctx, olderThan)
+}
+
+// --------------------------------------------------------------------------
+// TempUploadFile Store Implementation
+// --------------------------------------------------------------------------
+
+type TempUploadFileStoreImpl struct{ q *db.Queries }
+
+func (s *TempUploadFileStoreImpl) Create(ctx context.Context, f *store.TempUploadFile) error {
+	row, err := s.q.CreateTempUploadFile(ctx, db.CreateTempUploadFileParams{
+		Token:       f.Token,
+		Filename:    f.Filename,
+		Description: f.Description,
+		Size:        f.Size,
+		Checksum:    f.Checksum,
+		BlockCount:  int32(f.BlockCount),
+		DimX:        int32(f.DimX),
+		DimY:        int32(f.DimY),
+		DimZ:        int32(f.DimZ),
+		Mods:        f.Mods,
+		Materials:   f.Materials,
+		NbtS3Key:    f.NbtS3Key,
+	})
+	if err != nil {
+		return err
+	}
+	f.ID = row.ID
+	f.Created = row.Created
+	return nil
+}
+
+func (s *TempUploadFileStoreImpl) ListByToken(ctx context.Context, token string) ([]store.TempUploadFile, error) {
+	rows, err := s.q.ListTempUploadFilesByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TempUploadFile, len(rows))
+	for i, r := range rows {
+		result[i] = store.TempUploadFile{
+			ID:          r.ID,
+			Token:       r.Token,
+			Filename:    r.Filename,
+			Description: r.Description,
+			Size:        r.Size,
+			Checksum:    r.Checksum,
+			BlockCount:  int(r.BlockCount),
+			DimX:        int(r.DimX),
+			DimY:        int(r.DimY),
+			DimZ:        int(r.DimZ),
+			Mods:        r.Mods,
+			Materials:   r.Materials,
+			NbtS3Key:    r.NbtS3Key,
+			Created:     r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (s *TempUploadFileStoreImpl) GetByID(ctx context.Context, id string) (*store.TempUploadFile, error) {
+	r, err := s.q.GetTempUploadFileByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.TempUploadFile{
+		ID:          r.ID,
+		Token:       r.Token,
+		Filename:    r.Filename,
+		Description: r.Description,
+		Size:        r.Size,
+		Checksum:    r.Checksum,
+		BlockCount:  int(r.BlockCount),
+		DimX:        int(r.DimX),
+		DimY:        int(r.DimY),
+		DimZ:        int(r.DimZ),
+		Mods:        r.Mods,
+		Materials:   r.Materials,
+		NbtS3Key:    r.NbtS3Key,
+		Created:     r.Created,
+	}, nil
+}
+
+func (s *TempUploadFileStoreImpl) Delete(ctx context.Context, id string) error {
+	return s.q.DeleteTempUploadFile(ctx, id)
+}
+
+func (s *TempUploadFileStoreImpl) DeleteByToken(ctx context.Context, token string) error {
+	return s.q.DeleteTempUploadFilesByToken(ctx, token)
+}

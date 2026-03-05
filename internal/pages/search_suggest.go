@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // SearchSuggestHandler returns JSON autocomplete suggestions for the search input.
 // GET /api/search/suggest?q=...
-func SearchSuggestHandler(searchService *search.Service) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func SearchSuggestHandler(searchService *search.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))
 		if len(q) < 2 {
 			e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")

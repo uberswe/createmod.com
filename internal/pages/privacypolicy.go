@@ -4,9 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 )
 
@@ -20,15 +18,15 @@ type PrivacyPolicyData struct {
 	DefaultData
 }
 
-func PrivacyPolicyHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func PrivacyPolicyHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := PrivacyPolicyData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Privacy Policy")
 		d.Description = i18n.T(d.Language, "page.privacypolicy.description")
 		d.Slug = "/privacy-policy"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(privacyPolicyTemplates...).Render(d)
 		if err != nil {
 			return err

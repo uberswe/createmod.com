@@ -20,12 +20,12 @@ type ModMetadataWorker struct {
 
 func (w *ModMetadataWorker) Work(ctx context.Context, job *river.Job[ModMetadataArgs]) error {
 	slog.Info("enriching mod metadata")
-	if w.deps.App == nil || w.deps.ModMeta == nil {
+	if w.deps.ModMeta == nil {
 		slog.Warn("mod metadata enrichment skipped: missing dependencies")
 		return nil
 	}
 
-	w.deps.ModMeta.EnrichAll(w.deps.App)
+	w.deps.ModMeta.EnrichAll()
 	slog.Info("mod metadata enrichment complete")
 	return nil
 }

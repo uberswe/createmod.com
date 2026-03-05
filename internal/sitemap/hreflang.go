@@ -1,13 +1,14 @@
 package sitemap
 
 import (
+	"context"
 	"createmod/internal/pages"
+	"createmod/internal/store"
 	"encoding/xml"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
-
-	"github.com/pocketbase/pocketbase"
 )
 
 // hreflangURLSet is the root element for a sitemap with xhtml:link alternates.
@@ -33,16 +34,17 @@ const sitemapOutputPath = "template/dist/sitemaps/"
 
 // GenerateHreflang creates sitemap files with xhtml:link hreflang alternates
 // for all supported languages. Each language gets its own sitemap file.
-func (s *Service) GenerateHreflang(app *pocketbase.PocketBase) {
-	app.Logger().Info("hreflang sitemap generation started")
+func (s *Service) GenerateHreflang(appStore *store.Store) {
+	slog.Info("hreflang sitemap generation started")
 
 	hostname := "https://createmod.com"
 	entries := pages.AllHreflangs()
 
 	// Collect all schematic paths
-	schematics, err := app.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
+	ctx := context.Background()
+	schematics, err := appStore.Schematics.ListForSitemap(ctx)
 	if err != nil {
-		app.Logger().Warn("hreflang sitemap: failed to query schematics", "error", err)
+		slog.Warn("hreflang sitemap: failed to query schematics", "error", err)
 	}
 
 	// Static pages to include in hreflang sitemaps
@@ -70,8 +72,8 @@ func (s *Service) GenerateHreflang(app *pocketbase.PocketBase) {
 	// Build all bare paths (without language prefix)
 	var allPaths []string
 	allPaths = append(allPaths, staticPaths...)
-	for _, rec := range schematics {
-		allPaths = append(allPaths, "/schematics/"+rec.GetString("name"))
+	for _, sc := range schematics {
+		allPaths = append(allPaths, "/schematics/"+sc.Name)
 	}
 
 	// buildLinks creates the hreflang link set for a given bare path
@@ -105,8 +107,8 @@ func (s *Service) GenerateHreflang(app *pocketbase.PocketBase) {
 		for i, barePath := range allPaths {
 			if i > 0 && i%5000 == 0 {
 				// Write current chunk
-				if err := writeHreflangSitemap(app, entry, chunkIdx, urlSet); err != nil {
-					app.Logger().Error("hreflang sitemap write failed", "lang", entry.Lang, "chunk", chunkIdx, "error", err)
+				if err := writeHreflangSitemap(entry, chunkIdx, urlSet); err != nil {
+					slog.Error("hreflang sitemap write failed", "lang", entry.Lang, "chunk", chunkIdx, "error", err)
 				}
 				chunkIdx++
 				urlSet.URLs = nil
@@ -121,16 +123,16 @@ func (s *Service) GenerateHreflang(app *pocketbase.PocketBase) {
 
 		// Write final chunk
 		if len(urlSet.URLs) > 0 {
-			if err := writeHreflangSitemap(app, entry, chunkIdx, urlSet); err != nil {
-				app.Logger().Error("hreflang sitemap write failed", "lang", entry.Lang, "chunk", chunkIdx, "error", err)
+			if err := writeHreflangSitemap(entry, chunkIdx, urlSet); err != nil {
+				slog.Error("hreflang sitemap write failed", "lang", entry.Lang, "chunk", chunkIdx, "error", err)
 			}
 		}
 	}
 
-	app.Logger().Info("hreflang sitemap generation completed")
+	slog.Info("hreflang sitemap generation completed")
 }
 
-func writeHreflangSitemap(app *pocketbase.PocketBase, entry pages.HreflangEntry, chunkIdx int, urlSet hreflangURLSet) error {
+func writeHreflangSitemap(entry pages.HreflangEntry, chunkIdx int, urlSet hreflangURLSet) error {
 	prefix := entry.Prefix
 	if prefix == "" {
 		prefix = "en"
@@ -160,6 +162,6 @@ func writeHreflangSitemap(app *pocketbase.PocketBase, entry pages.HreflangEntry,
 		return fmt.Errorf("failed to write hreflang sitemap: %w", err)
 	}
 
-	app.Logger().Info("hreflang sitemap written", "file", filename, "urls", len(urlSet.URLs))
+	slog.Info("hreflang sitemap written", "file", filename, "urls", len(urlSet.URLs))
 	return nil
 }

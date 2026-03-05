@@ -110,8 +110,8 @@
 
             let successAlert = document.getElementById("contact-success")
             try {
-                const createdRecord = await pb.collection('contact_form_submissions').create(formData);
-                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                const resp = await fetch('/api/contact', { method: 'POST', body: formData });
+                if (!resp.ok) {
                     div = document.createElement('div');
                     div.classList.add("invalid-feedback")
                     div.style.display = "block"

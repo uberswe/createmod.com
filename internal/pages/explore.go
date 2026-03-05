@@ -1,14 +1,12 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
 	"fmt"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"math/rand/v2"
 	"net/http"
 )
@@ -30,49 +28,36 @@ type ExploreData struct {
 	Images []ExploreImage
 }
 
-func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil {
-			return err
-		}
-		var results []core.Record
-		err = app.RecordQuery(schematicsCollection).
-			Select("schematics.id", "schematics.name", "schematics.title", "schematics.featured_image", "schematics.gallery").
-			Where(dbx.And(
-				dbx.NewExp("(schematics.deleted = '' OR schematics.deleted IS NULL)"),
-				dbx.NewExp("schematics.moderated = 1"),
-				dbx.NewExp("(schematics.scheduled_at IS NULL OR schematics.scheduled_at <= DATETIME('now'))"),
-				dbx.NewExp("schematics.featured_image != ''"),
-				dbx.NewExp("schematics.name != ''"),
-			)).
-			OrderBy("RANDOM()").
-			All(&results)
+func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		// Fetch all approved schematics (we need gallery images, so fetch all)
+		storeSchematics, err := appStore.Schematics.ListAllForIndex(context.Background())
 		if err != nil {
 			return err
 		}
 
 		images := make([]ExploreImage, 0)
-		for _, result := range results {
-			for _, g := range result.GetStringSlice("gallery") {
+		for _, s := range storeSchematics {
+			if s.FeaturedImage == "" || s.Name == "" {
+				continue
+			}
+			for _, g := range s.Gallery {
 				if g == "" {
 					continue
 				}
 				images = append(images, ExploreImage{
-					ID:    result.Id,
-					Title: result.GetString("title"),
-					Name:  result.GetString("name"),
+					ID:    s.ID,
+					Title: s.Title,
+					Name:  s.Name,
 					Image: g,
 				})
 			}
-			if fi := result.GetString("featured_image"); fi != "" {
-				images = append(images, ExploreImage{
-					ID:    result.Id,
-					Title: result.GetString("title"),
-					Name:  result.GetString("name"),
-					Image: fi,
-				})
-			}
+			images = append(images, ExploreImage{
+				ID:    s.ID,
+				Title: s.Title,
+				Name:  s.Name,
+				Image: s.FeaturedImage,
+			})
 		}
 
 		show := len(images)
@@ -104,7 +89,7 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 		}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "page.explore.title")
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Description = i18n.T(d.Language, "page.explore.description")
 		d.Slug = "/explore"
 		if len(dest) > 0 {

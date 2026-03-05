@@ -1,22 +1,21 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"createmod/internal/store"
 	"fmt"
-	"github.com/gosimple/slug"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gosimple/slug"
+	"createmod/internal/server"
 )
 
 var searchTemplates = append([]string{
@@ -56,10 +55,11 @@ type SearchData struct {
 	PrevURL           string
 	NextURL           string
 	ViewMode          string
+	HidePaid          bool
 }
 
-func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, cacheService *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func SearchHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
 		// Also accept ?q= query param (used by live HTMX filtering)
@@ -126,33 +126,32 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			createVersion = e.Request.URL.Query().Get("cv")
 		}
 
+		hidePaid := e.Request.URL.Query().Get("hidepaid") == "1"
+
 		term := strings.ReplaceAll(slugTerm, "-", " ")
-		app.Logger().Debug("search", "term", term, "searchService", searchService)
-		ids := searchService.Search(term, order, rating, category, searchTags, mcVersion, createVersion)
-		app.Logger().Debug("found ids", "ids", ids)
+		slog.Debug("search", "term", term, "searchService", searchService)
+		ids := searchService.Search(term, order, rating, category, searchTags, mcVersion, createVersion, hidePaid)
+		slog.Debug("found ids", "ids", ids)
 
-		interfaceIds := make([]interface{}, 0, len(ids))
-		for _, id := range ids {
-			interfaceIds = append(interfaceIds, id)
-		}
-
-		var res []*core.Record
-		err := app.RecordQuery("schematics").
-			Select("schematics.*").
-			From("schematics").
-			Where(dbx.NewExp("(deleted = '' OR deleted IS NULL) AND moderated = true AND (scheduled_at IS NULL OR scheduled_at <= DATETIME('now'))")).
-			Where(dbx.In("id", interfaceIds...)).
-			All(&res)
-
+		// Fetch schematics from store by IDs
+		ctx := context.Background()
+		storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
 		if err != nil {
 			return err
 		}
-		sortedModels := make([]*core.Record, 0)
-		for id := range ids {
-			for i := range res {
-				if ids[id] == res[i].Id {
-					sortedModels = append(sortedModels, res[i])
+		// Build a lookup map for ordering
+		byID := make(map[string]store.Schematic, len(storeSchematics))
+		for _, s := range storeSchematics {
+			byID[s.ID] = s
+		}
+		// Preserve search result order and filter to approved only
+		orderedSchematics := make([]store.Schematic, 0, len(ids))
+		for _, id := range ids {
+			if s, ok := byID[id]; ok {
+				if s.Deleted != nil || !s.Moderated {
+					continue
 				}
+				orderedSchematics = append(orderedSchematics, s)
 			}
 		}
 
@@ -167,8 +166,8 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 				page = p
 			}
 		}
-		pageSize := 24
-		total := len(sortedModels)
+		pageSize := 18
+		total := len(orderedSchematics)
 		maxPage := 0
 		if pageSize > 0 {
 			maxPage = (total + pageSize - 1) / pageSize
@@ -184,12 +183,12 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		if endIdx > total {
 			endIdx = total
 		}
-		pageSlice := sortedModels
+		pageSlice := orderedSchematics
 		if total > 0 {
-			pageSlice = sortedModels[startIdx:endIdx]
+			pageSlice = orderedSchematics[startIdx:endIdx]
 		}
 
-		schematicModels := MapResultsToSchematic(app, pageSlice, cacheService)
+		schematicModels := MapStoreSchematics(appStore, pageSlice, cacheService)
 
 		end := time.Now()
 		duration := end.Sub(start)
@@ -211,6 +210,9 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		queryParts = append(queryParts, fmt.Sprintf("tag=%s", tagURLParam))
 		queryParts = append(queryParts, fmt.Sprintf("mcv=%s", mcVersion))
 		queryParts = append(queryParts, fmt.Sprintf("cv=%s", createVersion))
+		if hidePaid {
+			queryParts = append(queryParts, "hidepaid=1")
+		}
 		// Build query-param pagination URLs (works with both path-based and HTMX ?q= requests)
 		buildPageURL := func(p int) string {
 			parts := make([]string, 0, len(queryParts)+2)
@@ -249,11 +251,11 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 
 		d := SearchData{
 			Schematics:        schematicModels,
-			Tags:              allTags(app),
-			TagsWithCount:     allTagsWithCount(app, cacheService),
+			Tags:              allTagsFromStore(appStore),
+			TagsWithCount:     allTagsWithCountFromStore(appStore, cacheService),
 			SelectedTags:      selectedTags,
-			MinecraftVersions: allMinecraftVersions(app),
-			CreateVersions:    allCreatemodVersions(app),
+			MinecraftVersions: allMinecraftVersionsFromStore(appStore),
+			CreateVersions:    allCreatemodVersionsFromStore(appStore),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
 			SearchResultCount: total,
 			TotalResults:      total,
@@ -275,6 +277,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 			PrevURL:           prevURL,
 			NextURL:           nextURL,
 			ViewMode:          viewMode,
+			HidePaid:          hidePaid,
 		}
 		d.Populate(e)
 		// Dynamic title based on search context
@@ -285,7 +288,7 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		} else {
 			d.Title = i18n.T(d.Language, "Search")
 		}
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Description = fmt.Sprintf(i18n.T(d.Language, "page.search.description"), d.Term)
 		d.Slug = fmt.Sprintf("/search/%s", slugTerm)
 		d.CanonicalURL = canonicalURL
@@ -305,11 +308,8 @@ func SearchHandler(app *pocketbase.PocketBase, searchService *search.Service, ca
 		if err != nil {
 			return err
 		}
-		// Update search count
-		err = searchCount(app, term, slugTerm, int32(d.SearchResultCount))
-		if err != nil {
-			return err
-		}
+		// Update search count via store
+		_ = appStore.SearchTracking.RecordSearch(ctx, term, d.SearchResultCount, "", "")
 		return e.HTML(http.StatusOK, html)
 	}
 }
@@ -355,36 +355,10 @@ func computePageNumbers(current, totalPages int) []int {
 	return pages
 }
 
-func searchCount(app *pocketbase.PocketBase, term string, termSlug string, searchResults int32) error {
-	term = strings.ToLower(strings.TrimSpace(term))
-	// Skip empty or invalid searches
-	if term == "" {
-		return nil
-	}
-	records, err := app.FindRecordsByFilter("searches", "term = {:term}", "+term", 1, 0, dbx.Params{"term": term})
-	if err != nil {
-		return err
-	}
-	searchesCollection, err := app.FindCollectionByNameOrId("searches")
-	if err != nil {
-		return err
-	}
-	if len(records) == 0 {
-		record := core.NewRecord(searchesCollection)
-		record.Set("term", term)
-		record.Set("slug", termSlug)
-		record.Set("searches", 1)
-		record.Set("results", searchResults)
-		return app.Save(record)
-	}
-	record := records[0]
-	record.Set("searches", record.GetInt("searches")+1)
-	record.Set("results", searchResults)
-	return app.Save(record)
-}
+// searchCount is no longer used — search tracking is done via appStore.SearchTracking.RecordSearch
 
-func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, registry *template.Registry, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func SearchPostHandler(service *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		data := struct {
 			Term             string `json:"q" form:"q"`
 			Sort             string `json:"sort" form:"sort"`
@@ -395,7 +369,7 @@ func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, regis
 			CreateVersion    string `json:"cv" form:"cv"`
 		}{}
 		if err := e.BindBody(&data); err != nil {
-			return apis.NewBadRequestError("Failed to read request data", err)
+			return &server.APIError{Status: 400, Message: "Failed to read request data"}
 		}
 		// Handle multi-tag: form may submit multiple tag values via checkboxes
 		tagParam := data.Tag
@@ -415,50 +389,40 @@ func SearchPostHandler(app *pocketbase.PocketBase, service *cache.Service, regis
 	}
 }
 
-func allTags(app *pocketbase.PocketBase) []models.SchematicTag {
-	tagsCollection, err := app.FindCollectionByNameOrId("schematic_tags")
+func allTagsFromStore(appStore *store.Store) []models.SchematicTag {
+	tags, err := appStore.Tags.List(context.Background())
 	if err != nil {
 		return nil
 	}
-	records, err := app.FindRecordsByFilter(tagsCollection.Id, "1=1", "+name", -1, 0)
-	if err != nil {
-		return nil
+	result := make([]models.SchematicTag, len(tags))
+	for i, t := range tags {
+		result[i] = models.SchematicTag{
+			ID:   t.ID,
+			Key:  t.Key,
+			Name: t.Name,
+		}
 	}
-	return mapResultToTags(records)
+	return result
 }
 
-type schematicTags struct {
-	Tags string
-}
-
-func allTagsWithCount(app *pocketbase.PocketBase, service *cache.Service) []models.SchematicTagWithCount {
+func allTagsWithCountFromStore(appStore *store.Store, service *cache.Service) []models.SchematicTagWithCount {
 	tagsWithCount, found := service.GetTagWithCount(cache.AllTagsWithCountKey)
 	if found {
 		return tagsWithCount
 	}
-	tags := allTags(app)
-	var schematics []schematicTags
-	err := app.DB().
-		Select("schematics.tags").
-		From("schematics").
-		All(&schematics)
+	tags, err := appStore.Tags.ListWithCount(context.Background())
 	if err != nil {
-		app.Logger().Debug("could not fetch tags with count", "error", err.Error())
 		return nil
 	}
-	for i := range tags {
-		tagsWithCount = append(tagsWithCount, models.SchematicTagWithCount{
-			ID:    tags[i].ID,
-			Key:   tags[i].Key,
-			Name:  tags[i].Name,
-			Count: 0,
-		})
-		for x := range schematics {
-			if strings.Contains(schematics[x].Tags, tagsWithCount[i].ID) {
-				tagsWithCount[i].Count++
-			}
+	result := make([]models.SchematicTagWithCount, len(tags))
+	for i, t := range tags {
+		result[i] = models.SchematicTagWithCount{
+			ID:    t.ID,
+			Key:   t.Key,
+			Name:  t.Name,
+			Count: t.Count,
 		}
 	}
-	service.SetTagWithCount(cache.AllTagsWithCountKey, tagsWithCount)
-	return tagsWithCount
+	service.SetTagWithCount(cache.AllTagsWithCountKey, result)
+	return result
 }

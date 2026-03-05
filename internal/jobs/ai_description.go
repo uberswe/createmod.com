@@ -20,12 +20,12 @@ type AIDescriptionWorker struct {
 
 func (w *AIDescriptionWorker) Work(ctx context.Context, job *river.Job[AIDescriptionArgs]) error {
 	slog.Info("generating AI descriptions")
-	if w.deps.App == nil || w.deps.AIDesc == nil {
+	if w.deps.AIDesc == nil || w.deps.Storage == nil || w.deps.Store == nil {
 		slog.Warn("AI description generation skipped: missing dependencies")
 		return nil
 	}
 
-	w.deps.AIDesc.ProcessSchematics(w.deps.App)
+	w.deps.AIDesc.ProcessSchematics(w.deps.Storage, w.deps.Store)
 	slog.Info("AI description generation complete")
 	return nil
 }

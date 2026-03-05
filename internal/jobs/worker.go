@@ -11,6 +11,7 @@ import (
 	"createmod/internal/search"
 	"createmod/internal/session"
 	"createmod/internal/sitemap"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"fmt"
@@ -19,17 +20,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pocketbase/pocketbase"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
 
 // Deps holds service dependencies shared by all job workers.
-// During the PocketBase→PostgreSQL transition, workers delegate to
-// the existing PB-based service implementations.
 type Deps struct {
-	App          *pocketbase.PocketBase
 	Store        *store.Store
+	Storage      *storage.Service
 	Search       *search.Service
 	Cache        *cache.Service
 	Sitemap      *sitemap.Service

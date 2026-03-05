@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,15 +11,14 @@ import (
 
 	"createmod/internal/cache"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // APIKeyCreateHandler handles POST /settings/api-keys/new
 // Auth required. Generates a random API key, stores its sha256 hash and shows
 // the plaintext once via a temporary cache entry.
-func APIKeyCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func APIKeyCreateHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -29,11 +29,6 @@ func APIKeyCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 			return e.String(http.StatusBadRequest, "invalid form")
 		}
 		label := strings.TrimSpace(e.Request.FormValue("label"))
-
-		coll, err := app.FindCollectionByNameOrId("api_keys")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "api keys collection not available")
-		}
 
 		// Generate 32 random bytes and hex encode (64 chars)
 		buf := make([]byte, 32)
@@ -48,16 +43,14 @@ func APIKeyCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 			last8 = plaintext[len(plaintext)-8:]
 		}
 
-		rec := core.NewRecord(coll)
-		rec.Set("user", authenticatedUserID(e))
-		rec.Set("key_hash", hash)
-		if label != "" {
-			rec.Set("label", label)
+		ctx := context.Background()
+		key := &store.APIKey{
+			UserID:  authenticatedUserID(e),
+			KeyHash: hash,
+			Label:   label,
+			Last8:   last8,
 		}
-		if last8 != "" {
-			rec.Set("last8", last8)
-		}
-		if err := app.Save(rec); err != nil {
+		if err := appStore.APIKeys.Create(ctx, key); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save api key")
 		}
 
@@ -75,15 +68,10 @@ func APIKeyCreateHandler(app *pocketbase.PocketBase, cacheService *cache.Service
 
 // APIKeyCreateJSONHandler handles POST /api/keys/generate
 // Auth required. Returns JSON with the plaintext key for use in the API docs "Try it" panels.
-func APIKeyCreateJSONHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func APIKeyCreateJSONHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if !isAuthenticated(e) {
 			return writeJSON(e, http.StatusUnauthorized, map[string]string{"error": "login required"})
-		}
-
-		coll, err := app.FindCollectionByNameOrId("api_keys")
-		if err != nil || coll == nil {
-			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "api keys not available"})
 		}
 
 		buf := make([]byte, 32)
@@ -95,12 +83,14 @@ func APIKeyCreateJSONHandler(app *pocketbase.PocketBase, appStore *store.Store) 
 		hash := hex.EncodeToString(sum[:])
 		last8 := plaintext[len(plaintext)-8:]
 
-		rec := core.NewRecord(coll)
-		rec.Set("user", authenticatedUserID(e))
-		rec.Set("key_hash", hash)
-		rec.Set("label", "API Docs test key")
-		rec.Set("last8", last8)
-		if err := app.Save(rec); err != nil {
+		ctx := context.Background()
+		key := &store.APIKey{
+			UserID:  authenticatedUserID(e),
+			KeyHash: hash,
+			Label:   "API Docs test key",
+			Last8:   last8,
+		}
+		if err := appStore.APIKeys.Create(ctx, key); err != nil {
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save key"})
 		}
 
@@ -110,8 +100,8 @@ func APIKeyCreateJSONHandler(app *pocketbase.PocketBase, appStore *store.Store) 
 
 // APIKeyRevokeHandler handles POST /settings/api-keys/{id}/revoke
 // Auth required. Owner-only delete. HTMX-aware redirect.
-func APIKeyRevokeHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func APIKeyRevokeHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -122,18 +112,8 @@ func APIKeyRevokeHandler(app *pocketbase.PocketBase, appStore *store.Store) func
 		if id == "" {
 			return e.String(http.StatusBadRequest, "missing id")
 		}
-		coll, err := app.FindCollectionByNameOrId("api_keys")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "api keys collection not available")
-		}
-		rec, err := app.FindRecordById(coll.Id, id)
-		if err != nil || rec == nil {
-			return e.String(http.StatusNotFound, "api key not found")
-		}
-		if rec.GetString("user") != authenticatedUserID(e) {
-			return e.String(http.StatusForbidden, "not allowed")
-		}
-		if err := app.Delete(rec); err != nil {
+		ctx := context.Background()
+		if err := appStore.APIKeys.Delete(ctx, id, authenticatedUserID(e)); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to revoke api key")
 		}
 		dest := "/settings?api_key=revoked"

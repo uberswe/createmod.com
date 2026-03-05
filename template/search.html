@@ -16,7 +16,7 @@
                         </span>
                         <input id="search-hero-input" type="text" value="{{ .Term }}" name="q" class="form-control form-control-lg" placeholder="{{ T .Language "Search schematics..." }}"
                                aria-label="Search CreateMod.com" autocomplete="off"
-                               hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true"
+                               hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"
                                hx-trigger="keyup changed delay:400ms, search" hx-include="#advanced-search-form">
                     </div>
                 </div>

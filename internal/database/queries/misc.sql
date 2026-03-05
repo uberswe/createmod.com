@@ -26,19 +26,18 @@ RETURNING *;
 SELECT * FROM nbt_hashes WHERE hash = $1;
 
 -- name: CreateNBTHash :exec
-INSERT INTO nbt_hashes (id, hash, schematic_id) VALUES ($1, $2, $3);
+INSERT INTO nbt_hashes (id, hash, schematic_id, uploaded_by) VALUES ($1, $2, $3, $4);
 
--- name: CreateTempUpload :one
-INSERT INTO temp_uploads (id, token, filename, size, checksum, parsed_summary, nbt_file,
-    block_count, dim_x, dim_y, dim_z, materials, mods)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING *;
+-- name: ListNBTHashesByUser :many
+SELECT * FROM nbt_hashes
+WHERE uploaded_by = $1 AND schematic_id IS NULL
+ORDER BY created DESC;
 
--- name: GetTempUploadByToken :one
-SELECT * FROM temp_uploads WHERE token = $1;
+-- name: DeleteNBTHash :exec
+DELETE FROM nbt_hashes WHERE id = $1 AND uploaded_by = $2;
 
--- name: DeleteTempUpload :exec
-DELETE FROM temp_uploads WHERE id = $1;
+-- name: CheckHashIsBlacklisted :one
+SELECT EXISTS(SELECT 1 FROM nbt_hashes WHERE hash = $1 AND schematic_id IS NULL) AS is_blacklisted;
 
 -- name: CreateSchematicVersion :one
 INSERT INTO schematic_versions (id, schematic_id, version, snapshot, note)
@@ -114,3 +113,16 @@ SELECT * FROM createmod_versions ORDER BY version DESC;
 
 -- name: ListMinecraftVersions :many
 SELECT * FROM minecraft_versions ORDER BY version DESC;
+
+-- name: GetMinecraftVersionByID :one
+SELECT id, version, created FROM minecraft_versions WHERE id = $1;
+
+-- name: GetCreatemodVersionByID :one
+SELECT id, version, created FROM createmod_versions WHERE id = $1;
+
+-- name: ListTopSearches :many
+SELECT query, COUNT(*) AS search_count
+FROM searches
+GROUP BY query
+ORDER BY search_count DESC
+LIMIT $1;

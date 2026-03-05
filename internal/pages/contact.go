@@ -4,9 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 )
 
@@ -20,15 +18,15 @@ type ContactData struct {
 	DefaultData
 }
 
-func ContactHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func ContactHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := ContactData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Contact")
 		d.Description = i18n.T(d.Language, "page.contact.description")
 		d.Slug = "/contact"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(contactTemplates...).Render(d)
 		if err != nil {
 			return err

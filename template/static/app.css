@@ -422,6 +422,19 @@ a:hover {
   width: 20px;
   height: 20px;
 }
+.sidebar-item-external {
+  color: var(--tblr-green);
+}
+.sidebar-item-external:hover {
+  color: var(--tblr-green);
+  background: rgba(47, 179, 68, 0.08);
+}
+.sidebar-external-icon {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  opacity: 0.6;
+}
 .sidebar-stats-card {
   display: none;
 }

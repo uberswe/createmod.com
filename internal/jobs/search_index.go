@@ -22,17 +22,17 @@ type SearchIndexWorker struct {
 
 func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndexArgs]) error {
 	slog.Info("rebuilding search index")
-	if w.deps.App == nil || w.deps.Search == nil {
+	if w.deps.Store == nil || w.deps.Search == nil {
 		slog.Warn("search index rebuild skipped: missing dependencies")
 		return nil
 	}
 
-	schematics, err := w.deps.App.FindRecordsByFilter("schematics", "deleted = '' && moderated = true", "-created", -1, 0)
+	storeSchematics, err := w.deps.Store.Schematics.ListAllForIndex(ctx)
 	if err != nil {
 		slog.Error("search index rebuild: failed to load schematics", "error", err)
 		return err
 	}
-	mapped := pages.MapResultsToSchematic(w.deps.App, schematics, w.deps.Cache)
+	mapped := pages.MapStoreSchematics(w.deps.Store, storeSchematics, w.deps.Cache)
 	w.deps.Search.BuildIndex(mapped)
 	slog.Info("search index rebuild complete", "count", len(mapped))
 	return nil

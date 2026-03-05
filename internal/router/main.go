@@ -5,31 +5,48 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/moderation"
-	"createmod/internal/modmeta"
 	"createmod/internal/outurl"
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/session"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/gosimple/slug"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/router"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"io"
 	html "html/template"
-	"io/ioutil"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gosimple/slug"
 )
+
+// Adapt converts a server.RequestEvent handler into an http.HandlerFunc.
+// It creates a RequestEvent from the standard HTTP primitives and handles
+// error responses via server.APIError.
+func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		e := server.NewRequestEvent(w, r)
+		if err := h(e); err != nil {
+			if apiErr, ok := err.(*server.APIError); ok {
+				http.Error(w, apiErr.Message, apiErr.Status)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
 
 // computeAssetVersion hashes local CSS files and returns a short hex string.
 // Called once at startup so templates can append ?v=<hash> for cache-busting.
@@ -44,14 +61,31 @@ func computeAssetVersion() string {
 	return hex.EncodeToString(h.Sum(nil))[:8]
 }
 
-func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], searchService *search.Service, cacheService *cache.Service, discordService *discord.Service, moderationService *moderation.Service, translationService *translation.Service, modMetaService *modmeta.Service, appStore *store.Store, sessionStore *session.Store, discordOAuth *auth.OAuthProvider, githubOAuth *auth.OAuthProvider) {
+// RegisterParams holds all dependencies needed for route registration.
+type RegisterParams struct {
+	SearchService      *search.Service
+	CacheService       *cache.Service
+	DiscordService     *discord.Service
+	ModerationService  *moderation.Service
+	TranslationService *translation.Service
+	ModMetaService     interface{}
+	AppStore           *store.Store
+	SessionStore       *session.Store
+	StorageService     *storage.Service
+	DiscordOAuth       *auth.OAuthProvider
+	GithubOAuth        *auth.OAuthProvider
+	MailService        *mailer.Service
+	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
+}
+
+func Register(p RegisterParams) chi.Router {
 	promotionService := promotion.New()
-	registry := template.NewRegistry()
+	registry := server.NewRegistry()
 
 	assetVer := computeAssetVersion()
 
 	// Derive a stable HMAC key for signing outgoing redirect URLs.
-	outSecret := deriveOutSecret(app)
+	outSecret := deriveOutSecret()
 
 	funcMap := html.FuncMap{
 		"ToLower":   strings.ToLower,
@@ -81,6 +115,7 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 		"Hreflangs": func(barePath string) []pages.HreflangEntry {
 			return pages.AllHreflangs()
 		},
+		"externalDomain": pages.ExternalDomain,
 		"LangFlag": func(code string) string {
 			switch code {
 			case "en":
@@ -107,298 +142,328 @@ func Register(app *pocketbase.PocketBase, e *router.Router[*core.RequestEvent], 
 
 	registry.AddFuncs(funcMap)
 
-	e.BindFunc(legacyFileCompat())
-	e.BindFunc(legacySearchCompat())
-	e.BindFunc(legacyCategoryCompat())
-	e.BindFunc(legacyTagCompat())
-	e.BindFunc(cookieAuth(app, sessionStore))
-	// Frontend routes
-	e.GET("/sitemaps/{path...}", apis.Static(os.DirFS("./template/dist/sitemaps"), false))
-	e.GET("/assets/x/{path...}", apis.Static(os.DirFS("./template/static"), false))
-	// Serve unbundled source assets directly (no npm build)
-	e.GET("/robots.txt", func(e *core.RequestEvent) error {
-		return e.String(200, "User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml")
+	r := chi.NewRouter()
+
+	// Maintenance mode — toggled at runtime via the shared atomic flag.
+	// Also activatable via MAINTENANCE_MODE=true env var at startup.
+	// The /api/health endpoint is excluded so load balancers can still probe.
+	maintenanceFlag := p.MaintenanceMode
+	if maintenanceFlag == nil {
+		maintenanceFlag = &atomic.Bool{}
+	}
+	if os.Getenv("MAINTENANCE_MODE") == "true" {
+		maintenanceFlag.Store(true)
+	}
+	r.Use(requestLogger)
+	r.Use(maintenanceModeMiddleware(maintenanceFlag))
+	r.Use(legacyFileCompat)
+	r.Use(legacySearchCompat)
+	r.Use(legacyCategoryCompat)
+	r.Use(legacyTagCompat)
+	r.Use(cookieAuth(p.SessionStore))
+
+	// Health check endpoint — excluded from maintenance mode via the middleware itself.
+	r.Get("/api/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
 	})
-	e.GET("/ads.txt", func(e *core.RequestEvent) error {
-		s, ok := cacheService.GetString("ads.txt")
+
+	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
+	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
+
+	// Frontend routes
+	r.Handle("/sitemaps/*", http.StripPrefix("/sitemaps/", http.FileServer(http.Dir("./template/dist/sitemaps"))))
+	r.Handle("/assets/x/*", http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static"))))
+	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
+	})
+	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {
+		s, ok := p.CacheService.GetString("ads.txt")
 		if ok {
-			return e.String(200, s)
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte(s))
+			return
 		}
 		s, err := getContent("https://api.nitropay.com/v1/ads-2143.txt")
 		if err != nil || s == "" {
-			return e.String(500, "Could not determine content")
+			http.Error(w, "Could not determine content", 500)
+			return
 		}
-		cacheService.SetString("ads.txt", s)
-		return e.String(200, s)
+		p.CacheService.SetString("ads.txt", s)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(s))
 	})
+
 	// Index
-	e.GET("/", pages.IndexHandler(app, cacheService, registry, appStore))
-	// Removed the about page, not relevant anymore
-	e.GET("/upload", pages.UploadHandler(app, registry, cacheService, appStore))
-	e.POST("/upload/nbt", pages.UploadNBTHandler(app, registry, cacheService, appStore))
+	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/upload", Adapt(pages.UploadHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	// Private preview URL for temporary uploads
-	e.GET("/u/{token}", pages.UploadPreviewHandler(app, registry, cacheService, appStore))
-	// Make public endpoint for temporary uploads
-	e.GET("/u/{token}/download", pages.UploadDownloadHandler(app, appStore))
-	e.POST("/u/{token}/add-file", pages.UploadAddFileHandler(app, appStore))
-	e.DELETE("/u/{token}/files/{fileId}", pages.UploadDeleteFileHandler(app, appStore))
-	e.GET("/u/{token}/files/{fileId}/download", pages.UploadFileDownloadHandler(app, appStore))
-	e.POST("/u/{token}/make-public", pages.UploadMakePublicHandler(app, registry, cacheService, appStore))
+	r.Get("/u/{token}", Adapt(pages.UploadPreviewHandler(registry, p.CacheService, p.AppStore)))
+	// Download endpoint for temporary uploads
+	r.Get("/u/{token}/download", Adapt(pages.UploadDownloadHandler(p.AppStore, p.StorageService)))
+	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
+	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
+	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore)))
 	// Publish form for temporary uploads (requires auth)
-	e.GET("/u/{token}/publish", pages.UploadPublishHandler(app, registry, cacheService, appStore))
+	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
-	e.GET("/upload/pending", pages.UploadPendingHandler(app, registry, cacheService, appStore))
-	e.GET("/contact", pages.ContactHandler(app, registry, cacheService, appStore))
-	e.GET("/blacklist-request", func(e *core.RequestEvent) error {
-		return e.Redirect(http.StatusMovedPermanently, pages.LangRedirectURL(e, "/settings/blacklist"))
+	r.Get("/upload/pending", Adapt(pages.UploadPendingHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/contact", Adapt(pages.ContactHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
+	// Comments and ratings API (replaces PB REST endpoints)
+	r.Post("/api/comments", Adapt(pages.CommentCreateHandler(p.AppStore, p.MailService)))
+	r.Delete("/api/comments/{id}", Adapt(pages.CommentDeleteHandler(p.AppStore)))
+	r.Post("/api/ratings", Adapt(pages.RatingUpsertHandler(p.AppStore)))
+	// User profile API (replaces PB REST endpoints)
+	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
+	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
+	// Schematic edit/delete API (replaces PB REST endpoints)
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.SearchService, p.CacheService, p.StorageService, p.AppStore)))
+	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore)))
+	r.Get("/blacklist-request", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/blacklist"), http.StatusMovedPermanently)
 	})
 	// Redirect legacy single guide page to the guides listing
-	e.GET("/guide", func(e *core.RequestEvent) error {
-		return e.Redirect(http.StatusMovedPermanently, pages.LangRedirectURL(e, "/guides"))
+	r.Get("/guide", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/guides"), http.StatusMovedPermanently)
 	})
-	e.GET("/rules", pages.RulesHandler(app, registry, cacheService, appStore))
-	e.GET("/explore", pages.ExploreHandler(app, cacheService, registry, appStore))
-	e.GET("/terms-of-service", pages.TermsOfServiceHandler(app, registry, cacheService, appStore))
-	e.GET("/privacy-policy", pages.PrivacyPolicyHandler(app, registry, cacheService, appStore))
-	e.GET("/settings", pages.UserSettingsHandler(app, registry, cacheService, appStore))
-	e.GET("/settings/password", pages.UserPasswordHandler(app, registry, cacheService, appStore))
-	e.POST("/settings/password", pages.UserPasswordPostHandler(app, registry, cacheService, appStore))
-	e.GET("/settings/points", pages.UserPointsHandler(app, registry, cacheService, appStore))
-	e.GET("/settings/gamification", func(e *core.RequestEvent) error {
-		return e.Redirect(http.StatusMovedPermanently, pages.LangRedirectURL(e, "/settings/points"))
+	r.Get("/rules", Adapt(pages.RulesHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/explore", Adapt(pages.ExploreHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/terms-of-service", Adapt(pages.TermsOfServiceHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/privacy-policy", Adapt(pages.PrivacyPolicyHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings", Adapt(pages.UserSettingsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings/password", Adapt(pages.UserPasswordHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/settings/password", Adapt(pages.UserPasswordPostHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings/points", Adapt(pages.UserPointsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings/gamification", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/points"), http.StatusMovedPermanently)
 	})
-	e.GET("/settings/api-keys", pages.UserAPIKeysHandler(app, registry, cacheService, appStore))
-	e.GET("/settings/statistics", pages.UserStatsHandler(app, registry, cacheService, appStore))
-	e.GET("/settings/blacklist", pages.BlacklistRequestHandler(app, registry, cacheService, appStore))
+	r.Get("/settings/api-keys", Adapt(pages.UserAPIKeysHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings/statistics", Adapt(pages.UserStatsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings/blacklist", Adapt(pages.BlacklistRequestHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/settings/blacklist/upload", Adapt(pages.BlacklistUploadHandler(p.AppStore)))
+	r.Delete("/settings/blacklist/{id}", Adapt(pages.BlacklistDeleteHandler(p.AppStore)))
 	// API Docs
-	e.GET("/api", pages.APIDocsHandler(app, registry, cacheService, appStore))
+	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
 	// Public JSON API (beta)
-	e.GET("/api/schematics", pages.APISchematicsListHandler(app, searchService, cacheService, appStore))
-	e.GET("/api/schematics/{name}", pages.APISchematicDetailHandler(app, cacheService, appStore))
-	e.POST("/api/schematics/upload", pages.APIUploadHandler(app, cacheService, appStore))
+	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchService, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.CacheService, p.AppStore)))
+	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.CacheService, p.AppStore, p.StorageService)))
 	// Reports
-	e.POST("/reports", pages.ReportSubmitHandler(app, appStore))
+	r.Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
 	// Admin
-	e.GET("/admin/reports", pages.AdminReportsHandler(app, registry, cacheService, appStore))
-	e.POST("/admin/reports/{id}/resolve", pages.AdminReportResolveHandler(app, appStore))
+	r.Get("/admin/reports", Adapt(pages.AdminReportsHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore)))
+	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.SearchService, p.CacheService, p.AppStore)))
+	r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore)))
+	r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
+	r.Post("/admin/tags/{id}/reject", Adapt(pages.AdminTagRejectHandler(p.CacheService, p.AppStore)))
 	// Auth
-	e.GET("/login", pages.LoginHandler(app, registry, appStore))
-	// Handle login form submissions
-	e.POST("/login", pages.LoginPostHandler(app, appStore, sessionStore))
-	e.GET("/register", pages.RegisterHandler(app, registry, appStore))
-	e.POST("/register", pages.RegisterPostHandler(app, appStore, sessionStore))
-	e.GET("/reset-password", pages.PasswordResetHandler(app, registry, appStore))
-	e.POST("/reset-password", pages.PasswordResetPostHandler(app, registry, appStore))
-	e.GET("/reset-password/{token}", pages.PasswordResetConfirmHandler(app, registry, appStore))
-	e.POST("/reset-password/{token}", pages.PasswordResetConfirmPostHandler(app, registry, appStore, sessionStore))
+	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))
+	r.Post("/login", Adapt(pages.LoginPostHandler(p.AppStore, p.SessionStore)))
+	r.Get("/register", Adapt(pages.RegisterHandler(registry, p.AppStore)))
+	r.Post("/register", Adapt(pages.RegisterPostHandler(p.AppStore, p.SessionStore)))
+	r.Get("/reset-password", Adapt(pages.PasswordResetHandler(registry, p.AppStore)))
+	r.Post("/reset-password", Adapt(pages.PasswordResetPostHandler(p.MailService, registry, p.AppStore)))
+	r.Get("/reset-password/{token}", Adapt(pages.PasswordResetConfirmHandler(registry, p.AppStore)))
+	r.Post("/reset-password/{token}", Adapt(pages.PasswordResetConfirmPostHandler(registry, p.AppStore, p.SessionStore)))
 	// OAuth routes
-	e.GET("/auth/discord", pages.OAuthRedirectHandler(discordOAuth))
-	e.GET("/auth/discord/callback", pages.OAuthCallbackHandler(app, discordOAuth, appStore, sessionStore))
-	e.GET("/auth/github", pages.OAuthRedirectHandler(githubOAuth))
-	e.GET("/auth/github/callback", pages.OAuthCallbackHandler(app, githubOAuth, appStore, sessionStore))
-	e.GET("/logout", func(e *core.RequestEvent) error {
-		secure := e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https")
+	r.Get("/auth/discord", Adapt(pages.OAuthRedirectHandler(p.DiscordOAuth)))
+	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/github", Adapt(pages.OAuthRedirectHandler(p.GithubOAuth)))
+	r.Get("/auth/github/callback", Adapt(pages.OAuthCallbackHandler(p.GithubOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/logout", func(w http.ResponseWriter, req *http.Request) {
+		secure := req.TLS != nil || strings.EqualFold(req.Header.Get("X-Forwarded-Proto"), "https")
 
 		// Delete PostgreSQL session
-		if cookie, err := e.Request.Cookie(auth.CookieName); err == nil {
-			_ = sessionStore.Delete(e.Request.Context(), cookie.Value)
+		if cookie, err := req.Cookie(auth.CookieName); err == nil {
+			_ = p.SessionStore.Delete(req.Context(), cookie.Value)
 		}
 
-		auth.ClearAuthCookie(e.Response, secure)
-		// Clear server-side auth for this request context
-		e.Auth = nil
-		if e.Request.Header.Get("HX-Request") != "" {
-			// HTMX request: instruct client to navigate
-			e.Response.Header().Set("HX-Redirect", pages.LangRedirectURL(e, "/"))
-			return e.HTML(http.StatusNoContent, "")
+		auth.ClearAuthCookie(w, secure)
+		if req.Header.Get("HX-Request") != "" {
+			w.Header().Set("HX-Redirect", pages.LangRedirectURLFromRequest(req, "/"))
+			w.WriteHeader(http.StatusNoContent)
+			return
 		}
-		return e.Redirect(http.StatusFound, pages.LangRedirectURL(e, "/"))
+		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/"), http.StatusFound)
 	})
 	// News
-	e.GET("/news", pages.NewsHandler(app, registry, cacheService, appStore))
-	e.GET("/news/{slug}", pages.NewsPostHandler(app, registry, cacheService, appStore))
+	r.Get("/news", Adapt(pages.NewsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/news/{slug}", Adapt(pages.NewsPostHandler(registry, p.CacheService, p.AppStore)))
 	// Users listing
-	e.GET("/users", pages.UsersHandler(app, registry, cacheService, appStore))
+	r.Get("/users", Adapt(pages.UsersHandler(registry, p.CacheService, p.AppStore)))
 	// Videos listing
-	e.GET("/videos", pages.VideosHandler(app, registry, cacheService, appStore))
-	// Guides listing
-	e.GET("/guides", pages.GuidesHandler(app, registry, cacheService, outSecret, appStore))
-	// Guide create
-	e.GET("/guides/new", pages.GuidesNewHandler(app, registry, cacheService, appStore))
-	e.POST("/guides", pages.GuidesCreateHandler(app, cacheService, appStore))
-	// Guide detail/edit/update/delete
-	e.GET("/guides/{id}", pages.GuidesShowHandler(app, registry, cacheService, translationService, appStore))
-	e.GET("/guides/{id}/edit", pages.GuidesEditHandler(app, registry, cacheService, appStore))
-	e.POST("/guides/{id}", pages.GuidesUpdateHandler(app, cacheService, appStore))
-	e.POST("/guides/{id}/delete", pages.GuidesDeleteHandler(app, appStore))
-	// Collections listing
+	r.Get("/videos", Adapt(pages.VideosHandler(registry, p.CacheService, p.AppStore)))
+	// Guides
+	r.Get("/guides", Adapt(pages.GuidesHandler(registry, p.CacheService, outSecret, p.AppStore)))
+	r.Get("/guides/new", Adapt(pages.GuidesNewHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/guides", Adapt(pages.GuidesCreateHandler(p.CacheService, p.AppStore)))
+	r.Get("/guides/{id}", Adapt(pages.GuidesShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore)))
+	r.Get("/guides/{id}/edit", Adapt(pages.GuidesEditHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/guides/{id}", Adapt(pages.GuidesUpdateHandler(p.CacheService, p.AppStore)))
+	r.Post("/guides/{id}/delete", Adapt(pages.GuidesDeleteHandler(p.AppStore)))
 	// Mods
-	e.GET("/mods", pages.ModsHandler(app, cacheService, registry, modMetaService, appStore))
-	e.GET("/mods/{slug}", pages.ModDetailHandler(app, cacheService, registry, modMetaService, appStore))
-	e.GET("/collections", pages.CollectionsHandler(app, registry, cacheService, appStore))
-	// Collections create flow
-	e.GET("/collections/new", pages.CollectionsNewHandler(app, registry, cacheService, appStore))
-	e.POST("/collections", pages.CollectionsCreateHandler(app, registry, cacheService, appStore))
-	// Collections detail
-	e.GET("/collections/{slug}", pages.CollectionsShowHandler(app, registry, cacheService, translationService, appStore))
-	// Collections edit/update/delete
-	e.GET("/collections/{slug}/edit", pages.CollectionsEditHandler(app, registry, cacheService, appStore))
-	e.POST("/collections/{slug}", pages.CollectionsUpdateHandler(app, registry, cacheService, moderationService, appStore))
-	e.POST("/collections/{slug}/delete", pages.CollectionsDeleteHandler(app, appStore))
-	// Collections reorder (author-only)
-	e.POST("/collections/{slug}/reorder", pages.CollectionsReorderHandler(app, appStore))
+	r.Get("/mods", Adapt(pages.ModsHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
+	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
+	// Collections
+	r.Get("/collections", Adapt(pages.CollectionsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/collections/new", Adapt(pages.CollectionsNewHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/api/images/upload", Adapt(pages.ImageUploadHandler(p.StorageService)))
+	r.Post("/collections", Adapt(pages.CollectionsCreateHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	r.Get("/collections/{slug}", Adapt(pages.CollectionsShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore)))
+	r.Get("/collections/{slug}/edit", Adapt(pages.CollectionsEditHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/collections/{slug}", Adapt(pages.CollectionsUpdateHandler(registry, p.CacheService, p.ModerationService, p.AppStore, p.StorageService)))
+	r.Post("/collections/{slug}/delete", Adapt(pages.CollectionsDeleteHandler(p.AppStore)))
+	r.Post("/collections/{slug}/reorder", Adapt(pages.CollectionsReorderHandler(p.AppStore)))
 	// API keys (user settings)
-	e.POST("/settings/api-keys/new", pages.APIKeyCreateHandler(app, cacheService, appStore))
-	e.POST("/settings/api-keys/{id}/revoke", pages.APIKeyRevokeHandler(app, appStore))
-	e.POST("/api/keys/generate", pages.APIKeyCreateJSONHandler(app, appStore))
+	r.Post("/settings/api-keys/new", Adapt(pages.APIKeyCreateHandler(p.CacheService, p.AppStore)))
+	r.Post("/settings/api-keys/{id}/revoke", Adapt(pages.APIKeyRevokeHandler(p.AppStore)))
+	r.Post("/api/keys/generate", Adapt(pages.APIKeyCreateJSONHandler(p.AppStore)))
 	// Language setter
-	e.GET("/lang", pages.SetLanguageHandler())
+	r.Get("/lang", Adapt(pages.SetLanguageHandler()))
 	// Schematics
-	e.GET("/schematics", pages.SchematicsHandler(app, cacheService, registry, appStore))
-	e.GET("/schematics/{name}", pages.SchematicHandler(app, searchService, cacheService, registry, promotionService, discordService, translationService, appStore))
+	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchService, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore)))
 	// Partial comments endpoint for HTMX refresh
-	e.GET("/schematics/{name}/comments", pages.SchematicCommentsHandler(app, searchService, cacheService, registry, discordService, appStore))
+	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.SearchService, p.CacheService, registry, p.DiscordService, p.AppStore)))
 	// Add to collection
-	e.POST("/schematics/{name}/add-to-collection", pages.SchematicAddToCollectionHandler(app, appStore))
+	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
-	e.GET("/download/{name}", pages.DownloadHandler(app, cacheService, appStore))
+	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.CacheService, p.AppStore)))
 	// Download interstitial page
-	e.GET("/get/{name}", pages.DownloadInterstitialHandler(app, registry, cacheService, appStore))
+	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
 	// External link interstitial (encrypted token, no raw URL exposed)
-	e.GET("/out/{token}", pages.ExternalLinkInterstitialHandler(app, registry, cacheService, outSecret, appStore))
-	e.GET("/schematics/{name}/edit", pages.EditSchematicHandler(app, searchService, cacheService, registry, appStore))
+	r.Get("/out/{token}", Adapt(pages.ExternalLinkInterstitialHandler(registry, p.CacheService, outSecret, p.AppStore)))
+	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
 	// Search autocomplete
-	e.GET("/api/search/suggest", pages.SearchSuggestHandler(searchService))
-	e.GET("/search/{term}/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.GET("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.POST("/search/{term}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.GET("/search/page/{page}", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.GET("/search", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.GET("/search/", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.POST("/search/", pages.SearchHandler(app, searchService, cacheService, registry, appStore))
-	e.POST("/search", pages.SearchPostHandler(app, cacheService, registry, appStore))
+	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchService)))
+	r.Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/{term}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Post("/search/{term}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/page/{page}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Get("/search", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
-	e.GET("/author/{username}", pages.ProfileHandler(app, cacheService, registry, appStore))
-	e.GET("/profile", pages.ProfileHandler(app, cacheService, registry, appStore))
+	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
 	// Fallback
-	e.GET("/{any}", pages.FourOhFourHandler(app, registry, appStore))
+	r.Get("/*", Adapt(pages.FourOhFourHandler(registry, p.AppStore)))
 
+	return r
 }
 
-func legacyCategoryCompat() func(e *core.RequestEvent) error {
-	// to /search/?category=apple
+func legacyCategoryCompat(next http.Handler) http.Handler {
 	urlMatches := []string{
 		"/schematics/category/",
 		"/schematic_categories/",
 	}
-	return func(e *core.RequestEvent) error {
-		path := e.Request.URL.Path
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
 		for _, match := range urlMatches {
 			if strings.HasPrefix(path, match) {
-				return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?category=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")))
+				http.Redirect(w, r, fmt.Sprintf("/search/?category=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")), http.StatusMovedPermanently)
+				return
 			}
 		}
-		return e.Next() // proceed with the request chain
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // cookieAuth authenticates requests using PostgreSQL sessions.
-// It populates the request context with the session and bridges to PocketBase's
-// e.Auth by looking up the PB user record, so PB hooks still work.
-func cookieAuth(app *pocketbase.PocketBase, sessStore *session.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		if e.Auth != nil {
-			return e.Next()
-		}
-
-		cookie, err := e.Request.Cookie(auth.CookieName)
-		if err != nil {
-			return e.Next()
-		}
-
-		token := strings.TrimSpace(cookie.Value)
-		if token == "" {
-			return e.Next()
-		}
-
-		// Validate session in PostgreSQL
-		sess, err := sessStore.Validate(e.Request.Context(), token)
-		if err != nil || sess == nil {
-			return e.Next()
-		}
-
-		// Put session in request context for handlers
-		ctx := session.ContextWithSession(e.Request.Context(), sess)
-		e.Request = e.Request.WithContext(ctx)
-
-		// Bridge: populate e.Auth from PB so PB API hooks (comments, ratings, schematics) still work
-		if sess.UserID != "" {
-			record, err := app.FindRecordById("users", sess.UserID)
-			if err == nil && record != nil {
-				e.Auth = record
+func cookieAuth(sessStore *session.Store) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie(auth.CookieName)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
 			}
-		}
 
-		return e.Next()
+			token := strings.TrimSpace(cookie.Value)
+			if token == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Validate session in PostgreSQL
+			sess, err := sessStore.Validate(r.Context(), token)
+			if err != nil || sess == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Put session in request context for handlers
+			ctx := session.ContextWithSession(r.Context(), sess)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 }
 
-func legacyFileCompat() func(e *core.RequestEvent) error {
+func legacyFileCompat(next http.Handler) http.Handler {
 	fileMatches := map[string]string{
 		"/wp-sitemap.xml":    "/sitemaps/sitemap.xml",
 		"/upload-schematic":  "/upload",
 		"/upload-schematics": "/upload",
 	}
-	return func(e *core.RequestEvent) error {
-		path := e.Request.URL.Path
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
 		for match, newRoute := range fileMatches {
 			if path == match || strings.HasPrefix(path, match) {
-				return e.Redirect(http.StatusMovedPermanently, newRoute)
+				http.Redirect(w, r, newRoute, http.StatusMovedPermanently)
+				return
 			}
 		}
-		return e.Next() // proceed with the request chain
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
-func legacyTagCompat() func(e *core.RequestEvent) error {
-	// to /search/?tag=apple
+func legacyTagCompat(next http.Handler) http.Handler {
 	urlMatches := []string{
 		"/schematics/tag/",
 	}
 	queryMatches := []string{
 		"schematic_tags",
 	}
-	return func(e *core.RequestEvent) error {
-		path := e.Request.URL.Path
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
 		for _, match := range urlMatches {
 			if strings.HasPrefix(path, match) {
-				return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")))
+				http.Redirect(w, r, fmt.Sprintf("/search/?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")), http.StatusMovedPermanently)
+				return
 			}
 		}
-		query := e.Request.URL.Query()
+		query := r.URL.Query()
 		for _, match := range queryMatches {
 			if query.Has(match) && query.Get(match) != "" {
-				return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/?tag=%s", query.Get(match)))
+				http.Redirect(w, r, fmt.Sprintf("/search/?tag=%s", query.Get(match)), http.StatusMovedPermanently)
+				return
 			}
 		}
-		return e.Next() // proceed with the request chain
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
-func legacySearchCompat() func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		// ?s=test&id=95&post_type=schematics
-		// test is the term above
-		path := e.Request.URL.Path
-		query := e.Request.URL.Query()
-		fmt.Sprintln("should redirect", e.Request.URL.Path, e.Request.URL.Query())
+func legacySearchCompat(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		query := r.URL.Query()
 		if (path == "" || path == "/") && query.Has("s") && query.Get("s") != "" {
 			searchSlug := slug.Make(query.Get("s"))
-			return e.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/search/%s", searchSlug))
+			http.Redirect(w, r, fmt.Sprintf("/search/%s", searchSlug), http.StatusMovedPermanently)
+			return
 		}
-
-		return e.Next() // proceed with the request chain
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func getContent(url string) (string, error) {
@@ -412,7 +477,7 @@ func getContent(url string) (string, error) {
 		return "", fmt.Errorf("Status error: %v", resp.StatusCode)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("Read body: %v", err)
 	}
@@ -420,13 +485,108 @@ func getContent(url string) (string, error) {
 	return string(data), nil
 }
 
+// responseRecorder wraps http.ResponseWriter to capture the status code.
+type responseRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rr *responseRecorder) WriteHeader(code int) {
+	rr.status = code
+	rr.ResponseWriter.WriteHeader(code)
+}
+
+// requestLogger logs each HTTP request with method, path, status, and duration.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rr := &responseRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rr, r)
+		slog.Info("http",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rr.status,
+			"duration", time.Since(start).Round(time.Millisecond).String(),
+			"ip", r.RemoteAddr,
+		)
+	})
+}
+
+// maintenanceModeMiddleware returns a middleware that checks the given flag on
+// every request. When the flag is true it serves a 503 page; when false it
+// passes through to the next handler. The /api/health endpoint is excluded
+// (registered before middleware) so load balancers can still probe.
+func maintenanceModeMiddleware(flag *atomic.Bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if flag.Load() && r.URL.Path != "/api/health" {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Header().Set("Retry-After", "3600")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte(maintenancePage))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+const maintenancePage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreateMod — Coming Back Soon</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:#1a1a2e;color:#e0e0e0;display:flex;align-items:center;
+       justify-content:center;min-height:100vh;text-align:center;padding:2rem}
+  .container{max-width:520px}
+  h1{font-size:2rem;margin-bottom:1rem;color:#fff}
+  p{font-size:1.1rem;line-height:1.6;color:#b0b0c0;margin-bottom:0.5rem}
+  .status{font-size:0.9rem;color:#888;margin-top:1.5rem}
+  .gear{font-size:4rem;margin-bottom:1.5rem;display:inline-block;animation:spin 4s linear infinite}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="gear">&#9881;</div>
+  <h1>Coming Back Soon</h1>
+  <p>CreateMod.com is temporarily unavailable while we perform maintenance.</p>
+  <p>We'll be back shortly. Thank you for your patience!</p>
+  <p class="status" id="status">Checking again in 30s&hellip;</p>
+</div>
+<script>
+(function(){
+  var seconds = 30;
+  var el = document.getElementById("status");
+  var timer = setInterval(function(){
+    seconds--;
+    if(seconds > 0){
+      el.textContent = "Checking again in " + seconds + "s\u2026";
+      return;
+    }
+    seconds = 30;
+    el.textContent = "Checking\u2026";
+    fetch("/api/health").then(function(r){
+      if(r.ok) location.reload();
+      else el.textContent = "Still down. Checking again in 30s\u2026";
+    }).catch(function(){
+      el.textContent = "Still down. Checking again in 30s\u2026";
+    });
+  }, 1000);
+})();
+</script>
+</body>
+</html>`
+
 // deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.
-// It uses the OUT_SECRET env var if set, otherwise derives one from the
-// PocketBase data directory path so it is stable across restarts.
-func deriveOutSecret(app *pocketbase.PocketBase) string {
+func deriveOutSecret() string {
 	if s := os.Getenv("OUT_SECRET"); s != "" {
 		return s
 	}
-	h := sha256.Sum256([]byte("createmod-out-url-sign:" + app.DataDir()))
+	h := sha256.Sum256([]byte("createmod-out-url-sign:default"))
 	return hex.EncodeToString(h[:])
 }

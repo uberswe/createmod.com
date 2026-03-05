@@ -61,3 +61,9 @@ UPDATE collections SET views = views + 1 WHERE id = $1;
 
 -- name: CountUserCollections :one
 SELECT COUNT(*) FROM collections WHERE author_id = $1 AND deleted = '';
+
+-- name: ListPublishedCollections :many
+SELECT * FROM collections
+WHERE deleted = '' AND published = true
+ORDER BY created DESC
+LIMIT $1 OFFSET $2;

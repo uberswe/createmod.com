@@ -1,9 +1,10 @@
 package pages
 
 import (
+	"net/http"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // LangToPrefix maps internal language codes to URL path prefixes.
@@ -103,8 +104,19 @@ func StripLangPrefix(urlPath string) (lang string, stripped string) {
 
 // LangRedirectURL builds a language-prefixed redirect target using the
 // language detected from the request context (X-Createmod-Lang header).
-func LangRedirectURL(e *core.RequestEvent, path string) string {
+func LangRedirectURL(e *server.RequestEvent, path string) string {
 	lang := e.Request.Header.Get("X-Createmod-Lang")
+	if lang == "" || !isSupportedLanguage(lang) {
+		return path
+	}
+	return PrefixedPath(lang, path)
+}
+
+// LangRedirectURLFromRequest is like LangRedirectURL but takes a raw
+// *http.Request instead of a server.RequestEvent. Used by inline router
+// handlers that don't need the full RequestEvent wrapper.
+func LangRedirectURLFromRequest(r *http.Request, path string) string {
+	lang := r.Header.Get("X-Createmod-Lang")
 	if lang == "" || !isSupportedLanguage(lang) {
 		return path
 	}

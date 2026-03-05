@@ -52,3 +52,8 @@ SELECT EXISTS(
     WHERE author_id = $1 AND deleted IS NULL
     LIMIT 1
 ) AS is_contributor;
+
+-- name: ListUsersForSitemap :many
+SELECT id, username, updated FROM users
+WHERE deleted IS NULL
+ORDER BY updated DESC;

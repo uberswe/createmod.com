@@ -6,18 +6,24 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 type Querier interface {
 	AddSchematicCategory(ctx context.Context, arg AddSchematicCategoryParams) error
 	AddSchematicTag(ctx context.Context, arg AddSchematicTagParams) error
 	AddSchematicToCollection(ctx context.Context, arg AddSchematicToCollectionParams) error
+	ApproveCategoryByID(ctx context.Context, id string) error
 	ApproveComment(ctx context.Context, id string) error
+	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
+	CheckHashIsBlacklisted(ctx context.Context, hash string) (bool, error)
 	CleanupExpiredSessions(ctx context.Context) error
 	ClearCollectionSchematics(ctx context.Context, collectionID string) error
 	CountApprovedSchematics(ctx context.Context) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
+	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
+	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)
@@ -37,35 +43,53 @@ type Querier interface {
 	CreateSearch(ctx context.Context, arg CreateSearchParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error)
-	CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (TempUpload, error)
+	CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (CreateTempUploadRow, error)
+	CreateTempUploadFile(ctx context.Context, arg CreateTempUploadFileParams) (TempUploadFile, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) error
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) error
+	DeleteCategoryByID(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
+	DeleteExpiredTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteGuide(ctx context.Context, id string) error
+	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
 	DeleteReport(ctx context.Context, id string) error
 	DeleteSession(ctx context.Context, id string) error
-	DeleteTempUpload(ctx context.Context, id string) error
+	DeleteTagByID(ctx context.Context, id string) error
+	DeleteTempUpload(ctx context.Context, token string) error
+	DeleteTempUploadFile(ctx context.Context, id string) error
+	DeleteTempUploadFilesByToken(ctx context.Context, token string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
+	FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatingCountBySchematicRow, error)
+	FetchRatingSumBySchematic(ctx context.Context) ([]FetchRatingSumBySchematicRow, error)
+	FetchRecentDownloadsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentDownloadsBySchematicRow, error)
+	FetchRecentViewsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentViewsBySchematicRow, error)
+	FetchTotalDownloadsBySchematic(ctx context.Context) ([]FetchTotalDownloadsBySchematicRow, error)
+	FetchTotalViewsBySchematic(ctx context.Context) ([]FetchTotalViewsBySchematicRow, error)
 	GetAPIKeyByLast8(ctx context.Context, last8 string) (ApiKey, error)
 	GetAchievementByKey(ctx context.Context, key string) (Achievement, error)
 	GetCategoriesByIDs(ctx context.Context, dollar_1 []string) ([]SchematicCategory, error)
 	GetCategoryByID(ctx context.Context, id string) (SchematicCategory, error)
 	GetCategoryByKey(ctx context.Context, key string) (SchematicCategory, error)
+	GetCategoryByKeyIncludingPending(ctx context.Context, key string) (SchematicCategory, error)
 	GetCollectionByID(ctx context.Context, id string) (Collection, error)
 	GetCollectionBySlug(ctx context.Context, slug string) (Collection, error)
 	GetCollectionSchematicIDs(ctx context.Context, collectionID string) ([]string, error)
 	GetCollectionTranslation(ctx context.Context, arg GetCollectionTranslationParams) (CollectionTranslation, error)
 	GetCommentByID(ctx context.Context, id string) (Comment, error)
+	GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
 	GetGuideByID(ctx context.Context, id string) (Guide, error)
 	GetGuideBySlug(ctx context.Context, slug string) (Guide, error)
 	GetGuideTranslation(ctx context.Context, arg GetGuideTranslationParams) (GuideTranslation, error)
 	GetLatestSchematicVersion(ctx context.Context, schematicID string) (int32, error)
+	GetMinecraftVersionByID(ctx context.Context, id string) (GetMinecraftVersionByIDRow, error)
 	GetModMetadataByNamespace(ctx context.Context, namespace string) (ModMetadatum, error)
 	GetNBTHash(ctx context.Context, hash string) (NbtHash, error)
 	GetPointLog(ctx context.Context, userID string) ([]PointLog, error)
+	GetSchematicByChecksum(ctx context.Context, hash string) (*string, error)
 	GetSchematicByID(ctx context.Context, id string) (Schematic, error)
+	GetSchematicByIDAdmin(ctx context.Context, id string) (Schematic, error)
 	GetSchematicByName(ctx context.Context, name string) (Schematic, error)
 	GetSchematicCategoryIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicDownloadCount(ctx context.Context, schematicID string) (int32, error)
@@ -76,20 +100,31 @@ type Querier interface {
 	GetSession(ctx context.Context, id string) (GetSessionRow, error)
 	GetTagByID(ctx context.Context, id string) (SchematicTag, error)
 	GetTagByKey(ctx context.Context, key string) (SchematicTag, error)
+	GetTagByKeyIncludingPending(ctx context.Context, key string) (SchematicTag, error)
 	GetTagsByIDs(ctx context.Context, dollar_1 []string) ([]SchematicTag, error)
-	GetTempUploadByToken(ctx context.Context, token string) (TempUpload, error)
+	GetTempUploadByChecksum(ctx context.Context, checksum string) (GetTempUploadByChecksumRow, error)
+	GetTempUploadByToken(ctx context.Context, token string) (GetTempUploadByTokenRow, error)
+	GetTempUploadFileByID(ctx context.Context, id string) (TempUploadFile, error)
+	GetTotalViewCount(ctx context.Context, schematicID string) (int32, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, lower string) (User, error)
 	GetUserIsContributor(ctx context.Context, authorID *string) (bool, error)
 	GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserMetum, error)
 	HasAchievement(ctx context.Context, arg HasAchievementParams) (bool, error)
+	HourlyCommentStats(ctx context.Context, created time.Time) ([]HourlyCommentStatsRow, error)
+	HourlySchematicStats(ctx context.Context, created time.Time) ([]HourlySchematicStatsRow, error)
+	HourlyUserStats(ctx context.Context, created time.Time) ([]HourlyUserStatsRow, error)
 	IncrementCollectionViews(ctx context.Context, id string) error
+	IncrementGuideViews(ctx context.Context, id string) error
 	IncrementSchematicDownloads(ctx context.Context, id string) error
 	ListAPIKeysByUser(ctx context.Context, userID string) ([]ApiKey, error)
 	ListAchievements(ctx context.Context) ([]Achievement, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
+	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
+	ListAllTags(ctx context.Context) ([]SchematicTag, error)
 	ListApprovedSchematics(ctx context.Context, arg ListApprovedSchematicsParams) ([]Schematic, error)
+	ListApprovedSchematicsWithVideo(ctx context.Context, arg ListApprovedSchematicsWithVideoParams) ([]Schematic, error)
 	ListCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListCollections(ctx context.Context, arg ListCollectionsParams) ([]Collection, error)
 	ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error)
@@ -99,22 +134,39 @@ type Querier interface {
 	ListFeaturedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
 	ListGuideTranslations(ctx context.Context, guideID string) ([]GuideTranslation, error)
 	ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide, error)
+	ListGuidesForSitemap(ctx context.Context) ([]ListGuidesForSitemapRow, error)
+	ListHighestRatedSchematics(ctx context.Context, arg ListHighestRatedSchematicsParams) ([]Schematic, error)
 	ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error)
 	ListModMetadataStale(ctx context.Context, limit int32) ([]ModMetadatum, error)
+	ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error)
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
+	ListPendingCategories(ctx context.Context) ([]SchematicCategory, error)
+	ListPendingTags(ctx context.Context) ([]SchematicTag, error)
+	ListPublishedCollections(ctx context.Context, arg ListPublishedCollectionsParams) ([]Collection, error)
+	ListRandomApprovedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListSchematicTranslations(ctx context.Context, schematicID string) ([]SchematicTranslation, error)
 	ListSchematicVersions(ctx context.Context, schematicID string) ([]SchematicVersion, error)
 	ListSchematicsByAuthor(ctx context.Context, arg ListSchematicsByAuthorParams) ([]Schematic, error)
 	ListSchematicsByAuthorExcluding(ctx context.Context, arg ListSchematicsByAuthorExcludingParams) ([]Schematic, error)
+	ListSchematicsByCategoryIDs(ctx context.Context, arg ListSchematicsByCategoryIDsParams) ([]Schematic, error)
 	ListSchematicsByIDs(ctx context.Context, dollar_1 []string) ([]Schematic, error)
+	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
+	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
+	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)
+	ListTempUploadFilesByToken(ctx context.Context, token string) ([]TempUploadFile, error)
+	ListTopSearches(ctx context.Context, limit int32) ([]ListTopSearchesRow, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error)
 	ListVersions(ctx context.Context) ([]CreatemodVersion, error)
 	LogAPIKeyUsage(ctx context.Context, arg LogAPIKeyUsageParams) error
+	MonthlyUserDownloads(ctx context.Context, arg MonthlyUserDownloadsParams) ([]MonthlyUserDownloadsRow, error)
+	MonthlyUserUploads(ctx context.Context, arg MonthlyUserUploadsParams) ([]MonthlyUserUploadsRow, error)
+	MonthlyUserViews(ctx context.Context, arg MonthlyUserViewsParams) ([]MonthlyUserViewsRow, error)
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
@@ -128,7 +180,9 @@ type Querier interface {
 	UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error)
 	UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error)
 	UpdateSchematicDownloads(ctx context.Context, arg UpdateSchematicDownloadsParams) error
+	UpdateSchematicName(ctx context.Context, arg UpdateSchematicNameParams) error
 	UpdateSchematicViews(ctx context.Context, arg UpdateSchematicViewsParams) error
+	UpdateTempUpload(ctx context.Context, arg UpdateTempUploadParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
@@ -139,6 +193,7 @@ type Querier interface {
 	UpsertSchematicRating(ctx context.Context, arg UpsertSchematicRatingParams) error
 	UpsertSchematicTranslation(ctx context.Context, arg UpsertSchematicTranslationParams) (SchematicTranslation, error)
 	UpsertSchematicView(ctx context.Context, arg UpsertSchematicViewParams) error
+	UpsertSchematicViewCount(ctx context.Context, arg UpsertSchematicViewCountParams) error
 }
 
 var _ Querier = (*Queries)(nil)

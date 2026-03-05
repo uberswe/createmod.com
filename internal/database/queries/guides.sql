@@ -26,3 +26,9 @@ DELETE FROM guides WHERE id = $1;
 
 -- name: CountUserGuides :one
 SELECT COUNT(*) FROM guides WHERE author_id = $1;
+
+-- name: IncrementGuideViews :exec
+UPDATE guides SET views = views + 1 WHERE id = $1;
+
+-- name: ListGuidesForSitemap :many
+SELECT id, slug, updated FROM guides ORDER BY updated DESC;

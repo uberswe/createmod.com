@@ -1,13 +1,12 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/outurl"
 	"createmod/internal/store"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	pbtempl "github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -41,12 +40,10 @@ type GuidesData struct {
 }
 
 // GuidesHandler renders a simple listing of guides with pagination and optional search by title.
-func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cacheService *cache.Service, outSecret string, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		coll, err := app.FindCollectionByNameOrId("guides")
-		if err != nil || coll == nil {
-			return e.String(http.StatusInternalServerError, "guides collection not available")
-		}
+func GuidesHandler(registry *server.Registry, cacheService *cache.Service, outSecret string, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		ctx := context.Background()
+
 		// Pagination params
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -59,28 +56,30 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))
 		qLower := strings.ToLower(q)
 
-		// Fetch a recent batch; keep server logic simple and filter/paginate in-memory (like Videos page)
-		recs, err := app.FindRecordsByFilter(coll.Id, "1=1", "-created", 500, 0)
+		// Fetch guides from store
+		guides, err := appStore.Guides.List(ctx, 500, 0)
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to query guides")
 		}
 
-		items := make([]GuideItem, 0, len(recs))
-		for _, r := range recs {
-			title := r.GetString("title")
+		items := make([]GuideItem, 0, len(guides))
+		for _, g := range guides {
+			title := g.Title
 			if title == "" {
-				title = r.GetString("name")
+				title = g.Slug
 			}
-			excerpt := r.GetString("excerpt")
-			// Link to the internal detail page
-			link := "/guides/" + r.Id
+			excerpt := g.Excerpt
+			if excerpt == "" {
+				excerpt = g.Description
+			}
+			link := "/guides/" + g.ID
 			// Optional video url
-			video := r.GetString("video_url")
+			video := g.VideoURL
 			videoWrapped := ""
 			if strings.HasPrefix(strings.ToLower(video), "http://") || strings.HasPrefix(strings.ToLower(video), "https://") {
-				videoWrapped = outurl.BuildPathWithSource(video, outSecret, "guide", r.Id)
+				videoWrapped = outurl.BuildPathWithSource(video, outSecret, "guide", g.ID)
 			}
-			it := GuideItem{ID: r.Id, Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, Views: r.GetInt("views")}
+			it := GuideItem{ID: g.ID, Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, Views: g.Views}
 			if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
 				continue
 			}
@@ -121,11 +120,11 @@ func GuidesHandler(app *pocketbase.PocketBase, registry *pbtempl.Registry, cache
 			}
 		}
 
-		d.Populate(e)
+		d.PopulateWithStore(e, appStore)
 		d.Title = i18n.T(d.Language, "Guides")
 		d.Description = i18n.T(d.Language, "Guides for the Create mod and Minecraft")
 		d.Slug = "/guides"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(guidesTemplates...).Render(d)
 		if err != nil {

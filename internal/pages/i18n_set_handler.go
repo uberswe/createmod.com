@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 )
 
 // SetLanguageHandler sets a cookie with the selected language and redirects
 // to the language-prefixed URL for the requested page.
-func SetLanguageHandler() func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func SetLanguageHandler() func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		// get lang param and validate
 		l := strings.TrimSpace(e.Request.URL.Query().Get("l"))
 		if !isSupportedLanguage(l) {

@@ -38,10 +38,17 @@
                                 {{ end }}
                                 <!-- Action bar -->
                                 <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pb-3 border-bottom">
+                                    {{ if .Schematic.Paid }}
+                                    <a href="/get/{{ .Schematic.Name }}" class="btn btn-danger" id="download-btn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" /><path d="M11 13l9 -9" /><path d="M15 4h5v5" /></svg>
+                                        {{ T .Language "Get it on" }} {{ externalDomain .Schematic.ExternalURL }}
+                                    </a>
+                                    {{ else }}
                                     <a href="/get/{{ .Schematic.Name }}" class="btn btn-primary" id="download-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
-                                        {{ if .Schematic.Paid }}{{ T .Language "Get Schematic" }}{{ else }}{{ T .Language "Download" }}{{ end }}
+                                        {{ T .Language "Download" }}
                                     </a>
+                                    {{ end }}
                                     <a href="#" class="btn btn-outline-secondary" onclick="copyLink(event)" data-link="https://createmod.com/schematics/{{ .Schematic.Name }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>
                                         {{ T .Language "Copy Link" }}
@@ -85,7 +92,7 @@
                                     {{ if .IsTranslated }}
                                     <div class="text-muted small mt-2">
                                         <em>{{ T .Language "Auto translated" }}</em> &mdash;
-                                        <a href="?lang=original" class="text-muted">{{ T .Language "show original" }}</a>
+                                        <a href="?lang=original" class="text-muted" hx-boost="false">{{ T .Language "show original" }}</a>
                                     </div>
                                     {{ end }}
                                 </div>
@@ -361,7 +368,7 @@
 
                                 {{ if .IsAuthenticated }}
                                 <form class="col-12 pt-2" id="comment-section"
-                                      hx-post="/api/collections/comments/records"
+                                      hx-post="/api/comments"
                                       hx-swap="none"
                                       enctype="multipart/form-data"
                                       onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
@@ -861,15 +868,6 @@ function copyMaterialsAsMarkdown() {
             feedbackEl._timer = setTimeout(function(){ feedbackEl.style.display = 'none'; }, 2500);
         }
 
-        function getAuthToken() {
-            var cookies = document.cookie.split(';');
-            for (var i = 0; i < cookies.length; i++) {
-                var c = cookies[i].trim();
-                if (c.indexOf('create-mod-auth=') === 0) return decodeURIComponent(c.substring(16));
-            }
-            return '';
-        }
-
         starsEl.addEventListener('click', async function (e) {
             if (!isAuth) {
                 showFeedback('Log in to rate schematics', 'warning');
@@ -879,15 +877,13 @@ function copyMaterialsAsMarkdown() {
                 if (span === e.target) {
                     try {
                         var ratingVal = rating.widgets[0].values[rating.widgets[0].indexActive].value;
-                        var resp = await fetch('/api/collections/schematic_ratings/records', {
+                        var resp = await fetch('/api/ratings', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': getAuthToken()
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 schematic: '{{ .Schematic.ID }}',
-                                user: userId,
                                 rating: parseInt(ratingVal, 10)
                             })
                         });

@@ -31,3 +31,48 @@ VALUES ($1, $2, $3, $4, NOW())
 ON CONFLICT (user_id, schematic_id) DO UPDATE SET
     rating = EXCLUDED.rating,
     rated_at = NOW();
+
+-- name: UpsertSchematicViewCount :exec
+INSERT INTO schematic_views (id, schematic_id, type, period, count)
+VALUES ($1, $2, $3, $4, 1)
+ON CONFLICT (schematic_id, type, period)
+DO UPDATE SET count = schematic_views.count + 1, updated = NOW();
+
+-- name: GetTotalViewCount :one
+SELECT COALESCE(count, 0)::INTEGER AS total_count
+FROM schematic_views
+WHERE schematic_id = $1 AND type = '4' AND period = 'total'
+LIMIT 1;
+
+-- name: FetchRecentViewsBySchematic :many
+SELECT schematic_id AS id, SUM(count)::REAL AS v
+FROM schematic_views
+WHERE type = '0' AND created > $1
+GROUP BY schematic_id;
+
+-- name: FetchTotalViewsBySchematic :many
+SELECT schematic_id AS id, SUM(count)::REAL AS v
+FROM schematic_views
+WHERE type = '0'
+GROUP BY schematic_id;
+
+-- name: FetchRatingSumBySchematic :many
+SELECT schematic_id AS id, SUM(rating)::REAL AS v
+FROM schematic_ratings
+GROUP BY schematic_id;
+
+-- name: FetchRatingCountBySchematic :many
+SELECT schematic_id AS id, COUNT(rating)::REAL AS v
+FROM schematic_ratings
+GROUP BY schematic_id;
+
+-- name: FetchRecentDownloadsBySchematic :many
+SELECT schematic_id AS id, COUNT(*)::REAL AS v
+FROM schematic_downloads
+WHERE created > $1
+GROUP BY schematic_id;
+
+-- name: FetchTotalDownloadsBySchematic :many
+SELECT schematic_id AS id, COUNT(*)::REAL AS v
+FROM schematic_downloads
+GROUP BY schematic_id;

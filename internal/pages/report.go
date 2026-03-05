@@ -1,20 +1,20 @@
 package pages
 
 import (
+	"createmod/internal/mailer"
 	"createmod/internal/store"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"os"
 
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/mailer"
+	"createmod/internal/server"
 )
 
-// ReportSubmitHandler handles POST /reports to create a simple report record in PB.
-func ReportSubmitHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// ReportSubmitHandler handles POST /reports to create a simple report record.
+func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -48,10 +48,10 @@ func ReportSubmitHandler(app *pocketbase.PocketBase, appStore *store.Store) func
 		// Best-effort email notification to superadmin
 		super := os.Getenv("SUPERADMIN_EMAIL")
 		if super == "" {
-			super = app.Settings().Meta.SenderAddress
+			super = mailService.SenderAddress
 		}
 		if super != "" {
-			from := mail.Address{Address: app.Settings().Meta.SenderAddress, Name: app.Settings().Meta.SenderName}
+			from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
 			to := []mail.Address{{Address: super}}
 			subject := fmt.Sprintf("New Report: %s %s", targetType, targetID)
 			body := fmt.Sprintf("<p>Target: %s (%s)</p><p>Reason: %s</p>", targetID, targetType, reason)
@@ -59,8 +59,8 @@ func ReportSubmitHandler(app *pocketbase.PocketBase, appStore *store.Store) func
 				body += fmt.Sprintf("<p>Reporter: %s</p>", reporterID)
 			}
 			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
-			if err := app.NewMailClient().Send(msg); err != nil {
-				app.Logger().Error("failed to send report email", "error", err)
+			if err := mailService.Send(msg); err != nil {
+				slog.Error("failed to send report email", "error", err)
 			}
 		}
 

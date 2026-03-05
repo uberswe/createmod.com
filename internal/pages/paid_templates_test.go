@@ -18,8 +18,8 @@ func Test_Schematic_Template_Paid_Elements(t *testing.T) {
 	if !strings.Contains(s, "badge") || !strings.Contains(s, "Paid") {
 		t.Fatalf("schematic.html should contain a Paid badge marker")
 	}
-	if !strings.Contains(s, "Get Schematic") {
-		t.Fatalf("schematic.html should contain 'Get Schematic' for paid items")
+	if !strings.Contains(s, "Get it on") {
+		t.Fatalf("schematic.html should contain 'Get it on' for paid items")
 	}
 }
 

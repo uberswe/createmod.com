@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
@@ -11,10 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 )
 
 var userStatsTemplates = append([]string{
@@ -37,8 +35,8 @@ type UserStatsData struct {
 	DownloadValuesJSON html.JS
 }
 
-func UserStatsHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
 		}
@@ -51,14 +49,27 @@ func UserStatsHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 		d.Description = i18n.T(d.Language, "page.userstats.description")
 		d.Slug = "/settings/statistics"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		now := time.Now().UTC()
 		start := now.AddDate(0, -11, 0)
-		startPeriod := fmt.Sprintf("%d%02d", start.Year(), int(start.Month()))
 
-		views := fetchMonthlyStats(app, "schematic_views", userID, startPeriod)
-		downloads := fetchMonthlyStats(app, "schematic_downloads", userID, startPeriod)
+		monthlyStats, err := appStore.Stats.MonthlyUserStats(context.Background(), userID, 12)
+		var views, downloads []MonthlyDataPoint
+		if err == nil {
+			for _, s := range monthlyStats {
+				views = append(views, MonthlyDataPoint{
+					Period: s.Month,
+					Label:  periodToLabel(s.Month),
+					Total:  int(s.Views),
+				})
+				downloads = append(downloads, MonthlyDataPoint{
+					Period: s.Month,
+					Label:  periodToLabel(s.Month),
+					Total:  int(s.Downloads),
+				})
+			}
+		}
 
 		d.MonthlyViews = fillMissingMonths(views, start, now)
 		d.MonthlyDownloads = fillMissingMonths(downloads, start, now)
@@ -76,38 +87,6 @@ func UserStatsHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 	}
 }
 
-type monthlyRow struct {
-	Period string
-	Total  int
-}
-
-func fetchMonthlyStats(app *pocketbase.PocketBase, collectionName string, userID string, startPeriod string) []MonthlyDataPoint {
-	var rows []monthlyRow
-	err := app.RecordQuery(collectionName).
-		Select(collectionName+".period as period", "SUM("+collectionName+".count) as total").
-		From(collectionName).
-		LeftJoin("schematics", dbx.NewExp(collectionName+".schematic = schematics.id")).
-		Where(dbx.NewExp(
-			collectionName+".type = 2 AND schematics.author = {:userId} AND "+collectionName+".period >= {:startPeriod}",
-			dbx.Params{"userId": userID, "startPeriod": startPeriod},
-		)).
-		GroupBy(collectionName + ".period").
-		OrderBy(collectionName + ".period ASC").
-		All(&rows)
-	if err != nil {
-		return nil
-	}
-
-	points := make([]MonthlyDataPoint, 0, len(rows))
-	for _, r := range rows {
-		points = append(points, MonthlyDataPoint{
-			Period: r.Period,
-			Label:  periodToLabel(r.Period),
-			Total:  r.Total,
-		})
-	}
-	return points
-}
 
 func periodToLabel(period string) string {
 	if len(period) < 6 {

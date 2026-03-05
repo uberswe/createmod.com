@@ -7,10 +7,21 @@ package db
 
 import (
 	"context"
-	"encoding/json"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const checkHashIsBlacklisted = `-- name: CheckHashIsBlacklisted :one
+SELECT EXISTS(SELECT 1 FROM nbt_hashes WHERE hash = $1 AND schematic_id IS NULL) AS is_blacklisted
+`
+
+func (q *Queries) CheckHashIsBlacklisted(ctx context.Context, hash string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkHashIsBlacklisted, hash)
+	var is_blacklisted bool
+	err := row.Scan(&is_blacklisted)
+	return is_blacklisted, err
+}
 
 const createContactFormSubmission = `-- name: CreateContactFormSubmission :one
 INSERT INTO contact_form_submissions (id, author_id, title, content, name, postdate, status, type)
@@ -89,17 +100,23 @@ func (q *Queries) CreateExternalAuth(ctx context.Context, arg CreateExternalAuth
 }
 
 const createNBTHash = `-- name: CreateNBTHash :exec
-INSERT INTO nbt_hashes (id, hash, schematic_id) VALUES ($1, $2, $3)
+INSERT INTO nbt_hashes (id, hash, schematic_id, uploaded_by) VALUES ($1, $2, $3, $4)
 `
 
 type CreateNBTHashParams struct {
 	ID          string  `json:"id"`
 	Hash        string  `json:"hash"`
 	SchematicID *string `json:"schematic_id"`
+	UploadedBy  *string `json:"uploaded_by"`
 }
 
 func (q *Queries) CreateNBTHash(ctx context.Context, arg CreateNBTHashParams) error {
-	_, err := q.db.Exec(ctx, createNBTHash, arg.ID, arg.Hash, arg.SchematicID)
+	_, err := q.db.Exec(ctx, createNBTHash,
+		arg.ID,
+		arg.Hash,
+		arg.SchematicID,
+		arg.UploadedBy,
+	)
 	return err
 }
 
@@ -197,66 +214,6 @@ func (q *Queries) CreateSearch(ctx context.Context, arg CreateSearchParams) erro
 	return err
 }
 
-const createTempUpload = `-- name: CreateTempUpload :one
-INSERT INTO temp_uploads (id, token, filename, size, checksum, parsed_summary, nbt_file,
-    block_count, dim_x, dim_y, dim_z, materials, mods)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, token, filename, size, checksum, parsed_summary, nbt_file, block_count, dim_x, dim_y, dim_z, materials, mods, created, updated
-`
-
-type CreateTempUploadParams struct {
-	ID            string          `json:"id"`
-	Token         string          `json:"token"`
-	Filename      string          `json:"filename"`
-	Size          int64           `json:"size"`
-	Checksum      string          `json:"checksum"`
-	ParsedSummary string          `json:"parsed_summary"`
-	NbtFile       string          `json:"nbt_file"`
-	BlockCount    int32           `json:"block_count"`
-	DimX          int32           `json:"dim_x"`
-	DimY          int32           `json:"dim_y"`
-	DimZ          int32           `json:"dim_z"`
-	Materials     json.RawMessage `json:"materials"`
-	Mods          json.RawMessage `json:"mods"`
-}
-
-func (q *Queries) CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (TempUpload, error) {
-	row := q.db.QueryRow(ctx, createTempUpload,
-		arg.ID,
-		arg.Token,
-		arg.Filename,
-		arg.Size,
-		arg.Checksum,
-		arg.ParsedSummary,
-		arg.NbtFile,
-		arg.BlockCount,
-		arg.DimX,
-		arg.DimY,
-		arg.DimZ,
-		arg.Materials,
-		arg.Mods,
-	)
-	var i TempUpload
-	err := row.Scan(
-		&i.ID,
-		&i.Token,
-		&i.Filename,
-		&i.Size,
-		&i.Checksum,
-		&i.ParsedSummary,
-		&i.NbtFile,
-		&i.BlockCount,
-		&i.DimX,
-		&i.DimY,
-		&i.DimZ,
-		&i.Materials,
-		&i.Mods,
-		&i.Created,
-		&i.Updated,
-	)
-	return i, err
-}
-
 const createUserMeta = `-- name: CreateUserMeta :exec
 INSERT INTO user_meta (id, user_id, key, value)
 VALUES ($1, $2, $3, $4)
@@ -280,6 +237,20 @@ func (q *Queries) CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) 
 	return err
 }
 
+const deleteNBTHash = `-- name: DeleteNBTHash :exec
+DELETE FROM nbt_hashes WHERE id = $1 AND uploaded_by = $2
+`
+
+type DeleteNBTHashParams struct {
+	ID         string  `json:"id"`
+	UploadedBy *string `json:"uploaded_by"`
+}
+
+func (q *Queries) DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error {
+	_, err := q.db.Exec(ctx, deleteNBTHash, arg.ID, arg.UploadedBy)
+	return err
+}
+
 const deleteReport = `-- name: DeleteReport :exec
 DELETE FROM reports WHERE id = $1
 `
@@ -289,13 +260,21 @@ func (q *Queries) DeleteReport(ctx context.Context, id string) error {
 	return err
 }
 
-const deleteTempUpload = `-- name: DeleteTempUpload :exec
-DELETE FROM temp_uploads WHERE id = $1
+const getCreatemodVersionByID = `-- name: GetCreatemodVersionByID :one
+SELECT id, version, created FROM createmod_versions WHERE id = $1
 `
 
-func (q *Queries) DeleteTempUpload(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, deleteTempUpload, id)
-	return err
+type GetCreatemodVersionByIDRow struct {
+	ID      string    `json:"id"`
+	Version string    `json:"version"`
+	Created time.Time `json:"created"`
+}
+
+func (q *Queries) GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error) {
+	row := q.db.QueryRow(ctx, getCreatemodVersionByID, id)
+	var i GetCreatemodVersionByIDRow
+	err := row.Scan(&i.ID, &i.Version, &i.Created)
+	return i, err
 }
 
 const getExternalAuth = `-- name: GetExternalAuth :one
@@ -335,6 +314,23 @@ func (q *Queries) GetLatestSchematicVersion(ctx context.Context, schematicID str
 	return latest_version, err
 }
 
+const getMinecraftVersionByID = `-- name: GetMinecraftVersionByID :one
+SELECT id, version, created FROM minecraft_versions WHERE id = $1
+`
+
+type GetMinecraftVersionByIDRow struct {
+	ID      string    `json:"id"`
+	Version string    `json:"version"`
+	Created time.Time `json:"created"`
+}
+
+func (q *Queries) GetMinecraftVersionByID(ctx context.Context, id string) (GetMinecraftVersionByIDRow, error) {
+	row := q.db.QueryRow(ctx, getMinecraftVersionByID, id)
+	var i GetMinecraftVersionByIDRow
+	err := row.Scan(&i.ID, &i.Version, &i.Created)
+	return i, err
+}
+
 const getModMetadataByNamespace = `-- name: GetModMetadataByNamespace :one
 SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated FROM mod_metadata WHERE namespace = $1
 `
@@ -362,7 +358,7 @@ func (q *Queries) GetModMetadataByNamespace(ctx context.Context, namespace strin
 }
 
 const getNBTHash = `-- name: GetNBTHash :one
-SELECT id, hash, schematic_id, created FROM nbt_hashes WHERE hash = $1
+SELECT id, hash, schematic_id, created, uploaded_by FROM nbt_hashes WHERE hash = $1
 `
 
 func (q *Queries) GetNBTHash(ctx context.Context, hash string) (NbtHash, error) {
@@ -373,33 +369,7 @@ func (q *Queries) GetNBTHash(ctx context.Context, hash string) (NbtHash, error) 
 		&i.Hash,
 		&i.SchematicID,
 		&i.Created,
-	)
-	return i, err
-}
-
-const getTempUploadByToken = `-- name: GetTempUploadByToken :one
-SELECT id, token, filename, size, checksum, parsed_summary, nbt_file, block_count, dim_x, dim_y, dim_z, materials, mods, created, updated FROM temp_uploads WHERE token = $1
-`
-
-func (q *Queries) GetTempUploadByToken(ctx context.Context, token string) (TempUpload, error) {
-	row := q.db.QueryRow(ctx, getTempUploadByToken, token)
-	var i TempUpload
-	err := row.Scan(
-		&i.ID,
-		&i.Token,
-		&i.Filename,
-		&i.Size,
-		&i.Checksum,
-		&i.ParsedSummary,
-		&i.NbtFile,
-		&i.BlockCount,
-		&i.DimX,
-		&i.DimY,
-		&i.DimZ,
-		&i.Materials,
-		&i.Mods,
-		&i.Created,
-		&i.Updated,
+		&i.UploadedBy,
 	)
 	return i, err
 }
@@ -530,6 +500,38 @@ func (q *Queries) ListModMetadataStale(ctx context.Context, limit int32) ([]ModM
 	return items, nil
 }
 
+const listNBTHashesByUser = `-- name: ListNBTHashesByUser :many
+SELECT id, hash, schematic_id, created, uploaded_by FROM nbt_hashes
+WHERE uploaded_by = $1 AND schematic_id IS NULL
+ORDER BY created DESC
+`
+
+func (q *Queries) ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error) {
+	rows, err := q.db.Query(ctx, listNBTHashesByUser, uploadedBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NbtHash{}
+	for rows.Next() {
+		var i NbtHash
+		if err := rows.Scan(
+			&i.ID,
+			&i.Hash,
+			&i.SchematicID,
+			&i.Created,
+			&i.UploadedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNews = `-- name: ListNews :many
 SELECT id, author_id, title, content, excerpt, postdate, status, name, type, created, updated FROM news
 WHERE status = 'publish'
@@ -635,6 +637,39 @@ func (q *Queries) ListSchematicVersions(ctx context.Context, schematicID string)
 			&i.Created,
 			&i.Updated,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTopSearches = `-- name: ListTopSearches :many
+SELECT query, COUNT(*) AS search_count
+FROM searches
+GROUP BY query
+ORDER BY search_count DESC
+LIMIT $1
+`
+
+type ListTopSearchesRow struct {
+	Query       string `json:"query"`
+	SearchCount int64  `json:"search_count"`
+}
+
+func (q *Queries) ListTopSearches(ctx context.Context, limit int32) ([]ListTopSearchesRow, error) {
+	rows, err := q.db.Query(ctx, listTopSearches, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTopSearchesRow{}
+	for rows.Next() {
+		var i ListTopSearchesRow
+		if err := rows.Scan(&i.Query, &i.SearchCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

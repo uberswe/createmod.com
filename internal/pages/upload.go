@@ -1,27 +1,27 @@
 package pages
 
 import (
+	"bytes"
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/nbtparser"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
-	"github.com/pocketbase/pocketbase/tools/template"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
+
+	"createmod/internal/server"
 )
 
 const uploadPendingTemplate = "./template/upload_pending.html"
@@ -29,39 +29,11 @@ const uploadPendingTemplate = "./template/upload_pending.html"
 // maxUploadSize is the maximum allowed NBT file size (10 MB).
 const maxUploadSize = 10 * 1024 * 1024
 
-type tempUpload struct {
-	Filename        string
-	Size            int64
-	Checksum        string
-	UploadedAt      time.Time
-	ParsedSummary   string
-	BlockCount      int
-	Materials       []string             // legacy state:id=count format
-	ParsedMaterials []nbtparser.Material // enriched materials with block names
-	DimX, DimY, DimZ int                // dimensions
-	Mods            []string             // detected mod namespaces
-	NBTData         []byte               // raw NBT file bytes (for PB file upload)
-	PBRecordID      string               // PocketBase record ID after persist
-	NBTStoredName   string               // filename as stored in PB (for file URL)
-	UploadedBy      string               // user ID of uploader (empty if anonymous)
-}
+// s3CollectionTempUploads is the S3 prefix for temp upload files.
+var s3CollectionTempUploads = storage.CollectionPrefix("temp_uploads")
 
-// note: For durable tokens, we attempt to persist to PocketBase collection
-// "temp_uploads" when available. The schema should include fields:
-// - token (text, unique)
-// - filename (text)
-// - size (number)
-// - checksum (text)
-// - parsed_summary (text)
-// This keeps token links working across restarts. We still maintain an
-// in-memory fallback so tests and local setups without the collection work.
-
-var tempUploadStore = struct {
-	sync.RWMutex
-	m map[string]tempUpload
-}{
-	m: make(map[string]tempUpload),
-}
+// s3CollectionTempUploadFiles is the S3 prefix for additional temp upload files.
+var s3CollectionTempUploadFiles = storage.CollectionPrefix("temp_upload_files")
 
 const uploadTemplate = "./template/upload.html"
 const uploadStepsTemplate = "./template/include/upload_steps.html"
@@ -115,13 +87,13 @@ type UploadPreviewData struct {
 	ParsedMaterials  []nbtparser.Material
 	DimX, DimY, DimZ int
 	Mods             []string
-	FileURL          string           // path to the NBT file in PB storage
+	FileURL          string           // path to the NBT file in S3 storage
 	IsOwner          bool             // true if current user uploaded this
 	AdditionalFiles  []tempUploadFile // extra NBT files (variations/sets)
 }
 
-func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UploadHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := UploadData{}
 		d.Populate(e)
 		d.UploadStep = 1
@@ -129,7 +101,7 @@ func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 		d.Description = i18n.T(d.Language, "page.upload.description")
 		d.Slug = "/upload"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(uploadTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -139,15 +111,15 @@ func UploadHandler(app *pocketbase.PocketBase, registry *template.Registry, cach
 }
 
 // UploadPendingHandler renders a simple moderation pending confirmation page.
-func UploadPendingHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := DefaultData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
 		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -157,10 +129,9 @@ func UploadPendingHandler(app *pocketbase.PocketBase, registry *template.Registr
 }
 
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
-// Minimal implementation: validate the token exists (PB or in-memory) and redirect to the
-// moderation pending page. Future work will create the schematic record and move the file.
-func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// Validates the token exists in PostgreSQL and redirects to the moderation pending page.
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
@@ -168,16 +139,9 @@ func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Regi
 		if token == "" {
 			return e.String(http.StatusBadRequest, "missing token")
 		}
-		// Verify the token exists in PB or in-memory store
-		if pbEntry, ok := loadTempUploadPB(app, token); !ok {
-			tempUploadStore.RLock()
-			_, ok2 := tempUploadStore.m[token]
-			tempUploadStore.RUnlock()
-			if !ok2 {
-				return e.String(http.StatusNotFound, "invalid or expired token")
-			}
-		} else {
-			_ = pbEntry // not used yet; placeholder for future mapping
+		// Verify the token exists in store
+		if _, err := appStore.TempUploads.GetByToken(e.Request.Context(), token); err != nil {
+			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
 
 		// Parse optional scheduled_at from form and cache in UTC for later use
@@ -186,11 +150,8 @@ func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Regi
 			if val != "" {
 				var when time.Time
 				var perr error
-				// Try RFC3339 first
 				when, perr = time.Parse(time.RFC3339, val)
 				if perr != nil {
-					// Fallback to HTML datetime-local (no timezone)
-					// Interpret as local time
 					const layout = "2006-01-02T15:04"
 					if t2, err2 := time.ParseInLocation(layout, val, time.Local); err2 == nil {
 						when = t2
@@ -203,9 +164,31 @@ func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Regi
 					cacheService.SetWithTTL(key, utc.Format(time.RFC3339), 24*time.Hour)
 				}
 			}
+
+			// Resolve user-suggested categories and tags, cache IDs for later schematic creation.
+			ctx := e.Request.Context()
+			if rawCats := e.Request.Form["categories"]; len(rawCats) > 0 {
+				catIDs := resolveCategoryIDs(ctx, appStore, rawCats)
+				if len(catIDs) > 0 {
+					cacheService.SetWithTTL("upload:categories:"+token, catIDs, 24*time.Hour)
+				}
+			}
+			if rawTags := e.Request.Form["tags"]; len(rawTags) > 0 {
+				tagIDs := resolveTagIDs(ctx, appStore, rawTags)
+				if len(tagIDs) > 0 {
+					cacheService.SetWithTTL("upload:tags:"+token, tagIDs, 24*time.Hour)
+				}
+			}
+
+			// Cache paid / external_url for later schematic creation
+			if e.Request.FormValue("paid") == "true" {
+				cacheService.SetWithTTL("upload:paid:"+token, true, 24*time.Hour)
+				if eu := strings.TrimSpace(e.Request.FormValue("external_url")); eu != "" {
+					cacheService.SetWithTTL("upload:external_url:"+token, eu, 24*time.Hour)
+				}
+			}
 		}
 
-		// HTMX-aware redirect to avoid partial update mismatch
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/upload/pending"))
 			return e.HTML(http.StatusNoContent, "")
@@ -214,108 +197,65 @@ func UploadMakePublicHandler(app *pocketbase.PocketBase, registry *template.Regi
 	}
 }
 
-func allCreatemodVersions(app *pocketbase.PocketBase) []models.CreatemodVersion {
-	createmodVersionCollection, err := app.FindCollectionByNameOrId("createmod_versions")
-	if err != nil {
-		return nil
-	}
-	records, err := app.FindRecordsByFilter(createmodVersionCollection.Id, "1=1", "-version", -1, 0)
-	if err != nil {
-		return nil
-	}
-	return mapResultToCreatemodVersions(records)
-}
-
-func mapResultToCreatemodVersions(records []*core.Record) []models.CreatemodVersion {
-	versions := make([]models.CreatemodVersion, 0, len(records))
-	for _, r := range records {
-		versions = append(versions, models.CreatemodVersion{
-			ID:      r.Id,
-			Version: r.GetString("version"),
-		})
-	}
-	return versions
-}
-
-func allMinecraftVersions(app *pocketbase.PocketBase) []models.MinecraftVersion {
-	minecraftVersionCollection, err := app.FindCollectionByNameOrId("minecraft_versions")
-	if err != nil {
-		return nil
-	}
-	records, err := app.FindRecordsByFilter(minecraftVersionCollection.Id, "1=1", "-version", -1, 0)
-	if err != nil {
-		return nil
-	}
-	return mapResultToMinecraftVersions(records)
-}
-
-func mapResultToMinecraftVersions(records []*core.Record) []models.MinecraftVersion {
-	versions := make([]models.MinecraftVersion, 0, len(records))
-	for _, r := range records {
-		versions = append(versions, models.MinecraftVersion{
-			ID:      r.Id,
-			Version: r.GetString("version"),
-		})
-	}
-	return versions
-}
-
 // UploadPreviewHandler serves a minimal private preview page for a given token.
-func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		if token == "" {
 			return e.String(http.StatusBadRequest, "missing token")
 		}
-		// Resolve entry from PB or in-memory store
-		var entry tempUpload
-		if pbEntry, ok := loadTempUploadPB(app, token); ok {
-			entry = pbEntry
-		} else {
-			tempUploadStore.RLock()
-			v, ok := tempUploadStore.m[token]
-			tempUploadStore.RUnlock()
-			if !ok {
-				return e.String(http.StatusNotFound, "invalid or expired token")
-			}
-			entry = v
+
+		entry, err := appStore.TempUploads.GetByToken(e.Request.Context(), token)
+		if err != nil {
+			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
+
 		// Determine ownership
-		isOwner := false
-		if isAuthenticated(e) && entry.UploadedBy != "" && authenticatedUserID(e) == entry.UploadedBy {
-			isOwner = true
-		}
+		isOwner := isAuthenticated(e) && entry.UploadedBy != "" && authenticatedUserID(e) == entry.UploadedBy
 
-		// Build file URL
+		// Build file URL from S3 key
 		var fileURL string
-		if entry.PBRecordID != "" && entry.NBTStoredName != "" {
-			fileURL = "/api/files/temp_uploads/" + entry.PBRecordID + "/" + entry.NBTStoredName
+		if entry.NbtS3Key != "" {
+			// S3 key format: {collection}/{recordID}/{filename}
+			fileURL = "/api/files/" + entry.NbtS3Key
 		}
 
-		// Render template with review data
+		// Parse materials/mods from JSON
+		var parsedMaterials []nbtparser.Material
+		if len(entry.Materials) > 0 {
+			_ = json.Unmarshal(entry.Materials, &parsedMaterials)
+		}
+		var mods []string
+		if len(entry.Mods) > 0 {
+			_ = json.Unmarshal(entry.Mods, &mods)
+		}
+
+		// Load additional files from store
+		storeFiles, _ := appStore.TempUploadFiles.ListByToken(e.Request.Context(), token)
+		additionalFiles := mapStoreTempUploadFiles(storeFiles)
+
 		d := UploadPreviewData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Schematic Review")
 		d.Description = i18n.T(d.Language, "page.upload_review.description")
 		d.Slug = "/u/" + token
-		d.Categories = allCategoriesFromStore(appStore, app, cacheService)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.UploadStep = 2
 		d.Token = token
 		d.Filename = entry.Filename
 		d.Size = entry.Size
 		d.Checksum = entry.Checksum
-		d.UploadedAt = entry.UploadedAt
+		d.UploadedAt = entry.Created
 		d.ParsedSummary = entry.ParsedSummary
 		d.BlockCount = entry.BlockCount
-		d.Materials = entry.Materials
-		d.ParsedMaterials = entry.ParsedMaterials
+		d.ParsedMaterials = parsedMaterials
 		d.DimX = entry.DimX
 		d.DimY = entry.DimY
 		d.DimZ = entry.DimZ
-		d.Mods = entry.Mods
+		d.Mods = mods
 		d.FileURL = fileURL
 		d.IsOwner = isOwner
-		d.AdditionalFiles = loadTempUploadFiles(app, token)
+		d.AdditionalFiles = additionalFiles
 		h, err := registry.LoadFiles(uploadPreviewTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -325,70 +265,43 @@ func UploadPreviewHandler(app *pocketbase.PocketBase, registry *template.Registr
 }
 
 // UploadDownloadHandler serves the NBT file for a given token as a download.
-func UploadDownloadHandler(app *pocketbase.PocketBase, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// Uses PostgreSQL store for metadata and direct S3 for file access.
+func UploadDownloadHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		token := e.Request.PathValue("token")
 		if token == "" {
 			return e.String(http.StatusBadRequest, "missing token")
 		}
 
-		// Resolve entry from PB or in-memory store
-		var entry tempUpload
-		if pbEntry, ok := loadTempUploadPB(app, token); ok {
-			entry = pbEntry
-		} else {
-			tempUploadStore.RLock()
-			v, ok := tempUploadStore.m[token]
-			tempUploadStore.RUnlock()
-			if !ok {
-				return e.String(http.StatusNotFound, "invalid or expired token")
-			}
-			entry = v
+		entry, err := appStore.TempUploads.GetByToken(e.Request.Context(), token)
+		if err != nil {
+			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
 
-		// If the file is in PB storage, serve it with download headers
-		if entry.PBRecordID != "" && entry.NBTStoredName != "" {
-			coll, err := app.FindCollectionByNameOrId("temp_uploads")
-			if err != nil {
-				return e.String(http.StatusInternalServerError, "collection not found")
-			}
-			fileKey := coll.Id + "/" + entry.PBRecordID + "/" + entry.NBTStoredName
-			fsys, err := app.NewFilesystem()
-			if err != nil {
-				return e.String(http.StatusInternalServerError, "storage error")
-			}
-			defer fsys.Close()
-
-			blob, err := fsys.GetReader(fileKey)
-			if err != nil {
-				return e.String(http.StatusNotFound, "file not found in storage")
-			}
-			defer blob.Close()
-
-			e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+entry.Filename+"\"")
-			e.Response.Header().Set("Content-Type", "application/octet-stream")
-			return e.Stream(http.StatusOK, "application/octet-stream", blob)
+		if entry.NbtS3Key == "" {
+			return e.String(http.StatusNotFound, "file not available")
 		}
 
-		// Fallback: serve from in-memory NBT data
-		if len(entry.NBTData) > 0 {
-			e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+entry.Filename+"\"")
-			e.Response.Header().Set("Content-Type", "application/octet-stream")
-			return e.Blob(http.StatusOK, "application/octet-stream", entry.NBTData)
+		reader, err := storageSvc.DownloadRaw(e.Request.Context(), entry.NbtS3Key)
+		if err != nil {
+			return e.String(http.StatusNotFound, "file not found in storage")
 		}
+		defer reader.Close()
 
-		return e.String(http.StatusNotFound, "file not available")
+		e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+entry.Filename+"\"")
+		e.Response.Header().Set("Content-Type", "application/octet-stream")
+		return e.Stream(http.StatusOK, "application/octet-stream", reader)
 	}
 }
 
 // uploadNBTResponse is the JSON response for a successful NBT upload.
 type uploadNBTResponse struct {
-	Token      string               `json:"token"`
-	URL        string               `json:"url"`
-	Checksum   string               `json:"checksum"`
-	Filename   string               `json:"filename"`
-	Size       int64                `json:"size"`
-	FileURL    string               `json:"file_url,omitempty"`
+	Token    string `json:"token"`
+	URL      string `json:"url"`
+	Checksum string `json:"checksum"`
+	Filename string `json:"filename"`
+	Size     int64  `json:"size"`
+	FileURL  string `json:"file_url,omitempty"`
 	Dimensions struct {
 		X int `json:"x"`
 		Y int `json:"y"`
@@ -399,10 +312,10 @@ type uploadNBTResponse struct {
 	Mods       []string             `json:"mods"`
 }
 
-// UploadNBTHandler validates an uploaded .nbt file, parses stats, and returns
-// a JSON response with token, dimensions, materials, and detected mods.
-func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service, appStore *store.Store) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+// UploadNBTHandler validates an uploaded .nbt file, parses stats, persists to
+// PostgreSQL + S3, and returns a JSON response with token, dimensions, materials, and mods.
+func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		_ = e.Request.ParseMultipartForm(maxUploadSize + 1<<20) // slight overhead for multipart framing
 		// Attempt to read the file field (common names: "nbt" or "file").
 		file, header, err := e.Request.FormFile("nbt")
@@ -443,45 +356,30 @@ func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 		sum := sha256.Sum256(data)
 		checksum := hex.EncodeToString(sum[:])
 
-		// Duplicate detection — skipped in dev mode (DEV=true)
+		// Duplicate detection -- skipped in dev mode (DEV=true)
 		isDev := os.Getenv("DEV") == "true"
 		if !isDev {
 			dupMsg := "This schematic already exists (duplicate upload detected by checksum). If you recently uploaded this it may be pending moderation, otherwise it may be blacklisted by the original creator. If you need more help contact us: /contact"
-			if app != nil {
-				if coll, err := app.FindCollectionByNameOrId("temp_uploads"); err == nil && coll != nil {
-					recs, err := app.FindRecordsByFilter(coll.Id, "checksum = {:c}", "-created", 1, 0, dbx.Params{"c": checksum})
-					if err == nil && len(recs) > 0 {
-						return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
-					}
-				}
-				if schemColl, err := app.FindCollectionByNameOrId("schematics"); err == nil && schemColl != nil {
-					recs, err := app.FindRecordsByFilter(schemColl.Id, "checksum = {:c}", "-created", 1, 0, dbx.Params{"c": checksum})
-					if err == nil && len(recs) > 0 {
-						return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
-					}
-				}
-			}
 
-			// Duplicate detection (in-memory temp store)
-			tempUploadStore.RLock()
-			for _, entry := range tempUploadStore.m {
-				if entry.Checksum == checksum {
-					tempUploadStore.RUnlock()
+			// Check published schematics via store
+			if appStore != nil {
+				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
 					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
 				}
 			}
-			tempUploadStore.RUnlock()
-		}
 
-		// Best-effort: persist hash to nbt_hashes
-		if app != nil {
-			if coll, err := app.FindCollectionByNameOrId("nbt_hashes"); err == nil && coll != nil {
-				rec := core.NewRecord(coll)
-				rec.Set("checksum", checksum)
-				if isAuthenticated(e) {
-					rec.Set("uploaded_by", authenticatedUserID(e))
+			// Check temp uploads via PostgreSQL store
+			if appStore != nil {
+				if existing, err := appStore.TempUploads.GetByChecksum(e.Request.Context(), checksum); err == nil && existing != nil {
+					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
 				}
-				_ = app.Save(rec)
+			}
+
+			// Check blacklist hashes
+			if appStore != nil {
+				if blacklisted, err := appStore.NBTHashes.IsBlacklisted(context.Background(), checksum); err == nil && blacklisted {
+					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
+				}
 			}
 		}
 
@@ -502,7 +400,7 @@ func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 		}
 
 		// Extract stats
-		blockCount, legacyMaterials, _ := nbtparser.ExtractStats(data)
+		blockCount, _, _ := nbtparser.ExtractStats(data)
 
 		// Extract enriched materials
 		parsedMaterials, _ := nbtparser.ExtractMaterials(data)
@@ -523,46 +421,43 @@ func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 			mods = append(mods, mod)
 		}
 
-		// Store metadata in the in-memory temporary store
-		tempUploadStore.Lock()
-		tempUploadStore.m[token] = tempUpload{
-			Filename:        header.Filename,
-			Size:            n,
-			Checksum:        checksum,
-			UploadedAt:      time.Now(),
-			ParsedSummary:   parsed,
-			BlockCount:      blockCount,
-			Materials:       legacyMaterials,
-			ParsedMaterials: parsedMaterials,
-			DimX:            dimX,
-			DimY:            dimY,
-			DimZ:            dimZ,
-			Mods:            mods,
-			NBTData:         data,
-			UploadedBy:      authenticatedUserID(e),
-		}
-		entry := tempUploadStore.m[token]
-		tempUploadStore.Unlock()
+		// Marshal materials and mods to JSON for storage
+		materialsJSON, _ := json.Marshal(parsedMaterials)
+		modsJSON, _ := json.Marshal(mods)
 
-		// Best-effort: persist to PocketBase so the token link survives restarts
-		recID, storedName := persistTempUploadPB(app, token, entry)
-
-		// Update in-memory entry with PB record info
-		if recID != "" {
-			tempUploadStore.Lock()
-			e2 := tempUploadStore.m[token]
-			e2.PBRecordID = recID
-			e2.NBTStoredName = storedName
-			e2.NBTData = nil // free memory after persisting
-			tempUploadStore.m[token] = e2
-			tempUploadStore.Unlock()
+		// Upload NBT file to S3
+		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + header.Filename
+		if storageSvc != nil {
+			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
+				slog.Error("failed to upload NBT to S3", "error", err, "token", token)
+				return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
+			}
 		}
 
-		// Build file URL if the file was persisted
-		var fileURL string
-		if recID != "" && storedName != "" {
-			fileURL = "/api/files/temp_uploads/" + recID + "/" + storedName
+		// Persist to PostgreSQL store
+		tempUpload := &store.TempUpload{
+			Token:         token,
+			UploadedBy:    authenticatedUserID(e),
+			Filename:      header.Filename,
+			Size:          n,
+			Checksum:      checksum,
+			BlockCount:    blockCount,
+			DimX:          dimX,
+			DimY:          dimY,
+			DimZ:          dimZ,
+			Mods:          modsJSON,
+			Materials:     materialsJSON,
+			NbtS3Key:      nbtS3Key,
+			ParsedSummary: parsed,
 		}
+
+		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
+			slog.Error("failed to persist temp upload", "error", err, "token", token)
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
+		}
+
+		// Build file URL
+		fileURL := "/api/files/" + nbtS3Key
 
 		// Build JSON response
 		resp := uploadNBTResponse{
@@ -591,107 +486,86 @@ func UploadNBTHandler(app *pocketbase.PocketBase, registry *template.Registry, c
 	}
 }
 
-// --- Persistent storage helpers (best-effort PocketBase) ---
-// persistTempUploadPB attempts to save the temporary upload entry in the
-// "temp_uploads" collection. If the collection doesn't exist, it silently
-// returns without error so local/dev and tests without migrations keep working.
-// Returns (recordID, storedFilename) on success.
-func persistTempUploadPB(app *pocketbase.PocketBase, token string, entry tempUpload) (string, string) {
-	if app == nil {
-		return "", ""
+// mapStoreTempUploadFiles converts store.TempUploadFile slice to the template-facing tempUploadFile slice.
+func mapStoreTempUploadFiles(files []store.TempUploadFile) []tempUploadFile {
+	if len(files) == 0 {
+		return nil
 	}
-	coll, err := app.FindCollectionByNameOrId("temp_uploads")
-	if err != nil || coll == nil {
-		return "", ""
-	}
-	rec := core.NewRecord(coll)
-	rec.Set("token", token)
-	rec.Set("filename", entry.Filename)
-	rec.Set("size", entry.Size)
-	rec.Set("checksum", entry.Checksum)
-	rec.Set("parsed_summary", entry.ParsedSummary)
-	rec.Set("block_count", entry.BlockCount)
-	rec.Set("dim_x", entry.DimX)
-	rec.Set("dim_y", entry.DimY)
-	rec.Set("dim_z", entry.DimZ)
-	rec.Set("uploaded_by", entry.UploadedBy)
-
-	// Store mods and materials as JSON
-	if entry.Mods != nil {
-		rec.Set("mods", entry.Mods)
-	}
-	if entry.ParsedMaterials != nil {
-		rec.Set("materials", entry.ParsedMaterials)
-	}
-
-	// Attach the NBT file if data is available
-	if len(entry.NBTData) > 0 {
-		f, fErr := filesystem.NewFileFromBytes(entry.NBTData, entry.Filename)
-		if fErr == nil {
-			rec.Set("nbt_file", f)
+	result := make([]tempUploadFile, len(files))
+	for i, f := range files {
+		var materials []nbtparser.Material
+		if len(f.Materials) > 0 {
+			_ = json.Unmarshal(f.Materials, &materials)
+		}
+		var mods []string
+		if len(f.Mods) > 0 {
+			_ = json.Unmarshal(f.Mods, &mods)
+		}
+		result[i] = tempUploadFile{
+			ID:          f.ID,
+			Token:       f.Token,
+			Filename:    f.Filename,
+			Description: f.Description,
+			Size:        f.Size,
+			Checksum:    f.Checksum,
+			BlockCount:  f.BlockCount,
+			DimX:        f.DimX,
+			DimY:        f.DimY,
+			DimZ:        f.DimZ,
+			Mods:        mods,
+			Materials:   materials,
+			NbtS3Key:    f.NbtS3Key,
 		}
 	}
-
-	if err := app.Save(rec); err != nil {
-		return "", ""
-	}
-
-	// Get the stored filename from the record (PB may rename it)
-	storedName := rec.GetString("nbt_file")
-	return rec.Id, storedName
+	return result
 }
 
-// loadTempUploadPB tries to load a previously saved temp upload by token.
-// Returns (entry, true) when found, otherwise (zero, false).
-func loadTempUploadPB(app *pocketbase.PocketBase, token string) (tempUpload, bool) {
-	var zero tempUpload
-	if app == nil || token == "" {
-		return zero, false
+// streamFromS3 is a helper that downloads a file from S3 by raw key and streams it as an attachment.
+func streamFromS3(e *server.RequestEvent, storageSvc *storage.Service, s3Key, filename string) error {
+	reader, err := storageSvc.DownloadRaw(e.Request.Context(), s3Key)
+	if err != nil {
+		return e.String(http.StatusNotFound, "file not found in storage")
 	}
-	coll, err := app.FindCollectionByNameOrId("temp_uploads")
-	if err != nil || coll == nil {
-		return zero, false
-	}
-	recs, err := app.FindRecordsByFilter(coll.Id, "token = {:t}", "-created", 1, 0, dbx.Params{"t": token})
-	if err != nil || len(recs) == 0 {
-		return zero, false
-	}
-	r := recs[0]
-	// best-effort mapping
-	uploadedAt := r.GetDateTime("created").Time()
+	defer reader.Close()
 
-	// Load materials from JSON field
-	var parsedMaterials []nbtparser.Material
-	rawMaterials := r.Get("materials")
-	if rawMaterials != nil {
-		if b, err := json.Marshal(rawMaterials); err == nil {
-			_ = json.Unmarshal(b, &parsedMaterials)
+	// Buffer enough to detect valid content (minio returns empty reader on missing keys)
+	var buf bytes.Buffer
+	if _, err := io.CopyN(&buf, reader, 1); err != nil {
+		return e.String(http.StatusNotFound, "file not found in storage")
+	}
+
+	e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	e.Response.Header().Set("Content-Type", "application/octet-stream")
+	combined := io.MultiReader(&buf, reader)
+	return e.Stream(http.StatusOK, "application/octet-stream", combined)
+}
+
+func allCreatemodVersionsFromStore(appStore *store.Store) []models.CreatemodVersion {
+	versions, err := appStore.VersionLookup.ListCreatemodVersions(context.Background())
+	if err != nil {
+		return nil
+	}
+	result := make([]models.CreatemodVersion, len(versions))
+	for i, v := range versions {
+		result[i] = models.CreatemodVersion{
+			ID:      v.ID,
+			Version: v.Version,
 		}
 	}
+	return result
+}
 
-	// Load mods from JSON field
-	var mods []string
-	rawMods := r.Get("mods")
-	if rawMods != nil {
-		if b, err := json.Marshal(rawMods); err == nil {
-			_ = json.Unmarshal(b, &mods)
+func allMinecraftVersionsFromStore(appStore *store.Store) []models.MinecraftVersion {
+	versions, err := appStore.VersionLookup.ListMinecraftVersions(context.Background())
+	if err != nil {
+		return nil
+	}
+	result := make([]models.MinecraftVersion, len(versions))
+	for i, v := range versions {
+		result[i] = models.MinecraftVersion{
+			ID:      v.ID,
+			Version: v.Version,
 		}
 	}
-
-	return tempUpload{
-		Filename:        r.GetString("filename"),
-		Size:            int64(r.GetInt("size")),
-		Checksum:        r.GetString("checksum"),
-		UploadedAt:      uploadedAt,
-		ParsedSummary:   r.GetString("parsed_summary"),
-		BlockCount:      r.GetInt("block_count"),
-		DimX:            r.GetInt("dim_x"),
-		DimY:            r.GetInt("dim_y"),
-		DimZ:            r.GetInt("dim_z"),
-		ParsedMaterials: parsedMaterials,
-		Mods:            mods,
-		UploadedBy:      r.GetString("uploaded_by"),
-		PBRecordID:      r.Id,
-		NBTStoredName:   r.GetString("nbt_file"),
-	}, true
+	return result
 }

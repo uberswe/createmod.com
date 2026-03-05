@@ -101,7 +101,14 @@
                 {{ end }}
             </select>
         </div>
-        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) }}
+        <div class="subheader mb-2">{{ T .Language "Other" }}</div>
+        <div class="mb-3">
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" name="hidepaid" value="1" {{ if .HidePaid }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Hide paid schematics" }}</span>
+            </label>
+        </div>
+        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) .HidePaid }}
         <div class="mb-3">
             <a href="/search/{{ .TermSlug }}" class="text-secondary small">{{ T .Language "Clear all filters" }}</a>
         </div>

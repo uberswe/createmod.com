@@ -5,15 +5,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"createmod/internal/nbtparser"
+	"createmod/internal/storage"
+	"createmod/internal/store"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"strings"
-	"time"
-
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
 )
 
 // RepairSchematics runs background integrity checks on all non-deleted schematics:
@@ -22,18 +21,28 @@ import (
 //  3. Soft-deletes schematics whose files are missing, unreadable, or contain zero blocks.
 //
 // Designed to run in a background goroutine at startup.
-func RepairSchematics(app *pocketbase.PocketBase) {
-	app.Logger().Info("repair: starting schematic repair job")
+func RepairSchematics(storageSvc *storage.Service, appStore *store.Store) {
+	slog.Info("repair: starting schematic repair job")
 
-	records, err := app.FindRecordsByFilter("schematics", "deleted = ''", "-created", -1, 0)
-	if err != nil {
-		app.Logger().Error("repair: failed to fetch schematics", "error", err)
+	if storageSvc == nil {
+		slog.Warn("repair: storage service not configured, skipping")
 		return
 	}
 
+	ctx := context.Background()
+
+	schematics, err := appStore.Schematics.ListAllForIndex(ctx)
+	if err != nil {
+		slog.Error("repair: failed to fetch schematics", "error", err)
+		return
+	}
+
+	// Use the legacy PB collection ID prefix for existing S3 keys.
+	collID := storage.CollectionPrefix("schematics")
+
 	var repaired, deleted, skipped int
-	for _, rec := range records {
-		switch repairSchematic(app, rec) {
+	for i := range schematics {
+		switch repairSchematic(storageSvc, appStore, collID, &schematics[i]) {
 		case "repaired":
 			repaired++
 		case "deleted":
@@ -43,40 +52,46 @@ func RepairSchematics(app *pocketbase.PocketBase) {
 		}
 	}
 
-	app.Logger().Info("repair: schematic repair job complete",
-		"total", len(records),
+	slog.Info("repair: schematic repair job complete",
+		"total", len(schematics),
 		"repaired", repaired,
 		"deleted", deleted,
 		"skipped", skipped,
 	)
 }
 
-// repairSchematic checks a single schematic record and returns "repaired", "deleted", or "skipped".
-func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
-	fname := strings.TrimSpace(rec.GetString("schematic_file"))
+// repairSchematic checks a single schematic and returns "repaired", "deleted", or "skipped".
+func repairSchematic(storageSvc *storage.Service, appStore *store.Store, collID string, s *store.Schematic) string {
+	ctx := context.Background()
+
+	fname := strings.TrimSpace(s.SchematicFile)
 	if fname == "" {
-		softDeleteSchematic(app, rec, "no schematic_file value")
+		softDeleteRepair(appStore, s.ID, s.Name, "no schematic_file value")
 		return "deleted"
 	}
 
-	// Read the file via PocketBase's filesystem (supports S3 and local storage).
-	fileKey := rec.BaseFilesPath() + "/" + fname
-	fsys, err := app.NewFilesystem()
+	// Check if the file exists in S3 before trying to download.
+	// If it doesn't exist (e.g. local dev without file data, or mid-migration),
+	// skip the schematic rather than soft-deleting it.
+	exists, err := storageSvc.Exists(ctx, collID, s.ID, fname)
 	if err != nil {
-		app.Logger().Warn("repair: could not create filesystem", "id", rec.Id, "error", err)
+		slog.Debug("repair: S3 check error, skipping", "id", s.ID, "error", err)
 		return "skipped"
 	}
-	defer fsys.Close()
+	if !exists {
+		return "skipped"
+	}
 
-	reader, err := fsys.GetReader(fileKey)
+	// Read the file via direct S3 access.
+	reader, err := storageSvc.Download(ctx, collID, s.ID, fname)
 	if err != nil {
-		softDeleteSchematic(app, rec, "file missing or unreadable")
+		softDeleteRepair(appStore, s.ID, s.Name, "file unreadable")
 		return "deleted"
 	}
 	data, err := io.ReadAll(reader)
 	reader.Close()
 	if err != nil || len(data) == 0 {
-		softDeleteSchematic(app, rec, "file empty or read error")
+		softDeleteRepair(appStore, s.ID, s.Name, "file empty or read error")
 		return "deleted"
 	}
 
@@ -85,30 +100,23 @@ func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
 	if !ok {
 		nbtData, extracted := tryExtractNBT(data)
 		if !extracted || len(nbtData) == 0 {
-			softDeleteSchematic(app, rec, "invalid NBT and archive extraction failed")
+			softDeleteRepair(appStore, s.ID, s.Name, "invalid NBT and archive extraction failed")
 			return "deleted"
 		}
-		// Replace the bad file with the extracted NBT via PocketBase's file system.
-		newFile, fErr := filesystem.NewFileFromBytes(nbtData, fname)
-		if fErr != nil {
-			app.Logger().Warn("repair: could not create file from bytes", "id", rec.Id, "error", fErr)
-			softDeleteSchematic(app, rec, "could not create replacement NBT file")
-			return "deleted"
-		}
-		rec.Set("schematic_file", newFile)
-		if sErr := app.Save(rec); sErr != nil {
-			app.Logger().Warn("repair: could not save extracted NBT", "id", rec.Id, "error", sErr)
-			softDeleteSchematic(app, rec, "could not save extracted NBT")
+		// Replace the bad file with the extracted NBT via direct S3 upload.
+		if uErr := storageSvc.UploadBytes(ctx, collID, s.ID, fname, nbtData, "application/octet-stream"); uErr != nil {
+			slog.Warn("repair: could not upload extracted NBT", "id", s.ID, "error", uErr)
+			softDeleteRepair(appStore, s.ID, s.Name, "could not upload extracted NBT file")
 			return "deleted"
 		}
 		data = nbtData
-		app.Logger().Info("repair: extracted NBT from archive", "id", rec.Id)
+		slog.Info("repair: extracted NBT from archive", "id", s.ID)
 	}
 
 	// --- Phase 2: fill missing stats (only parse if something is missing) ---
-	hasMaterials := hasMaterialData(rec)
-	hasBlockCount := rec.GetInt("block_count") > 0
-	hasDimensions := rec.GetInt("dim_x") > 0 || rec.GetInt("dim_y") > 0 || rec.GetInt("dim_z") > 0
+	hasMaterials := hasMaterialDataStore(s)
+	hasBlockCount := s.BlockCount > 0
+	hasDimensions := s.DimX > 0 || s.DimY > 0 || s.DimZ > 0
 
 	if hasMaterials && hasBlockCount && hasDimensions {
 		return "skipped"
@@ -121,7 +129,7 @@ func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
 		materials, mErr := nbtparser.ExtractMaterials(data)
 		if mErr == nil && len(materials) > 0 {
 			if mjson, err := json.Marshal(materials); err == nil {
-				rec.Set("materials", string(mjson))
+				s.Materials = mjson
 				needsSave = true
 			}
 			// Derive mod namespaces
@@ -138,7 +146,7 @@ func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
 					mods = append(mods, mod)
 				}
 				if mjson, err := json.Marshal(mods); err == nil {
-					rec.Set("mods", string(mjson))
+					s.Mods = mjson
 				}
 			}
 		}
@@ -148,10 +156,10 @@ func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
 	if !hasBlockCount {
 		blockCount, _, statsOk := nbtparser.ExtractStats(data)
 		if statsOk && blockCount > 0 {
-			rec.Set("block_count", blockCount)
+			s.BlockCount = blockCount
 			needsSave = true
 		} else if statsOk && blockCount == 0 {
-			softDeleteSchematic(app, rec, "zero blocks")
+			softDeleteRepair(appStore, s.ID, s.Name, "zero blocks")
 			return "deleted"
 		}
 		// If !statsOk the parser failed; don't delete — could be a parser edge case.
@@ -161,16 +169,16 @@ func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
 	if !hasDimensions {
 		x, y, z, dimOk := nbtparser.ExtractDimensions(data)
 		if dimOk && (x > 0 || y > 0 || z > 0) {
-			rec.Set("dim_x", x)
-			rec.Set("dim_y", y)
-			rec.Set("dim_z", z)
+			s.DimX = x
+			s.DimY = y
+			s.DimZ = z
 			needsSave = true
 		}
 	}
 
 	if needsSave {
-		if sErr := app.Save(rec); sErr != nil {
-			app.Logger().Warn("repair: save failed", "id", rec.Id, "error", sErr)
+		if sErr := appStore.Schematics.Update(ctx, s); sErr != nil {
+			slog.Warn("repair: save failed", "id", s.ID, "error", sErr)
 		} else {
 			return "repaired"
 		}
@@ -178,17 +186,17 @@ func repairSchematic(app *pocketbase.PocketBase, rec *core.Record) string {
 	return "skipped"
 }
 
-// hasMaterialData returns true if the record already has a non-empty materials JSON array.
-func hasMaterialData(rec *core.Record) bool {
-	v := strings.TrimSpace(rec.GetString("materials"))
+// hasMaterialDataStore returns true if the schematic already has a non-empty materials JSON array.
+func hasMaterialDataStore(s *store.Schematic) bool {
+	v := strings.TrimSpace(string(s.Materials))
 	return v != "" && v != "[]" && v != "null"
 }
 
-func softDeleteSchematic(app *pocketbase.PocketBase, rec *core.Record, reason string) {
-	app.Logger().Info("repair: soft-deleting schematic", "id", rec.Id, "name", rec.GetString("name"), "reason", reason)
-	rec.Set("deleted", time.Now())
-	if err := app.Save(rec); err != nil {
-		app.Logger().Warn("repair: soft-delete save failed", "id", rec.Id, "error", err)
+func softDeleteRepair(appStore *store.Store, id, name, reason string) {
+	slog.Info("repair: soft-deleting schematic", "id", id, "name", name, "reason", reason)
+	ctx := context.Background()
+	if err := appStore.Schematics.SoftDelete(ctx, id); err != nil {
+		slog.Warn("repair: soft-delete failed", "id", id, "error", err)
 	}
 }
 

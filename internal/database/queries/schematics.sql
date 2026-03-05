@@ -101,7 +101,9 @@ UPDATE schematics SET
     dim_y = COALESCE(sqlc.narg('dim_y'), dim_y),
     dim_z = COALESCE(sqlc.narg('dim_z'), dim_z),
     materials = COALESCE(sqlc.narg('materials'), materials),
-    mods = COALESCE(sqlc.narg('mods'), mods)
+    mods = COALESCE(sqlc.narg('mods'), mods),
+    paid = COALESCE(sqlc.narg('paid'), paid),
+    external_url = COALESCE(sqlc.narg('external_url'), external_url)
 WHERE id = $1
 RETURNING *;
 
@@ -138,3 +140,94 @@ DELETE FROM schematics_tags WHERE schematic_id = $1;
 INSERT INTO schematics_tags (schematic_id, tag_id)
 VALUES ($1, $2)
 ON CONFLICT DO NOTHING;
+
+-- name: ListApprovedSchematicsWithVideo :many
+SELECT * FROM schematics
+WHERE deleted IS NULL
+  AND moderated = true
+  AND video != ''
+  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+ORDER BY created DESC
+LIMIT $1 OFFSET $2;
+
+-- name: ListRandomApprovedSchematics :many
+SELECT * FROM schematics
+WHERE deleted IS NULL
+  AND moderated = true
+  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+ORDER BY RANDOM()
+LIMIT $1;
+
+-- name: ListSchematicsByCategoryIDs :many
+SELECT DISTINCT s.* FROM schematics s
+JOIN schematics_categories sc ON sc.schematic_id = s.id
+WHERE sc.category_id = ANY($1::text[])
+  AND s.id != ALL($2::text[])
+  AND s.deleted IS NULL
+  AND s.moderated = true
+  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+ORDER BY s.views DESC
+LIMIT $3;
+
+-- name: ListHighestRatedSchematics :many
+SELECT s.* FROM schematics s
+JOIN schematic_ratings sr ON sr.schematic_id = s.id
+WHERE s.deleted IS NULL
+  AND s.moderated = true
+  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+GROUP BY s.id
+HAVING COUNT(sr.rating) > 0
+ORDER BY AVG(sr.rating) DESC, COUNT(sr.rating) DESC
+LIMIT $1 OFFSET $2;
+
+-- name: ListSchematicsForSitemap :many
+SELECT id, name, updated FROM schematics
+WHERE deleted IS NULL
+  AND moderated = true
+  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+ORDER BY updated DESC;
+
+-- name: CountSchematicsByAuthor :one
+SELECT COUNT(*) FROM schematics
+WHERE author_id = $1
+  AND deleted IS NULL
+  AND moderated = true;
+
+-- name: GetSchematicByChecksum :one
+SELECT schematic_id FROM nbt_hashes
+WHERE hash = $1
+LIMIT 1;
+
+-- name: UpdateSchematicName :exec
+UPDATE schematics SET name = $2 WHERE id = $1;
+
+-- name: ListSchematicsByNamePattern :many
+SELECT * FROM schematics
+WHERE name LIKE $1
+  AND deleted IS NULL
+LIMIT $2;
+
+-- name: ListSchematicsForAdmin :many
+SELECT * FROM schematics
+WHERE
+  CASE
+    WHEN @filter::text = 'pending' THEN moderated = false AND deleted IS NULL
+    WHEN @filter::text = 'moderated' THEN moderated = true AND deleted IS NULL
+    WHEN @filter::text = 'deleted' THEN deleted IS NOT NULL
+    ELSE true
+  END
+ORDER BY created DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountSchematicsForAdmin :one
+SELECT COUNT(*) FROM schematics
+WHERE
+  CASE
+    WHEN @filter::text = 'pending' THEN moderated = false AND deleted IS NULL
+    WHEN @filter::text = 'moderated' THEN moderated = true AND deleted IS NULL
+    WHEN @filter::text = 'deleted' THEN deleted IS NOT NULL
+    ELSE true
+  END;
+
+-- name: GetSchematicByIDAdmin :one
+SELECT * FROM schematics WHERE id = $1;

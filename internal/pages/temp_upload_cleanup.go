@@ -1,6 +1,9 @@
 package pages
 
 import (
+	"context"
+	"createmod/internal/store"
+	"log/slog"
 	"time"
 )
 
@@ -8,26 +11,20 @@ import (
 const tempUploadTTL = 2 * time.Hour
 const tempUploadPurgeInterval = 10 * time.Minute
 
-// init starts a lightweight background goroutine that periodically removes
-// expired entries from the in-memory temporary upload store. This is only a
-// stop-gap until we persist temp uploads in PocketBase.
-func init() {
+// StartTempUploadCleanup launches a background goroutine that periodically
+// removes expired temp uploads from PostgreSQL. Call this once at server startup.
+func StartTempUploadCleanup(appStore *store.Store) {
 	go func() {
 		t := time.NewTicker(tempUploadPurgeInterval)
 		defer t.Stop()
 		for range t.C {
-			purgeExpiredTempUploads()
+			cutoff := time.Now().Add(-tempUploadTTL)
+			n, err := appStore.TempUploads.DeleteExpired(context.Background(), cutoff)
+			if err != nil {
+				slog.Error("failed to purge expired temp uploads", "error", err)
+			} else if n > 0 {
+				slog.Info("purged expired temp uploads", "count", n)
+			}
 		}
 	}()
-}
-
-func purgeExpiredTempUploads() {
-	now := time.Now()
-	tempUploadStore.Lock()
-	for k, v := range tempUploadStore.m {
-		if now.Sub(v.UploadedAt) > tempUploadTTL {
-			delete(tempUploadStore.m, k)
-		}
-	}
-	tempUploadStore.Unlock()
 }

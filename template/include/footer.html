@@ -73,19 +73,7 @@
         </div>
     </div>
     <script>var langPrefix = '{{ if .LangPrefix }}/{{ .LangPrefix }}{{ end }}';</script>
-    <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.26.0/dist/pocketbase.umd.js" crossorigin="anonymous" integrity="sha384-Xf1OcXEVWauA5CD3AztHqIy5tUPx6rk2hp0h5giz/jXpnZo7KCh9v2VWXOQYZVWM"></script>
     <script>
-        let url = "https://createmod.com"
-        const host = window.location.host;
-        if (host === "127.0.0.1:8090") {
-            url = "http://127.0.0.1:8090"
-        } else if (host === "0.0.0.0:8090") {
-            url = "http://0.0.0.0:8090"
-        } else if (host === "beta.createmod.com") {
-            url = "https://beta.createmod.com"
-        }
-        const pb = new PocketBase(url)
-
         function getCookie(c_name) {
             var i, x, y, ARRcookies = document.cookie.split(";");
             for (i = 0; i < ARRcookies.length; i++) {
