@@ -21,19 +21,6 @@ jobs:
           --health-timeout 2s
           --health-retries 30
 
-      minio:
-        image: quay.io/minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "mc ready local || exit 1"
-          --health-interval 2s
-          --health-timeout 2s
-          --health-retries 30
-
       mailhog:
         image: mailhog/mailhog:latest
         ports:
@@ -47,6 +34,14 @@ jobs:
           go-version: '1.24'
       - name: Go tests
         run: go test ./...
+
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio --network host \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do curl -fsS http://localhost:9000/minio/health/live && break || sleep 1; done
 
       - name: Create MinIO bucket
         run: |
