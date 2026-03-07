@@ -2,11 +2,14 @@ import { test, expect } from '@playwright/test';
 import { loginViaCookie } from '../helpers/auth';
 
 // Covers both normal navigation and HTMX-triggered logout.
-// Uses the backend cookie name: create-mod-auth (see internal/auth.CookieName)
+// Uses the backend cookie name: create-mod-auth (see internal/session)
 
 test.describe('logout flows (normal + HTMX)', () => {
   test('GET /logout clears auth cookie and redirects (normal nav)', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
+
+    // Navigate first so cookie domain is valid
+    await page.goto(url + '/');
 
     // Log in via cookie (fast) so we have an authenticated session
     await loginViaCookie(page, url);

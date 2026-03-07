@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('hx-boost does not break non-HTML links', () => {
 
   test('clicking schematic image opens lightbox, not encoded data', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/schematics/industrial-estate');
 
     // Wait for the main image link
@@ -33,7 +33,7 @@ test.describe('hx-boost does not break non-HTML links', () => {
   });
 
   test('clicking download button starts download, not encoded data', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/get/house-with-swappable-rooms');
 
     const manualLink = page.locator('#manual-link, #manual-link-ext').first();
@@ -58,7 +58,7 @@ test.describe('hx-boost does not break non-HTML links', () => {
   });
 
   test('download timer stops after manual click', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
 
     // Track requests to /download/
     const downloadRequests: string[] = [];
@@ -84,7 +84,7 @@ test.describe('hx-boost does not break non-HTML links', () => {
   });
 
   test('download timer stops when navigating away via HTMX', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
 
     // Track requests to /download/
     const downloadRequests: string[] = [];

@@ -1,12 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { TEST_USER_EMAIL, TEST_USER_PASSWORD, loginViaCookie, seedTestUser } from '../helpers/auth';
+import { TEST_USER_EMAIL, TEST_USER_PASSWORD, loginViaCookie } from '../helpers/auth';
 
 test.describe('login flow', () => {
   test('login form submits and header updates to show username', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
-
-    // Ensure the test user exists
-    await seedTestUser(url);
+    const url = baseURL ?? 'http://localhost:8080';
 
     // Navigate to login page
     await page.goto(url + '/login');
@@ -38,8 +35,7 @@ test.describe('login flow', () => {
   });
 
   test('login form shows avatar in header without manual refresh', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
-    await seedTestUser(url);
+    const url = baseURL ?? 'http://localhost:8080';
 
     await page.goto(url + '/login');
     await page.fill('input[name="username"]', TEST_USER_EMAIL);
@@ -60,7 +56,7 @@ test.describe('login flow', () => {
   });
 
   test('login with invalid credentials stays on login page', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
 
     await page.goto(url + '/login');
     await page.fill('input[name="username"]', 'nonexistent@example.com');
@@ -77,7 +73,7 @@ test.describe('login flow', () => {
   });
 
   test('login form bypasses HTMX boost for proper cookie handling', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/login');
 
     // The login form should have hx-boost="false" to bypass HTMX interception.
@@ -88,7 +84,7 @@ test.describe('login flow', () => {
   });
 
   test('authenticated user sees avatar and profile dropdown in header', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
 
     // Navigate first so the cookie domain is valid for the browser context
     await page.goto(url + '/');
@@ -117,7 +113,7 @@ test.describe('login flow', () => {
 
 test.describe('signup flow', () => {
   test('register page renders signup form', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/register');
 
     // Verify the signup form is present
@@ -130,7 +126,7 @@ test.describe('signup flow', () => {
   });
 
   test('signup form validates empty fields', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/register');
 
     // Submit with empty fields
@@ -143,7 +139,7 @@ test.describe('signup flow', () => {
   });
 
   test('signup form validates terms checkbox', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/register');
 
     // Fill all fields but don't check terms
@@ -157,7 +153,7 @@ test.describe('signup flow', () => {
   });
 
   test('register page has links to login and terms', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/register');
 
     // Link to login

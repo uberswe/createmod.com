@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Videos page', () => {
   test('displays Videos title and description', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/videos');
 
     const title = page.locator('h2.page-title');
@@ -16,7 +16,7 @@ test.describe('Videos page', () => {
   });
 
   test('videos are sorted by trending (not purely by creation date)', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/videos');
 
     // Collect schematic links from the video cards on the first page.
@@ -34,7 +34,7 @@ test.describe('Videos page', () => {
     // The date appears in: title="2024-08-16 15:06:50"
     const dates: Date[] = [];
     for (const slug of slugs) {
-      const resp = await page.request.get((baseURL ?? 'http://localhost:8090') + slug);
+      const resp = await page.request.get((baseURL ?? 'http://localhost:8080') + slug);
       const html = await resp.text();
       // Look for the upload date in the tooltip next to the "Uploaded" label
       const match = html.match(/title="(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})">/);
@@ -60,7 +60,7 @@ test.describe('Videos page', () => {
   });
 
   test('first video is a schematic with real engagement (not just newest)', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/videos');
 
     // The first video card should exist
@@ -73,7 +73,7 @@ test.describe('Videos page', () => {
     expect(href).toBeTruthy();
 
     // Visit the schematic page and check it has views > 0
-    const resp = await page.request.get((baseURL ?? 'http://localhost:8090') + href!);
+    const resp = await page.request.get((baseURL ?? 'http://localhost:8080') + href!);
     const html = await resp.text();
 
     // A trending schematic should show view/engagement indicators

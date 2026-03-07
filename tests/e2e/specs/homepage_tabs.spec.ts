@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Homepage tabs', () => {
   test('shows Featured Builds section', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
     const featured = page.locator('text=Featured Builds');
@@ -19,7 +19,7 @@ test.describe('Homepage tabs', () => {
   });
 
   test('shows all three tabs', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
     await expect(page.locator('a[role="tab"]:has-text("Latest")')).toBeVisible();
@@ -28,7 +28,7 @@ test.describe('Homepage tabs', () => {
   });
 
   test('Latest tab is active by default and shows schematics', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
     const latestTab = page.locator('a[role="tab"]:has-text("Latest")');
@@ -44,7 +44,7 @@ test.describe('Homepage tabs', () => {
   });
 
   test('clicking Trending tab shows trending content', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
     // Click the Trending tab
@@ -61,7 +61,7 @@ test.describe('Homepage tabs', () => {
   });
 
   test('clicking Highest Rated tab shows highest rated content', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
     // Click the Highest Rated tab
@@ -78,7 +78,7 @@ test.describe('Homepage tabs', () => {
   });
 
   test('Latest tab has pagination and Next works via HTMX', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
     const latestPanel = page.locator('#tab-panel-latest');
@@ -103,7 +103,7 @@ test.describe('Homepage tabs', () => {
   });
 
   test('HTMX tab pagination returns valid HTML', async ({ request, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
 
     // Test each tab endpoint returns 200 with HX-Request header
     for (const tab of ['latest', 'trending', 'highest']) {

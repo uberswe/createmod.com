@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Search page filters', () => {
   test('Best match is the default selected sort', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
     // The "Best match" radio (value="1") should be checked by default
@@ -15,7 +15,7 @@ test.describe('Search page filters', () => {
   });
 
   test('Changing sort filter updates search results via HTMX', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
     // Wait for initial results to load
@@ -34,7 +34,7 @@ test.describe('Search page filters', () => {
   });
 
   test('Changing category filter updates search results', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
     await page.waitForSelector('#search-results');
@@ -55,7 +55,7 @@ test.describe('Search page filters', () => {
   });
 
   test('Typing in search hero input updates results', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
     await page.waitForSelector('#search-results');
@@ -73,7 +73,7 @@ test.describe('Search page filters', () => {
   });
 
   test('Changing rating filter updates results', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
     await page.waitForSelector('#search-results');

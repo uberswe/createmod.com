@@ -1,84 +1,106 @@
 import { Page } from '@playwright/test';
 
 // Known test user credentials.
-// Must match what global-setup.ts seeds.
+// Must match what seed.sql inserts.
 export const TEST_USER_EMAIL = 'e2e-test@createmod.com';
 export const TEST_USER_PASSWORD = 'E2eTestPass123!';
+export const TEST_USER_USERNAME = 'e2etest';
 
 /**
- * Resolve the PocketBase base URL.
- * In CI the app proxies PocketBase at the same origin; PB_URL is set when
- * PocketBase runs on a separate port (e.g. localhost:8090).
+ * Resolve the app base URL.
  */
-export function pbURL(): string {
-  return process.env.PB_URL || process.env.APP_BASE_URL || 'http://localhost:8090';
+export function appURL(): string {
+  return process.env.APP_BASE_URL || 'http://localhost:8080';
 }
 
 /**
  * Ensure the E2E test user exists.
- * Idempotent: tries to create the user; if it already exists (400) it
- * authenticates instead and returns the existing record id.
  *
- * Returns { id, token } for the user.
+ * In CI the user is seeded via seed.sql before the app starts.
+ * This function attempts to register the user via the app's /register
+ * endpoint as a fallback (for local dev), then logs in to verify.
+ *
+ * Returns the session cookie value.
  */
-export async function seedTestUser(baseURL?: string): Promise<{ id: string; token: string }> {
-  const pb = pbURL();
+export async function seedTestUser(): Promise<string> {
+  const url = appURL();
 
-  // Try creating the user first
-  const createParams = new URLSearchParams();
-  createParams.set('email', TEST_USER_EMAIL);
-  createParams.set('password', TEST_USER_PASSWORD);
-  createParams.set('passwordConfirm', TEST_USER_PASSWORD);
-  createParams.set('username', 'e2etest');
-  const createResp = await fetch(`${pb}/api/collections/users/records`, {
+  // Try registering — will fail gracefully if user already exists
+  const form = new URLSearchParams();
+  form.set('username', TEST_USER_USERNAME);
+  form.set('email', TEST_USER_EMAIL);
+  form.set('password', TEST_USER_PASSWORD);
+  form.set('terms', 'on');
+
+  await fetch(`${url}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: createParams.toString(),
+    body: form.toString(),
+    redirect: 'manual', // don't follow redirects
   });
 
-  if (createResp.ok) {
-    const data = await createResp.json();
-    // Authenticate to get a token
-    const authResult = await authenticateUser(pb);
-    return { id: data.id, token: authResult.token };
-  }
-
-  // User likely already exists — authenticate
-  return authenticateUser(pb);
+  // Verify we can authenticate
+  const cookie = await authenticateUser();
+  return cookie;
 }
 
 /**
- * Authenticate the test user via PocketBase API and return { id, token }.
+ * Authenticate the test user via the app's /login endpoint.
+ * Returns the create-mod-auth cookie value.
  */
-async function authenticateUser(pb: string): Promise<{ id: string; token: string }> {
-  const params = new URLSearchParams();
-  params.set('identity', TEST_USER_EMAIL);
-  params.set('password', TEST_USER_PASSWORD);
-  const resp = await fetch(`${pb}/api/collections/users/auth-with-password`, {
+export async function authenticateUser(): Promise<string> {
+  const url = appURL();
+
+  const form = new URLSearchParams();
+  form.set('username', TEST_USER_EMAIL);
+  form.set('password', TEST_USER_PASSWORD);
+
+  const resp = await fetch(`${url}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
+    body: form.toString(),
+    redirect: 'manual', // don't follow — we need Set-Cookie from the 302
   });
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Failed to authenticate test user: ${resp.status} ${text}`);
+  // Extract create-mod-auth from Set-Cookie header
+  const setCookie = resp.headers.getSetCookie?.() ?? [];
+  let token = '';
+  for (const c of setCookie) {
+    const match = c.match(/create-mod-auth=([^;]+)/);
+    if (match) {
+      token = match[1];
+      break;
+    }
   }
 
-  const data = await resp.json();
-  return { id: data.record.id, token: data.token };
+  // Fallback: try raw header parsing if getSetCookie is unavailable
+  if (!token) {
+    const raw = resp.headers.get('set-cookie') ?? '';
+    const match = raw.match(/create-mod-auth=([^;]+)/);
+    if (match) {
+      token = match[1];
+    }
+  }
+
+  if (!token) {
+    throw new Error(
+      `Failed to authenticate test user: status=${resp.status}, ` +
+      `no create-mod-auth cookie in response`
+    );
+  }
+
+  return token;
 }
 
 /**
  * Log in via the app's /login form POST so the browser context gets the
- * `create-mod-auth` cookie set by the PocketBase OnRecordAuthRequest hook.
+ * `create-mod-auth` cookie.
  *
  * Use this for tests that need a fully authenticated browser session.
  */
 export async function login(page: Page, baseURL?: string): Promise<void> {
-  const url = baseURL ?? process.env.APP_BASE_URL ?? 'http://localhost:8080';
+  const url = baseURL ?? appURL();
 
-  // POST to the login endpoint which proxies to PocketBase and sets the cookie
   await page.goto(url + '/login');
   await page.fill('input[name="username"]', TEST_USER_EMAIL);
   await page.fill('input[name="password"]', TEST_USER_PASSWORD);
@@ -94,29 +116,15 @@ export async function login(page: Page, baseURL?: string): Promise<void> {
  * need to exercise the login page itself.
  */
 export async function loginViaCookie(page: Page, baseURL?: string): Promise<void> {
-  const pb = pbURL();
-  const appURL = baseURL ?? process.env.APP_BASE_URL ?? 'http://localhost:8080';
-  const domain = new URL(appURL).hostname;
+  const url = baseURL ?? appURL();
+  const domain = new URL(url).hostname;
 
-  const params = new URLSearchParams();
-  params.set('identity', TEST_USER_EMAIL);
-  params.set('password', TEST_USER_PASSWORD);
-  const resp = await fetch(`${pb}/api/collections/users/auth-with-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
-
-  if (!resp.ok) {
-    throw new Error(`loginViaCookie: auth failed ${resp.status}`);
-  }
-
-  const data = await resp.json();
+  const token = await authenticateUser();
 
   await page.context().addCookies([
     {
       name: 'create-mod-auth',
-      value: data.token,
+      value: token,
       domain,
       path: '/',
       httpOnly: true,

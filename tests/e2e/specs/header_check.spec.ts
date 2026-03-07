@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('header logo is vertically centered', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
 
   // Screenshot the header

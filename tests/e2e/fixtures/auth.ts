@@ -1,29 +1,26 @@
 import { test as base } from '@playwright/test';
-import PocketBase from 'pocketbase';
+import { authenticateUser } from '../helpers/auth';
 
 // Extend the base test with an authenticated page fixture.
-// Adjust cookie name and auth flow to match the app when backend is wired.
 export const test = base.extend<{ userPage: any }>({
   userPage: async ({ browser }, use) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    // Optional fast login via PocketBase REST
+    // Fast login via the app's /login endpoint
     try {
-      const pb = new PocketBase(process.env.PB_URL ?? 'http://localhost:8090');
-      const auth = await pb.collection('users').authWithPassword('user@example.com', 'password123');
+      const token = await authenticateUser();
       await context.addCookies([
         {
-          name: 'create-mod-auth', // replace with actual auth cookie if different
-          value: auth.token,
+          name: 'create-mod-auth',
+          value: token,
           domain: 'localhost',
           path: '/',
           httpOnly: true,
         },
       ]);
     } catch (e) {
-      // If PB isn't seeded yet, tests that require auth should skip or handle 401s.
-      // For the smoke test we don't rely on auth.
+      // If the test user isn't seeded yet, tests that require auth should skip or handle 401s.
     }
 
     await use(page);

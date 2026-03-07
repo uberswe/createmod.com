@@ -26,21 +26,21 @@ const pages = [
 
 for (const pg of pages) {
   test(`${pg.name} (${pg.path}) returns 200`, async ({ request, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8090';
+    const url = baseURL ?? 'http://localhost:8080';
     const resp = await request.get(url + pg.path);
     expect(resp.status(), `GET ${pg.path} should return 200`).toBe(200);
   });
 }
 
 test('404 page returns valid HTML', async ({ request, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   const resp = await request.get(url + '/nonexistent-page-that-does-not-exist');
   // Should be 200 (custom 404 page) or 404
   expect(resp.status()).toBeLessThan(500);
 });
 
 test('home page contains expected sections', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
 
   // Check for key structural elements
@@ -56,7 +56,7 @@ test('home page contains expected sections', async ({ page, baseURL }) => {
 });
 
 test('login page has form with POST method', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/login');
 
   const form = page.locator('form');
@@ -68,7 +68,7 @@ test('login page has form with POST method', async ({ page, baseURL }) => {
 });
 
 test('search page responds to POST with HTMX', async ({ request, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   const resp = await request.post(url + '/search', {
     headers: { 'HX-Request': 'true' },
     form: { q: 'test' },
@@ -77,7 +77,7 @@ test('search page responds to POST with HTMX', async ({ request, baseURL }) => {
 });
 
 test('news page renders without template errors', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   const resp = await page.goto(url + '/news');
   expect(resp?.status()).toBe(200);
 
@@ -88,7 +88,7 @@ test('news page renders without template errors', async ({ page, baseURL }) => {
 });
 
 test('collections new page has banner upload input', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/collections/new');
 
   // Check for banner file input (from the banner upload feature)
@@ -101,7 +101,7 @@ test('collections new page has banner upload input', async ({ page, baseURL }) =
 });
 
 test('dark mode toggle exists in page source', async ({ request, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   const resp = await request.get(url + '/');
   const html = await resp.text();
 
@@ -111,7 +111,7 @@ test('dark mode toggle exists in page source', async ({ request, baseURL }) => {
 });
 
 test('sidebar toggle button exists', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
 
   const toggle = page.locator('#sidebar-toggle');
@@ -119,7 +119,7 @@ test('sidebar toggle button exists', async ({ page, baseURL }) => {
 });
 
 test('language changer links present in header', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
 
   // The language changer should have links/buttons for language switching

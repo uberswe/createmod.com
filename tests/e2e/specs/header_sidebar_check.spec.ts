@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('header and sidebar do not overlap', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8090';
+  const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
 
   // Take a screenshot of the top-left area showing header + sidebar

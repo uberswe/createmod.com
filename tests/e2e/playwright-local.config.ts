@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   use: {
-    baseURL: process.env.APP_BASE_URL || 'http://localhost:8090',
+    baseURL: process.env.APP_BASE_URL || 'http://localhost:8080',
     trace: 'off',
   },
   projects: [
