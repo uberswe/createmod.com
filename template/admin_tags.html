@@ -1,0 +1,102 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin: Tags &amp; Categories</h2>
+              <div class="text-secondary">Approve or reject user-suggested tags and categories</div>
+            </div>
+          </div>
+        </div>
+        {{if not .IsAuthenticated}}
+          <div class="alert alert-danger">You must be logged in.</div>
+        {{end}}
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <h3 class="card-title">Pending Categories</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Key</th>
+                  <th class="w-1">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .PendingCategories}}
+                <tr>
+                  <td>{{.Name}}</td>
+                  <td><code>{{.Key}}</code></td>
+                  <td>
+                    <div class="btn-list">
+                      <form method="post" action="/admin/tags/{{.ID}}/approve?type=category" style="display:inline">
+                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                      </form>
+                      <form method="post" action="/admin/tags/{{.ID}}/reject?type=category" style="display:inline">
+                        <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="3" class="text-center text-secondary">No pending categories.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Pending Tags</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Key</th>
+                  <th class="w-1">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .PendingTags}}
+                <tr>
+                  <td>{{.Name}}</td>
+                  <td><code>{{.Key}}</code></td>
+                  <td>
+                    <div class="btn-list">
+                      <form method="post" action="/admin/tags/{{.ID}}/approve?type=tag" style="display:inline">
+                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                      </form>
+                      <form method="post" action="/admin/tags/{{.ID}}/reject?type=tag" style="display:inline">
+                        <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="3" class="text-center text-secondary">No pending tags.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

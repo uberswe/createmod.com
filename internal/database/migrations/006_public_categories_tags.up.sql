@@ -1,0 +1,2 @@
+ALTER TABLE schematic_categories ADD COLUMN public BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE schematic_tags ADD COLUMN public BOOLEAN NOT NULL DEFAULT true;

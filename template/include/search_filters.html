@@ -1,0 +1,123 @@
+{{define "search_filters.html"}}
+<div id="search-filters">
+    <form id="advanced-search-form" method="get" action="/search" autocomplete="off"
+          hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true"
+          hx-trigger="change" hx-include="#search-hero-input">
+        <div class="subheader mb-2">{{ T .Language "Order by" }}</div>
+        <div class="mb-3">
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="1" {{ if eq .DisplaySort 1 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Best match" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="8" {{ if eq .DisplaySort 8 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Trending" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="2" {{ if eq .DisplaySort 2 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Newest" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="3" {{ if eq .DisplaySort 3 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Oldest" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="4" {{ if eq .DisplaySort 4 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Highest rating" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="5" {{ if eq .DisplaySort 5 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Lowest rating" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="6" {{ if eq .DisplaySort 6 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Most views" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="sort" value="7" {{ if eq .DisplaySort 7 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Least views" }}</span>
+            </label>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Minimum Rating" }}</div>
+        <div class="mb-3">
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="rating" value="-1" {{ if eq .Rating -1 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Any rating" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="rating" value="5" {{ if eq .Rating 5 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "5 stars" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="rating" value="4" {{ if eq .Rating 4 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "4 stars" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="rating" value="3" {{ if eq .Rating 3 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "3 stars" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="rating" value="2" {{ if eq .Rating 2 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "2 stars" }}</span>
+            </label>
+            <label class="form-check">
+                <input type="radio" class="form-check-input" name="rating" value="1" {{ if eq .Rating 1 }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "1 star" }}</span>
+            </label>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Category" }}</div>
+        <div class="mb-3">
+            <select name="category" class="form-select">
+                <option value="all" {{ if eq .Category "all" }}selected{{ end }}>{{ T .Language "All" }}</option>
+                {{ range .Categories}}
+                    <option value="{{ .Key }}" {{ if eq $.Category .Key }}selected{{ end }}>{{ .Name }}</option>
+                {{ end }}
+            </select>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Tags" }}</div>
+        <div class="mb-3 search-tag-list">
+            {{ range .TagsWithCount }}
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" name="tag" value="{{ .Key }}" {{ if tagSelected $.SelectedTags .Key }}checked{{ end }}>
+                <span class="form-check-label">{{ .Name }} <span class="text-secondary">({{ .Count }})</span></span>
+            </label>
+            {{ end }}
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Minecraft Version" }}</div>
+        <div class="mb-3">
+            <select name="mcv" class="form-select">
+                <option value="all" {{ if eq .MinecraftVersion "all" }}selected{{ end }}>{{ T .Language "All" }}</option>
+                {{ range .MinecraftVersions }}
+                <option value="{{ .Version }}" {{ if eq $.MinecraftVersion .Version }}selected{{ end }}>{{ .Version }}</option>
+                {{ end }}
+            </select>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Create Version" }}</div>
+        <div class="mb-3">
+            <select name="cv" class="form-select">
+                <option value="all" {{ if eq .CreateVersion "all" }}selected{{ end }}>{{ T .Language "All" }}</option>
+                {{ range .CreateVersions }}
+                <option value="{{ .Version }}" {{ if eq $.CreateVersion .Version }}selected{{ end }}>{{ .Version }}</option>
+                {{ end }}
+            </select>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Other" }}</div>
+        <div class="mb-3">
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" name="hidepaid" value="1" {{ if .HidePaid }}checked{{ end }}>
+                <span class="form-check-label">{{ T .Language "Hide paid schematics" }}</span>
+            </label>
+        </div>
+        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) .HidePaid }}
+        <div class="mb-3">
+            <a href="/search/{{ .TermSlug }}" class="text-secondary small">{{ T .Language "Clear all filters" }}</a>
+        </div>
+        {{ end }}
+        <div class="mt-3">
+            <button class="btn btn-primary w-100" type="submit">
+                {{ T .Language "Apply Filters" }}
+            </button>
+        </div>
+    </form>
+</div>
+{{end}}

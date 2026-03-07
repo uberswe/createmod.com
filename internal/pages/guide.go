@@ -2,28 +2,32 @@ package pages
 
 import (
 	"createmod/internal/cache"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
+	"createmod/internal/server"
 	"net/http"
 )
 
-const guideTemplate = "./template/dist/guide.html"
+const guideTemplate = "./template/guide.html"
+
+var guideTemplates = append([]string{
+	guideTemplate,
+}, commonTemplates...)
 
 type GuideData struct {
 	DefaultData
 }
 
-func GuideHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func GuideHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := GuideData{}
 		d.Populate(e)
-		d.Title = "Guide"
-		d.Description = "How do you use Create Mod schematic files? This page has a simple guide that should help!"
+		d.Title = i18n.T(d.Language, "page.guide.title")
+		d.Description = i18n.T(d.Language, "page.guide.description")
 		d.Slug = "/guide"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
-		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(guideTemplate).Render(d)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		html, err := registry.LoadFiles(guideTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

@@ -4,147 +4,102 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-xl">
-                <div class="row justify-content-center">
-                    <div class="col-lg-10 col-xl-9">
-                        <div class="card card-lg mb-4">
-                            <div class="card-header">
-                                <h2 class="card-title">Search Improvements & Bug Fixes</h2>
+            <div class="container-wide">
+                <div class="row g-3">
+                    <!-- Left column: News posts -->
+                    <div class="col-lg-8">
+                        <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
+                        {{ if .Posts }}
+                            {{ $root := . }}
+                            {{ range $i, $post := .Posts }}
+                            <div class="card news-card mb-3">
+                                <div class="card-body py-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="flex-fill">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <h3 class="mb-0"><a href="{{ $post.URL }}" class="text-reset">{{ $post.Title }}</a></h3>
+                                                {{ if eq $i 0 }}
+                                                <span class="badge bg-green-lt ms-2">Latest</span>
+                                                {{ end }}
+                                            </div>
+                                            <div class="text-secondary news-excerpt">
+                                                {{ if $post.FirstParagraph }}
+                                                    {{ $post.FirstParagraph }}
+                                                {{ else if $post.Excerpt }}
+                                                    <p class="mb-0">{{ $post.Excerpt }}</p>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        <div class="text-secondary text-nowrap ms-3" style="font-size: 0.85rem;">
+                                            {{ DateOnly $post.PostDate }}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <p>It is now possible to filter by Minecraft and Create mod versions on the search page. There were also some issues with the dark/light mode toggle that were fixed.</p>
+                            {{ end }}
+                        {{ else }}
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h3>{{ T .Language "No news yet" }}</h3>
+                                    <p class="mb-0">{{ T .Language "There are no news posts available at the moment. Please check back later." }}</p>
+                                </div>
                             </div>
-                            <div class="card-footer">
-                                July 20th, 2025
-                            </div>
-                        </div>
-                        <div class="card card-lg mb-4">
-                            <div class="card-header">
-                                <h2 class="card-title">Bugfixes</h2>
-                            </div>
-                            <div class="card-body">
-                                <p>This is a small update that fixes issues with users profiles where schematics would not show if the user had a capital letter in their username. User profile avatar icons have also been fixed.</p>
-                            </div>
-                            <div class="card-footer">
-                                May 6th, 2025
-                            </div>
-                        </div>
-                        <div class="card card-lg mb-4">
-                            <div class="card-header">
-                                <h2 class="card-title">Create 6.0.0 Released!</h2>
-                            </div>
-                            <div class="card-body">
-                                <p>The Create mod has been updated to 6.0.0 and brings a lot of new features and improvements! Currently available for Forge and NeoForge for Minecraft versions 1.20.1 and 1.21.1. Packaging seems to be the new feature with card board armor being one of the many things mentioned in the changelog.</p>
-                                <p>The website has already been updated to support the latest Create mod version and Minecraft version and I look forward to seeing all the new schematics that will be uploaded!</p>
-                                <p>Get the new version:</p>
-                                <ul>
-                                    <li>Curseforge: <a href="https://www.curseforge.com/minecraft/mc-mods/create" target="_blank" rel="noopener noreferrer">https://www.curseforge.com/minecraft/mc-mods/create</a></li>
-                                    <li>Modrinth: <a href="https://modrinth.com/mod/create" target="_blank" rel="noopener noreferrer">https://modrinth.com/mod/create</a></li>
-                                </ul>
-                                <p>Read the full changelog on the new Create Mod wiki: <a href="https://wiki.createmod.net/users/changelogs/6.0.0" target="_blank" rel="noopener noreferrer">https://wiki.createmod.net/users/changelogs/6.0.0</a></p>
-                            </div>
-                            <div class="card-footer">
-                                March 1st, 2025
-                            </div>
-                        </div>
-                        <div class="card card-lg mb-4">
-                            <div class="card-header">
-                                <h2 class="card-title">Major Website Rewrite & Ownership Change</h2>
-                            </div>
-                            <div class="card-body">
-                                <p>CreateMod.com has undergone a full rewrite and is no longer running on Wordpress as it had been doing since 2022.</p>
-                                <p>This website was created by Slaser360 and during June 2024 the ownership was handed over to Uberswe</p>
-                                <p>Below is a list of changes that have been done since June.</p>
-                                <ul>
-                                    <li>Removed the majority of ads and all Google Adsense code</li>
-                                    <li>Changed search to use in-memory <a href="https://blevesearch.com/">Bleve search</a></li>
-                                    <li>Added ability to sort by ratings, views and more</li>
-                                    <li>Complete redesign and new logo</li>
-                                    <li>Removed lowest rated and most rated list from main page</li>
-                                    <li>Added a trending list to the main page</li>
-                                    <li>Fixed a bug allowing the same user to submit duplicate ratings once per day</li>
-                                    <li>Cleaned up many bad schematics (will keep doing this)</li>
-                                    <li>Compressed and optimized all images to reduce page size</li>
-                                    <li>Added an Explore page for finding random schematics</li>
-                                    <li>Made it possible to delete and edit schematics</li>
-                                    <li>Max file size increased to 25mb for schematic files and images</li>
-                                    <li>Made CreateMod.com open source, code can be found on <a href="https://github.com/uberswe/createmod.com">https://github.com/uberswe/createmod.com</a></li>
-                                    <li>And so much more!</li>
-                                </ul>
-                                <p>The current site uses Go for the backend and mostly vanilla JS with Bootstrap 5 for the frontend. If you would like to help make the site better please have a look at the <a href="https://github.com/uberswe/createmod.com">GitHub repository</a> and open an issue or a pull request.</p>
-                                <p>I hope the CreateMod.com will be a better experience for everyone going forward and I believe there are many interesting features that could further improve the overall experience.</p>
-                                <h3>Site Traffic</h3>
-                                <p>Over time the site has received more and more popular and struggled with 100 concurrent users as I took it over. I spent a lot of time optimizing the old Wordpress site and ensuring that it has enough server capacity to serve traffic without crashes.</p>
-                                <p>One issue was the incredible amount of data that is transferred from CreateMod.com every day. To help reduce the load I made use of <a href="https://www.cloudflare.com/">Cloudflare</a>. Below you can see a recent graph of the traffic CreateMod.com receives.</p>
-                                <img class="card-img-bottom" alt="CreateMod.com Traffic Jan 10 to Feb 9 2025" src="/static/news/create-mod-stats-jan-feb-2025.png">
-                            </div>
-                            <div class="card-footer">
-                                February 15th, 2025
-                            </div>
-                        </div>
-                        <div class="card card-lg mb-4">
-                            <div class="card-header">
-                                <h2 class="card-title">Searchbar Update</h2>
-                            </div>
-                            <div class="card-body">
-                                <p>Search bar has been fixed!!! (i hope)</p>
+                        {{ end }}
+                    </div>
 
-                                <p>I have changed the search system such that all post titles and tags are now indexed allowing for the search system to check all posts faster.</p>
-                                <p>Previously the amount of posts was low and thus it was not an issue but as the amount of posts grew the time it took to search increased so much that some people reported being able to make whole sandwiches before it loaded. (I'm a Reuben guy personally).</p>
+                    <!-- Right column: Site stats -->
+                    <div class="col-lg-4">
+                        <h2 class="page-title mb-3">{{ T .Language "Site Stats (24h)" }}</h2>
 
-                                <p>Anyways, hopefully the search should report partials within a second or so and full searches as well.</p>
-
-                                <p>More updates to come.</p>
-                            </div>
-                            <div class="card-footer">
-                                November 7th, 2022
-                            </div>
-                        </div>
-                        <div class="card card-lg mb-4">
+                        <!-- Views chart -->
+                        <div class="card mb-3">
                             <div class="card-header">
-                                <h2 class="card-title">Minor Changes</h2>
+                                <h3 class="card-title">{{ T .Language "Views" }}</h3>
+                                <span class="ms-auto text-secondary">{{ .TotalViews24 }} {{ T .Language "total" }}</span>
                             </div>
                             <div class="card-body">
-                                <p>Site has been updated to allow for Mod Version (0.5 a-e) and for tagging with Game Version 1.19.X</p>
-
-                                <p>That's all for now, I apologize for the lag as none of the previously mentioned upcoming changes from the July announcement have been implemented yet.</p>
-
-                                <p>That said I'm going to promise a new working search bar, soon.</p>
-                            </div>
-                            <div class="card-footer">
-                                September 29th, 2022
-                            </div>
-                        </div>
-                        <div class="card card-lg mb-4">
-                            <div class="card-header">
-                                <h2 class="card-title">Website Update Announcement</h2>
-                            </div>
-                            <div class="card-body">
-                                <p> The website will undergo a large update soon. Changes will be staggered and released upon completion not all at once.</p>
-                                <p>A non-ordered list of these changes will be:</p>
-
-                                <ul>
-                                    <li>New Comment Section, This may wipe all previous comments made.</li>
-                                    <li>New Author Page and backlinks</li>
-                                    <li>Live Author Post Editing</li>
-                                    <li>New Gallery and related bug fixes</li>
-                                    <li>Mobile Friendly Design</li>
-                                </ul>
-                                <p>I greatly appreciate the influx of new users after the 0.5 Create Update and thank you all for being patient while I catch up on working on this website.</p>
-                            </div>
-                            <div class="card-footer">
-                                July 22nd, 2022
+                                <div class="stats-chart" id="views-chart">
+                                    <div class="stats-bars">
+                                        {{ range .HourlyViews }}
+                                        <div class="stats-bar-col" title="{{ .Hour }}: {{ .Count }} views">
+                                            <div class="stats-bar" data-count="{{ .Count }}"></div>
+                                        </div>
+                                        {{ end }}
+                                    </div>
+                                    <div class="stats-labels">
+                                        {{ range $i, $s := .HourlyViews }}
+                                        {{ if mod $i 6 }}
+                                        <span>{{ $s.Hour }}</span>
+                                        {{ end }}
+                                        {{ end }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="card card-lg mb-4">
+
+                        <!-- Downloads chart -->
+                        <div class="card mb-3">
                             <div class="card-header">
-                                <h2 class="card-title">A News Section Has Been Added</h2>
+                                <h3 class="card-title">{{ T .Language "Downloads" }}</h3>
+                                <span class="ms-auto text-secondary">{{ .TotalDL24 }} {{ T .Language "total" }}</span>
                             </div>
                             <div class="card-body">
-                                <p>This section will act as a way to be informed of Create Updates and patches, along with website changes, updates and upcoming features.</p>
-                            </div>
-                            <div class="card-footer">
-                                July 22nd, 2022
+                                <div class="stats-chart" id="downloads-chart">
+                                    <div class="stats-bars">
+                                        {{ range .HourlyDL }}
+                                        <div class="stats-bar-col" title="{{ .Hour }}: {{ .Count }} downloads">
+                                            <div class="stats-bar" data-count="{{ .Count }}"></div>
+                                        </div>
+                                        {{ end }}
+                                    </div>
+                                    <div class="stats-labels">
+                                        {{ range $i, $s := .HourlyDL }}
+                                        {{ if mod $i 6 }}
+                                        <span>{{ $s.Hour }}</span>
+                                        {{ end }}
+                                        {{ end }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -155,3 +110,132 @@
     </div>
     {{template "foot.html" .}}
 </div>
+<style>
+.news-card {
+    position: relative;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+.news-card:hover {
+    border-color: var(--tblr-primary);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+.news-card h3 a {
+    text-decoration: none;
+}
+.news-card h3 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+.news-card h3 a:hover {
+    color: var(--tblr-primary) !important;
+}
+.news-excerpt {
+    position: relative;
+    z-index: 1;
+}
+.news-excerpt a {
+    position: relative;
+    z-index: 1;
+}
+.news-excerpt p {
+    margin-bottom: 0;
+}
+.stats-chart { width: 100%; position: relative; }
+.stats-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 120px;
+    padding-bottom: 4px;
+}
+.stats-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    cursor: pointer;
+}
+.stats-bar-col:hover .stats-bar {
+    opacity: 0.8;
+}
+.stats-bar {
+    width: 100%;
+    min-height: 2px;
+    background: var(--tblr-primary);
+    border-radius: 2px 2px 0 0;
+    transition: height 0.3s ease;
+}
+.stats-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 0.7rem;
+    color: var(--tblr-secondary);
+}
+.stats-tooltip {
+    position: absolute;
+    background: var(--tblr-bg-surface, #fff);
+    color: var(--tblr-body-color, #1e293b);
+    border: 1px solid var(--tblr-border-color, #e6e7e9);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 10;
+    transform: translateX(-50%);
+    display: none;
+}
+</style>
+<script>
+(function(){
+    document.querySelectorAll('.stats-chart').forEach(function(chart) {
+        var bars = chart.querySelectorAll('.stats-bar');
+        var cols = chart.querySelectorAll('.stats-bar-col');
+        var max = 0;
+        bars.forEach(function(b) {
+            var c = parseInt(b.getAttribute('data-count'), 10) || 0;
+            if (c > max) max = c;
+        });
+        bars.forEach(function(b) {
+            var c = parseInt(b.getAttribute('data-count'), 10) || 0;
+            var pct = max > 0 ? (c / max) * 100 : 0;
+            b.style.height = Math.max(pct, 2) + '%';
+        });
+
+        // Create a single tooltip element per chart
+        var tip = document.createElement('div');
+        tip.className = 'stats-tooltip';
+        chart.appendChild(tip);
+
+        cols.forEach(function(col) {
+            col.addEventListener('mouseenter', function() {
+                var t = col.getAttribute('title');
+                if (!t) return;
+                tip.textContent = t;
+                tip.style.display = 'block';
+                var chartRect = chart.getBoundingClientRect();
+                var colRect = col.getBoundingClientRect();
+                var left = (colRect.left + colRect.width / 2) - chartRect.left;
+                var bar = col.querySelector('.stats-bar');
+                var barH = bar ? bar.offsetHeight : 0;
+                var top = (colRect.top - chartRect.top) + (colRect.height - barH) - tip.offsetHeight - 6;
+                // Clamp horizontally within chart
+                var tipW = tip.offsetWidth;
+                if (left - tipW / 2 < 0) left = tipW / 2;
+                if (left + tipW / 2 > chartRect.width) left = chartRect.width - tipW / 2;
+                tip.style.left = left + 'px';
+                tip.style.top = Math.max(0, top) + 'px';
+            });
+            col.addEventListener('mouseleave', function() {
+                tip.style.display = 'none';
+            });
+        });
+    });
+})();
+</script>

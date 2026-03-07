@@ -1,0 +1,73 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="d-flex gap-3">
+        <div class="flex-grow-1 min-width-0">
+        <div class="mb-3 d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <div class="mb-1">
+                <a href="/mods" class="text-secondary text-decoration-none">&larr; {{ T .Language "All Mods" }}</a>
+              </div>
+              <div class="d-flex align-items-center gap-3 mb-1">
+                {{ if .Mod.IconURL }}<img src="{{ .Mod.IconURL }}" alt="" class="mod-detail-icon" loading="lazy">{{ end }}
+                <div>
+                  <h2 class="page-title mb-1">{{ .Mod.Name }}</h2>
+                  {{ if .Mod.Description }}<div class="text-secondary">{{ .Mod.Description }}</div>
+                  {{ else }}<div class="text-secondary">{{ .Subtitle }}</div>{{ end }}
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    {{ if .Mod.ModrinthURL }}
+                    <a href="{{ .Mod.ModrinthURL }}" class="btn btn-sm btn-modrinth" target="_blank" rel="noopener">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                      {{ T .Language "Download on Modrinth" }}
+                    </a>
+                    {{ end }}
+                    {{ if .Mod.CurseForgeURL }}
+                    <a href="{{ .Mod.CurseForgeURL }}" class="btn btn-sm btn-curseforge" target="_blank" rel="noopener">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                      {{ T .Language "Download on CurseForge" }}
+                    </a>
+                    {{ end }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="mod-results">
+          <h3 class="mb-3">{{ .Subtitle }}</h3>
+          <div class="row row-cards">
+            {{range .Schematics}}
+            <div class="col-lg-4 col-md-6 col-12 mb-3">
+              {{template "schematic_card.html" .}}
+            </div>
+            {{end}}
+          </div>
+          {{ if not .Schematics }}
+          <div class="row mt-4">
+            <div class="col-md-6 m-auto">
+              <div class="alert alert-info" role="alert">
+                {{ T .Language "No schematics found for this mod." }}
+              </div>
+            </div>
+          </div>
+          {{ end }}
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+            <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+          </div>
+        </div>
+        </div>
+        {{template "ad_rail.html" .}}
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

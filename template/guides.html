@@ -1,0 +1,66 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body" role="main">
+      <div class="container-wide">
+        <div class="mb-3">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="mb-1">{{ T .Language "Guides" }}</h2>
+              <div class="text-secondary">{{ T .Language "Guides for the Create mod and Minecraft" }}</div>
+            </div>
+            <div class="col-auto ms-auto d-flex gap-2 align-items-center">
+              <form class="d-flex" action="/guides" method="get" hx-get="/guides" hx-target="#guides-results" hx-select="#guides-results" hx-swap="outerHTML" hx-push-url="true">
+                <input type="search" class="form-control" name="q" placeholder="{{ T .Language "Search guides" }}" value="{{ .Query }}" />
+                <button class="btn ms-2" type="submit">{{ T .Language "Search" }}</button>
+              </form>
+              {{ if .IsAuthenticated }}
+              <a class="btn btn-primary" href="/guides/new">{{ T .Language "Write a guide" }}</a>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-3">
+        <div class="flex-grow-1 min-width-0">
+        <div id="guides-results">
+          <div class="row row-cards">
+            {{range .Items}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <a href="{{ .URL }}" class="card h-100 text-decoration-none card-link">
+                <div class="card-body d-flex flex-column">
+                  <div class="card-title h4 text-truncate">{{ .Title }}</div>
+                  {{ if .Excerpt }}
+                  <div class="text-secondary mb-3" style="max-height: 4.5em; overflow: hidden;">{{ .Excerpt }}</div>
+                  {{ end }}
+                  <div class="mt-auto d-flex justify-content-between align-items-center">
+                    <span class="text-secondary small">{{ T $.Language "Views" }}: {{ .Views }}</span>
+                    <span class="btn btn-primary btn-sm">{{ T $.Language "Read guide" }}</span>
+                  </div>
+                </div>
+              </a>
+            </div>
+            {{end}}
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#guides-results" hx-select="#guides-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+            <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#guides-results" hx-select="#guides-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+          </div>
+        </div>
+        </div><!-- /flex-grow-1 -->
+
+        <!-- Ad Rail (desktop only) -->
+        {{if not .IsContributor}}
+        <div class="ad-rail d-none d-xl-block">
+            <div id="ad-rail-guides" class="mb-3" style="min-height:250px;"></div>
+        </div>
+        {{end}}
+        </div><!-- /d-flex -->
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

@@ -1,29 +1,41 @@
 module createmod
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/blevesearch/bleve/v2 v2.5.5
+	github.com/disintegration/imaging v1.6.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
+	github.com/go-chi/chi/v5 v5.2.5
+	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/gosimple/slug v1.15.0
 	github.com/grokify/html-strip-tags-go v0.1.0
 	github.com/gtuk/discordwebhook v1.2.0
+	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mergestat/timediff v0.0.4
+	github.com/minio/minio-go/v7 v7.0.98
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pocketbase/dbx v1.11.0
-	github.com/pocketbase/pocketbase v0.34.0
+	github.com/riverqueue/river v0.31.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.31.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.0
-	golang.org/x/text v0.31.0
+	github.com/uberswe/mcnbt v0.1.3
+	github.com/yuin/goldmark v1.7.16
+	golang.org/x/crypto v0.46.0
+	golang.org/x/image v0.33.0
+	golang.org/x/oauth2 v0.33.0
+	golang.org/x/text v0.34.0
+	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/sqlite v1.40.1
 )
 
 require (
 	github.com/HugoSmits86/nativewebp v1.1.0 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
-	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/Tnze/go-mc v1.20.2 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/blevesearch/bleve_index_api v1.2.11 // indirect
 	github.com/blevesearch/geo v0.2.4 // indirect
@@ -42,48 +54,57 @@ require (
 	github.com/blevesearch/zapx/v14 v14.4.2 // indirect
 	github.com/blevesearch/zapx/v15 v15.4.2 // indirect
 	github.com/blevesearch/zapx/v16 v16.2.7 // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
-	github.com/domodwyer/mailyak/v3 v3.6.2 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/fatih/color v1.18.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
-	github.com/ganigeorgiev/fexpr v0.5.0 // indirect
-	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
-	github.com/go-sql-driver/mysql v1.9.0 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/pprof v0.0.0-20251007162407-5df77e3f7d1d // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hhrutter/lzw v1.0.0 // indirect
 	github.com/hhrutter/tiff v1.0.1 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/json-iterator/go v0.0.0-20171115153421-f7279a603ede // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
+	github.com/klauspost/crc32 v1.3.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/minio/crc64nvme v1.1.1 // indirect
+	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pdfcpu/pdfcpu v0.9.1 // indirect
+	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/riverqueue/river/riverdriver v0.31.0 // indirect
+	github.com/riverqueue/river/rivershared v0.31.0 // indirect
+	github.com/riverqueue/river/rivertype v0.31.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/cobra v1.10.1 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/rs/xid v1.6.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/sunshineplan/pdf v1.0.7 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.2.0 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
+	github.com/tinylib/msgp v1.6.1 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
+	go.uber.org/goleak v1.3.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6 // indirect
-	golang.org/x/image v0.33.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/oauth2 v0.33.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.66.10 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.40.1 // indirect
 )

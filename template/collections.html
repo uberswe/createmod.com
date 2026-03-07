@@ -1,0 +1,90 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">{{ T .Language "Collections" }}</h2>
+              <div class="text-secondary">{{ T .Language "Community-created collections of schematics" }}</div>
+            </div>
+            <div class="col-auto ms-auto d-flex align-items-center gap-2">
+              <form class="d-flex" action="/collections" method="get" hx-get="/collections" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true">
+                <input type="hidden" name="tab" value="{{ .Tab }}" />
+                <input type="search" class="form-control" name="q" placeholder="{{ T .Language "Search collections" }}" value="{{ .Query }}" />
+                <button class="btn ms-2" type="submit">{{ T .Language "Search" }}</button>
+              </form>
+              {{ if .IsAuthenticated }}
+              <a class="btn btn-primary" href="/collections/new">{{ T .Language "Create collection" }}</a>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+        <ul class="nav nav-tabs mb-3">
+          <li class="nav-item">
+            <a class="nav-link {{ if eq .Tab "public" }}active{{ end }}" href="/collections?tab=public" hx-get="/collections?tab=public" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "Public" }}</a>
+          </li>
+          {{ if .IsAuthenticated }}
+          <li class="nav-item">
+            <a class="nav-link {{ if eq .Tab "mine" }}active{{ end }}" href="/collections?tab=mine" hx-get="/collections?tab=mine" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "My Collections" }}</a>
+          </li>
+          {{ end }}
+        </ul>
+        <div id="collections-results">
+          <div class="row row-cards">
+            {{range .Items}}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                  <div class="d-flex align-items-center">
+                    <div class="card-title h4 text-truncate mb-0">{{ .Title }}</div>
+                    {{ if .Featured }}<span class="badge bg-yellow-lt ms-2">{{ T $.Language "Featured" }}</span>{{ end }}
+                    {{ if .IsOwner }}
+                      {{ if .Published }}<span class="badge bg-green-lt ms-2">{{ T $.Language "Published" }}</span>
+                      {{ else }}<span class="badge bg-secondary-lt ms-2">{{ T $.Language "Private" }}</span>{{ end }}
+                    {{ end }}
+                  </div>
+                  {{ if .Description }}
+                  <div class="text-secondary mb-3" style="max-height: 4.5em; overflow: hidden;">{{ .Description }}</div>
+                  {{ end }}
+                  <div class="text-secondary small mb-2">{{ T $.Language "Views" }}: {{ .Views }}</div>
+                  <div class="mt-auto">
+                    <a class="btn btn-primary" href="{{ .URL }}">{{ T $.Language "View collection" }}</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {{end}}
+          </div>
+          {{ if not .Items }}
+          <div class="text-secondary text-center py-4">{{ T .Language "No collections found." }}</div>
+          {{ end }}
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+            <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+          </div>
+        </div>
+        {{if not .IsContributor}}
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h2 class="card-title h3 mb-2">{{ T .Language "Support CreateMod" }}</h2>
+                <div id="ad-slot-collections" class="ad-slot" style="min-height:120px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.03); border: 1px dashed rgba(0,0,0,0.1);">
+                  <span class="text-secondary">Ad placement (collections)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

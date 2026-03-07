@@ -1,0 +1,403 @@
+{{ template "head.html" . }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/css/tom-select.min.css" crossorigin="anonymous">
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-wide">
+
+                <!-- Progress Steps -->
+                {{ template "upload_steps.html" . }}
+
+                <div class="row row-cards justify-content-center">
+                    <div class="col-lg-8 col-xl-6">
+
+                        <!-- Schematic Summary -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-primary" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M12 11l0 6" /><path d="M9 14l3 -3l3 3" /></svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="card-title mb-0">{{ .Filename }}</h3>
+                                        <p class="text-secondary mb-0">
+                                            {{ .DimX }} x {{ .DimY }} x {{ .DimZ }} blocks
+                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} total blocks{{ end }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Included Files Summary -->
+                        {{ if .AdditionalFiles }}
+                        <div class="card mb-3">
+                            <div class="card-header d-flex align-items-center">
+                                <h3 class="card-title mb-0">Included Files</h3>
+                                <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline-secondary ms-auto">Edit Files</a>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush">
+                                    <div class="list-group-item">
+                                        <div class="fw-bold">{{ .Filename }} <span class="badge bg-blue-lt">Primary</span></div>
+                                        <div class="text-secondary small">
+                                            {{ .DimX }} x {{ .DimY }} x {{ .DimZ }}
+                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} blocks{{ end }}
+                                        </div>
+                                    </div>
+                                    {{ range .AdditionalFiles }}
+                                    <div class="list-group-item">
+                                        <div class="fw-bold">{{ .Filename }}</div>
+                                        {{ if .Description }}<div class="text-secondary small">{{ .Description }}</div>{{ end }}
+                                        <div class="text-secondary small">
+                                            {{ if or .DimX .DimY .DimZ }}{{ .DimX }} x {{ .DimY }} x {{ .DimZ }}{{ end }}
+                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} blocks{{ end }}
+                                        </div>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+
+                        <!-- Publish Form -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Publish Schematic</h3>
+                            </div>
+                            <div class="card-body">
+                                <input type="hidden" id="publish-token" value="{{ .Token }}">
+
+                                <div class="mb-3">
+                                    <label class="form-label required">Title</label>
+                                    <input type="text" id="schematic-title" class="form-control" name="title"
+                                           placeholder="Schematic Title">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea id="tinymce-schematic"
+                                              placeholder="Describe your schematic and include any details on how to get it running."></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="mb-3 col-md-12 col-lg-6">
+                                        <label class="form-label required">Category</label>
+                                        <select name="category" id="schematic-category" class="form-select">
+                                            {{ range .Categories}}
+                                            <option value="{{ .ID }}">{{ .Name }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3 col-md-12 col-lg-6">
+                                        <label class="form-label">Tags</label>
+                                        <select type="text" class="form-select" placeholder="Select tags" id="select-tags" value="" multiple>
+                                            {{ range .Tags}}
+                                            <option value="{{ .ID }}">{{ .Name }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="mb-3 col-md-12 col-lg-6">
+                                        <label class="form-label required">Create Version</label>
+                                        <select id="create-version" name="" class="form-select">
+                                            {{ range .CreatemodVersions}}
+                                            <option value="{{ .ID }}">{{ .Version }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3 col-md-12 col-lg-6">
+                                        <label class="form-label required">Minecraft Version</label>
+                                        <select id="minecraft-version" name="" class="form-select">
+                                            {{ range .MinecraftVersions}}
+                                            <option value="{{ .ID }}">{{ .Version }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Schematic Video</label>
+                                    <input id="video" type="text" class="form-control" name="video"
+                                           placeholder="Schematic Video URL">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input type="checkbox" class="form-check-input" id="schematic-paid">
+                                        <span class="form-check-label">Paid schematic</span>
+                                    </label>
+                                    <small class="form-hint">Mark this schematic as paid. Downloads will be disabled and users will be directed to your external link.</small>
+                                </div>
+                                <div class="mb-3" id="external-url-group" style="display:none">
+                                    <label class="form-label required">External Link</label>
+                                    <input type="url" id="external-url" class="form-control" name="external_url"
+                                           placeholder="https://patreon.com/...">
+                                    <small class="form-hint">Link to Patreon, Ko-fi, Discord, or other platform where users can get this schematic.</small>
+                                </div>
+
+                                <div class="row">
+                                    <div class="mb-3 col-md-12 col-lg-6">
+                                        <label class="form-label required">Featured Image</label>
+                                        <div class="dropzone" id="dropzone-featured">
+                                            <div class="fallback">
+                                                <input name="featured-file" type="file" accept="image/*"/>
+                                            </div>
+                                            <div class="dz-message">
+                                                <span class="dropzone-msg-desc">Click or drag a screenshot of your build</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 col-md-12 col-lg-6">
+                                        <label class="form-label">Gallery Images</label>
+                                        <div class="dropzone" id="dropzone-gallery">
+                                            <div class="fallback">
+                                                <input name="gallery-file" type="file" accept="image/*" multiple/>
+                                            </div>
+                                            <div class="dz-message">
+                                                <span class="dropzone-msg-desc">Click or drag images to showcase your schematic</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <button class="btn btn-primary w-100" id="publish-schematic-btn">
+                                        Publish
+                                    </button>
+                                    <div id="progress-upload" style="display: none;" class="progress mt-2">
+                                        <div class="progress-bar bg-green"></div>
+                                    </div>
+                                    <div id="publish-success" class="alert alert-important alert-success mt-3" style="display: none;" role="alert">
+                                        <div class="d-flex">
+                                            <div>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                            </div>
+                                            <div>
+                                                Schematic has been published! It may take up to 24 hours for moderation.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<style>
+    body .ts-control {
+        background: #ffffff !important;
+        border: none !important;
+    }
+    body .ts-wrapper.multi .ts-control>div {
+        background: #bf9045 !important;
+    }
+    body .ts-dropdown {
+        background: #ffffff !important;
+        color: #bf9045 !important;
+    }
+    body[data-bs-theme=dark] .ts-control {
+        background: #1f2121 !important;
+        border: none !important;
+    }
+    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
+        background: #bf9045 !important;
+    }
+    body[data-bs-theme=dark] .ts-dropdown {
+        background: #1f2121 !important;
+        color: #bf9045 !important;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js" defer crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var el;
+    window.TomSelect && (new TomSelect(el = document.getElementById('select-tags'), {
+        copyClassesToDropdown: false,
+        dropdownParent: 'body',
+        controlInput: '<input>',
+        create: true,
+        createOnBlur: true,
+        render:{
+            item: function(data,escape) {
+                if( data.customProperties ){
+                    return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
+                }
+                return '<div>' + escape(data.text) + '</div>';
+            },
+            option: function(data,escape){
+                if( data.customProperties ){
+                    return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
+                }
+                return '<div>' + escape(data.text) + '</div>';
+            },
+            option_create: function(data,escape) {
+                return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
+            },
+        },
+    }));
+    window.TomSelect && (new TomSelect(document.getElementById('schematic-category'), {
+        create: true,
+        createOnBlur: true,
+        maxItems: 1,
+        render:{
+            option_create: function(data,escape) {
+                return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
+            },
+        },
+    }));
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var options = {
+        license_key: "gpl",
+        selector: '#tinymce-schematic',
+        height: 300,
+        menubar: false,
+        statusbar: false,
+        plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
+            'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+        ],
+        toolbar: 'undo redo | formatselect | ' +
+            'bold italic | ' +
+            'link | bullist numlist outdent indent | ' +
+            'removeformat',
+        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
+    };
+    if (localStorage.getItem("createmodTheme") === 'dark') {
+        options.skin = 'tinymce-5-dark';
+        options.content_css = 'dark';
+    }
+    tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+    tinyMCE.init(options);
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (!window.Dropzone) return;
+    Dropzone.autoDiscover = false;
+
+    document.getElementById('schematic-paid').addEventListener('change', function() {
+        document.getElementById('external-url-group').style.display = this.checked ? '' : 'none';
+    });
+
+    var dropzoneFeatured = new Dropzone("#dropzone-featured", {
+        url: '/upload', // placeholder
+        acceptedFiles: 'image/*',
+        thumbnailMethod: 'crop',
+        addRemoveLinks: true,
+        autoProcessQueue: false,
+        uploadMultiple: false,
+        parallelUploads: 1,
+        maxFiles: 1,
+    });
+    var dropzoneGallery = new Dropzone("#dropzone-gallery", {
+        url: '/upload', // placeholder
+        acceptedFiles: 'image/*',
+        thumbnailMethod: 'crop',
+        addRemoveLinks: true,
+        autoProcessQueue: false,
+        uploadMultiple: true,
+        parallelUploads: 10,
+        maxFiles: 10,
+    });
+
+    document.getElementById('publish-schematic-btn').addEventListener("click", function (e) {
+        var titleElement = document.getElementById("schematic-title");
+        document.getElementById("publish-schematic-btn").disabled = true;
+
+        var errors = [];
+
+        var formData = new FormData();
+        var token = document.getElementById('publish-token').value;
+        formData.append("upload_token", token);
+
+        for (var i = 0; i < dropzoneFeatured.files.length; i++) {
+            formData.append("featured_image", dropzoneFeatured.files[i]);
+        }
+        for (var j = 0; j < dropzoneGallery.files.length; j++) {
+            formData.append("gallery", dropzoneGallery.files[j]);
+        }
+        formData.append("title", titleElement.value);
+        formData.append("author", "{{ .UserID }}");
+        var content = '';
+        if (tinyMCE && tinyMCE.activeEditor) {
+            content = tinyMCE.activeEditor.getContent();
+        }
+        formData.append("content", content);
+        formData.append("description", content);
+        formData.append("categories", document.getElementById("schematic-category").value);
+        var tagSelect = document.getElementById("select-tags");
+        if (tagSelect) {
+            var opts = tagSelect.options;
+            for (var k = 0; k < opts.length; k++) {
+                if (opts[k].selected) {
+                    formData.append("tags", opts[k].value || opts[k].text);
+                }
+            }
+        }
+        formData.append("createmod_version", document.getElementById("create-version").value);
+        formData.append("minecraft_version", document.getElementById("minecraft-version").value);
+        formData.append("video", document.getElementById("video").value);
+        formData.append("paid", document.getElementById("schematic-paid").checked ? "true" : "false");
+        formData.append("external_url", document.getElementById("external-url").value);
+
+        if (!titleElement.value) {
+            titleElement.classList.add("is-invalid");
+            errors.push("A schematic must have a title");
+        }
+        if (!content) {
+            errors.push("A schematic must have a description");
+        }
+        if (dropzoneFeatured.files.length === 0) {
+            errors.push("A schematic must have a featured image");
+        }
+
+        if (errors.length === 0) {
+            var progressBar = document.getElementById("progress-upload");
+            var successAlert = document.getElementById("publish-success");
+            progressBar.style.display = "block";
+            progressBar.classList.add("progress-bar-indeterminate");
+            // Future: POST formData to create schematic via PocketBase
+            // For now, redirect to make-public endpoint
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/u/' + token + '/make-public', true);
+            xhr.setRequestHeader('HX-Request', 'true');
+            xhr.onload = function() {
+                progressBar.classList.remove("progress-bar-indeterminate");
+                progressBar.style.display = "none";
+                if (xhr.status === 204 || xhr.status === 200 || xhr.status === 303) {
+                    successAlert.style.display = "block";
+                    var redirect = xhr.getResponseHeader('HX-Redirect');
+                    if (redirect) {
+                        setTimeout(function() { window.location.href = redirect; }, 1500);
+                    }
+                } else {
+                    document.getElementById("publish-schematic-btn").disabled = false;
+                    if (typeof showToast === 'function') showToast('Publishing failed. Please try again.', 'danger');
+                }
+            };
+            xhr.onerror = function() {
+                progressBar.classList.remove("progress-bar-indeterminate");
+                progressBar.style.display = "none";
+                document.getElementById("publish-schematic-btn").disabled = false;
+                if (typeof showToast === 'function') showToast('Network error. Please try again.', 'danger');
+            };
+            xhr.send(formData);
+        } else {
+            document.getElementById("publish-schematic-btn").disabled = false;
+            if (typeof showToast === 'function') showToast(errors.join('. '), 'danger');
+        }
+    });
+});
+</script>
+{{template "foot.html" .}}

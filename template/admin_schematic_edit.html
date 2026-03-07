@@ -1,0 +1,201 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <div class="mb-1">
+                <a href="/admin/schematics" class="text-secondary">&larr; Back to schematics</a>
+              </div>
+              <h2 class="page-title">Admin: Edit — {{ .Schematic.Title }}</h2>
+            </div>
+          </div>
+        </div>
+        {{if .Success}}
+        <div class="alert alert-success alert-dismissible" role="alert">
+          Schematic updated successfully.
+          <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+        </div>
+        {{end}}
+        <form method="post" action="/admin/schematics/{{.Schematic.ID}}">
+          <div class="row">
+            <div class="col-lg-8">
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Content</h3></div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label required">Title</label>
+                    <input type="text" class="form-control" name="title" value="{{.Schematic.Title}}">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Description / Content</label>
+                    <textarea class="form-control" name="content" rows="8">{{.Schematic.Content}}</textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Video URL</label>
+                    <input type="text" class="form-control" name="video" value="{{.Schematic.Video}}">
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Category</label>
+                      <select name="categories" class="form-select">
+                        <option value="">— none —</option>
+                        {{range .Categories}}
+                        <option value="{{.ID}}" {{if tagSelected $.SchematicCategories .ID}}selected{{end}}>{{.Name}}</option>
+                        {{end}}
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Tags</label>
+                      <select name="tags" class="form-select" multiple size="5">
+                        {{range .Tags}}
+                        <option value="{{.ID}}" {{if tagSelected $.SchematicTags .ID}}selected{{end}}>{{.Name}}</option>
+                        {{end}}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Create Mod Version</label>
+                      <select name="createmod_version" class="form-select">
+                        <option value="">— none —</option>
+                        {{range .CreatemodVersions}}
+                        <option value="{{.ID}}" {{if eq $.CreatemodVersionID .ID}}selected{{end}}>{{.Version}}</option>
+                        {{end}}
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Minecraft Version</label>
+                      <select name="minecraft_version" class="form-select">
+                        <option value="">— none —</option>
+                        {{range .MinecraftVersions}}
+                        <option value="{{.ID}}" {{if eq $.MinecraftVersionID .ID}}selected{{end}}>{{.Version}}</option>
+                        {{end}}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-check form-switch">
+                      <input type="checkbox" class="form-check-input" name="paid" {{if .Schematic.Paid}}checked{{end}}>
+                      <span class="form-check-label">Paid schematic</span>
+                    </label>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">External URL</label>
+                    <input type="url" class="form-control" name="external_url" value="{{.Schematic.ExternalURL}}">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Info</h3></div>
+                <div class="card-body">
+                  <div class="mb-2">
+                    <strong>ID:</strong> <code>{{.Schematic.ID}}</code>
+                  </div>
+                  <div class="mb-2">
+                    <strong>Slug:</strong> {{.Schematic.Name}}
+                  </div>
+                  <div class="mb-2">
+                    <strong>Author:</strong>
+                    {{if .AuthorUsername}}
+                    <a href="/author/{{ToLower .AuthorUsername}}">{{.AuthorUsername}}</a>
+                    {{else}}
+                    <span class="text-secondary">unknown</span>
+                    {{end}}
+                  </div>
+                  <div class="mb-2">
+                    <strong>Created:</strong> {{HumanDate .Schematic.Created}}
+                  </div>
+                  <div class="mb-2">
+                    <strong>Views:</strong> {{.Schematic.Views}} | <strong>Downloads:</strong> {{.Schematic.Downloads}}
+                  </div>
+                  <div class="mb-2">
+                    <strong>Blocks:</strong> {{.Schematic.BlockCount}} | <strong>Size:</strong> {{.Schematic.DimX}}x{{.Schematic.DimY}}x{{.Schematic.DimZ}}
+                  </div>
+                  {{if .Schematic.FeaturedImage}}
+                  <div class="mb-2">
+                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{.Schematic.FeaturedImage}}?thumb=200x200" class="img-fluid rounded" alt="thumbnail">
+                  </div>
+                  {{end}}
+                  <div class="mb-2">
+                    <a href="/schematics/{{.Schematic.Name}}" class="btn btn-sm btn-outline-primary w-100" target="_blank">View public page</a>
+                  </div>
+                </div>
+              </div>
+              <div class="card mb-3 border-warning">
+                <div class="card-header bg-warning-lt"><h3 class="card-title">Moderation</h3></div>
+                <div class="card-body">
+                  {{if .Schematic.ModerationReason}}
+                  <div class="mb-3">
+                    <label class="form-label">AI Moderation Reason</label>
+                    <div class="text-secondary" style="white-space: pre-wrap; font-size: 0.85rem;">{{.Schematic.ModerationReason}}</div>
+                  </div>
+                  {{end}}
+                  <div class="mb-3">
+                    <label class="form-check form-switch">
+                      <input type="checkbox" class="form-check-input" name="moderated" {{if .Schematic.Moderated}}checked{{end}}>
+                      <span class="form-check-label">Approved (moderated)</span>
+                    </label>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Update Moderation Reason</label>
+                    <textarea class="form-control" name="moderation_reason" rows="3" placeholder="Optional reason...">{{.Schematic.ModerationReason}}</textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-check form-switch">
+                      <input type="checkbox" class="form-check-input" name="blacklisted" {{if .Schematic.Blacklisted}}checked{{end}}>
+                      <span class="form-check-label">Blacklisted</span>
+                    </label>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-check form-switch">
+                      <input type="checkbox" class="form-check-input" name="featured" {{if .Schematic.Featured}}checked{{end}}>
+                      <span class="form-check-label">Featured</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="card mb-3 border-danger">
+                <div class="card-header bg-danger-lt"><h3 class="card-title">Danger Zone</h3></div>
+                <div class="card-body">
+                  <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                    Soft Delete Schematic
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row mb-4">
+            <div class="col-lg-8">
+              <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+<div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-body">
+        <div class="modal-title">Are you sure?</div>
+        <div>This will soft-delete the schematic. It will no longer appear in public listings.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="/admin/schematics/{{.Schematic.ID}}/delete">
+          <button type="submit" class="btn btn-danger">Yes, delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{{template "foot.html" .}}

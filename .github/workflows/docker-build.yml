@@ -3,6 +3,13 @@ name: Build and Deploy
 on:
   push:
     branches:
+      - development
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - closed
+    branches:
       - master
       - development
   workflow_dispatch:
@@ -17,17 +24,68 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # Test build on PR open/update (not merged)
+  # Skip if this is an automated deployment PR (prevents infinite loop)
+  test-build:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged != true &&
+      !startsWith(github.head_ref, 'chore/update-dev-image-') &&
+      !startsWith(github.head_ref, 'chore/update-prod-image-')
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (test only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=createmod
+          cache-to: type=gha,mode=max,scope=createmod
+          platforms: linux/amd64
+
+  # Build and push on PR merge or push to development
+  # Skip if this is an automated deployment PR (prevents infinite loop)
   build-and-push:
     runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' ||
+       github.event.pull_request.merged == true ||
+       github.event_name == 'workflow_dispatch') &&
+      !startsWith(github.head_ref, 'chore/update-dev-image-') &&
+      !startsWith(github.head_ref, 'chore/update-prod-image-')
     permissions:
       contents: read
       packages: write
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
+      target-branch: ${{ steps.set-branch.outputs.branch }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Determine target branch
+        id: set-branch
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            BRANCH="${{ github.ref_name }}"
+          else
+            BRANCH="${{ github.event.pull_request.base.ref }}"
+          fi
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "Target branch: ${BRANCH}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -45,11 +103,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/createmod.com
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/development' }}
+            type=raw,value=${{ steps.set-branch.outputs.branch }}
+            type=sha,prefix=${{ steps.set-branch.outputs.branch }}-
+            type=raw,value=latest,enable=${{ steps.set-branch.outputs.branch == 'master' }}
+            type=raw,value=dev-latest,enable=${{ steps.set-branch.outputs.branch == 'development' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -69,71 +126,112 @@ jobs:
   update-dev-manifest:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/development'
+    if: |
+      (github.event_name == 'push' && github.ref_name == 'development') ||
+      (github.event.pull_request.merged == true &&
+       (github.event.pull_request.base.ref == 'master' || github.event.pull_request.base.ref == 'development'))
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: development
-          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Close stale dev deployment PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find and close any existing dev deployment PRs
+          gh pr list --state open --head "chore/update-dev-image-" --json number --jq '.[].number' | while read pr_number; do
+            if [ -n "$pr_number" ]; then
+              echo "Closing stale PR #${pr_number}"
+              gh pr close "$pr_number" --delete-branch || true
+            fi
+          done
 
       - name: Update dev deployment manifests
         env:
           IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          TARGET_BRANCH: ${{ needs.build-and-push.outputs.target-branch }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          # Extract the commit-specific tag
-          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "development-" | grep "${COMMIT_SHA:0:7}" | head -1)
+          # Extract the commit-specific tag using the target branch prefix
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "${TARGET_BRANCH}-" | grep "${COMMIT_SHA:0:7}" | head -1)
 
           # Update createmod dev
           sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/dev/deployment.yaml
 
           echo "Updated createmod dev to: ${IMAGE_TAG}"
 
-      - name: Commit dev manifests
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "chore: update dev deployment image [skip ci]"
-          file_pattern: "k8s/createmod/dev/deployment.yaml"
-          branch: development
-          commit_user_name: GitHub Actions Bot
-          commit_user_email: github-actions[bot]@users.noreply.github.com
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update dev deployment image [skip ci]"
+          title: "chore: update dev deployment image"
+          body: |
+            Automated PR to update the dev deployment image.
+
+            - Commit: ${{ github.sha }}
+            - PR: #${{ github.event.pull_request.number }}
+          branch: chore/update-dev-image-${{ github.sha }}
+          base: development
+          delete-branch: true
 
   update-prod-manifest:
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'master'
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: master
-          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Close stale prod deployment PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find and close any existing prod deployment PRs
+          gh pr list --state open --head "chore/update-prod-image-" --json number --jq '.[].number' | while read pr_number; do
+            if [ -n "$pr_number" ]; then
+              echo "Closing stale PR #${pr_number}"
+              gh pr close "$pr_number" --delete-branch || true
+            fi
+          done
 
       - name: Update prod deployment manifests
         env:
           IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          TARGET_BRANCH: ${{ needs.build-and-push.outputs.target-branch }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           # Extract the commit-specific tag
-          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "master-" | grep "${COMMIT_SHA:0:7}" | head -1)
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "${TARGET_BRANCH}-" | grep "${COMMIT_SHA:0:7}" | head -1)
 
           # Update createmod prod
           sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/prod/deployment.yaml
 
           echo "Updated createmod prod to: ${IMAGE_TAG}"
 
-      - name: Commit prod manifests
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "chore: update prod deployment image [skip ci]"
-          file_pattern: "k8s/createmod/prod/deployment.yaml"
-          branch: master
-          commit_user_name: GitHub Actions Bot
-          commit_user_email: github-actions[bot]@users.noreply.github.com
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update prod deployment image [skip ci]"
+          title: "chore: update prod deployment image"
+          body: |
+            Automated PR to update the prod deployment image.
+
+            - Commit: ${{ github.sha }}
+            - PR: #${{ github.event.pull_request.number }}
+          branch: chore/update-prod-image-${{ github.sha }}
+          base: master
+          delete-branch: true

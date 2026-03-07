@@ -1,29 +1,49 @@
 package pages
 
 import (
+	"createmod/content"
 	"createmod/internal/cache"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/news"
+	"createmod/internal/store"
+	"createmod/internal/server"
+	"html/template"
 	"net/http"
 )
 
-const newsPostTemplate = "./template/dist/news_post.html"
+const newsPostTemplate = "./template/news_post.html"
+
+var newsPostTemplates = append([]string{
+	newsPostTemplate,
+}, commonTemplates...)
 
 type NewsPostData struct {
 	DefaultData
+	PostDate string
+	Content  template.HTML
 }
 
-func NewsPostHandler(app *pocketbase.PocketBase, registry *template.Registry, cacheService *cache.Service) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
+func NewsPostHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
 		d := NewsPostData{}
 		d.Populate(e)
-		d.Title = ""
-		d.Categories = allCategories(app, cacheService)
-		html, err := registry.LoadFiles(newsPostTemplate).Render(d)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+
+		slug := e.Request.PathValue("slug")
+		if slug != "" {
+			post, err := news.LoadBySlug(content.NewsFS, "news", slug)
+			if err == nil && post != nil {
+				d.Title = post.Title
+				d.Description = post.Excerpt
+				d.Slug = post.URL
+				d.PostDate = post.Date.Format("January 2, 2006")
+				d.Content = post.Body
+			}
+		}
+
+		htmlOut, err := registry.LoadFiles(newsPostTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
-		return e.HTML(http.StatusOK, html)
+		return e.HTML(http.StatusOK, htmlOut)
 	}
 }

@@ -1,0 +1,58 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin: Reports</h2>
+              <div class="text-secondary">Manage user-submitted reports</div>
+            </div>
+          </div>
+        </div>
+        {{if not .IsAuthenticated}}
+          <div class="alert alert-danger">You must be logged in.</div>
+        {{end}}
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
+              <thead>
+                <tr>
+                  <th>Created</th>
+                  <th>Target</th>
+                  <th>Reason</th>
+                  <th>Reporter</th>
+                  <th class="w-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .Reports}}
+                <tr>
+                  <td>{{HumanDate .Created}}</td>
+                  <td><span class="badge bg-blue-lt">{{.TargetType}}</span> {{.TargetID}}</td>
+                  <td>{{.Reason}}</td>
+                  <td>{{.Reporter}}</td>
+                  <td>
+                    <form method="post" action="/admin/reports/{{.ID}}/resolve">
+                      <button type="submit" class="btn btn-sm btn-success">Resolve</button>
+                    </form>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="5" class="text-center text-secondary">No reports.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

@@ -1,0 +1,1 @@
+ALTER TABLE schematics ADD COLUMN external_url TEXT NOT NULL DEFAULT '';

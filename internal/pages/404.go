@@ -1,17 +1,26 @@
 package pages
 
 import (
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
+	"createmod/internal/server"
 	"net/http"
 )
 
-const fourOhFourTemplate = "./template/dist/404.html"
+const fourOhFourTemplate = "./template/404.html"
 
-func FourOhFourHandler(app *pocketbase.PocketBase, registry *template.Registry) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		html, err := registry.LoadFiles(fourOhFourTemplate).Render(nil)
+var fourOhFourTemplates = append([]string{
+	fourOhFourTemplate,
+}, commonTemplates...)
+
+func FourOhFourHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		d := DefaultData{}
+		d.Populate(e)
+		d.Title = i18n.T(d.Language, "Page Not Found")
+		d.Description = i18n.T(d.Language, "page.404.description")
+		d.Slug = "/404"
+		html, err := registry.LoadFiles(fourOhFourTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

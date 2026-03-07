@@ -3,14 +3,12 @@
 
 This repository contains all the files needed to run CreateMod.com
 
-To run make sure you have npm and go installed locally and run:
+To run (no npm required):
 ```
-cd ./template
-npm install
-npm run build
-cd ..
 go run ./cmd/server/main.go serve
 ```
+
+See HTMX_USAGE.md for usage patterns and examples of partial page updates.
 
 ## Docker
 
@@ -26,14 +24,6 @@ The build parameter should be used to rebuild the containers if you are making c
 
 ```
 docker compose up --build
-```
-
-### NPM
-
-You will need to run `npm install` and `npm run build` to generate the frontend files, you can do this with docker if needed using the following command.
-
-```
-docker compose run --remove-orphans npm
 ```
 
 ## Environmental Variables
