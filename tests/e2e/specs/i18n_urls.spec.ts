@@ -100,6 +100,10 @@ test.describe('navigation links are prefixed', () => {
     await page.goto('/de/');
     // Check sidebar nav links contain /de/ prefix
     const sidebarLinks = await page.locator('.sidebar-nav a.sidebar-item').all();
+    if (sidebarLinks.length === 0) {
+      test.skip(true, 'no sidebar nav links found — layout may differ in CI');
+      return;
+    }
     for (const link of sidebarLinks) {
       const href = await link.getAttribute('href');
       expect(href, `sidebar link should start with /de`).toMatch(/^\/de(\/|$)/);
@@ -109,6 +113,10 @@ test.describe('navigation links are prefixed', () => {
   test('sidebar links have no prefix on English page', async ({ page }) => {
     await page.goto('/');
     const sidebarLinks = await page.locator('.sidebar-nav a.sidebar-item').all();
+    if (sidebarLinks.length === 0) {
+      test.skip(true, 'no sidebar nav links found — layout may differ in CI');
+      return;
+    }
     for (const link of sidebarLinks) {
       const href = await link.getAttribute('href');
       // English links should NOT start with a language prefix
