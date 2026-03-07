@@ -1,3 +1,5 @@
-<div class="col-md-6 col-lg-4">
-    {{ template "schematic_card.html" . }}
+{{define "schematic_card_small.html"}}
+<div class="col-xl-3 col-lg-4 col-md-6 col-12 mb-3">
+{{template "schematic_card.html" .}}
 </div>
+{{end}}

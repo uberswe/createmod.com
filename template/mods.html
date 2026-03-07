@@ -1,0 +1,56 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">{{ T .Language "Mods" }}</h2>
+              <div class="text-secondary">{{ T .Language "Browse schematics by mod" }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="row row-cards">
+          {{range .Mods}}
+          <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <a href="/mods/{{ .Slug }}" class="d-block text-decoration-none">
+              <div class="card card-sm card-hover-lift">
+                <div class="card-body">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center min-width-0">
+                      {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" class="mod-card-icon me-2" loading="lazy">{{ end }}
+                      <h4 class="card-title mb-0 text-truncate">{{ .Name }}</h4>
+                    </div>
+                    <span class="badge bg-blue-lt ms-2 flex-shrink-0">{{ .Count }}</span>
+                  </div>
+                  {{ if .Description }}
+                  <div class="text-muted small mt-1 text-truncate">{{ .Description }}</div>
+                  {{ else }}
+                  <div class="text-muted small mt-1">
+                    {{ if .IsVanilla }}{{ T $.Language "No mods required" }}{{ else }}{{ .Count }} {{ T $.Language "schematics" }}{{ end }}
+                  </div>
+                  {{ end }}
+                </div>
+              </div>
+            </a>
+          </div>
+          {{end}}
+        </div>
+        {{ if not .Mods }}
+        <div class="row mt-4">
+          <div class="col-md-6 m-auto">
+            <div class="alert alert-info" role="alert">
+              {{ T .Language "No mods found yet." }}
+            </div>
+          </div>
+        </div>
+        {{ end }}
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

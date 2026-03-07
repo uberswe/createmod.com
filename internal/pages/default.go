@@ -1,14 +1,17 @@
 package pages
 
 import (
+	stdctx "context"
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	"createmod/internal/session"
+	"createmod/internal/store"
 	"github.com/drexedam/gravatar"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
+	"createmod/internal/server"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"html/template"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -26,41 +29,176 @@ type DefaultData struct {
 	Categories      []models.SchematicCategory
 	Avatar          template.URL
 	HasAvatar       bool
+	IsContributor   bool
+	Language        string
+	LangPrefix      string
+	CanonicalURL    string
+	PrevPageURL     string
+	NextPageURL     string
+	NoIndex         bool
 }
 
-func (d *DefaultData) Populate(e *core.RequestEvent) {
-	user := e.Auth
-	if user != nil {
-		d.IsAuthenticated = true
-		caser := cases.Title(language.English)
-		d.Username = caser.String(user.GetString("username"))
-		d.UserID = user.Id
-		d.UsernameSlug = strings.ToLower(user.GetString("username"))
-		url := gravatar.New(user.GetString("email")).
+func (d *DefaultData) Populate(e *server.RequestEvent) {
+	// Language from URL prefix takes precedence (set by lang middleware)
+	if lang := e.Request.Header.Get("X-Createmod-Lang"); lang != "" && isSupportedLanguage(lang) {
+		d.Language = lang
+	} else {
+		// Fallback: cookie / Accept-Language
+		d.Language = preferredLanguageFromRequest(e.Request)
+	}
+	d.LangPrefix = LangToPrefix[d.Language]
+
+	// Populate from PostgreSQL session (set by cookieAuth middleware)
+	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {
+		d.populateFromSession(e, sessUser)
+	}
+}
+
+// PopulateWithStore is like Populate but also checks contributor status via the store.
+func (d *DefaultData) PopulateWithStore(e *server.RequestEvent, appStore *store.Store) {
+	d.Populate(e)
+	if d.IsAuthenticated && appStore != nil {
+		d.IsContributor = isContributorFromStore(appStore, d.UserID)
+	}
+}
+
+// populateFromSession fills DefaultData from a PostgreSQL session user.
+func (d *DefaultData) populateFromSession(e *server.RequestEvent, user *session.SessionUser) {
+	d.IsAuthenticated = true
+	caser := cases.Title(language.English)
+	d.Username = caser.String(user.Username)
+	d.UserID = user.ID
+	d.UsernameSlug = strings.ToLower(user.Username)
+	if user.Avatar != "" {
+		d.Avatar = template.URL(user.Avatar)
+	} else {
+		url := gravatar.New(user.Email).
 			Size(200).
 			Default(gravatar.MysteryMan).
 			Rating(gravatar.Pg).
 			AvatarURL()
 		d.Avatar = template.URL(url)
-		d.HasAvatar = d.Avatar != ""
 	}
+	d.HasAvatar = d.Avatar != ""
+	// Contributor status - check has no direct store access here, so left for handler to set
+	// TODO: This will be set by handlers with store access
 }
 
-func allCategories(app *pocketbase.PocketBase, cacheService *cache.Service) []models.SchematicCategory {
+// isAuthenticated returns true if the request is authenticated via the PostgreSQL session store.
+func isAuthenticated(e *server.RequestEvent) bool {
+	return session.UserFromContext(e.Request.Context()) != nil
+}
+
+// authenticatedUserID returns the authenticated user's ID from the session.
+// Returns empty string if not authenticated.
+func authenticatedUserID(e *server.RequestEvent) string {
+	if u := session.UserFromContext(e.Request.Context()); u != nil {
+		return u.ID
+	}
+	return ""
+}
+
+// authenticatedUserEmail returns the authenticated user's email from the session.
+// Returns empty string if not authenticated.
+func authenticatedUserEmail(e *server.RequestEvent) string {
+	if u := session.UserFromContext(e.Request.Context()); u != nil {
+		return u.Email
+	}
+	return ""
+}
+
+// requireAuth checks if the user is authenticated and redirects to /login if not.
+// Returns true if the user IS authenticated, false if a redirect was sent.
+func requireAuth(e *server.RequestEvent) (bool, error) {
+	if isAuthenticated(e) {
+		return true, nil
+	}
+	if e.Request.Header.Get("HX-Request") != "" {
+		e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/login"))
+		return false, e.HTML(http.StatusNoContent, "")
+	}
+	return false, e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/login"))
+}
+
+
+func allCategoriesFromStoreOnly(appStore *store.Store, cacheService *cache.Service) []models.SchematicCategory {
 	categories, found := cacheService.GetCategories(cache.AllCategoriesKey)
 	if found {
 		return categories
 	}
-	categoriesCollection, err := app.FindCollectionByNameOrId("schematic_categories")
+	cats, err := appStore.Categories.List(stdctx.Background())
 	if err != nil {
 		return nil
 	}
-	records, err := app.FindRecordsByFilter(categoriesCollection.Id, "1=1", "+key", -1, 0)
-	if err != nil {
-		return nil
+	var result []models.SchematicCategory
+	for _, c := range cats {
+		result = append(result, models.SchematicCategory{
+			ID:   c.ID,
+			Key:  c.Key,
+			Name: c.Name,
+		})
 	}
-	categories = mapResultToCategories(records)
-	// 730 hours = 1 month
-	cacheService.SetCategories(cache.AllCategoriesKey, categories, time.Hour*730)
-	return categories
+	cacheService.SetCategories(cache.AllCategoriesKey, result, time.Hour*730)
+	return result
+}
+
+// safeRedirectPath validates a return_to URL parameter to prevent open redirects.
+// Returns the path if it is a safe, relative path; otherwise returns fallback.
+func safeRedirectPath(returnTo, fallback string) string {
+	returnTo = strings.TrimSpace(returnTo)
+	if returnTo == "" {
+		return fallback
+	}
+	// Must start with /
+	if !strings.HasPrefix(returnTo, "/") {
+		return fallback
+	}
+	// Block protocol-relative URLs (e.g. //evil.com)
+	if strings.HasPrefix(returnTo, "//") {
+		return fallback
+	}
+	// Block URLs with scheme-like patterns after the slash
+	if idx := strings.Index(returnTo, ":"); idx > 0 && idx < strings.Index(returnTo+"?", "?") {
+		// Check if the colon comes before any slash after the first character
+		afterFirst := returnTo[1:]
+		slashIdx := strings.Index(afterFirst, "/")
+		colonIdx := strings.Index(afterFirst, ":")
+		if colonIdx >= 0 && (slashIdx < 0 || colonIdx < slashIdx) {
+			return fallback
+		}
+	}
+	return returnTo
+}
+
+// sanitizeContentDispositionFilename strips characters that could cause header injection
+// in Content-Disposition filenames.
+func sanitizeContentDispositionFilename(filename string) string {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return "download"
+	}
+	// Remove characters that could break the header or enable injection
+	replacer := strings.NewReplacer(
+		"\"", "",
+		"\\", "",
+		"\r", "",
+		"\n", "",
+		"\x00", "",
+	)
+	filename = replacer.Replace(filename)
+	if filename == "" {
+		return "download"
+	}
+	return filename
+}
+
+func isContributorFromStore(appStore *store.Store, userID string) bool {
+	if userID == "" || appStore == nil {
+		return false
+	}
+	contrib, err := appStore.Users.IsContributor(stdctx.Background(), userID)
+	if err != nil {
+		return false
+	}
+	return contrib
 }

@@ -1,11 +1,11 @@
 {{ template "head.html" . }}
-<link rel="stylesheet" href="/libs/tom-select/dist/css/tom-select.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/css/tom-select.min.css" crossorigin="anonymous">
 <div class="page">
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-xl">
+            <div class="container-wide">
                 <div class="row row-cards">
                     <div class="col-12">
                         <div class="card">
@@ -72,6 +72,20 @@
                                             <label class="form-label">Schematic Video</label>
                                             <input id="video" type="text" class="form-control" name="video"
                                                    placeholder="Schematic Video URL" value="{{ .Schematic.Video }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-check form-switch">
+                                                <input type="checkbox" class="form-check-input" id="schematic-paid"
+                                                       {{ if .Schematic.Paid }}checked{{ end }}>
+                                                <span class="form-check-label">Paid schematic</span>
+                                            </label>
+                                            <small class="form-hint">Mark this schematic as paid. Downloads will be disabled and users will be directed to your external link.</small>
+                                        </div>
+                                        <div class="mb-3" id="external-url-group" style="{{ if not .Schematic.Paid }}display:none{{ end }}">
+                                            <label class="form-label required">External Link</label>
+                                            <input type="url" id="external-url" class="form-control" name="external_url"
+                                                   placeholder="https://patreon.com/..." value="{{ .Schematic.ExternalURL }}">
+                                            <small class="form-hint">Link to Patreon, Ko-fi, Discord, or other platform where users can get this schematic.</small>
                                         </div>
                                     </div>
                                     <div class="col-md-12 col-lg-6">
@@ -203,9 +217,9 @@
         color: #bf9045 !important;
     }
 </style>
-<script type="module" src="dropzone/dist/dropzone-min.js" defer></script>
-<script type="module" src="tinymce/tinymce.min.js" defer></script>
-<script src="/libs/tom-select/dist/js/tom-select.base.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js" defer crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
 <script>
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function () {
@@ -214,6 +228,8 @@
             copyClassesToDropdown: false,
             dropdownParent: 'body',
             controlInput: '<input>',
+            create: true,
+            createOnBlur: true,
             render:{
                 item: function(data,escape) {
                     if( data.customProperties ){
@@ -226,6 +242,19 @@
                         return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
                     }
                     return '<div>' + escape(data.text) + '</div>';
+                },
+                option_create: function(data,escape) {
+                    return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
+                },
+            },
+        }));
+        window.TomSelect && (new TomSelect(document.getElementById('schematic-category'), {
+            create: true,
+            createOnBlur: true,
+            maxItems: 1,
+            render:{
+                option_create: function(data,escape) {
+                    return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
                 },
             },
         }));
@@ -256,7 +285,7 @@
             options.skin = 'tinymce-5-dark';
             options.content_css = 'dark';
         }
-        tinyMCE.baseURL ="/libs/tinymce";
+        tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
         tinyMCE.init(options);
     })
     // @formatter:on
@@ -266,6 +295,10 @@
     // @formatter:off
     document.addEventListener("DOMContentLoaded", function() {
         let schematicID = "{{ .Schematic.ID }}"
+
+        document.getElementById('schematic-paid').addEventListener('change', function() {
+            document.getElementById('external-url-group').style.display = this.checked ? '' : 'none';
+        });
 
         // based on https://stackoverflow.com/a/61357880/1260548
         let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
@@ -299,8 +332,17 @@
         })
 
         document.getElementById('delete-schematic-btn').addEventListener("click", async function (e) {
-            const del = await pb.collection('schematics').delete(schematicID);
-            location.href = "/"
+            try {
+                const resp = await fetch('/schematics/' + schematicID, { method: 'DELETE' });
+                if (resp.ok || resp.status === 204) {
+                    location.href = "/";
+                } else {
+                    alert("Failed to delete schematic. Please try again.");
+                }
+            } catch(err) {
+                console.log(err);
+                alert("Failed to delete schematic. Please try again.");
+            }
         });
 
         document.getElementById('upload-schematic-btn').addEventListener("click", async function (e) {
@@ -321,7 +363,7 @@
                 formData.append("gallery", file)
             }
             formData.append("title", titleElement.value)
-            formData.append("author", pb.authStore.model.id)
+            formData.append("author", "{{ .UserID }}")
             formData.append("content", tinyMCE.activeEditor.getContent())
             formData.append("description", tinyMCE.activeEditor.getContent())
             formData.append("categories", document.getElementById("schematic-category").value)
@@ -332,6 +374,8 @@
             formData.append("createmod_version", document.getElementById("create-version").value)
             formData.append("minecraft_version", document.getElementById("minecraft-version").value)
             formData.append("video", document.getElementById("video").value)
+            formData.append("paid", document.getElementById("schematic-paid").checked ? "true" : "false")
+            formData.append("external_url", document.getElementById("external-url").value)
 
             if (titleElement.value === undefined || titleElement.value === "") {
                 titleElement.classList.add("is-invalid")
@@ -356,8 +400,9 @@
                 try {
                     progressBar.style.display = "block"
                     progressBar.classList.add("progress-bar-indeterminate")
-                const createdRecord = await pb.collection('schematics').update(schematicID, formData);
-                if (createdRecord.code !== undefined && createdRecord.code !== 200) {
+                const resp = await fetch('/schematics/' + schematicID + '/update', { method: 'POST', body: formData });
+                const createdRecord = await resp.json().catch(function(){ return {}; });
+                if (!resp.ok) {
                     div = document.createElement('div');
                     div.classList.add("invalid-feedback")
                     div.style.display = "block"

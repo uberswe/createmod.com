@@ -1,0 +1,112 @@
+name: tests
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: createmod
+          POSTGRES_USER: createmod
+          POSTGRES_PASSWORD: localdev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U createmod"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+
+      mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+          - 8025:8025
+          - 1025:1025
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Go tests
+        run: go test ./...
+
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio --network host \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do curl -fsS http://localhost:9000/minio/health/live && break || sleep 1; done
+
+      - name: Create MinIO bucket
+        run: |
+          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set ci http://localhost:9000 minioadmin minioadmin
+          mc mb --ignore-existing ci/createmod
+
+      - name: Build and start app
+        env:
+          DATABASE_URL: "postgres://createmod:localdev@localhost:5432/createmod?sslmode=disable"
+          S3_ENDPOINT: "localhost:9000"
+          S3_ACCESS_KEY: "minioadmin"
+          S3_SECRET_KEY: "minioadmin"
+          S3_BUCKET: "createmod"
+          S3_USE_SSL: "false"
+          SMTP_HOST: "localhost"
+          SMTP_PORT: "1025"
+          BASE_URL: "http://localhost:8080"
+          PORT: "8080"
+          DEV: "true"
+          CREATE_ADMIN: "true"
+          LISTEN_ADDR: "0.0.0.0:8080"
+          CI_ENV: "ci"
+        run: |
+          docker build -t app:local .
+          docker run -d --network host \
+            -e DATABASE_URL \
+            -e S3_ENDPOINT \
+            -e S3_ACCESS_KEY \
+            -e S3_SECRET_KEY \
+            -e S3_BUCKET \
+            -e S3_USE_SSL \
+            -e SMTP_HOST \
+            -e SMTP_PORT \
+            -e BASE_URL \
+            -e PORT \
+            -e DEV \
+            -e CREATE_ADMIN \
+            -e LISTEN_ADDR \
+            -e ENV="$CI_ENV" \
+            --name app app:local
+      - name: Wait for app
+        run: |
+          for i in $(seq 1 60); do curl -fsS http://localhost:8080/api/health && break || sleep 1; done
+
+      - name: Seed test data
+        env:
+          PGPASSWORD: localdev
+        run: psql -h localhost -U createmod -d createmod -f tests/e2e/seed.sql
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps
+      - name: Playwright tests
+        env:
+          APP_BASE_URL: http://localhost:8080
+        run: npx playwright test
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report

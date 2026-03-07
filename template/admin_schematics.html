@@ -1,0 +1,117 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin: Schematics</h2>
+              <div class="text-secondary">{{ .Total }} schematics matching filter</div>
+            </div>
+          </div>
+        </div>
+        <div class="card mb-3">
+          <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "pending" }} active{{ end }}" href="/admin/schematics?filter=pending">Pending</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "moderated" }} active{{ end }}" href="/admin/schematics?filter=moderated">Moderated</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "deleted" }} active{{ end }}" href="/admin/schematics?filter=deleted">Deleted</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "all" }} active{{ end }}" href="/admin/schematics?filter=all">All</a>
+              </li>
+            </ul>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
+              <thead>
+                <tr>
+                  <th style="width: 40px"></th>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>Status</th>
+                  <th>Moderation Reason</th>
+                  <th>Created</th>
+                  <th class="w-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .Schematics}}
+                <tr>
+                  <td>
+                    {{if .FeaturedImage}}
+                    <span class="avatar avatar-sm" style="background-image: url(/api/files/schematics/{{.ID}}/{{.FeaturedImage}}?thumb=40x40)"></span>
+                    {{end}}
+                  </td>
+                  <td>
+                    <a href="/admin/schematics/{{.ID}}">{{.Title}}</a>
+                    <div class="text-secondary text-truncate" style="max-width: 200px;">{{.Name}}</div>
+                  </td>
+                  <td>{{.AuthorUsername}}</td>
+                  <td>
+                    {{if .Deleted}}
+                      <span class="badge bg-red-lt">Deleted</span>
+                    {{else if .Blacklisted}}
+                      <span class="badge bg-secondary">Blacklisted</span>
+                    {{else if .Moderated}}
+                      <span class="badge bg-green-lt">Moderated</span>
+                    {{else}}
+                      <span class="badge bg-yellow-lt">Pending</span>
+                    {{end}}
+                  </td>
+                  <td>
+                    {{if .ModerationReason}}
+                    <div class="text-truncate" style="max-width: 250px;" title="{{.ModerationReason}}">{{.ModerationReason}}</div>
+                    {{else}}
+                    <span class="text-secondary">—</span>
+                    {{end}}
+                  </td>
+                  <td>{{HumanDate .Created}}</td>
+                  <td>
+                    <a href="/admin/schematics/{{.ID}}" class="btn btn-sm btn-primary">Edit</a>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="7" class="text-center text-secondary">No schematics match this filter.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {{if gt .TotalPages 1}}
+        <div class="d-flex justify-content-center">
+          <ul class="pagination">
+            {{if gt .Page 1}}
+            <li class="page-item">
+              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.PrevPage}}">Previous</a>
+            </li>
+            {{else}}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            {{end}}
+            <li class="page-item disabled"><span class="page-link">Page {{.Page}} of {{.TotalPages}}</span></li>
+            {{if lt .Page .TotalPages}}
+            <li class="page-item">
+              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.NextPage}}">Next</a>
+            </li>
+            {{else}}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {{end}}
+          </ul>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

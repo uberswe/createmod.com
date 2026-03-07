@@ -1,0 +1,100 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <div class="page-body">
+            <div class="container-wide">
+                <div class="row row-cards">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="row g-0">
+                                <div class="col-12 col-md-3 border-end">
+                                    <div class="card-body">
+                                        <h4 class="subheader">{{ T .Language "Account settings" }}</h4>
+                                        <div class="list-group list-group-transparent">
+                                            <a href="/settings"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "My Account" }}</a>
+                                            <a href="/settings/password"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Password" }}</a>
+                                            <a href="/settings/points"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Points" }}</a>
+                                            <a href="/settings/api-keys"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "API Keys" }}</a>
+                                            <a href="/settings/statistics"
+                                               class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "Statistics" }}</a>
+                                            <a href="/settings/blacklist"
+                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Blacklist Request" }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-9 d-flex flex-column">
+                                    <div class="card-body">
+                                        <h2 class="mb-4">{{ T .Language "Statistics" }}</h2>
+                                        <h3 class="card-title">{{ T .Language "Monthly Views" }}</h3>
+                                        <div id="chart-views" style="min-height: 300px;"></div>
+                                        <h3 class="card-title mt-4">{{ T .Language "Monthly Downloads" }}</h3>
+                                        <div id="chart-downloads" style="min-height: 300px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+<script>
+(function(){
+    function initCharts() {
+        var viewLabels = [{{ .ViewLabelsJSON }}];
+        var viewValues = [{{ .ViewValuesJSON }}];
+        var dlLabels = [{{ .DownloadLabelsJSON }}];
+        var dlValues = [{{ .DownloadValuesJSON }}];
+
+        var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+        var labelColor = isDark ? '#a0aec0' : '#616876';
+        var gridColor = isDark ? '#3a3f4b' : '#e0e0e0';
+
+        var commonOpts = {
+            chart: { type: 'area', height: 300, toolbar: { show: false }, zoom: { enabled: false }, foreColor: labelColor },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 2 },
+            grid: { borderColor: gridColor, strokeDashArray: 4 },
+            xaxis: { type: 'category', labels: { style: { colors: labelColor } } },
+            yaxis: { labels: { style: { colors: labelColor } } },
+            tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: function(v){ return v.toLocaleString(); } } }
+        };
+
+        var viewEl = document.querySelector('#chart-views');
+        var dlEl = document.querySelector('#chart-downloads');
+        if (viewEl) {
+            while (viewEl.firstChild) viewEl.removeChild(viewEl.firstChild);
+            new ApexCharts(viewEl, Object.assign({}, commonOpts, {
+                series: [{ name: 'Views', data: viewValues }],
+                xaxis: { categories: viewLabels, type: 'category', labels: { style: { colors: labelColor } } },
+                colors: ['#206bc4']
+            })).render();
+        }
+        if (dlEl) {
+            while (dlEl.firstChild) dlEl.removeChild(dlEl.firstChild);
+            new ApexCharts(dlEl, Object.assign({}, commonOpts, {
+                series: [{ name: 'Downloads', data: dlValues }],
+                xaxis: { categories: dlLabels, type: 'category', labels: { style: { colors: labelColor } } },
+                colors: ['#2fb344']
+            })).render();
+        }
+    }
+
+    if (typeof ApexCharts !== 'undefined') {
+        initCharts();
+    } else {
+        var s = document.querySelector('script[src*="apexcharts"]');
+        if (s) { s.onload = initCharts; }
+    }
+})();
+</script>
+{{template "foot.html" .}}

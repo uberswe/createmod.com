@@ -1,0 +1,126 @@
+package pages
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"net/http"
+	"strings"
+	"time"
+
+	"createmod/internal/cache"
+	"createmod/internal/store"
+	"createmod/internal/server"
+)
+
+// APIKeyCreateHandler handles POST /settings/api-keys/new
+// Auth required. Generates a random API key, stores its sha256 hash and shows
+// the plaintext once via a temporary cache entry.
+func APIKeyCreateHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if e.Request.Method != http.MethodPost {
+			return e.String(http.StatusMethodNotAllowed, "method not allowed")
+		}
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		if err := e.Request.ParseForm(); err != nil {
+			return e.String(http.StatusBadRequest, "invalid form")
+		}
+		label := strings.TrimSpace(e.Request.FormValue("label"))
+
+		// Generate 32 random bytes and hex encode (64 chars)
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			return e.String(http.StatusInternalServerError, "failed to generate key")
+		}
+		plaintext := hex.EncodeToString(buf)
+		sum := sha256.Sum256([]byte(plaintext))
+		hash := hex.EncodeToString(sum[:])
+		last8 := ""
+		if len(plaintext) >= 8 {
+			last8 = plaintext[len(plaintext)-8:]
+		}
+
+		ctx := context.Background()
+		key := &store.APIKey{
+			UserID:  authenticatedUserID(e),
+			KeyHash: hash,
+			Label:   label,
+			Last8:   last8,
+		}
+		if err := appStore.APIKeys.Create(ctx, key); err != nil {
+			return e.String(http.StatusInternalServerError, "failed to save api key")
+		}
+
+		// Cache plaintext for one-time display on /settings
+		cacheService.SetWithTTL("apikey:new:"+authenticatedUserID(e), plaintext, 2*time.Minute)
+
+		dest := "/settings?api_key=created"
+		if e.Request.Header.Get("HX-Request") != "" {
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+	}
+}
+
+// APIKeyCreateJSONHandler handles POST /api/keys/generate
+// Auth required. Returns JSON with the plaintext key for use in the API docs "Try it" panels.
+func APIKeyCreateJSONHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if !isAuthenticated(e) {
+			return writeJSON(e, http.StatusUnauthorized, map[string]string{"error": "login required"})
+		}
+
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to generate key"})
+		}
+		plaintext := hex.EncodeToString(buf)
+		sum := sha256.Sum256([]byte(plaintext))
+		hash := hex.EncodeToString(sum[:])
+		last8 := plaintext[len(plaintext)-8:]
+
+		ctx := context.Background()
+		key := &store.APIKey{
+			UserID:  authenticatedUserID(e),
+			KeyHash: hash,
+			Label:   "API Docs test key",
+			Last8:   last8,
+		}
+		if err := appStore.APIKeys.Create(ctx, key); err != nil {
+			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save key"})
+		}
+
+		return writeJSON(e, http.StatusOK, map[string]string{"key": plaintext})
+	}
+}
+
+// APIKeyRevokeHandler handles POST /settings/api-keys/{id}/revoke
+// Auth required. Owner-only delete. HTMX-aware redirect.
+func APIKeyRevokeHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if e.Request.Method != http.MethodPost {
+			return e.String(http.StatusMethodNotAllowed, "method not allowed")
+		}
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		id := e.Request.PathValue("id")
+		if id == "" {
+			return e.String(http.StatusBadRequest, "missing id")
+		}
+		ctx := context.Background()
+		if err := appStore.APIKeys.Delete(ctx, id, authenticatedUserID(e)); err != nil {
+			return e.String(http.StatusInternalServerError, "failed to revoke api key")
+		}
+		dest := "/settings?api_key=revoked"
+		if e.Request.Header.Get("HX-Request") != "" {
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+	}
+}

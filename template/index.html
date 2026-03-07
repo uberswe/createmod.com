@@ -1,47 +1,89 @@
-{{ template "head.html" . }}
+{{template "head.html" .}}
 <div class="page">
-    {{ template "sidebar.html" . }}
+    {{template "sidebar.html" .}}
     <div class="page-wrapper">
         {{template "header.html" .}}
         <div class="page-body">
-            <div class="container-xl">
-                <div class="row g-4">
-                    <div class="col-12 col-lg-8">
-                        <div class="row row-cards">
-                            {{range  .Schematics}}
-                                {{ template "schematic_card_medium.html" . }}
-                            {{end}}
-                        </div>
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <div class="row">
-                            <div class="card mb-5">
-                                <div id="index-top-right"></div>
+            <div class="container-wide">
+                <div class="d-flex gap-3">
+                    <div class="flex-grow-1 min-width-0">
+                        <!-- Trending -->
+                        <h2 class="mb-3">{{ T .Language "Trending" }}</h2>
+                        <div id="tab-panel-trending" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .Trending }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
                             </div>
+                            {{ if .TrendingHasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
+                                <a href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                            </div>
+                            {{ end }}
                         </div>
-                        <div class="row">
-                            <div class="col mb-5">
-                        <h3>Trending Schematics</h3>
 
-                                <div class="row row-cards">
-                                {{range  .Trending}}
-                                    {{ template "schematic_card_full.html" . }}
-                                {{end}}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col mb-5">
-                        <h3>Highest Rated Schematics</h3>
+                        <!-- Mobile ad between sections -->
+                        <div id="index-mobile-mid" class="d-xl-none mb-3 mt-4 text-center"></div>
 
-                                <div class="row row-cards">
-                                {{range  .HighestRated}}
-                                    {{ template "schematic_card_full.html" . }}
-                                {{end}}
-                                </div>
+                        <!-- Latest -->
+                        <h2 class="mb-3 mt-4">{{ T .Language "Latest" }}</h2>
+                        <div id="tab-panel-latest" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .Schematics }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
                             </div>
+                            {{ if .HasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
+                                <a href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                            </div>
+                            {{ end }}
                         </div>
+
+                        <!-- Highest Rated -->
+                        <h2 class="mb-3 mt-4">{{ T .Language "Highest Rated" }}</h2>
+                        <div id="tab-panel-highest" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .HighestRated }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
+                            </div>
+                            {{ if .HighestHasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
+                                <a href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                            </div>
+                            {{ end }}
+                        </div>
+
+                        <!-- Categories -->
+                        <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
+                        {{ range .CategorySections }}
+                        <h3 class="mb-3 mt-4">{{ .Category.Name }}</h3>
+                        <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel">
+                            <div class="row g-3">
+                                {{ range .Items }}
+                                {{template "schematic_card_small.html" .}}
+                                {{ end }}
+                            </div>
+                            {{ if .HasNext }}
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T $.Language "Previous" }}</a>
+                                <div class="text-secondary">{{ T $.Language "Page" }} 1</div>
+                                <a href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T $.Language "Next" }}</a>
+                            </div>
+                            {{ end }}
+                        </div>
+                        {{ end }}
                     </div>
+
+                    <!-- Ad Rail -->
+                    {{template "ad_rail.html" .}}
                 </div>
             </div>
         </div>
@@ -49,14 +91,21 @@
     </div>
 </div>
 {{template "foot.html" .}}
+{{template "ad_rail_script.html" .}}
+
 <script>
-    window['nitroAds'].createAd('index-top-right', {
-        "delayLoading": true,
-        "report": {
-            "enabled": true,
-            "icon": true,
-            "wording": "Report Ad",
-            "position": "bottom-right"
-        }
-    });
+window['nitroAds'].createAd('index-mobile-mid', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
+});
 </script>

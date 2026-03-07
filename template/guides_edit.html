@@ -1,0 +1,101 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="mb-3">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="mb-1">{{ T .Language "Edit Guide" }}</h2>
+              <div class="text-secondary">{{ T .Language "Update your guide content" }}</div>
+            </div>
+            <div class="col-auto ms-auto">
+              <a class="btn btn-outline-secondary" href="/guides/{{ .GuideID }}">{{ T .Language "Cancel" }}</a>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-12 col-lg-9">
+            <form class="card" action="/guides/{{ .GuideID }}" method="post" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
+              <div class="card-header"><h3 class="card-title">{{ T .Language "Guide details" }}</h3></div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
+                  <input type="text" class="form-control" id="title" name="title" value="{{ .GuideTitle }}" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="guide-editor">{{ T .Language "Content" }}</label>
+                  <textarea class="form-control" id="guide-editor" name="content" rows="16">{{ .Content }}</textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="excerpt">{{ T .Language "Excerpt / Summary" }}</label>
+                  <textarea class="form-control" id="excerpt" name="excerpt" rows="3" placeholder="{{ T .Language "Short summary shown in guide listings" }}">{{ .Excerpt }}</textarea>
+                  <small class="form-hint">{{ T .Language "If left empty, an excerpt will be auto-generated from the content." }}</small>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="video_url">{{ T .Language "Optional video link (YouTube)" }}</label>
+                  <input type="url" class="form-control" id="video_url" name="video_url" value="{{ .VideoURL }}" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="external_url">{{ T .Language "Optional external guide link" }}</label>
+                  <input type="url" class="form-control" id="external_url" name="external_url" value="{{ .WikiURL }}" placeholder="https://example.com/your-guide" />
+                </div>
+              </div>
+              <div class="card-footer d-flex justify-content-end">
+                <a href="/guides/{{ .GuideID }}" class="btn btn-link">{{ T .Language "Cancel" }}</a>
+                <button type="submit" class="btn btn-primary ms-2">{{ T .Language "Save changes" }}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}
+<script>
+(function initGuideEditor(retries) {
+  retries = retries || 0;
+  if (typeof tinyMCE === 'undefined') {
+    if (retries < 100) {
+      // Load TinyMCE if not already loaded
+      if (retries === 0) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js';
+        document.head.appendChild(s);
+      }
+      setTimeout(function(){ initGuideEditor(retries + 1); }, 100);
+    }
+    return;
+  }
+  var options = {
+    license_key: "gpl",
+    selector: '#guide-editor',
+    height: 500,
+    menubar: true,
+    statusbar: true,
+    promotion: false,
+    branding: false,
+    plugins: 'lists link image table code wordcount help autolink autoresize',
+    toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link image table | code | help',
+    block_formats: 'Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4; Blockquote=blockquote; Code=pre',
+    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; max-width: 100%; padding: 8px 16px; } img { max-width: 100%; height: auto; } pre { background: #f4f4f5; padding: 12px; border-radius: 6px; overflow-x: auto; } blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 16px; color: #666; }',
+    autoresize_min_height: 400,
+    autoresize_max_height: 800,
+    link_default_target: '_blank',
+    link_assume_external_targets: true,
+    images_upload_url: '/api/images/upload',
+    images_upload_credentials: true,
+    automatic_uploads: true
+  };
+  if (localStorage.getItem("createmodTheme") === 'dark') {
+    options.skin = 'tinymce-5-dark';
+    options.content_css = 'dark';
+  }
+  tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+  tinyMCE.init(options);
+})();
+</script>

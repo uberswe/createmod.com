@@ -31,12 +31,22 @@ type Schematic struct {
 	CreatemodVersion     string
 	MinecraftVersion     string
 	Views                int
+	Downloads            int
 	HasTags              bool
 	Rating               string
 	HasRating            bool
 	SchematicFile        string
 	RatingCount          int
 	AIDescription        string
+	Paid                 bool
+	Featured             bool
+	Materials            string
+	ExternalURL          string
+	BlockCount           int
+	DimX                 int
+	DimY                 int
+	DimZ                 int
+	Mods                 []string
 }
 
 type DatabaseSchematic struct {
@@ -64,4 +74,5 @@ type DatabaseSchematic struct {
 	AvgRating        *float64
 	SchematicFile    string
 	AIDescription    string
+	Featured         bool
 }

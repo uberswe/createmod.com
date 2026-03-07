@@ -1,26 +1,44 @@
-<a href="/schematics/{{ .Name }}" class="d-block">
-    <div class="card card-sm">
-        <div class="card-header">
-            <div class="row">
-                <div class="col">
-                    {{ .Title }}
-                </div>
-            </div>
-        </div>
-        <div class="card-body-borderless ratio ratio-16x9">
-        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360"
-             alt="Featured image of {{ .Title }}" class="img-fluid">
-        </div>
-        <div class="card-footer">
-            <div class="row">
-                <div class="col">{{ .CreatemodVersion }}</div>
-                <div class="col">{{ .MinecraftVersion }}</div>
-                <div class="col-auto">
-                    {{ range .Categories }}
-                    <span class="badge badge-outline text-blue">{{ .Name }}</span>
-                    {{ end }}
-                </div>
-            </div>
-        </div>
+{{define "schematic_card.html"}}
+<a href="/schematics/{{ .Name }}" class="d-block text-decoration-none">
+  <div class="card card-sm card-hover-lift overflow-hidden">
+    <div class="card-body-borderless ratio ratio-16x9" style="position:relative;">
+      <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360"
+           alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover">
+      {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:8px;left:8px;z-index:1;">Paid</span>{{ end }}
     </div>
+    <div class="card-body p-2">
+      <div class="d-flex align-items-start justify-content-between">
+        <h4 class="card-title mb-1 text-truncate" style="max-width: 80%;">
+          {{ .Title }}
+          {{ if .Paid }}<span class="badge badge-outline text-red ms-1">Paid</span>{{ end }}
+        </h4>
+      </div>
+      <div class="d-flex align-items-center gap-2 text-muted small">
+        {{ if .HasRating }}
+        <span title="Rating: {{ .Rating }}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-star-filled" width="14" height="14" viewBox="0 0 24 24" fill="var(--tblr-warning)" stroke="none"><path d="M8.243 7.34l-6.38 .925a.5 .5 0 0 0 -.282 .853l4.636 4.532l-1.093 6.37a.5 .5 0 0 0 .726 .527L12 16.94l5.65 2.606a.5 .5 0 0 0 .726 -.527l-1.093 -6.37l4.636 -4.532a.5 .5 0 0 0 -.282 -.853l-6.38 -.925L12.514 .309a.5 .5 0 0 0 -.914 0z"/></svg>
+          {{ .Rating }}
+        </span>
+        {{ end }}
+        <span title="Views">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"/></svg>
+          {{ .Views }}
+        </span>
+        {{ if .Downloads }}
+        <span title="Downloads">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-download" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+          {{ .Downloads }}
+        </span>
+        {{ end }}
+        {{ if .Author }}<span class="text-truncate" style="max-width: 100px;">by {{ .Author.Username }}</span>{{ end }}
+      </div>
+      <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+        {{ range .Categories }}
+        <span class="badge badge-outline text-blue">{{ .Name }}</span>
+        {{ end }}
+        {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-secondary">{{ $tag.Name }}</span>{{ end }}{{ end }}
+      </div>
+    </div>
+  </div>
 </a>
+{{end}}

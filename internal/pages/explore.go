@@ -1,53 +1,62 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/cache"
-	"createmod/internal/models"
+	"createmod/internal/i18n"
+	"createmod/internal/store"
 	"fmt"
-	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"createmod/internal/server"
 	"math/rand/v2"
 	"net/http"
 )
 
-var exploreTemplates = []string{
-	"./template/dist/explore.html",
+var exploreTemplates = append([]string{
+	"./template/explore.html",
+}, commonTemplates...)
+
+type ExploreImage struct {
+	ID    string
+	Name  string
+	Title string
+	Image string
+	Size  string // "sm", "md", or "lg"
 }
 
 type ExploreData struct {
 	DefaultData
-	Images []models.ImageData
+	Images []ExploreImage
 }
 
-func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, registry *template.Registry) func(e *core.RequestEvent) error {
-	return func(e *core.RequestEvent) error {
-		schematicsCollection, err := app.FindCollectionByNameOrId("schematics")
-		if err != nil {
-			return err
-		}
-		var results []core.Record
-		err = app.RecordQuery(schematicsCollection).Select("id", "name", "title", "featured_image", "gallery").Where(dbx.NewExp("deleted = null")).Where(dbx.NewExp("moderated = true")).OrderBy("RANDOM()").All(&results)
+func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		// Fetch all approved schematics (we need gallery images, so fetch all)
+		storeSchematics, err := appStore.Schematics.ListAllForIndex(context.Background())
 		if err != nil {
 			return err
 		}
 
-		images := make([]models.ImageData, 0)
-		for _, result := range results {
-			for _, g := range result.GetStringSlice("gallery") {
-				images = append(images, models.ImageData{
-					ID:    result.Id,
-					Title: result.GetString("title"),
-					Name:  result.GetString("name"),
+		images := make([]ExploreImage, 0)
+		for _, s := range storeSchematics {
+			if s.FeaturedImage == "" || s.Name == "" {
+				continue
+			}
+			for _, g := range s.Gallery {
+				if g == "" {
+					continue
+				}
+				images = append(images, ExploreImage{
+					ID:    s.ID,
+					Title: s.Title,
+					Name:  s.Name,
 					Image: g,
 				})
 			}
-			images = append(images, models.ImageData{
-				ID:    result.Id,
-				Title: result.GetString("title"),
-				Name:  result.GetString("name"),
-				Image: result.GetString("featured_image"),
+			images = append(images, ExploreImage{
+				ID:    s.ID,
+				Title: s.Title,
+				Name:  s.Name,
+				Image: s.FeaturedImage,
 			})
 		}
 
@@ -55,19 +64,33 @@ func ExploreHandler(app *pocketbase.PocketBase, cacheService *cache.Service, reg
 		if show > 1000 {
 			show = 1000
 		}
-		dest := make([]models.ImageData, show)
+		dest := make([]ExploreImage, show)
 		perm := rand.Perm(show)
 		for i, v := range perm {
 			dest[v] = images[i]
+		}
+
+		// Assign varied sizes for visual interest in the masonry grid.
+		// Roughly 15% large, 35% medium, 50% small.
+		for i := range dest {
+			r := rand.IntN(100)
+			switch {
+			case r < 15:
+				dest[i].Size = "lg"
+			case r < 50:
+				dest[i].Size = "md"
+			default:
+				dest[i].Size = "sm"
+			}
 		}
 
 		d := ExploreData{
 			Images: dest,
 		}
 		d.Populate(e)
-		d.Title = "Explore Create Mod Schematics"
-		d.Categories = allCategories(app, cacheService)
-		d.Description = "Explore a random gallery of Create Mod schematics"
+		d.Title = i18n.T(d.Language, "page.explore.title")
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.Description = i18n.T(d.Language, "page.explore.description")
 		d.Slug = "/explore"
 		if len(dest) > 0 {
 			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", dest[0].ID, dest[0].Image)

@@ -1,0 +1,35 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{ template "header.html" . }}
+        <div class="page-body">
+            <div class="container-wide">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10 col-xl-9">
+                        <div class="card card-lg mb-4">
+                            <div class="card-header">
+                                <h2 class="card-title">{{ if .Title }}{{ .Title }}{{ else }}News{{ end }}</h2>
+                            </div>
+                            <div class="card-body">
+                                {{ if .Content }}
+                                    <div class="news-content">{{ .Content }}</div>
+                                {{ else }}
+                                    <p>This news post is not yet available as an individual article. Please check the news listing for updates.</p>
+                                    <p><a href="/news" class="btn btn-primary">{{ T .Language "Back to News" }}</a></p>
+                                {{ end }}
+                            </div>
+                            {{ if .PostDate }}
+                            <div class="card-footer">
+                                {{ .PostDate }}
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ template "footer.html" . }}
+        </div>
+    </div>
+    {{ template "foot.html" . }}
+</div>

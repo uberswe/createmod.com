@@ -1,0 +1,82 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="mb-3 d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title mb-1">{{ T .Language "Videos" }}</h2>
+              <div class="text-secondary">{{ T .Language "Videos from published schematics" }}</div>
+            </div>
+            <div class="col-auto ms-auto">
+              <form class="d-flex" action="/videos" method="get" hx-get="/videos" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML" hx-push-url="true">
+                <input type="search" class="form-control" name="q" placeholder="{{ T .Language "Search videos" }}" value="{{ .Query }}" />
+                <button class="btn ms-2" type="submit">{{ T .Language "Search" }}</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-3">
+        <div class="flex-grow-1 min-width-0">
+        <div id="videos-results">
+          {{ $root := . }}
+          <div class="row row-cards">
+            {{range .Videos}}
+            <div class="col-12 col-sm-6 col-lg-4">
+              <div class="card">
+                <a href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}" class="d-block">
+                  <img src="{{ .ThumbnailURL }}" alt="{{ .Title }}" class="card-img-top" style="aspect-ratio:16/9;object-fit:cover;" />
+                </a>
+                <div class="card-body">
+                  <div class="card-title h4 text-truncate">{{ .Title }}</div>
+                  <div class="btn-list">
+                    <a class="btn btn-primary" href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}">{{ T $root.Language "View on YouTube" }}</a>
+                    <a class="btn" href="{{ .SchematicURL }}">{{ T $root.Language "View schematic" }}</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {{end}}
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML show:window:top" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+            <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML show:window:top" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+          </div>
+        </div>
+        </div><!-- /flex-grow-1 -->
+
+        <!-- Ad Rail (desktop only) -->
+        <div class="ad-rail d-none d-xl-block">
+            <div id="ad-rail-videos" class="mb-3" style="min-height:250px;"></div>
+        </div>
+        </div><!-- /d-flex -->
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+<script>
+if (window['nitroAds']) {
+  window['nitroAds'].createAd('ad-rail-videos', {
+    "refreshLimit": 10,
+    "refreshTime": 30,
+    "format": "display",
+    "sizes": [
+      ["300", "600"],
+      ["300", "250"]
+    ],
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+}
+</script>
+{{template "foot.html" .}}

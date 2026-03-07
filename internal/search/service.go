@@ -1,34 +1,47 @@
 package search
 
 import (
+	"bytes"
+	"compress/gzip"
+	"context"
 	"createmod/internal/models"
+	"createmod/internal/storage"
+	"encoding/json"
 	"fmt"
-	"github.com/blevesearch/bleve/v2"
-	"github.com/pocketbase/pocketbase"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"io"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
-	bestMatchOrder     = 1
-	newestOrder        = 2
-	oldestOrder        = 3
-	highestRatingOrder = 4
-	lowestRatingOrder  = 5
-	mostViewedOrder    = 6
-	leastViewedOrder   = 7
+	BestMatchOrder     = 1
+	NewestOrder        = 2
+	OldestOrder        = 3
+	HighestRatingOrder = 4
+	LowestRatingOrder  = 5
+	MostViewedOrder    = 6
+	LeastViewedOrder   = 7
+	TrendingOrder      = 8
 	regex              = `<.*?>`
+
+	// cacheKey is the storage path for the serialized index cache.
+	cacheKey = "_internal/search_index_cache.json.gz"
 )
 
 type Service struct {
-	index      []schematicIndex
-	bleveIndex bleve.Index
-	app        *pocketbase.PocketBase
+	index          []schematicIndex
+	bleveIndex     bleve.Index
+	storage        *storage.Service
+	trendingScores map[string]float64
 }
 
 type schematicIndex struct {
@@ -43,19 +56,31 @@ type schematicIndex struct {
 	Author           string
 	MinecraftVersion string
 	CreateVersion    string
+	Paid             bool
 }
 
 type bleveIndex struct {
-	Title       string
-	Description string
-	Tags        []string
-	Categories  []string
-	Author      string
+	Title         string
+	Description   string
+	AIDescription string
+	Tags          []string
+	Categories    []string
+	Author        string
 }
 
-func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
-	s := Service{}
-	s.app = app
+// indexCacheEntry holds both filter-index and Bleve-index data for one schematic.
+type indexCacheEntry struct {
+	SI schematicIndex `json:"si"`
+	BI bleveIndex     `json:"bi"`
+}
+
+// SetTrendingScores sets the trending scores map used for trending sort order.
+func (s *Service) SetTrendingScores(scores map[string]float64) {
+	s.trendingScores = scores
+}
+
+// newBleveIndex creates a fresh in-memory Bleve index with the schematic mapping.
+func newBleveIndex() bleve.Index {
 	mapping := bleve.NewIndexMapping()
 
 	schematicMapping := bleve.NewDocumentMapping()
@@ -66,6 +91,9 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
 	descriptionFieldMapping.Name = "description"
 	schematicMapping.AddFieldMappingsAt("description", descriptionFieldMapping)
+	aiDescFieldMapping := bleve.NewTextFieldMapping()
+	aiDescFieldMapping.Name = "aidescription"
+	schematicMapping.AddFieldMappingsAt("aidescription", aiDescFieldMapping)
 	tagsFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
 	categoriesFieldMapping := bleve.NewTextFieldMapping()
@@ -74,28 +102,47 @@ func New(schematics []models.Schematic, app *pocketbase.PocketBase) *Service {
 	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
 
 	mapping.AddDocumentMapping("schematic", schematicMapping)
-	var err error
-	s.bleveIndex, err = bleve.NewMemOnly(mapping)
+
+	idx, err := bleve.NewMemOnly(mapping)
 	if err != nil {
 		panic(err)
 	}
-	s.BuildIndex(schematics)
+	return idx
+}
+
+// New creates a search Service with an in-memory Bleve index.
+// On startup it attempts to load a cached index snapshot from storage (S3)
+// so the server can serve search requests immediately while a background
+// rebuild picks up recent changes.
+func New(storageSvc *storage.Service) *Service {
+	s := Service{storage: storageSvc}
+	s.bleveIndex = newBleveIndex()
+
+	// Try to warm from storage cache.
+	if err := s.loadCacheFromStorage(); err != nil {
+		slog.Info("search: no usable cache in storage, starting empty", "error", err)
+	} else {
+		slog.Info("search: loaded index cache from storage", "docs", len(s.index))
+	}
+
 	return &s
 }
 
-// Search takes a term and returns schematic ids in the specified order
-func (s *Service) Search(term string, order int, rating int, category string, tag string, minecraftVersion string, createVersion string) []string {
+// Search takes a term and returns schematic ids in the specified order.
+// tags is a list of tags to filter by (AND logic — result must match ALL selected tags).
+// Pass nil or empty slice for no tag filtering.
+func (s *Service) Search(term string, order int, rating int, category string, tags []string, minecraftVersion string, createVersion string, hidePaid bool) []string {
 	// If search hasn't had time to initialize, usually after a reboot
-	s.app.Logger().Debug("starting search service - check if initialized")
+	slog.Debug("starting search service - check if initialized")
 	if s == nil || s.index == nil {
-		s.app.Logger().Debug("search service is down", "search", s)
+		slog.Debug("search service is down")
 		return nil
 	}
 
 	// Ratings
 	result := make([]schematicIndex, len(s.index))
 	copy(result, s.index)
-	s.app.Logger().Debug("searching schematics", "index count", len(s.index), "result", len(result))
+	slog.Debug("searching schematics", "index count", len(s.index), "result", len(result))
 	if rating > 0 {
 		ratingFloat := float64(rating)
 		ratingResult := make([]schematicIndex, 0)
@@ -107,7 +154,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		result = ratingResult
 	}
 
-	s.app.Logger().Debug("filtered by rating", "count", len(result), "rating", rating)
+	slog.Debug("filtered by rating", "count", len(result), "rating", rating)
 	// Category
 	if category != "all" {
 		categoryResult := make([]schematicIndex, 0)
@@ -120,20 +167,27 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = categoryResult
 	}
-	s.app.Logger().Debug("filtered by category", "count", len(result), "category", category)
-	// Tag
-	if tag != "all" {
+	slog.Debug("filtered by category", "count", len(result), "category", category)
+	// Tags (AND logic: result must match ALL selected tags)
+	if len(tags) > 0 && !(len(tags) == 1 && tags[0] == "all") {
+		caser := cases.Title(language.English)
 		tagResult := make([]schematicIndex, 0)
 		for i := range result {
-			tag = strings.ReplaceAll(tag, "-", " ")
-			caser := cases.Title(language.English)
-			if slices.Contains(result[i].Tags, caser.String(tag)) {
+			matchAll := true
+			for _, tag := range tags {
+				normalized := caser.String(strings.ReplaceAll(tag, "-", " "))
+				if !slices.Contains(result[i].Tags, normalized) {
+					matchAll = false
+					break
+				}
+			}
+			if matchAll {
 				tagResult = append(tagResult, result[i])
 			}
 		}
 		result = tagResult
 	}
-	s.app.Logger().Debug("filtered by tag", "count", len(result), "tag", tag)
+	slog.Debug("filtered by tags", "count", len(result), "tags", tags)
 	// Create Mod Version
 	if createVersion != "all" {
 		cvResult := make([]schematicIndex, 0)
@@ -144,7 +198,7 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = cvResult
 	}
-	s.app.Logger().Debug("filtered by create mod version", "count", len(result), "createVersion", createVersion)
+	slog.Debug("filtered by create mod version", "count", len(result), "createVersion", createVersion)
 	// Minecraft version
 	if minecraftVersion != "all" {
 		mcvResult := make([]schematicIndex, 0)
@@ -155,28 +209,53 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 		}
 		result = mcvResult
 	}
-	s.app.Logger().Debug("filtered by minecraft version", "count", len(result), "minecraftVersion", minecraftVersion)
+	slog.Debug("filtered by minecraft version", "count", len(result), "minecraftVersion", minecraftVersion)
+	// Hide paid
+	if hidePaid {
+		filtered := make([]schematicIndex, 0, len(result))
+		for i := range result {
+			if !result[i].Paid {
+				filtered = append(filtered, result[i])
+			}
+		}
+		result = filtered
+	}
+	slog.Debug("filtered by paid", "count", len(result), "hidePaid", hidePaid)
 	// Bleve
 	if strings.TrimSpace(term) != "" {
 		newResult := make([]schematicIndex, 0)
-		queryFormat := fmt.Sprintf("Title:%s^5 Description:%s Tags:%s^2 Categories:%s^2 Author:%s^3", term, term, term, term, term)
-		if strings.Contains(term, " ") {
-			queryFormat = term
+
+		// Build a disjunction of: AND-match (all words must appear) + exact phrase boost
+		words := strings.Fields(term)
+		var searchQuery query.Query
+		if len(words) == 1 {
+			// Single word: use query string with field boosts
+			searchQuery = bleve.NewQueryStringQuery(term)
+		} else {
+			// Multi-word: conjunction (AND) of each word across any field
+			conjuncts := make([]query.Query, 0, len(words))
+			for _, w := range words {
+				conjuncts = append(conjuncts, bleve.NewMatchQuery(w))
+			}
+			andQuery := bleve.NewConjunctionQuery(conjuncts...)
+
+			// Exact phrase boost (10x)
+			phraseQuery := bleve.NewMatchPhraseQuery(term)
+			phraseQuery.SetBoost(10.0)
+
+			// Combine: results matching AND or phrase, phrase-matched results score higher
+			searchQuery = bleve.NewDisjunctionQuery(andQuery, phraseQuery)
 		}
-		// https://blevesearch.com/docs/Query-String-Query/
-		query := bleve.NewQueryStringQuery(queryFormat)
-		q, err := query.Parse()
-		fields, fieldsError := s.bleveIndex.Fields()
-		s.app.Logger().Debug("searching schematics", "term", term, "query", query.Query, "error", err, "fullQuery", q, "fieldsError", fieldsError, "fields", fields)
-		searchRequest := bleve.NewSearchRequest(query)
+
+		searchRequest := bleve.NewSearchRequest(searchQuery)
 		searchRequest.Size = 5000
 		searchResult, err := s.bleveIndex.Search(searchRequest)
 		if err != nil {
-			s.app.Logger().Error("error for bleve search query", "error", err.Error())
+			slog.Error("error for bleve search query", "error", err.Error())
 		}
 		if searchResult != nil {
 			count, err := s.bleveIndex.DocCount()
-			s.app.Logger().Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
+			slog.Debug("bleve search results", "total", searchResult.Total, "hits", len(searchResult.Hits), "stats", s.bleveIndex.StatsMap(), "index", count, "error", err)
 			for _, si := range searchResult.Hits {
 				for i := range result {
 					if result[i].ID == si.ID {
@@ -186,37 +265,39 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 			}
 		}
 		result = newResult
-		s.app.Logger().Debug("filtered by bleve", "count", len(result))
+		slog.Debug("filtered by bleve", "count", len(result))
 	}
 	// Order
 	slices.SortFunc(result, func(a, b schematicIndex) int {
 		switch order {
-		case bestMatchOrder:
+		case BestMatchOrder:
 			// Handled by bleve
 			return 0
-		case newestOrder:
+		case NewestOrder:
 			return newestSort(a, b)
-		case oldestOrder:
+		case OldestOrder:
 			return -newestSort(a, b)
-		case highestRatingOrder:
+		case HighestRatingOrder:
 			return highestRatingSort(a, b)
-		case lowestRatingOrder:
+		case LowestRatingOrder:
 			return -highestRatingSort(a, b)
-		case mostViewedOrder:
+		case MostViewedOrder:
 			return mostViewedSort(a, b)
-		case leastViewedOrder:
+		case LeastViewedOrder:
 			return -mostViewedSort(a, b)
+		case TrendingOrder:
+			return trendingSort(s.trendingScores, a, b)
 		default:
 			return 0
 		}
 	})
-	s.app.Logger().Debug("sorted", "count", len(result))
+	slog.Debug("sorted", "count", len(result))
 
 	ids := make([]string, len(result))
 	for i := range result {
 		ids[i] = result[i].ID
 	}
-	s.app.Logger().Debug("returning ids", "count", len(ids))
+	slog.Debug("returning ids", "count", len(ids))
 	return ids
 }
 
@@ -241,56 +322,290 @@ func newestSort(a schematicIndex, b schematicIndex) int {
 	return -1
 }
 
-// BuildIndex takes a set of schematics and prepares a search index
+func trendingSort(scores map[string]float64, a schematicIndex, b schematicIndex) int {
+	if scores == nil {
+		// No trending data available; fall back to newest first
+		return newestSort(a, b)
+	}
+	sa := scores[a.ID]
+	sb := scores[b.ID]
+	if sa > sb {
+		return -1
+	}
+	if sa < sb {
+		return 1
+	}
+	// Equal scores: break tie by newest first
+	return newestSort(a, b)
+}
+
+// BuildIndex takes a set of schematics and rebuilds both the in-memory filter
+// index and the Bleve full-text index. After building, it uploads a compressed
+// cache snapshot to storage so subsequent pod starts can warm from it.
 func (s *Service) BuildIndex(schematics []models.Schematic) {
-	batch := s.bleveIndex.NewBatch()
-	index := make([]schematicIndex, len(schematics))
+	idx := newBleveIndex()
+	batch := idx.NewBatch()
+	filterIndex := make([]schematicIndex, len(schematics))
+	cacheEntries := make([]indexCacheEntry, len(schematics))
+
 	for i := range schematics {
-		index[i] = schematicIndex{
+		authorName := ""
+		if schematics[i].Author != nil {
+			authorName = schematics[i].Author.Username
+		}
+		si := schematicIndex{
 			ID:          schematics[i].ID,
 			Title:       stripHtmlRegex(schematics[i].Title),
 			Description: stripHtmlRegex(schematics[i].Content),
 			Created:     schematics[i].Created,
 			Views:       int64(schematics[i].Views),
-			Author:      schematics[i].Author.Username,
+			Author:      authorName,
 		}
 		if parsedFloat, err := strconv.ParseFloat(schematics[i].Rating, 64); err == nil {
-			index[i].Rating = parsedFloat
+			si.Rating = parsedFloat
 		}
 		for _, c := range schematics[i].Categories {
-			index[i].Categories = append(index[i].Categories, c.Name)
+			si.Categories = append(si.Categories, c.Name)
 		}
 		for _, t := range schematics[i].Tags {
-			index[i].Tags = append(index[i].Tags, t.Name)
+			si.Tags = append(si.Tags, t.Name)
 		}
-		err := batch.Index(index[i].ID, bleveIndex{
-			Title:       index[i].Title,
-			Description: index[i].Description,
-			Tags:        index[i].Tags,
-			Categories:  index[i].Categories,
-			Author:      index[i].Author,
-		})
 
-		index[i].MinecraftVersion = schematics[i].MinecraftVersion
-		index[i].CreateVersion = schematics[i].CreatemodVersion
-
-		if err != nil {
-			s.app.Logger().Error("bleve add index", "error", err.Error())
+		bi := bleveIndex{
+			Title:         si.Title,
+			Description:   si.Description,
+			AIDescription: stripHtmlRegex(schematics[i].AIDescription),
+			Tags:          si.Tags,
+			Categories:    si.Categories,
+			Author:        si.Author,
 		}
+
+		si.MinecraftVersion = schematics[i].MinecraftVersion
+		si.CreateVersion = schematics[i].CreatemodVersion
+		si.Paid = schematics[i].Paid
+
+		if err := batch.Index(si.ID, bi); err != nil {
+			slog.Error("bleve add index", "error", err.Error())
+		}
+
+		filterIndex[i] = si
+		cacheEntries[i] = indexCacheEntry{SI: si, BI: bi}
 	}
-	err := s.bleveIndex.Batch(batch)
-	if err != nil {
-		s.app.Logger().Error("bleve search batching", "error", err.Error())
+
+	if err := idx.Batch(batch); err != nil {
+		slog.Error("bleve search batching", "error", err.Error())
 		return
 	}
-	ids := make([]string, len(index))
-	for i, in := range index {
-		ids[i] = in.ID
+
+	// Swap in the new index atomically.
+	oldIdx := s.bleveIndex
+	s.bleveIndex = idx
+	s.index = filterIndex
+	if oldIdx != nil {
+		_ = oldIdx.Close()
 	}
-	s.index = index
+
+	// Persist cache to storage in the background.
+	go s.saveCacheToStorage(cacheEntries)
+}
+
+// Suggestion represents an autocomplete suggestion result.
+type Suggestion struct {
+	Text string `json:"text"`
+	Type string `json:"type"` // "schematic", "tag", "category"
+	URL  string `json:"url"`
+}
+
+// Suggest returns autocomplete suggestions matching the given query prefix.
+// It searches titles, tags, and categories from the in-memory index.
+func (s *Service) Suggest(q string, limit int) []Suggestion {
+	if s == nil || s.index == nil || len(q) < 2 {
+		return nil
+	}
+	q = strings.ToLower(strings.TrimSpace(q))
+	if q == "" {
+		return nil
+	}
+
+	results := make([]Suggestion, 0, limit)
+	seen := make(map[string]bool)
+
+	// Title matches (prefix then contains)
+	for _, idx := range s.index {
+		if len(results) >= limit {
+			break
+		}
+		titleLower := strings.ToLower(idx.Title)
+		if strings.HasPrefix(titleLower, q) || strings.Contains(titleLower, q) {
+			key := "s:" + idx.ID
+			if !seen[key] {
+				seen[key] = true
+				results = append(results, Suggestion{
+					Text: idx.Title,
+					Type: "schematic",
+					URL:  "/schematics/" + idx.ID,
+				})
+			}
+		}
+	}
+
+	// Tag name matches
+	tagSeen := make(map[string]bool)
+	for _, idx := range s.index {
+		if len(results) >= limit {
+			break
+		}
+		for _, tag := range idx.Tags {
+			tagLower := strings.ToLower(tag)
+			if tagSeen[tagLower] {
+				continue
+			}
+			if strings.HasPrefix(tagLower, q) || strings.Contains(tagLower, q) {
+				tagSeen[tagLower] = true
+				caser := cases.Title(language.English)
+				tagKey := strings.ReplaceAll(strings.ToLower(tag), " ", "-")
+				results = append(results, Suggestion{
+					Text: caser.String(tag),
+					Type: "tag",
+					URL:  "/search/?tag=" + tagKey,
+				})
+				if len(results) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	// Category name matches
+	catSeen := make(map[string]bool)
+	for _, idx := range s.index {
+		if len(results) >= limit {
+			break
+		}
+		for _, cat := range idx.Categories {
+			catLower := strings.ToLower(cat)
+			if catSeen[catLower] {
+				continue
+			}
+			if strings.HasPrefix(catLower, q) || strings.Contains(catLower, q) {
+				catSeen[catLower] = true
+				catKey := strings.ReplaceAll(strings.ToLower(cat), " ", "-")
+				results = append(results, Suggestion{
+					Text: cat,
+					Type: "category",
+					URL:  "/search/?category=" + catKey,
+				})
+				if len(results) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	if len(results) > limit {
+		results = results[:limit]
+	}
+	return results
 }
 
 func stripHtmlRegex(s string) string {
 	r := regexp.MustCompile(regex)
 	return r.ReplaceAllString(s, " ")
+}
+
+// ---------------------------------------------------------------------------
+// Storage-backed index cache (direct S3 via storage.Service)
+// ---------------------------------------------------------------------------
+
+// saveCacheToStorage serializes the index data as gzip-compressed JSON and
+// uploads it to S3.
+func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
+	if s.storage == nil {
+		slog.Warn("search: storage service not configured, skipping cache save")
+		return
+	}
+
+	data, err := json.Marshal(entries)
+	if err != nil {
+		slog.Warn("search: failed to marshal index cache", "error", err)
+		return
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(data); err != nil {
+		slog.Warn("search: failed to gzip index cache", "error", err)
+		return
+	}
+	if err := gz.Close(); err != nil {
+		slog.Warn("search: failed to close gzip writer", "error", err)
+		return
+	}
+
+	if err := s.storage.UploadRawBytes(context.Background(), cacheKey, buf.Bytes(), "application/gzip"); err != nil {
+		slog.Warn("search: failed to upload index cache", "error", err)
+		return
+	}
+
+	slog.Info("search: uploaded index cache to storage", "entries", len(entries), "bytes", buf.Len())
+}
+
+// loadCacheFromStorage downloads the compressed index cache from S3 and
+// populates both the in-memory filter index and the Bleve full-text index.
+func (s *Service) loadCacheFromStorage() error {
+	if s.storage == nil {
+		return fmt.Errorf("storage service not configured")
+	}
+
+	reader, err := s.storage.DownloadRaw(context.Background(), cacheKey)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	gz, err := gzip.NewReader(reader)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	data, err := io.ReadAll(gz)
+	if err != nil {
+		return err
+	}
+
+	var entries []indexCacheEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return err
+	}
+
+	if len(entries) == 0 {
+		return nil
+	}
+
+	// Rebuild both indices from the cached data.
+	idx := newBleveIndex()
+	batch := idx.NewBatch()
+	filterIndex := make([]schematicIndex, len(entries))
+
+	for i, e := range entries {
+		filterIndex[i] = e.SI
+		if err := batch.Index(e.SI.ID, e.BI); err != nil {
+			slog.Error("search: bleve index from cache", "error", err)
+		}
+	}
+
+	if err := idx.Batch(batch); err != nil {
+		slog.Error("search: bleve batch from cache", "error", err)
+		return err
+	}
+
+	oldIdx := s.bleveIndex
+	s.bleveIndex = idx
+	s.index = filterIndex
+	if oldIdx != nil {
+		_ = oldIdx.Close()
+	}
+
+	return nil
 }

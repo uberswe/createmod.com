@@ -14,10 +14,24 @@ const (
 	HighestRatedSchematicsKey = "HighestRatedSchematics"
 	TrendingSchematicsKey     = "TrendingSchematics"
 	AllCategoriesKey          = "AllCategories"
+	LatestSchematicsKey       = "LatestSchematics"
+	LatestHasNextKey          = "LatestHasNext"
+	HighestRatedHasNextKey    = "HighestRatedHasNext"
+	TrendingHasNextKey        = "TrendingHasNext"
 )
 
 type Service struct {
 	c *cache.Cache
+}
+
+// SetWithTTL sets a key with a specific TTL duration.
+func (s *Service) SetWithTTL(key string, value interface{}, duration time.Duration) {
+	s.c.Set(key, value, duration)
+}
+
+// Delete removes a key from the cache.
+func (s *Service) Delete(key string) {
+	s.c.Delete(key)
 }
 
 // New creates the CreateMod.com in-memory cache service
@@ -36,12 +50,28 @@ func ViewKey(schematicId string) string {
 	return fmt.Sprintf("views:%s", schematicId)
 }
 
+func DownloadKey(schematicId string) string {
+	return fmt.Sprintf("downloads:%s", schematicId)
+}
+
 func RatingKey(schematicId string) string {
 	return fmt.Sprintf("rating:%s", schematicId)
 }
 
 func RatingCountKey(schematicId string) string {
 	return fmt.Sprintf("ratingCount:%s", schematicId)
+}
+
+func TranslationKey(schematicId, lang string) string {
+	return fmt.Sprintf("translation:%s:%s", schematicId, lang)
+}
+
+func GuideTranslationKey(guideId, lang string) string {
+	return fmt.Sprintf("guide_translation:%s:%s", guideId, lang)
+}
+
+func CollectionTranslationKey(collectionId, lang string) string {
+	return fmt.Sprintf("collection_translation:%s:%s", collectionId, lang)
 }
 
 func (s *Service) Set(key string, value interface{}) {

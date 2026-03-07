@@ -1,0 +1,160 @@
+package pages
+
+import (
+	"context"
+	"createmod/internal/cache"
+	"createmod/internal/i18n"
+	"createmod/internal/models"
+	"createmod/internal/store"
+	"createmod/internal/translation"
+	"fmt"
+	"createmod/internal/server"
+	"html/template"
+	"net/http"
+	"time"
+)
+
+var collectionsShowTemplates = append([]string{
+	"./template/collections_show.html",
+	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_small.html",
+}, commonTemplates...)
+
+// CollectionsShowData represents data for a single collection view page.
+type CollectionsShowData struct {
+	DefaultData
+	TitleText       string
+	DescriptionText string // raw description from DB (may be empty)
+	DescriptionHTML template.HTML
+	BannerURL       string
+	Views           int
+	Featured        bool
+	Published       bool
+	IsOwner         bool
+	Schematics      []models.Schematic
+	ShareURL        string
+	CollectionID    string
+	AuthorName      string
+	IsTranslated    bool
+}
+
+// CollectionsShowHandler renders a basic collection detail page by slug or id.
+func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		slug := e.Request.PathValue("slug")
+
+		ctx := context.Background()
+
+		d := CollectionsShowData{}
+		d.Populate(e)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.Slug = "/collections/" + slug
+
+		// Try to find by slug first, fallback to id
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
+		if err != nil || coll == nil {
+			coll, err = appStore.Collections.GetByID(ctx, slug)
+		}
+
+		if coll != nil {
+			d.Published = coll.Published
+			d.CollectionID = coll.ID
+			d.TitleText = coll.Title
+			if d.TitleText == "" {
+				d.TitleText = coll.Name
+			}
+			d.DescriptionText = coll.Description
+			d.DescriptionHTML = template.HTML(d.DescriptionText)
+			d.BannerURL = coll.BannerURL
+			d.Featured = coll.Featured
+			if isAuthenticated(e) && coll.AuthorID != nil && *coll.AuthorID == authenticatedUserID(e) {
+				d.IsOwner = true
+			}
+
+			// Load author name
+			if coll.AuthorID != nil && *coll.AuthorID != "" {
+				if u := findUserFromStore(appStore, *coll.AuthorID); u != nil {
+					d.AuthorName = u.Username
+				}
+			}
+
+			// Build the share URL
+			scheme := "https"
+			host := e.Request.Host
+			if host == "" {
+				host = "createmod.com"
+			}
+			if e.Request.TLS == nil {
+				scheme = "http"
+			}
+			if d.Published {
+				collSlug := coll.Slug
+				if collSlug == "" {
+					collSlug = coll.ID
+				}
+				d.ShareURL = fmt.Sprintf("%s://%s/collections/%s", scheme, host, collSlug)
+			} else {
+				d.ShareURL = fmt.Sprintf("%s://%s/collections/%s", scheme, host, coll.ID)
+			}
+
+			// Views increment with IP-based deduplication (1-hour window)
+			clientIP := e.RealIP()
+			ipKey := fmt.Sprintf("viewip:%s:coll:%s", clientIP, coll.ID)
+			if clientIP != "" && cacheService != nil {
+				if _, already := cacheService.Get(ipKey); !already {
+					cacheService.SetWithTTL(ipKey, true, 1*time.Hour)
+					_ = appStore.Collections.IncrementViews(ctx, coll.ID)
+					d.Views = coll.Views + 1
+				} else {
+					d.Views = coll.Views
+				}
+			} else {
+				d.Views = coll.Views
+			}
+
+			// Load associated schematics
+			schematicIDs, err := appStore.Collections.GetSchematicIDs(ctx, coll.ID)
+			if err == nil && len(schematicIDs) > 0 {
+				storeSchematics, err := appStore.Schematics.ListByIDs(ctx, schematicIDs)
+				if err == nil {
+					d.Schematics = MapStoreSchematics(appStore, storeSchematics, cacheService)
+				}
+			}
+
+			// Translation: show translated content if user's language is not English
+			showOriginal := e.Request.URL.Query().Get("lang") == "original"
+			if !showOriginal && translationService != nil && d.Language != "" && d.Language != "en" {
+				t := translationService.GetCollectionTranslationCached(cacheService, coll.ID, d.Language)
+				if t != nil && t.Title != "" {
+					d.TitleText = t.Title
+					if t.Description != "" {
+						d.DescriptionText = t.Description
+						d.DescriptionHTML = template.HTML(t.Description)
+					}
+					d.IsTranslated = true
+				}
+			}
+
+			// SEO/meta
+			d.Title = d.TitleText
+			if d.Title == "" {
+				d.Title = i18n.T(d.Language, "Collection")
+			}
+			if d.DescriptionText != "" {
+				d.Description = d.DescriptionText
+			} else {
+				d.Description = i18n.T(d.Language, "page.collections.description")
+			}
+		} else {
+			// Not found
+			d.Title = i18n.T(d.Language, "page.collections.notfound.title")
+			d.Description = i18n.T(d.Language, "page.collections.notfound.description")
+		}
+
+		html, err := registry.LoadFiles(collectionsShowTemplates...).Render(d)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}

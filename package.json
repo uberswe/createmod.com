@@ -1,0 +1,16 @@
+{
+  "name": "createmod-e2e",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Playwright E2E tests for CreateMod.com",
+  "scripts": {
+    "pw:install": "npx playwright install --with-deps",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.9.1",
+    "@playwright/test": "^1.48.0"
+  }
+}
