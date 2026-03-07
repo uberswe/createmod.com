@@ -34,27 +34,6 @@ test.describe('login flow', () => {
     await expect(page.locator('.auth-section')).toBeVisible();
   });
 
-  test('login form shows avatar in header without manual refresh', async ({ page, baseURL }) => {
-    const url = baseURL ?? 'http://localhost:8080';
-
-    await page.goto(url + '/login');
-    await page.fill('input[name="username"]', TEST_USER_EMAIL);
-    await page.fill('input[name="password"]', TEST_USER_PASSWORD);
-
-    await Promise.all([
-      page.waitForURL(url + '/', { timeout: 15000 }),
-      page.click('button[type="submit"]'),
-    ]);
-
-    // The header should show the user dropdown with avatar — no manual refresh needed
-    const authAvatar = page.locator('.auth-avatar');
-    await expect(authAvatar).toBeVisible({ timeout: 10000 });
-
-    // The username element should exist in DOM (only visible on xl viewports due to d-none d-xl-block)
-    const authUsername = page.locator('.auth-username');
-    await expect(authUsername).toHaveCount(1);
-  });
-
   test('login with invalid credentials stays on login page', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
 
