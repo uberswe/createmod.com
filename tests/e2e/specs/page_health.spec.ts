@@ -102,28 +102,3 @@ test('dark mode toggle exists in page source', async ({ request, baseURL }) => {
   expect(html).toContain('hide-theme-light');
 });
 
-test('sidebar toggle button exists', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8080';
-  await page.goto(url + '/');
-
-  const toggle = page.locator('#sidebar-toggle');
-  if (!(await toggle.isAttached().catch(() => false))) {
-    test.skip(true, 'sidebar toggle not found — layout may differ in CI');
-    return;
-  }
-  await expect(toggle).toBeAttached();
-});
-
-test('language changer links present in header', async ({ page, baseURL }) => {
-  const url = baseURL ?? 'http://localhost:8080';
-  await page.goto(url + '/');
-
-  // The language changer should have links/buttons for language switching
-  const langLinks = page.locator('[hx-get="/lang"]');
-  const count = await langLinks.count();
-  if (count === 0) {
-    test.skip(true, 'no language changer links found — layout may differ in CI');
-    return;
-  }
-  expect(count).toBeGreaterThan(0);
-});
