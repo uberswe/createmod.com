@@ -142,6 +142,56 @@ func allCategoriesFromStoreOnly(appStore *store.Store, cacheService *cache.Servi
 	return result
 }
 
+// safeRedirectPath validates a return_to URL parameter to prevent open redirects.
+// Returns the path if it is a safe, relative path; otherwise returns fallback.
+func safeRedirectPath(returnTo, fallback string) string {
+	returnTo = strings.TrimSpace(returnTo)
+	if returnTo == "" {
+		return fallback
+	}
+	// Must start with /
+	if !strings.HasPrefix(returnTo, "/") {
+		return fallback
+	}
+	// Block protocol-relative URLs (e.g. //evil.com)
+	if strings.HasPrefix(returnTo, "//") {
+		return fallback
+	}
+	// Block URLs with scheme-like patterns after the slash
+	if idx := strings.Index(returnTo, ":"); idx > 0 && idx < strings.Index(returnTo+"?", "?") {
+		// Check if the colon comes before any slash after the first character
+		afterFirst := returnTo[1:]
+		slashIdx := strings.Index(afterFirst, "/")
+		colonIdx := strings.Index(afterFirst, ":")
+		if colonIdx >= 0 && (slashIdx < 0 || colonIdx < slashIdx) {
+			return fallback
+		}
+	}
+	return returnTo
+}
+
+// sanitizeContentDispositionFilename strips characters that could cause header injection
+// in Content-Disposition filenames.
+func sanitizeContentDispositionFilename(filename string) string {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return "download"
+	}
+	// Remove characters that could break the header or enable injection
+	replacer := strings.NewReplacer(
+		"\"", "",
+		"\\", "",
+		"\r", "",
+		"\n", "",
+		"\x00", "",
+	)
+	filename = replacer.Replace(filename)
+	if filename == "" {
+		return "download"
+	}
+	return filename
+}
+
 func isContributorFromStore(appStore *store.Store, userID string) bool {
 	if userID == "" || appStore == nil {
 		return false

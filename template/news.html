@@ -11,32 +11,37 @@
                         <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
                         {{ if .Posts }}
                             {{ $root := . }}
-                            {{ range .Posts }}
-                            <div class="card card-lg mb-4">
-                                <div class="card-header">
-                                    <h2 class="card-title"><a href="{{ .URL }}">{{ .Title }}</a></h2>
-                                </div>
-                                <div class="card-body">
-                                    {{ if .FirstParagraph }}
-                                        {{ .FirstParagraph }}
-                                    {{ else if .Excerpt }}
-                                        <p>{{ .Excerpt }}</p>
-                                    {{ end }}
-                                    <p class="mb-0"><a href="{{ .URL }}" class="btn btn-primary">{{ T $root.Language "Read more" }}</a></p>
-                                </div>
-                                <div class="card-footer text-secondary">
-                                    {{ DateOnly .PostDate }}
+                            {{ range $i, $post := .Posts }}
+                            <div class="card news-card mb-3">
+                                <div class="card-body py-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="flex-fill">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <h3 class="mb-0"><a href="{{ $post.URL }}" class="text-reset">{{ $post.Title }}</a></h3>
+                                                {{ if eq $i 0 }}
+                                                <span class="badge bg-green-lt ms-2">Latest</span>
+                                                {{ end }}
+                                            </div>
+                                            <div class="text-secondary news-excerpt">
+                                                {{ if $post.FirstParagraph }}
+                                                    {{ $post.FirstParagraph }}
+                                                {{ else if $post.Excerpt }}
+                                                    <p class="mb-0">{{ $post.Excerpt }}</p>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        <div class="text-secondary text-nowrap ms-3" style="font-size: 0.85rem;">
+                                            {{ DateOnly $post.PostDate }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             {{ end }}
                         {{ else }}
-                            <div class="card card-lg mb-4">
-                                <div class="card-header">
-                                    <h2 class="card-title">{{ T .Language "No news yet" }}</h2>
-                                </div>
+                            <div class="card mb-3">
                                 <div class="card-body">
-                                    <p>{{ T .Language "There are no news posts available at the moment. Please check back later." }}</p>
-                                    <p><a href="/" class="btn btn-outline-secondary">{{ T .Language "Go to Home" }}</a></p>
+                                    <h3>{{ T .Language "No news yet" }}</h3>
+                                    <p class="mb-0">{{ T .Language "There are no news posts available at the moment. Please check back later." }}</p>
                                 </div>
                             </div>
                         {{ end }}
@@ -106,6 +111,38 @@
     {{template "foot.html" .}}
 </div>
 <style>
+.news-card {
+    position: relative;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+.news-card:hover {
+    border-color: var(--tblr-primary);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+.news-card h3 a {
+    text-decoration: none;
+}
+.news-card h3 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+.news-card h3 a:hover {
+    color: var(--tblr-primary) !important;
+}
+.news-excerpt {
+    position: relative;
+    z-index: 1;
+}
+.news-excerpt a {
+    position: relative;
+    z-index: 1;
+}
+.news-excerpt p {
+    margin-bottom: 0;
+}
 .stats-chart { width: 100%; position: relative; }
 .stats-bars {
     display: flex;

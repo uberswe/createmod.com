@@ -27,7 +27,7 @@ go test -run Test_TrendingScore ./internal/pages/   # Single test by name
 go test -v ./...                                    # All tests verbose
 ```
 
-Create `.env` from `.env.example`. Key variables: `AUTO_MIGRATE=true` (auto-generate migrations from Admin UI changes), `CREATE_ADMIN=true` (creates dev admin: `local@createmod.com` / `jfq.utb*jda2abg!WCR`), `DUMMY_DATA=true` (seed data, WARNING: deletes `pb_data/`), `DEV=true`.
+Create `.env` from `.env.example`. Key variables: `AUTO_MIGRATE=true` (auto-generate migrations from Admin UI changes), `CREATE_ADMIN=true` (creates a dev admin account — see `.env.example` for credentials), `DUMMY_DATA=true` (seed data, WARNING: deletes `pb_data/`), `DEV=true`.
 
 Admin UI at `/_/` when server is running. Main branch is `master`.
 

@@ -288,7 +288,7 @@ func UploadDownloadHandler(appStore *store.Store, storageSvc *storage.Service) f
 		}
 		defer reader.Close()
 
-		e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+entry.Filename+"\"")
+		e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeContentDispositionFilename(entry.Filename)+"\"")
 		e.Response.Header().Set("Content-Type", "application/octet-stream")
 		return e.Stream(http.StatusOK, "application/octet-stream", reader)
 	}
@@ -534,7 +534,7 @@ func streamFromS3(e *server.RequestEvent, storageSvc *storage.Service, s3Key, fi
 		return e.String(http.StatusNotFound, "file not found in storage")
 	}
 
-	e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeContentDispositionFilename(filename)+"\"")
 	e.Response.Header().Set("Content-Type", "application/octet-stream")
 	combined := io.MultiReader(&buf, reader)
 	return e.Stream(http.StatusOK, "application/octet-stream", combined)

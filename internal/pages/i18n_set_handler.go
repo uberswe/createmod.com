@@ -30,10 +30,7 @@ func SetLanguageHandler() func(e *server.RequestEvent) error {
 		http.SetCookie(e.Response, cookie)
 
 		// compute return_to target; default "/"
-		returnTo := strings.TrimSpace(e.Request.URL.Query().Get("return_to"))
-		if returnTo == "" {
-			returnTo = "/"
-		}
+		returnTo := safeRedirectPath(e.Request.URL.Query().Get("return_to"), "/")
 
 		// Strip any existing language prefix from returnTo, then re-prefix
 		// with the newly selected language.

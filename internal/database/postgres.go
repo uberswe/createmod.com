@@ -232,18 +232,19 @@ func externalAuthFromDB(ea db.ExternalAuth) store.ExternalAuth {
 
 func modMetadataFromDB(m db.ModMetadatum) store.ModMetadata {
 	return store.ModMetadata{
-		ID:            m.ID,
-		Namespace:     m.Namespace,
-		DisplayName:   m.DisplayName,
-		Description:   m.Description,
-		IconURL:       m.IconUrl,
-		ModrinthSlug:  m.ModrinthSlug,
-		ModrinthURL:   m.ModrinthUrl,
-		CurseforgeID:  m.CurseforgeID,
-		CurseforgeURL: m.CurseforgeUrl,
-		SourceURL:     m.SourceUrl,
-		LastFetched:   fromPgTimestamptz(m.LastFetched),
-		ManuallySet:   m.ManuallySet,
+		ID:                 m.ID,
+		Namespace:          m.Namespace,
+		DisplayName:        m.DisplayName,
+		Description:        m.Description,
+		IconURL:            m.IconUrl,
+		ModrinthSlug:       m.ModrinthSlug,
+		ModrinthURL:        m.ModrinthUrl,
+		CurseforgeID:       m.CurseforgeID,
+		CurseforgeURL:      m.CurseforgeUrl,
+		SourceURL:          m.SourceUrl,
+		LastFetched:        fromPgTimestamptz(m.LastFetched),
+		ManuallySet:        m.ManuallySet,
+		BlocksitemsMatched: m.BlocksitemsMatched,
 	}
 }
 
@@ -2008,18 +2009,19 @@ func (ms *ModMetadataStoreImpl) Upsert(ctx context.Context, m *store.ModMetadata
 		m.ID = generateID()
 	}
 	_, err := ms.q.UpsertModMetadata(ctx, db.UpsertModMetadataParams{
-		ID:            m.ID,
-		Namespace:     m.Namespace,
-		DisplayName:   m.DisplayName,
-		Description:   m.Description,
-		IconUrl:       m.IconURL,
-		ModrinthSlug:  m.ModrinthSlug,
-		ModrinthUrl:   m.ModrinthURL,
-		CurseforgeID:  m.CurseforgeID,
-		CurseforgeUrl: m.CurseforgeURL,
-		SourceUrl:     m.SourceURL,
-		LastFetched:   toPgTimestamptz(m.LastFetched),
-		ManuallySet:   m.ManuallySet,
+		ID:                 m.ID,
+		Namespace:          m.Namespace,
+		DisplayName:        m.DisplayName,
+		Description:        m.Description,
+		IconUrl:            m.IconURL,
+		ModrinthSlug:       m.ModrinthSlug,
+		ModrinthUrl:        m.ModrinthURL,
+		CurseforgeID:       m.CurseforgeID,
+		CurseforgeUrl:      m.CurseforgeURL,
+		SourceUrl:          m.SourceURL,
+		LastFetched:        toPgTimestamptz(m.LastFetched),
+		ManuallySet:        m.ManuallySet,
+		BlocksitemsMatched: m.BlocksitemsMatched,
 	})
 	return err
 }

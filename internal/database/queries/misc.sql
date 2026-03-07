@@ -60,8 +60,8 @@ SELECT * FROM mod_metadata WHERE namespace = $1;
 -- name: UpsertModMetadata :one
 INSERT INTO mod_metadata (id, namespace, display_name, description, icon_url,
     modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url,
-    last_fetched, manually_set)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    last_fetched, manually_set, blocksitems_matched)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (namespace) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     description = EXCLUDED.description,
@@ -72,7 +72,8 @@ ON CONFLICT (namespace) DO UPDATE SET
     curseforge_url = EXCLUDED.curseforge_url,
     source_url = EXCLUDED.source_url,
     last_fetched = EXCLUDED.last_fetched,
-    manually_set = EXCLUDED.manually_set
+    manually_set = EXCLUDED.manually_set,
+    blocksitems_matched = EXCLUDED.blocksitems_matched
 RETURNING *;
 
 -- name: ListModMetadataStale :many

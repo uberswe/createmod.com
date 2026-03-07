@@ -423,11 +423,11 @@ a:hover {
   height: 20px;
 }
 .sidebar-item-external {
-  color: var(--tblr-green);
+  color: #bf9045;
 }
 .sidebar-item-external:hover {
-  color: var(--tblr-green);
-  background: rgba(47, 179, 68, 0.08);
+  color: #bf9045;
+  background: rgba(191, 144, 69, 0.1);
 }
 .sidebar-external-icon {
   width: 14px;

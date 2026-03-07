@@ -77,10 +77,7 @@ func loginWithStore(e *server.RequestEvent, appStore *store.Store, sessStore *se
 
 
 func loginSuccess(e *server.RequestEvent) error {
-	returnTo := strings.TrimSpace(e.Request.Form.Get("return_to"))
-	if returnTo == "" {
-		returnTo = "/"
-	}
+	returnTo := safeRedirectPath(e.Request.Form.Get("return_to"), "/")
 	if e.Request.Header.Get("HX-Request") != "" {
 		e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo))
 		return e.HTML(http.StatusNoContent, "")

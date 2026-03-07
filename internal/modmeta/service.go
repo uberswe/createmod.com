@@ -16,15 +16,16 @@ import (
 
 // ModMetadata holds enriched mod information from Modrinth/CurseForge.
 type ModMetadata struct {
-	Namespace     string
-	DisplayName   string
-	Description   string
-	IconURL       string
-	ModrinthSlug  string
-	ModrinthURL   string
-	CurseForgeID  string
-	CurseForgeURL string
-	SourceURL     string
+	Namespace          string
+	DisplayName        string
+	Description        string
+	IconURL            string
+	ModrinthSlug       string
+	ModrinthURL        string
+	CurseForgeID       string
+	CurseForgeURL      string
+	SourceURL          string
+	BlocksitemsMatched bool
 }
 
 // Service fetches and caches mod metadata from Modrinth and CurseForge.
@@ -121,23 +122,35 @@ func (s *Service) EnrichMod(namespace string) error {
 
 	meta := &ModMetadata{Namespace: namespace}
 
-	// 1. Try Modrinth direct lookup
+	// 1. Try BlocksItems lookup to get a proper display name
+	searchName := namespace // default search term for Modrinth/CurseForge fallbacks
+	if biName, matched := s.tryBlocksItemsLookup(namespace); matched && biName != "" {
+		meta.DisplayName = biName
+		meta.BlocksitemsMatched = true
+		slog.Debug("modmeta: BlocksItems matched", "namespace", namespace, "name", biName)
+		// Use the proper name for subsequent search queries if it differs
+		if !strings.EqualFold(biName, namespace) {
+			searchName = biName
+		}
+	}
+
+	// 2. Try Modrinth direct lookup (uses namespace as project slug)
 	if err := s.tryModrinthDirect(namespace, meta); err != nil {
 		slog.Debug("modmeta: Modrinth direct lookup failed", "namespace", namespace, "error", err)
 
-		// 2. Try Modrinth search fallback
-		if err := s.tryModrinthSearch(namespace, meta); err != nil {
+		// 3. Try Modrinth search fallback (uses searchName which may be BlocksItems display name)
+		if err := s.tryModrinthSearch(searchName, meta); err != nil {
 			slog.Debug("modmeta: Modrinth search failed", "namespace", namespace, "error", err)
 		}
 	}
 
-	// 3. Try CurseForge if we don't have a CurseForge URL yet
+	// 4. Try CurseForge if we don't have a CurseForge URL yet
 	if meta.CurseForgeURL == "" && s.curseForgeKey != "" {
 		if err := s.tryCurseForgeSlug(namespace, meta); err != nil {
 			slog.Debug("modmeta: CurseForge slug lookup failed", "namespace", namespace, "error", err)
 
-			// 4. Try CurseForge text search
-			if err := s.tryCurseForgeSearch(namespace, meta); err != nil {
+			// 5. Try CurseForge text search (uses searchName which may be BlocksItems display name)
+			if err := s.tryCurseForgeSearch(searchName, meta); err != nil {
 				slog.Debug("modmeta: CurseForge search failed", "namespace", namespace, "error", err)
 			}
 		}
@@ -191,6 +204,61 @@ func (s *Service) EnrichAll() {
 	}
 
 	slog.Info("modmeta: enrichment run complete", "enriched", enriched, "skipped", skipped, "total", len(modCounts))
+}
+
+// --- BlocksItems API ---
+
+type blocksitemsLookupResponse struct {
+	Data    []blocksitemsModEntry `json:"data"`
+	Matched bool                  `json:"matched"`
+	Status  string                `json:"status"`
+}
+
+type blocksitemsModEntry struct {
+	ModID string `json:"mod_id"`
+	Name  string `json:"name"`
+}
+
+// tryBlocksItemsLookup queries BlocksItems.com to resolve namespace → display name.
+// Returns the display name if matched, empty string otherwise.
+func (s *Service) tryBlocksItemsLookup(namespace string) (string, bool) {
+	reqURL := fmt.Sprintf("https://blocksitems.com/api/v1/mods/lookup/%s", url.PathEscape(namespace))
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		slog.Debug("modmeta: BlocksItems request build failed", "namespace", namespace, "error", err)
+		return "", false
+	}
+	req.Header.Set("User-Agent", "CreateMod.com/1.0 (hello@createmod.com)")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		slog.Debug("modmeta: BlocksItems request failed", "namespace", namespace, "error", err)
+		return "", false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Debug("modmeta: BlocksItems returned non-OK status", "namespace", namespace, "status", resp.StatusCode)
+		return "", false
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Debug("modmeta: BlocksItems read body failed", "namespace", namespace, "error", err)
+		return "", false
+	}
+
+	var result blocksitemsLookupResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		slog.Debug("modmeta: BlocksItems JSON parse failed", "namespace", namespace, "error", err)
+		return "", false
+	}
+
+	if !result.Matched || len(result.Data) == 0 {
+		return "", false
+	}
+
+	return result.Data[0].Name, true
 }
 
 // --- Modrinth API ---
@@ -425,14 +493,15 @@ func (s *Service) doCurseForgeSearch(cfURL string, meta *ModMetadata) error {
 func (s *Service) upsertMetadata(meta *ModMetadata) error {
 	ctx := context.Background()
 	return s.appStore.ModMetadata.Upsert(ctx, &store.ModMetadata{
-		Namespace:     meta.Namespace,
-		DisplayName:   meta.DisplayName,
-		Description:   meta.Description,
-		IconURL:       meta.IconURL,
-		ModrinthSlug:  meta.ModrinthSlug,
-		ModrinthURL:   meta.ModrinthURL,
-		CurseforgeID:  meta.CurseForgeID,
-		CurseforgeURL: meta.CurseForgeURL,
-		SourceURL:     meta.SourceURL,
+		Namespace:          meta.Namespace,
+		DisplayName:        meta.DisplayName,
+		Description:        meta.Description,
+		IconURL:            meta.IconURL,
+		ModrinthSlug:       meta.ModrinthSlug,
+		ModrinthURL:        meta.ModrinthURL,
+		CurseforgeID:       meta.CurseForgeID,
+		CurseforgeURL:      meta.CurseForgeURL,
+		SourceURL:          meta.SourceURL,
+		BlocksitemsMatched: meta.BlocksitemsMatched,
 	})
 }

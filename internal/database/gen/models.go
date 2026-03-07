@@ -148,20 +148,21 @@ type MinecraftVersion struct {
 }
 
 type ModMetadatum struct {
-	ID            string             `json:"id"`
-	Namespace     string             `json:"namespace"`
-	DisplayName   string             `json:"display_name"`
-	Description   string             `json:"description"`
-	IconUrl       string             `json:"icon_url"`
-	ModrinthSlug  string             `json:"modrinth_slug"`
-	ModrinthUrl   string             `json:"modrinth_url"`
-	CurseforgeID  string             `json:"curseforge_id"`
-	CurseforgeUrl string             `json:"curseforge_url"`
-	SourceUrl     string             `json:"source_url"`
-	LastFetched   pgtype.Timestamptz `json:"last_fetched"`
-	ManuallySet   bool               `json:"manually_set"`
-	Created       time.Time          `json:"created"`
-	Updated       time.Time          `json:"updated"`
+	ID                 string             `json:"id"`
+	Namespace          string             `json:"namespace"`
+	DisplayName        string             `json:"display_name"`
+	Description        string             `json:"description"`
+	IconUrl            string             `json:"icon_url"`
+	ModrinthSlug       string             `json:"modrinth_slug"`
+	ModrinthUrl        string             `json:"modrinth_url"`
+	CurseforgeID       string             `json:"curseforge_id"`
+	CurseforgeUrl      string             `json:"curseforge_url"`
+	SourceUrl          string             `json:"source_url"`
+	LastFetched        pgtype.Timestamptz `json:"last_fetched"`
+	ManuallySet        bool               `json:"manually_set"`
+	Created            time.Time          `json:"created"`
+	Updated            time.Time          `json:"updated"`
+	BlocksitemsMatched bool               `json:"blocksitems_matched"`
 }
 
 type NbtHash struct {

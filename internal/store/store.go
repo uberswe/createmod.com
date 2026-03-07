@@ -291,18 +291,19 @@ type SitemapGuide struct {
 
 // ModMetadata represents mod info from Modrinth/CurseForge.
 type ModMetadata struct {
-	ID            string
-	Namespace     string
-	DisplayName   string
-	Description   string
-	IconURL       string
-	ModrinthSlug  string
-	ModrinthURL   string
-	CurseforgeID  string
-	CurseforgeURL string
-	SourceURL     string
-	LastFetched   *time.Time
-	ManuallySet   bool
+	ID                 string
+	Namespace          string
+	DisplayName        string
+	Description        string
+	IconURL            string
+	ModrinthSlug       string
+	ModrinthURL        string
+	CurseforgeID       string
+	CurseforgeURL      string
+	SourceURL          string
+	LastFetched        *time.Time
+	ManuallySet        bool
+	BlocksitemsMatched bool
 }
 
 // ModCount represents a mod namespace with its schematic count.

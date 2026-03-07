@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -155,12 +156,14 @@ func Register(p RegisterParams) chi.Router {
 		maintenanceFlag.Store(true)
 	}
 	r.Use(requestLogger)
+	r.Use(securityHeaders)
 	r.Use(maintenanceModeMiddleware(maintenanceFlag))
 	r.Use(legacyFileCompat)
 	r.Use(legacySearchCompat)
 	r.Use(legacyCategoryCompat)
 	r.Use(legacyTagCompat)
 	r.Use(cookieAuth(p.SessionStore))
+	r.Use(csrfOriginCheck)
 
 	// Health check endpoint — excluded from maintenance mode via the middleware itself.
 	r.Get("/api/health", func(w http.ResponseWriter, _ *http.Request) {
@@ -265,15 +268,17 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
 	r.Post("/admin/tags/{id}/reject", Adapt(pages.AdminTagRejectHandler(p.CacheService, p.AppStore)))
-	// Auth
+	// Auth — rate-limited to 10 POST requests per IP per minute
+	authLimiter := newRateLimiter(10, time.Minute)
+	authRateLimit := rateLimitMiddleware(authLimiter)
 	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))
-	r.Post("/login", Adapt(pages.LoginPostHandler(p.AppStore, p.SessionStore)))
+	r.With(authRateLimit).Post("/login", Adapt(pages.LoginPostHandler(p.AppStore, p.SessionStore)))
 	r.Get("/register", Adapt(pages.RegisterHandler(registry, p.AppStore)))
-	r.Post("/register", Adapt(pages.RegisterPostHandler(p.AppStore, p.SessionStore)))
+	r.With(authRateLimit).Post("/register", Adapt(pages.RegisterPostHandler(p.AppStore, p.SessionStore)))
 	r.Get("/reset-password", Adapt(pages.PasswordResetHandler(registry, p.AppStore)))
-	r.Post("/reset-password", Adapt(pages.PasswordResetPostHandler(p.MailService, registry, p.AppStore)))
+	r.With(authRateLimit).Post("/reset-password", Adapt(pages.PasswordResetPostHandler(p.MailService, registry, p.AppStore)))
 	r.Get("/reset-password/{token}", Adapt(pages.PasswordResetConfirmHandler(registry, p.AppStore)))
-	r.Post("/reset-password/{token}", Adapt(pages.PasswordResetConfirmPostHandler(registry, p.AppStore, p.SessionStore)))
+	r.With(authRateLimit).Post("/reset-password/{token}", Adapt(pages.PasswordResetConfirmPostHandler(registry, p.AppStore, p.SessionStore)))
 	// OAuth routes
 	r.Get("/auth/discord", Adapt(pages.OAuthRedirectHandler(p.DiscordOAuth)))
 	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore)))
@@ -582,11 +587,154 @@ const maintenancePage = `<!DOCTYPE html>
 </body>
 </html>`
 
+// csrfOriginCheck is a middleware that validates the Origin or Referer header
+// on state-changing requests (POST, PUT, PATCH, DELETE). If neither header is
+// present or they point to a different host, the request is rejected.
+// Combined with SameSite=Lax session cookies, this provides robust CSRF protection.
+func csrfOriginCheck(next http.Handler) http.Handler {
+	safeMethods := map[string]bool{"GET": true, "HEAD": true, "OPTIONS": true}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if safeMethods[r.Method] {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		host := r.Host
+		if host == "" {
+			host = r.URL.Host
+		}
+
+		// Check Origin header first (most reliable)
+		if origin := r.Header.Get("Origin"); origin != "" {
+			// Parse to extract host
+			// Origin is usually "scheme://host" or "scheme://host:port"
+			originHost := origin
+			if idx := strings.Index(origin, "://"); idx >= 0 {
+				originHost = origin[idx+3:]
+			}
+			// Remove trailing path if any
+			if idx := strings.Index(originHost, "/"); idx >= 0 {
+				originHost = originHost[:idx]
+			}
+			if strings.EqualFold(originHost, host) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, "Forbidden: origin mismatch", http.StatusForbidden)
+			return
+		}
+
+		// Fall back to Referer header
+		if referer := r.Header.Get("Referer"); referer != "" {
+			refererHost := referer
+			if idx := strings.Index(referer, "://"); idx >= 0 {
+				refererHost = referer[idx+3:]
+			}
+			if idx := strings.Index(refererHost, "/"); idx >= 0 {
+				refererHost = refererHost[:idx]
+			}
+			if strings.EqualFold(refererHost, host) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, "Forbidden: referer mismatch", http.StatusForbidden)
+			return
+		}
+
+		// Neither Origin nor Referer present — allow for non-browser clients (API users).
+		// Browser-based requests will always include at least one of these headers.
+		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeaders sets standard security response headers on every request.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// rateLimiter provides a simple in-memory rate limiter per IP address.
+type rateLimiter struct {
+	mu       sync.Mutex
+	counters map[string]*rateLimitEntry
+	limit    int
+	window   time.Duration
+}
+
+type rateLimitEntry struct {
+	count  int
+	expiry time.Time
+}
+
+func newRateLimiter(limit int, window time.Duration) *rateLimiter {
+	rl := &rateLimiter{
+		counters: make(map[string]*rateLimitEntry),
+		limit:    limit,
+		window:   window,
+	}
+	// Cleanup goroutine — runs every window period to evict expired entries
+	go func() {
+		ticker := time.NewTicker(window)
+		defer ticker.Stop()
+		for range ticker.C {
+			rl.mu.Lock()
+			now := time.Now()
+			for k, v := range rl.counters {
+				if now.After(v.expiry) {
+					delete(rl.counters, k)
+				}
+			}
+			rl.mu.Unlock()
+		}
+	}()
+	return rl
+}
+
+// allow checks whether the given key is within the rate limit.
+// Returns true if allowed, false if the limit has been exceeded.
+func (rl *rateLimiter) allow(key string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	now := time.Now()
+	entry, ok := rl.counters[key]
+	if !ok || now.After(entry.expiry) {
+		rl.counters[key] = &rateLimitEntry{count: 1, expiry: now.Add(rl.window)}
+		return true
+	}
+	entry.count++
+	return entry.count <= rl.limit
+}
+
+// rateLimitMiddleware returns a middleware that limits requests per IP.
+func rateLimitMiddleware(rl *rateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := r.RemoteAddr
+			// Use X-Forwarded-For if behind a proxy
+			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+				ip = strings.SplitN(forwarded, ",", 2)[0]
+				ip = strings.TrimSpace(ip)
+			}
+			if !rl.allow(ip) {
+				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.
 func deriveOutSecret() string {
 	if s := os.Getenv("OUT_SECRET"); s != "" {
 		return s
 	}
+	slog.Warn("OUT_SECRET environment variable is not set; using insecure default — set OUT_SECRET in production")
 	h := sha256.Sum256([]byte("createmod-out-url-sign:default"))
 	return hex.EncodeToString(h[:])
 }

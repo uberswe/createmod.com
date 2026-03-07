@@ -332,7 +332,7 @@ func (q *Queries) GetMinecraftVersionByID(ctx context.Context, id string) (GetMi
 }
 
 const getModMetadataByNamespace = `-- name: GetModMetadataByNamespace :one
-SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated FROM mod_metadata WHERE namespace = $1
+SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated, blocksitems_matched FROM mod_metadata WHERE namespace = $1
 `
 
 func (q *Queries) GetModMetadataByNamespace(ctx context.Context, namespace string) (ModMetadatum, error) {
@@ -353,6 +353,7 @@ func (q *Queries) GetModMetadataByNamespace(ctx context.Context, namespace strin
 		&i.ManuallySet,
 		&i.Created,
 		&i.Updated,
+		&i.BlocksitemsMatched,
 	)
 	return i, err
 }
@@ -458,7 +459,7 @@ func (q *Queries) ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion
 }
 
 const listModMetadataStale = `-- name: ListModMetadataStale :many
-SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated FROM mod_metadata
+SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated, blocksitems_matched FROM mod_metadata
 WHERE manually_set = false
   AND (last_fetched IS NULL OR last_fetched < NOW() - INTERVAL '7 days')
 ORDER BY last_fetched NULLS FIRST
@@ -489,6 +490,7 @@ func (q *Queries) ListModMetadataStale(ctx context.Context, limit int32) ([]ModM
 			&i.ManuallySet,
 			&i.Created,
 			&i.Updated,
+			&i.BlocksitemsMatched,
 		); err != nil {
 			return nil, err
 		}
@@ -736,8 +738,8 @@ func (q *Queries) RecordOutgoingClick(ctx context.Context, arg RecordOutgoingCli
 const upsertModMetadata = `-- name: UpsertModMetadata :one
 INSERT INTO mod_metadata (id, namespace, display_name, description, icon_url,
     modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url,
-    last_fetched, manually_set)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    last_fetched, manually_set, blocksitems_matched)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (namespace) DO UPDATE SET
     display_name = EXCLUDED.display_name,
     description = EXCLUDED.description,
@@ -748,23 +750,25 @@ ON CONFLICT (namespace) DO UPDATE SET
     curseforge_url = EXCLUDED.curseforge_url,
     source_url = EXCLUDED.source_url,
     last_fetched = EXCLUDED.last_fetched,
-    manually_set = EXCLUDED.manually_set
-RETURNING id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated
+    manually_set = EXCLUDED.manually_set,
+    blocksitems_matched = EXCLUDED.blocksitems_matched
+RETURNING id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated, blocksitems_matched
 `
 
 type UpsertModMetadataParams struct {
-	ID            string             `json:"id"`
-	Namespace     string             `json:"namespace"`
-	DisplayName   string             `json:"display_name"`
-	Description   string             `json:"description"`
-	IconUrl       string             `json:"icon_url"`
-	ModrinthSlug  string             `json:"modrinth_slug"`
-	ModrinthUrl   string             `json:"modrinth_url"`
-	CurseforgeID  string             `json:"curseforge_id"`
-	CurseforgeUrl string             `json:"curseforge_url"`
-	SourceUrl     string             `json:"source_url"`
-	LastFetched   pgtype.Timestamptz `json:"last_fetched"`
-	ManuallySet   bool               `json:"manually_set"`
+	ID                 string             `json:"id"`
+	Namespace          string             `json:"namespace"`
+	DisplayName        string             `json:"display_name"`
+	Description        string             `json:"description"`
+	IconUrl            string             `json:"icon_url"`
+	ModrinthSlug       string             `json:"modrinth_slug"`
+	ModrinthUrl        string             `json:"modrinth_url"`
+	CurseforgeID       string             `json:"curseforge_id"`
+	CurseforgeUrl      string             `json:"curseforge_url"`
+	SourceUrl          string             `json:"source_url"`
+	LastFetched        pgtype.Timestamptz `json:"last_fetched"`
+	ManuallySet        bool               `json:"manually_set"`
+	BlocksitemsMatched bool               `json:"blocksitems_matched"`
 }
 
 func (q *Queries) UpsertModMetadata(ctx context.Context, arg UpsertModMetadataParams) (ModMetadatum, error) {
@@ -781,6 +785,7 @@ func (q *Queries) UpsertModMetadata(ctx context.Context, arg UpsertModMetadataPa
 		arg.SourceUrl,
 		arg.LastFetched,
 		arg.ManuallySet,
+		arg.BlocksitemsMatched,
 	)
 	var i ModMetadatum
 	err := row.Scan(
@@ -798,6 +803,7 @@ func (q *Queries) UpsertModMetadata(ctx context.Context, arg UpsertModMetadataPa
 		&i.ManuallySet,
 		&i.Created,
 		&i.Updated,
+		&i.BlocksitemsMatched,
 	)
 	return i, err
 }

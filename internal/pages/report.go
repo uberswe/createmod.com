@@ -24,10 +24,7 @@ func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) fun
 		targetType := e.Request.FormValue("target_type")
 		targetID := e.Request.FormValue("target_id")
 		reason := e.Request.FormValue("reason")
-		returnTo := e.Request.FormValue("return_to")
-		if returnTo == "" {
-			returnTo = "/"
-		}
+		returnTo := safeRedirectPath(e.Request.FormValue("return_to"), "/")
 		if targetType == "" || targetID == "" || reason == "" {
 			return e.String(http.StatusBadRequest, "missing required fields")
 		}
