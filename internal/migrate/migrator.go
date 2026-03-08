@@ -100,6 +100,29 @@ func (m *Migrator) tableExists(table string) bool {
 	return err == nil && name != ""
 }
 
+// columnExists checks if a column exists in a SQLite table.
+func (m *Migrator) columnExists(table, column string) bool {
+	rows, err := m.sqlite.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull int
+		var dfltValue interface{}
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dfltValue, &pk); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
+}
+
 // countSQLite returns the row count in a SQLite table.
 func (m *Migrator) countSQLite(table string) int64 {
 	if !m.tableExists(table) {
@@ -375,11 +398,26 @@ func (m *Migrator) migrateUsers(ctx context.Context) error {
 			return nil
 		}
 	}
-	rows, err := m.sqlite.Query(fmt.Sprintf(
-		`SELECT id, COALESCE(email,''), COALESCE(username,''), COALESCE(password,''), COALESCE(old_password,''),
-		        COALESCE(avatar,''), COALESCE(points,0), COALESCE(verified,0),
-		        COALESCE(deleted,''), created, updated
-		 FROM %s`, table))
+
+	// Build SELECT dynamically — some columns may not exist in older PocketBase schemas.
+	colOrDefault := func(col, fallback string) string {
+		if m.columnExists(table, col) {
+			return fmt.Sprintf("COALESCE(%s,%s)", col, fallback)
+		}
+		return fallback
+	}
+
+	query := fmt.Sprintf(
+		`SELECT id, COALESCE(email,''), COALESCE(username,''), COALESCE(password,''), %s,
+		        COALESCE(avatar,''), %s, COALESCE(verified,0),
+		        %s, created, updated
+		 FROM %s`,
+		colOrDefault("old_password", "''"),
+		colOrDefault("points", "0"),
+		colOrDefault("deleted", "''"),
+		table)
+
+	rows, err := m.sqlite.Query(query)
 	if err != nil {
 		return err
 	}
@@ -484,24 +522,42 @@ func (m *Migrator) migrateSchematics(ctx context.Context) error {
 	if !m.tableExists("schematics") {
 		return nil
 	}
-	rows, err := m.sqlite.Query(
+
+	// Build SELECT dynamically — some columns may not exist in older PocketBase schemas.
+	col := func(name, fallback string) string {
+		if m.columnExists("schematics", name) {
+			return fmt.Sprintf("COALESCE(%s,%s)", name, fallback)
+		}
+		return fallback
+	}
+
+	query := fmt.Sprintf(
 		`SELECT id, COALESCE(author,''), COALESCE(name,''), COALESCE(title,''),
 		        COALESCE(description,''), COALESCE(excerpt,''), COALESCE(content,''),
-		        COALESCE(postdate,''), COALESCE(modified,''), COALESCE(detected_language,''),
+		        COALESCE(postdate,''), COALESCE(modified,''), %s,
 		        COALESCE(featured_image,''), COALESCE(gallery,''),
 		        COALESCE(schematic_file,''), COALESCE(video,''),
 		        COALESCE(has_dependencies,0), COALESCE(dependencies,''),
 		        COALESCE(createmod_version,''), COALESCE(minecraft_version,''),
 		        COALESCE(views,0),
-		        COALESCE(block_count,0), COALESCE(dim_x,0), COALESCE(dim_y,0), COALESCE(dim_z,0),
-		        COALESCE(materials,'[]'), COALESCE(mods,'[]'),
-		        COALESCE(featured,0),
+		        %s, %s, %s, %s,
+		        %s, %s,
+		        %s,
 		        COALESCE(ai_description,''), COALESCE(moderated,0),
-		        COALESCE(moderation_reason,''), COALESCE(blacklisted,0),
-		        COALESCE(scheduled_at,''), COALESCE(deleted,''),
+		        COALESCE(moderation_reason,''), %s,
+		        %s, COALESCE(deleted,''),
 		        COALESCE(old_id,0), COALESCE(status,''), COALESCE(type,''),
 		        created, updated
-		 FROM schematics`)
+		 FROM schematics`,
+		col("detected_language", "''"),
+		col("block_count", "0"), col("dim_x", "0"), col("dim_y", "0"), col("dim_z", "0"),
+		col("materials", "'[]'"), col("mods", "'[]'"),
+		col("featured", "0"),
+		col("blacklisted", "0"),
+		col("scheduled_at", "''"),
+	)
+
+	rows, err := m.sqlite.Query(query)
 	if err != nil {
 		return err
 	}
