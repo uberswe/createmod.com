@@ -344,6 +344,10 @@ func (s *Server) startJobWorker() {
 
 // rebuildSearchIndexFromStore rebuilds the search index using the PostgreSQL store.
 func (s *Server) rebuildSearchIndexFromStore() {
+	if s.searchService == nil {
+		slog.Warn("search rebuild: skipped — search service not initialised yet")
+		return
+	}
 	ctx := context.Background()
 	storeSchematics, err := s.store.Schematics.ListAllForIndex(ctx)
 	if err != nil {

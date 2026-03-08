@@ -25,7 +25,7 @@ spec:
         - name: ghcr-pull-secret
       containers:
         - name: createmod
-          image: ghcr.io/uberswe/createmod.com:development-5abd921
+          image: ghcr.io/uberswe/createmod.com:master-3928b91
           imagePullPolicy: Always
           ports:
             - containerPort: 8090
@@ -58,10 +58,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
   volumeClaimTemplates:
     - metadata:
         name: data
