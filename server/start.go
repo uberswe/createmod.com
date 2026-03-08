@@ -170,21 +170,21 @@ func (s *Server) Start() {
 	migrating := s.conf.MaintenanceMode != nil && s.conf.MaintenanceMode.Load()
 
 	if !migrating {
-		// Full index rebuild + trending scores + sitemap in the background
-		// so the server is available to handle requests right away.
+		// Run search index rebuild, sitemap generation, and schematic repair
+		// sequentially in a single background goroutine so they don't compete
+		// for memory.
 		go func() {
 			slog.Info("search: background index rebuild starting")
 			s.rebuildSearchIndexFromStore()
 			s.sitemapService.Generate(s.store)
 			slog.Info("search: background index rebuild complete")
+
+			pages.RepairSchematics(s.storageService, s.store)
 		}()
 
 		// Warm page caches so the first visitor never waits
 		pages.WarmIndexCache(s.cacheService, s.store)
 		pages.WarmVideosCache(s.cacheService, s.store)
-
-		// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
-		go pages.RepairSchematics(s.storageService, s.store)
 
 		// Background: periodically clean up expired temp uploads from PostgreSQL
 		pages.StartTempUploadCleanup(s.store)
@@ -306,8 +306,9 @@ func (s *Server) PostMigrationRebuild() {
 	pages.WarmVideosCache(s.cacheService, s.store)
 	slog.Info("post-migration: rebuild complete")
 
-	// Start background jobs that were deferred during migration.
-	go pages.RepairSchematics(s.storageService, s.store)
+	// Start deferred background jobs. Repair runs after rebuild is done
+	// so they don't compete for memory.
+	pages.RepairSchematics(s.storageService, s.store)
 	pages.StartTempUploadCleanup(s.store)
 	s.startJobWorker()
 }
