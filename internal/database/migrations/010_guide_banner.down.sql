@@ -1,0 +1,1 @@
+ALTER TABLE guides DROP COLUMN IF EXISTS banner_url;

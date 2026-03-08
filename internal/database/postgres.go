@@ -165,6 +165,7 @@ func guideFromDB(g db.Guide) store.Guide {
 		Content:     g.Content,
 		Slug:        g.Slug,
 		UploadLink:  g.UploadLink,
+		BannerURL:   g.BannerUrl,
 		Created:     g.Created,
 		Updated:     g.Updated,
 	}
@@ -1243,6 +1244,7 @@ func (gs *GuideStoreImpl) Create(ctx context.Context, g *store.Guide) error {
 		Content:     g.Content,
 		Slug:        g.Slug,
 		UploadLink:  g.UploadLink,
+		BannerUrl:   g.BannerURL,
 	})
 	return err
 }
@@ -1254,6 +1256,7 @@ func (gs *GuideStoreImpl) Update(ctx context.Context, g *store.Guide) error {
 		Description: ptrStr(g.Description),
 		Content:     ptrStr(g.Content),
 		UploadLink:  ptrStr(g.UploadLink),
+		BannerUrl:   ptrStr(g.BannerURL),
 	})
 	return err
 }
@@ -2187,6 +2190,24 @@ func (ss *StatsStoreImpl) HourlyStats(ctx context.Context, table string, cutoff 
 		}
 	case "users":
 		rows, err := ss.q.HourlyUserStats(ctx, cutoff)
+		if err != nil {
+			return nil, err
+		}
+		result = make([]store.HourlyStat, len(rows))
+		for i, r := range rows {
+			result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Count}
+		}
+	case "schematic_views":
+		rows, err := ss.q.HourlyViewStats(ctx, cutoff)
+		if err != nil {
+			return nil, err
+		}
+		result = make([]store.HourlyStat, len(rows))
+		for i, r := range rows {
+			result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Count}
+		}
+	case "schematic_downloads":
+		rows, err := ss.q.HourlyDownloadStats(ctx, cutoff)
 		if err != nil {
 			return nil, err
 		}

@@ -20,7 +20,7 @@ VALUES (
 <ol>
 <li>Craft a <strong>Schematic and Quill</strong> (empty schematic + feather in a crafting table).</li>
 <li>Right-click to set the <strong>first corner</strong> of your build.</li>
-<li>Right-click again to set the <strong>second corner</strong> — this defines the bounding box.</li>
+<li>Right-click again to set the <strong>second corner</strong>. This defines the bounding box.</li>
 <li>Confirm the selection by right-clicking a third time. A <code>.nbt</code> file is saved to your <code>.minecraft/schematics/</code> folder.</li>
 </ol>
 <p>You can find your schematics folder at:</p>
@@ -36,7 +36,7 @@ VALUES (
 <h2>Step 3: Upload Your .nbt File</h2>
 <ol>
 <li>Click <strong>Choose File</strong> and select your <code>.nbt</code> schematic file.</li>
-<li>The file will be uploaded and analyzed automatically — block counts, dimensions, and required mods are extracted from the NBT data.</li>
+<li>The file will be uploaded and analyzed automatically. Block counts, dimensions, and required mods are extracted from the NBT data.</li>
 <li>You will be taken to a preview page where you can review the details.</li>
 </ol>
 
@@ -54,11 +54,11 @@ VALUES (
 
 <h2>Tips for a Great Upload</h2>
 <ul>
-<li><strong>Use a descriptive title</strong> — "Automated Iron Farm" is better than "My Build 3".</li>
-<li><strong>Write a clear description</strong> — explain what the build does, the required mods/addons, and any setup instructions.</li>
-<li><strong>Pick the right category</strong> — this helps users browsing by category find your work.</li>
-<li><strong>Add screenshots</strong> — a picture is worth a thousand words. Show the build in action!</li>
-<li><strong>Keep file sizes reasonable</strong> — trim your schematic selection box tightly around the build to avoid capturing empty space.</li>
+<li><strong>Use a descriptive title</strong>. "Automated Iron Farm" is better than "My Build 3".</li>
+<li><strong>Write a clear description</strong>. Explain what the build does, the required mods/addons, and any setup instructions.</li>
+<li><strong>Pick the right category</strong>. This helps users browsing by category find your work.</li>
+<li><strong>Add clear screenshots</strong>. Viewers should be able to tell what the build is at a glance. Take screenshots in creative mode during daytime with the HUD hidden (press F1) for the best results.</li>
+<li><strong>Keep file sizes reasonable</strong>. Trim your schematic selection box tightly around the build to avoid capturing empty space.</li>
 </ul>',
     'how-to-upload-a-schematic',
     ''
@@ -91,11 +91,10 @@ VALUES (
 <h2>Step 3: Place the Schematic in Your World</h2>
 <ol>
 <li>Open your Minecraft world.</li>
-<li>Craft or obtain a <strong>Schematic and Quill</strong>, then right-click it in an empty area — this isn''t strictly needed but helps you learn the tool.</li>
 <li>Craft an <strong>Empty Schematic</strong> (paper in a crafting table) and open the <strong>Schematic Table</strong>.</li>
 <li>Place your <strong>Empty Schematic</strong> in the Schematic Table, and you should see a list of available schematics including the one you downloaded.</li>
 <li>Select the schematic and click <strong>Upload Schematic</strong> to write it to the empty schematic item.</li>
-<li>Place the filled schematic into a <strong>Schematicannon</strong> along with building materials (blocks).</li>
+<li>Place the filled schematic into a <strong>Schematicannon</strong> along with building materials (blocks). Tip: use a <strong>Written Book</strong> or <strong>Clipboard</strong> with the schematic to get a full material checklist.</li>
 <li>Use the <strong>Schematicannon</strong> to build the structure automatically, or use the <strong>Schematic</strong> item directly to get a holographic preview and place blocks manually.</li>
 </ol>
 
@@ -117,17 +116,17 @@ VALUES (
     'guide_getting_001',
     NULL,
     'Getting Started with the Create Mod',
-    'An introduction to the Create mod for Minecraft — what it is, how to install it, and first steps.',
+    'An introduction to the Create mod for Minecraft: what it is, how to install it, and first steps.',
     '<h2>What Is the Create Mod?</h2>
-<p>The <a href="https://modrinth.com/mod/create" target="_blank">Create mod</a> is a Minecraft mod focused on building mechanical contraptions, automation, and aesthetic machinery. Unlike many tech mods, Create emphasizes <strong>visual, physical machines</strong> — you can watch gears turn, belts move, and pistons push in real time.</p>
+<p>The <a href="https://modrinth.com/mod/create" target="_blank">Create mod</a> is a Minecraft mod focused on building mechanical contraptions, automation, and aesthetic machinery. Unlike many tech mods, Create emphasizes <strong>visual, physical machines</strong>. You can watch gears turn, belts move, and pistons push in real time.</p>
 <p>Key features include:</p>
 <ul>
-<li><strong>Rotational power</strong> — waterwheels, windmills, and hand cranks generate Stress Units (SU) that drive machines.</li>
-<li><strong>Mechanical components</strong> — shafts, gearboxes, belts, and clutches transfer and control rotation.</li>
-<li><strong>Automation</strong> — mechanical crafters, deployers, and funnels let you automate almost any recipe.</li>
-<li><strong>Logistics</strong> — belts, chutes, and smart funnels move items around your factory.</li>
-<li><strong>Trains</strong> — build and ride custom trains across your world with the Create train system.</li>
-<li><strong>Schematics</strong> — save, share, and deploy builds using the schematic system (that is what this site is for!).</li>
+<li><strong>Rotational power</strong>: waterwheels, windmills, and hand cranks generate Stress Units (SU) that drive machines.</li>
+<li><strong>Mechanical components</strong>: shafts, gearboxes, belts, and clutches transfer and control rotation.</li>
+<li><strong>Automation</strong>: mechanical crafters, deployers, and funnels let you automate almost any recipe.</li>
+<li><strong>Logistics</strong>: belts, chutes, and smart funnels move items around your factory.</li>
+<li><strong>Trains</strong>: build and ride custom trains across your world with the Create train system.</li>
+<li><strong>Schematics</strong>: save, share, and deploy builds using the schematic system (that is what this site is for!).</li>
 </ul>
 
 <h2>Installing the Create Mod</h2>
@@ -136,7 +135,7 @@ VALUES (
 <ol>
 <li>Install <a href="https://modrinth.com/app" target="_blank">Modrinth App</a>, <a href="https://prismlauncher.org/" target="_blank">Prism Launcher</a>, or <a href="https://www.curseforge.com/download/app" target="_blank">CurseForge App</a>.</li>
 <li>Search for <strong>"Create"</strong> in the mod browser.</li>
-<li>Click Install — the launcher handles dependencies automatically.</li>
+<li>Click Install. The launcher handles dependencies automatically.</li>
 </ol>
 <h3>Manual Installation</h3>
 <ol>
@@ -151,7 +150,7 @@ VALUES (
 <p>A great starting point is a <strong>waterwheel setup</strong>:</p>
 <ol>
 <li>Find or create a water source with flowing water.</li>
-<li>Craft a <strong>Water Wheel</strong> and place it in the flowing water — it starts generating rotational force (SU).</li>
+<li>Craft a <strong>Water Wheel</strong> and place it in the flowing water. It starts generating rotational force (SU).</li>
 <li>Attach a <strong>Shaft</strong> to the water wheel and extend it to where you want to use the power.</li>
 <li>Connect a <strong>Mechanical Press</strong> or <strong>Millstone</strong> to process items.</li>
 <li>Use <strong>Belts</strong> and <strong>Funnels</strong> to feed items in and collect the output.</li>

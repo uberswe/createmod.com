@@ -43,6 +43,39 @@ func (q *Queries) HourlyCommentStats(ctx context.Context, created time.Time) ([]
 	return items, nil
 }
 
+const hourlyDownloadStats = `-- name: HourlyDownloadStats :many
+SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, COUNT(*) AS count
+FROM schematic_downloads
+WHERE created > $1
+GROUP BY hour
+ORDER BY hour
+`
+
+type HourlyDownloadStatsRow struct {
+	Hour  string `json:"hour"`
+	Count int64  `json:"count"`
+}
+
+func (q *Queries) HourlyDownloadStats(ctx context.Context, created time.Time) ([]HourlyDownloadStatsRow, error) {
+	rows, err := q.db.Query(ctx, hourlyDownloadStats, created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HourlyDownloadStatsRow{}
+	for rows.Next() {
+		var i HourlyDownloadStatsRow
+		if err := rows.Scan(&i.Hour, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const hourlySchematicStats = `-- name: HourlySchematicStats :many
 SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, COUNT(*) AS count
 FROM schematics
@@ -109,8 +142,41 @@ func (q *Queries) HourlyUserStats(ctx context.Context, created time.Time) ([]Hou
 	return items, nil
 }
 
+const hourlyViewStats = `-- name: HourlyViewStats :many
+SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, SUM(count)::BIGINT AS count
+FROM schematic_views
+WHERE created > $1
+GROUP BY hour
+ORDER BY hour
+`
+
+type HourlyViewStatsRow struct {
+	Hour  string `json:"hour"`
+	Count int64  `json:"count"`
+}
+
+func (q *Queries) HourlyViewStats(ctx context.Context, created time.Time) ([]HourlyViewStatsRow, error) {
+	rows, err := q.db.Query(ctx, hourlyViewStats, created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HourlyViewStatsRow{}
+	for rows.Next() {
+		var i HourlyViewStatsRow
+		if err := rows.Scan(&i.Hour, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const monthlyUserDownloads = `-- name: MonthlyUserDownloads :many
-SELECT to_char(sd.created, 'YYYY-MM') AS month, COUNT(*) AS count
+SELECT to_char(sd.created, 'YYYYMM') AS month, COUNT(*) AS count
 FROM schematic_downloads sd
 JOIN schematics s ON s.id = sd.schematic_id
 WHERE s.author_id = $1
@@ -151,7 +217,7 @@ func (q *Queries) MonthlyUserDownloads(ctx context.Context, arg MonthlyUserDownl
 }
 
 const monthlyUserUploads = `-- name: MonthlyUserUploads :many
-SELECT to_char(created, 'YYYY-MM') AS month, COUNT(*) AS count
+SELECT to_char(created, 'YYYYMM') AS month, COUNT(*) AS count
 FROM schematics
 WHERE author_id = $1
   AND deleted IS NULL
@@ -191,7 +257,7 @@ func (q *Queries) MonthlyUserUploads(ctx context.Context, arg MonthlyUserUploads
 }
 
 const monthlyUserViews = `-- name: MonthlyUserViews :many
-SELECT to_char(sv.created, 'YYYY-MM') AS month, SUM(sv.count)::BIGINT AS count
+SELECT to_char(sv.created, 'YYYYMM') AS month, SUM(sv.count)::BIGINT AS count
 FROM schematic_views sv
 JOIN schematics s ON s.id = sv.schematic_id
 WHERE s.author_id = $1

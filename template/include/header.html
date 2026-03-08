@@ -6,7 +6,7 @@
         <a href="{{ LangURL .Language "/" }}" class="top-header-brand">
             <img alt="CreateMod.com logo" src="/assets/x/logo.png" height="60">
         </a>
-        <form class="top-header-search" action="/search" method="post" autocomplete="off" id="search-form" novalidate hx-post="/search" hx-target="body" hx-swap="outerHTML" hx-push-url="true">
+        <form class="top-header-search" action="/search" method="post" autocomplete="off" id="search-form" novalidate hx-post="/search" hx-target="body" hx-swap="innerHTML" hx-select="body" hx-push-url="true">
             <div class="input-group">
                 <input id="search-field" type="text" value="" name="q" class="form-control" placeholder="Search…" aria-label="Search CreateMod.com">
                 <button class="btn btn-primary" type="submit" aria-label="Search">

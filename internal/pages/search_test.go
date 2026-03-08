@@ -55,8 +55,8 @@ func Test_Search_HTMX_HeaderFormAttributes(t *testing.T) {
 	if !strings.Contains(header, "hx-target=\"body\"") {
 		t.Errorf("header search form should include hx-target=\"body\"")
 	}
-	if !strings.Contains(header, "hx-swap=\"outerHTML\"") {
-		t.Errorf("header search form should include hx-swap=\"outerHTML\"")
+	if !strings.Contains(header, "hx-swap=\"innerHTML\"") {
+		t.Errorf("header search form should include hx-swap=\"innerHTML\"")
 	}
 	if !strings.Contains(header, "hx-push-url=\"true\"") {
 		t.Errorf("header search form should include hx-push-url=\"true\"")

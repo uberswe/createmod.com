@@ -40,30 +40,14 @@
         </div>
         <div class="subheader mb-2">{{ T .Language "Minimum Rating" }}</div>
         <div class="mb-3">
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="rating" value="-1" {{ if eq .Rating -1 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Any rating" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="rating" value="5" {{ if eq .Rating 5 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "5 stars" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="rating" value="4" {{ if eq .Rating 4 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "4 stars" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="rating" value="3" {{ if eq .Rating 3 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "3 stars" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="rating" value="2" {{ if eq .Rating 2 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "2 stars" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="rating" value="1" {{ if eq .Rating 1 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "1 star" }}</span>
-            </label>
+            <input type="hidden" name="rating" id="rating-value" value="{{ .Rating }}">
+            <div class="d-flex align-items-center gap-2">
+                <input type="range" class="form-range flex-grow-1" min="0" max="5" step="1"
+                       value="{{ if eq .Rating -1 }}0{{ else }}{{ .Rating }}{{ end }}"
+                       id="rating-slider"
+                       oninput="var v=parseInt(this.value);document.getElementById('rating-value').value=v===0?-1:v;document.getElementById('rating-label').textContent=v===0?'{{ T .Language "Any rating" }}':v+(v===1?' {{ T .Language "star" }}':' {{ T .Language "stars" }}');">
+                <span id="rating-label" class="text-secondary small" style="min-width:5em;">{{ if eq .Rating -1 }}{{ T .Language "Any rating" }}{{ else }}{{ .Rating }} {{ if eq .Rating 1 }}{{ T .Language "star" }}{{ else }}{{ T .Language "stars" }}{{ end }}{{ end }}</span>
+            </div>
         </div>
         <div class="subheader mb-2">{{ T .Language "Category" }}</div>
         <div class="mb-3">

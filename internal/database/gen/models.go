@@ -127,6 +127,7 @@ type Guide struct {
 	Created     time.Time `json:"created"`
 	Updated     time.Time `json:"updated"`
 	Views       int32     `json:"views"`
+	BannerUrl   string    `json:"banner_url"`
 }
 
 type GuideTranslation struct {

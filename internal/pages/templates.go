@@ -49,27 +49,27 @@ func NewTestRegistry() *server.Registry {
 			return AllHreflangs()
 		},
 		"externalDomain": ExternalDomain,
-		"LangFlag": func(code string) string {
+		"LangFlag": func(code string) html.HTML {
+			cc := "gb"
 			switch code {
 			case "en":
-				return "\U0001F1EC\U0001F1E7"
+				cc = "gb"
 			case "pt-BR":
-				return "\U0001F1E7\U0001F1F7"
+				cc = "br"
 			case "pt-PT":
-				return "\U0001F1F5\U0001F1F9"
+				cc = "pt"
 			case "es":
-				return "\U0001F1EA\U0001F1F8"
+				cc = "es"
 			case "de":
-				return "\U0001F1E9\U0001F1EA"
+				cc = "de"
 			case "pl":
-				return "\U0001F1F5\U0001F1F1"
+				cc = "pl"
 			case "ru":
-				return "\U0001F1F7\U0001F1FA"
+				cc = "ru"
 			case "zh-Hans":
-				return "\U0001F1E8\U0001F1F3"
-			default:
-				return "\U0001F310"
+				cc = "cn"
 			}
+			return html.HTML(`<span class="fi fi-` + cc + `"></span>`)
 		},
 	})
 	return r
