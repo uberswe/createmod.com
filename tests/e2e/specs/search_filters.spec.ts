@@ -78,9 +78,10 @@ test.describe('Search page filters', () => {
 
     await page.waitForSelector('#search-results');
 
-    // Select 4-star minimum rating
-    const fourStar = page.locator('#advanced-search-form input[name="rating"][value="4"]');
-    await fourStar.check();
+    // Move the rating range slider to 4 stars
+    const slider = page.locator('#rating-slider');
+    await slider.fill('4');
+    await slider.dispatchEvent('input');
 
     await page.waitForTimeout(1000);
     expect(page.url()).toContain('rating=4');
