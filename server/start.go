@@ -163,51 +163,35 @@ func (s *Server) Start() {
 	log.Println("Starting Search Server")
 	s.searchService = search.New(s.storageService)
 
-	// Full index rebuild + trending scores + sitemap in the background
-	// so the server is available to handle requests right away.
-	go func() {
-		slog.Info("search: background index rebuild starting")
-		s.rebuildSearchIndexFromStore()
-		s.sitemapService.Generate(s.store)
-		slog.Info("search: background index rebuild complete")
-	}()
+	// When maintenance mode is active (SQLite migration in progress),
+	// skip all heavy background jobs to give the migration maximum
+	// memory. PostMigrationRebuild() will run them after migration
+	// completes.
+	migrating := s.conf.MaintenanceMode != nil && s.conf.MaintenanceMode.Load()
 
-	// Warm page caches so the first visitor never waits
-	pages.WarmIndexCache(s.cacheService, s.store)
-	pages.WarmVideosCache(s.cacheService, s.store)
+	if !migrating {
+		// Full index rebuild + trending scores + sitemap in the background
+		// so the server is available to handle requests right away.
+		go func() {
+			slog.Info("search: background index rebuild starting")
+			s.rebuildSearchIndexFromStore()
+			s.sitemapService.Generate(s.store)
+			slog.Info("search: background index rebuild complete")
+		}()
 
-	// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
-	go pages.RepairSchematics(s.storageService, s.store)
+		// Warm page caches so the first visitor never waits
+		pages.WarmIndexCache(s.cacheService, s.store)
+		pages.WarmVideosCache(s.cacheService, s.store)
 
-	// Background: periodically clean up expired temp uploads from PostgreSQL
-	pages.StartTempUploadCleanup(s.store)
+		// Background: repair schematics (validate NBT, fill missing stats, soft-delete bad entries)
+		go pages.RepairSchematics(s.storageService, s.store)
 
-	// Start River job worker for periodic background jobs.
-	jobCtx := context.Background()
-	w, err := jobs.New(jobCtx, jobs.Config{
-		Pool: s.pool,
-		Deps: jobs.Deps{
-			Store:        s.store,
-			Storage:      s.storageService,
-			Search:       s.searchService,
-			Cache:        s.cacheService,
-			Sitemap:      s.sitemapService,
-			AIDesc:       s.aiDescriptionService,
-			Translation:  s.translationService,
-			PointLog:     s.pointLogService,
-			ModMeta:      s.modMetaService,
-			SessionStore: s.sessionStore,
-		},
-	})
-	if err != nil {
-		slog.Error("failed to create River job worker", "error", err)
+		// Background: periodically clean up expired temp uploads from PostgreSQL
+		pages.StartTempUploadCleanup(s.store)
+
+		s.startJobWorker()
 	} else {
-		if err := w.Start(jobCtx); err != nil {
-			slog.Error("failed to start River job worker", "error", err)
-		} else {
-			s.jobWorker = w
-			slog.Info("River job worker started")
-		}
+		slog.Info("maintenance mode active — deferring background jobs until migration completes")
 	}
 
 	// ROUTES
@@ -313,6 +297,7 @@ func anyLetter(r rune) bool {
 // PostMigrationRebuild rebuilds the search index, sitemaps, and page caches
 // after a data migration has populated the database. Call this when
 // maintenance mode is disabled following a SQLite-to-PostgreSQL migration.
+// It also starts background jobs that were deferred during migration.
 func (s *Server) PostMigrationRebuild() {
 	slog.Info("post-migration: rebuilding search index, sitemaps, and caches")
 	s.rebuildSearchIndexFromStore()
@@ -320,6 +305,41 @@ func (s *Server) PostMigrationRebuild() {
 	pages.WarmIndexCache(s.cacheService, s.store)
 	pages.WarmVideosCache(s.cacheService, s.store)
 	slog.Info("post-migration: rebuild complete")
+
+	// Start background jobs that were deferred during migration.
+	go pages.RepairSchematics(s.storageService, s.store)
+	pages.StartTempUploadCleanup(s.store)
+	s.startJobWorker()
+}
+
+// startJobWorker initialises and starts the River background job worker.
+func (s *Server) startJobWorker() {
+	jobCtx := context.Background()
+	w, err := jobs.New(jobCtx, jobs.Config{
+		Pool: s.pool,
+		Deps: jobs.Deps{
+			Store:        s.store,
+			Storage:      s.storageService,
+			Search:       s.searchService,
+			Cache:        s.cacheService,
+			Sitemap:      s.sitemapService,
+			AIDesc:       s.aiDescriptionService,
+			Translation:  s.translationService,
+			PointLog:     s.pointLogService,
+			ModMeta:      s.modMetaService,
+			SessionStore: s.sessionStore,
+		},
+	})
+	if err != nil {
+		slog.Error("failed to create River job worker", "error", err)
+		return
+	}
+	if err := w.Start(jobCtx); err != nil {
+		slog.Error("failed to start River job worker", "error", err)
+		return
+	}
+	s.jobWorker = w
+	slog.Info("River job worker started")
 }
 
 // rebuildSearchIndexFromStore rebuilds the search index using the PostgreSQL store.
