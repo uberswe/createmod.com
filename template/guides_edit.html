@@ -18,12 +18,22 @@
         </div>
         <div class="row">
           <div class="col-12 col-lg-9">
-            <form class="card" action="/guides/{{ .GuideID }}" method="post" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
+            <form class="card" action="/guides/{{ .GuideID }}" method="post" enctype="multipart/form-data" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Guide details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
                   <input type="text" class="form-control" id="title" name="title" value="{{ .GuideTitle }}" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label" for="banner">{{ T .Language "Banner image" }}</label>
+                  {{ if .BannerURL }}
+                  <div class="mb-2">
+                    <img src="{{ .BannerURL }}" alt="{{ T .Language "Current banner" }}" class="rounded" style="max-width:100%;height:auto;" loading="lazy" />
+                  </div>
+                  {{ end }}
+                  <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
+                  <small class="form-hint">{{ T .Language "Recommended: 1600x400 (4:1 ratio). Max 2MB. Will be cropped and converted to WebP." }}{{ if .BannerURL }} {{ T .Language "Leave empty to keep current banner." }}{{ end }}</small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="guide-editor">{{ T .Language "Content" }}</label>

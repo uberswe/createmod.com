@@ -19,12 +19,13 @@ var guidesTemplates = append([]string{
 
 // GuideItem represents a lightweight guide entry.
 type GuideItem struct {
-	ID       string
-	Title    string
-	Excerpt  string
-	URL      string // internal detail page URL
-	VideoURL string // optional external video link wrapped via /out?url=...&guide={id}
-	Views    int
+	ID        string
+	Title     string
+	Excerpt   string
+	URL       string // internal detail page URL
+	VideoURL  string // optional external video link wrapped via /out?url=...&guide={id}
+	BannerURL string
+	Views     int
 }
 
 type GuidesData struct {
@@ -79,7 +80,7 @@ func GuidesHandler(registry *server.Registry, cacheService *cache.Service, outSe
 			if strings.HasPrefix(strings.ToLower(video), "http://") || strings.HasPrefix(strings.ToLower(video), "https://") {
 				videoWrapped = outurl.BuildPathWithSource(video, outSecret, "guide", g.ID)
 			}
-			it := GuideItem{ID: g.ID, Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, Views: g.Views}
+			it := GuideItem{ID: g.ID, Title: title, Excerpt: excerpt, URL: link, VideoURL: videoWrapped, BannerURL: g.BannerURL, Views: g.Views}
 			if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
 				continue
 			}

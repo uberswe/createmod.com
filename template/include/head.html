@@ -37,6 +37,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
     <!-- Dropzone CSS via CDN (for upload pages) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous">
+    <!-- Flag icons for language selector -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" crossorigin="anonymous">
     <!-- Theme variables & Tabler overrides (local) -->
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project overrides (small tweaks) -->
@@ -89,15 +91,19 @@
   (function(){try{var t=document.documentElement.getAttribute("data-bs-theme");if(t)document.body.setAttribute("data-bs-theme",t);}catch(e){}})();
   (function(){
     try {
-      document.addEventListener('click', function(e){
-        var btn = e.target && e.target.closest && e.target.closest('.sidebar-mobile-toggle');
-        if (btn) {
-          document.body.classList.toggle('sidebar-open');
-        }
-      });
-      document.body.addEventListener('htmx:afterOnLoad', function(){
-        document.body.classList.remove('sidebar-open');
-      });
+      // Guard: attach document-level listeners only once to prevent stacking.
+      if (!window._sidebarInit) {
+        window._sidebarInit = true;
+        document.addEventListener('click', function(e){
+          var btn = e.target && e.target.closest && e.target.closest('.sidebar-mobile-toggle');
+          if (btn) {
+            document.body.classList.toggle('sidebar-open');
+          }
+        });
+        document.addEventListener('htmx:afterOnLoad', function(){
+          document.body.classList.remove('sidebar-open');
+        });
+      }
     } catch(_) {}
   })();
 </script>

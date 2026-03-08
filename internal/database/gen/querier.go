@@ -113,8 +113,10 @@ type Querier interface {
 	GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserMetum, error)
 	HasAchievement(ctx context.Context, arg HasAchievementParams) (bool, error)
 	HourlyCommentStats(ctx context.Context, created time.Time) ([]HourlyCommentStatsRow, error)
+	HourlyDownloadStats(ctx context.Context, created time.Time) ([]HourlyDownloadStatsRow, error)
 	HourlySchematicStats(ctx context.Context, created time.Time) ([]HourlySchematicStatsRow, error)
 	HourlyUserStats(ctx context.Context, created time.Time) ([]HourlyUserStatsRow, error)
+	HourlyViewStats(ctx context.Context, created time.Time) ([]HourlyViewStatsRow, error)
 	IncrementCollectionViews(ctx context.Context, id string) error
 	IncrementGuideViews(ctx context.Context, id string) error
 	IncrementSchematicDownloads(ctx context.Context, id string) error

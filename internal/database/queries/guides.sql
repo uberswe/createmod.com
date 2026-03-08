@@ -8,8 +8,8 @@ SELECT * FROM guides WHERE slug = $1;
 SELECT * FROM guides ORDER BY created DESC LIMIT $1 OFFSET $2;
 
 -- name: CreateGuide :one
-INSERT INTO guides (id, author_id, title, description, content, slug, upload_link)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO guides (id, author_id, title, description, content, slug, upload_link, banner_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: UpdateGuide :one
@@ -17,7 +17,8 @@ UPDATE guides SET
     title = COALESCE(sqlc.narg('title'), title),
     description = COALESCE(sqlc.narg('description'), description),
     content = COALESCE(sqlc.narg('content'), content),
-    upload_link = COALESCE(sqlc.narg('upload_link'), upload_link)
+    upload_link = COALESCE(sqlc.narg('upload_link'), upload_link),
+    banner_url = COALESCE(sqlc.narg('banner_url'), banner_url)
 WHERE id = $1
 RETURNING *;
 
