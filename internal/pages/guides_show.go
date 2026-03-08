@@ -25,6 +25,7 @@ type GuideShowData struct {
 	Excerpt      string
 	VideoURL     string
 	WikiURL      string
+	BannerURL    string
 	Views        int
 	AuthorName   string
 	IsOwner      bool
@@ -69,6 +70,7 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 		}
 		d.VideoURL = guide.VideoURL
 		d.WikiURL = guide.WikiURL
+		d.BannerURL = guide.BannerURL
 		d.Content = template.HTML(guide.Content)
 
 		// Owner check

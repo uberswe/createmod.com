@@ -22,9 +22,9 @@ func (q *Queries) CountUserGuides(ctx context.Context, authorID *string) (int64,
 }
 
 const createGuide = `-- name: CreateGuide :one
-INSERT INTO guides (id, author_id, title, description, content, slug, upload_link)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views
+INSERT INTO guides (id, author_id, title, description, content, slug, upload_link, banner_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url
 `
 
 type CreateGuideParams struct {
@@ -35,6 +35,7 @@ type CreateGuideParams struct {
 	Content     string  `json:"content"`
 	Slug        string  `json:"slug"`
 	UploadLink  string  `json:"upload_link"`
+	BannerUrl   string  `json:"banner_url"`
 }
 
 func (q *Queries) CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error) {
@@ -46,6 +47,7 @@ func (q *Queries) CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide
 		arg.Content,
 		arg.Slug,
 		arg.UploadLink,
+		arg.BannerUrl,
 	)
 	var i Guide
 	err := row.Scan(
@@ -59,6 +61,7 @@ func (q *Queries) CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide
 		&i.Created,
 		&i.Updated,
 		&i.Views,
+		&i.BannerUrl,
 	)
 	return i, err
 }
@@ -73,7 +76,7 @@ func (q *Queries) DeleteGuide(ctx context.Context, id string) error {
 }
 
 const getGuideByID = `-- name: GetGuideByID :one
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views FROM guides WHERE id = $1
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url FROM guides WHERE id = $1
 `
 
 func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
@@ -90,12 +93,13 @@ func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
 		&i.Created,
 		&i.Updated,
 		&i.Views,
+		&i.BannerUrl,
 	)
 	return i, err
 }
 
 const getGuideBySlug = `-- name: GetGuideBySlug :one
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views FROM guides WHERE slug = $1
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url FROM guides WHERE slug = $1
 `
 
 func (q *Queries) GetGuideBySlug(ctx context.Context, slug string) (Guide, error) {
@@ -112,6 +116,7 @@ func (q *Queries) GetGuideBySlug(ctx context.Context, slug string) (Guide, error
 		&i.Created,
 		&i.Updated,
 		&i.Views,
+		&i.BannerUrl,
 	)
 	return i, err
 }
@@ -126,7 +131,7 @@ func (q *Queries) IncrementGuideViews(ctx context.Context, id string) error {
 }
 
 const listGuides = `-- name: ListGuides :many
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views FROM guides ORDER BY created DESC LIMIT $1 OFFSET $2
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url FROM guides ORDER BY created DESC LIMIT $1 OFFSET $2
 `
 
 type ListGuidesParams struct {
@@ -154,6 +159,7 @@ func (q *Queries) ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide
 			&i.Created,
 			&i.Updated,
 			&i.Views,
+			&i.BannerUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -200,9 +206,10 @@ UPDATE guides SET
     title = COALESCE($2, title),
     description = COALESCE($3, description),
     content = COALESCE($4, content),
-    upload_link = COALESCE($5, upload_link)
+    upload_link = COALESCE($5, upload_link),
+    banner_url = COALESCE($6, banner_url)
 WHERE id = $1
-RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views
+RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url
 `
 
 type UpdateGuideParams struct {
@@ -211,6 +218,7 @@ type UpdateGuideParams struct {
 	Description *string `json:"description"`
 	Content     *string `json:"content"`
 	UploadLink  *string `json:"upload_link"`
+	BannerUrl   *string `json:"banner_url"`
 }
 
 func (q *Queries) UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error) {
@@ -220,6 +228,7 @@ func (q *Queries) UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide
 		arg.Description,
 		arg.Content,
 		arg.UploadLink,
+		arg.BannerUrl,
 	)
 	var i Guide
 	err := row.Scan(
@@ -233,6 +242,7 @@ func (q *Queries) UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide
 		&i.Created,
 		&i.Updated,
 		&i.Views,
+		&i.BannerUrl,
 	)
 	return i, err
 }

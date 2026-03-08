@@ -9,15 +9,13 @@ CreateMod.com has received its biggest update since the [full rewrite last year]
 
 ## Faster, Smoother Navigation
 
-The entire site now uses [HTMX](https://htmx.org/) for page transitions. Clicking links and submitting forms no longer triggers full page reloads — only the content that changes gets swapped in. Everything still works without JavaScript, but with it enabled pages feel significantly snappier.
-
-<!-- TODO: Add screenshot of the new page transition in action -->
+The entire site now uses [HTMX](https://htmx.org/) for page transitions. Clicking links and submitting forms no longer triggers full page reloads, only the content that changes gets swapped in. Everything still works without JavaScript, but with it enabled pages feel significantly snappier.
 
 ## New Homepage
 
-The homepage has been redesigned with tabbed sections for **Trending**, **New**, and **Top** schematics so you can quickly find what's popular or just uploaded.
+The homepage has been redesigned with tabbed sections for **Trending**, **Latest**, and **Highest Rated** schematics so you can quickly find what's popular or just uploaded.
 
-<!-- TODO: Add screenshot of the new tabbed homepage -->
+![New homepage design](/assets/x/news/homepage.webp)
 
 ## Better Search
 
@@ -27,25 +25,31 @@ Search has been overhauled with new filtering options:
 - Filter by **category** and **tags**
 - **Search suggestions** appear as you type
 - Results can be sorted by relevance, views, downloads, rating, or date
+- When using best match the search results should be more relevant,
 
-<!-- TODO: Add screenshot of search with filters expanded -->
+![Improved search with filters](/assets/x/news/search.webp)
+
+## Guides
+
+There is now a guides section to let anyone write and post useful written guides for other members to learn and benefit from. This can be anything Create Mod related and it is possible to include a video with the guide. Initially we will add some default guides on how to upload and download schematics from CreateMod.com.
+
+## Collections
+
+You can now create both private and public collections of schematics. This can be useful if you want to favorite some schematics of different types. By adding a description and an optional banner you can make your collection public for others to see. You might make a collection of your favorite trains or maybe a collection of a subset of your own builds.
 
 ## Multi-Language Support
 
-The site now supports **8 languages**: English, Portuguese (Brazil & Portugal), Spanish, German, Polish, Russian, and Simplified Chinese. Your language is detected automatically from your browser, and you can switch anytime using the flag icon in the navigation bar.
+The site now supports **8 languages**: English, Portuguese (Brazil & Portugal), Spanish, German, Polish, Russian, and Simplified Chinese. You can switch anytime using the flag icon in the navigation bar.
 
 Schematic descriptions, guides, and collection descriptions are **automatically translated** so content is accessible regardless of what language the author wrote it in. Translated pages show a notice with a link to view the original.
 
-## New Upload Flow
+## Private Schematics & New Upload Flow
+
+When you upload a schematic it will be private by default. You can then choose to make it public by adding a description, images and other relevant info.
 
 Uploading schematics has been redesigned into a clearer step-by-step process with progress indicators. You can now upload multiple NBT files at once and preview parsed schematic stats (block count, dimensions, detected mods) before publishing.
 
-<!-- TODO: Add screenshot of the new upload publish page -->
-
-## Guides & Collections Improvements
-
-- Guide and collection descriptions are now auto-translated alongside schematics
-- Collections have a cleaner detail page layout
+![New upload flow](/assets/x/news/upload.webp)
 
 ## Videos Page
 
@@ -64,13 +68,13 @@ A new **Servers** link has been added to the sidebar, connecting you to [CreateM
 
 For those interested in the technical side:
 
-- **Database migrated from SQLite to PostgreSQL** for better performance and reliability
+- **Database migrated from SQLite to PostgreSQL** for better scalability
 - **Session-based authentication** replaces the previous token-based system
-- **S3 file storage** for schematic files and images
-- **Background job system** for search indexing, trending calculations, sitemap generation, AI descriptions, and translations
+- **Background job system** for search indexing, trending calculations, sitemap generation, and translations
 - **Dark mode flash fix** — the theme now loads instantly without a white flash
 - Improved **schematic moderation** with AI-assisted content review
-- Admin tools for managing schematics, tags, and categories
+- Full pagination overhaul
+- Various bugfixes and improvements
 
 ## What's Next
 

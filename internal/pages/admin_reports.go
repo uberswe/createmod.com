@@ -4,11 +4,11 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/session"
 	"createmod/internal/store"
 	"fmt"
 	"createmod/internal/server"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -31,15 +31,8 @@ type AdminReportsData struct {
 }
 
 func isSuperAdmin(e *server.RequestEvent) bool {
-	if !isAuthenticated(e) {
-		return false
-	}
-	super := os.Getenv("SUPERADMIN_EMAIL")
-	if super == "" {
-		// do not fallback to sender for access control; require explicit env to avoid accidental exposure
-		return false
-	}
-	return authenticatedUserEmail(e) == super
+	user := session.UserFromContext(e.Request.Context())
+	return user != nil && user.IsAdmin
 }
 
 // AdminReportsHandler renders a simple admin page listing recent reports.

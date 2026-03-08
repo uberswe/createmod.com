@@ -12,6 +12,11 @@
         </div>
         <a class="btn btn-outline-secondary" href="/guides">{{ T .Language "Back to guides" }}</a>
         {{ else }}
+        {{ if .BannerURL }}
+        <div class="mb-3">
+          <img src="{{ .BannerURL }}" alt="{{ .GuideTitle }}" class="w-100 rounded" style="max-height:400px;object-fit:cover;" loading="lazy" />
+        </div>
+        {{ end }}
         <div class="mb-3">
           <div class="row align-items-center">
             <div class="col">

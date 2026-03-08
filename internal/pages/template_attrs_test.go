@@ -24,7 +24,7 @@ func Test_Header_Search_HTMX_Attributes(t *testing.T) {
 	attrs := []string{
 		`hx-post="/search"`,
 		`hx-target="body"`,
-		`hx-swap="outerHTML"`,
+		`hx-swap="innerHTML"`,
 		`hx-push-url="true"`,
 	}
 	for _, a := range attrs {

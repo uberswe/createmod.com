@@ -130,6 +130,7 @@ type Guide struct {
 	VideoURL    string
 	WikiURL     string
 	UploadLink  string
+	BannerURL   string
 	Views       int
 	Created     time.Time
 	Updated     time.Time

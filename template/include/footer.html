@@ -186,7 +186,8 @@
 
             let searchForm = document.getElementById("search-form")
             let searchField = document.getElementById("search-field")
-            if (searchForm != null && searchField != null) {
+            if (searchForm != null && searchField != null && !searchForm._bound) {
+                searchForm._bound = true;
                 searchForm.addEventListener("submit", async (e) => {
                     e.preventDefault();
                     let slug = slugify(searchField.value)
@@ -204,13 +205,17 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", function () {
-// Run everything
-            run()
-        })
-        // Re-run after HTMX page swaps so event listeners are re-attached
-        document.addEventListener("htmx:afterSettle", function () {
-            run()
-        })
+        if (!window._footerRunInit) {
+            window._footerRunInit = true;
+            document.addEventListener("DOMContentLoaded", function () {
+                run()
+            })
+            // Re-run after HTMX page swaps so event listeners are re-attached
+            document.addEventListener("htmx:afterSettle", function () {
+                run()
+            })
+        }
+        // Always run for current page content.
+        run();
     </script>
 </footer>

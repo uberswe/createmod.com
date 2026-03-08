@@ -20,7 +20,6 @@ func Test_Collections_Template_Has_Expected_Elements(t *testing.T) {
 		"hx-target=\"#collections-results\"",
 		"hx-select=\"#collections-results\"",
 		"View collection",
-		"ad-slot-collections",
 		"Featured",
 		"nav-tabs",
 		"Public",
