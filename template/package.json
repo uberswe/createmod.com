@@ -6,7 +6,7 @@
     "build": "vite build && npm run build:css"
   },
   "devDependencies": {
-    "@fullhuman/postcss-purgecss": "^7.0.2",
+    "@fullhuman/postcss-purgecss": "^8.0.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
     "postcss-cli": "^11.0.0",
