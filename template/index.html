@@ -82,8 +82,10 @@
                         {{ end }}
                     </div>
 
-                    <!-- Ad Rail -->
-                    {{template "ad_rail.html" .}}
+                    <!-- Ad Rail (desktop only) -->
+                    <div class="ad-rail d-none d-xl-block">
+                        <div id="index-adrail" class="mb-3"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -91,9 +93,23 @@
     </div>
 </div>
 {{template "foot.html" .}}
-{{template "ad_rail_script.html" .}}
-
 <script>
+window['nitroAds'].createAd('index-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 window['nitroAds'].createAd('index-mobile-mid', {
   "sizes": [
     ["320", "100"],

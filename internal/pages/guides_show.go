@@ -8,6 +8,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"createmod/internal/server"
+	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
 	"time"
@@ -71,7 +72,12 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 		d.VideoURL = guide.VideoURL
 		d.WikiURL = guide.WikiURL
 		d.BannerURL = guide.BannerURL
-		d.Content = template.HTML(guide.Content)
+		sanitizer := htmlsanitizer.NewHTMLSanitizer()
+		sanitizedContent, sanitizeErr := sanitizer.SanitizeString(guide.Content)
+		if sanitizeErr != nil {
+			sanitizedContent = template.HTMLEscapeString(guide.Content)
+		}
+		d.Content = template.HTML(sanitizedContent)
 
 		// Owner check
 		if isAuthenticated(e) && guide.AuthorID != nil && *guide.AuthorID == authenticatedUserID(e) {
@@ -114,7 +120,11 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 					d.Excerpt = t.Description
 				}
 				if t.Content != "" {
-					d.Content = template.HTML(t.Content)
+					sanitizedTranslation, sanitizeErr := sanitizer.SanitizeString(t.Content)
+					if sanitizeErr != nil {
+						sanitizedTranslation = template.HTMLEscapeString(t.Content)
+					}
+					d.Content = template.HTML(sanitizedTranslation)
 				}
 				d.IsTranslated = true
 			}

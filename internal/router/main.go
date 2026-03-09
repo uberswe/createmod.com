@@ -259,6 +259,7 @@ func Register(p RegisterParams) chi.Router {
 	// Reports
 	r.Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
 	// Admin
+	r.Get("/admin", Adapt(pages.AdminDashboardHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/reports", Adapt(pages.AdminReportsHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore)))
 	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))

@@ -57,13 +57,51 @@
         <!-- Ad Rail (desktop only) -->
         {{if not .IsContributor}}
         <div class="ad-rail d-none d-xl-block">
-            <div id="ad-rail-guides" class="mb-3" style="min-height:250px;"></div>
+            <div id="guides-adrail" class="mb-3" style="min-height:250px;"></div>
         </div>
         {{end}}
         </div><!-- /d-flex -->
+        <!-- Mobile ad (below content on smaller screens) -->
+        {{if not .IsContributor}}
+        <div id="guides-mobile" class="d-xl-none mt-3 text-center"></div>
+        {{end}}
       </div>
     </div>
     {{template "footer.html" .}}
   </div>
 </div>
 {{template "foot.html" .}}
+{{if not .IsContributor}}
+<script>
+window['nitroAds'].createAd('guides-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('guides-mobile', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
+});
+</script>
+{{end}}
