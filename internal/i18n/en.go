@@ -112,6 +112,7 @@ var LangEN = map[string]string{
 	"Search news":                   "Search news",
 
 	// ── Videos ──
+	"Create Mod Videos":                "Create Mod Videos",
 	"Videos from published schematics": "Videos from published schematics",
 	"Search videos":                    "Search videos",
 	"View on YouTube":                  "View on YouTube",

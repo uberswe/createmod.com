@@ -112,6 +112,7 @@ var LangES = map[string]string{
 	"Search news":                   "Buscar noticias",
 
 	// -- Videos --
+	"Create Mod Videos":                "Create Mod Videos",
 	"Videos from published schematics": "Videos de esquemas publicados",
 	"Search videos":                    "Buscar videos",
 	"View on YouTube":                  "Ver en YouTube",
