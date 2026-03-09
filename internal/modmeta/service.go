@@ -145,19 +145,68 @@ func expandNamespace(namespace string) []string {
 		}
 	}
 
-	add(segmented)
-
-	// If first word is "create", add "Create: rest" variant
 	parts := strings.Fields(segmented)
 	if len(parts) > 1 && strings.EqualFold(parts[0], "create") {
+		// Already starts with "create" — add segmented then "Create: rest" variant
+		add(segmented)
 		rest := strings.Join(parts[1:], " ")
 		add("Create: " + rest)
+	} else if !strings.EqualFold(segmented, "create") {
+		// This is a Create mod platform — try "create ..." first so
+		// searches find Create-ecosystem mods (e.g. "design decor"
+		// → "create design decor" finds "Create: Design n' Decor")
+		add("create " + segmented)
+		add(segmented)
+	} else {
+		add(segmented)
 	}
 
 	// Add the original namespace as a fallback
 	add(namespace)
 
 	return variants
+}
+
+// nameSimilarity computes a word-level Dice coefficient between two strings.
+// It returns a value between 0.0 (no overlap) and 1.0 (identical words).
+// Both inputs are lowercased and split on whitespace before comparison.
+// Punctuation like ":" and "'" is stripped so "Create: Design n' Decor"
+// matches "create design decor" well.
+func nameSimilarity(reference, candidate string) float64 {
+	normalize := func(s string) []string {
+		s = strings.ToLower(s)
+		s = strings.NewReplacer(":", "", "'", "", "'", "", "-", " ", "_", " ").Replace(s)
+		fields := strings.Fields(s)
+		// Filter short noise words like "n" from "n' Decor"
+		var out []string
+		for _, f := range fields {
+			if len(f) > 1 {
+				out = append(out, f)
+			}
+		}
+		return out
+	}
+
+	refWords := normalize(reference)
+	candWords := normalize(candidate)
+
+	if len(refWords) == 0 || len(candWords) == 0 {
+		return 0
+	}
+
+	refSet := make(map[string]bool, len(refWords))
+	for _, w := range refWords {
+		refSet[w] = true
+	}
+
+	matches := 0
+	for _, w := range candWords {
+		if refSet[w] {
+			matches++
+		}
+	}
+
+	return 2.0 * float64(matches) / float64(len(refWords)+len(candWords))
 }
 
 // splitCamelCase splits a string on camelCase boundaries and returns a
@@ -216,13 +265,21 @@ func (s *Service) EnrichMod(namespace string) error {
 	// Generate search variants from the search name
 	searchVariants := expandNamespace(searchName)
 
+	// The reference name is used for similarity scoring against search results.
+	// If BlocksItems matched, use that display name; otherwise use searchName
+	// (which is the best available name from the namespace).
+	referenceName := searchName
+	if blocksitemsMatched && meta.DisplayName != "" {
+		referenceName = meta.DisplayName
+	}
+
 	// 2. Try Modrinth direct lookup (uses namespace as project slug)
 	if err := s.tryModrinthDirect(namespace, meta); err != nil {
 		slog.Debug("modmeta: Modrinth direct lookup failed", "namespace", namespace, "error", err)
 
 		// 3. Try Modrinth search fallback with each variant
 		for _, variant := range searchVariants {
-			if err := s.tryModrinthSearch(variant, namespace, blocksitemsMatched, meta); err != nil {
+			if err := s.tryModrinthSearch(variant, namespace, referenceName, blocksitemsMatched, meta); err != nil {
 				slog.Debug("modmeta: Modrinth search failed", "namespace", namespace, "variant", variant, "error", err)
 			} else {
 				break
@@ -232,12 +289,29 @@ func (s *Service) EnrichMod(namespace string) error {
 
 	// 4. Try CurseForge if we don't have a CurseForge URL yet
 	if meta.CurseForgeURL == "" && s.curseForgeKey != "" {
-		if err := s.tryCurseForgeSlug(namespace, meta); err != nil {
+		// Try slug lookups first: raw namespace, then hyphenated variants
+		slugFound := false
+		if err := s.tryCurseForgeSlug(namespace, referenceName, meta); err == nil {
+			slugFound = true
+		} else {
 			slog.Debug("modmeta: CurseForge slug lookup failed", "namespace", namespace, "error", err)
+			// Try hyphenated slug variants from search terms
+			// e.g. "Create Deco" → "create-deco", "design decor" → "design-decor"
+			for _, variant := range searchVariants {
+				slug := strings.ToLower(strings.ReplaceAll(variant, " ", "-"))
+				if slug != namespace {
+					if err := s.tryCurseForgeSlug(slug, referenceName, meta); err == nil {
+						slugFound = true
+						break
+					}
+				}
+			}
+		}
 
+		if !slugFound {
 			// 5. Try CurseForge text search with each variant
 			for _, variant := range searchVariants {
-				if err := s.tryCurseForgeSearch(variant, namespace, blocksitemsMatched, meta); err != nil {
+				if err := s.tryCurseForgeSearch(variant, namespace, referenceName, blocksitemsMatched, meta); err != nil {
 					slog.Debug("modmeta: CurseForge search failed", "namespace", namespace, "variant", variant, "error", err)
 				} else {
 					break
@@ -420,7 +494,7 @@ func (s *Service) tryModrinthDirect(namespace string, meta *ModMetadata) error {
 	return nil
 }
 
-func (s *Service) tryModrinthSearch(searchName string, namespace string, blocksitemsMatched bool, meta *ModMetadata) error {
+func (s *Service) tryModrinthSearch(searchName string, namespace string, referenceName string, blocksitemsMatched bool, meta *ModMetadata) error {
 	searchURL := fmt.Sprintf(
 		"https://api.modrinth.com/v2/search?query=%s&facets=[[\"project_type:mod\"]]&limit=5",
 		url.QueryEscape(searchName),
@@ -455,11 +529,11 @@ func (s *Service) tryModrinthSearch(searchName string, namespace string, blocksi
 		return fmt.Errorf("no Modrinth search results")
 	}
 
-	// Score each hit and pick the best
-	nsLower := strings.ToLower(namespace)
-	queryLower := strings.ToLower(searchName)
+	// Score each hit using name similarity as the primary factor.
+	// The referenceName is the BlocksItems display name (if available)
+	// or a search variant derived from the namespace.
 	var best *modrinthSearchHit
-	bestScore := -1
+	bestScore := -1.0
 
 	for i := range result.Hits {
 		hit := &result.Hits[i]
@@ -469,19 +543,26 @@ func (s *Service) tryModrinthSearch(searchName string, namespace string, blocksi
 			continue
 		}
 
-		score := hit.Downloads
+		// Primary: name similarity (0.0–1.0) scaled to dominate scoring
+		sim := nameSimilarity(referenceName, hit.Title)
+		score := sim * 10000
+
+		// Exact slug match is a strong signal
 		if strings.EqualFold(hit.Slug, namespace) {
-			score += 1000
+			score += 5000
 		}
-		if strings.Contains(strings.ToLower(hit.Title), "create") ||
-			strings.Contains(strings.ToLower(hit.Slug), "create") {
-			score += 500
-		}
-		if strings.Contains(strings.ToLower(hit.Slug), nsLower) {
-			score += 100
-		}
-		if strings.Contains(strings.ToLower(hit.Title), queryLower) {
-			score += 50
+
+		// Tiebreaker: log-scale downloads so popularity helps but can't
+		// overwhelm a good name match (a 1M-download mod gets ~138 points)
+		if hit.Downloads > 0 {
+			dl := float64(hit.Downloads)
+			// ln(1M) ≈ 13.8, scale by 10 → 138 points
+			lnDl := 0.0
+			for dl > 1 {
+				lnDl++
+				dl /= 2.718281828
+			}
+			score += lnDl * 10
 		}
 
 		if best == nil || score > bestScore {
@@ -528,24 +609,24 @@ type curseForgeProject struct {
 	} `json:"links"`
 }
 
-func (s *Service) tryCurseForgeSlug(namespace string, meta *ModMetadata) error {
+func (s *Service) tryCurseForgeSlug(namespace string, referenceName string, meta *ModMetadata) error {
 	cfURL := fmt.Sprintf(
 		"https://api.curseforge.com/v1/mods/search?gameId=432&slug=%s&classId=6",
 		url.QueryEscape(namespace),
 	)
 	// Slug lookup is a direct match, so pass blocksitemsMatched=true to skip download threshold
-	return s.doCurseForgeSearch(cfURL, namespace, true, meta)
+	return s.doCurseForgeSearch(cfURL, namespace, referenceName, true, meta)
 }
 
-func (s *Service) tryCurseForgeSearch(searchName string, namespace string, blocksitemsMatched bool, meta *ModMetadata) error {
+func (s *Service) tryCurseForgeSearch(searchName string, namespace string, referenceName string, blocksitemsMatched bool, meta *ModMetadata) error {
 	cfURL := fmt.Sprintf(
 		"https://api.curseforge.com/v1/mods/search?gameId=432&searchFilter=%s&classId=6&pageSize=5",
 		url.QueryEscape(searchName),
 	)
-	return s.doCurseForgeSearch(cfURL, namespace, blocksitemsMatched, meta)
+	return s.doCurseForgeSearch(cfURL, namespace, referenceName, blocksitemsMatched, meta)
 }
 
-func (s *Service) doCurseForgeSearch(cfURL string, namespace string, blocksitemsMatched bool, meta *ModMetadata) error {
+func (s *Service) doCurseForgeSearch(cfURL string, namespace string, referenceName string, blocksitemsMatched bool, meta *ModMetadata) error {
 	req, err := http.NewRequest("GET", cfURL, nil)
 	if err != nil {
 		return err
@@ -577,10 +658,9 @@ func (s *Service) doCurseForgeSearch(cfURL string, namespace string, blocksitems
 		return fmt.Errorf("no CurseForge results")
 	}
 
-	// Score each result and pick the best
-	nsLower := strings.ToLower(namespace)
+	// Score each result using name similarity as the primary factor.
 	var best *curseForgeProject
-	bestScore := -1
+	bestScore := -1.0
 
 	for i := range result.Data {
 		project := &result.Data[i]
@@ -590,17 +670,26 @@ func (s *Service) doCurseForgeSearch(cfURL string, namespace string, blocksitems
 			continue
 		}
 
-		score := project.DownloadCount
+		// Primary: name similarity (0.0–1.0) scaled to dominate scoring
+		sim := nameSimilarity(referenceName, project.Name)
+		score := sim * 10000
+
+		// Exact slug match is a strong signal
 		if strings.EqualFold(project.Slug, namespace) {
-			score += 1000
+			score += 5000
 		}
-		if strings.Contains(strings.ToLower(project.Name), "create") ||
-			strings.Contains(strings.ToLower(project.Slug), "create") {
-			score += 500
+
+		// Tiebreaker: log-scale downloads
+		if project.DownloadCount > 0 {
+			dl := float64(project.DownloadCount)
+			lnDl := 0.0
+			for dl > 1 {
+				lnDl++
+				dl /= 2.718281828
+			}
+			score += lnDl * 10
 		}
-		if strings.Contains(strings.ToLower(project.Slug), nsLower) {
-			score += 100
-		}
+
 		if best == nil || score > bestScore {
 			best = project
 			bestScore = score
