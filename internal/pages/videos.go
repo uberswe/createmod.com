@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"createmod/internal/server"
 )
@@ -151,13 +152,74 @@ func computeTrendingVideos(appStore *store.Store) []VideoItem {
 	return items
 }
 
-// WarmVideosCache precomputes the trending videos list and stores it in the
-// cache so no user request has to pay the cost of the DB queries and scoring.
-// Called at startup and periodically from a background ticker.
+// deadVideoCacheKey returns the cache key used to remember that a YouTube
+// video ID has been confirmed unavailable.
+func deadVideoCacheKey(videoID string) string {
+	return "yt_dead:" + videoID
+}
+
+// ytCheckClient is a shared HTTP client for YouTube availability checks
+// with a short timeout so a single slow response doesn't stall warming.
+var ytCheckClient = &http.Client{Timeout: 10 * time.Second}
+
+// isYouTubeAvailable checks whether a YouTube video is still publicly
+// accessible by hitting the oEmbed endpoint (no API key required).
+// Returns true if the video is available, false if removed/private.
+func isYouTubeAvailable(videoID string) bool {
+	oembedURL := "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" + url.QueryEscape(videoID) + "&format=json"
+	resp, err := ytCheckClient.Get(oembedURL)
+	if err != nil {
+		// Network error — assume available to avoid false positives
+		slog.Debug("videos: YouTube oEmbed request failed", "id", videoID, "error", err)
+		return true
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+// filterAvailableVideos removes videos that YouTube reports as unavailable.
+// It caches dead video IDs for 24 hours so subsequent warming cycles skip
+// the HTTP check. A 100ms delay between checks avoids throttling.
+func filterAvailableVideos(items []VideoItem, cacheService *cache.Service) []VideoItem {
+	available := make([]VideoItem, 0, len(items))
+	checked := 0
+	removed := 0
+	for _, item := range items {
+		// Check if we already know this video is dead
+		if _, dead := cacheService.Get(deadVideoCacheKey(item.ID)); dead {
+			removed++
+			continue
+		}
+
+		// Rate-limit: small delay between outbound checks
+		if checked > 0 {
+			time.Sleep(100 * time.Millisecond)
+		}
+		checked++
+
+		if isYouTubeAvailable(item.ID) {
+			available = append(available, item)
+		} else {
+			slog.Info("videos: removing unavailable YouTube video", "id", item.ID, "title", item.Title)
+			cacheService.SetWithTTL(deadVideoCacheKey(item.ID), true, 24*time.Hour)
+			removed++
+		}
+	}
+	if removed > 0 {
+		slog.Info("videos: filtered unavailable videos", "removed", removed, "checked", checked, "remaining", len(available))
+	}
+	return available
+}
+
+// WarmVideosCache precomputes the trending videos list, filters out
+// unavailable YouTube videos, and stores the result in cache so no user
+// request has to pay the cost. Called at startup and periodically from
+// a background ticker.
 func WarmVideosCache(cacheService *cache.Service, appStore *store.Store) {
 	slog.Debug("Warming videos page cache")
 	items := computeTrendingVideos(appStore)
 	if items != nil {
+		items = filterAvailableVideos(items, cacheService)
 		cacheService.Set(videosCacheKey, items)
 	}
 	slog.Debug("Videos page cache warmed", "count", len(items))
