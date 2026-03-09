@@ -49,28 +49,26 @@
 
                     <!-- Right column: Site stats -->
                     <div class="col-lg-4">
-                        <h2 class="page-title mb-3">{{ T .Language "Site Stats (24h)" }}</h2>
+                        <h2 class="page-title mb-3">{{ T .Language "Site Stats (7 days)" }}</h2>
 
                         <!-- Views chart -->
                         <div class="card mb-3">
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Views" }}</h3>
-                                <span class="ms-auto text-secondary">{{ .TotalViews24 }} {{ T .Language "total" }}</span>
+                                <span class="ms-auto text-secondary">{{ .TotalViews7 }} {{ T .Language "total" }}</span>
                             </div>
                             <div class="card-body">
                                 <div class="stats-chart" id="views-chart">
                                     <div class="stats-bars">
-                                        {{ range .HourlyViews }}
-                                        <div class="stats-bar-col" title="{{ .Hour }}: {{ .Count }} views">
+                                        {{ range .DailyViews }}
+                                        <div class="stats-bar-col" title="{{ .Date }}: {{ .Count }} views">
                                             <div class="stats-bar" data-count="{{ .Count }}"></div>
                                         </div>
                                         {{ end }}
                                     </div>
                                     <div class="stats-labels">
-                                        {{ range $i, $s := .HourlyViews }}
-                                        {{ if mod $i 6 }}
-                                        <span>{{ $s.Hour }}</span>
-                                        {{ end }}
+                                        {{ range .DailyViews }}
+                                        <span>{{ .Day }}</span>
                                         {{ end }}
                                     </div>
                                 </div>
@@ -81,22 +79,20 @@
                         <div class="card mb-3">
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Downloads" }}</h3>
-                                <span class="ms-auto text-secondary">{{ .TotalDL24 }} {{ T .Language "total" }}</span>
+                                <span class="ms-auto text-secondary">{{ .TotalDL7 }} {{ T .Language "total" }}</span>
                             </div>
                             <div class="card-body">
                                 <div class="stats-chart" id="downloads-chart">
                                     <div class="stats-bars">
-                                        {{ range .HourlyDL }}
-                                        <div class="stats-bar-col" title="{{ .Hour }}: {{ .Count }} downloads">
+                                        {{ range .DailyDL }}
+                                        <div class="stats-bar-col" title="{{ .Date }}: {{ .Count }} downloads">
                                             <div class="stats-bar" data-count="{{ .Count }}"></div>
                                         </div>
                                         {{ end }}
                                     </div>
                                     <div class="stats-labels">
-                                        {{ range $i, $s := .HourlyDL }}
-                                        {{ if mod $i 6 }}
-                                        <span>{{ $s.Hour }}</span>
-                                        {{ end }}
+                                        {{ range .DailyDL }}
+                                        <span>{{ .Day }}</span>
                                         {{ end }}
                                     </div>
                                 </div>

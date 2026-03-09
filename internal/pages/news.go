@@ -22,19 +22,20 @@ var newsTemplates = append([]string{
 	newsTemplate,
 }, commonTemplates...)
 
-// HourlyStat holds an hour label and a count for the stats charts.
-type HourlyStat struct {
-	Hour  string // e.g. "14:00"
+// DailyStat holds a day label and a count for the stats charts.
+type DailyStat struct {
+	Day   string // e.g. "Mon", "Tue"
+	Date  string // e.g. "Mar 03"
 	Count int
 }
 
 type NewsData struct {
 	DefaultData
-	Posts         []models.NewsPostListItem
-	HourlyViews  []HourlyStat
-	HourlyDL     []HourlyStat
-	TotalViews24 int
-	TotalDL24    int
+	Posts        []models.NewsPostListItem
+	DailyViews  []DailyStat
+	DailyDL     []DailyStat
+	TotalViews7 int
+	TotalDL7    int
 }
 
 func NewsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -64,9 +65,9 @@ func NewsHandler(registry *server.Registry, cacheService *cache.Service, appStor
 			d.Posts = posts
 		}
 
-		// Load 24-hour sitewide stats (cached for 5 minutes)
-		d.HourlyViews, d.TotalViews24 = cachedHourlyStats(appStore, cacheService, "schematic_views")
-		d.HourlyDL, d.TotalDL24 = cachedHourlyStats(appStore, cacheService, "schematic_downloads")
+		// Load 7-day sitewide stats (cached for 5 minutes)
+		d.DailyViews, d.TotalViews7 = cachedDailyStats(appStore, cacheService, "schematic_views")
+		d.DailyDL, d.TotalDL7 = cachedDailyStats(appStore, cacheService, "schematic_downloads")
 
 		html, err := registry.LoadFiles(newsTemplates...).Render(d)
 		if err != nil {
@@ -91,51 +92,58 @@ func extractFirstParagraph(body template.HTML) template.HTML {
 	return template.HTML(s[start : start+end+4])
 }
 
-// hourlyStatsResult holds a cached snapshot of loadHourlyStats output.
-type hourlyStatsResult struct {
-	Stats []HourlyStat
+// dailyStatsResult holds a cached snapshot of loadDailyStats output.
+type dailyStatsResult struct {
+	Stats []DailyStat
 	Total int
 }
 
-// cachedHourlyStats returns hourly stats from cache (5-min TTL) or queries the DB.
-func cachedHourlyStats(appStore *store.Store, cacheService *cache.Service, table string) ([]HourlyStat, int) {
-	key := "hourlyStats:" + table
+// cachedDailyStats returns daily stats from cache (5-min TTL) or queries the DB.
+func cachedDailyStats(appStore *store.Store, cacheService *cache.Service, table string) ([]DailyStat, int) {
+	key := "dailyStats:" + table
 	if v, ok := cacheService.Get(key); ok {
-		if r, ok := v.(hourlyStatsResult); ok {
+		if r, ok := v.(dailyStatsResult); ok {
 			return r.Stats, r.Total
 		}
 	}
-	stats, total := loadHourlyStats(appStore, table)
-	cacheService.SetWithTTL(key, hourlyStatsResult{Stats: stats, Total: total}, 5*time.Minute)
+	stats, total := loadDailyStats(appStore, table)
+	cacheService.SetWithTTL(key, dailyStatsResult{Stats: stats, Total: total}, 5*time.Minute)
 	return stats, total
 }
 
-// loadHourlyStats queries an aggregate table (schematic_views or
-// schematic_downloads) and returns per-hour totals for the last 24 hours.
-func loadHourlyStats(appStore *store.Store, table string) ([]HourlyStat, int) {
+// loadDailyStats queries an aggregate table (schematic_views or
+// schematic_downloads) and returns per-day totals for the last 7 days.
+func loadDailyStats(appStore *store.Store, table string) ([]DailyStat, int) {
 	now := time.Now().UTC()
-	cutoff := now.Add(-24 * time.Hour)
+	cutoff := now.Add(-7 * 24 * time.Hour)
 
 	rows, err := appStore.Stats.HourlyStats(context.Background(), table, cutoff)
 
-	// Build a map of hour -> count
-	hourMap := make(map[string]int, 24)
+	// Aggregate hourly rows into daily buckets
+	dayMap := make(map[string]int, 7)
 	if err == nil {
 		for _, r := range rows {
-			hourMap[r.Hour] = int(r.Count)
+			// r.Hour is "YYYY-MM-DD HH", take the date part
+			if len(r.Hour) >= 10 {
+				day := r.Hour[:10]
+				dayMap[day] += int(r.Count)
+			}
 		}
 	}
 
-	// Generate 24 slots from (now-23h) to now
-	stats := make([]HourlyStat, 0, 24)
+	// Generate 7 slots from (now-6d) to today
+	stats := make([]DailyStat, 0, 7)
 	total := 0
-	for i := 23; i >= 0; i-- {
-		t := now.Add(-time.Duration(i) * time.Hour)
-		key := t.Format("2006-01-02 15")
-		label := t.Format("15:00")
-		count := hourMap[key]
+	for i := 6; i >= 0; i-- {
+		t := now.AddDate(0, 0, -i)
+		key := t.Format("2006-01-02")
+		count := dayMap[key]
 		total += count
-		stats = append(stats, HourlyStat{Hour: label, Count: count})
+		stats = append(stats, DailyStat{
+			Day:   t.Format("Mon"),
+			Date:  t.Format("Jan 02"),
+			Count: count,
+		})
 	}
 	return stats, total
 }
