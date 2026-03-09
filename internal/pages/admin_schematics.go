@@ -295,6 +295,7 @@ func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *ca
 
 		// Clear cache
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
+		RefreshIndexCache(cacheService, appStore)
 
 		// Redirect back to edit page with success
 		dest := fmt.Sprintf("/admin/schematics/%s?success=1", id)
@@ -324,6 +325,7 @@ func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.St
 		}
 
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
+		RefreshIndexCache(cacheService, appStore)
 
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", "/admin/schematics")

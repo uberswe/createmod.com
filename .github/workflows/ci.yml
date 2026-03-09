@@ -1,0 +1,297 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      no-cache:
+        description: 'Build without cache'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged != true &&
+      !startsWith(github.head_ref, 'deploy/')
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: createmod
+          POSTGRES_USER: createmod
+          POSTGRES_PASSWORD: localdev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U createmod"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+
+      mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+          - 8025:8025
+          - 1025:1025
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Go tests
+        run: go test ./...
+
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio --network host \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:latest server /data
+          for i in $(seq 1 30); do curl -fsS http://localhost:9000/minio/health/live && break || sleep 1; done
+
+      - name: Create MinIO bucket
+        run: |
+          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set ci http://localhost:9000 minioadmin minioadmin
+          mc mb --ignore-existing ci/createmod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (test only)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: app:local
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=createmod
+          cache-to: type=gha,mode=max,scope=createmod
+          platforms: linux/amd64
+
+      - name: Build and start app
+        env:
+          DATABASE_URL: "postgres://createmod:localdev@localhost:5432/createmod?sslmode=disable"
+          S3_ENDPOINT: "localhost:9000"
+          S3_ACCESS_KEY: "minioadmin"
+          S3_SECRET_KEY: "minioadmin"
+          S3_BUCKET: "createmod"
+          S3_USE_SSL: "false"
+          SMTP_HOST: "localhost"
+          SMTP_PORT: "1025"
+          BASE_URL: "http://localhost:8080"
+          PORT: "8080"
+          DEV: "true"
+          CREATE_ADMIN: "true"
+          LISTEN_ADDR: "0.0.0.0:8080"
+          CI_ENV: "ci"
+        run: |
+          docker run -d --network host \
+            -e DATABASE_URL \
+            -e S3_ENDPOINT \
+            -e S3_ACCESS_KEY \
+            -e S3_SECRET_KEY \
+            -e S3_BUCKET \
+            -e S3_USE_SSL \
+            -e SMTP_HOST \
+            -e SMTP_PORT \
+            -e BASE_URL \
+            -e PORT \
+            -e DEV \
+            -e CREATE_ADMIN \
+            -e LISTEN_ADDR \
+            -e ENV="$CI_ENV" \
+            --name app app:local
+      - name: Wait for app
+        run: |
+          for i in $(seq 1 60); do curl -fsS http://localhost:8080/api/health && break || sleep 1; done
+
+      - name: Seed test data
+        env:
+          PGPASSWORD: localdev
+        run: psql -h localhost -U createmod -d createmod -f tests/e2e/seed.sql
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps
+      - name: Playwright tests
+        env:
+          APP_BASE_URL: http://localhost:8080
+        run: npx playwright test
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event.pull_request.merged == true &&
+       !startsWith(github.head_ref, 'deploy/')) ||
+      github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/createmod.com
+          tags: |
+            type=raw,value=master
+            type=sha,prefix=master-
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_VERSION=${{ github.sha }}
+          cache-from: ${{ github.event.inputs.no-cache == 'true' && '' || 'type=gha,scope=createmod' }}
+          cache-to: type=gha,mode=max,scope=createmod
+          no-cache: ${{ github.event.inputs.no-cache == 'true' }}
+          platforms: linux/amd64
+
+  deploy-dev-pr:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: master
+
+      - name: Close stale dev deployment PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state open --head "deploy/dev-" --json number --jq '.[].number' | while read pr_number; do
+            if [ -n "$pr_number" ]; then
+              echo "Closing stale PR #${pr_number}"
+              gh pr close "$pr_number" --delete-branch || true
+            fi
+          done
+
+      - name: Update dev deployment manifests
+        env:
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "master-" | grep "${COMMIT_SHA:0:7}" | head -1)
+          sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/dev/deployment.yaml
+          echo "Updated createmod dev to: ${IMAGE_TAG}"
+
+      - name: Create Pull Request
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update dev deployment image [skip ci]"
+          title: "Deploy to Development"
+          body: |
+            Automated PR to update the dev deployment image.
+
+            - Commit: ${{ env.COMMIT_SHA }}
+            - PR: #${{ env.PR_NUMBER }}
+          branch: deploy/dev-${{ env.COMMIT_SHA }}
+          base: master
+          delete-branch: true
+
+  deploy-prod-pr:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: master
+
+      - name: Close stale prod deployment PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state open --head "deploy/prod-" --json number --jq '.[].number' | while read pr_number; do
+            if [ -n "$pr_number" ]; then
+              echo "Closing stale PR #${pr_number}"
+              gh pr close "$pr_number" --delete-branch || true
+            fi
+          done
+
+      - name: Update prod deployment manifests
+        env:
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.image-tag }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          IMAGE_TAG=$(echo "${IMAGE_TAGS}" | tr ',' '\n' | grep "master-" | grep "${COMMIT_SHA:0:7}" | head -1)
+          sed -i "s|image: ghcr.io/.*/createmod.com:.*|image: ${IMAGE_TAG}|g" k8s/createmod/prod/deployment.yaml
+          echo "Updated createmod prod to: ${IMAGE_TAG}"
+
+      - name: Create Pull Request
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update prod deployment image [skip ci]"
+          title: "Deploy to Production"
+          body: |
+            Automated PR to update the prod deployment image.
+
+            - Commit: ${{ env.COMMIT_SHA }}
+            - PR: #${{ env.PR_NUMBER }}
+          branch: deploy/prod-${{ env.COMMIT_SHA }}
+          base: master
+          delete-branch: true

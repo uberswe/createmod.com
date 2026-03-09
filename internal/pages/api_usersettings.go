@@ -93,6 +93,9 @@ func UserDeleteHandler(appStore *store.Store, cacheService *cache.Service, sessS
 				cacheService.DeleteSchematic(cache.SchematicKey(schem.ID))
 				_ = appStore.Schematics.SoftDelete(ctx, schem.ID)
 			}
+			if len(schematics) > 0 {
+				RefreshIndexCache(cacheService, appStore)
+			}
 		}
 
 		// Soft-delete the user

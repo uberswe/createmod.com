@@ -83,7 +83,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 				&river.PeriodicJobOpts{RunOnStart: true},
 			),
 			river.NewPeriodicJob(
-				river.PeriodicInterval(10*time.Minute),
+				river.PeriodicInterval(1*time.Hour),
 				func() (river.JobArgs, *river.InsertOpts) {
 					return TrendingArgs{}, &river.InsertOpts{
 						UniqueOpts: river.UniqueOpts{ByArgs: true},
