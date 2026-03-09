@@ -4,3 +4,6 @@ pb_data
 migration_data
 main
 dbdata
+data.db
+data.db-shm
+data.db-wal
