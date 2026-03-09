@@ -1,0 +1,161 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin Dashboard</h2>
+            </div>
+          </div>
+        </div>
+        <!-- Action items -->
+        <div class="row row-deck row-cards mb-3">
+          <div class="col-sm-6 col-lg-3">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Pending Schematics</div>
+                </div>
+                <div class="h1 mb-3">{{.PendingCount}}</div>
+                <a href="/admin/schematics?filter=pending" class="btn btn-primary btn-sm">Review</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Open Reports</div>
+                </div>
+                <div class="h1 mb-3">{{.ReportsCount}}</div>
+                <a href="/admin/reports" class="btn btn-primary btn-sm">View Reports</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Pending Categories</div>
+                </div>
+                <div class="h1 mb-3">{{.PendingCatsCount}}</div>
+                <a href="/admin/tags" class="btn btn-primary btn-sm">Manage</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Pending Tags</div>
+                </div>
+                <div class="h1 mb-3">{{.PendingTagsCount}}</div>
+                <a href="/admin/tags" class="btn btn-primary btn-sm">Manage</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Stats -->
+        <div class="row row-deck row-cards mb-3">
+          <div class="col-sm-6 col-lg-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Total Schematics</div>
+                </div>
+                <div class="h1 mb-3">{{.TotalCount}}</div>
+                <a href="/admin/schematics?filter=all" class="btn btn-outline-secondary btn-sm">View All</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Moderated</div>
+                </div>
+                <div class="h1 mb-3">{{.ModeratedCount}}</div>
+                <a href="/admin/schematics?filter=moderated" class="btn btn-outline-secondary btn-sm">View</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-4">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">Deleted</div>
+                </div>
+                <div class="h1 mb-3">{{.DeletedCount}}</div>
+                <a href="/admin/schematics?filter=deleted" class="btn btn-outline-secondary btn-sm">View</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Recent Pending Schematics -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h3 class="card-title">Recent Pending Schematics</h3>
+            <div class="card-actions">
+              <a href="/admin/schematics?filter=pending" class="btn btn-outline-primary btn-sm">View All Pending</a>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
+              <thead>
+                <tr>
+                  <th style="width: 40px"></th>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th class="w-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .RecentPending}}
+                <tr>
+                  <td>
+                    {{if .FeaturedImage}}
+                    <span class="avatar avatar-sm" style="background-image: url(/api/files/schematics/{{.ID}}/{{.FeaturedImage}}?thumb=40x40)"></span>
+                    {{end}}
+                  </td>
+                  <td>
+                    <a href="/admin/schematics/{{.ID}}">{{.Title}}</a>
+                    <div class="text-secondary text-truncate" style="max-width: 200px;">{{.Name}}</div>
+                  </td>
+                  <td>{{.AuthorUsername}}</td>
+                  <td>
+                    {{if .Deleted}}
+                      <span class="badge bg-red-lt">Deleted</span>
+                    {{else if .Blacklisted}}
+                      <span class="badge bg-secondary">Blacklisted</span>
+                    {{else if .Moderated}}
+                      <span class="badge bg-green-lt">Moderated</span>
+                    {{else}}
+                      <span class="badge bg-yellow-lt">Pending</span>
+                    {{end}}
+                  </td>
+                  <td>{{HumanDate .Created}}</td>
+                  <td>
+                    <a href="/admin/schematics/{{.ID}}" class="btn btn-sm btn-primary">Edit</a>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="6" class="text-center text-secondary">No pending schematics.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}
