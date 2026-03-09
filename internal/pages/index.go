@@ -259,6 +259,21 @@ func WarmIndexCache(cacheService *cache.Service, appStore *store.Store) {
 	WarmIndexCacheFromStore(appStore, cacheService, slog.Default())
 }
 
+// RefreshIndexCache asynchronously clears and re-warms the index page cache.
+// Call this after a schematic is created, updated, or deleted so the homepage
+// reflects the change without waiting for the next periodic job.
+func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store) {
+	go func() {
+		cacheService.Delete(cache.LatestSchematicsKey)
+		cacheService.Delete(cache.LatestHasNextKey)
+		cacheService.Delete(cache.TrendingSchematicsKey)
+		cacheService.Delete(cache.TrendingHasNextKey)
+		cacheService.Delete(cache.HighestRatedSchematicsKey)
+		cacheService.Delete(cache.HighestRatedHasNextKey)
+		WarmIndexCacheFromStore(appStore, cacheService, slog.Default())
+	}()
+}
+
 
 // ComputeTrendingScoresFromStore computes trending scores using the PostgreSQL store.
 // Returns a map of schematic ID to score.

@@ -307,6 +307,7 @@ func SchematicUpdateHandler(
 
 		// --- Clear cache ---
 		cacheService.DeleteSchematic(cache.SchematicKey(schematicID))
+		RefreshIndexCache(cacheService, appStore)
 
 		// --- Respond ---
 		if e.Request.Header.Get("HX-Request") != "" {
@@ -365,6 +366,7 @@ func SchematicDeleteHandler(
 
 		// Clear cache
 		cacheService.DeleteSchematic(cache.SchematicKey(schematicID))
+		RefreshIndexCache(cacheService, appStore)
 
 		// Respond
 		if e.Request.Header.Get("HX-Request") != "" {
