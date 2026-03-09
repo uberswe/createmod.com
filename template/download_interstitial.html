@@ -8,10 +8,11 @@
         <div class="d-flex gap-3 justify-content-center">
           <!-- Left Ad Rail (desktop only) -->
           <div class="ad-rail d-none d-xl-block">
-            <div id="ad-rail-left-top" class="mb-3" style="min-height:250px;"></div>
-            <div id="ad-rail-left-bottom"></div>
+            <div id="dlinterstitial-adrail-left" class="mb-3" style="min-height:250px;"></div>
           </div>
           <div style="max-width:540px; width:100%; padding:2rem 0;">
+            <!-- Mobile ad (above card on smaller screens) -->
+            <div id="dlinterstitial-mobile" class="d-xl-none mb-3 text-center"></div>
             <div class="card">
               <div class="card-body text-center">
                 {{if .Paid}}
@@ -30,8 +31,7 @@
           </div>
           <!-- Right Ad Rail (desktop only) -->
           <div class="ad-rail d-none d-xl-block">
-            <div id="ad-rail-right-top" class="mb-3" style="min-height:250px;"></div>
-            <div id="ad-rail-right-bottom"></div>
+            <div id="dlinterstitial-adrail-right" class="mb-3" style="min-height:250px;"></div>
           </div>
         </div>
       </div>
@@ -77,7 +77,7 @@
 </script>
 <script>
 if (window['nitroAds']) {
-  ['ad-rail-left-top', 'ad-rail-right-top'].forEach(function(id) {
+  ['dlinterstitial-adrail-left', 'dlinterstitial-adrail-right'].forEach(function(id) {
     window['nitroAds'].createAd(id, {
       "refreshLimit": 10,
       "refreshTime": 30,
@@ -94,6 +94,20 @@ if (window['nitroAds']) {
       },
       "mediaQuery": "(min-width: 1200px)"
     });
+  });
+  window['nitroAds'].createAd('dlinterstitial-mobile', {
+    "sizes": [
+      ["320", "100"],
+      ["320", "50"],
+      ["300", "250"]
+    ],
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
   });
 }
 </script>

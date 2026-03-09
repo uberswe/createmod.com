@@ -58,6 +58,21 @@
                         </div>
                     </div>
                 </div>
+                {{ if .HasSchematics }}
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 text-secondary">{{ T .Language "Sort by" }}</label>
+                            <select class="form-select form-select-sm" style="width:auto;" onchange="window.location.href=this.value;">
+                                <option value="{{ .Slug }}?sort=recent"{{ if eq .Sort "recent" }} selected{{ end }}>{{ T .Language "Most recent" }}</option>
+                                <option value="{{ .Slug }}?sort=oldest"{{ if eq .Sort "oldest" }} selected{{ end }}>{{ T .Language "Oldest" }}</option>
+                                <option value="{{ .Slug }}?sort=views"{{ if eq .Sort "views" }} selected{{ end }}>{{ T .Language "Most views" }}</option>
+                                <option value="{{ .Slug }}?sort=downloads"{{ if eq .Sort "downloads" }} selected{{ end }}>{{ T .Language "Most downloads" }}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
                 <div class="row row-cards">
                     {{ if .HasSchematics }}
                     {{range .Schematics }}

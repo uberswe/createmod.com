@@ -120,19 +120,17 @@ if (!window._htmxErrorInit) {
 // Uses a named handler to prevent listener stacking across body swaps.
 (function(){
   function reinit() {
-    try {
-      if (typeof bootstrap === 'undefined') return;
-      document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el) {
-        if (!bootstrap.Dropdown.getInstance(el)) {
-          new bootstrap.Dropdown(el);
-        }
-      });
-      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-        if (!bootstrap.Tooltip.getInstance(el)) {
-          new bootstrap.Tooltip(el);
-        }
-      });
-    } catch(e) {}
+    if (typeof bootstrap === 'undefined') return;
+    document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el) {
+      var existing = bootstrap.Dropdown.getInstance(el);
+      if (existing) { try { existing.dispose(); } catch(e) {} }
+      new bootstrap.Dropdown(el);
+    });
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+      var existing = bootstrap.Tooltip.getInstance(el);
+      if (existing) { try { existing.dispose(); } catch(e) {} }
+      new bootstrap.Tooltip(el);
+    });
   }
   // Guard against stacking: only register the listener once on the document.
   if (!window._htmxBootstrapReinit) {

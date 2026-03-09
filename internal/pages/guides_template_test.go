@@ -21,7 +21,7 @@ func Test_Guides_Template_Has_Expected_Elements(t *testing.T) {
 		"hx-select=\"#guides-results\"",
 		"Read guide",
 		"card-link",
-		"ad-rail-guides",
+		"guides-adrail",
 		"Views",
 	}
 	for _, m := range must {

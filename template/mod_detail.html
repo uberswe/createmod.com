@@ -63,11 +63,48 @@
           </div>
         </div>
         </div>
-        {{template "ad_rail.html" .}}
+        <!-- Ad Rail (desktop only) -->
+        <div class="ad-rail d-none d-xl-block">
+            <div id="moddetail-adrail" class="mb-3"></div>
         </div>
+        </div>
+        <!-- Mobile ad (below content on smaller screens) -->
+        <div id="moddetail-mobile" class="d-xl-none mt-3 text-center"></div>
       </div>
     </div>
     {{template "footer.html" .}}
   </div>
 </div>
 {{template "foot.html" .}}
+<script>
+window['nitroAds'].createAd('moddetail-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('moddetail-mobile', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
+});
+</script>

@@ -192,6 +192,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		}
 		d.OriginalLanguage = detectedLang
 		showOriginal := e.Request.URL.Query().Get("lang") == "original"
+		transSanitizer := htmlsanitizer.NewHTMLSanitizer()
 		if !showOriginal && translationService != nil && d.Language != "" && d.Language != "en" {
 			// User's UI language is not English - try to show a translation
 			t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, d.Language)
@@ -200,7 +201,11 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 				d.Title = t.Title
 				if t.Content != "" {
 					d.Schematic.Content = t.Content
-					d.Schematic.HTMLContent = template.HTML(t.Content)
+					sanitizedTransContent, sanitizeErr := transSanitizer.SanitizeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
+					if sanitizeErr != nil {
+						sanitizedTransContent = template.HTMLEscapeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
+					}
+					d.Schematic.HTMLContent = template.HTML(sanitizedTransContent)
 				}
 				d.IsTranslated = true
 			}
@@ -212,7 +217,11 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 				d.Title = t.Title
 				if t.Content != "" {
 					d.Schematic.Content = t.Content
-					d.Schematic.HTMLContent = template.HTML(t.Content)
+					sanitizedOrigContent, sanitizeErr := transSanitizer.SanitizeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
+					if sanitizeErr != nil {
+						sanitizedOrigContent = template.HTMLEscapeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
+					}
+					d.Schematic.HTMLContent = template.HTML(sanitizedOrigContent)
 				}
 			}
 		}

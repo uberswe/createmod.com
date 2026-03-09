@@ -112,3 +112,21 @@ Vite builds from `template/src/` to `template/dist/`. CSS uses Tailwind + PurgeC
 **Unit tests** (e.g., `trending_test.go`): Direct function testing for business logic.
 
 **Playwright E2E tests** (`tests/e2e/specs/`): Run via GitHub Actions against Docker containers. Not configured for local execution.
+
+## Production Deployment (pre-big-deployment baseline, 2026-03-09)
+
+Last known-good production state before the CI/CD consolidation and dependency updates. Use this to revert if a future deployment causes issues.
+
+- **Image:** `ghcr.io/uberswe/createmod.com:master-2a18cbb`
+- **Namespace:** `createmod-com-prod`
+- **Resource:** `StatefulSet/createmod`
+- **Replicas:** 1
+- **Resources:** CPU 200m-1000m, Memory 2Gi-16Gi
+- **Storage:** 20Gi PVC (`local-path` StorageClass)
+- **Port:** 8090
+- **Health:** `/api/health` (liveness: 10s init, 30s period; readiness: 5s init, 10s period)
+- **Annotations:** `linkerd.io/inject: enabled`, `config.linkerd.io/skip-outbound-ports: "443"`
+
+To revert production, update `k8s/createmod/prod/deployment.yaml` image to `ghcr.io/uberswe/createmod.com:master-2a18cbb` and apply.
+
+**Dev baseline:** `ghcr.io/uberswe/createmod.com:development-4fbe4d6` in namespace `createmod-com-dev`.

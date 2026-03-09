@@ -10,6 +10,7 @@ import (
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"fmt"
+	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"image"
 	"io"
@@ -84,7 +85,12 @@ func CollectionsEditHandler(registry *server.Registry, cacheService *cache.Servi
 		// Load associated schematics via the join table (store handles position ordering)
 		ids, _ := appStore.Collections.GetSchematicIDs(ctx, coll.ID)
 		d.SchematicIDs = ids
-		d.DescriptionHTML = template.HTML(d.Description)
+		sanitizer := htmlsanitizer.NewHTMLSanitizer()
+		sanitizedDesc, sanitizeErr := sanitizer.SanitizeString(d.Description)
+		if sanitizeErr != nil {
+			sanitizedDesc = template.HTMLEscapeString(d.Description)
+		}
+		d.DescriptionHTML = template.HTML(sanitizedDesc)
 		d.ReorderSchematics = loadReorderSchematicsFromStore(appStore, ids)
 
 		html, err := registry.LoadFiles(collectionsEditTemplates...).Render(d)
@@ -231,7 +237,12 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			d.Slug = "/collections/" + slug
 			d.TitleText = title
 			d.Description = description
-			d.DescriptionHTML = template.HTML(description)
+			errSanitizer := htmlsanitizer.NewHTMLSanitizer()
+			errSanitizedDesc, errSanitizeErr := errSanitizer.SanitizeString(description)
+			if errSanitizeErr != nil {
+				errSanitizedDesc = template.HTMLEscapeString(description)
+			}
+			d.DescriptionHTML = template.HTML(errSanitizedDesc)
 			d.BannerURL = coll.BannerURL
 			d.Published = coll.Published
 			d.Error = errMsg

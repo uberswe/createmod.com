@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/language"
 	tmpl "html/template"
 	"net/http"
+	"sort"
 )
 
 // UserAchievement is a minimal UI struct for profile achievements.
@@ -36,7 +37,8 @@ type ProfileData struct {
 	SchematicCount int
 	TotalViews     int
 	TotalDownloads int
-	Points int
+	Points         int
+	Sort           string
 	// Achievements earned by this user (minimal display)
 	Achievements    []UserAchievement
 	HasAchievements bool
@@ -122,6 +124,29 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 	if len(d.Schematics) > 0 {
 		d.HasSchematics = true
 	}
+
+	// Sort schematics based on query parameter
+	sortParam := e.Request.URL.Query().Get("sort")
+	switch sortParam {
+	case "oldest":
+		sort.Slice(d.Schematics, func(i, j int) bool {
+			return d.Schematics[i].Created.Before(d.Schematics[j].Created)
+		})
+	case "views":
+		sort.Slice(d.Schematics, func(i, j int) bool {
+			return d.Schematics[i].Views > d.Schematics[j].Views
+		})
+	case "downloads":
+		sort.Slice(d.Schematics, func(i, j int) bool {
+			return d.Schematics[i].Downloads > d.Schematics[j].Downloads
+		})
+	default:
+		sortParam = "recent"
+		sort.Slice(d.Schematics, func(i, j int) bool {
+			return d.Schematics[i].Created.After(d.Schematics[j].Created)
+		})
+	}
+	d.Sort = sortParam
 
 	html, err := registry.LoadFiles(profileTemplates...).Render(d)
 	if err != nil {

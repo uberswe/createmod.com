@@ -9,6 +9,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"createmod/internal/server"
+	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
 	"time"
@@ -64,7 +65,12 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 				d.TitleText = coll.Name
 			}
 			d.DescriptionText = coll.Description
-			d.DescriptionHTML = template.HTML(d.DescriptionText)
+			sanitizer := htmlsanitizer.NewHTMLSanitizer()
+			sanitizedDesc, sanitizeErr := sanitizer.SanitizeString(d.DescriptionText)
+			if sanitizeErr != nil {
+				sanitizedDesc = template.HTMLEscapeString(d.DescriptionText)
+			}
+			d.DescriptionHTML = template.HTML(sanitizedDesc)
 			d.BannerURL = coll.BannerURL
 			d.Featured = coll.Featured
 			if isAuthenticated(e) && coll.AuthorID != nil && *coll.AuthorID == authenticatedUserID(e) {
@@ -129,7 +135,11 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 					d.TitleText = t.Title
 					if t.Description != "" {
 						d.DescriptionText = t.Description
-						d.DescriptionHTML = template.HTML(t.Description)
+						sanitizedTransDesc, sanitizeErr := sanitizer.SanitizeString(t.Description)
+						if sanitizeErr != nil {
+							sanitizedTransDesc = template.HTMLEscapeString(t.Description)
+						}
+						d.DescriptionHTML = template.HTML(sanitizedTransDesc)
 					}
 					d.IsTranslated = true
 				}
