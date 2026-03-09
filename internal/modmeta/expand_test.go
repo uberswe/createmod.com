@@ -14,7 +14,7 @@ func TestExpandNamespace(t *testing.T) {
 		{
 			name:      "concatenated create addon (all lowercase)",
 			namespace: "createbigcannons",
-			mustHave:  []string{"create bigcannons", "Create: bigcannons", "createbigcannons"},
+			mustHave:  []string{"create big cannons", "Create: big cannons", "createbigcannons"},
 		},
 		{
 			name:      "underscore separated",
@@ -29,12 +29,12 @@ func TestExpandNamespace(t *testing.T) {
 		{
 			name:      "no create prefix, no camelCase",
 			namespace: "kubejs",
-			want:      []string{"kubejs"},
+			mustHave:  []string{"kubejs"},
 		},
 		{
 			name:      "camelCase with Create prefix",
 			namespace: "CreateBigCannons",
-			mustHave:  []string{"Create Big Cannons", "Create: Big Cannons", "CreateBigCannons"},
+			mustHave:  []string{"create big cannons", "Create: big cannons", "CreateBigCannons"},
 		},
 		{
 			name:      "short create addon",
@@ -77,26 +77,20 @@ func TestExpandNamespace(t *testing.T) {
 func TestSplitCamelCase(t *testing.T) {
 	tests := []struct {
 		input string
-		want  []string
+		want  string
 	}{
-		{"CreateBigCannons", []string{"Create", "Big", "Cannons"}},
-		{"alreadylowercase", []string{"alreadylowercase"}},
-		{"already split", []string{"already", "split"}},
-		{"HTMLParser", []string{"HTML", "Parser"}},
-		{"create", []string{"create"}},
+		{"CreateBigCannons", "Create Big Cannons"},
+		{"alreadylowercase", "alreadylowercase"},
+		{"already split", "already split"},
+		{"HTMLParser", "HTML Parser"},
+		{"create", "create"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			got := splitCamelCase(tt.input)
-			if len(got) != len(tt.want) {
-				t.Errorf("splitCamelCase(%q) = %v, want %v", tt.input, got, tt.want)
-				return
-			}
-			for i, v := range tt.want {
-				if got[i] != v {
-					t.Errorf("splitCamelCase(%q)[%d] = %q, want %q", tt.input, i, got[i], v)
-				}
+			if got != tt.want {
+				t.Errorf("splitCamelCase(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}

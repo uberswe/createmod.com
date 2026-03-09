@@ -112,6 +112,7 @@ var LangPtBR = map[string]string{
 	"Search news":                   "Buscar novidades",
 
 	// ── Videos ──
+	"Create Mod Videos":                "Create Mod Videos",
 	"Videos from published schematics": "Videos dos esquematicos publicados",
 	"Search videos":                    "Buscar videos",
 	"View on YouTube":                  "Ver no YouTube",

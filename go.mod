@@ -8,6 +8,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-ego/gse v1.0.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/gosimple/slug v1.15.0
 	github.com/grokify/html-strip-tags-go v0.1.0
@@ -95,6 +96,7 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
+	github.com/vcaesar/cedar v0.20.2 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect

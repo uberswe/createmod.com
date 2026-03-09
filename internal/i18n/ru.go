@@ -112,6 +112,7 @@ var LangRU = map[string]string{
 	"Search news":                   "Поиск новостей",
 
 	// ── Videos ──
+	"Create Mod Videos":                "Create Mod Видео",
 	"Videos from published schematics": "Видео из опубликованных схем",
 	"Search videos":                    "Поиск видео",
 	"View on YouTube":                  "Смотреть на YouTube",

@@ -113,42 +113,45 @@ func (s *Service) GetMetadataMap(namespaces []string) map[string]*ModMetadata {
 
 // expandNamespace takes a raw namespace (e.g. "createbigcannons", "design_decor")
 // and produces a list of search query variants, ordered most-specific first.
+// It uses gse dictionary-based word segmentation with Norvig's English corpus
+// to split concatenated words (e.g. "createbigcannons" → "create big cannons").
 func expandNamespace(namespace string) []string {
 	// Replace underscores with spaces
 	spaced := strings.ReplaceAll(namespace, "_", " ")
 
-	// Try camelCase splitting
-	words := splitCamelCase(spaced)
-	camelResult := strings.Join(words, " ")
+	// Split camelCase boundaries first (for "CreateBigCannons" → "Create Big Cannons")
+	spaced = splitCamelCase(spaced)
 
-	// If camelCase splitting didn't help (all lowercase single word),
-	// try splitting off a known "create" prefix
-	if len(words) == 1 && strings.ToLower(words[0]) == words[0] {
-		lower := strings.ToLower(words[0])
-		if len(lower) > len("create") && strings.HasPrefix(lower, "create") {
-			rest := lower[len("create"):]
-			camelResult = "create " + rest
-			words = []string{"create", rest}
+	// Use gse to segment any remaining concatenated words
+	words := seg.Cut(strings.ToLower(spaced))
+
+	// Filter empty/whitespace tokens
+	var filtered []string
+	for _, w := range words {
+		w = strings.TrimSpace(w)
+		if w != "" {
+			filtered = append(filtered, w)
 		}
 	}
+	segmented := strings.Join(filtered, " ")
 
 	seen := make(map[string]bool)
 	var variants []string
 	add := func(v string) {
+		v = strings.TrimSpace(v)
 		if v != "" && !seen[v] {
 			seen[v] = true
 			variants = append(variants, v)
 		}
 	}
 
-	// Add the space-separated form (most useful for search)
-	add(camelResult)
+	add(segmented)
 
 	// If first word is "create", add "Create: rest" variant
-	if len(words) > 1 && strings.EqualFold(words[0], "create") {
-		rest := strings.Join(words[1:], " ")
-		first := strings.ToUpper(words[0][:1]) + words[0][1:]
-		add(first + ": " + rest)
+	parts := strings.Fields(segmented)
+	if len(parts) > 1 && strings.EqualFold(parts[0], "create") {
+		rest := strings.Join(parts[1:], " ")
+		add("Create: " + rest)
 	}
 
 	// Add the original namespace as a fallback
@@ -157,11 +160,10 @@ func expandNamespace(namespace string) []string {
 	return variants
 }
 
-// splitCamelCase splits a string on camelCase boundaries.
-// "CreateBigCannons" → ["Create", "Big", "Cannons"]
-// "already split" → ["already", "split"]
-func splitCamelCase(s string) []string {
-	// First split on existing spaces
+// splitCamelCase splits a string on camelCase boundaries and returns a
+// space-separated result. This is applied before gse segmentation so that
+// camelCase inputs like "CreateBigCannons" become "Create Big Cannons".
+func splitCamelCase(s string) string {
 	parts := strings.Fields(s)
 	var result []string
 	for _, part := range parts {
@@ -182,7 +184,7 @@ func splitCamelCase(s string) []string {
 			result = append(result, string(current))
 		}
 	}
-	return result
+	return strings.Join(result, " ")
 }
 
 // EnrichMod fetches metadata for a single mod namespace from external APIs.

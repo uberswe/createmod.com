@@ -112,6 +112,7 @@ var LangPL = map[string]string{
 	"Search news":                   "Szukaj aktualności",
 
 	// ── Videos ──
+	"Create Mod Videos":                "Create Mod Filmy",
 	"Videos from published schematics": "Filmy z opublikowanych schematów",
 	"Search videos":                    "Szukaj filmów",
 	"View on YouTube":                  "Oglądaj na YouTube",

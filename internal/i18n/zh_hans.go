@@ -112,6 +112,7 @@ var LangZhHans = map[string]string{
 	"Search news":                   "搜索新闻",
 
 	// ── Videos ──
+	"Create Mod Videos":                "Create Mod 视频",
 	"Videos from published schematics": "已发布蓝图的相关视频",
 	"Search videos":                    "搜索视频",
 	"View on YouTube":                  "在 YouTube 上观看",

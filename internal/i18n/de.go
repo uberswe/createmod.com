@@ -112,6 +112,7 @@ var LangDE = map[string]string{
 	"Search news":                   "Neuigkeiten durchsuchen",
 
 	// ── Videos ──
+	"Create Mod Videos":                "Create Mod Videos",
 	"Videos from published schematics": "Videos von veröffentlichten Schematics",
 	"Search videos":                    "Videos durchsuchen",
 	"View on YouTube":                  "Auf YouTube ansehen",

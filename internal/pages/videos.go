@@ -245,7 +245,7 @@ func VideosHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		}
 
 		d.Populate(e)
-		d.Title = i18n.T(d.Language, "Videos")
+		d.Title = i18n.T(d.Language, "Create Mod Videos")
 		d.Description = i18n.T(d.Language, "Videos from published schematics")
 		d.Slug = "/videos"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
