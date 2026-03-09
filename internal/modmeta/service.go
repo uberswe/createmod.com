@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 
 	"createmod/internal/store"
 )
@@ -110,6 +111,80 @@ func (s *Service) GetMetadataMap(namespaces []string) map[string]*ModMetadata {
 	return result
 }
 
+// expandNamespace takes a raw namespace (e.g. "createbigcannons", "design_decor")
+// and produces a list of search query variants, ordered most-specific first.
+func expandNamespace(namespace string) []string {
+	// Replace underscores with spaces
+	spaced := strings.ReplaceAll(namespace, "_", " ")
+
+	// Try camelCase splitting
+	words := splitCamelCase(spaced)
+	camelResult := strings.Join(words, " ")
+
+	// If camelCase splitting didn't help (all lowercase single word),
+	// try splitting off a known "create" prefix
+	if len(words) == 1 && strings.ToLower(words[0]) == words[0] {
+		lower := strings.ToLower(words[0])
+		if len(lower) > len("create") && strings.HasPrefix(lower, "create") {
+			rest := lower[len("create"):]
+			camelResult = "create " + rest
+			words = []string{"create", rest}
+		}
+	}
+
+	seen := make(map[string]bool)
+	var variants []string
+	add := func(v string) {
+		if v != "" && !seen[v] {
+			seen[v] = true
+			variants = append(variants, v)
+		}
+	}
+
+	// Add the space-separated form (most useful for search)
+	add(camelResult)
+
+	// If first word is "create", add "Create: rest" variant
+	if len(words) > 1 && strings.EqualFold(words[0], "create") {
+		rest := strings.Join(words[1:], " ")
+		first := strings.ToUpper(words[0][:1]) + words[0][1:]
+		add(first + ": " + rest)
+	}
+
+	// Add the original namespace as a fallback
+	add(namespace)
+
+	return variants
+}
+
+// splitCamelCase splits a string on camelCase boundaries.
+// "CreateBigCannons" → ["Create", "Big", "Cannons"]
+// "already split" → ["already", "split"]
+func splitCamelCase(s string) []string {
+	// First split on existing spaces
+	parts := strings.Fields(s)
+	var result []string
+	for _, part := range parts {
+		var current []rune
+		runes := []rune(part)
+		for i, r := range runes {
+			if i > 0 && unicode.IsUpper(r) && (unicode.IsLower(runes[i-1]) ||
+				(i+1 < len(runes) && unicode.IsLower(runes[i+1]))) {
+				if len(current) > 0 {
+					result = append(result, string(current))
+				}
+				current = []rune{r}
+			} else {
+				current = append(current, r)
+			}
+		}
+		if len(current) > 0 {
+			result = append(result, string(current))
+		}
+	}
+	return result
+}
+
 // EnrichMod fetches metadata for a single mod namespace from external APIs.
 func (s *Service) EnrichMod(namespace string) error {
 	ctx := context.Background()
@@ -124,9 +199,11 @@ func (s *Service) EnrichMod(namespace string) error {
 
 	// 1. Try BlocksItems lookup to get a proper display name
 	searchName := namespace // default search term for Modrinth/CurseForge fallbacks
+	blocksitemsMatched := false
 	if biName, matched := s.tryBlocksItemsLookup(namespace); matched && biName != "" {
 		meta.DisplayName = biName
 		meta.BlocksitemsMatched = true
+		blocksitemsMatched = true
 		slog.Debug("modmeta: BlocksItems matched", "namespace", namespace, "name", biName)
 		// Use the proper name for subsequent search queries if it differs
 		if !strings.EqualFold(biName, namespace) {
@@ -134,13 +211,20 @@ func (s *Service) EnrichMod(namespace string) error {
 		}
 	}
 
+	// Generate search variants from the search name
+	searchVariants := expandNamespace(searchName)
+
 	// 2. Try Modrinth direct lookup (uses namespace as project slug)
 	if err := s.tryModrinthDirect(namespace, meta); err != nil {
 		slog.Debug("modmeta: Modrinth direct lookup failed", "namespace", namespace, "error", err)
 
-		// 3. Try Modrinth search fallback (uses searchName which may be BlocksItems display name)
-		if err := s.tryModrinthSearch(searchName, meta); err != nil {
-			slog.Debug("modmeta: Modrinth search failed", "namespace", namespace, "error", err)
+		// 3. Try Modrinth search fallback with each variant
+		for _, variant := range searchVariants {
+			if err := s.tryModrinthSearch(variant, namespace, blocksitemsMatched, meta); err != nil {
+				slog.Debug("modmeta: Modrinth search failed", "namespace", namespace, "variant", variant, "error", err)
+			} else {
+				break
+			}
 		}
 	}
 
@@ -149,9 +233,13 @@ func (s *Service) EnrichMod(namespace string) error {
 		if err := s.tryCurseForgeSlug(namespace, meta); err != nil {
 			slog.Debug("modmeta: CurseForge slug lookup failed", "namespace", namespace, "error", err)
 
-			// 5. Try CurseForge text search (uses searchName which may be BlocksItems display name)
-			if err := s.tryCurseForgeSearch(searchName, meta); err != nil {
-				slog.Debug("modmeta: CurseForge search failed", "namespace", namespace, "error", err)
+			// 5. Try CurseForge text search with each variant
+			for _, variant := range searchVariants {
+				if err := s.tryCurseForgeSearch(variant, namespace, blocksitemsMatched, meta); err != nil {
+					slog.Debug("modmeta: CurseForge search failed", "namespace", namespace, "variant", variant, "error", err)
+				} else {
+					break
+				}
 			}
 		}
 	}
@@ -280,6 +368,7 @@ type modrinthSearchHit struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	IconURL     string `json:"icon_url"`
+	Downloads   int    `json:"downloads"`
 }
 
 func (s *Service) tryModrinthDirect(namespace string, meta *ModMetadata) error {
@@ -329,10 +418,10 @@ func (s *Service) tryModrinthDirect(namespace string, meta *ModMetadata) error {
 	return nil
 }
 
-func (s *Service) tryModrinthSearch(namespace string, meta *ModMetadata) error {
+func (s *Service) tryModrinthSearch(searchName string, namespace string, blocksitemsMatched bool, meta *ModMetadata) error {
 	searchURL := fmt.Sprintf(
 		"https://api.modrinth.com/v2/search?query=%s&facets=[[\"project_type:mod\"]]&limit=5",
-		url.QueryEscape(namespace),
+		url.QueryEscape(searchName),
 	)
 	req, err := http.NewRequest("GET", searchURL, nil)
 	if err != nil {
@@ -364,28 +453,43 @@ func (s *Service) tryModrinthSearch(namespace string, meta *ModMetadata) error {
 		return fmt.Errorf("no Modrinth search results")
 	}
 
-	// Score results: exact slug match > contains namespace > first result
+	// Score each hit and pick the best
+	nsLower := strings.ToLower(namespace)
+	queryLower := strings.ToLower(searchName)
 	var best *modrinthSearchHit
+	bestScore := -1
+
 	for i := range result.Hits {
 		hit := &result.Hits[i]
+
+		// Apply download threshold for search-fallback matches
+		if !blocksitemsMatched && hit.Downloads < 10000 {
+			continue
+		}
+
+		score := hit.Downloads
 		if strings.EqualFold(hit.Slug, namespace) {
+			score += 1000
+		}
+		if strings.Contains(strings.ToLower(hit.Title), "create") ||
+			strings.Contains(strings.ToLower(hit.Slug), "create") {
+			score += 500
+		}
+		if strings.Contains(strings.ToLower(hit.Slug), nsLower) {
+			score += 100
+		}
+		if strings.Contains(strings.ToLower(hit.Title), queryLower) {
+			score += 50
+		}
+
+		if best == nil || score > bestScore {
 			best = hit
-			break
+			bestScore = score
 		}
 	}
+
 	if best == nil {
-		nsLower := strings.ToLower(namespace)
-		for i := range result.Hits {
-			hit := &result.Hits[i]
-			if strings.Contains(strings.ToLower(hit.Slug), nsLower) ||
-				strings.Contains(strings.ToLower(hit.Title), nsLower) {
-				best = hit
-				break
-			}
-		}
-	}
-	if best == nil {
-		best = &result.Hits[0]
+		return fmt.Errorf("no Modrinth search results above threshold")
 	}
 
 	meta.ModrinthSlug = best.Slug
@@ -409,11 +513,12 @@ type curseForgeSearchResponse struct {
 }
 
 type curseForgeProject struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Slug    string `json:"slug"`
-	Summary string `json:"summary"`
-	Logo    struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	Slug          string `json:"slug"`
+	Summary       string `json:"summary"`
+	DownloadCount int    `json:"downloadCount"`
+	Logo          struct {
 		URL string `json:"url"`
 	} `json:"logo"`
 	Links struct {
@@ -426,18 +531,19 @@ func (s *Service) tryCurseForgeSlug(namespace string, meta *ModMetadata) error {
 		"https://api.curseforge.com/v1/mods/search?gameId=432&slug=%s&classId=6",
 		url.QueryEscape(namespace),
 	)
-	return s.doCurseForgeSearch(cfURL, meta)
+	// Slug lookup is a direct match, so pass blocksitemsMatched=true to skip download threshold
+	return s.doCurseForgeSearch(cfURL, namespace, true, meta)
 }
 
-func (s *Service) tryCurseForgeSearch(namespace string, meta *ModMetadata) error {
+func (s *Service) tryCurseForgeSearch(searchName string, namespace string, blocksitemsMatched bool, meta *ModMetadata) error {
 	cfURL := fmt.Sprintf(
 		"https://api.curseforge.com/v1/mods/search?gameId=432&searchFilter=%s&classId=6&pageSize=5",
-		url.QueryEscape(namespace),
+		url.QueryEscape(searchName),
 	)
-	return s.doCurseForgeSearch(cfURL, meta)
+	return s.doCurseForgeSearch(cfURL, namespace, blocksitemsMatched, meta)
 }
 
-func (s *Service) doCurseForgeSearch(cfURL string, meta *ModMetadata) error {
+func (s *Service) doCurseForgeSearch(cfURL string, namespace string, blocksitemsMatched bool, meta *ModMetadata) error {
 	req, err := http.NewRequest("GET", cfURL, nil)
 	if err != nil {
 		return err
@@ -469,21 +575,54 @@ func (s *Service) doCurseForgeSearch(cfURL string, meta *ModMetadata) error {
 		return fmt.Errorf("no CurseForge results")
 	}
 
-	project := result.Data[0]
-	meta.CurseForgeID = fmt.Sprintf("%d", project.ID)
-	meta.CurseForgeURL = fmt.Sprintf("https://www.curseforge.com/minecraft/mc-mods/%s", project.Slug)
+	// Score each result and pick the best
+	nsLower := strings.ToLower(namespace)
+	var best *curseForgeProject
+	bestScore := -1
+
+	for i := range result.Data {
+		project := &result.Data[i]
+
+		// Apply download threshold for search-fallback matches
+		if !blocksitemsMatched && project.DownloadCount < 10000 {
+			continue
+		}
+
+		score := project.DownloadCount
+		if strings.EqualFold(project.Slug, namespace) {
+			score += 1000
+		}
+		if strings.Contains(strings.ToLower(project.Name), "create") ||
+			strings.Contains(strings.ToLower(project.Slug), "create") {
+			score += 500
+		}
+		if strings.Contains(strings.ToLower(project.Slug), nsLower) {
+			score += 100
+		}
+		if best == nil || score > bestScore {
+			best = project
+			bestScore = score
+		}
+	}
+
+	if best == nil {
+		return fmt.Errorf("no CurseForge results above threshold")
+	}
+
+	meta.CurseForgeID = fmt.Sprintf("%d", best.ID)
+	meta.CurseForgeURL = fmt.Sprintf("https://www.curseforge.com/minecraft/mc-mods/%s", best.Slug)
 
 	if meta.DisplayName == "" {
-		meta.DisplayName = project.Name
+		meta.DisplayName = best.Name
 	}
 	if meta.Description == "" {
-		meta.Description = project.Summary
+		meta.Description = best.Summary
 	}
 	if meta.IconURL == "" {
-		meta.IconURL = project.Logo.URL
+		meta.IconURL = best.Logo.URL
 	}
-	if meta.SourceURL == "" && project.Links.SourceURL != "" {
-		meta.SourceURL = project.Links.SourceURL
+	if meta.SourceURL == "" && best.Links.SourceURL != "" {
+		meta.SourceURL = best.Links.SourceURL
 	}
 	return nil
 }
