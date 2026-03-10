@@ -132,6 +132,11 @@ window['nitroAds'].createAd('explore-adrail', {
     }
   }
 
+  function sentinelVisible() {
+    var rect = sentinel.getBoundingClientRect();
+    return rect.top < window.innerHeight + 600;
+  }
+
   function loadMore() {
     if (loading) return;
     loading = true;
@@ -146,6 +151,10 @@ window['nitroAds'].createAd('explore-adrail', {
         }
         loading = false;
         if (spinner) spinner.style.display = 'none';
+        // If sentinel is still visible (tall viewport), keep loading
+        if (sentinelVisible()) {
+          loadMore();
+        }
       })
       .catch(function() {
         loading = false;
