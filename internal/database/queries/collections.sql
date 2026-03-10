@@ -67,3 +67,8 @@ SELECT * FROM collections
 WHERE deleted = '' AND published = true
 ORDER BY created DESC
 LIMIT $1 OFFSET $2;
+
+-- name: ListCollectionsForSitemap :many
+SELECT id, slug, updated FROM collections
+WHERE deleted = '' AND published = true
+ORDER BY updated DESC;

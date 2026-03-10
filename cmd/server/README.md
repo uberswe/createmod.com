@@ -28,23 +28,6 @@ docker compose down -v          # stop and delete volumes (wipes data)
 
 ### Migrating from PocketBase/SQLite
 
-If you have an existing PocketBase database (`pb_data/data.db`), mount it into the app container by adding a volume to the `app` service in `docker-compose.yml`:
-
-```yaml
-app:
-  volumes:
-    - ./pb_data:/app/pb_data:ro
-```
-
-The server auto-detects the SQLite file on startup and migrates data to PostgreSQL if the database is empty. A maintenance page is shown during migration with auto-refresh every 30 seconds.
-
-Alternatively, run the standalone migration tool:
-
-```bash
-docker compose run --rm migrate-data \
-  --pg=postgres://createmod:localdev@postgres:5432/createmod?sslmode=disable
-```
-
 ## Local Development (without Docker)
 
 ### Prerequisites

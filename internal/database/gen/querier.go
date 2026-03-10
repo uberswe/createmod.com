@@ -18,8 +18,10 @@ type Querier interface {
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
 	CheckHashIsBlacklisted(ctx context.Context, hash string) (bool, error)
+	CleanupExpiredDownloadTokens(ctx context.Context) error
 	CleanupExpiredSessions(ctx context.Context) error
 	ClearCollectionSchematics(ctx context.Context, collectionID string) error
+	ConsumeDownloadToken(ctx context.Context, token string) (DownloadToken, error)
 	CountApprovedSchematics(ctx context.Context) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
@@ -33,6 +35,7 @@ type Querier interface {
 	CreateCollection(ctx context.Context, arg CreateCollectionParams) (Collection, error)
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreateContactFormSubmission(ctx context.Context, arg CreateContactFormSubmissionParams) (ContactFormSubmission, error)
+	CreateDownloadToken(ctx context.Context, arg CreateDownloadTokenParams) (DownloadToken, error)
 	CreateExternalAuth(ctx context.Context, arg CreateExternalAuthParams) (ExternalAuth, error)
 	CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error)
 	CreateNBTHash(ctx context.Context, arg CreateNBTHashParams) error
@@ -130,6 +133,7 @@ type Querier interface {
 	ListCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListCollections(ctx context.Context, arg ListCollectionsParams) ([]Collection, error)
 	ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error)
+	ListCollectionsForSitemap(ctx context.Context) ([]ListCollectionsForSitemapRow, error)
 	ListCommentsBySchematic(ctx context.Context, schematicID *string) ([]ListCommentsBySchematicRow, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	ListFeaturedCollections(ctx context.Context, limit int32) ([]Collection, error)
@@ -156,6 +160,7 @@ type Querier interface {
 	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
 	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
+	ListSchematicsMissingHash(ctx context.Context, arg ListSchematicsMissingHashParams) ([]ListSchematicsMissingHashRow, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)

@@ -1,22 +1,5 @@
 <aside class="sidebar-rail" id="sidebar-menu">
     <nav class="sidebar-nav">
-        {{ $t := printf "%T" . }}
-        {{ if eq $t "pages.UploadPreviewData" }}
-        <div class="sidebar-stats-card">
-            <div class="card m-2">
-                <div class="card-body">
-                    <h3 class="card-title">Schematic Stats</h3>
-                    <ul class="list-unstyled">
-                        <li><strong>Filename:</strong> {{ .Filename }}</li>
-                        <li><strong>Size:</strong> {{ .Size }} bytes</li>
-                        <li><strong>SHA-256:</strong> {{ .Checksum }}</li>
-                        <li><strong>Uploaded:</strong> {{ HumanDate .UploadedAt }}</li>
-                        <li><strong>Parsed:</strong> {{ .ParsedSummary }}</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        {{ end }}
         <a href="{{ LangURL .Language "/" }}" class="sidebar-item" title="Home">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
             <span class="sidebar-label">{{ T .Language "Home" }}</span>
@@ -88,4 +71,8 @@
         </a>
         {{ end }}
     </div>
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
+        <span class="sidebar-toggle-label" id="sidebar-toggle-label">Expand</span>
+    </button>
 </aside>

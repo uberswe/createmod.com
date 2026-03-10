@@ -14,6 +14,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -193,7 +194,7 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
 		resp.Dimensions.Z = dimZ
-		resp.FileURL = "/api/files/" + nbtS3Key
+		resp.FileURL = "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(header.Filename)
 		if resp.Materials == nil {
 			resp.Materials = []nbtparser.Material{}
 		}

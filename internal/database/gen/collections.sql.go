@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const addSchematicToCollection = `-- name: AddSchematicToCollection :exec
@@ -254,6 +255,38 @@ func (q *Queries) ListCollectionsByAuthor(ctx context.Context, authorID *string)
 			&i.Created,
 			&i.Updated,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCollectionsForSitemap = `-- name: ListCollectionsForSitemap :many
+SELECT id, slug, updated FROM collections
+WHERE deleted = '' AND published = true
+ORDER BY updated DESC
+`
+
+type ListCollectionsForSitemapRow struct {
+	ID      string    `json:"id"`
+	Slug    string    `json:"slug"`
+	Updated time.Time `json:"updated"`
+}
+
+func (q *Queries) ListCollectionsForSitemap(ctx context.Context) ([]ListCollectionsForSitemapRow, error) {
+	rows, err := q.db.Query(ctx, listCollectionsForSitemap)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCollectionsForSitemapRow{}
+	for rows.Next() {
+		var i ListCollectionsForSitemapRow
+		if err := rows.Scan(&i.ID, &i.Slug, &i.Updated); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

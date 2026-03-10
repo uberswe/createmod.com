@@ -87,22 +87,6 @@ services:
       mailhog:
         condition: service_started
 
-  migrate-data:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    entrypoint: ["/app/migrate-data"]
-    environment:
-      - DATABASE_URL=postgres://createmod:localdev@postgres:5432/createmod?sslmode=disable
-      - SQLITE_PATH=/pb_data/data.db
-    volumes:
-      - ./pb_data:/pb_data
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles:
-      - tools
-
 volumes:
   postgres_data:
   minio_data:

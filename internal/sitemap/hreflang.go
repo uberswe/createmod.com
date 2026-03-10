@@ -7,8 +7,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 )
 
 // hreflangURLSet is the root element for a sitemap with xhtml:link alternates.
@@ -20,8 +18,8 @@ type hreflangURLSet struct {
 }
 
 type hreflangURL struct {
-	Loc   string          `xml:"loc"`
-	Links []hreflangLink  `xml:"xhtml:link"`
+	Loc   string         `xml:"loc"`
+	Links []hreflangLink `xml:"xhtml:link"`
 }
 
 type hreflangLink struct {
@@ -29,8 +27,6 @@ type hreflangLink struct {
 	Hreflang string `xml:"hreflang,attr"`
 	Href     string `xml:"href,attr"`
 }
-
-const sitemapOutputPath = "template/dist/sitemaps/"
 
 // GenerateHreflang creates sitemap files with xhtml:link hreflang alternates
 // for all supported languages. Each language gets its own sitemap file.
@@ -40,11 +36,24 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 	hostname := "https://createmod.com"
 	entries := pages.AllHreflangs()
 
-	// Collect all schematic paths
 	ctx := context.Background()
+
+	// Collect all schematic paths
 	schematics, err := appStore.Schematics.ListForSitemap(ctx)
 	if err != nil {
 		slog.Warn("hreflang sitemap: failed to query schematics", "error", err)
+	}
+
+	// Collect guide paths
+	guides, err := appStore.Guides.ListForSitemap(ctx)
+	if err != nil {
+		slog.Warn("hreflang sitemap: failed to query guides", "error", err)
+	}
+
+	// Collect collection paths
+	collections, err := appStore.Collections.ListForSitemap(ctx)
+	if err != nil {
+		slog.Warn("hreflang sitemap: failed to query collections", "error", err)
 	}
 
 	// Static pages to include in hreflang sitemaps
@@ -74,6 +83,12 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 	allPaths = append(allPaths, staticPaths...)
 	for _, sc := range schematics {
 		allPaths = append(allPaths, "/schematics/"+sc.Name)
+	}
+	for _, g := range guides {
+		allPaths = append(allPaths, "/guides/"+g.Slug)
+	}
+	for _, c := range collections {
+		allPaths = append(allPaths, "/collections/"+c.Slug)
 	}
 
 	// buildLinks creates the hreflang link set for a given bare path
@@ -107,7 +122,7 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 		for i, barePath := range allPaths {
 			if i > 0 && i%5000 == 0 {
 				// Write current chunk
-				if err := writeHreflangSitemap(entry, chunkIdx, urlSet); err != nil {
+				if err := s.writeHreflangSitemap(ctx, entry, chunkIdx, urlSet); err != nil {
 					slog.Error("hreflang sitemap write failed", "lang", entry.Lang, "chunk", chunkIdx, "error", err)
 				}
 				chunkIdx++
@@ -123,7 +138,7 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 
 		// Write final chunk
 		if len(urlSet.URLs) > 0 {
-			if err := writeHreflangSitemap(entry, chunkIdx, urlSet); err != nil {
+			if err := s.writeHreflangSitemap(ctx, entry, chunkIdx, urlSet); err != nil {
 				slog.Error("hreflang sitemap write failed", "lang", entry.Lang, "chunk", chunkIdx, "error", err)
 			}
 		}
@@ -132,7 +147,7 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 	slog.Info("hreflang sitemap generation completed")
 }
 
-func writeHreflangSitemap(entry pages.HreflangEntry, chunkIdx int, urlSet hreflangURLSet) error {
+func (s *Service) writeHreflangSitemap(ctx context.Context, entry pages.HreflangEntry, chunkIdx int, urlSet hreflangURLSet) error {
 	prefix := entry.Prefix
 	if prefix == "" {
 		prefix = "en"
@@ -145,23 +160,23 @@ func writeHreflangSitemap(entry pages.HreflangEntry, chunkIdx int, urlSet hrefla
 		filename = fmt.Sprintf("hreflang-%s-%d.xml", prefix, chunkIdx+1)
 	}
 
-	path := filepath.Join(sitemapOutputPath, filename)
-
-	// Ensure output directory exists
-	if err := os.MkdirAll(sitemapOutputPath, 0755); err != nil {
-		return fmt.Errorf("failed to create sitemap directory: %w", err)
-	}
-
 	data, err := xml.MarshalIndent(urlSet, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal hreflang sitemap: %w", err)
 	}
 
-	content := xml.Header + string(data)
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		return fmt.Errorf("failed to write hreflang sitemap: %w", err)
+	content := []byte(xml.Header + string(data))
+
+	// Upload to S3 if storage is available
+	if s.storage != nil {
+		key := "_sitemaps/" + filename
+		if err := s.storage.UploadRawBytes(ctx, key, content, "application/xml"); err != nil {
+			return fmt.Errorf("failed to upload hreflang sitemap to S3: %w", err)
+		}
+		slog.Info("hreflang sitemap uploaded to S3", "file", filename, "urls", len(urlSet.URLs))
+		return nil
 	}
 
-	slog.Info("hreflang sitemap written", "file", filename, "urls", len(urlSet.URLs))
+	slog.Warn("hreflang sitemap: no storage service, skipping S3 upload", "file", filename)
 	return nil
 }

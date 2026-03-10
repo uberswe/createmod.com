@@ -381,7 +381,12 @@ a:hover {
   display: flex;
   flex-direction: column;
 }
+/* Minimized (default): expand on hover */
 .sidebar-rail:hover {
+  width: 220px;
+}
+/* Expanded (pinned open): always 220px, no hover needed */
+.sidebar-rail.sidebar-expanded {
   width: 220px;
 }
 .sidebar-nav {
@@ -401,6 +406,51 @@ a:hover {
   font-size: 0.875rem;
 }
 .sidebar-rail:hover .sidebar-label {
+  opacity: 1;
+}
+/* Expanded: labels always visible */
+.sidebar-rail.sidebar-expanded .sidebar-label {
+  opacity: 1;
+}
+/* Toggle button at bottom of sidebar */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(128, 128, 128, 0.12);
+  color: var(--tblr-body-color);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+.sidebar-toggle:hover {
+  opacity: 1;
+  background: rgba(128, 128, 128, 0.08);
+}
+.sidebar-toggle svg {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+}
+/* Flip the chevron icon when expanded */
+.sidebar-expanded .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+.sidebar-toggle-label {
+  opacity: 0;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+  font-size: 0.875rem;
+  margin-left: 0.75rem;
+}
+.sidebar-rail:hover .sidebar-toggle-label,
+.sidebar-rail.sidebar-expanded .sidebar-toggle-label {
   opacity: 1;
 }
 .sidebar-item {
@@ -438,7 +488,8 @@ a:hover {
 .sidebar-stats-card {
   display: none;
 }
-.sidebar-rail:hover .sidebar-stats-card {
+.sidebar-rail:hover .sidebar-stats-card,
+.sidebar-rail.sidebar-expanded .sidebar-stats-card {
   display: block;
 }
 
@@ -503,6 +554,11 @@ a:hover {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 100px);
+  transition: margin-left 0.2s ease;
+}
+/* Push content over when sidebar is pinned open */
+body.sidebar-pinned .page-wrapper {
+  margin-left: 220px;
 }
 .page-wrapper > .page-body {
   flex: 1;
@@ -533,8 +589,15 @@ a:hover {
   .page-wrapper {
     margin-left: 0;
   }
+  body.sidebar-pinned .page-wrapper {
+    margin-left: 0;
+  }
   .top-header-search {
     max-width: none;
+  }
+  /* Hide the expand/collapse toggle on mobile — mobile uses the hamburger */
+  .sidebar-toggle {
+    display: none;
   }
 }
 

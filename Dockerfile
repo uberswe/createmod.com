@@ -38,7 +38,6 @@ COPY --from=frontend-builder /app/template/dist ./template/dist
 
 # Build the Go app
 RUN go build -o main ./cmd/server/main.go
-RUN go build -o migrate-data ./cmd/migrate-data/
 
 # Expose port 8080 to the outside world
 EXPOSE 8080

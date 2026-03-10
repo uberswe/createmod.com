@@ -29,6 +29,16 @@ func (w *SessionCleanupWorker) Work(ctx context.Context, job *river.Job[SessionC
 		slog.Error("session cleanup failed", "error", err)
 		return err
 	}
+
+	// Clean up expired download tokens
+	if w.deps.Store != nil && w.deps.Store.DownloadTokens != nil {
+		if err := w.deps.Store.DownloadTokens.CleanupExpired(ctx); err != nil {
+			slog.Error("download token cleanup failed", "error", err)
+		} else {
+			slog.Info("download token cleanup complete")
+		}
+	}
+
 	slog.Info("session cleanup complete")
 	return nil
 }

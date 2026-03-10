@@ -198,6 +198,17 @@ SELECT schematic_id FROM nbt_hashes
 WHERE hash = $1
 LIMIT 1;
 
+-- name: ListSchematicsMissingHash :many
+SELECT s.id, s.schematic_file
+FROM schematics s
+LEFT JOIN nbt_hashes nh ON nh.schematic_id = s.id
+WHERE nh.id IS NULL
+  AND s.deleted IS NULL
+  AND s.schematic_file != ''
+  AND s.id > $1
+ORDER BY s.id
+LIMIT $2;
+
 -- name: UpdateSchematicName :exec
 UPDATE schematics SET name = $2 WHERE id = $1;
 

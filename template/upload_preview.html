@@ -5,6 +5,8 @@
         {{template "header.html" .}}
         <div class="page-body">
             <div class="container-wide">
+                <div class="d-flex gap-3">
+                    <div class="flex-grow-1 min-width-0">
 
                 <!-- Progress Steps (only for owner) -->
                 {{ if .IsOwner }}
@@ -12,6 +14,9 @@
                     {{ template "upload_steps.html" . }}
                 </div>
                 {{ end }}
+
+                <!-- Mobile ad (above content on smaller screens) -->
+                <div id="upload-preview-mobile" class="d-xl-none mb-3 text-center"></div>
 
                 <div class="row row-cards">
 
@@ -190,6 +195,13 @@
 
                 </div>
 
+                    </div>
+
+                    <!-- Ad Rail (desktop only) -->
+                    <div class="ad-rail d-none d-xl-block">
+                        <div id="upload-preview-adrail" class="mb-3"></div>
+                    </div>
+                </div>
             </div>
         </div>
         {{template "footer.html" .}}
@@ -548,3 +560,35 @@ function deleteAdditionalFile(token, fileId, btn) {
 </div>
 {{ end }}
 {{template "foot.html" .}}
+<script>
+window['nitroAds'].createAd('upload-preview-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('upload-preview-mobile', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
+});
+</script>

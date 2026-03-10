@@ -177,7 +177,23 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
 
 	// Frontend routes
-	r.Handle("/sitemaps/*", http.StripPrefix("/sitemaps/", http.FileServer(http.Dir("./template/dist/sitemaps"))))
+	// Serve sitemaps from S3 storage
+	r.Get("/sitemaps/{file}", func(w http.ResponseWriter, req *http.Request) {
+		filename := chi.URLParam(req, "file")
+		if filename == "" || p.StorageService == nil {
+			http.NotFound(w, req)
+			return
+		}
+		reader, err := p.StorageService.DownloadRaw(req.Context(), "_sitemaps/"+filename)
+		if err != nil {
+			http.NotFound(w, req)
+			return
+		}
+		defer reader.Close()
+		w.Header().Set("Content-Type", "application/xml")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		io.Copy(w, reader)
+	})
 	r.Handle("/assets/x/*", http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static"))))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -237,6 +253,7 @@ func Register(p RegisterParams) chi.Router {
 	})
 	r.Get("/rules", Adapt(pages.RulesHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/explore", Adapt(pages.ExploreHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/api/explore/images", Adapt(pages.ExploreAPIHandler(p.CacheService, p.AppStore)))
 	r.Get("/terms-of-service", Adapt(pages.TermsOfServiceHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/privacy-policy", Adapt(pages.PrivacyPolicyHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings", Adapt(pages.UserSettingsHandler(registry, p.CacheService, p.AppStore)))
