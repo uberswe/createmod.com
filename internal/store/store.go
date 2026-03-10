@@ -447,6 +447,7 @@ type CollectionStore interface {
 	ClearSchematics(ctx context.Context, collectionID string) error
 	IncrementViews(ctx context.Context, id string) error
 	CountByUser(ctx context.Context, userID string) (int64, error)
+	ListForSitemap(ctx context.Context) ([]SitemapCollection, error)
 }
 
 // AchievementStore handles achievements and points.
@@ -572,6 +573,30 @@ type NBTHashStore interface {
 	IsBlacklisted(ctx context.Context, hash string) (bool, error)
 }
 
+// DownloadToken represents a one-time download token.
+type DownloadToken struct {
+	ID        string
+	Token     string
+	Name      string // schematic name
+	ExpiresAt time.Time
+	Used      bool
+	Created   time.Time
+}
+
+// DownloadTokenStore handles download token persistence.
+type DownloadTokenStore interface {
+	Create(ctx context.Context, dt *DownloadToken) error
+	Consume(ctx context.Context, token string) (*DownloadToken, error) // get + mark used atomically
+	CleanupExpired(ctx context.Context) error
+}
+
+// SitemapCollection is a lightweight collection entry for sitemap generation.
+type SitemapCollection struct {
+	ID      string
+	Slug    string
+	Updated time.Time
+}
+
 // Store aggregates all sub-stores for dependency injection.
 // TempUpload represents a temporarily uploaded schematic awaiting publishing.
 type TempUpload struct {
@@ -659,4 +684,5 @@ type Store struct {
 	TempUploads     TempUploadStore
 	TempUploadFiles TempUploadFileStore
 	NBTHashes       NBTHashStore
+	DownloadTokens  DownloadTokenStore
 }

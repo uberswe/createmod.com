@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
-	"os"
 	"time"
 )
 
@@ -173,44 +171,6 @@ func (s *Service) generateDescription(r io.Reader) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to generate description: %w", err)
 	}
-
-	return description, nil
-}
-
-// DownloadAndProcessImage downloads an image and processes it.
-func (s *Service) DownloadAndProcessImage(imageURL string, tempFilePath string) (string, error) {
-	// Download the image
-	resp, err := http.Get(imageURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to download image: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download image, status code: %d", resp.StatusCode)
-	}
-
-	// Create a temporary file
-	file, err := os.Create(tempFilePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %w", err)
-	}
-	defer file.Close()
-
-	// Copy the image data to the file
-	_, err = file.ReadFrom(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to write image data to file: %w", err)
-	}
-
-	// Generate description from the file
-	description, err := s.openaiClient.GenerateImageDescriptionFromFile(tempFilePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate description from file: %w", err)
-	}
-
-	// Clean up the temporary file
-	os.Remove(tempFilePath)
 
 	return description, nil
 }

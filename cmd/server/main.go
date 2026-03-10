@@ -3,19 +3,15 @@ package main
 import (
 	"context"
 	"createmod/internal/database"
-	"createmod/internal/migrate"
 	"createmod/internal/storage"
 	"createmod/server"
-	"database/sql"
 	"log"
 	"os"
 	"sync/atomic"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
-	_ "modernc.org/sqlite"
 )
 
 const (
@@ -131,90 +127,8 @@ func main() {
 		log.Println("WARNING: S3_ENDPOINT not set, file storage features will be unavailable")
 	}
 
-	// Check if SQLite auto-migration is needed. If so, enable maintenance mode
-	// so the server serves a "Coming Back Soon" page while data is being
-	// migrated, then disable it when done.
-	maintenance := &atomic.Bool{}
-	needsMigration := sqliteMigrationNeeded(pool, ctx)
-	if needsMigration {
-		maintenance.Store(true)
-		log.Println("SQLite migration pending — enabling maintenance mode")
-	}
-	conf.MaintenanceMode = maintenance
+	conf.MaintenanceMode = &atomic.Bool{}
 
 	s := server.New(conf)
-
-	if needsMigration {
-		go func() {
-			autoMigrateFromSQLite(pool, ctx)
-			maintenance.Store(false)
-			log.Println("Maintenance mode disabled")
-			s.PostMigrationRebuild()
-		}()
-	}
-
 	s.Start()
-}
-
-// sqliteMigrationNeeded checks whether a SQLite database exists and PostgreSQL
-// is empty, without actually running the migration.
-func sqliteMigrationNeeded(pool *pgxpool.Pool, ctx context.Context) bool {
-	sqlitePath := os.Getenv("SQLITE_PATH")
-	if sqlitePath == "" {
-		sqlitePath = "./pb_data/data.db"
-	}
-	if _, err := os.Stat(sqlitePath); err != nil {
-		return false
-	}
-	var count int64
-	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
-		return false
-	}
-	return count == 0
-}
-
-// autoMigrateFromSQLite checks for a PocketBase SQLite database and automatically
-// migrates data to PostgreSQL if the PG users table is empty. This is a one-time
-// operation — once PG has data, the SQLite file is ignored.
-func autoMigrateFromSQLite(pool *pgxpool.Pool, ctx context.Context) {
-	sqlitePath := os.Getenv("SQLITE_PATH")
-	if sqlitePath == "" {
-		sqlitePath = "./pb_data/data.db"
-	}
-	if _, err := os.Stat(sqlitePath); err != nil {
-		return // no SQLite DB found
-	}
-
-	// Check if PostgreSQL already has data
-	var count int64
-	if err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
-		return // table may not exist yet
-	}
-	if count > 0 {
-		return // PG already has data, skip migration
-	}
-
-	log.Printf("SQLite database found at %s and PostgreSQL is empty — starting automatic migration...", sqlitePath)
-
-	sqliteDB, err := sql.Open("sqlite", sqlitePath+"?mode=ro")
-	if err != nil {
-		log.Printf("WARNING: Failed to open SQLite for migration: %v", err)
-		return
-	}
-	defer sqliteDB.Close()
-
-	if err := sqliteDB.Ping(); err != nil {
-		log.Printf("WARNING: Failed to read SQLite database: %v", err)
-		return
-	}
-
-	m := migrate.New(sqliteDB, pool, false)
-	if err := m.Run(ctx); err != nil {
-		log.Printf("WARNING: SQLite migration failed: %v", err)
-		log.Println("You can retry manually with: go run ./cmd/migrate-data --pg=$DATABASE_URL")
-		return
-	}
-
-	log.Println("=== Automatic SQLite migration complete ===")
-	m.Validate(ctx)
 }

@@ -64,9 +64,16 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 			d.Title = i18n.T(d.Language, "Preparing External Link")
 			d.Description = i18n.T(d.Language, "page.download.external.description")
 		} else {
-			// Free: generate one-time token and store with TTL
+			// Free: generate one-time token and store in PostgreSQL
 			token := randomHex(24)
-			cacheService.SetWithTTL("dl:"+token, name, 2*time.Minute)
+			dt := &store.DownloadToken{
+				Token:     token,
+				Name:      name,
+				ExpiresAt: time.Now().Add(2 * time.Minute),
+			}
+			if err := appStore.DownloadTokens.Create(context.Background(), dt); err != nil {
+				return e.String(http.StatusInternalServerError, "failed to create download token")
+			}
 			d.Title = i18n.T(d.Language, "Preparing Download")
 			d.Description = i18n.T(d.Language, "page.download.file.description")
 			d.Token = token

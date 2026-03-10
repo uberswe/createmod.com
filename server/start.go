@@ -112,7 +112,7 @@ func detectLanguageFromRequest(r *http.Request) string {
 }
 
 func New(conf Config) *Server {
-	sitemapService := sitemap.New(conf.Dev)
+	sitemapService := sitemap.New(conf.Dev, conf.Storage)
 	discordService := discord.New(conf.DiscordWebhookUrl)
 	moderationService := moderation.NewService(conf.OpenAIApiKey, slog.Default())
 	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, slog.Default())
@@ -156,39 +156,27 @@ func New(conf Config) *Server {
 func (s *Server) Start() {
 	log.Println("Launching...")
 
-	// Initialise the search service. It attempts to load a cached index
-	// snapshot from storage (S3) so the server can serve search
-	// requests immediately. A background goroutine then does a full
-	// rebuild from the database to pick up any recent changes.
+	// Initialise the search service. The S3 cache load and full index
+	// rebuild happen via River's SearchIndexWorker (RunOnStart: true),
+	// so the server can start accepting HTTP traffic immediately.
 	log.Println("Starting Search Server")
-	s.searchService = search.New(s.storageService)
+	s.searchService = search.NewEmpty(s.storageService)
 
-	// When maintenance mode is active (SQLite migration in progress),
-	// skip all heavy background jobs to give the migration maximum
-	// memory. PostMigrationRebuild() will run them after migration
-	// completes.
+	// When maintenance mode is active, skip heavy background jobs.
 	migrating := s.conf.MaintenanceMode != nil && s.conf.MaintenanceMode.Load()
 
 	if !migrating {
-		// Run search index rebuild, sitemap generation, and schematic repair
-		// sequentially in a single background goroutine so they don't compete
-		// for memory.
+		// Warm per-pod in-memory caches in the background so startup isn't
+		// blocked. Handlers tolerate cold caches (they compute on miss).
 		go func() {
-			slog.Info("search: background index rebuild starting")
-			s.rebuildSearchIndexFromStore()
-			s.sitemapService.Generate(s.store)
-			slog.Info("search: background index rebuild complete")
-
-			pages.RepairSchematics(s.storageService, s.store)
+			pages.WarmIndexCache(s.cacheService, s.store)
+			pages.WarmVideosCache(s.cacheService, s.store)
 		}()
 
-		// Warm page caches so the first visitor never waits
-		pages.WarmIndexCache(s.cacheService, s.store)
-		pages.WarmVideosCache(s.cacheService, s.store)
-
-		// Background: periodically clean up expired temp uploads from PostgreSQL
-		pages.StartTempUploadCleanup(s.store)
-
+		// All other periodic work (search index rebuild, sitemap generation,
+		// schematic repair, temp upload cleanup, trending scores, etc.) is
+		// handled by River periodic jobs with UniqueOpts deduplication, so
+		// only one pod executes each job even when running multiple replicas.
 		s.startJobWorker()
 	} else {
 		slog.Info("maintenance mode active — deferring background jobs until migration completes")
@@ -294,24 +282,6 @@ func anyLetter(r rune) bool {
 	return unicode.IsLetter(r)
 }
 
-// PostMigrationRebuild rebuilds the search index, sitemaps, and page caches
-// after a data migration has populated the database. Call this when
-// maintenance mode is disabled following a SQLite-to-PostgreSQL migration.
-// It also starts background jobs that were deferred during migration.
-func (s *Server) PostMigrationRebuild() {
-	slog.Info("post-migration: rebuilding search index, sitemaps, and caches")
-	s.rebuildSearchIndexFromStore()
-	s.sitemapService.Generate(s.store)
-	pages.WarmIndexCache(s.cacheService, s.store)
-	pages.WarmVideosCache(s.cacheService, s.store)
-	slog.Info("post-migration: rebuild complete")
-
-	// Start deferred background jobs. Repair runs after rebuild is done
-	// so they don't compete for memory.
-	pages.RepairSchematics(s.storageService, s.store)
-	pages.StartTempUploadCleanup(s.store)
-	s.startJobWorker()
-}
 
 // startJobWorker initialises and starts the River background job worker.
 func (s *Server) startJobWorker() {
@@ -343,25 +313,6 @@ func (s *Server) startJobWorker() {
 	slog.Info("River job worker started")
 }
 
-// rebuildSearchIndexFromStore rebuilds the search index using the PostgreSQL store.
-func (s *Server) rebuildSearchIndexFromStore() {
-	if s.searchService == nil {
-		slog.Warn("search rebuild: skipped — search service not initialised yet")
-		return
-	}
-	ctx := context.Background()
-	storeSchematics, err := s.store.Schematics.ListAllForIndex(ctx)
-	if err != nil {
-		slog.Warn("search rebuild: failed to list schematics", "error", err)
-		return
-	}
-	mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
-	slog.Debug("search service mapped schematics", "mapped schematic count", len(mapped))
-	s.searchService.BuildIndex(mapped)
-	if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
-		s.searchService.SetTrendingScores(scores)
-	}
-}
 
 func init() {
 	rand.Seed(time.Now().UnixNano())

@@ -1428,6 +1428,22 @@ func (cs *CollectionStoreImpl) CountByUser(ctx context.Context, userID string) (
 	return cs.q.CountUserCollections(ctx, &userID)
 }
 
+func (cs *CollectionStoreImpl) ListForSitemap(ctx context.Context) ([]store.SitemapCollection, error) {
+	rows, err := cs.q.ListCollectionsForSitemap(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SitemapCollection, len(rows))
+	for i, r := range rows {
+		result[i] = store.SitemapCollection{
+			ID:      r.ID,
+			Slug:    r.Slug,
+			Updated: r.Updated,
+		}
+	}
+	return result, nil
+}
+
 // AchievementStoreImpl implements store.AchievementStore.
 type AchievementStoreImpl struct{ q *db.Queries }
 
@@ -2372,6 +2388,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		TempUploads:     &TempUploadStoreImpl{q: q},
 		TempUploadFiles: &TempUploadFileStoreImpl{q: q},
 		NBTHashes:       &NBTHashStoreImpl{q: q},
+		DownloadTokens:  &DownloadTokenStoreImpl{q: q},
 	}
 }
 
@@ -2423,6 +2440,7 @@ var (
 	_ store.StatsStore          = (*StatsStoreImpl)(nil)
 	_ store.TempUploadStore     = (*TempUploadStoreImpl)(nil)
 	_ store.TempUploadFileStore = (*TempUploadFileStoreImpl)(nil)
+	_ store.DownloadTokenStore  = (*DownloadTokenStoreImpl)(nil)
 )
 
 // Ensure unused import is satisfied.
@@ -2624,4 +2642,43 @@ func (s *TempUploadFileStoreImpl) Delete(ctx context.Context, id string) error {
 
 func (s *TempUploadFileStoreImpl) DeleteByToken(ctx context.Context, token string) error {
 	return s.q.DeleteTempUploadFilesByToken(ctx, token)
+}
+
+// --------------------------------------------------------------------------
+// DownloadToken Store Implementation
+// --------------------------------------------------------------------------
+
+type DownloadTokenStoreImpl struct{ q *db.Queries }
+
+func (dt *DownloadTokenStoreImpl) Create(ctx context.Context, t *store.DownloadToken) error {
+	row, err := dt.q.CreateDownloadToken(ctx, db.CreateDownloadTokenParams{
+		Token:     t.Token,
+		Name:      t.Name,
+		ExpiresAt: t.ExpiresAt,
+	})
+	if err != nil {
+		return err
+	}
+	t.ID = row.ID
+	t.Created = row.Created
+	return nil
+}
+
+func (dt *DownloadTokenStoreImpl) Consume(ctx context.Context, token string) (*store.DownloadToken, error) {
+	row, err := dt.q.ConsumeDownloadToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	return &store.DownloadToken{
+		ID:        row.ID,
+		Token:     row.Token,
+		Name:      row.Name,
+		ExpiresAt: row.ExpiresAt,
+		Used:      row.Used,
+		Created:   row.Created,
+	}, nil
+}
+
+func (dt *DownloadTokenStoreImpl) CleanupExpired(ctx context.Context) error {
+	return dt.q.CleanupExpiredDownloadTokens(ctx)
 }

@@ -1,14 +1,9 @@
 package pages
 
 import (
-	"archive/zip"
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,12 +26,12 @@ func DownloadHandler(cacheService *cache.Service, appStore *store.Store) func(e 
 		if token == "" {
 			return e.String(http.StatusForbidden, "missing download token; please open the download page again")
 		}
-		storedName, ok := cacheService.GetString("dl:" + token)
-		if !ok || storedName == "" || storedName != name {
+
+		// Atomically consume the token from PostgreSQL
+		dt, err := appStore.DownloadTokens.Consume(context.Background(), token)
+		if err != nil || dt == nil || dt.Name != name {
 			return e.String(http.StatusForbidden, "invalid or expired download token; please open the download page again")
 		}
-		// consume token
-		cacheService.Delete("dl:" + token)
 
 		s, err := appStore.Schematics.GetByName(context.Background(), name)
 		if err != nil || s == nil || (s.Deleted != nil && !s.Deleted.IsZero()) {
@@ -56,87 +51,12 @@ func DownloadHandler(cacheService *cache.Service, appStore *store.Store) func(e 
 		// Increment download counter (best-effort, IP-deduped)
 		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), cacheService)
 
-		// Determine if there are multiple files associated to this schematic.
+		// Single file redirect
 		primary := strings.TrimSpace(s.SchematicFile)
-		base := "schematics/" + s.ID
-
-		// TODO: schematic_files collection not yet in store; multi-file zip disabled for now
-		multi := make([]string, 0)
-
-		// If we have additional files and at least one existing on disk (including primary), stream a zip
-		// Otherwise, fallback to single file redirect as before.
-		if len(multi) > 0 {
-			type fileItem struct {
-				Path string
-				Name string
-			}
-			files := make([]fileItem, 0, len(multi)+1)
-			seen := map[string]struct{}{}
-			// include primary first if present
-			if primary != "" {
-				full := filepath.Join("pb_data", "storage", filepath.FromSlash(base), primary)
-				if st, err := os.Stat(full); err == nil && !st.IsDir() {
-					fname := primary
-					if n := strings.TrimSpace(s.Name); n != "" {
-						if ext := filepath.Ext(primary); ext != "" {
-							fname = n + ext
-						} else {
-							fname = n
-						}
-					}
-					files = append(files, fileItem{Path: full, Name: fname})
-					seen[primary] = struct{}{}
-				}
-			}
-			for _, fname := range multi {
-				if _, ok := seen[fname]; ok {
-					continue
-				}
-				full := filepath.Join("pb_data", "storage", filepath.FromSlash(base), fname)
-				if st, err := os.Stat(full); err == nil && !st.IsDir() {
-					files = append(files, fileItem{Path: full, Name: fname})
-					seen[fname] = struct{}{}
-				}
-			}
-			if len(files) > 0 {
-				zipName := s.Name
-				if zipName == "" {
-					zipName = s.Title
-				}
-				if zipName == "" {
-					zipName = "schematic"
-				}
-				e.Response.Header().Set("Content-Type", "application/zip")
-				e.Response.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.zip\"", sanitizeFilename(zipName)))
-				e.Response.WriteHeader(http.StatusOK)
-				zw := zip.NewWriter(e.Response)
-				defer zw.Close()
-				for _, fi := range files {
-					fw, err := zw.Create(fi.Name)
-					if err != nil {
-						slog.Error("zip: create entry failed", "file", fi.Name, "error", err)
-						continue
-					}
-					f, err := os.Open(fi.Path)
-					if err != nil {
-						slog.Error("zip: open file failed", "path", fi.Path, "error", err)
-						continue
-					}
-					_, err = io.Copy(fw, f)
-					_ = f.Close()
-					if err != nil {
-						slog.Error("zip: copy failed", "file", fi.Name, "error", err)
-						continue
-					}
-				}
-				return nil
-			}
-		}
-
-		// Fallback: single file redirect
 		if primary == "" {
 			return e.String(http.StatusNotFound, "schematic file not found")
 		}
+		base := "schematics/" + s.ID
 		fileURL := fmt.Sprintf("/api/files/%s/%s", base, primary)
 		return e.Redirect(http.StatusFound, fileURL)
 	}

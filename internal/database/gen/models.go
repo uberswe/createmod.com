@@ -107,6 +107,15 @@ type CreatemodVersion struct {
 	Updated time.Time `json:"updated"`
 }
 
+type DownloadToken struct {
+	ID        string    `json:"id"`
+	Token     string    `json:"token"`
+	Name      string    `json:"name"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Used      bool      `json:"used"`
+	Created   time.Time `json:"created"`
+}
+
 type ExternalAuth struct {
 	ID         string    `json:"id"`
 	UserID     string    `json:"user_id"`

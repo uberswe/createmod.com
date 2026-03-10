@@ -1,6 +1,6 @@
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: createmod
   namespace: createmod-com-prod
@@ -8,8 +8,7 @@ metadata:
     app: createmod
     environment: prod
 spec:
-  serviceName: createmod-headless
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: createmod
@@ -37,9 +36,6 @@ spec:
                 name: createmod-config
             - secretRef:
                 name: createmod-secrets
-          volumeMounts:
-            - name: data
-              mountPath: /app/pb_data
           livenessProbe:
             httpGet:
               path: /api/health
@@ -59,17 +55,7 @@ spec:
           resources:
             requests:
               cpu: 200m
-              memory: 2Gi
+              memory: 1Gi
             limits:
               cpu: 1000m
-              memory: 16Gi
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        storageClassName: local-path
-        resources:
-          requests:
-            storage: 20Gi
+              memory: 4Gi

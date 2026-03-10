@@ -128,6 +128,26 @@ func New(storageSvc *storage.Service) *Service {
 	return &s
 }
 
+// NewEmpty creates a search service without loading the S3 cache, so the
+// caller is not blocked by network I/O. The index starts empty and is
+// populated by the River SearchIndexWorker which runs on start.
+func NewEmpty(storageSvc *storage.Service) *Service {
+	s := Service{storage: storageSvc}
+	s.bleveIndex = newBleveIndex()
+	return &s
+}
+
+// WarmFromStorage attempts to load a cached index snapshot from S3.
+// This is safe to call concurrently; BuildIndex will overwrite the
+// cached data when a full rebuild completes.
+func (s *Service) WarmFromStorage() {
+	if err := s.loadCacheFromStorage(); err != nil {
+		slog.Info("search: no usable cache in storage, starting empty", "error", err)
+	} else {
+		slog.Info("search: loaded index cache from storage", "docs", len(s.index))
+	}
+}
+
 // Search takes a term and returns schematic ids in the specified order.
 // tags is a list of tags to filter by (AND logic — result must match ALL selected tags).
 // Pass nil or empty slice for no tag filtering.
