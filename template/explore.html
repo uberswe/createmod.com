@@ -24,6 +24,15 @@
 .explore-item:hover img {
     transform: scale(1.03);
 }
+.explore-loader {
+    text-align: center;
+    padding: 2rem 0;
+}
+.explore-loader .spinner-border {
+    width: 2rem;
+    height: 2rem;
+    border-width: 0.2em;
+}
 </style>
 <div class="page">
     {{template "sidebar.html" .}}
@@ -32,7 +41,7 @@
         <div class="page-body">
             <div class="d-flex gap-3">
                 <div class="flex-grow-1 min-width-0">
-                    <div class="explore-grid">
+                    <div class="explore-grid" id="explore-grid">
                     {{range $i, $image := .Images }}
                         <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
                             <img class="lazy"
@@ -41,16 +50,14 @@
                         </a>
                     {{end}}
                     </div>
+                    <div class="explore-loader" id="explore-loader">
+                        <div class="spinner-border text-muted" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                     <!-- Ad: between gallery and info -->
                     <div id="explore-mid-desktop" class="d-none d-xl-block my-3 text-center"></div>
                     <div id="explore-mid-mobile" class="d-xl-none my-3 text-center"></div>
-                    <div class="row">
-                        <div class="col-md-6 pt-4 m-auto">
-                            <div class="alert alert-info" role="alert">
-                                {{ T .Language "Reload the page or" }} <a href="/explore">{{ T .Language "click here" }}</a> {{ T .Language "for 1000 random images." }}
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Ad Rail (desktop only) -->
@@ -110,4 +117,90 @@ window['nitroAds'].createAd('explore-mid-mobile', {
   },
   "mediaQuery": "(min-width: 320px) and (max-width: 1024px)"
 });
+</script>
+<script>
+(function(){
+  var grid = document.getElementById('explore-grid');
+  var loader = document.getElementById('explore-loader');
+  if (!grid || !loader) return;
+
+  var seed = {{ .Seed }};
+  var cursor = {{ len .Images }};
+  var loading = false;
+
+  function thumbParam(size) {
+    if (size === 'lg') return '?thumb=640x0';
+    if (size === 'md') return '?thumb=400x0';
+    return '?thumb=240x0';
+  }
+
+  function appendImages(images) {
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < images.length; i++) {
+      var img = images[i];
+      var a = document.createElement('a');
+      a.className = 'explore-item';
+      a.href = '/schematics/' + img.name;
+      a.title = img.title;
+      var el = document.createElement('img');
+      el.className = 'lazy';
+      el.setAttribute('data-src', '/api/files/schematics/' + img.id + '/' + img.image + thumbParam(img.size));
+      el.alt = img.title;
+      a.appendChild(el);
+      frag.appendChild(a);
+    }
+    grid.appendChild(frag);
+    // Observe new images with the global lazy-load IntersectionObserver
+    var appended = grid.querySelectorAll('.lazy[data-src]');
+    if (window._lazyObserver) {
+      appended.forEach(function(img){ window._lazyObserver.observe(img); });
+    } else {
+      appended.forEach(function(img){
+        var src = img.getAttribute('data-src');
+        if (src) { img.src = src; img.removeAttribute('data-src'); }
+      });
+    }
+  }
+
+  function loadMore() {
+    if (loading) return;
+    loading = true;
+    loader.style.display = '';
+    fetch('/api/explore/images?seed=' + seed + '&cursor=' + cursor + '&limit=30')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.images && data.images.length > 0) {
+          appendImages(data.images);
+          cursor = data.cursor;
+          seed = data.seed;
+        }
+        loading = false;
+        loader.style.display = 'none';
+      })
+      .catch(function() {
+        loading = false;
+        loader.style.display = 'none';
+      });
+  }
+
+  // IntersectionObserver to trigger loading when the loader sentinel is near the viewport
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting) {
+        loadMore();
+      }
+    }, { rootMargin: '600px' });
+    observer.observe(loader);
+  } else {
+    // Fallback for old browsers: scroll event
+    window.addEventListener('scroll', function() {
+      var rect = loader.getBoundingClientRect();
+      if (rect.top < window.innerHeight + 600) {
+        loadMore();
+      }
+    });
+  }
+
+  loader.style.display = 'none';
+})();
 </script>

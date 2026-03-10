@@ -253,6 +253,7 @@ func Register(p RegisterParams) chi.Router {
 	})
 	r.Get("/rules", Adapt(pages.RulesHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/explore", Adapt(pages.ExploreHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/api/explore/images", Adapt(pages.ExploreAPIHandler(p.CacheService, p.AppStore)))
 	r.Get("/terms-of-service", Adapt(pages.TermsOfServiceHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/privacy-policy", Adapt(pages.PrivacyPolicyHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings", Adapt(pages.UserSettingsHandler(registry, p.CacheService, p.AppStore)))
