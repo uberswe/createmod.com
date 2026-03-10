@@ -622,6 +622,11 @@ func csrfOriginCheck(next http.Handler) http.Handler {
 
 		// Check Origin header first (most reliable)
 		if origin := r.Header.Get("Origin"); origin != "" {
+			// Allow CORS-approved origins on API routes
+			if strings.HasPrefix(r.URL.Path, "/api/") && corsAllowedOrigins[origin] {
+				next.ServeHTTP(w, r)
+				return
+			}
 			// Parse to extract host
 			// Origin is usually "scheme://host" or "scheme://host:port"
 			originHost := origin
@@ -663,6 +668,13 @@ func csrfOriginCheck(next http.Handler) http.Handler {
 	})
 }
 
+// corsAllowedOrigins lists external origins permitted to make cross-origin
+// requests to /api/ endpoints.
+var corsAllowedOrigins = map[string]bool{
+	"https://bloxelizer.com":     true,
+	"https://www.bloxelizer.com": true,
+}
+
 // securityHeaders sets standard security response headers on every request.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -670,6 +682,22 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+
+		// CORS for allowed external origins on API routes
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			origin := r.Header.Get("Origin")
+			if corsAllowedOrigins[origin] {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+				w.Header().Set("Access-Control-Max-Age", "86400")
+				if r.Method == http.MethodOptions {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+			}
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
