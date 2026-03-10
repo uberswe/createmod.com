@@ -66,21 +66,21 @@ test.describe('hreflang tags', () => {
 });
 
 test.describe('language switcher', () => {
-  test('language switcher links use subdirectory URLs', async ({ page }) => {
+  test('language switcher links use /lang endpoint to set cookie', async ({ page }) => {
     await page.goto('/');
     // Open language dropdown
     const langTrigger = page.locator('.lang-flag');
     await langTrigger.click();
 
-    // Check German link points to /de/
+    // Check German link routes through /lang endpoint
     const deLink = page.locator('.dropdown-item >> text=Deutsch');
     const deHref = await deLink.getAttribute('href');
-    expect(deHref).toContain('/de');
+    expect(deHref).toContain('/lang?l=de');
 
     // Check Russian link
     const ruLink = page.locator('.dropdown-item >> text=Русский');
     const ruHref = await ruLink.getAttribute('href');
-    expect(ruHref).toContain('/ru');
+    expect(ruHref).toContain('/lang?l=ru');
   });
 
   test('language switcher on German page preserves path', async ({ page }) => {
@@ -88,10 +88,11 @@ test.describe('language switcher', () => {
     const langTrigger = page.locator('.lang-flag');
     await langTrigger.click();
 
-    // English link should go to /schematics (no prefix)
+    // English link should route through /lang with return_to
     const enLink = page.locator('.dropdown-item >> text=English');
     const enHref = await enLink.getAttribute('href');
-    expect(enHref).toBe('/schematics');
+    expect(enHref).toContain('/lang?l=en');
+    expect(enHref).toContain('return_to=');
   });
 });
 
