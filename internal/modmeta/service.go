@@ -49,10 +49,56 @@ func New(curseForgeKey string, appStore *store.Store) *Service {
 	}
 }
 
+// manualOverrides maps mod namespaces to their correct CurseForge URLs.
+// Entries here are upserted with ManuallySet=true on startup so the
+// automatic enrichment scheduler will never overwrite them.
+var manualOverrides = map[string]string{
+	"dndecor":   "https://www.curseforge.com/minecraft/mc-mods/create-design-n-decor",
+	"tfmg":      "https://www.curseforge.com/minecraft/mc-mods/create-industry",
+	"create_dd": "https://www.curseforge.com/minecraft/mc-mods/create-dreams-desires",
+}
+
+// applyManualOverrides upserts hardcoded CurseForge URL corrections into the
+// database with ManuallySet=true so the scheduler won't overwrite them.
+func (s *Service) applyManualOverrides() {
+	ctx := context.Background()
+	for ns, cfURL := range manualOverrides {
+		existing, err := s.appStore.ModMetadata.GetByNamespace(ctx, ns)
+		if err == nil && existing != nil && existing.CurseforgeURL == cfURL && existing.ManuallySet {
+			continue // already correct
+		}
+		meta := &store.ModMetadata{
+			Namespace:     ns,
+			ManuallySet:   true,
+			CurseforgeURL: cfURL,
+		}
+		// Preserve existing fields if the record already exists
+		if existing != nil {
+			meta.DisplayName = existing.DisplayName
+			meta.Description = existing.Description
+			meta.IconURL = existing.IconURL
+			meta.ModrinthSlug = existing.ModrinthSlug
+			meta.ModrinthURL = existing.ModrinthURL
+			meta.CurseforgeID = existing.CurseforgeID
+			meta.SourceURL = existing.SourceURL
+			meta.BlocksitemsMatched = existing.BlocksitemsMatched
+			meta.LastFetched = existing.LastFetched
+		}
+		if err := s.appStore.ModMetadata.Upsert(ctx, meta); err != nil {
+			slog.Error("modmeta: failed to apply manual override", "namespace", ns, "error", err)
+		} else {
+			slog.Info("modmeta: applied manual override", "namespace", ns, "curseforge_url", cfURL)
+		}
+	}
+}
+
 // StartScheduler runs the enrichment scheduler in a background goroutine.
 // It enriches mods on startup then every 6 hours.
 func (s *Service) StartScheduler() {
 	go func() {
+		// Apply hardcoded overrides immediately
+		s.applyManualOverrides()
+
 		// Initial enrichment after a short delay to let boot complete
 		time.Sleep(30 * time.Second)
 		s.EnrichAll()
