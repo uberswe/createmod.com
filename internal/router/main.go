@@ -155,6 +155,7 @@ func Register(p RegisterParams) chi.Router {
 	if os.Getenv("MAINTENANCE_MODE") == "true" {
 		maintenanceFlag.Store(true)
 	}
+	r.Use(headMethodSupport)
 	r.Use(requestLogger)
 	r.Use(securityHeaders)
 	r.Use(maintenanceModeMiddleware(maintenanceFlag))
@@ -503,6 +504,20 @@ func (rr *responseRecorder) WriteHeader(code int) {
 }
 
 // requestLogger logs each HTTP request with method, path, status, and duration.
+// headMethodSupport converts HEAD requests to GET for routing purposes.
+// Chi does not automatically serve HEAD for registered GET routes, so
+// without this middleware HEAD requests return 405 Method Not Allowed.
+// The http.ResponseWriter automatically suppresses the response body
+// for HEAD requests per the net/http specification.
+func headMethodSupport(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			r.Method = http.MethodGet
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
