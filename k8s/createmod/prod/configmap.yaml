@@ -8,7 +8,7 @@ data:
   PORT: "8090"
   ENVIRONMENT: "production"
   BASE_URL: "https://createmod.com"
-  SMTP_HOST: "smtp.mailgun.org"
+  SMTP_HOST: "smtp.eu.mailgun.org"
   SMTP_PORT: "587"
   SENDER_ADDRESS: "noreply@createmod.com"
   SENDER_NAME: "CreateMod"
