@@ -13,6 +13,11 @@ spec:
       services:
         - name: createmod
           port: 80
+      middlewares:
+        - name: security-headers
+          namespace: traefik
+        - name: error-pages
+          namespace: traefik
   tls:
     secretName: createmod-com-prod-tls
 ---
