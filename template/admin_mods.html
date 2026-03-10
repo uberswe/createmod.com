@@ -1,0 +1,82 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <div class="page-body">
+      <div class="container-wide">
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin: Mod Metadata</h2>
+              <div class="text-secondary">View and edit mod CurseForge/Modrinth URL mappings</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>Icon</th>
+                  <th>Namespace</th>
+                  <th>Display Name</th>
+                  <th>CurseForge URL</th>
+                  <th>Modrinth URL</th>
+                  <th>Manual</th>
+                  <th class="w-1">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .Mods}}
+                <tr>
+                  <td>
+                    {{if .IconURL}}
+                    <img src="{{.IconURL}}" alt="" width="24" height="24" style="border-radius:4px">
+                    {{else}}
+                    <span class="text-secondary">-</span>
+                    {{end}}
+                  </td>
+                  <td><code>{{.Namespace}}</code></td>
+                  <td>{{if .DisplayName}}{{.DisplayName}}{{else}}<span class="text-secondary">-</span>{{end}}</td>
+                  <td>
+                    {{if .CurseforgeURL}}
+                    <a href="{{.CurseforgeURL}}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width:250px">{{.CurseforgeURL}}</a>
+                    {{else}}
+                    <span class="text-secondary">-</span>
+                    {{end}}
+                  </td>
+                  <td>
+                    {{if .ModrinthURL}}
+                    <a href="{{.ModrinthURL}}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width:250px">{{.ModrinthURL}}</a>
+                    {{else}}
+                    <span class="text-secondary">-</span>
+                    {{end}}
+                  </td>
+                  <td>
+                    {{if .ManuallySet}}
+                    <span class="badge bg-blue">Manual</span>
+                    {{else}}
+                    <span class="badge bg-secondary">Auto</span>
+                    {{end}}
+                  </td>
+                  <td>
+                    <a href="/admin/mods/{{.Namespace}}" class="btn btn-sm btn-outline-primary">Edit</a>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="7" class="text-center text-secondary">No mod metadata found.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

@@ -2060,6 +2060,18 @@ func (ms *ModMetadataStoreImpl) Upsert(ctx context.Context, m *store.ModMetadata
 	return err
 }
 
+func (ms *ModMetadataStoreImpl) ListAll(ctx context.Context) ([]store.ModMetadata, error) {
+	rows, err := ms.q.ListModMetadataAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.ModMetadata, len(rows))
+	for i, r := range rows {
+		result[i] = modMetadataFromDB(r)
+	}
+	return result, nil
+}
+
 func (ms *ModMetadataStoreImpl) ListStale(ctx context.Context, limit int) ([]store.ModMetadata, error) {
 	rows, err := ms.q.ListModMetadataStale(ctx, int32(limit))
 	if err != nil {

@@ -531,6 +531,7 @@ type ReportStore interface {
 type ModMetadataStore interface {
 	GetByNamespace(ctx context.Context, namespace string) (*ModMetadata, error)
 	Upsert(ctx context.Context, m *ModMetadata) error
+	ListAll(ctx context.Context) ([]ModMetadata, error)
 	ListStale(ctx context.Context, limit int) ([]ModMetadata, error)
 }
 

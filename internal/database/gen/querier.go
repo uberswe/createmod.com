@@ -143,6 +143,7 @@ type Querier interface {
 	ListGuidesForSitemap(ctx context.Context) ([]ListGuidesForSitemapRow, error)
 	ListHighestRatedSchematics(ctx context.Context, arg ListHighestRatedSchematicsParams) ([]Schematic, error)
 	ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error)
+	ListModMetadataAll(ctx context.Context) ([]ModMetadatum, error)
 	ListModMetadataStale(ctx context.Context, limit int32) ([]ModMetadatum, error)
 	ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error)
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
