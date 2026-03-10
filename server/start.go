@@ -173,6 +173,25 @@ func (s *Server) Start() {
 			pages.WarmVideosCache(s.cacheService, s.store)
 		}()
 
+		// Build search index per-pod. The index is in-memory so each pod
+		// needs its own copy; River's deduplication means only one pod
+		// would run the periodic job, leaving other pods with empty indexes.
+		go func() {
+			slog.Info("per-pod search index build starting")
+			s.searchService.WarmFromStorage()
+			storeSchematics, err := s.store.Schematics.ListAllForIndex(context.Background())
+			if err != nil {
+				slog.Error("per-pod search index build failed", "error", err)
+				return
+			}
+			mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
+			s.searchService.BuildIndex(mapped)
+			if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
+				s.searchService.SetTrendingScores(scores)
+			}
+			slog.Info("per-pod search index build complete", "count", len(mapped))
+		}()
+
 		// All other periodic work (search index rebuild, sitemap generation,
 		// schematic repair, temp upload cleanup, trending scores, etc.) is
 		// handled by River periodic jobs with UniqueOpts deduplication, so
