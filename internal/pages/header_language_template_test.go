@@ -19,22 +19,21 @@ func Test_Header_Language_Dropdown_And_Links(t *testing.T) {
 		t.Fatalf("header should display current language flag with title='en'")
 	}
 
-	// Language switcher now uses direct subdirectory links instead of /lang?l=...
-	// For English, links go to root paths; for other languages, they get prefixed.
-	// With Slug="/videos", English link should be "/videos" and German should be "/de/videos".
-	langExpected := map[string]string{
-		"en":      "/videos",
-		"de":      "/de/videos",
-		"es":      "/es/videos",
-		"pl":      "/pl/videos",
-		"pt-BR":   "/pt-br/videos",
-		"pt-PT":   "/pt-pt/videos",
-		"ru":      "/ru/videos",
-		"zh-Hans": "/zh/videos",
+	// Language switcher uses /lang endpoint to set the cm_lang cookie before redirecting.
+	// Go's html/template URL-normalizes href values, encoding / as %2f in query params.
+	langExpected := []string{
+		"/lang?l=en&return_to=%2fvideos",
+		"/lang?l=de&return_to=%2fvideos",
+		"/lang?l=es&return_to=%2fvideos",
+		"/lang?l=pl&return_to=%2fvideos",
+		"/lang?l=pt-BR&return_to=%2fvideos",
+		"/lang?l=pt-PT&return_to=%2fvideos",
+		"/lang?l=ru&return_to=%2fvideos",
+		"/lang?l=zh-Hans&return_to=%2fvideos",
 	}
-	for lang, expectedHref := range langExpected {
+	for _, expectedHref := range langExpected {
 		if !strings.Contains(html, expectedHref) {
-			t.Fatalf("header language dropdown missing link for %s (expected href containing %q)", lang, expectedHref)
+			t.Fatalf("header language dropdown missing link %q", expectedHref)
 		}
 	}
 }

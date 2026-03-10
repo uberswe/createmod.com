@@ -50,6 +50,9 @@
 
   function tick(){
     if (stopped) return;
+    // If the interstitial elements are no longer in the DOM (HTMX swapped the
+    // page), or the user navigated away via back button, abort.
+    if (!document.getElementById('ext-countdown')) { stop(); return; }
     seconds -= 1;
     if (el) { el.textContent = String(seconds); }
     if (seconds <= 0) {
@@ -68,6 +71,12 @@
 
   // Stop timer when HTMX navigates away (user clicks back or another link)
   document.body.addEventListener('htmx:beforeSwap', function() { stop(); });
+
+  // Stop timer when the page is hidden (browser back/forward, tab switch)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) { stop(); }
+  });
+  window.addEventListener('pagehide', function() { stop(); });
 })();
 </script>
 <script>
