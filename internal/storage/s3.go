@@ -96,6 +96,14 @@ func (s *Service) Download(ctx context.Context, collection, recordID, filename s
 		return nil, fmt.Errorf("downloading %s: %w", key, err)
 	}
 
+	// Stat the object to surface errors (e.g. NoSuchKey) before the caller
+	// streams the response. Without this, minio defers the error to the first
+	// Read() call, which may happen after HTTP headers are already sent.
+	if _, err := obj.Stat(); err != nil {
+		obj.Close()
+		return nil, fmt.Errorf("downloading %s: %w", key, err)
+	}
+
 	return obj, nil
 }
 
@@ -191,6 +199,10 @@ func (s *Service) UploadRawBytes(ctx context.Context, key string, data []byte, c
 func (s *Service) DownloadRaw(ctx context.Context, key string) (io.ReadCloser, error) {
 	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
+		return nil, fmt.Errorf("downloading %s: %w", key, err)
+	}
+	if _, err := obj.Stat(); err != nil {
+		obj.Close()
 		return nil, fmt.Errorf("downloading %s: %w", key, err)
 	}
 	return obj, nil

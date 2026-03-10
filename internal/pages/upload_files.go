@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"createmod/internal/server"
@@ -169,7 +170,12 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 
 		var fileURL string
 		if nbtS3Key != "" {
-			fileURL = "/api/files/" + nbtS3Key
+			parts := strings.SplitN(nbtS3Key, "/", 3)
+			if len(parts) == 3 {
+				fileURL = "/api/files/" + parts[0] + "/" + parts[1] + "/" + url.PathEscape(parts[2])
+			} else {
+				fileURL = "/api/files/" + nbtS3Key
+			}
 		}
 
 		return e.JSON(http.StatusOK, addFileResponse{

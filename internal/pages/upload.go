@@ -17,6 +17,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -213,11 +214,17 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		// Determine ownership
 		isOwner := isAuthenticated(e) && entry.UploadedBy != "" && authenticatedUserID(e) == entry.UploadedBy
 
-		// Build file URL from S3 key
+		// Build file URL from S3 key — encode the filename component for safe URLs
 		var fileURL string
 		if entry.NbtS3Key != "" {
 			// S3 key format: {collection}/{recordID}/{filename}
-			fileURL = "/api/files/" + entry.NbtS3Key
+			// Encode only the filename part (last path segment)
+			parts := strings.SplitN(entry.NbtS3Key, "/", 3)
+			if len(parts) == 3 {
+				fileURL = "/api/files/" + parts[0] + "/" + parts[1] + "/" + url.PathEscape(parts[2])
+			} else {
+				fileURL = "/api/files/" + entry.NbtS3Key
+			}
 		}
 
 		// Parse materials/mods from JSON
@@ -456,8 +463,8 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
-		// Build file URL
-		fileURL := "/api/files/" + nbtS3Key
+		// Build file URL — encode the filename component for safe use in URLs
+		fileURL := "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(header.Filename)
 
 		// Build JSON response
 		resp := uploadNBTResponse{

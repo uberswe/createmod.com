@@ -1,5 +1,3 @@
-<!-- Tabler JS via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/js/tabler.min.js" defer crossorigin="anonymous" integrity="sha384-2r3eTK9ussulv0Rm7xjvQuXVu5gRqRuctZwtAMvMjBWlcw69acmlK94r+ijsLkJu"></script>
 <!-- Theme handling -->
 <script src="/assets/x/theme.js" defer></script>
 <script>
@@ -116,15 +114,16 @@ if (!window._htmxErrorInit) {
 })();
 </script>
 <script>
-// Re-initialize Bootstrap dropdowns & tooltips after HTMX page swaps.
-// Uses a named handler to prevent listener stacking across body swaps.
+// Re-initialize Bootstrap components after HTMX page swaps.
+// Dropdowns: dispose stale instances so Bootstrap's document-level data-api
+// handler (registered once from <head>) can recreate them on the next click.
+// Tooltips: need explicit recreation since they have no click-based data-api.
 (function(){
   function reinit() {
     if (typeof bootstrap === 'undefined') return;
     document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el) {
       var existing = bootstrap.Dropdown.getInstance(el);
       if (existing) { try { existing.dispose(); } catch(e) {} }
-      new bootstrap.Dropdown(el);
     });
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
       var existing = bootstrap.Tooltip.getInstance(el);
@@ -132,12 +131,10 @@ if (!window._htmxErrorInit) {
       new bootstrap.Tooltip(el);
     });
   }
-  // Guard against stacking: only register the listener once on the document.
   if (!window._htmxBootstrapReinit) {
     window._htmxBootstrapReinit = true;
     document.addEventListener('htmx:afterSettle', reinit);
   }
-  // Run immediately for this page load / swap.
   reinit();
 })();
 </script>

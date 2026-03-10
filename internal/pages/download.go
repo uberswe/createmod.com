@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -56,8 +57,7 @@ func DownloadHandler(cacheService *cache.Service, appStore *store.Store) func(e 
 		if primary == "" {
 			return e.String(http.StatusNotFound, "schematic file not found")
 		}
-		base := "schematics/" + s.ID
-		fileURL := fmt.Sprintf("/api/files/%s/%s", base, primary)
+		fileURL := fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(primary))
 		return e.Redirect(http.StatusFound, fileURL)
 	}
 }
