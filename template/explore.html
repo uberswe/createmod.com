@@ -1,13 +1,12 @@
 {{template "head.html" .}}
 <style>
 .explore-grid {
-    columns: 5 220px;
-    column-gap: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
     padding: 0 0.5rem;
 }
 .explore-item {
-    break-inside: avoid;
-    margin-bottom: 0.5rem;
     border-radius: 0.375rem;
     overflow: hidden;
     display: block;
