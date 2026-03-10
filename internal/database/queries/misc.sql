@@ -76,6 +76,10 @@ ON CONFLICT (namespace) DO UPDATE SET
     blocksitems_matched = EXCLUDED.blocksitems_matched
 RETURNING *;
 
+-- name: ListModMetadataAll :many
+SELECT * FROM mod_metadata
+ORDER BY namespace;
+
 -- name: ListModMetadataStale :many
 SELECT * FROM mod_metadata
 WHERE manually_set = false

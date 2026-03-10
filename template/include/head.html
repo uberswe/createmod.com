@@ -94,8 +94,9 @@
   (function(){try{var t=document.documentElement.getAttribute("data-bs-theme");if(t)document.body.setAttribute("data-bs-theme",t);}catch(e){}})();
   (function(){
     try {
-      // Restore sidebar expanded state from localStorage before first paint
-      if (window.innerWidth >= 992 && localStorage.getItem('sidebar-expanded') === '1') {
+      // Restore sidebar state from localStorage before first paint.
+      // Default is expanded (pinned) on desktop; only collapse if explicitly set to '0'.
+      if (window.innerWidth >= 992 && localStorage.getItem('sidebar-expanded') !== '0') {
         document.body.classList.add('sidebar-pinned');
       }
 
@@ -131,7 +132,7 @@
         document.addEventListener('htmx:afterSettle', function(){
           var sidebar = document.getElementById('sidebar-menu');
           if (!sidebar || window.innerWidth < 992) return;
-          var expanded = localStorage.getItem('sidebar-expanded') === '1';
+          var expanded = localStorage.getItem('sidebar-expanded') !== '0';
           sidebar.classList.toggle('sidebar-expanded', expanded);
           document.body.classList.toggle('sidebar-pinned', expanded);
           var label = document.getElementById('sidebar-toggle-label');

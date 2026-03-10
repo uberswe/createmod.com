@@ -458,6 +458,47 @@ func (q *Queries) ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion
 	return items, nil
 }
 
+const listModMetadataAll = `-- name: ListModMetadataAll :many
+SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated, blocksitems_matched FROM mod_metadata
+ORDER BY namespace
+`
+
+func (q *Queries) ListModMetadataAll(ctx context.Context) ([]ModMetadatum, error) {
+	rows, err := q.db.Query(ctx, listModMetadataAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ModMetadatum{}
+	for rows.Next() {
+		var i ModMetadatum
+		if err := rows.Scan(
+			&i.ID,
+			&i.Namespace,
+			&i.DisplayName,
+			&i.Description,
+			&i.IconUrl,
+			&i.ModrinthSlug,
+			&i.ModrinthUrl,
+			&i.CurseforgeID,
+			&i.CurseforgeUrl,
+			&i.SourceUrl,
+			&i.LastFetched,
+			&i.ManuallySet,
+			&i.Created,
+			&i.Updated,
+			&i.BlocksitemsMatched,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listModMetadataStale = `-- name: ListModMetadataStale :many
 SELECT id, namespace, display_name, description, icon_url, modrinth_slug, modrinth_url, curseforge_id, curseforge_url, source_url, last_fetched, manually_set, created, updated, blocksitems_matched FROM mod_metadata
 WHERE manually_set = false

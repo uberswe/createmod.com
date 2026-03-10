@@ -50,7 +50,8 @@
                         </a>
                     {{end}}
                     </div>
-                    <div class="explore-loader" id="explore-loader">
+                    <div id="explore-sentinel" style="height:1px"></div>
+                    <div class="explore-loader" id="explore-spinner" style="display:none">
                         <div class="spinner-border text-muted" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
@@ -121,8 +122,9 @@ window['nitroAds'].createAd('explore-mid-mobile', {
 <script>
 (function(){
   var grid = document.getElementById('explore-grid');
-  var loader = document.getElementById('explore-loader');
-  if (!grid || !loader) return;
+  var sentinel = document.getElementById('explore-sentinel');
+  var spinner = document.getElementById('explore-spinner');
+  if (!grid || !sentinel) return;
 
   var seed = {{ .Seed }};
   var cursor = {{ len .Images }};
@@ -150,6 +152,8 @@ window['nitroAds'].createAd('explore-mid-mobile', {
       frag.appendChild(a);
     }
     grid.appendChild(frag);
+    // Move sentinel after the new content so it stays at the bottom
+    grid.parentNode.insertBefore(sentinel, grid.nextSibling);
     // Observe new images with the global lazy-load IntersectionObserver
     var appended = grid.querySelectorAll('.lazy[data-src]');
     if (window._lazyObserver) {
@@ -165,7 +169,7 @@ window['nitroAds'].createAd('explore-mid-mobile', {
   function loadMore() {
     if (loading) return;
     loading = true;
-    loader.style.display = '';
+    if (spinner) spinner.style.display = '';
     fetch('/api/explore/images?seed=' + seed + '&cursor=' + cursor + '&limit=30')
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -175,32 +179,30 @@ window['nitroAds'].createAd('explore-mid-mobile', {
           seed = data.seed;
         }
         loading = false;
-        loader.style.display = 'none';
+        if (spinner) spinner.style.display = 'none';
       })
       .catch(function() {
         loading = false;
-        loader.style.display = 'none';
+        if (spinner) spinner.style.display = 'none';
       });
   }
 
-  // IntersectionObserver to trigger loading when the loader sentinel is near the viewport
+  // IntersectionObserver watches the sentinel (always in layout) to trigger loading
   if ('IntersectionObserver' in window) {
     var observer = new IntersectionObserver(function(entries) {
       if (entries[0].isIntersecting) {
         loadMore();
       }
     }, { rootMargin: '600px' });
-    observer.observe(loader);
+    observer.observe(sentinel);
   } else {
     // Fallback for old browsers: scroll event
     window.addEventListener('scroll', function() {
-      var rect = loader.getBoundingClientRect();
+      var rect = sentinel.getBoundingClientRect();
       if (rect.top < window.innerHeight + 600) {
         loadMore();
       }
     });
   }
-
-  loader.style.display = 'none';
 })();
 </script>
