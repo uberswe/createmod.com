@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://createmod.com">
-    <img src="https://createmod.com/api/files/static/cm_logo.png" alt="CreateMod.com" width="120" />
+    <img src="https://createmod.com/assets/x/logo.png" alt="CreateMod.com" width="120" />
   </a>
 </p>
 
