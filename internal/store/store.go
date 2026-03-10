@@ -377,6 +377,14 @@ type SchematicStore interface {
 	CountVanilla(ctx context.Context) (int, error)
 	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
 	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
+	// Hash backfill
+	ListMissingHash(ctx context.Context, afterID string, limit int) ([]SchematicFileRef, error)
+}
+
+// SchematicFileRef is a lightweight reference to a schematic's file in S3.
+type SchematicFileRef struct {
+	ID            string
+	SchematicFile string
 }
 
 // CategoryStore handles categories.

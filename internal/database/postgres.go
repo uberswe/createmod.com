@@ -926,6 +926,21 @@ func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]
 	return schematics, totalCount, nil
 }
 
+func (ps *PostgresStore) ListMissingHash(ctx context.Context, afterID string, limit int) ([]store.SchematicFileRef, error) {
+	rows, err := ps.q.ListSchematicsMissingHash(ctx, db.ListSchematicsMissingHashParams{
+		ID:    afterID,
+		Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SchematicFileRef, len(rows))
+	for i, r := range rows {
+		result[i] = store.SchematicFileRef{ID: r.ID, SchematicFile: r.SchematicFile}
+	}
+	return result, nil
+}
+
 // ============================================================================
 // Separate store implementations to avoid method name collisions.
 // CategoryStore, TagStore, etc. share method names (List, GetByID, Create)

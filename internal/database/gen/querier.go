@@ -160,6 +160,7 @@ type Querier interface {
 	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
 	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
+	ListSchematicsMissingHash(ctx context.Context, arg ListSchematicsMissingHashParams) ([]ListSchematicsMissingHashRow, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)

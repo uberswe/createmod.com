@@ -65,6 +65,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &SessionCleanupWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SchematicRepairWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &TempUploadCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &HashBackfillWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -166,6 +167,15 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 					}
 				},
 				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return HashBackfillArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true},
+					}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
 			),
 		},
 	})
