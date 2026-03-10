@@ -24,6 +24,10 @@ spec:
           port: 80
       middlewares:
         - name: authentik-forwardauth
+        - name: security-headers
+          namespace: traefik
+        - name: error-pages
+          namespace: traefik
   tls:
     secretName: createmod-com-dev-tls
 ---
