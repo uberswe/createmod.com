@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/mail"
-	"os"
 
 	"createmod/internal/server"
 )
@@ -42,14 +41,10 @@ func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) fun
 			return e.String(http.StatusInternalServerError, "failed to save report")
 		}
 
-		// Best-effort email notification to superadmin
-		super := os.Getenv("SUPERADMIN_EMAIL")
-		if super == "" {
-			super = mailService.SenderAddress
-		}
-		if super != "" {
+		// Best-effort email notification to all admins
+		to := adminRecipients(appStore, mailService)
+		if len(to) > 0 {
 			from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
-			to := []mail.Address{{Address: super}}
 			subject := fmt.Sprintf("New Report: %s %s", targetType, targetID)
 			body := fmt.Sprintf("<p>Target: %s (%s)</p><p>Reason: %s</p>", targetID, targetType, reason)
 			if reporterID != "" {

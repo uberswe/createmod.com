@@ -57,3 +57,6 @@ SELECT EXISTS(
 SELECT id, username, updated FROM users
 WHERE deleted IS NULL
 ORDER BY updated DESC;
+
+-- name: ListAdminEmails :many
+SELECT email FROM users WHERE is_admin = true AND deleted IS NULL;

@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/mail"
-	"os"
 )
 
 // ContactSubmitHandler handles POST /api/contact to submit a contact form.
@@ -40,20 +39,18 @@ func ContactSubmitHandler(appStore *store.Store, mailService *mailer.Service) fu
 			return e.InternalServerError("could not save submission", nil)
 		}
 
-		// Send email notification
+		// Send email notification to all admins
 		if mailService != nil {
+			contactEmail := email
+			contactContent := content
 			go func() {
-				super := os.Getenv("SUPERADMIN_EMAIL")
-				if super == "" {
-					super = mailService.SenderAddress
-				}
-				if super == "" {
+				to := adminRecipients(appStore, mailService)
+				if len(to) == 0 {
 					return
 				}
 				from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
-				to := []mail.Address{{Address: super}}
 				subject := "New CreateMod.com Contact Form Submission"
-				body := fmt.Sprintf("<p>Email: %s</p><p>Content: %s</p>", email, content)
+				body := fmt.Sprintf("<p>Email: %s</p><p>Content: %s</p>", contactEmail, contactContent)
 				msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
 				if err := mailService.Send(msg); err != nil {
 					slog.Error("failed to send contact notification", "error", err)

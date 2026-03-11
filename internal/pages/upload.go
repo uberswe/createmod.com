@@ -5,6 +5,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/models"
 	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
@@ -193,7 +194,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
-func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -525,6 +526,51 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				SchematicID: &schem.ID,
 				UploadedBy:  &userID,
 			})
+		}
+
+		// --- Send admin email notification ---
+		if mailService != nil {
+			emailTitle := schem.Title
+			emailID := schem.ID
+			emailName := nameSlug
+			emailImage := featuredFilename
+			emailBlacklisted := schem.Blacklisted
+			emailReason := schem.ModerationReason
+			go func() {
+				baseURL := os.Getenv("BASE_URL")
+				if baseURL == "" {
+					baseURL = "https://createmod.com"
+				}
+				var imageURL string
+				if emailImage != "" {
+					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, emailImage)
+				}
+				schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, emailName)
+
+				to := adminRecipients(appStore, mailService)
+				if len(to) == 0 {
+					return
+				}
+				from := mailService.DefaultFrom()
+
+				var subject, bodyText string
+				if emailBlacklisted {
+					subject = fmt.Sprintf("Schematic Blocked: %s", emailTitle)
+					bodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", emailTitle, emailReason)
+				} else if autoApproved {
+					subject = fmt.Sprintf("Schematic Auto-Approved: %s", emailTitle)
+					bodyText = fmt.Sprintf("The schematic \"%s\" has been auto-approved and is now live on the site.", emailTitle)
+				} else {
+					subject = fmt.Sprintf("Schematic Needs Review: %s", emailTitle)
+					bodyText = fmt.Sprintf("The schematic \"%s\" requires manual review before it can be published.", emailTitle)
+				}
+
+				body := mailer.SchematicEmailHTML(emailTitle, imageURL, schematicURL, bodyText)
+				msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
+				if err := mailService.Send(msg); err != nil {
+					slog.Error("make-public: failed to send admin notification", "error", err)
+				}
+			}()
 		}
 
 		// --- Cleanup temp data ---

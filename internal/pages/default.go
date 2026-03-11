@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/language"
 	"html/template"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 )
@@ -201,4 +202,25 @@ func isContributorFromStore(appStore *store.Store, userID string) bool {
 		return false
 	}
 	return contrib
+}
+
+// adminRecipients returns mail.Address entries for all admin users. Falls back
+// to the mailer's configured sender address if no admins are found in the DB.
+func adminRecipients(appStore *store.Store, mailService interface{ DefaultFrom() mail.Address }) []mail.Address {
+	if appStore != nil {
+		emails, err := appStore.Users.ListAdminEmails(stdctx.Background())
+		if err == nil && len(emails) > 0 {
+			addrs := make([]mail.Address, len(emails))
+			for i, e := range emails {
+				addrs[i] = mail.Address{Address: e}
+			}
+			return addrs
+		}
+	}
+	// Fallback: use the sender address itself
+	from := mailService.DefaultFrom()
+	if from.Address != "" {
+		return []mail.Address{from}
+	}
+	return nil
 }

@@ -227,7 +227,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
@@ -282,7 +282,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore)))
 	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.SearchService, p.CacheService, p.AppStore)))
+	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.SearchService, p.CacheService, p.AppStore, p.MailService)))
 	r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore)))
 	r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
