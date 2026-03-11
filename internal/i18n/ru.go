@@ -578,4 +578,22 @@ var LangRU = map[string]string{
 	"log in": "войти",
 	"blocks": "блоков",
 	"bytes":  "байт",
+
+	// ── Upload Pending / Moderation ──
+	"Pending Moderation":                "Ожидает модерации",
+	"This schematic is pending moderation and is not yet publicly listed.": "Эта схема ожидает модерации и пока не отображается публично.",
+	"Your schematic has been published!": "Ваша схема опубликована!",
+	"Your schematic passed moderation and is now live on the site.": "Ваша схема прошла модерацию и теперь доступна на сайте.",
+	"Your schematic has been submitted for review. You can share the link below while you wait.": "Ваша схема отправлена на проверку. Вы можете поделиться ссылкой ниже, пока ожидаете.",
+	"Schematic URL":                     "URL схемы",
+	"View Schematic":                    "Посмотреть схему",
+	"Link copied!":                      "Ссылка скопирована!",
+	"Upload Another":                    "Загрузить ещё",
+	"Go to Home":                        "На главную",
+	"What happens next?":                "Что будет дальше?",
+	"Your schematic is live and visible to everyone.": "Ваша схема онлайн и видна всем.",
+	"It will appear in search results and category listings.": "Она появится в результатах поиска и списках категорий.",
+	"We validate your schematic content.": "Мы проверяем содержимое вашей схемы.",
+	"If everything looks good, it will be published automatically.": "Если всё в порядке, она будет опубликована автоматически.",
+	"Your schematic is accessible via the link above while it awaits review.": "Ваша схема доступна по ссылке выше, пока ожидает проверки.",
 }

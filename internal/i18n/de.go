@@ -577,4 +577,22 @@ var LangDE = map[string]string{
 	"log in":      "anmelden",
 	"blocks":      "Blöcke",
 	"bytes":       "Bytes",
+
+	// ── Upload Pending / Moderation ──
+	"Pending Moderation":                "Moderation ausstehend",
+	"This schematic is pending moderation and is not yet publicly listed.": "Dieser Bauplan wird noch moderiert und ist noch nicht öffentlich gelistet.",
+	"Your schematic has been published!": "Dein Bauplan wurde veröffentlicht!",
+	"Your schematic passed moderation and is now live on the site.": "Dein Bauplan hat die Moderation bestanden und ist jetzt auf der Seite verfügbar.",
+	"Your schematic has been submitted for review. You can share the link below while you wait.": "Dein Bauplan wurde zur Überprüfung eingereicht. Du kannst den Link unten teilen, während du wartest.",
+	"Schematic URL":                     "Bauplan-URL",
+	"View Schematic":                    "Bauplan ansehen",
+	"Link copied!":                      "Link kopiert!",
+	"Upload Another":                    "Weiteren hochladen",
+	"Go to Home":                        "Zur Startseite",
+	"What happens next?":                "Was passiert als nächstes?",
+	"Your schematic is live and visible to everyone.": "Dein Bauplan ist online und für alle sichtbar.",
+	"It will appear in search results and category listings.": "Er wird in Suchergebnissen und Kategorielisten erscheinen.",
+	"We validate your schematic content.": "Wir überprüfen den Inhalt deines Bauplans.",
+	"If everything looks good, it will be published automatically.": "Wenn alles in Ordnung ist, wird er automatisch veröffentlicht.",
+	"Your schematic is accessible via the link above while it awaits review.": "Dein Bauplan ist über den obigen Link zugänglich, während er auf die Überprüfung wartet.",
 }

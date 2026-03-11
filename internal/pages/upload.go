@@ -6,6 +6,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -154,16 +155,32 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 	}
 }
 
+// UploadPendingData holds data for the upload pending confirmation page.
+type UploadPendingData struct {
+	DefaultData
+	SchematicName string
+	SchematicURL  string
+	AutoApproved  bool
+}
+
 // UploadPendingHandler renders a simple moderation pending confirmation page.
 func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		d := DefaultData{}
+		d := UploadPendingData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
 		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+
+		// Read schematic name and auto-approved status from query params
+		if name := e.Request.URL.Query().Get("name"); name != "" {
+			d.SchematicName = name
+			d.SchematicURL = "/schematics/" + name
+		}
+		d.AutoApproved = e.Request.URL.Query().Get("auto") == "true"
+
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -175,7 +192,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
-func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -451,6 +468,41 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
+		// --- Run OpenAI moderation ---
+		autoApproved := false
+		if moderationSvc != nil {
+			policyResult, policyErr := moderationSvc.CheckSchematic(title, sanitizedContent, "")
+			if policyErr != nil {
+				slog.Warn("make-public: moderation policy check unavailable, manual review required", "error", policyErr, "id", schem.ID)
+			} else if !policyResult.Approved {
+				schem.Blacklisted = true
+				schem.ModerationReason = policyResult.Reason
+				if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+					slog.Error("make-public: failed to blacklist schematic", "error", updateErr, "id", schem.ID)
+				}
+			} else {
+				// Policy passed, check quality
+				qualityResult, qualityErr := moderationSvc.CheckSchematicQuality(title, sanitizedContent)
+				if qualityErr != nil {
+					slog.Warn("make-public: moderation quality check unavailable, manual review required", "error", qualityErr, "id", schem.ID)
+				} else if !qualityResult.Approved {
+					schem.Blacklisted = true
+					schem.ModerationReason = qualityResult.Reason
+					if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+						slog.Error("make-public: failed to blacklist schematic", "error", updateErr, "id", schem.ID)
+					}
+				} else {
+					// Both checks passed — auto-approve
+					schem.Moderated = true
+					if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+						slog.Error("make-public: failed to auto-approve schematic", "error", updateErr, "id", schem.ID)
+					} else {
+						autoApproved = true
+					}
+				}
+			}
+		}
+
 		// --- Create NBT hash for duplicate detection ---
 		if entry.Checksum != "" {
 			_ = appStore.NBTHashes.Create(ctx, &store.NBTHash{
@@ -475,11 +527,12 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// Delete temp upload record
 		_ = appStore.TempUploads.Delete(ctx, token)
 
+		pendingURL := fmt.Sprintf("/upload/pending?name=%s&auto=%t", url.QueryEscape(nameSlug), autoApproved)
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/upload/pending"))
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, pendingURL))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/upload/pending"))
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, pendingURL))
 	}
 }
 

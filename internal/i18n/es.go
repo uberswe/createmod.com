@@ -577,4 +577,22 @@ var LangES = map[string]string{
 	"log in": "iniciar sesión",
 	"blocks": "bloques",
 	"bytes":  "bytes",
+
+	// ── Upload Pending / Moderation ──
+	"Pending Moderation":                "Moderación pendiente",
+	"This schematic is pending moderation and is not yet publicly listed.": "Este esquemático está pendiente de moderación y aún no aparece públicamente.",
+	"Your schematic has been published!": "¡Tu esquemático ha sido publicado!",
+	"Your schematic passed moderation and is now live on the site.": "Tu esquemático pasó la moderación y ya está disponible en el sitio.",
+	"Your schematic has been submitted for review. You can share the link below while you wait.": "Tu esquemático ha sido enviado para revisión. Puedes compartir el enlace de abajo mientras esperas.",
+	"Schematic URL":                     "URL del esquemático",
+	"View Schematic":                    "Ver esquemático",
+	"Link copied!":                      "¡Enlace copiado!",
+	"Upload Another":                    "Subir otro",
+	"Go to Home":                        "Ir al inicio",
+	"What happens next?":                "¿Qué pasa después?",
+	"Your schematic is live and visible to everyone.": "Tu esquemático está en línea y visible para todos.",
+	"It will appear in search results and category listings.": "Aparecerá en los resultados de búsqueda y listados de categorías.",
+	"We validate your schematic content.": "Validamos el contenido de tu esquemático.",
+	"If everything looks good, it will be published automatically.": "Si todo se ve bien, se publicará automáticamente.",
+	"Your schematic is accessible via the link above while it awaits review.": "Tu esquemático es accesible a través del enlace de arriba mientras espera revisión.",
 }

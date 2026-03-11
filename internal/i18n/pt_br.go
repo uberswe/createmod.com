@@ -577,4 +577,22 @@ var LangPtBR = map[string]string{
 	"log in": "fazer login",
 	"blocks": "blocos",
 	"bytes":  "bytes",
+
+	// ── Upload Pending / Moderation ──
+	"Pending Moderation":                "Moderação pendente",
+	"This schematic is pending moderation and is not yet publicly listed.": "Este esquemático está pendente de moderação e ainda não está listado publicamente.",
+	"Your schematic has been published!": "Seu esquemático foi publicado!",
+	"Your schematic passed moderation and is now live on the site.": "Seu esquemático passou pela moderação e já está disponível no site.",
+	"Your schematic has been submitted for review. You can share the link below while you wait.": "Seu esquemático foi enviado para revisão. Você pode compartilhar o link abaixo enquanto espera.",
+	"Schematic URL":                     "URL do esquemático",
+	"View Schematic":                    "Ver esquemático",
+	"Link copied!":                      "Link copiado!",
+	"Upload Another":                    "Enviar outro",
+	"Go to Home":                        "Ir para o início",
+	"What happens next?":                "O que acontece a seguir?",
+	"Your schematic is live and visible to everyone.": "Seu esquemático está online e visível para todos.",
+	"It will appear in search results and category listings.": "Ele aparecerá nos resultados de busca e listagens de categorias.",
+	"We validate your schematic content.": "Nós validamos o conteúdo do seu esquemático.",
+	"If everything looks good, it will be published automatically.": "Se tudo estiver certo, será publicado automaticamente.",
+	"Your schematic is accessible via the link above while it awaits review.": "Seu esquemático está acessível pelo link acima enquanto aguarda revisão.",
 }
