@@ -7,6 +7,7 @@ import (
 
 var supportedLanguages = map[string]struct{}{
 	"en":      {},
+	"fr":      {},
 	"pt-BR":   {},
 	"pt-PT":   {},
 	"es":      {},
@@ -39,6 +40,8 @@ func normalizeFromAcceptLanguage(header string) string {
 		return "pt-PT"
 	case h == "pt" || strings.HasPrefix(h, "pt-"):
 		return "pt-PT"
+	case strings.HasPrefix(h, "fr"):
+		return "fr"
 	case strings.HasPrefix(h, "es"):
 		return "es"
 	case strings.HasPrefix(h, "de"):
@@ -54,8 +57,8 @@ func normalizeFromAcceptLanguage(header string) string {
 	}
 }
 
-// preferredLanguageFromRequest returns the cookie value if present and supported, else a best-effort
-// mapping from Accept-Language header, else "en".
+// preferredLanguageFromRequest returns the cookie value if present and supported, else "en".
+// Language is only changed when the user explicitly selects one (stored in the cm_lang cookie).
 func preferredLanguageFromRequest(r *http.Request) string {
 	if r == nil {
 		return "en"
@@ -66,5 +69,5 @@ func preferredLanguageFromRequest(r *http.Request) string {
 			return v
 		}
 	}
-	return normalizeFromAcceptLanguage(r.Header.Get("Accept-Language"))
+	return "en"
 }
