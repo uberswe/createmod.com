@@ -10,11 +10,12 @@ import (
 )
 
 // SupportedLanguages lists all UI-supported language codes.
-var SupportedLanguages = []string{"en", "pt-BR", "pt-PT", "es", "de", "pl", "ru", "zh-Hans"}
+var SupportedLanguages = []string{"en", "fr", "pt-BR", "pt-PT", "es", "de", "pl", "ru", "zh-Hans"}
 
 // langNames maps ISO codes to human-readable language names for the OpenAI prompt.
 var langNames = map[string]string{
 	"en":      "English",
+	"fr":      "French",
 	"pt-BR":   "Brazilian Portuguese",
 	"pt-PT":   "European Portuguese",
 	"es":      "Spanish",

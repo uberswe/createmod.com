@@ -9,6 +9,7 @@ import (
 func Test_IsSupportedLanguage(t *testing.T) {
 	cases := map[string]bool{
 		"en":      true,
+		"fr":      true,
 		"pt-BR":   true,
 		"pt-PT":   true,
 		"es":      true,
@@ -37,7 +38,7 @@ func Test_NormalizeFromAcceptLanguage(t *testing.T) {
 		{"pl-PL", "pl"},
 		{"ru-RU", "ru"},
 		{"zh-CN", "zh-Hans"},
-		{"fr-FR", "en"},
+		{"fr-FR", "fr"},
 		{"", "en"},
 	}
 	for _, tc := range tests {
@@ -55,19 +56,19 @@ func Test_PreferredLanguageFromRequest(t *testing.T) {
 		t.Fatalf("preferredLanguageFromRequest with de cookie = %q; want de", got)
 	}
 
-	// Unsupported cookie falls back to Accept-Language
+	// Unsupported cookie falls back to English (no Accept-Language detection)
 	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	req2.AddCookie(&http.Cookie{Name: "cm_lang", Value: "xx"})
 	req2.Header.Set("Accept-Language", "es-ES")
-	if got := preferredLanguageFromRequest(req2); got != "es" {
-		t.Fatalf("preferredLanguageFromRequest with invalid cookie + es header = %q; want es", got)
+	if got := preferredLanguageFromRequest(req2); got != "en" {
+		t.Fatalf("preferredLanguageFromRequest with invalid cookie = %q; want en", got)
 	}
 
-	// No cookie, zh header
+	// No cookie, Accept-Language header is ignored — defaults to English
 	req3 := httptest.NewRequest(http.MethodGet, "/", nil)
 	req3.Header.Set("Accept-Language", "zh-HK")
-	if got := preferredLanguageFromRequest(req3); got != "zh-Hans" {
-		t.Fatalf("preferredLanguageFromRequest zh-HK = %q; want zh-Hans", got)
+	if got := preferredLanguageFromRequest(req3); got != "en" {
+		t.Fatalf("preferredLanguageFromRequest without cookie = %q; want en", got)
 	}
 
 	// No cookie, no header

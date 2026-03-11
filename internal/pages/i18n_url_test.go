@@ -65,8 +65,8 @@ func TestStripLangPrefix(t *testing.T) {
 
 func TestAllHreflangs(t *testing.T) {
 	entries := AllHreflangs()
-	if len(entries) != 8 {
-		t.Errorf("AllHreflangs() returned %d entries, want 8", len(entries))
+	if len(entries) != 9 {
+		t.Errorf("AllHreflangs() returned %d entries, want 9", len(entries))
 	}
 	// Check English is first and has empty prefix
 	if entries[0].HreflangCode != "en" || entries[0].Prefix != "" {
