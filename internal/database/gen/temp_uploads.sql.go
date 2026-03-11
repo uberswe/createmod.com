@@ -387,6 +387,87 @@ func (q *Queries) ListTempUploadFilesByToken(ctx context.Context, token string) 
 	return items, nil
 }
 
+const listTempUploadsByUser = `-- name: ListTempUploadsByUser :many
+SELECT id, token, uploaded_by, filename, description, size, checksum,
+       block_count, dim_x, dim_y, dim_z, mods, materials,
+       minecraft_version, createmod_version, nbt_s3_key, image_s3_key,
+       parsed_summary, created, updated
+FROM temp_uploads
+WHERE uploaded_by = $1
+ORDER BY created DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListTempUploadsByUserParams struct {
+	UploadedBy string `json:"uploaded_by"`
+	Limit      int32  `json:"limit"`
+	Offset     int32  `json:"offset"`
+}
+
+type ListTempUploadsByUserRow struct {
+	ID               string          `json:"id"`
+	Token            string          `json:"token"`
+	UploadedBy       string          `json:"uploaded_by"`
+	Filename         string          `json:"filename"`
+	Description      string          `json:"description"`
+	Size             int64           `json:"size"`
+	Checksum         string          `json:"checksum"`
+	BlockCount       int32           `json:"block_count"`
+	DimX             int32           `json:"dim_x"`
+	DimY             int32           `json:"dim_y"`
+	DimZ             int32           `json:"dim_z"`
+	Mods             json.RawMessage `json:"mods"`
+	Materials        json.RawMessage `json:"materials"`
+	MinecraftVersion string          `json:"minecraft_version"`
+	CreatemodVersion string          `json:"createmod_version"`
+	NbtS3Key         string          `json:"nbt_s3_key"`
+	ImageS3Key       string          `json:"image_s3_key"`
+	ParsedSummary    string          `json:"parsed_summary"`
+	Created          time.Time       `json:"created"`
+	Updated          time.Time       `json:"updated"`
+}
+
+func (q *Queries) ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listTempUploadsByUser, arg.UploadedBy, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTempUploadsByUserRow{}
+	for rows.Next() {
+		var i ListTempUploadsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Token,
+			&i.UploadedBy,
+			&i.Filename,
+			&i.Description,
+			&i.Size,
+			&i.Checksum,
+			&i.BlockCount,
+			&i.DimX,
+			&i.DimY,
+			&i.DimZ,
+			&i.Mods,
+			&i.Materials,
+			&i.MinecraftVersion,
+			&i.CreatemodVersion,
+			&i.NbtS3Key,
+			&i.ImageS3Key,
+			&i.ParsedSummary,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTempUpload = `-- name: UpdateTempUpload :exec
 UPDATE temp_uploads
 SET filename = $2, description = $3, nbt_s3_key = $4, image_s3_key = $5, updated = NOW()

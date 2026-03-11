@@ -218,6 +218,8 @@ var LangEN = map[string]string{
 	"Publish Schematic":                                                "Publish Schematic",
 	"Want to share this schematic and publish it to the community?":    "Want to share this schematic and publish it to the community?",
 	"Login to publish":                                                 "Login to publish",
+	"Your Private Schematics":                                          "Your Private Schematics",
+	"Continue":                                                         "Continue",
 	"Additional Files (Variations)":                                    "Additional Files (Variations)",
 	"Optionally add more .nbt files as variations or sets for this schematic.": "Optionally add more .nbt files as variations or sets for this schematic.",
 	"NBT File":          "NBT File",

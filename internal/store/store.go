@@ -657,6 +657,7 @@ type TempUploadStore interface {
 	Update(ctx context.Context, t *TempUpload) error
 	Delete(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
+	ListByUser(ctx context.Context, userID string, limit int, offset int) ([]TempUpload, error)
 }
 
 // TempUploadFileStore manages additional files for temp uploads.

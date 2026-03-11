@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,7 +58,13 @@ var uploadPreviewTemplates = append([]string{
 
 type UploadData struct {
 	DefaultData
-	UploadStep int
+	UploadStep        int
+	PrivateSchematics []store.TempUpload
+	PrivatePage       int
+	PrivateHasPrev    bool
+	PrivateHasNext    bool
+	PrivatePrevURL    string
+	PrivateNextURL    string
 }
 
 type UploadPublishData struct {
@@ -103,6 +110,38 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		d.Slug = "/upload"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+
+		// Load private schematics for authenticated users
+		if isAuthenticated(e) {
+			userID := authenticatedUserID(e)
+			if userID != "" {
+				const pageSize = 10
+				page := 1
+				if p := e.Request.URL.Query().Get("p"); p != "" {
+					if pv, err := strconv.Atoi(p); err == nil && pv > 0 {
+						page = pv
+					}
+				}
+				offset := (page - 1) * pageSize
+				uploads, err := appStore.TempUploads.ListByUser(e.Request.Context(), userID, pageSize+1, offset)
+				if err == nil && len(uploads) > 0 {
+					d.PrivatePage = page
+					d.PrivateHasPrev = page > 1
+					if len(uploads) > pageSize {
+						d.PrivateHasNext = true
+						uploads = uploads[:pageSize]
+					}
+					d.PrivateSchematics = uploads
+					if d.PrivateHasPrev {
+						d.PrivatePrevURL = fmt.Sprintf("/upload?p=%d", page-1)
+					}
+					if d.PrivateHasNext {
+						d.PrivateNextURL = fmt.Sprintf("/upload?p=%d", page+1)
+					}
+				}
+			}
+		}
+
 		html, err := registry.LoadFiles(uploadTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -145,8 +184,13 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
 
-		// Parse optional scheduled_at from form and cache in UTC for later use
-		if err := e.Request.ParseForm(); err == nil {
+		// Parse the multipart form (up to 10 MB in memory; the rest spills to
+		// temp files).  Using ParseMultipartForm instead of ParseForm ensures
+		// that the request body is fully consumed even when the client sends
+		// file fields (featured_image, gallery).  Leaving the body unread
+		// causes Go's HTTP server to drain or reset the connection, which
+		// produces 502 errors through reverse proxies like Cloudflare.
+		if err := e.Request.ParseMultipartForm(100 << 20); err == nil {
 			val := strings.TrimSpace(e.Request.FormValue("scheduled_at"))
 			if val != "" {
 				var when time.Time
@@ -364,20 +408,16 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		checksum := hex.EncodeToString(sum[:])
 
 		// Duplicate detection -- skipped in dev mode (DEV=true)
+		// Only checks against published (moderated) schematics and blacklisted
+		// hashes. Temp/private uploads are intentionally not checked so users
+		// can re-upload after losing their token or making a mistake.
 		isDev := os.Getenv("DEV") == "true"
 		if !isDev {
-			dupMsg := "This schematic already exists (duplicate upload detected by checksum). If you recently uploaded this it may be pending moderation, otherwise it may be blacklisted by the original creator. If you need more help contact us: /contact"
+			dupMsg := "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator. If you need more help contact us: /contact"
 
 			// Check published schematics via store
 			if appStore != nil {
 				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
-					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-
-			// Check temp uploads via PostgreSQL store
-			if appStore != nil {
-				if existing, err := appStore.TempUploads.GetByChecksum(e.Request.Context(), checksum); err == nil && existing != nil {
 					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
 				}
 			}

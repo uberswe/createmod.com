@@ -218,6 +218,8 @@ var LangPL = map[string]string{
 	"Publish Schematic":                                                "Opublikuj schemat",
 	"Want to share this schematic and publish it to the community?":    "Chcesz udostępnić ten schemat i opublikować go dla społeczności?",
 	"Login to publish":                                                 "Zaloguj się, aby opublikować",
+	"Your Private Schematics":                                          "Twoje prywatne schematy",
+	"Continue":                                                         "Kontynuuj",
 	"Additional Files (Variations)":                                    "Dodatkowe pliki (warianty)",
 	"Optionally add more .nbt files as variations or sets for this schematic.": "Opcjonalnie dodaj więcej plików .nbt jako warianty lub zestawy do tego schematu.",
 	"NBT File":          "Plik NBT",

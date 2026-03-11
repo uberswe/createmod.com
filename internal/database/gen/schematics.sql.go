@@ -216,8 +216,11 @@ func (q *Queries) CreateSchematic(ctx context.Context, arg CreateSchematicParams
 }
 
 const getSchematicByChecksum = `-- name: GetSchematicByChecksum :one
-SELECT schematic_id FROM nbt_hashes
-WHERE hash = $1
+SELECT nh.schematic_id FROM nbt_hashes nh
+JOIN schematics s ON s.id = nh.schematic_id
+WHERE nh.hash = $1
+  AND s.moderated = true
+  AND s.deleted IS NULL
 LIMIT 1
 `
 
