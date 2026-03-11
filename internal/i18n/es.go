@@ -595,4 +595,14 @@ var LangES = map[string]string{
 	"We validate your schematic content.": "Validamos el contenido de tu esquemático.",
 	"If everything looks good, it will be published automatically.": "Si todo se ve bien, se publicará automáticamente.",
 	"Your schematic is accessible via the link above while it awaits review.": "Tu esquemático es accesible a través del enlace de arriba mientras espera revisión.",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "Este esquemático será aprobado automáticamente y publicado de inmediato.",
+	"This schematic will be auto-approved and published at the scheduled time.": "Este esquemático será aprobado automáticamente y publicado en el horario programado.",
+	"Your schematic will be reviewed before it appears publicly.":              "Tu esquemático será revisado antes de aparecer públicamente.",
+	"Schedule publication":                                                     "Programar publicación",
+	"Optionally set a date and time for your schematic to go live.":            "Opcionalmente establece una fecha y hora para que tu esquemático se publique.",
+	"Publish date & time":                                                      "Fecha y hora de publicación",
+	"Time is in your local timezone.":                                          "La hora es en tu zona horaria local.",
+	"This schematic is scheduled to be published on":                           "Este esquemático está programado para publicarse el",
 }

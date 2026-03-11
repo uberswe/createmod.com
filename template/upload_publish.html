@@ -135,6 +135,19 @@
                                     <small class="form-hint">Link to Patreon, Ko-fi, Discord, or other platform where users can get this schematic.</small>
                                 </div>
 
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input type="checkbox" class="form-check-input" id="schedule-toggle">
+                                        <span class="form-check-label">{{ T .Language "Schedule publication" }}</span>
+                                    </label>
+                                    <small class="form-hint">{{ T .Language "Optionally set a date and time for your schematic to go live." }}</small>
+                                </div>
+                                <div class="mb-3" id="schedule-group" style="display:none">
+                                    <label class="form-label">{{ T .Language "Publish date & time" }}</label>
+                                    <input type="datetime-local" id="scheduled-at" class="form-control">
+                                    <small class="form-hint">{{ T .Language "Time is in your local timezone." }}</small>
+                                </div>
+
                                 <div class="row">
                                     <div class="mb-3 col-md-12 col-lg-6">
                                         <label class="form-label required">Featured Image</label>
@@ -159,6 +172,24 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {{ if .TrustedUser }}
+                                <div class="alert alert-success mt-3" id="trusted-notice">
+                                    <div class="d-flex align-items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                        <div>
+                                            <span id="trusted-notice-text">{{ T .Language "This schematic will be auto-approved and published immediately." }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{ else }}
+                                <div class="alert alert-info mt-3">
+                                    <div class="d-flex align-items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
+                                        <div>{{ T .Language "Your schematic will be reviewed before it appears publicly." }}</div>
+                                    </div>
+                                </div>
+                                {{ end }}
 
                                 <div class="mt-4">
                                     <button class="btn btn-primary w-100" id="publish-schematic-btn">
@@ -290,6 +321,18 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('external-url-group').style.display = this.checked ? '' : 'none';
     });
 
+    document.getElementById('schedule-toggle').addEventListener('change', function() {
+        document.getElementById('schedule-group').style.display = this.checked ? '' : 'none';
+        {{ if .TrustedUser }}
+        var noticeText = document.getElementById('trusted-notice-text');
+        if (noticeText) {
+            noticeText.textContent = this.checked
+                ? "{{ T .Language "This schematic will be auto-approved and published at the scheduled time." }}"
+                : "{{ T .Language "This schematic will be auto-approved and published immediately." }}";
+        }
+        {{ end }}
+    });
+
     var dropzoneFeatured = new Dropzone("#dropzone-featured", {
         url: '/upload', // placeholder
         acceptedFiles: 'image/*',
@@ -350,6 +393,12 @@ document.addEventListener("DOMContentLoaded", function() {
         formData.append("video", document.getElementById("video").value);
         formData.append("paid", document.getElementById("schematic-paid").checked ? "true" : "false");
         formData.append("external_url", document.getElementById("external-url").value);
+
+        var schedInput = document.getElementById('scheduled-at');
+        if (document.getElementById('schedule-toggle').checked && schedInput && schedInput.value) {
+            var localDate = new Date(schedInput.value);
+            formData.append("scheduled_at", localDate.toISOString());
+        }
 
         if (!titleElement.value) {
             titleElement.classList.add("is-invalid");

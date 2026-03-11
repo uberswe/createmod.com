@@ -595,4 +595,14 @@ var LangPtBR = map[string]string{
 	"We validate your schematic content.": "Nós validamos o conteúdo do seu esquemático.",
 	"If everything looks good, it will be published automatically.": "Se tudo estiver certo, será publicado automaticamente.",
 	"Your schematic is accessible via the link above while it awaits review.": "Seu esquemático está acessível pelo link acima enquanto aguarda revisão.",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "Este esquemático será aprovado automaticamente e publicado imediatamente.",
+	"This schematic will be auto-approved and published at the scheduled time.": "Este esquemático será aprovado automaticamente e publicado no horário agendado.",
+	"Your schematic will be reviewed before it appears publicly.":              "Seu esquemático será revisado antes de aparecer publicamente.",
+	"Schedule publication":                                                     "Agendar publicação",
+	"Optionally set a date and time for your schematic to go live.":            "Opcionalmente defina uma data e hora para seu esquemático ir ao ar.",
+	"Publish date & time":                                                      "Data e hora de publicação",
+	"Time is in your local timezone.":                                          "O horário é no seu fuso horário local.",
+	"This schematic is scheduled to be published on":                           "Este esquemático está agendado para ser publicado em",
 }

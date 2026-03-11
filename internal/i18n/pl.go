@@ -595,4 +595,14 @@ var LangPL = map[string]string{
 	"We validate your schematic content.": "Sprawdzamy zawartość twojego schematu.",
 	"If everything looks good, it will be published automatically.": "Jeśli wszystko wygląda dobrze, zostanie automatycznie opublikowany.",
 	"Your schematic is accessible via the link above while it awaits review.": "Twój schemat jest dostępny pod powyższym linkiem, czekając na recenzję.",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "Ten schemat zostanie automatycznie zatwierdzony i opublikowany natychmiast.",
+	"This schematic will be auto-approved and published at the scheduled time.": "Ten schemat zostanie automatycznie zatwierdzony i opublikowany w zaplanowanym czasie.",
+	"Your schematic will be reviewed before it appears publicly.":              "Twój schemat zostanie sprawdzony, zanim pojawi się publicznie.",
+	"Schedule publication":                                                     "Zaplanuj publikację",
+	"Optionally set a date and time for your schematic to go live.":            "Opcjonalnie ustaw datę i godzinę publikacji schematu.",
+	"Publish date & time":                                                      "Data i godzina publikacji",
+	"Time is in your local timezone.":                                          "Czas jest w Twojej lokalnej strefie czasowej.",
+	"This schematic is scheduled to be published on":                           "Ten schemat jest zaplanowany do publikacji na",
 }

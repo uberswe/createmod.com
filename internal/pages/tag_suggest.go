@@ -10,8 +10,8 @@ import (
 	"github.com/gosimple/slug"
 )
 
-// idPattern matches existing PocketBase-style IDs (15-char hex/alphanumeric).
-var idPattern = regexp.MustCompile(`^[a-f0-9]{15}$`)
+// idPattern matches existing PocketBase-style IDs (15-char alphanumeric).
+var idPattern = regexp.MustCompile(`^[a-z0-9]{15}$`)
 
 // resolveTagIDs takes a list of form values that may be existing tag IDs or new tag names.
 // For new names, it creates a pending tag (public=false) in the database.
