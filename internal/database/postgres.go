@@ -2584,6 +2584,43 @@ func (s *TempUploadStoreImpl) DeleteExpired(ctx context.Context, olderThan time.
 	return s.q.DeleteExpiredTempUploads(ctx, olderThan)
 }
 
+func (s *TempUploadStoreImpl) ListByUser(ctx context.Context, userID string, limit int, offset int) ([]store.TempUpload, error) {
+	rows, err := s.q.ListTempUploadsByUser(ctx, db.ListTempUploadsByUserParams{
+		UploadedBy: userID,
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TempUpload, len(rows))
+	for i, row := range rows {
+		result[i] = store.TempUpload{
+			ID:               row.ID,
+			Token:            row.Token,
+			UploadedBy:       row.UploadedBy,
+			Filename:         row.Filename,
+			Description:      row.Description,
+			Size:             row.Size,
+			Checksum:         row.Checksum,
+			BlockCount:       int(row.BlockCount),
+			DimX:             int(row.DimX),
+			DimY:             int(row.DimY),
+			DimZ:             int(row.DimZ),
+			Mods:             row.Mods,
+			Materials:        row.Materials,
+			MinecraftVersion: row.MinecraftVersion,
+			CreatemodVersion: row.CreatemodVersion,
+			NbtS3Key:         row.NbtS3Key,
+			ImageS3Key:       row.ImageS3Key,
+			ParsedSummary:    row.ParsedSummary,
+			Created:          row.Created,
+			Updated:          row.Updated,
+		}
+	}
+	return result, nil
+}
+
 // --------------------------------------------------------------------------
 // TempUploadFile Store Implementation
 // --------------------------------------------------------------------------

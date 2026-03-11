@@ -218,6 +218,8 @@ var LangRU = map[string]string{
 	"Publish Schematic":                         "Опубликовать схему",
 	"Want to share this schematic and publish it to the community?":      "Хотите поделиться этой схемой и опубликовать её для сообщества?",
 	"Login to publish":                          "Войдите, чтобы опубликовать",
+	"Your Private Schematics":                   "Ваши приватные схемы",
+	"Continue":                                  "Продолжить",
 	"Additional Files (Variations)":             "Дополнительные файлы (вариации)",
 	"Optionally add more .nbt files as variations or sets for this schematic.": "При желании добавьте дополнительные файлы .nbt в качестве вариаций или наборов для этой схемы.",
 	"NBT File":                                  "Файл NBT",

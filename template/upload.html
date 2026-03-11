@@ -42,6 +42,74 @@
                     </div>
                 </div>
 
+                <!-- Private Schematics (only for authenticated users with uploads) -->
+                {{ if and .IsAuthenticated .PrivateSchematics }}
+                <div id="private-schematics">
+                    <div class="row row-cards justify-content-center">
+                        <div class="col-lg-8 col-xl-6">
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h3 class="card-title">{{ T .Language "Your Private Schematics" }}</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter card-table">
+                                        <thead>
+                                            <tr>
+                                                <th>{{ T .Language "Filename" }}</th>
+                                                <th>{{ T .Language "Size" }}</th>
+                                                <th>{{ T .Language "Uploaded" }}</th>
+                                                <th class="w-1"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{ range .PrivateSchematics }}
+                                            <tr>
+                                                <td>{{ .Filename }}</td>
+                                                <td class="text-nowrap text-secondary">{{ .DimX }}x{{ .DimY }}x{{ .DimZ }}</td>
+                                                <td class="text-nowrap text-secondary">{{ HumanDate .Created }}</td>
+                                                <td>
+                                                    <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline-primary">
+                                                        {{ T $.Language "Continue" }}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {{ end }}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {{ if or .PrivateHasPrev .PrivateHasNext }}
+                                <div class="card-footer d-flex justify-content-between align-items-center">
+                                    <a {{ if .PrivateHasPrev }}href="{{ .PrivatePrevURL }}"
+                                       hx-get="{{ .PrivatePrevURL }}"
+                                       hx-target="#private-schematics"
+                                       hx-select="#private-schematics"
+                                       hx-swap="outerHTML"
+                                       hx-push-url="true"
+                                       class="btn btn-outline-secondary btn-sm"
+                                    {{ else }}class="btn btn-outline-secondary btn-sm disabled"
+                                       tabindex="-1" aria-disabled="true"{{ end }}>
+                                        {{ T .Language "Previous" }}
+                                    </a>
+                                    <span class="text-secondary">{{ T .Language "Page" }} {{ .PrivatePage }}</span>
+                                    <a {{ if .PrivateHasNext }}href="{{ .PrivateNextURL }}"
+                                       hx-get="{{ .PrivateNextURL }}"
+                                       hx-target="#private-schematics"
+                                       hx-select="#private-schematics"
+                                       hx-swap="outerHTML"
+                                       hx-push-url="true"
+                                       class="btn btn-outline-secondary btn-sm"
+                                    {{ else }}class="btn btn-outline-secondary btn-sm disabled"
+                                       tabindex="-1" aria-disabled="true"{{ end }}>
+                                        {{ T .Language "Next" }}
+                                    </a>
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+
                 <!-- Results Section (hidden until upload succeeds) — two-column layout -->
                 <div id="upload-results" style="display:none;">
                     <div class="row row-cards">
@@ -332,6 +400,8 @@ function updateSteps(activeStep) {
 
 function renderResults(data) {
     document.getElementById('upload-results').style.display = '';
+    var privateSchematics = document.getElementById('private-schematics');
+    if (privateSchematics) { privateSchematics.style.display = 'none'; }
     updateSteps(2);
 
     document.getElementById('stat-filename').textContent = data.filename || '';

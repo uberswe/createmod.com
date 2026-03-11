@@ -218,6 +218,8 @@ var LangZhHans = map[string]string{
 	"Publish Schematic":                                                                                                   "发布蓝图",
 	"Want to share this schematic and publish it to the community?":                                                       "想要分享此蓝图并发布到社区吗？",
 	"Login to publish":                                                                                                    "登录以发布",
+	"Your Private Schematics":                                                                                             "您的私有蓝图",
+	"Continue":                                                                                                             "继续",
 	"Additional Files (Variations)":                                                                                       "附加文件（变体）",
 	"Optionally add more .nbt files as variations or sets for this schematic.":                                            "可选择添加更多 .nbt 文件作为此蓝图的变体或套装。",
 	"NBT File":                                                                                                            "NBT 文件",

@@ -166,6 +166,7 @@ type Querier interface {
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)
 	ListTempUploadFilesByToken(ctx context.Context, token string) ([]TempUploadFile, error)
+	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
 	ListTopSearches(ctx context.Context, limit int32) ([]ListTopSearchesRow, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)

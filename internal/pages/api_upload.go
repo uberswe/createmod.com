@@ -85,20 +85,16 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 		checksum := hex.EncodeToString(sum[:])
 
 		// Duplicate detection (skip in dev mode)
+		// Only checks against published (moderated) schematics and blacklisted
+		// hashes. Temp/private uploads are intentionally not checked so users
+		// can re-upload after losing their token or making a mistake.
 		isDev := os.Getenv("DEV") == "true"
 		if !isDev {
-			dupMsg := "This schematic already exists (duplicate upload detected by checksum). If you recently uploaded this it may be pending moderation."
+			dupMsg := "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator."
 
 			// Check published schematics via store
 			if appStore != nil {
 				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
-					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-
-			// Check temp uploads via PostgreSQL store
-			if appStore != nil {
-				if existing, err := appStore.TempUploads.GetByChecksum(e.Request.Context(), checksum); err == nil && existing != nil {
 					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
 				}
 			}

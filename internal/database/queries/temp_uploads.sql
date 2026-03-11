@@ -45,5 +45,15 @@ WHERE id = $1;
 -- name: DeleteTempUploadFile :exec
 DELETE FROM temp_upload_files WHERE id = $1;
 
+-- name: ListTempUploadsByUser :many
+SELECT id, token, uploaded_by, filename, description, size, checksum,
+       block_count, dim_x, dim_y, dim_z, mods, materials,
+       minecraft_version, createmod_version, nbt_s3_key, image_s3_key,
+       parsed_summary, created, updated
+FROM temp_uploads
+WHERE uploaded_by = $1
+ORDER BY created DESC
+LIMIT $2 OFFSET $3;
+
 -- name: DeleteTempUploadFilesByToken :exec
 DELETE FROM temp_upload_files WHERE token = $1;
