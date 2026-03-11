@@ -68,7 +68,7 @@
                                                 <td class="text-nowrap text-secondary">{{ .DimX }}x{{ .DimY }}x{{ .DimZ }}</td>
                                                 <td class="text-nowrap text-secondary">{{ HumanDate .Created }}</td>
                                                 <td>
-                                                    <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline-primary">
+                                                    <a href="/u/{{ .Token }}" hx-boost="false" class="btn btn-sm btn-outline-primary">
                                                         {{ T $.Language "Continue" }}
                                                     </a>
                                                 </td>

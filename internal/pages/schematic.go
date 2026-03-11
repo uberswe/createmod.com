@@ -61,6 +61,8 @@ type SchematicData struct {
 	BloxelizerURL   string
 	Mods            []string
 	ModInfoList     []ModInfo
+	// Additional files (variations)
+	AdditionalFiles []store.SchematicFile
 	// Translation fields
 	IsTranslated     bool
 	OriginalLanguage string
@@ -183,6 +185,11 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			}
 			d.Versions = versions
 			d.HasVersions = true
+		}
+
+		// Load additional files (variations)
+		if additionalFiles, afErr := appStore.SchematicFiles.ListBySchematicID(ctx, s.ID); afErr == nil && len(additionalFiles) > 0 {
+			d.AdditionalFiles = additionalFiles
 		}
 
 		// Translation: show translated title/description if user's language differs from detected language

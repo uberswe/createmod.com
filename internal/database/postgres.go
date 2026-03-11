@@ -2416,6 +2416,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		TempUploadFiles: &TempUploadFileStoreImpl{q: q},
 		NBTHashes:       &NBTHashStoreImpl{q: q},
 		DownloadTokens:  &DownloadTokenStoreImpl{q: q},
+		SchematicFiles:  &SchematicFileStoreImpl{q: q},
 	}
 }
 
@@ -2468,6 +2469,7 @@ var (
 	_ store.TempUploadStore     = (*TempUploadStoreImpl)(nil)
 	_ store.TempUploadFileStore = (*TempUploadFileStoreImpl)(nil)
 	_ store.DownloadTokenStore  = (*DownloadTokenStoreImpl)(nil)
+	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
 )
 
 // Ensure unused import is satisfied.
@@ -2706,6 +2708,58 @@ func (s *TempUploadFileStoreImpl) Delete(ctx context.Context, id string) error {
 
 func (s *TempUploadFileStoreImpl) DeleteByToken(ctx context.Context, token string) error {
 	return s.q.DeleteTempUploadFilesByToken(ctx, token)
+}
+
+// --------------------------------------------------------------------------
+// SchematicFile Store Implementation
+// --------------------------------------------------------------------------
+
+type SchematicFileStoreImpl struct{ q *db.Queries }
+
+func (sf *SchematicFileStoreImpl) Create(ctx context.Context, f *store.SchematicFile) error {
+	row, err := sf.q.CreateSchematicFile(ctx, db.CreateSchematicFileParams{
+		SchematicID:  f.SchematicID,
+		Filename:     f.Filename,
+		OriginalName: f.OriginalName,
+		Size:         f.Size,
+		MimeType:     f.MimeType,
+	})
+	if err != nil {
+		return err
+	}
+	f.ID = row.ID
+	f.Created = row.Created
+	f.Updated = row.Updated
+	return nil
+}
+
+func (sf *SchematicFileStoreImpl) ListBySchematicID(ctx context.Context, schematicID string) ([]store.SchematicFile, error) {
+	rows, err := sf.q.ListSchematicFilesBySchematicID(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SchematicFile, len(rows))
+	for i, r := range rows {
+		result[i] = store.SchematicFile{
+			ID:           r.ID,
+			SchematicID:  r.SchematicID,
+			Filename:     r.Filename,
+			OriginalName: r.OriginalName,
+			Size:         r.Size,
+			MimeType:     r.MimeType,
+			Created:      r.Created,
+			Updated:      r.Updated,
+		}
+	}
+	return result, nil
+}
+
+func (sf *SchematicFileStoreImpl) Delete(ctx context.Context, id string) error {
+	return sf.q.DeleteSchematicFile(ctx, id)
+}
+
+func (sf *SchematicFileStoreImpl) DeleteBySchematicID(ctx context.Context, schematicID string) error {
+	return sf.q.DeleteSchematicFilesBySchematicID(ctx, schematicID)
 }
 
 // --------------------------------------------------------------------------

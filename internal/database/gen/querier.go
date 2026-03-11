@@ -42,6 +42,7 @@ type Querier interface {
 	CreatePointLog(ctx context.Context, arg CreatePointLogParams) (PointLog, error)
 	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateSchematic(ctx context.Context, arg CreateSchematicParams) (Schematic, error)
+	CreateSchematicFile(ctx context.Context, arg CreateSchematicFileParams) (SchematicFile, error)
 	CreateSchematicVersion(ctx context.Context, arg CreateSchematicVersionParams) (SchematicVersion, error)
 	CreateSearch(ctx context.Context, arg CreateSearchParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
@@ -57,6 +58,8 @@ type Querier interface {
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
 	DeleteReport(ctx context.Context, id string) error
+	DeleteSchematicFile(ctx context.Context, id string) error
+	DeleteSchematicFilesBySchematicID(ctx context.Context, schematicID string) error
 	DeleteSession(ctx context.Context, id string) error
 	DeleteTagByID(ctx context.Context, id string) error
 	DeleteTempUpload(ctx context.Context, token string) error
@@ -152,6 +155,7 @@ type Querier interface {
 	ListPublishedCollections(ctx context.Context, arg ListPublishedCollectionsParams) ([]Collection, error)
 	ListRandomApprovedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
+	ListSchematicFilesBySchematicID(ctx context.Context, schematicID string) ([]SchematicFile, error)
 	ListSchematicTranslations(ctx context.Context, schematicID string) ([]SchematicTranslation, error)
 	ListSchematicVersions(ctx context.Context, schematicID string) ([]SchematicVersion, error)
 	ListSchematicsByAuthor(ctx context.Context, arg ListSchematicsByAuthorParams) ([]Schematic, error)

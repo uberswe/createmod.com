@@ -649,6 +649,26 @@ type TempUploadFile struct {
 	Created     time.Time
 }
 
+// SchematicFile represents an additional file (variation) attached to a published schematic.
+type SchematicFile struct {
+	ID           string
+	SchematicID  string
+	Filename     string
+	OriginalName string
+	Size         int64
+	MimeType     string
+	Created      time.Time
+	Updated      time.Time
+}
+
+// SchematicFileStore manages additional files for published schematics.
+type SchematicFileStore interface {
+	Create(ctx context.Context, f *SchematicFile) error
+	ListBySchematicID(ctx context.Context, schematicID string) ([]SchematicFile, error)
+	Delete(ctx context.Context, id string) error
+	DeleteBySchematicID(ctx context.Context, schematicID string) error
+}
+
 // TempUploadStore manages temporary upload persistence.
 type TempUploadStore interface {
 	Create(ctx context.Context, t *TempUpload) error
@@ -695,4 +715,5 @@ type Store struct {
 	TempUploadFiles TempUploadFileStore
 	NBTHashes       NBTHashStore
 	DownloadTokens  DownloadTokenStore
+	SchematicFiles  SchematicFileStore
 }
