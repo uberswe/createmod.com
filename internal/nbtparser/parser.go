@@ -26,8 +26,8 @@ const maxBlockIDLength = 256
 
 // maxDimension is the upper bound for schematic dimensions.
 // Minecraft structure blocks support up to 48x48x48, but Create mod
-// schematics can be larger. 2048 provides generous headroom.
-const maxDimension = 2048
+// schematics can be much larger. 32768 accommodates very large builds.
+const maxDimension = 32768
 
 // blockIDPattern matches valid Minecraft resource locations: namespace:path
 // where both parts consist of [a-z0-9_.-] and path may contain /.
