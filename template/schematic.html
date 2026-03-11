@@ -1,6 +1,11 @@
 {{template "head.html" .}}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" crossorigin="anonymous">
+<!-- Preload the LCP image so the browser starts fetching it immediately -->
+<link rel="preload" as="image" href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540"
+      imagesrcset="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
+      imagesizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw" fetchpriority="high">
+<!-- Non-critical page-specific CSS loaded async -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" crossorigin="anonymous" media="print" onload="this.media='all'">
 <div class="page">
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
@@ -39,9 +44,13 @@
                         <div class="card card-sm mb-4">
                             <a data-fslightbox="gallery" hx-boost="false"
                                href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
+                                <div class="ratio ratio-16x9">
                                 <img
-                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080"
-                                        class="card-img-top">
+                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540"
+                                        srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
+                                        sizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw"
+                                        class="card-img-top object-fit-cover" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high">
+                                </div>
                             </a>
                             <div class="card-body">
                                 {{ if .Schematic.HasGallery}}
@@ -86,6 +95,7 @@
                                     {{ end }}
                                     <div class="ms-auto d-flex align-items-center gap-2">
                                         <div style="position:relative;display:inline-block;">
+                                            <label for="rating-default" class="visually-hidden">Rate this schematic</label>
                                             <select id="rating-default">
                                                 <option value="">Select a rating</option>
                                                 <option value="5">Excellent</option>
@@ -188,9 +198,9 @@
                                         <div class="datagrid-content">
                                             <div class="d-flex align-items-center">
                                                 {{ if .Schematic.Author.HasAvatar }}
-                                                <img class="avatar avatar-xs me-2 rounded" src="{{ .Schematic.Author.Avatar }}"></img>
+                                                <img class="avatar avatar-xs me-2 rounded" src="{{ .Schematic.Author.Avatar }}" alt="{{ .Schematic.Author.Username }}">
                                                 {{ else }}
-                                                <img class="avatar avatar-xs me-2 rounded" src="https://mc-heads.net/avatar/Steve"></img>
+                                                <img class="avatar avatar-xs me-2 rounded" src="https://mc-heads.net/avatar/Steve" alt="{{ .Schematic.Author.Username }}">
                                                 {{ end }}
                                                 <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                                     .Schematic.Author.Username }}</a>

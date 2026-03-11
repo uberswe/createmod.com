@@ -34,19 +34,26 @@
     <link rel="alternate" type="application/rss+xml" title="CreateMod.com RSS Feed" href="/feed.xml">
     {{ if .NoIndex }}<meta name="robots" content="noindex, follow">{{ else }}<meta name="robots" content="all">{{ end }}
     <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
-    <!-- Tabler CSS via CDN -->
+    <!-- Preconnect to CDN and font origins to reduce latency -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://rsms.me" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://s.nitropay.com" crossorigin>
+    <!-- Inter font — loaded async to avoid blocking LCP -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+    <!-- Tabler CSS via CDN (critical — render-blocking) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
-    <!-- Dropzone CSS via CDN (for upload pages) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous">
-    <!-- Flag icons for language selector -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" crossorigin="anonymous">
     <!-- Theme variables & Tabler overrides (local) -->
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project overrides (small tweaks) -->
     <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
+    <!-- Non-critical CSS: load async to avoid blocking LCP -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.12" defer crossorigin="anonymous" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"></script>
+    <!-- HTMX (via jsdelivr to share CDN connection) -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12/dist/htmx.min.js" defer crossorigin="anonymous"></script>
     <!-- DOMPurify – client-side HTML sanitization for defense-in-depth -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer crossorigin="anonymous"></script>
     <!-- Tabler JS (Bootstrap 5 bundle) — in <head> to prevent re-execution on HTMX body swaps -->
@@ -100,6 +107,10 @@
       if (window.innerWidth >= 992 && localStorage.getItem('sidebar-expanded') !== '0') {
         document.body.classList.add('sidebar-pinned');
       }
+
+      // Enable sidebar transition only after initial layout is stable.
+      // This prevents the margin-left transition from contributing to CLS.
+      requestAnimationFrame(function(){ document.body.classList.add('sidebar-ready'); });
 
       // Guard: attach document-level listeners only once to prevent stacking.
       if (!window._sidebarInit) {

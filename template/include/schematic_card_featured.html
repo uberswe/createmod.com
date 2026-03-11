@@ -3,8 +3,10 @@
   <a href="/schematics/{{ .Name }}" class="d-block text-decoration-none">
     <div class="card card-featured card-hover-lift overflow-hidden">
       <div class="ratio ratio-16x9" style="position:relative;">
-        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360"
-             alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover">
+        <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=320x180"
+             srcset="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=320x180 320w, /api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=640x360 640w"
+             sizes="(max-width: 767px) 100vw, 33vw"
+             alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="640" height="360">
         {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:8px;left:8px;z-index:2;">Paid</span>{{ end }}
       </div>
       <div class="card-img-overlay d-flex flex-column justify-content-end p-3">

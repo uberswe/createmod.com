@@ -1,4 +1,4 @@
-@import url('https://rsms.me/inter/inter.css');
+/* Inter font loaded via <link> in head.html to avoid render-blocking @import chain */
 
 :root {
     --tblr-font-sans-serif: 'Inter Var', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;

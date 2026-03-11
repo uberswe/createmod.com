@@ -199,7 +199,12 @@ func Register(p RegisterParams) chi.Router {
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		io.Copy(w, reader)
 	})
-	r.Handle("/assets/x/*", http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static"))))
+	// Static assets with long cache (files use ?v=hash cache-busting)
+	staticFS := http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static")))
+	r.Handle("/assets/x/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		staticFS.ServeHTTP(w, req)
+	}))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte("User-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\nDisallow: /*?theme=\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
@@ -709,6 +714,32 @@ var corsAllowedOrigins = map[string]bool{
 	"https://www.bloxelizer.com": true,
 }
 
+// cspHeader is the Content-Security-Policy value applied to every response.
+// It is built once at init time to avoid repeated string concatenation.
+//
+// 'unsafe-inline' is required for script-src and style-src because the site
+// uses inline <script> blocks (theme init, sidebar state, NitroPay queue,
+// Google Analytics, HTMX handlers, page-specific init) and inline style
+// attributes throughout templates. Removing 'unsafe-inline' would require
+// refactoring all inline code into external files with nonces or hashes.
+//
+// Ad networks (NitroPay) dynamically load resources from many third-party
+// domains, so img-src, frame-src, and connect-src use https: broadly.
+var cspHeader = strings.Join([]string{
+	"default-src 'self'",
+	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://s.nitropay.com https://www.nitropay.com https://www.googletagmanager.com https://www.google-analytics.com https://pagead2.googlesyndication.com https://*.amazon-adsystem.com https://secure.cdn.fastclick.net https://btloader.com https://*.btloader.com",
+	"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://rsms.me",
+	"img-src 'self' data: blob: https:",
+	"font-src 'self' https://rsms.me https://cdn.jsdelivr.net",
+	"connect-src 'self' https://blocksitems.com https://www.google-analytics.com https://www.googletagmanager.com https://*.nitropay.com https://*.amazon-adsystem.com https:",
+	"frame-src https:",
+	"media-src 'self' https:",
+	"object-src 'none'",
+	"base-uri 'self'",
+	"form-action 'self'",
+	"frame-ancestors 'self'",
+}, "; ")
+
 // securityHeaders sets standard security response headers on every request.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -716,6 +747,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		w.Header().Set("Content-Security-Policy", cspHeader)
 
 		// CORS for allowed external origins on API routes
 		if strings.HasPrefix(r.URL.Path, "/api/") {

@@ -4,7 +4,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <a href="{{ LangURL .Language "/" }}" class="top-header-brand">
-            <img alt="CreateMod.com logo" src="/assets/x/logo.png" height="60">
+            <img alt="CreateMod.com logo" src="/assets/x/logo.png" width="60" height="60">
         </a>
         <button class="mobile-search-toggle d-md-none" type="button" aria-label="Search">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
@@ -60,9 +60,9 @@
             <div class="nav-item dropdown auth-section">
                 <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" hx-boost="false" hx-disable aria-label="Open user menu">
                     {{ if .HasAvatar }}
-                    <img class="avatar avatar-sm auth-avatar" src="{{ .Avatar }}">
+                    <img class="avatar avatar-sm auth-avatar" src="{{ .Avatar }}" alt="{{ .Username }}">
                     {{ else }}
-                    <img class="avatar avatar-sm auth-avatar" src="https://mc-heads.net/avatar/Steve">
+                    <img class="avatar avatar-sm auth-avatar" src="https://mc-heads.net/avatar/Steve" alt="{{ .Username }}">
                     {{ end }}
                     <div class="d-none d-xl-block ps-2">
                         <div class="auth-username">{{ .Username }}</div>

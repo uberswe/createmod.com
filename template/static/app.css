@@ -152,6 +152,7 @@ a:hover {
   max-height: calc(100vh - 120px);
   width: 300px;
   flex-shrink: 0;
+  min-height: 600px;
 }
 
 /***************
@@ -216,6 +217,7 @@ a:hover {
   max-height: calc(100vh - 120px);
   width: 160px;
   flex-shrink: 0;
+  min-height: 600px;
 }
 
 /***************
@@ -226,6 +228,7 @@ a:hover {
     position: static;
     width: 100%;
     max-height: none;
+    min-height: 0;
   }
 }
 @media (max-width: 991.98px) {
@@ -233,6 +236,7 @@ a:hover {
     position: static;
     width: 100%;
     max-height: none;
+    min-height: 0;
   }
 }
 
@@ -377,9 +381,12 @@ a:hover {
   border-right: 1px solid rgba(128, 128, 128, 0.12);
   z-index: 1040;
   overflow: hidden;
-  transition: width 0.2s ease;
   display: flex;
   flex-direction: column;
+}
+/* Only animate sidebar width after initial layout to avoid CLS */
+body.sidebar-ready .sidebar-rail {
+  transition: width 0.2s ease;
 }
 /* Minimized (default): expand on hover */
 .sidebar-rail:hover {
@@ -609,6 +616,10 @@ a:hover {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 100px);
+}
+/* Only animate sidebar margin after user interaction, not on initial load.
+   The .sidebar-ready class is added after first paint to prevent CLS. */
+body.sidebar-ready .page-wrapper {
   transition: margin-left 0.2s ease;
 }
 /* Push content over when sidebar is pinned open */
