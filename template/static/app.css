@@ -14,11 +14,11 @@
 [data-bs-theme=dark] {
   /* Default --tblr-muted (#49566c) is nearly invisible on dark backgrounds.
      Lighten to a readable gray that still feels subdued. */
-  --tblr-muted: #8a919b;
+  --tblr-muted: #9ea5ad;
 
   /* Secondary color (used by .text-muted, secondary badges, etc.)
-     Bump opacity from 0.75 to 1 for better readability. */
-  --tblr-secondary-color: rgba(219, 196, 143, 1);
+     Must meet 4.5:1 ratio against #353838 surface. */
+  --tblr-secondary-color: #c4b896;
 }
 
 /* btn-outline-secondary and btn-ghost-secondary use --tblr-secondary which
@@ -39,6 +39,11 @@
 
 /* .text-muted in dark mode — ensure it uses the improved secondary color */
 [data-bs-theme=dark] .text-muted {
+  color: var(--tblr-secondary-color) !important;
+}
+
+/* .text-secondary in dark mode needs the same bump */
+[data-bs-theme=dark] .text-secondary {
   color: var(--tblr-secondary-color) !important;
 }
 
@@ -117,10 +122,47 @@ a:hover {
   border-radius: .5rem;
 }
 
+/* Outline badge text colors: darken for WCAG AA contrast on card backgrounds.
+   .text-blue maps to --tblr-blue (#bf9045) which is only ~2.8:1 on #faf7f2.
+   .text-secondary (#6c7a91) is ~4.0:1 — bump to pass 4.5:1. */
+.badge-outline.text-blue {
+  color: #7d5f24 !important;
+  border-color: #7d5f24 !important;
+}
+.badge-outline.text-secondary {
+  color: #566070 !important;
+  border-color: #8a97ab !important;
+}
+[data-bs-theme=dark] .badge-outline.text-blue {
+  color: #d4a54e !important;
+  border-color: #d4a54e !important;
+}
+[data-bs-theme=dark] .badge-outline.text-secondary {
+  color: #a8b0bb !important;
+  border-color: #6c7380 !important;
+}
+
 /* Tighten badge spacing in lists */
 .avatar-list .badge {
   margin-right: .25rem;
   margin-bottom: .25rem;
+}
+
+/*****************
+  Datagrid & secondary text contrast
+*****************/
+/* Tabler's .datagrid-title uses secondary-color with reduced opacity.
+   Override to a solid color that meets 4.5:1 on card backgrounds. */
+.datagrid-title {
+  color: #4d5560 !important;
+}
+[data-bs-theme=dark] .datagrid-title {
+  color: #a8b0bb !important;
+}
+
+/* .text-secondary in light mode: ensure 4.5:1 on card bg (#faf7f2) */
+.text-secondary {
+  color: #4d5560 !important;
 }
 
 /*****************
@@ -411,6 +453,7 @@ body.sidebar-ready .sidebar-rail {
   white-space: nowrap;
   transition: opacity 0.15s ease;
   font-size: 0.875rem;
+  color: var(--tblr-body-color);
 }
 .sidebar-rail:hover .sidebar-label {
   opacity: 1;
@@ -430,13 +473,15 @@ body.sidebar-ready .sidebar-rail {
   background: none;
   border: none;
   border-top: 1px solid rgba(128, 128, 128, 0.12);
-  color: var(--tblr-body-color);
+  color: #5e6874;
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
+  transition: color 0.15s ease;
+}
+[data-bs-theme=dark] .sidebar-toggle {
+  color: #a8b0bb;
 }
 .sidebar-toggle:hover {
-  opacity: 1;
+  color: var(--tblr-body-color);
   background: rgba(128, 128, 128, 0.08);
 }
 .sidebar-toggle svg {
@@ -455,6 +500,7 @@ body.sidebar-ready .sidebar-rail {
   transition: opacity 0.15s ease;
   font-size: 0.875rem;
   margin-left: 0.75rem;
+  color: var(--tblr-body-color);
 }
 .sidebar-rail:hover .sidebar-toggle-label,
 .sidebar-rail.sidebar-expanded .sidebar-toggle-label {
