@@ -554,20 +554,23 @@ a:hover {
   cursor: pointer;
   display: none;
 }
-/* Mobile search bar: full-width bar below the header, hidden by default */
+/* Mobile search bar: full-width bar below the header, hidden by default.
+   Only shown on screens below md (< 768px) when toggled active. */
 .mobile-search-bar {
-  display: none;
+  display: none !important;
 }
-.mobile-search-bar.active {
-  display: block;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  background: var(--tblr-bg-surface);
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
-  z-index: 1049;
+@media (max-width: 767.98px) {
+  .mobile-search-bar.active {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    background: var(--tblr-bg-surface);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+    z-index: 1049;
+  }
 }
 
 /***************
