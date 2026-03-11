@@ -1,8 +1,9 @@
 package discord
 
 import (
+	"log/slog"
+
 	"github.com/gtuk/discordwebhook"
-	"log"
 )
 
 type Service struct {
@@ -27,6 +28,6 @@ func (s *Service) Post(content string) {
 
 	err := discordwebhook.SendMessage(s.webhookUrl, message)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("discord webhook failed", "error", err)
 	}
 }
