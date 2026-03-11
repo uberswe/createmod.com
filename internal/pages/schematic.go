@@ -79,7 +79,7 @@ type ModInfo struct {
 	IconURL   string
 }
 
-func SchematicHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func SchematicHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, webhookSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
@@ -244,7 +244,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			}
 		}
 
-		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, slog.Default())
+		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -604,7 +604,7 @@ func mapStoreComment(c models.DatabaseComment, storeComments []store.Comment) mo
 // countSchematicViewStore records a view for a schematic using the store.
 // It applies IP-based rate limiting via cache, sends a Discord notification
 // at 50 total views, and awards view-based achievements at thresholds.
-func countSchematicViewStore(appStore *store.Store, schematicID string, discordService *discord.Service, clientIP string, cacheService *cache.Service, logger interface {
+func countSchematicViewStore(appStore *store.Store, schematicID string, discordService *discord.Service, clientIP string, cacheService *cache.Service, webhookSecret string, logger interface {
 	Error(string, ...any)
 	Info(string, ...any)
 }) {
@@ -637,7 +637,7 @@ func countSchematicViewStore(appStore *store.Store, schematicID string, discordS
 	if totalViews == 50 && discordService != nil {
 		s, sErr := appStore.Schematics.GetByID(ctx, schematicID)
 		if sErr == nil && s != nil && s.Moderated {
-			go discordService.Post(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", s.Name))
+			go discordService.PostWithUserWebhooks(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", s.Name), appStore.Webhooks, webhookSecret)
 		}
 	}
 

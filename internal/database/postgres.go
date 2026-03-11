@@ -2421,6 +2421,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		NBTHashes:       &NBTHashStoreImpl{q: q},
 		DownloadTokens:  &DownloadTokenStoreImpl{q: q},
 		SchematicFiles:  &SchematicFileStoreImpl{q: q},
+		Webhooks:        &WebhookStoreImpl{q: q},
 	}
 }
 
@@ -2474,6 +2475,7 @@ var (
 	_ store.TempUploadFileStore = (*TempUploadFileStoreImpl)(nil)
 	_ store.DownloadTokenStore  = (*DownloadTokenStoreImpl)(nil)
 	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
+	_ store.WebhookStore        = (*WebhookStoreImpl)(nil)
 )
 
 // Ensure unused import is satisfied.
@@ -2803,4 +2805,82 @@ func (dt *DownloadTokenStoreImpl) Consume(ctx context.Context, token string) (*s
 
 func (dt *DownloadTokenStoreImpl) CleanupExpired(ctx context.Context) error {
 	return dt.q.CleanupExpiredDownloadTokens(ctx)
+}
+
+// --------------------------------------------------------------------------
+// Webhook Store Implementation
+// --------------------------------------------------------------------------
+
+type WebhookStoreImpl struct{ q *db.Queries }
+
+func (ws *WebhookStoreImpl) Create(ctx context.Context, userID, encryptedURL string) error {
+	_, err := ws.q.CreateUserWebhook(ctx, db.CreateUserWebhookParams{
+		UserID:              userID,
+		WebhookUrlEncrypted: encryptedURL,
+	})
+	return err
+}
+
+func (ws *WebhookStoreImpl) GetByUserID(ctx context.Context, userID string) (*store.UserWebhook, error) {
+	row, err := ws.q.GetUserWebhookByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return webhookFromDB(row), nil
+}
+
+func (ws *WebhookStoreImpl) UpdateURL(ctx context.Context, userID, encryptedURL string) error {
+	return ws.q.UpdateUserWebhookURL(ctx, db.UpdateUserWebhookURLParams{
+		UserID:              userID,
+		WebhookUrlEncrypted: encryptedURL,
+	})
+}
+
+func (ws *WebhookStoreImpl) Delete(ctx context.Context, userID string) error {
+	return ws.q.DeleteUserWebhook(ctx, userID)
+}
+
+func (ws *WebhookStoreImpl) ListActive(ctx context.Context) ([]store.UserWebhook, error) {
+	rows, err := ws.q.ListActiveUserWebhooks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.UserWebhook, len(rows))
+	for i, r := range rows {
+		result[i] = store.UserWebhook{
+			ID:                  r.ID,
+			UserID:              r.UserID,
+			WebhookURLEncrypted: r.WebhookUrlEncrypted,
+		}
+	}
+	return result, nil
+}
+
+func (ws *WebhookStoreImpl) IncrementFailure(ctx context.Context, id, message string) error {
+	return ws.q.IncrementWebhookFailure(ctx, db.IncrementWebhookFailureParams{
+		ID:                 id,
+		LastFailureMessage: message,
+	})
+}
+
+func (ws *WebhookStoreImpl) ResetFailures(ctx context.Context, id string) error {
+	return ws.q.ResetWebhookFailures(ctx, id)
+}
+
+func webhookFromDB(row db.UserWebhook) *store.UserWebhook {
+	w := &store.UserWebhook{
+		ID:                  row.ID,
+		UserID:              row.UserID,
+		WebhookURLEncrypted: row.WebhookUrlEncrypted,
+		Active:              row.Active,
+		ConsecutiveFailures: int(row.ConsecutiveFailures),
+		LastFailureMessage:  row.LastFailureMessage,
+		Created:             row.Created,
+		Updated:             row.Updated,
+	}
+	if row.LastFailureAt.Valid {
+		t := row.LastFailureAt.Time
+		w.LastFailureAt = &t
+	}
+	return w
 }

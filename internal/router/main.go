@@ -5,6 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
+	"createmod/internal/webhook"
 	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/outurl"
@@ -264,6 +265,10 @@ func Register(p RegisterParams) chi.Router {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/points"), http.StatusMovedPermanently)
 	})
 	r.Get("/settings/api-keys", Adapt(pages.UserAPIKeysHandler(registry, p.CacheService, p.AppStore)))
+	webhookSecret := webhook.Secret()
+	r.Get("/settings/webhooks", Adapt(pages.UserWebhooksHandler(registry, p.CacheService, p.AppStore, webhookSecret)))
+	r.Post("/settings/webhooks", Adapt(pages.UserWebhookSaveHandler(p.CacheService, p.AppStore, webhookSecret)))
+	r.Post("/settings/webhooks/delete", Adapt(pages.UserWebhookDeleteHandler(p.AppStore)))
 	r.Get("/settings/statistics", Adapt(pages.UserStatsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings/blacklist", Adapt(pages.BlacklistRequestHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/settings/blacklist/upload", Adapt(pages.BlacklistUploadHandler(p.AppStore)))
@@ -358,7 +363,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/lang", Adapt(pages.SetLanguageHandler()))
 	// Schematics
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
-	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchService, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore)))
+	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchService, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, webhookSecret)))
 	// Partial comments endpoint for HTMX refresh
 	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.SearchService, p.CacheService, registry, p.DiscordService, p.AppStore)))
 	// Add to collection

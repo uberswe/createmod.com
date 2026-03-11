@@ -607,6 +607,30 @@ type SitemapCollection struct {
 	Updated time.Time
 }
 
+// UserWebhook represents a user's Discord webhook configuration.
+type UserWebhook struct {
+	ID                  string
+	UserID              string
+	WebhookURLEncrypted string
+	Active              bool
+	ConsecutiveFailures int
+	LastFailureAt       *time.Time
+	LastFailureMessage  string
+	Created             time.Time
+	Updated             time.Time
+}
+
+// WebhookStore handles user webhook persistence.
+type WebhookStore interface {
+	Create(ctx context.Context, userID, encryptedURL string) error
+	GetByUserID(ctx context.Context, userID string) (*UserWebhook, error)
+	UpdateURL(ctx context.Context, userID, encryptedURL string) error
+	Delete(ctx context.Context, userID string) error
+	ListActive(ctx context.Context) ([]UserWebhook, error)
+	IncrementFailure(ctx context.Context, id, message string) error
+	ResetFailures(ctx context.Context, id string) error
+}
+
 // Store aggregates all sub-stores for dependency injection.
 // TempUpload represents a temporarily uploaded schematic awaiting publishing.
 type TempUpload struct {
@@ -717,4 +741,5 @@ type Store struct {
 	NBTHashes       NBTHashStore
 	DownloadTokens  DownloadTokenStore
 	SchematicFiles  SchematicFileStore
+	Webhooks        WebhookStore
 }

@@ -51,6 +51,7 @@ type Querier interface {
 	CreateTempUploadFile(ctx context.Context, arg CreateTempUploadFileParams) (TempUploadFile, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) error
+	CreateUserWebhook(ctx context.Context, arg CreateUserWebhookParams) (UserWebhook, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) error
 	DeleteCategoryByID(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
@@ -66,6 +67,7 @@ type Querier interface {
 	DeleteTempUploadFile(ctx context.Context, id string) error
 	DeleteTempUploadFilesByToken(ctx context.Context, token string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
+	DeleteUserWebhook(ctx context.Context, userID string) error
 	FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatingCountBySchematicRow, error)
 	FetchRatingSumBySchematic(ctx context.Context) ([]FetchRatingSumBySchematicRow, error)
 	FetchRecentDownloadsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentDownloadsBySchematicRow, error)
@@ -117,6 +119,7 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, lower string) (User, error)
 	GetUserIsContributor(ctx context.Context, authorID *string) (bool, error)
 	GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserMetum, error)
+	GetUserWebhookByUserID(ctx context.Context, userID string) (UserWebhook, error)
 	HasAchievement(ctx context.Context, arg HasAchievementParams) (bool, error)
 	HourlyCommentStats(ctx context.Context, created time.Time) ([]HourlyCommentStatsRow, error)
 	HourlyDownloadStats(ctx context.Context, created time.Time) ([]HourlyDownloadStatsRow, error)
@@ -126,8 +129,10 @@ type Querier interface {
 	IncrementCollectionViews(ctx context.Context, id string) error
 	IncrementGuideViews(ctx context.Context, id string) error
 	IncrementSchematicDownloads(ctx context.Context, id string) error
+	IncrementWebhookFailure(ctx context.Context, arg IncrementWebhookFailureParams) error
 	ListAPIKeysByUser(ctx context.Context, userID string) ([]ApiKey, error)
 	ListAchievements(ctx context.Context) ([]Achievement, error)
+	ListActiveUserWebhooks(ctx context.Context) ([]ListActiveUserWebhooksRow, error)
 	ListAdminEmails(ctx context.Context) ([]string, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
@@ -184,6 +189,7 @@ type Querier interface {
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
+	ResetWebhookFailures(ctx context.Context, id string) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
 	SetSchematicTags(ctx context.Context, schematicID string) error
 	SoftDeleteCollection(ctx context.Context, id string) error
@@ -201,6 +207,7 @@ type Querier interface {
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserPoints(ctx context.Context, arg UpdateUserPointsParams) error
+	UpdateUserWebhookURL(ctx context.Context, arg UpdateUserWebhookURLParams) error
 	UpsertCollectionTranslation(ctx context.Context, arg UpsertCollectionTranslationParams) (CollectionTranslation, error)
 	UpsertGuideTranslation(ctx context.Context, arg UpsertGuideTranslationParams) (GuideTranslation, error)
 	UpsertModMetadata(ctx context.Context, arg UpsertModMetadataParams) (ModMetadatum, error)
