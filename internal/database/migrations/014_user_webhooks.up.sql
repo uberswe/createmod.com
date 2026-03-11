@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS user_webhooks (
-    id TEXT PRIMARY KEY DEFAULT generate_object_id(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     webhook_url_encrypted TEXT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT true,
