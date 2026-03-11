@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"time"
 )
 
@@ -51,6 +52,30 @@ type rssItem struct {
 	GUID        rssGUID `xml:"guid"`
 }
 
+// relURLRe matches href="..." and src="..." attribute values in HTML.
+var relURLRe = regexp.MustCompile(`((?:href|src)\s*=\s*")([^"]+)`)
+
+// absifyURLs rewrites relative URLs in HTML content to absolute URLs.
+// URLs that already start with http://, https://, //, /, mailto:, or # are left unchanged.
+func absifyURLs(html, baseURL string) string {
+	return relURLRe.ReplaceAllStringFunc(html, func(match string) string {
+		parts := relURLRe.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+		prefix, val := parts[1], parts[2]
+		if len(val) == 0 ||
+			val[0] == '/' ||
+			val[0] == '#' ||
+			len(val) > 7 && (val[:7] == "http://" || val[:8] == "https://") ||
+			len(val) > 2 && val[:2] == "//" ||
+			len(val) > 7 && val[:7] == "mailto:" {
+			return match
+		}
+		return prefix + baseURL + "/" + val
+	})
+}
+
 const rssFeedCacheKey = "rss_feed"
 
 // RSSFeedHandler serves an RSS 2.0 feed of the latest approved schematics.
@@ -86,6 +111,7 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 			if description == "" && len(s.Description) > 0 {
 				description = s.Description
 			}
+			description = absifyURLs(description, "https://createmod.com")
 
 			// Look up author username
 			authorName := ""
