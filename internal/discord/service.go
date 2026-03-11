@@ -1,7 +1,11 @@
 package discord
 
 import (
+	"context"
 	"log/slog"
+
+	"createmod/internal/store"
+	"createmod/internal/webhook"
 
 	"github.com/gtuk/discordwebhook"
 )
@@ -29,5 +33,46 @@ func (s *Service) Post(content string) {
 	err := discordwebhook.SendMessage(s.webhookUrl, message)
 	if err != nil {
 		slog.Error("discord webhook failed", "error", err)
+	}
+}
+
+// PostWithUserWebhooks sends the message to the site's own webhook and also
+// to all active user webhooks. Failed user webhooks are tracked; after 3
+// consecutive failures a webhook is automatically disabled.
+func (s *Service) PostWithUserWebhooks(content string, webhookStore store.WebhookStore, webhookSecret string) {
+	// Send to site webhook first
+	s.Post(content)
+
+	if webhookStore == nil || webhookSecret == "" {
+		return
+	}
+
+	ctx := context.Background()
+	activeWebhooks, err := webhookStore.ListActive(ctx)
+	if err != nil {
+		slog.Error("failed to list active user webhooks", "error", err)
+		return
+	}
+
+	var username = "CreateMod.com"
+	message := discordwebhook.Message{
+		Username: &username,
+		Content:  &content,
+	}
+
+	for _, wh := range activeWebhooks {
+		url, err := webhook.Decrypt(wh.WebhookURLEncrypted, webhookSecret)
+		if err != nil {
+			slog.Error("failed to decrypt user webhook URL", "webhookID", wh.ID, "error", err)
+			_ = webhookStore.IncrementFailure(ctx, wh.ID, "decryption failed")
+			continue
+		}
+
+		if err := discordwebhook.SendMessage(url, message); err != nil {
+			slog.Error("user webhook send failed", "webhookID", wh.ID, "error", err)
+			_ = webhookStore.IncrementFailure(ctx, wh.ID, err.Error())
+		} else {
+			_ = webhookStore.ResetFailures(ctx, wh.ID)
+		}
 	}
 }

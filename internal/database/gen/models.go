@@ -471,3 +471,15 @@ type UserMetum struct {
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
 }
+
+type UserWebhook struct {
+	ID                  string             `json:"id"`
+	UserID              string             `json:"user_id"`
+	WebhookUrlEncrypted string             `json:"webhook_url_encrypted"`
+	Active              bool               `json:"active"`
+	ConsecutiveFailures int32              `json:"consecutive_failures"`
+	LastFailureAt       pgtype.Timestamptz `json:"last_failure_at"`
+	LastFailureMessage  string             `json:"last_failure_message"`
+	Created             time.Time          `json:"created"`
+	Updated             time.Time          `json:"updated"`
+}
