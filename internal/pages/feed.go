@@ -4,6 +4,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/server"
 	"createmod/internal/store"
+	"bytes"
 	"encoding/xml"
 	"log/slog"
 	"net/http"
@@ -14,7 +15,8 @@ import (
 type rssFeed struct {
 	XMLName xml.Name   `xml:"rss"`
 	Version string     `xml:"version,attr"`
-	Atom    string     `xml:"xmlns:atom,attr"`
+	AtomNS  string     `xml:"xmlns:atom,attr"`
+	DcNS    string     `xml:"xmlns:dc,attr"`
 	Channel rssChannel `xml:"channel"`
 }
 
@@ -24,23 +26,29 @@ type rssChannel struct {
 	Description   string    `xml:"description"`
 	Language      string    `xml:"language"`
 	LastBuildDate string    `xml:"lastBuildDate"`
-	AtomLink      atomLink  `xml:"atom:link"`
+	AtomLink      atomLink  `xml:"atom link"`
 	Items         []rssItem `xml:"item"`
 }
 
 type atomLink struct {
-	Href string `xml:"href,attr"`
-	Rel  string `xml:"rel,attr"`
-	Type string `xml:"type,attr"`
+	XMLName xml.Name `xml:"http://www.w3.org/2005/Atom link"`
+	Href    string   `xml:"href,attr"`
+	Rel     string   `xml:"rel,attr"`
+	Type    string   `xml:"type,attr"`
+}
+
+type rssGUID struct {
+	IsPermaLink string `xml:"isPermaLink,attr"`
+	Value       string `xml:",chardata"`
 }
 
 type rssItem struct {
-	Title       string `xml:"title"`
-	Link        string `xml:"link"`
-	Description string `xml:"description"`
-	Author      string `xml:"author,omitempty"`
-	PubDate     string `xml:"pubDate"`
-	GUID        string `xml:"guid"`
+	Title       string  `xml:"title"`
+	Link        string  `xml:"link"`
+	Description string  `xml:"description"`
+	Creator     string  `xml:"dc:creator,omitempty"`
+	PubDate     string  `xml:"pubDate"`
+	GUID        rssGUID `xml:"guid"`
 }
 
 const rssFeedCacheKey = "rss_feed"
@@ -91,9 +99,12 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 				Title:       s.Title,
 				Link:        "https://createmod.com/schematics/" + s.Name,
 				Description: description,
-				Author:      authorName,
+				Creator:     authorName,
 				PubDate:     pubDate,
-				GUID:        s.ID,
+				GUID: rssGUID{
+					IsPermaLink: "false",
+					Value:       s.ID,
+				},
 			})
 		}
 
@@ -108,7 +119,8 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 
 		feed := rssFeed{
 			Version: "2.0",
-			Atom:    "http://www.w3.org/2005/Atom",
+			AtomNS:  "http://www.w3.org/2005/Atom",
+			DcNS:    "http://purl.org/dc/elements/1.1/",
 			Channel: rssChannel{
 				Title:         "CreateMod.com - Latest Schematics",
 				Link:          "https://createmod.com",
@@ -131,6 +143,14 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 
 		// Prepend XML declaration
 		xmlData := append([]byte(xml.Header), data...)
+
+		// Fix Go encoding/xml namespace output to use prefixed form for validators.
+		// Go outputs <link xmlns="http://www.w3.org/2005/Atom"> instead of <atom:link>
+		// and <creator xmlns="..."> instead of <dc:creator>.
+		xmlData = bytes.ReplaceAll(xmlData, []byte(`<link xmlns="http://www.w3.org/2005/Atom"`), []byte(`<atom:link`))
+		xmlData = bytes.ReplaceAll(xmlData, []byte(`></link>`), []byte(` />`))
+		xmlData = bytes.ReplaceAll(xmlData, []byte(`<creator xmlns="http://purl.org/dc/elements/1.1/">`), []byte(`<dc:creator>`))
+		xmlData = bytes.ReplaceAll(xmlData, []byte(`</creator>`), []byte(`</dc:creator>`))
 
 		// Cache for 1 hour
 		cacheService.SetWithTTL(rssFeedCacheKey, xmlData, 1*time.Hour)
