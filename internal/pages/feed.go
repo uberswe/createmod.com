@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"time"
 )
 
@@ -51,6 +52,30 @@ type rssItem struct {
 	GUID        rssGUID `xml:"guid"`
 }
 
+// relURLRe matches href="..." and src="..." attribute values in HTML.
+var relURLRe = regexp.MustCompile(`((?:href|src)\s*=\s*")([^"]+)`)
+
+// absifyURLs rewrites relative URLs in HTML content to absolute URLs.
+// URLs that already start with http://, https://, //, /, mailto:, or # are left unchanged.
+func absifyURLs(html, baseURL string) string {
+	return relURLRe.ReplaceAllStringFunc(html, func(match string) string {
+		parts := relURLRe.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+		prefix, val := parts[1], parts[2]
+		if len(val) == 0 ||
+			val[0] == '/' ||
+			val[0] == '#' ||
+			len(val) > 7 && (val[:7] == "http://" || val[:8] == "https://") ||
+			len(val) > 2 && val[:2] == "//" ||
+			len(val) > 7 && val[:7] == "mailto:" {
+			return match
+		}
+		return prefix + baseURL + "/" + val
+	})
+}
+
 const rssFeedCacheKey = "rss_feed"
 
 // RSSFeedHandler serves an RSS 2.0 feed of the latest approved schematics.
@@ -86,6 +111,7 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 			if description == "" && len(s.Description) > 0 {
 				description = s.Description
 			}
+			description = absifyURLs(description, "https://createmod.com")
 
 			// Look up author username
 			authorName := ""
@@ -162,25 +188,50 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 	}
 }
 
-// pingWebSub notifies Google's WebSub hub that the feed has new content.
-func pingWebSub(feedURL string) {
-	resp, err := http.PostForm("https://pubsubhubbub.appspot.com/", url.Values{
+// pingWebSub notifies a WebSub hub that the feed has new content.
+func pingWebSub(hubURL, feedURL string) {
+	resp, err := http.PostForm(hubURL, url.Values{
 		"hub.mode": {"publish"},
 		"hub.url":  {feedURL},
 	})
 	if err != nil {
-		slog.Warn("WebSub ping failed", "error", err)
+		slog.Warn("WebSub ping failed", "hub", hubURL, "error", err)
 		return
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		slog.Warn("WebSub ping unexpected status", "status", resp.StatusCode)
+		slog.Warn("WebSub ping unexpected status", "hub", hubURL, "status", resp.StatusCode)
 	}
 }
 
-// PingWebSubAsync pings the WebSub hub in a background goroutine.
+// pingPingomatic notifies Pingomatic that the site has new content via XML-RPC.
+func pingPingomatic(siteTitle, siteURL, feedURL string) {
+	body := `<?xml version="1.0"?>
+<methodCall>
+  <methodName>weblogUpdates.ping</methodName>
+  <params>
+    <param><value>` + siteTitle + `</value></param>
+    <param><value>` + siteURL + `</value></param>
+    <param><value>` + feedURL + `</value></param>
+  </params>
+</methodCall>`
+	resp, err := http.Post("https://rpc.pingomatic.com/", "text/xml", bytes.NewBufferString(body))
+	if err != nil {
+		slog.Warn("Pingomatic ping failed", "error", err)
+		return
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("Pingomatic ping unexpected status", "status", resp.StatusCode)
+	}
+}
+
+// PingFeedServicesAsync pings WebSub hubs and Pingomatic in background goroutines.
 // Only call this in production (non-dev) environments.
-func PingWebSubAsync() {
-	go pingWebSub("https://createmod.com/feed.xml")
+func PingFeedServicesAsync() {
+	feedURL := "https://createmod.com/feed.xml"
+	go pingWebSub("https://pubsubhubbub.appspot.com/", feedURL)
+	go pingWebSub("https://pubsubhubbub.superfeedr.com/", feedURL)
+	go pingPingomatic("CreateMod.com", "https://createmod.com", feedURL)
 }
 
