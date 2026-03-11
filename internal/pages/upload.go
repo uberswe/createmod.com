@@ -145,8 +145,13 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
 
-		// Parse optional scheduled_at from form and cache in UTC for later use
-		if err := e.Request.ParseForm(); err == nil {
+		// Parse the multipart form (up to 10 MB in memory; the rest spills to
+		// temp files).  Using ParseMultipartForm instead of ParseForm ensures
+		// that the request body is fully consumed even when the client sends
+		// file fields (featured_image, gallery).  Leaving the body unread
+		// causes Go's HTTP server to drain or reset the connection, which
+		// produces 502 errors through reverse proxies like Cloudflare.
+		if err := e.Request.ParseMultipartForm(100 << 20); err == nil {
 			val := strings.TrimSpace(e.Request.FormValue("scheduled_at"))
 			if val != "" {
 				var when time.Time
