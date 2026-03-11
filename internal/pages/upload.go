@@ -332,7 +332,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 
 		// --- Handle gallery images ---
-		var galleryFilenames []string
+		galleryFilenames := []string{}
 		if e.Request.MultipartForm != nil && e.Request.MultipartForm.File != nil {
 			if galleryFiles, ok := e.Request.MultipartForm.File["gallery"]; ok && len(galleryFiles) > 0 {
 				for _, fh := range galleryFiles {
