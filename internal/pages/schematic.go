@@ -639,9 +639,9 @@ func countSchematicViewStore(appStore *store.Store, schematicID string, discordS
 		s, sErr := appStore.Schematics.GetByID(ctx, schematicID)
 		if sErr == nil && s != nil && s.Moderated {
 			go discordService.PostWithUserWebhooks(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", s.Name), appStore.Webhooks, webhookSecret)
-			// Ping WebSub hub so RSS subscribers get notified (production only)
+			// Ping feed services so RSS subscribers get notified (production only)
 			if os.Getenv("DEV") != "true" {
-				PingWebSubAsync()
+				PingFeedServicesAsync()
 			}
 		}
 	}
