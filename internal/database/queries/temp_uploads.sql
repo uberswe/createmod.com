@@ -62,3 +62,14 @@ LIMIT $2 OFFSET $3;
 
 -- name: DeleteTempUploadFilesByToken :exec
 DELETE FROM temp_upload_files WHERE token = $1;
+
+-- name: ListExpiredUnclaimedTempUploads :many
+SELECT id, token, nbt_s3_key, image_s3_key
+FROM temp_uploads
+WHERE uploaded_by = '' AND created < $1
+ORDER BY created ASC
+LIMIT $2;
+
+-- name: DeleteExpiredUnclaimedTempUploads :execrows
+DELETE FROM temp_uploads
+WHERE uploaded_by = '' AND created < $1;

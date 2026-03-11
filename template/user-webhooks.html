@@ -101,7 +101,7 @@
                                                 <label class="form-label" for="webhook-url">{{ T .Language "Discord Webhook URL" }}</label>
                                                 <input type="url" class="form-control" id="webhook-url" name="webhook_url"
                                                        placeholder="https://discord.com/api/webhooks/..." required>
-                                                <small class="form-hint">{{ T .Language "Paste your Discord webhook URL here. Only discord.com and discordapp.com webhook URLs are accepted." }}</small>
+                                                <small class="form-hint">{{ T .Language "Paste your Discord webhook URL here. Only discord.com and discordapp.com webhook URLs are accepted." }} <a href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks" target="_blank" rel="noopener">{{ T .Language "Learn how to create a webhook" }}</a></small>
                                             </div>
                                             <div class="form-footer">
                                                 <button type="submit" class="btn btn-primary">{{ T .Language "Save webhook" }}</button>

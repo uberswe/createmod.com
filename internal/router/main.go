@@ -139,6 +139,8 @@ func Register(p RegisterParams) chi.Router {
 				cc = "ru"
 			case "zh-Hans":
 				cc = "cn"
+			case "fr":
+				cc = "fr"
 			}
 			return html.HTML(`<span class="fi fi-` + cc + `"></span>`)
 		},
@@ -202,6 +204,7 @@ func Register(p RegisterParams) chi.Router {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte("User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
 	})
+	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {
 		s, ok := p.CacheService.GetString("ads.txt")
 		if ok {
@@ -288,7 +291,9 @@ func Register(p RegisterParams) chi.Router {
 	// Admin
 	r.Get("/admin", Adapt(pages.AdminDashboardHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/reports", Adapt(pages.AdminReportsHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore)))
+	r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore, p.MailService)))
+	r.Post("/admin/reports/{id}/delete-target", Adapt(pages.AdminReportDeleteTargetHandler(p.AppStore)))
+	r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
 	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.SearchService, p.CacheService, p.AppStore, p.MailService)))

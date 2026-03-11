@@ -522,11 +522,14 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		// --- Create NBT hash for duplicate detection ---
 		if entry.Checksum != "" {
-			_ = appStore.NBTHashes.Create(ctx, &store.NBTHash{
+			if err := appStore.NBTHashes.Create(ctx, &store.NBTHash{
 				Hash:        entry.Checksum,
 				SchematicID: &schem.ID,
 				UploadedBy:  &userID,
-			})
+			}); err != nil {
+				slog.Error("make-public: failed to create NBT hash", "error", err, "id", schem.ID)
+				return e.String(http.StatusInternalServerError, "failed to register file hash")
+			}
 		}
 
 		// --- Send admin email notification ---

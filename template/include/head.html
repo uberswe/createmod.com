@@ -31,6 +31,7 @@
     <link rel="alternate" hreflang="{{ .HreflangCode }}" href="https://createmod.com{{ .FullPath $slug }}">{{ end }}
     <link rel="alternate" hreflang="x-default" href="https://createmod.com{{ $slug }}">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemaps/sitemap.xml">
+    <link rel="alternate" type="application/rss+xml" title="CreateMod.com RSS Feed" href="/feed.xml">
     {{ if .NoIndex }}<meta name="robots" content="noindex, follow">{{ else }}<meta name="robots" content="all">{{ end }}
     <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
     <!-- Tabler CSS via CDN -->
@@ -113,6 +114,21 @@
         });
         document.addEventListener('htmx:afterOnLoad', function(){
           document.body.classList.remove('sidebar-open');
+        });
+
+        // Mobile search toggle
+        document.addEventListener('click', function(e){
+          var btn = e.target && e.target.closest && e.target.closest('.mobile-search-toggle');
+          if (btn) {
+            var bar = document.querySelector('.mobile-search-bar');
+            if (bar) {
+              bar.classList.toggle('active');
+              if (bar.classList.contains('active')) {
+                var input = bar.querySelector('input[name="q"]');
+                if (input) input.focus();
+              }
+            }
+          }
         });
 
         // Desktop sidebar expand/collapse toggle

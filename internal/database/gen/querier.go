@@ -57,9 +57,11 @@ type Querier interface {
 	DeleteCategoryByID(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
 	DeleteExpiredTempUploads(ctx context.Context, created time.Time) (int64, error)
+	DeleteExpiredUnclaimedTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
 	DeleteReport(ctx context.Context, id string) error
+	DeleteReportsByTarget(ctx context.Context, arg DeleteReportsByTargetParams) (int64, error)
 	DeleteSchematicFile(ctx context.Context, id string) error
 	DeleteSchematicFilesBySchematicID(ctx context.Context, schematicID string) error
 	DeleteSession(ctx context.Context, id string) error
@@ -145,6 +147,7 @@ type Querier interface {
 	ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error)
 	ListCollectionsForSitemap(ctx context.Context) ([]ListCollectionsForSitemapRow, error)
 	ListCommentsBySchematic(ctx context.Context, schematicID *string) ([]ListCommentsBySchematicRow, error)
+	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	ListFeaturedCollections(ctx context.Context, limit int32) ([]Collection, error)
 	ListFeaturedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
@@ -172,7 +175,6 @@ type Querier interface {
 	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
 	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
-	ListSchematicsMissingHash(ctx context.Context, arg ListSchematicsMissingHashParams) ([]ListSchematicsMissingHashRow, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)

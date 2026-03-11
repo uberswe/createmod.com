@@ -9,6 +9,9 @@ SELECT * FROM reports ORDER BY created DESC LIMIT $1 OFFSET $2;
 -- name: DeleteReport :exec
 DELETE FROM reports WHERE id = $1;
 
+-- name: DeleteReportsByTarget :execrows
+DELETE FROM reports WHERE target_type = $1 AND target_id = $2;
+
 -- name: CreateSearch :exec
 INSERT INTO searches (id, query, results_count, user_id, ip_address)
 VALUES ($1, $2, $3, $4, $5);

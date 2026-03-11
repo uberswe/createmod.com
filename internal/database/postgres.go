@@ -930,21 +930,6 @@ func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]
 	return schematics, totalCount, nil
 }
 
-func (ps *PostgresStore) ListMissingHash(ctx context.Context, afterID string, limit int) ([]store.SchematicFileRef, error) {
-	rows, err := ps.q.ListSchematicsMissingHash(ctx, db.ListSchematicsMissingHashParams{
-		ID:    afterID,
-		Limit: int32(limit),
-	})
-	if err != nil {
-		return nil, err
-	}
-	result := make([]store.SchematicFileRef, len(rows))
-	for i, r := range rows {
-		result[i] = store.SchematicFileRef{ID: r.ID, SchematicFile: r.SchematicFile}
-	}
-	return result, nil
-}
-
 // ============================================================================
 // Separate store implementations to avoid method name collisions.
 // CategoryStore, TagStore, etc. share method names (List, GetByID, Create)
@@ -2030,6 +2015,13 @@ func (rs *ReportStoreImpl) Delete(ctx context.Context, id string) error {
 	return rs.q.DeleteReport(ctx, id)
 }
 
+func (rs *ReportStoreImpl) DeleteByTarget(ctx context.Context, targetType, targetID string) (int64, error) {
+	return rs.q.DeleteReportsByTarget(ctx, db.DeleteReportsByTargetParams{
+		TargetType: targetType,
+		TargetID:   targetID,
+	})
+}
+
 // ModMetadataStoreImpl implements store.ModMetadataStore.
 type ModMetadataStoreImpl struct{ q *db.Queries }
 
@@ -2641,6 +2633,30 @@ func (s *TempUploadStoreImpl) ListByUser(ctx context.Context, userID string, lim
 		}
 	}
 	return result, nil
+}
+
+func (s *TempUploadStoreImpl) ListExpiredUnclaimed(ctx context.Context, olderThan time.Time, limit int) ([]store.TempUpload, error) {
+	rows, err := s.q.ListExpiredUnclaimedTempUploads(ctx, db.ListExpiredUnclaimedTempUploadsParams{
+		Created: olderThan,
+		Limit:   int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TempUpload, len(rows))
+	for i, row := range rows {
+		result[i] = store.TempUpload{
+			ID:         row.ID,
+			Token:      row.Token,
+			NbtS3Key:   row.NbtS3Key,
+			ImageS3Key: row.ImageS3Key,
+		}
+	}
+	return result, nil
+}
+
+func (s *TempUploadStoreImpl) DeleteExpiredUnclaimed(ctx context.Context, olderThan time.Time) (int64, error) {
+	return s.q.DeleteExpiredUnclaimedTempUploads(ctx, olderThan)
 }
 
 // --------------------------------------------------------------------------
