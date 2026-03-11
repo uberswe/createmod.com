@@ -24,6 +24,7 @@ import (
 	html "html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -90,8 +91,9 @@ func Register(p RegisterParams) chi.Router {
 	outSecret := deriveOutSecret()
 
 	funcMap := html.FuncMap{
-		"ToLower":   strings.ToLower,
-		"mod":       func(i, j int) bool { return i%j == 0 },
+		"ToLower":        strings.ToLower,
+		"mod":            func(i, j int) bool { return i%j == 0 },
+		"urlPathEscape":  url.PathEscape,
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
 		"printf":    fmt.Sprintf,

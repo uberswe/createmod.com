@@ -190,7 +190,7 @@
                                     {{ range .ParsedMaterials }}
                                     <div class="material-row" data-block-id="{{ .BlockID }}">
                                         <div class="material-icon-wrap">
-                                            <img src="https://blocksitems.com/api/v1/blocks/{{ .BlockID }}/icon?size=64" alt="" loading="lazy"
+                                            <img src="https://blocksitems.com/api/v1/blocks/{{ urlPathEscape .BlockID }}/icon?size=64" alt="" loading="lazy"
                                                  onerror="this.style.display='none';var p=document.createElement('div');p.style.cssText='width:32px;height:32px;background:var(--tblr-border-color);border-radius:2px';this.parentNode.appendChild(p);">
                                         </div>
                                         <div class="material-info">

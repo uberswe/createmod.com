@@ -3,7 +3,10 @@ package nbtparser
 import (
 	"bytes"
 	"compress/gzip"
+	"compress/zlib"
 	"fmt"
+	"io"
+	"regexp"
 	"sort"
 
 	mc "github.com/uberswe/mcnbt"
@@ -14,28 +17,99 @@ import (
 // current tests stable. The API offers a forward-compatible ParseSummary that
 // can be enriched later with block/material statistics when mcnbt is wired in.
 
+// maxDecompressedSize is the maximum allowed size after decompression (100 MB).
+// This prevents decompression bombs where a small gzip expands to gigabytes.
+const maxDecompressedSize = 100 * 1024 * 1024
+
+// maxBlockIDLength is the maximum allowed length for a Minecraft block ID.
+const maxBlockIDLength = 256
+
+// maxDimension is the upper bound for schematic dimensions.
+// Minecraft structure blocks support up to 48x48x48, but Create mod
+// schematics can be larger. 2048 provides generous headroom.
+const maxDimension = 2048
+
+// blockIDPattern matches valid Minecraft resource locations: namespace:path
+// where both parts consist of [a-z0-9_.-] and path may contain /.
+var blockIDPattern = regexp.MustCompile(`^[a-z0-9_.\-]+:[a-z0-9_.\-/]+$`)
+
+// ValidateBlockID checks whether a block ID conforms to Minecraft's
+// resource location format (e.g. "minecraft:stone").
+func ValidateBlockID(id string) bool {
+	if len(id) == 0 || len(id) > maxBlockIDLength {
+		return false
+	}
+	return blockIDPattern.MatchString(id)
+}
+
+// decompressLimited decompresses gzip or zlib data with a size cap.
+// Returns the raw bytes if the data is not compressed or after
+// successful decompression. Returns an error if the decompressed
+// data exceeds maxDecompressedSize.
+func decompressLimited(data []byte) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty data")
+	}
+
+	var r io.Reader
+	compressed := false
+
+	if len(data) >= 2 {
+		if data[0] == 0x1f && data[1] == 0x8b {
+			// Gzip magic number
+			gr, err := gzip.NewReader(bytes.NewReader(data))
+			if err != nil {
+				return nil, fmt.Errorf("invalid gzip data: %w", err)
+			}
+			defer gr.Close()
+			r = gr
+			compressed = true
+		} else if data[0] == 0x78 && (data[1] == 0x01 || data[1] == 0x9c || data[1] == 0xda) {
+			// Zlib magic number
+			zr, err := zlib.NewReader(bytes.NewReader(data))
+			if err != nil {
+				return nil, fmt.Errorf("invalid zlib data: %w", err)
+			}
+			defer zr.Close()
+			r = zr
+			compressed = true
+		}
+	}
+
+	if !compressed {
+		// Not compressed — the raw data is already bounded by the upload
+		// size limit (10 MB), so no additional cap needed.
+		return data, nil
+	}
+
+	// Read decompressed data with a hard limit to prevent decompression bombs.
+	limited := io.LimitReader(r, maxDecompressedSize+1)
+	decompressed, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, fmt.Errorf("decompression failed: %w", err)
+	}
+	if len(decompressed) > maxDecompressedSize {
+		return nil, fmt.Errorf("decompressed data exceeds %d byte limit", maxDecompressedSize)
+	}
+	return decompressed, nil
+}
+
 // Validate performs a backward-compatible validation.
 //   - Reject empty uploads.
 //   - If the data appears gzip-compressed but cannot be opened as gzip, reject with a clear reason.
+//   - Reject files that decompress beyond the size limit.
 //   - Otherwise accept the data (even if mcnbt cannot decode it), to avoid breaking current flows
 //     until stricter validation is rolled out with real NBT fixtures.
 func Validate(data []byte) (ok bool, reason string) {
 	if len(data) == 0 {
 		return false, "empty upload"
 	}
-	// If it looks like gzip but isn't valid gzip, reject.
-	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
-		if _, gzErr := gzip.NewReader(bytes.NewReader(data)); gzErr != nil {
-			return false, "invalid gzip-compressed NBT data"
-		}
-		// valid gzip stream -> accept (content might still be non-NBT; handled later gracefully)
-		return true, ""
+
+	_, err := decompressLimited(data)
+	if err != nil {
+		return false, err.Error()
 	}
-	// Best-effort: try mcnbt.DecodeAny; success confirms it's parseable. If it fails, still accept
-	// to keep compatibility with existing uploads that may be uncompressed or in formats not yet enforced.
-	if _, err := mc.DecodeAny(data); err == nil {
-		return true, ""
-	}
+
 	return true, ""
 }
 
@@ -45,21 +119,23 @@ func ParseSummary(data []byte) (summary string, ok bool) {
 	if len(data) == 0 {
 		return "", false
 	}
-	// Detect gzip by magic header (0x1f 0x8b) and attempt a quick read to confirm.
+	// Detect gzip by magic header (0x1f 0x8b).
 	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
-		// Verify it is actually gzip by trying to open a reader and reading a small chunk
-		gr, err := gzip.NewReader(bytes.NewReader(data))
-		if err == nil {
-			defer gr.Close()
-			buf := make([]byte, 1)
-			_, _ = gr.Read(buf) // best-effort; ignore errors since magic matched
-			return fmt.Sprintf("nbt=gzip"), true
-		}
-		// Magic matched but reader failed; still report gzip to be helpful
 		return "nbt=gzip", true
 	}
 	// Could extend with zlib detection if needed; default to uncompressed when unknown.
 	return "nbt=uncompressed", true
+}
+
+// clampDimension restricts a dimension value to [0, maxDimension].
+func clampDimension(v int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > maxDimension {
+		return maxDimension
+	}
+	return v
 }
 
 // ExtractStats parses the NBT using mcnbt and extracts basic statistics.
@@ -71,11 +147,16 @@ func ExtractStats(data []byte) (blockCount int, materials []string, ok bool) {
 		return 0, nil, false
 	}
 
+	safe, err := decompressLimited(data)
+	if err != nil {
+		return 0, nil, false
+	}
+
 	// Try the standard path first
-	std, err := mc.ConvertToStandard(data)
+	std, err := mc.ConvertToStandard(safe)
 	if err != nil {
 		// Fallback: try decoding and extracting from raw map
-		decoded, decErr := mc.DecodeAny(data)
+		decoded, decErr := mc.DecodeAny(safe)
 		if decErr != nil {
 			return 0, nil, false
 		}
@@ -104,18 +185,28 @@ func ExtractStats(data []byte) (blockCount int, materials []string, ok bool) {
 }
 
 // ExtractDimensions parses NBT data and returns the schematic dimensions.
+// Dimensions are clamped to [0, maxDimension] to prevent unreasonable values.
 // Falls back to raw map extraction if ConvertToStandard fails.
 func ExtractDimensions(data []byte) (x, y, z int, ok bool) {
-	decoded, err := mc.DecodeAny(data)
+	safe, err := decompressLimited(data)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+
+	decoded, err := mc.DecodeAny(safe)
 	if err != nil {
 		return 0, 0, 0, false
 	}
 	std, err := mc.ConvertToStandard(decoded)
 	if err == nil {
-		return std.Size.X, std.Size.Y, std.Size.Z, true
+		return clampDimension(std.Size.X), clampDimension(std.Size.Y), clampDimension(std.Size.Z), true
 	}
 	// Fallback: extract from raw map
-	return extractDimensionsFromMap(decoded)
+	rx, ry, rz, rok := extractDimensionsFromMap(decoded)
+	if !rok {
+		return 0, 0, 0, false
+	}
+	return clampDimension(rx), clampDimension(ry), clampDimension(rz), true
 }
 
 // Material represents a block type and its count in a schematic
@@ -124,10 +215,29 @@ type Material struct {
 	Count   int    `json:"count"`
 }
 
+// SanitizeMaterials filters a materials list, removing entries with
+// invalid block IDs. This should be called before storing or displaying
+// materials extracted from untrusted NBT data.
+func SanitizeMaterials(mats []Material) []Material {
+	result := make([]Material, 0, len(mats))
+	for _, m := range mats {
+		if ValidateBlockID(m.BlockID) {
+			result = append(result, m)
+		}
+	}
+	return result
+}
+
 // ExtractMaterials parses NBT data and returns a list of materials (block types and counts).
-// Falls back to raw map extraction if ConvertToStandard fails.
+// Invalid block IDs are filtered out. Falls back to raw map extraction if
+// ConvertToStandard fails.
 func ExtractMaterials(data []byte) ([]Material, error) {
-	decoded, err := mc.DecodeAny(data)
+	safe, err := decompressLimited(data)
+	if err != nil {
+		return nil, fmt.Errorf("decompression failed: %w", err)
+	}
+
+	decoded, err := mc.DecodeAny(safe)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode NBT: %w", err)
 	}
@@ -139,7 +249,7 @@ func ExtractMaterials(data []byte) ([]Material, error) {
 		if fallbackErr != nil {
 			return nil, fmt.Errorf("standard conversion failed: %v; fallback also failed: %w", err, fallbackErr)
 		}
-		return mats, nil
+		return SanitizeMaterials(mats), nil
 	}
 
 	// Count blocks by palette state
@@ -175,7 +285,7 @@ func ExtractMaterials(data []byte) ([]Material, error) {
 		return materials[i].Count > materials[j].Count
 	})
 
-	return materials, nil
+	return SanitizeMaterials(materials), nil
 }
 
 // --- Fallback extraction from raw decoded map ---

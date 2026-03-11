@@ -47,6 +47,7 @@ func NewTestRegistry() *server.Registry {
 		"Hreflangs": func(barePath string) []HreflangEntry {
 			return AllHreflangs()
 		},
+		"urlPathEscape":  url.PathEscape,
 		"externalDomain": ExternalDomain,
 		"LangFlag": func(code string) html.HTML {
 			cc := "gb"
