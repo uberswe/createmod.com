@@ -151,3 +151,25 @@ func (q *Queries) UpdateUserWebhookURL(ctx context.Context, arg UpdateUserWebhoo
 	_, err := q.db.Exec(ctx, updateUserWebhookURL, arg.UserID, arg.WebhookUrlEncrypted)
 	return err
 }
+
+const upsertUserWebhook = `-- name: UpsertUserWebhook :exec
+INSERT INTO user_webhooks (user_id, webhook_url_encrypted)
+VALUES ($1, $2)
+ON CONFLICT (user_id) DO UPDATE SET
+    webhook_url_encrypted = EXCLUDED.webhook_url_encrypted,
+    active = true,
+    consecutive_failures = 0,
+    last_failure_at = NULL,
+    last_failure_message = '',
+    updated = NOW()
+`
+
+type UpsertUserWebhookParams struct {
+	UserID              string `json:"user_id"`
+	WebhookUrlEncrypted string `json:"webhook_url_encrypted"`
+}
+
+func (q *Queries) UpsertUserWebhook(ctx context.Context, arg UpsertUserWebhookParams) error {
+	_, err := q.db.Exec(ctx, upsertUserWebhook, arg.UserID, arg.WebhookUrlEncrypted)
+	return err
+}

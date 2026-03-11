@@ -623,6 +623,7 @@ type UserWebhook struct {
 // WebhookStore handles user webhook persistence.
 type WebhookStore interface {
 	Create(ctx context.Context, userID, encryptedURL string) error
+	Upsert(ctx context.Context, userID, encryptedURL string) error
 	GetByUserID(ctx context.Context, userID string) (*UserWebhook, error)
 	UpdateURL(ctx context.Context, userID, encryptedURL string) error
 	Delete(ctx context.Context, userID string) error
@@ -700,6 +701,7 @@ type TempUploadStore interface {
 	GetByToken(ctx context.Context, token string) (*TempUpload, error)
 	GetByChecksum(ctx context.Context, checksum string) (*TempUpload, error)
 	Update(ctx context.Context, t *TempUpload) error
+	Claim(ctx context.Context, token string, userID string) error
 	Delete(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
 	ListByUser(ctx context.Context, userID string, limit int, offset int) ([]TempUpload, error)

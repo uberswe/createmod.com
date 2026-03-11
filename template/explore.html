@@ -44,7 +44,7 @@
                     {{range $i, $image := .Images }}
                         <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
                             <img class="lazy"
-                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=240x0{{ end }}"
+                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=320x0{{ end }}"
                                  alt="{{ $image.Title }}">
                         </a>
                     {{end}}
@@ -99,7 +99,7 @@ window['nitroAds'].createAd('explore-adrail', {
   function thumbParam(size) {
     if (size === 'lg') return '?thumb=640x0';
     if (size === 'md') return '?thumb=400x0';
-    return '?thumb=240x0';
+    return '?thumb=320x0';
   }
 
   function appendImages(images) {

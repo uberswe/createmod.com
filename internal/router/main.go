@@ -24,6 +24,7 @@ import (
 	html "html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -90,8 +91,9 @@ func Register(p RegisterParams) chi.Router {
 	outSecret := deriveOutSecret()
 
 	funcMap := html.FuncMap{
-		"ToLower":   strings.ToLower,
-		"mod":       func(i, j int) bool { return i%j == 0 },
+		"ToLower":        strings.ToLower,
+		"mod":            func(i, j int) bool { return i%j == 0 },
+		"urlPathEscape":  url.PathEscape,
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
 		"printf":    fmt.Sprintf,
@@ -225,6 +227,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/u/{token}", Adapt(pages.UploadPreviewHandler(registry, p.CacheService, p.AppStore)))
 	// Download endpoint for temporary uploads
 	r.Get("/u/{token}/download", Adapt(pages.UploadDownloadHandler(p.AppStore, p.StorageService)))
+	r.Post("/u/{token}/claim", Adapt(pages.UploadClaimHandler(p.AppStore)))
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
@@ -279,6 +282,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchService, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.CacheService, p.AppStore)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.CacheService, p.AppStore, p.StorageService)))
+	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.CacheService, p.AppStore, p.StorageService)))
 	// Reports
 	r.Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
 	// Admin

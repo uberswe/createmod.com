@@ -18,6 +18,7 @@ type Querier interface {
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
 	CheckHashIsBlacklisted(ctx context.Context, hash string) (bool, error)
+	ClaimTempUpload(ctx context.Context, arg ClaimTempUploadParams) (int64, error)
 	CleanupExpiredDownloadTokens(ctx context.Context) error
 	CleanupExpiredSessions(ctx context.Context) error
 	ClearCollectionSchematics(ctx context.Context, collectionID string) error
@@ -215,6 +216,7 @@ type Querier interface {
 	UpsertSchematicTranslation(ctx context.Context, arg UpsertSchematicTranslationParams) (SchematicTranslation, error)
 	UpsertSchematicView(ctx context.Context, arg UpsertSchematicViewParams) error
 	UpsertSchematicViewCount(ctx context.Context, arg UpsertSchematicViewCountParams) error
+	UpsertUserWebhook(ctx context.Context, arg UpsertUserWebhookParams) error
 }
 
 var _ Querier = (*Queries)(nil)
