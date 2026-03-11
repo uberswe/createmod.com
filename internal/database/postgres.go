@@ -405,6 +405,10 @@ func (us *UserStoreImpl) ListForSitemap(ctx context.Context) ([]store.SitemapUse
 	return result, nil
 }
 
+func (us *UserStoreImpl) ListAdminEmails(ctx context.Context) ([]string, error) {
+	return us.q.ListAdminEmails(ctx)
+}
+
 // ============================================================================
 // SessionStore implementation
 // ============================================================================

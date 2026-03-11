@@ -128,6 +128,7 @@ type Querier interface {
 	IncrementSchematicDownloads(ctx context.Context, id string) error
 	ListAPIKeysByUser(ctx context.Context, userID string) ([]ApiKey, error)
 	ListAchievements(ctx context.Context) ([]Achievement, error)
+	ListAdminEmails(ctx context.Context) ([]string, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)

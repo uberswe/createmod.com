@@ -152,6 +152,30 @@ func (q *Queries) GetUserIsContributor(ctx context.Context, authorID *string) (b
 	return is_contributor, err
 }
 
+const listAdminEmails = `-- name: ListAdminEmails :many
+SELECT email FROM users WHERE is_admin = true AND deleted IS NULL
+`
+
+func (q *Queries) ListAdminEmails(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listAdminEmails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			return nil, err
+		}
+		items = append(items, email)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users
 WHERE deleted IS NULL

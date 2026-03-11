@@ -328,6 +328,7 @@ type UserStore interface {
 	ListUsers(ctx context.Context, limit, offset int) ([]User, error)
 	CountUsers(ctx context.Context) (int64, error)
 	ListForSitemap(ctx context.Context) ([]SitemapUser, error)
+	ListAdminEmails(ctx context.Context) ([]string, error)
 }
 
 // SessionStore handles session persistence.

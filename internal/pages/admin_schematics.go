@@ -4,6 +4,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"createmod/internal/server"
@@ -11,6 +12,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/mail"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -216,7 +219,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 }
 
 // AdminSchematicUpdateHandler handles POST /admin/schematics/{id} to update a schematic as admin.
-func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if !isSuperAdmin(e) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -232,6 +235,9 @@ func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *ca
 		if err != nil || schem == nil {
 			return e.String(http.StatusNotFound, "schematic not found")
 		}
+
+		// Track whether moderated changes from false to true
+		wasModerated := schem.Moderated
 
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form data")
@@ -296,6 +302,40 @@ func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *ca
 		// Clear cache
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
 		RefreshIndexCache(cacheService, appStore)
+
+		// If moderation just flipped to true, notify the author
+		if !wasModerated && schem.Moderated && mailService != nil && schem.AuthorID != "" {
+			authorID := schem.AuthorID
+			emailTitle := schem.Title
+			emailID := schem.ID
+			emailName := schem.Name
+			emailImage := schem.FeaturedImage
+			go func() {
+				author, err := appStore.Users.GetUserByID(context.Background(), authorID)
+				if err != nil || author == nil || author.Email == "" {
+					return
+				}
+				baseURL := os.Getenv("BASE_URL")
+				if baseURL == "" {
+					baseURL = "https://createmod.com"
+				}
+				var imageURL string
+				if emailImage != "" {
+					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, emailImage)
+				}
+				schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, emailName)
+
+				from := mailService.DefaultFrom()
+				to := []mail.Address{{Address: author.Email}}
+				subject := fmt.Sprintf("Your schematic has been published: %s", emailTitle)
+				bodyText := fmt.Sprintf("Your schematic \"%s\" has been reviewed and approved by an admin. It is now live on CreateMod.com!", emailTitle)
+				body := mailer.SchematicEmailHTML(emailTitle, imageURL, schematicURL, bodyText)
+				msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
+				if err := mailService.Send(msg); err != nil {
+					slog.Error("admin schematic update: failed to send author notification", "error", err)
+				}
+			}()
+		}
 
 		// Redirect back to edit page with success
 		dest := fmt.Sprintf("/admin/schematics/%s?success=1", id)
