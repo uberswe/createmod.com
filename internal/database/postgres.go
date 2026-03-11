@@ -2584,6 +2584,20 @@ func (s *TempUploadStoreImpl) Update(ctx context.Context, t *store.TempUpload) e
 	})
 }
 
+func (s *TempUploadStoreImpl) Claim(ctx context.Context, token string, userID string) error {
+	rows, err := s.q.ClaimTempUpload(ctx, db.ClaimTempUploadParams{
+		Token:      token,
+		UploadedBy: userID,
+	})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("upload already claimed or not found")
+	}
+	return nil
+}
+
 func (s *TempUploadStoreImpl) Delete(ctx context.Context, token string) error {
 	return s.q.DeleteTempUpload(ctx, token)
 }
@@ -2819,6 +2833,13 @@ func (ws *WebhookStoreImpl) Create(ctx context.Context, userID, encryptedURL str
 		WebhookUrlEncrypted: encryptedURL,
 	})
 	return err
+}
+
+func (ws *WebhookStoreImpl) Upsert(ctx context.Context, userID, encryptedURL string) error {
+	return ws.q.UpsertUserWebhook(ctx, db.UpsertUserWebhookParams{
+		UserID:              userID,
+		WebhookUrlEncrypted: encryptedURL,
+	})
 }
 
 func (ws *WebhookStoreImpl) GetByUserID(ctx context.Context, userID string) (*store.UserWebhook, error) {

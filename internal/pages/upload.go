@@ -104,6 +104,7 @@ type UploadPreviewData struct {
 	Mods             []string
 	FileURL          string           // path to the NBT file in S3 storage
 	IsOwner          bool             // true if current user uploaded this
+	IsUnclaimed      bool             // true if UploadedBy is empty (no owner yet)
 	AdditionalFiles  []tempUploadFile // extra NBT files (variations/sets)
 }
 
@@ -661,12 +662,37 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		d.Mods = mods
 		d.FileURL = fileURL
 		d.IsOwner = isOwner
+		d.IsUnclaimed = entry.UploadedBy == ""
 		d.AdditionalFiles = additionalFiles
 		h, err := registry.LoadFiles(uploadPreviewTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
 		return e.HTML(http.StatusOK, h)
+	}
+}
+
+// UploadClaimHandler allows an authenticated user to claim an unclaimed temp upload.
+// Uses an atomic conditional UPDATE (uploaded_by = '' guard) to prevent race conditions
+// and ensure a claimed upload cannot be stolen by another user.
+// POST /u/{token}/claim
+func UploadClaimHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		token := e.Request.PathValue("token")
+		if token == "" {
+			return e.String(http.StatusBadRequest, "missing token")
+		}
+
+		userID := authenticatedUserID(e)
+		if err := appStore.TempUploads.Claim(e.Request.Context(), token, userID); err != nil {
+			return e.String(http.StatusConflict, "already claimed")
+		}
+
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/u/"+token))
 	}
 }
 

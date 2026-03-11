@@ -15,6 +15,23 @@
                 </div>
                 {{ end }}
 
+                <!-- Claim banner for unclaimed uploads -->
+                {{ if .IsUnclaimed }}
+                <div class="alert alert-info mb-3 d-flex align-items-center" role="alert">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
+                    <div class="flex-fill">
+                        {{ T .Language "This schematic has not been claimed yet." }}
+                    </div>
+                    {{ if .IsAuthenticated }}
+                    <form method="POST" action="/u/{{ .Token }}/claim" class="ms-3">
+                        <button type="submit" class="btn btn-primary btn-sm">{{ T .Language "Claim this schematic" }}</button>
+                    </form>
+                    {{ else }}
+                    <a href="/login?redirect=/u/{{ .Token }}" class="btn btn-primary btn-sm ms-3">{{ T .Language "Login to claim this schematic" }}</a>
+                    {{ end }}
+                </div>
+                {{ end }}
+
                 <!-- Mobile ad (above content on smaller screens) -->
                 <div id="upload-preview-mobile" class="d-xl-none mb-3 text-center"></div>
 

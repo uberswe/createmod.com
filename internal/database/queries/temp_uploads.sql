@@ -20,6 +20,11 @@ UPDATE temp_uploads
 SET filename = $2, description = $3, nbt_s3_key = $4, image_s3_key = $5, updated = NOW()
 WHERE token = $1;
 
+-- name: ClaimTempUpload :execrows
+UPDATE temp_uploads
+SET uploaded_by = $2, updated = NOW()
+WHERE token = $1 AND uploaded_by = '';
+
 -- name: DeleteTempUpload :exec
 DELETE FROM temp_uploads WHERE token = $1;
 

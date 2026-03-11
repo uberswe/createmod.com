@@ -3,6 +3,17 @@ INSERT INTO user_webhooks (user_id, webhook_url_encrypted)
 VALUES ($1, $2)
 RETURNING *;
 
+-- name: UpsertUserWebhook :exec
+INSERT INTO user_webhooks (user_id, webhook_url_encrypted)
+VALUES ($1, $2)
+ON CONFLICT (user_id) DO UPDATE SET
+    webhook_url_encrypted = EXCLUDED.webhook_url_encrypted,
+    active = true,
+    consecutive_failures = 0,
+    last_failure_at = NULL,
+    last_failure_message = '',
+    updated = NOW();
+
 -- name: GetUserWebhookByUserID :one
 SELECT * FROM user_webhooks WHERE user_id = $1;
 

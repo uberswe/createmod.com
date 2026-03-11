@@ -61,14 +61,21 @@ func (s *Service) PostWithUserWebhooks(content string, webhookStore store.Webhoo
 	}
 
 	for _, wh := range activeWebhooks {
-		url, err := webhook.Decrypt(wh.WebhookURLEncrypted, webhookSecret)
+		whURL, err := webhook.Decrypt(wh.WebhookURLEncrypted, webhookSecret)
 		if err != nil {
 			slog.Error("failed to decrypt user webhook URL", "webhookID", wh.ID, "error", err)
 			_ = webhookStore.IncrementFailure(ctx, wh.ID, "decryption failed")
 			continue
 		}
 
-		if err := discordwebhook.SendMessage(url, message); err != nil {
+		// Re-validate the decrypted URL as a defence-in-depth measure.
+		if err := webhook.ValidateDiscordWebhookURL(whURL); err != nil {
+			slog.Error("decrypted user webhook URL is invalid", "webhookID", wh.ID, "error", err)
+			_ = webhookStore.IncrementFailure(ctx, wh.ID, "invalid webhook URL: "+err.Error())
+			continue
+		}
+
+		if err := discordwebhook.SendMessage(whURL, message); err != nil {
 			slog.Error("user webhook send failed", "webhookID", wh.ID, "error", err)
 			_ = webhookStore.IncrementFailure(ctx, wh.ID, err.Error())
 		} else {
@@ -76,3 +83,4 @@ func (s *Service) PostWithUserWebhooks(content string, webhookStore store.Webhoo
 		}
 	}
 }
+

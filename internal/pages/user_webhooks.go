@@ -1,13 +1,13 @@
 package pages
 
 import (
-	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/server"
 	"createmod/internal/store"
 	"createmod/internal/webhook"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -25,6 +25,20 @@ type UserWebhookData struct {
 	LastFailureMessage  string
 	SuccessMessage      string
 	ErrorMessage        string
+}
+
+// webhookRedirect performs an HTMX-aware redirect to /settings/webhooks with
+// an optional query parameter.
+func webhookRedirect(e *server.RequestEvent, paramKey, paramValue string) error {
+	dest := "/settings/webhooks"
+	if paramKey != "" {
+		dest += "?" + paramKey + "=" + url.QueryEscape(paramValue)
+	}
+	if e.Request.Header.Get("HX-Request") != "" {
+		e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+		return e.HTML(http.StatusNoContent, "")
+	}
+	return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
 }
 
 // UserWebhooksHandler handles GET /settings/webhooks
@@ -96,56 +110,22 @@ func UserWebhookSaveHandler(cacheService *cache.Service, appStore *store.Store, 
 
 		// Validate
 		if err := webhook.ValidateDiscordWebhookURL(rawURL); err != nil {
-			dest := "/settings/webhooks?error=" + err.Error()
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+			return webhookRedirect(e, "error", err.Error())
 		}
 
 		// Encrypt
 		encrypted, err := webhook.Encrypt(rawURL, webhookSecret)
 		if err != nil {
-			dest := "/settings/webhooks?error=Failed to encrypt webhook URL"
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+			return webhookRedirect(e, "error", "Failed to encrypt webhook URL")
 		}
 
-		// Upsert: try update first, if no rows exist, create
-		ctx := context.Background()
-		_, getErr := appStore.Webhooks.GetByUserID(ctx, userID)
-		if getErr != nil {
-			// No existing webhook — create
-			if err := appStore.Webhooks.Create(ctx, userID, encrypted); err != nil {
-				dest := "/settings/webhooks?error=Failed to save webhook"
-				if e.Request.Header.Get("HX-Request") != "" {
-					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-					return e.HTML(http.StatusNoContent, "")
-				}
-				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
-			}
-		} else {
-			// Existing webhook — update (this also re-enables and resets failures)
-			if err := appStore.Webhooks.UpdateURL(ctx, userID, encrypted); err != nil {
-				dest := "/settings/webhooks?error=Failed to update webhook"
-				if e.Request.Header.Get("HX-Request") != "" {
-					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-					return e.HTML(http.StatusNoContent, "")
-				}
-				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
-			}
+		// Atomic upsert — no race condition between check and write
+		ctx := e.Request.Context()
+		if err := appStore.Webhooks.Upsert(ctx, userID, encrypted); err != nil {
+			return webhookRedirect(e, "error", "Failed to save webhook")
 		}
 
-		dest := "/settings/webhooks?success=Webhook saved successfully"
-		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-			return e.HTML(http.StatusNoContent, "")
-		}
-		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+		return webhookRedirect(e, "success", "Webhook saved successfully")
 	}
 }
 
@@ -160,21 +140,11 @@ func UserWebhookDeleteHandler(appStore *store.Store) func(e *server.RequestEvent
 		}
 
 		userID := authenticatedUserID(e)
-		ctx := context.Background()
+		ctx := e.Request.Context()
 		if err := appStore.Webhooks.Delete(ctx, userID); err != nil {
-			dest := "/settings/webhooks?error=Failed to delete webhook"
-			if e.Request.Header.Get("HX-Request") != "" {
-				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-				return e.HTML(http.StatusNoContent, "")
-			}
-			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+			return webhookRedirect(e, "error", "Failed to delete webhook")
 		}
 
-		dest := "/settings/webhooks?success=Webhook removed"
-		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
-			return e.HTML(http.StatusNoContent, "")
-		}
-		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+		return webhookRedirect(e, "success", "Webhook removed")
 	}
 }

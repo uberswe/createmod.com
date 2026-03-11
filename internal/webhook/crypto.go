@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 )
 
@@ -76,5 +77,6 @@ func Secret() string {
 	if s := os.Getenv("OUT_SECRET"); s != "" {
 		return s
 	}
+	slog.Warn("WEBHOOK_SECRET is not set — using insecure default; set WEBHOOK_SECRET or OUT_SECRET in production")
 	return "createmod-webhook-default-insecure"
 }

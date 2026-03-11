@@ -11,6 +11,25 @@ import (
 	"time"
 )
 
+const claimTempUpload = `-- name: ClaimTempUpload :execrows
+UPDATE temp_uploads
+SET uploaded_by = $2, updated = NOW()
+WHERE token = $1 AND uploaded_by = ''
+`
+
+type ClaimTempUploadParams struct {
+	Token      string `json:"token"`
+	UploadedBy string `json:"uploaded_by"`
+}
+
+func (q *Queries) ClaimTempUpload(ctx context.Context, arg ClaimTempUploadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimTempUpload, arg.Token, arg.UploadedBy)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createTempUpload = `-- name: CreateTempUpload :one
 INSERT INTO temp_uploads (token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
