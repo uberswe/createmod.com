@@ -31,6 +31,7 @@
     <link rel="alternate" hreflang="{{ .HreflangCode }}" href="https://createmod.com{{ .FullPath $slug }}">{{ end }}
     <link rel="alternate" hreflang="x-default" href="https://createmod.com{{ $slug }}">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemaps/sitemap.xml">
+    <link rel="alternate" type="application/rss+xml" title="CreateMod.com RSS Feed" href="/feed.xml">
     {{ if .NoIndex }}<meta name="robots" content="noindex, follow">{{ else }}<meta name="robots" content="all">{{ end }}
     <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
     <!-- Tabler CSS via CDN -->

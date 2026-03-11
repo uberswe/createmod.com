@@ -26,6 +26,12 @@ func (w *SitemapWorker) Work(ctx context.Context, job *river.Job[SitemapArgs]) e
 	}
 
 	w.deps.Sitemap.Generate(w.deps.Store)
+
+	// Invalidate the RSS feed cache so the next request rebuilds it with fresh data.
+	if w.deps.Cache != nil {
+		w.deps.Cache.Delete("rss_feed")
+	}
+
 	slog.Info("sitemap generation complete")
 	return nil
 }

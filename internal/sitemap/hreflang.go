@@ -56,6 +56,12 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 		slog.Warn("hreflang sitemap: failed to query collections", "error", err)
 	}
 
+	// Collect mod paths
+	modCounts, err := appStore.Schematics.ListModCounts(ctx)
+	if err != nil {
+		slog.Warn("hreflang sitemap: failed to query mods", "error", err)
+	}
+
 	// Static pages to include in hreflang sitemaps
 	staticPaths := []string{
 		"/",
@@ -89,6 +95,9 @@ func (s *Service) GenerateHreflang(appStore *store.Store) {
 	}
 	for _, c := range collections {
 		allPaths = append(allPaths, "/collections/"+c.Slug)
+	}
+	for _, m := range modCounts {
+		allPaths = append(allPaths, "/mods/"+m.ModName)
 	}
 
 	// buildLinks creates the hreflang link set for a given bare path

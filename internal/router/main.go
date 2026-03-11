@@ -202,6 +202,7 @@ func Register(p RegisterParams) chi.Router {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte("User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
 	})
+	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {
 		s, ok := p.CacheService.GetString("ads.txt")
 		if ok {

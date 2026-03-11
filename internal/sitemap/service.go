@@ -46,6 +46,10 @@ func (s *Service) Generate(appStore *store.Store) {
 	if err != nil {
 		slog.Warn("sitemap: failed to list collections", "error", err)
 	}
+	modCounts, err := appStore.Schematics.ListModCounts(ctx)
+	if err != nil {
+		slog.Warn("sitemap: failed to list mods", "error", err)
+	}
 	now := time.Now().UTC()
 
 	// Use a temp directory for the smg library to write to, then upload to S3
@@ -188,6 +192,24 @@ func (s *Service) Generate(appStore *store.Store) {
 				Priority:   0.6,
 			}); err != nil {
 				slog.Error("Unable to add collection SitemapLoc:", "error", err)
+			}
+		}
+	}
+
+	// Mods sitemap
+	if len(modCounts) > 0 {
+		smMods := smi.NewSitemap()
+		smMods.SetName("mods")
+		smMods.SetLastMod(&now)
+		smMods.SetOutputPath(tmpDir + "/")
+		for _, m := range modCounts {
+			if err := smMods.Add(&smg.SitemapLoc{
+				Loc:        fmt.Sprintf("/mods/%s", m.ModName),
+				LastMod:    &now,
+				ChangeFreq: smg.Weekly,
+				Priority:   0.6,
+			}); err != nil {
+				slog.Error("Unable to add mod SitemapLoc:", "error", err)
 			}
 		}
 	}
