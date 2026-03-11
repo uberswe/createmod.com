@@ -202,7 +202,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Handle("/assets/x/*", http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static"))))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("User-agent: *\nDisallow: /_/\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
+		w.Write([]byte("User-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\nDisallow: /*?theme=\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
 	})
 	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {

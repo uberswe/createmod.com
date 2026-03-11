@@ -24,7 +24,7 @@
     <meta name="twitter:image:src" content="{{ .Thumbnail }}">
 
 
-    {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ end }}
+    {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ else }}<link rel="canonical" href="https://createmod.com{{ .Slug }}">{{ end }}
     {{ if .PrevPageURL }}<link rel="prev" href="{{ .PrevPageURL }}">{{ end }}
     {{ if .NextPageURL }}<link rel="next" href="{{ .NextPageURL }}">{{ end }}
     {{ $slug := .Slug }}{{ range Hreflangs $slug }}

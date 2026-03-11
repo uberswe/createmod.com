@@ -40,6 +40,7 @@ func ExternalLinkInterstitialHandler(registry *server.Registry, cacheService *ca
 		d.Title = i18n.T(d.Language, "You are leaving createmod.com")
 		d.Description = i18n.T(d.Language, "page.external.description")
 		d.Slug = "/out"
+		d.NoIndex = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Target = payload.URL
 
