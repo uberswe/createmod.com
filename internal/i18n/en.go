@@ -594,4 +594,14 @@ var LangEN = map[string]string{
 	"We validate your schematic content.": "We validate your schematic content.",
 	"If everything looks good, it will be published automatically.": "If everything looks good, it will be published automatically.",
 	"Your schematic is accessible via the link above while it awaits review.": "Your schematic is accessible via the link above while it awaits review.",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "This schematic will be auto-approved and published immediately.",
+	"This schematic will be auto-approved and published at the scheduled time.": "This schematic will be auto-approved and published at the scheduled time.",
+	"Your schematic will be reviewed before it appears publicly.":              "Your schematic will be reviewed before it appears publicly.",
+	"Schedule publication":                                                     "Schedule publication",
+	"Optionally set a date and time for your schematic to go live.":            "Optionally set a date and time for your schematic to go live.",
+	"Publish date & time":                                                      "Publish date & time",
+	"Time is in your local timezone.":                                          "Time is in your local timezone.",
+	"This schematic is scheduled to be published on":                           "This schematic is scheduled to be published on",
 }

@@ -84,6 +84,7 @@ type UploadPublishData struct {
 	CreatemodVersions []models.CreatemodVersion
 	Tags              []models.SchematicTag
 	AdditionalFiles   []tempUploadFile // extra NBT files (variations/sets)
+	TrustedUser       bool             // true if user has previously approved schematics
 }
 
 type UploadPreviewData struct {
@@ -468,9 +469,23 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
-		// --- Run OpenAI moderation ---
+		// --- Check trusted-user status (has previously approved schematics) ---
 		autoApproved := false
-		if moderationSvc != nil {
+		trustedUser := false
+		authorCount, countErr := appStore.Schematics.CountByAuthor(ctx, userID)
+		if countErr == nil && authorCount > 0 {
+			trustedUser = true
+		}
+
+		if trustedUser {
+			// Trusted users skip moderation and are auto-approved
+			schem.Moderated = true
+			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("make-public: failed to auto-approve trusted user schematic", "error", updateErr, "id", schem.ID)
+			} else {
+				autoApproved = true
+			}
+		} else if moderationSvc != nil {
 			policyResult, policyErr := moderationSvc.CheckSchematic(title, sanitizedContent, "")
 			if policyErr != nil {
 				slog.Warn("make-public: moderation policy check unavailable, manual review required", "error", policyErr, "id", schem.ID)

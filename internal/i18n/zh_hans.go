@@ -595,4 +595,14 @@ var LangZhHans = map[string]string{
 	"We validate your schematic content.": "我们会验证您的蓝图内容。",
 	"If everything looks good, it will be published automatically.": "如果一切正常，将自动发布。",
 	"Your schematic is accessible via the link above while it awaits review.": "在等待审核期间，您可以通过上方链接访问您的蓝图。",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "此蓝图将自动审核通过并立即发布。",
+	"This schematic will be auto-approved and published at the scheduled time.": "此蓝图将自动审核通过并在预定时间发布。",
+	"Your schematic will be reviewed before it appears publicly.":              "您的蓝图将在公开显示前进行审核。",
+	"Schedule publication":                                                     "定时发布",
+	"Optionally set a date and time for your schematic to go live.":            "可选择设置蓝图上线的日期和时间。",
+	"Publish date & time":                                                      "发布日期和时间",
+	"Time is in your local timezone.":                                          "时间为您的本地时区。",
+	"This schematic is scheduled to be published on":                           "此蓝图计划发布于",
 }

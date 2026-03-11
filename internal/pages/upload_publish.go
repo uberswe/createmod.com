@@ -58,6 +58,15 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 		d.CreatemodVersions = allCreatemodVersionsFromStore(appStore)
 		d.AdditionalFiles = additionalFiles
 
+		// Check if user has previously approved schematics (trusted user)
+		userID := authenticatedUserID(e)
+		if userID != "" {
+			authorCount, countErr := appStore.Schematics.CountByAuthor(e.Request.Context(), userID)
+			if countErr == nil && authorCount > 0 {
+				d.TrustedUser = true
+			}
+		}
+
 		html, err := registry.LoadFiles(uploadPublishTemplates...).Render(d)
 		if err != nil {
 			return err
