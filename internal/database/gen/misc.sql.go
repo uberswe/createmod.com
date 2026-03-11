@@ -260,6 +260,23 @@ func (q *Queries) DeleteReport(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteReportsByTarget = `-- name: DeleteReportsByTarget :execrows
+DELETE FROM reports WHERE target_type = $1 AND target_id = $2
+`
+
+type DeleteReportsByTargetParams struct {
+	TargetType string `json:"target_type"`
+	TargetID   string `json:"target_id"`
+}
+
+func (q *Queries) DeleteReportsByTarget(ctx context.Context, arg DeleteReportsByTargetParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReportsByTarget, arg.TargetType, arg.TargetID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getCreatemodVersionByID = `-- name: GetCreatemodVersionByID :one
 SELECT id, version, created FROM createmod_versions WHERE id = $1
 `

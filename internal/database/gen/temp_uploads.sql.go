@@ -193,6 +193,19 @@ func (q *Queries) DeleteExpiredTempUploads(ctx context.Context, created time.Tim
 	return result.RowsAffected(), nil
 }
 
+const deleteExpiredUnclaimedTempUploads = `-- name: DeleteExpiredUnclaimedTempUploads :execrows
+DELETE FROM temp_uploads
+WHERE uploaded_by = '' AND created < $1
+`
+
+func (q *Queries) DeleteExpiredUnclaimedTempUploads(ctx context.Context, created time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredUnclaimedTempUploads, created)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteTempUpload = `-- name: DeleteTempUpload :exec
 DELETE FROM temp_uploads WHERE token = $1
 `
@@ -362,6 +375,51 @@ func (q *Queries) GetTempUploadFileByID(ctx context.Context, id string) (TempUpl
 		&i.Created,
 	)
 	return i, err
+}
+
+const listExpiredUnclaimedTempUploads = `-- name: ListExpiredUnclaimedTempUploads :many
+SELECT id, token, nbt_s3_key, image_s3_key
+FROM temp_uploads
+WHERE uploaded_by = '' AND created < $1
+ORDER BY created ASC
+LIMIT $2
+`
+
+type ListExpiredUnclaimedTempUploadsParams struct {
+	Created time.Time `json:"created"`
+	Limit   int32     `json:"limit"`
+}
+
+type ListExpiredUnclaimedTempUploadsRow struct {
+	ID         string `json:"id"`
+	Token      string `json:"token"`
+	NbtS3Key   string `json:"nbt_s3_key"`
+	ImageS3Key string `json:"image_s3_key"`
+}
+
+func (q *Queries) ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error) {
+	rows, err := q.db.Query(ctx, listExpiredUnclaimedTempUploads, arg.Created, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExpiredUnclaimedTempUploadsRow{}
+	for rows.Next() {
+		var i ListExpiredUnclaimedTempUploadsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Token,
+			&i.NbtS3Key,
+			&i.ImageS3Key,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listTempUploadFilesByToken = `-- name: ListTempUploadFilesByToken :many

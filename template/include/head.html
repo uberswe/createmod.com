@@ -116,6 +116,21 @@
           document.body.classList.remove('sidebar-open');
         });
 
+        // Mobile search toggle
+        document.addEventListener('click', function(e){
+          var btn = e.target && e.target.closest && e.target.closest('.mobile-search-toggle');
+          if (btn) {
+            var bar = document.querySelector('.mobile-search-bar');
+            if (bar) {
+              bar.classList.toggle('active');
+              if (bar.classList.contains('active')) {
+                var input = bar.querySelector('input[name="q"]');
+                if (input) input.focus();
+              }
+            }
+          }
+        });
+
         // Desktop sidebar expand/collapse toggle
         document.addEventListener('click', function(e){
           var btn = e.target && e.target.closest && e.target.closest('#sidebar-toggle');

@@ -378,14 +378,6 @@ type SchematicStore interface {
 	CountVanilla(ctx context.Context) (int, error)
 	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
 	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
-	// Hash backfill
-	ListMissingHash(ctx context.Context, afterID string, limit int) ([]SchematicFileRef, error)
-}
-
-// SchematicFileRef is a lightweight reference to a schematic's file in S3.
-type SchematicFileRef struct {
-	ID            string
-	SchematicFile string
 }
 
 // CategoryStore handles categories.
@@ -526,6 +518,7 @@ type ReportStore interface {
 	Create(ctx context.Context, r *Report) error
 	List(ctx context.Context, limit, offset int) ([]Report, error)
 	Delete(ctx context.Context, id string) error
+	DeleteByTarget(ctx context.Context, targetType, targetID string) (int64, error)
 }
 
 // ModMetadataStore handles mod metadata from Modrinth/CurseForge.
@@ -705,6 +698,8 @@ type TempUploadStore interface {
 	Delete(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
 	ListByUser(ctx context.Context, userID string, limit int, offset int) ([]TempUpload, error)
+	ListExpiredUnclaimed(ctx context.Context, olderThan time.Time, limit int) ([]TempUpload, error)
+	DeleteExpiredUnclaimed(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
 // TempUploadFileStore manages additional files for temp uploads.

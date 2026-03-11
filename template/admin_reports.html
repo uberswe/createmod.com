@@ -18,29 +18,120 @@
         {{end}}
         <div class="card">
           <div class="table-responsive">
-            <table class="table card-table table-vcenter text-nowrap">
+            <table class="table card-table table-vcenter">
               <thead>
                 <tr>
                   <th>Created</th>
                   <th>Target</th>
                   <th>Reason</th>
                   <th>Reporter</th>
-                  <th class="w-1"></th>
+                  <th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {{range .Reports}}
                 <tr>
-                  <td>{{HumanDate .Created}}</td>
-                  <td><span class="badge bg-blue-lt">{{.TargetType}}</span> {{.TargetID}}</td>
-                  <td>{{.Reason}}</td>
-                  <td>{{.Reporter}}</td>
+                  <td class="text-nowrap">{{HumanDate .Created}}</td>
                   <td>
-                    <form method="post" action="/admin/reports/{{.ID}}/resolve">
-                      <button type="submit" class="btn btn-sm btn-success">Resolve</button>
+                    <span class="badge bg-blue-lt">{{.TargetType}}</span>
+                    {{if .TargetURL}}
+                      <a href="{{.TargetURL}}" target="_blank">{{.TargetLabel}}</a>
+                    {{else}}
+                      {{.TargetLabel}}
+                    {{end}}
+                  </td>
+                  <td style="max-width:300px;white-space:normal;">{{.Reason}}</td>
+                  <td>
+                    {{if .ReporterName}}
+                      {{.ReporterName}}
+                    {{else if .Reporter}}
+                      <span class="text-secondary">{{.Reporter}}</span>
+                    {{else}}
+                      <span class="text-secondary">anonymous</span>
+                    {{end}}
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#resolve-modal-{{.ID}}">
+                      Resolve
+                    </button>
+                    <form method="post" action="/admin/reports/{{.ID}}/ignore" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-secondary" title="Dismiss all reports for this target">
+                        Ignore
+                      </button>
                     </form>
+                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal-{{.ID}}">
+                      Delete
+                    </button>
                   </td>
                 </tr>
+
+                <!-- Resolve Modal -->
+                <div class="modal modal-blur fade" id="resolve-modal-{{.ID}}" tabindex="-1" role="dialog" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                      <form method="post" action="/admin/reports/{{.ID}}/resolve">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Resolve Report</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="mb-3">
+                            <label class="form-label">Target</label>
+                            <div>
+                              <span class="badge bg-blue-lt">{{.TargetType}}</span>
+                              {{if .TargetURL}}
+                                <a href="{{.TargetURL}}" target="_blank">{{.TargetLabel}}</a>
+                              {{else}}
+                                {{.TargetLabel}}
+                              {{end}}
+                            </div>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Reported reason</label>
+                            <div class="text-secondary">{{.Reason}}</div>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label" for="resolution_note_{{.ID}}">Resolution note (optional)</label>
+                            <textarea class="form-control" id="resolution_note_{{.ID}}" name="resolution_note" rows="3" placeholder="What action was taken..."></textarea>
+                          </div>
+                          {{if .Reporter}}
+                          <div class="mb-0">
+                            <label class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" name="notify_reporter" value="true">
+                              <span class="form-check-label">Send resolution email to reporter{{if .ReporterName}} ({{.ReporterName}}){{end}}</span>
+                            </label>
+                          </div>
+                          {{end}}
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+                          <button type="submit" class="btn btn-success">Resolve</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Delete Target Modal -->
+                <div class="modal modal-blur fade" id="delete-modal-{{.ID}}" tabindex="-1" role="dialog" aria-hidden="true">
+                  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                      <div class="modal-body">
+                        <div class="modal-title">Are you sure?</div>
+                        <div class="text-secondary mt-2">
+                          This will {{if eq .TargetType "schematic"}}soft-delete the schematic{{else if eq .TargetType "comment"}}permanently delete the comment{{else}}delete the reported item{{end}} and dismiss all reports for it.
+                        </div>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+                        <form method="post" action="/admin/reports/{{.ID}}/delete-target">
+                          <button type="submit" class="btn btn-danger">Yes, delete</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {{else}}
                 <tr>
                   <td colspan="5" class="text-center text-secondary">No reports.</td>

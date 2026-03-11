@@ -1389,48 +1389,6 @@ func (q *Queries) ListSchematicsForSitemap(ctx context.Context) ([]ListSchematic
 	return items, nil
 }
 
-const listSchematicsMissingHash = `-- name: ListSchematicsMissingHash :many
-SELECT s.id, s.schematic_file
-FROM schematics s
-LEFT JOIN nbt_hashes nh ON nh.schematic_id = s.id
-WHERE nh.id IS NULL
-  AND s.deleted IS NULL
-  AND s.schematic_file != ''
-  AND s.id > $1
-ORDER BY s.id
-LIMIT $2
-`
-
-type ListSchematicsMissingHashParams struct {
-	ID    string `json:"id"`
-	Limit int32  `json:"limit"`
-}
-
-type ListSchematicsMissingHashRow struct {
-	ID            string `json:"id"`
-	SchematicFile string `json:"schematic_file"`
-}
-
-func (q *Queries) ListSchematicsMissingHash(ctx context.Context, arg ListSchematicsMissingHashParams) ([]ListSchematicsMissingHashRow, error) {
-	rows, err := q.db.Query(ctx, listSchematicsMissingHash, arg.ID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListSchematicsMissingHashRow{}
-	for rows.Next() {
-		var i ListSchematicsMissingHashRow
-		if err := rows.Scan(&i.ID, &i.SchematicFile); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const setSchematicCategories = `-- name: SetSchematicCategories :exec
 DELETE FROM schematics_categories WHERE schematic_id = $1
 `
