@@ -595,4 +595,14 @@ var LangDE = map[string]string{
 	"We validate your schematic content.": "Wir überprüfen den Inhalt deines Bauplans.",
 	"If everything looks good, it will be published automatically.": "Wenn alles in Ordnung ist, wird er automatisch veröffentlicht.",
 	"Your schematic is accessible via the link above while it awaits review.": "Dein Bauplan ist über den obigen Link zugänglich, während er auf die Überprüfung wartet.",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "Dieser Bauplan wird automatisch genehmigt und sofort veröffentlicht.",
+	"This schematic will be auto-approved and published at the scheduled time.": "Dieser Bauplan wird automatisch genehmigt und zum geplanten Zeitpunkt veröffentlicht.",
+	"Your schematic will be reviewed before it appears publicly.":              "Dein Bauplan wird überprüft, bevor er öffentlich erscheint.",
+	"Schedule publication":                                                     "Veröffentlichung planen",
+	"Optionally set a date and time for your schematic to go live.":            "Optional ein Datum und eine Uhrzeit festlegen, wann dein Bauplan online gehen soll.",
+	"Publish date & time":                                                      "Veröffentlichungsdatum & -zeit",
+	"Time is in your local timezone.":                                          "Die Zeit ist in deiner lokalen Zeitzone.",
+	"This schematic is scheduled to be published on":                           "Dieser Bauplan ist zur Veröffentlichung geplant am",
 }

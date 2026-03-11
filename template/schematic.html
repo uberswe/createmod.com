@@ -18,6 +18,16 @@
                     </div>
                 </div>
                 {{ end }}
+                {{ if .ScheduledFor }}
+                <div class="alert alert-info mb-3" role="alert">
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 7l0 5l3 3" /></svg>
+                        <div>
+                            <div class="text-secondary">{{ T .Language "This schematic is scheduled to be published on" }} {{ .ScheduledFor.Format "Jan 02, 2006 at 15:04 UTC" }}</div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
                 <div class="d-flex gap-3">
                 <div class="flex-grow-1 min-width-0">
                 <div class="row g-3">

@@ -596,4 +596,14 @@ var LangRU = map[string]string{
 	"We validate your schematic content.": "Мы проверяем содержимое вашей схемы.",
 	"If everything looks good, it will be published automatically.": "Если всё в порядке, она будет опубликована автоматически.",
 	"Your schematic is accessible via the link above while it awaits review.": "Ваша схема доступна по ссылке выше, пока ожидает проверки.",
+
+	// ── Trusted User & Scheduled Publishing ──
+	"This schematic will be auto-approved and published immediately.":          "Эта схема будет автоматически одобрена и опубликована немедленно.",
+	"This schematic will be auto-approved and published at the scheduled time.": "Эта схема будет автоматически одобрена и опубликована в запланированное время.",
+	"Your schematic will be reviewed before it appears publicly.":              "Ваша схема будет проверена перед публикацией.",
+	"Schedule publication":                                                     "Запланировать публикацию",
+	"Optionally set a date and time for your schematic to go live.":            "По желанию укажите дату и время публикации схемы.",
+	"Publish date & time":                                                      "Дата и время публикации",
+	"Time is in your local timezone.":                                          "Время указано в вашем местном часовом поясе.",
+	"This schematic is scheduled to be published on":                           "Эта схема запланирована к публикации на",
 }

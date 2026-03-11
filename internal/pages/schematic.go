@@ -65,6 +65,8 @@ type SchematicData struct {
 	AdditionalFiles []store.SchematicFile
 	// PendingModeration is true when the schematic is not yet moderated and the viewer is the author.
 	PendingModeration bool
+	// ScheduledFor is set when the schematic is scheduled for future publication and the viewer is the author.
+	ScheduledFor *time.Time
 	// Translation fields
 	IsTranslated     bool
 	OriginalLanguage string
@@ -96,16 +98,19 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			}
 			return e.HTML(http.StatusNotFound, html)
 		}
-		// Check scheduled_at
-		if s.ScheduledAt != nil && s.ScheduledAt.After(time.Now()) {
+		// Check scheduled_at — allow the author to view their own scheduled schematic
+		isScheduled := s.ScheduledAt != nil && s.ScheduledAt.After(time.Now())
+		if isScheduled {
 			nd := DefaultData{}
 			nd.Populate(e)
-			nd.Title = i18n.T(nd.Language, "Page Not Found")
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
-			if err != nil {
-				return err
+			if nd.UserID != s.AuthorID {
+				nd.Title = i18n.T(nd.Language, "Page Not Found")
+				html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
+				if err != nil {
+					return err
+				}
+				return e.HTML(http.StatusNotFound, html)
 			}
-			return e.HTML(http.StatusNotFound, html)
 		}
 
 		d := SchematicData{
@@ -128,6 +133,9 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
 		d.PendingModeration = !s.Moderated && d.IsAuthor
+		if isScheduled && d.IsAuthor {
+			d.ScheduledFor = s.ScheduledAt
+		}
 		d.Promotion = promotionService.RandomPromotion()
 
 		// Parse materials from stored JSON
