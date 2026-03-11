@@ -136,7 +136,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <a href="/u/{{ .Token }}/publish" class="btn btn-primary w-100">
+                                <a href="/u/{{ .Token }}/publish" hx-boost="false" class="btn btn-primary w-100">
                                     {{ T .Language "Publish Schematic" }}
                                 </a>
                                 {{ else }}

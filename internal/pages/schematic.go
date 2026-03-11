@@ -61,6 +61,10 @@ type SchematicData struct {
 	BloxelizerURL   string
 	Mods            []string
 	ModInfoList     []ModInfo
+	// Additional files (variations)
+	AdditionalFiles []store.SchematicFile
+	// PendingModeration is true when the schematic is not yet moderated and the viewer is the author.
+	PendingModeration bool
 	// Translation fields
 	IsTranslated     bool
 	OriginalLanguage string
@@ -78,7 +82,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
 		s, err := appStore.Schematics.GetByName(ctx, name)
-		if err != nil || s == nil || s.Deleted != nil || !s.Moderated {
+		if err != nil || s == nil || s.Deleted != nil || s.Blacklisted {
 			// Try to find and fix a schematic with percent-encoded characters in its name
 			if newName, found := tryFixEncodedSchematicNameStore(appStore, name); found {
 				return e.Redirect(http.StatusMovedPermanently, LangRedirectURL(e, "/schematics/"+newName))
@@ -123,6 +127,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		d.Similar = findSimilarSchematicsFromStore(appStore, cacheService, d.Schematic, d.FromAuthor, searchService)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
+		d.PendingModeration = !s.Moderated && d.IsAuthor
 		d.Promotion = promotionService.RandomPromotion()
 
 		// Parse materials from stored JSON
@@ -183,6 +188,11 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			}
 			d.Versions = versions
 			d.HasVersions = true
+		}
+
+		// Load additional files (variations)
+		if additionalFiles, afErr := appStore.SchematicFiles.ListBySchematicID(ctx, s.ID); afErr == nil && len(additionalFiles) > 0 {
+			d.AdditionalFiles = additionalFiles
 		}
 
 		// Translation: show translated title/description if user's language differs from detected language

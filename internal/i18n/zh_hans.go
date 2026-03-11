@@ -577,4 +577,22 @@ var LangZhHans = map[string]string{
 	"log in": "登录",
 	"blocks": "方块",
 	"bytes":  "字节",
+
+	// ── Upload Pending / Moderation ──
+	"Pending Moderation":                "等待审核",
+	"This schematic is pending moderation and is not yet publicly listed.": "此蓝图正在等待审核，尚未公开显示。",
+	"Your schematic has been published!": "您的蓝图已发布！",
+	"Your schematic passed moderation and is now live on the site.": "您的蓝图已通过审核，现在已在网站上发布。",
+	"Your schematic has been submitted for review. You can share the link below while you wait.": "您的蓝图已提交审核。您可以在等待期间分享以下链接。",
+	"Schematic URL":                     "蓝图链接",
+	"View Schematic":                    "查看蓝图",
+	"Link copied!":                      "链接已复制！",
+	"Upload Another":                    "上传另一个",
+	"Go to Home":                        "返回首页",
+	"What happens next?":                "接下来会怎样？",
+	"Your schematic is live and visible to everyone.": "您的蓝图已上线，所有人都可以看到。",
+	"It will appear in search results and category listings.": "它将出现在搜索结果和分类列表中。",
+	"We validate your schematic content.": "我们会验证您的蓝图内容。",
+	"If everything looks good, it will be published automatically.": "如果一切正常，将自动发布。",
+	"Your schematic is accessible via the link above while it awaits review.": "在等待审核期间，您可以通过上方链接访问您的蓝图。",
 }

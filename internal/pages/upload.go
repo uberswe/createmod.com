@@ -6,6 +6,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -19,11 +20,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"createmod/internal/server"
+	strip "github.com/grokify/html-strip-tags-go"
+	"github.com/gosimple/slug"
+	"github.com/sym01/htmlsanitizer"
 )
 
 const uploadPendingTemplate = "./template/upload_pending.html"
@@ -150,16 +155,32 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 	}
 }
 
+// UploadPendingData holds data for the upload pending confirmation page.
+type UploadPendingData struct {
+	DefaultData
+	SchematicName string
+	SchematicURL  string
+	AutoApproved  bool
+}
+
 // UploadPendingHandler renders a simple moderation pending confirmation page.
 func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		d := DefaultData{}
+		d := UploadPendingData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
 		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+
+		// Read schematic name and auto-approved status from query params
+		if name := e.Request.URL.Query().Get("name"); name != "" {
+			d.SchematicName = name
+			d.SchematicURL = "/schematics/" + name
+		}
+		d.AutoApproved = e.Request.URL.Query().Get("auto") == "true"
+
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -169,76 +190,349 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 }
 
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
-// Validates the token exists in PostgreSQL and redirects to the moderation pending page.
-func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+// Creates a real Schematic record, uploads images and copies NBT files from temp to
+// schematics S3 prefix, handles additional files (variations), then cleans up temp data.
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
+
+		// Require authentication
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		userID := authenticatedUserID(e)
+
 		token := e.Request.PathValue("token")
 		if token == "" {
 			return e.String(http.StatusBadRequest, "missing token")
 		}
-		// Verify the token exists in store
-		if _, err := appStore.TempUploads.GetByToken(e.Request.Context(), token); err != nil {
+
+		ctx := e.Request.Context()
+
+		// Verify the token exists and belongs to the authenticated user
+		entry, err := appStore.TempUploads.GetByToken(ctx, token)
+		if err != nil {
 			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
+		if entry.UploadedBy != "" && entry.UploadedBy != userID {
+			return e.String(http.StatusForbidden, "you do not own this upload")
+		}
 
-		// Parse the multipart form (up to 10 MB in memory; the rest spills to
+		// Parse the multipart form (up to 100 MB in memory; the rest spills to
 		// temp files).  Using ParseMultipartForm instead of ParseForm ensures
 		// that the request body is fully consumed even when the client sends
 		// file fields (featured_image, gallery).  Leaving the body unread
 		// causes Go's HTTP server to drain or reset the connection, which
 		// produces 502 errors through reverse proxies like Cloudflare.
-		if err := e.Request.ParseMultipartForm(100 << 20); err == nil {
-			val := strings.TrimSpace(e.Request.FormValue("scheduled_at"))
-			if val != "" {
-				var when time.Time
-				var perr error
-				when, perr = time.Parse(time.RFC3339, val)
-				if perr != nil {
-					const layout = "2006-01-02T15:04"
-					if t2, err2 := time.ParseInLocation(layout, val, time.Local); err2 == nil {
-						when = t2
-						perr = nil
+		if err := e.Request.ParseMultipartForm(100 << 20); err != nil {
+			slog.Error("make-public: failed to parse multipart form", "error", err)
+			return e.String(http.StatusBadRequest, "failed to parse form")
+		}
+
+		// --- Parse form fields ---
+		title := strings.TrimSpace(e.Request.FormValue("title"))
+		if title == "" {
+			title = strings.TrimSuffix(entry.Filename, ".nbt")
+		}
+
+		rawContent := e.Request.FormValue("content")
+		if rawContent == "" {
+			rawContent = e.Request.FormValue("description")
+		}
+
+		// Sanitize content
+		sanitizer := htmlsanitizer.NewHTMLSanitizer()
+		sanitizedContent, sErr := sanitizer.SanitizeString(rawContent)
+		if sErr != nil {
+			sanitizedContent = rawContent
+		}
+
+		// Generate excerpt
+		excerpt := strip.StripTags(sanitizedContent)
+		if len(excerpt) > 180 {
+			excerpt = excerpt[:180]
+		}
+
+		// Resolve categories and tags
+		var catIDs []string
+		if rawCats := e.Request.Form["categories"]; len(rawCats) > 0 {
+			catIDs = resolveCategoryIDs(ctx, appStore, rawCats)
+		}
+		var tagIDs []string
+		if rawTags := e.Request.Form["tags"]; len(rawTags) > 0 {
+			tagIDs = resolveTagIDs(ctx, appStore, rawTags)
+		}
+
+		// Version IDs
+		var createmodVersionID *string
+		if v := strings.TrimSpace(e.Request.FormValue("createmod_version")); v != "" {
+			createmodVersionID = &v
+		}
+		var minecraftVersionID *string
+		if v := strings.TrimSpace(e.Request.FormValue("minecraft_version")); v != "" {
+			minecraftVersionID = &v
+		}
+
+		// Optional fields
+		video := strings.TrimSpace(e.Request.FormValue("video"))
+		paid := e.Request.FormValue("paid") == "true"
+		externalURL := ""
+		if paid {
+			externalURL = strings.TrimSpace(e.Request.FormValue("external_url"))
+		}
+
+		// Scheduled publish
+		var scheduledAt *time.Time
+		if val := strings.TrimSpace(e.Request.FormValue("scheduled_at")); val != "" {
+			when, perr := time.Parse(time.RFC3339, val)
+			if perr != nil {
+				const layout = "2006-01-02T15:04"
+				if t2, err2 := time.ParseInLocation(layout, val, time.Local); err2 == nil {
+					when = t2
+					perr = nil
+				}
+			}
+			if perr == nil && !when.IsZero() {
+				utc := when.UTC()
+				scheduledAt = &utc
+			}
+		}
+
+		// Generate schematic ID and slug
+		schematicID := generateSchematicID()
+		nameSlug := slug.Make(title)
+		if nameSlug == "" {
+			nameSlug = schematicID
+		}
+
+		// --- Handle featured image ---
+		var featuredFilename string
+		if file, header, fileErr := e.Request.FormFile("featured_image"); fileErr == nil && header != nil {
+			defer func() { _ = file.Close() }()
+
+			if header.Size <= 5<<20 {
+				ext := strings.ToLower(filepath.Ext(header.Filename))
+				allowedImageExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true}
+				if allowedImageExts[ext] {
+					data, readErr := io.ReadAll(file)
+					if readErr == nil {
+						data, filename, contentType := convertToWebP(data, header.Filename)
+						if storageSvc != nil {
+							if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
+								slog.Error("make-public: failed to upload featured image", "error", uploadErr)
+							} else {
+								featuredFilename = filename
+							}
+						}
 					}
 				}
-				if perr == nil && !when.IsZero() {
-					utc := when.UTC()
-					key := "upload:schedule:" + token
-					cacheService.SetWithTTL(key, utc.Format(time.RFC3339), 24*time.Hour)
-				}
 			}
+		}
 
-			// Resolve user-suggested categories and tags, cache IDs for later schematic creation.
-			ctx := e.Request.Context()
-			if rawCats := e.Request.Form["categories"]; len(rawCats) > 0 {
-				catIDs := resolveCategoryIDs(ctx, appStore, rawCats)
-				if len(catIDs) > 0 {
-					cacheService.SetWithTTL("upload:categories:"+token, catIDs, 24*time.Hour)
-				}
-			}
-			if rawTags := e.Request.Form["tags"]; len(rawTags) > 0 {
-				tagIDs := resolveTagIDs(ctx, appStore, rawTags)
-				if len(tagIDs) > 0 {
-					cacheService.SetWithTTL("upload:tags:"+token, tagIDs, 24*time.Hour)
-				}
-			}
-
-			// Cache paid / external_url for later schematic creation
-			if e.Request.FormValue("paid") == "true" {
-				cacheService.SetWithTTL("upload:paid:"+token, true, 24*time.Hour)
-				if eu := strings.TrimSpace(e.Request.FormValue("external_url")); eu != "" {
-					cacheService.SetWithTTL("upload:external_url:"+token, eu, 24*time.Hour)
+		// --- Handle gallery images ---
+		var galleryFilenames []string
+		if e.Request.MultipartForm != nil && e.Request.MultipartForm.File != nil {
+			if galleryFiles, ok := e.Request.MultipartForm.File["gallery"]; ok && len(galleryFiles) > 0 {
+				for _, fh := range galleryFiles {
+					if fh.Size > 5<<20 {
+						continue
+					}
+					ext := strings.ToLower(filepath.Ext(fh.Filename))
+					allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true}
+					if !allowedExts[ext] {
+						continue
+					}
+					f, openErr := fh.Open()
+					if openErr != nil {
+						continue
+					}
+					data, readErr := io.ReadAll(f)
+					_ = f.Close()
+					if readErr != nil {
+						continue
+					}
+					data, filename, contentType := convertToWebP(data, fh.Filename)
+					if storageSvc != nil {
+						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
+							slog.Error("make-public: failed to upload gallery image", "error", uploadErr)
+							continue
+						}
+					}
+					galleryFilenames = append(galleryFilenames, filename)
 				}
 			}
 		}
 
+		// --- Copy NBT file from temp to schematics ---
+		if entry.NbtS3Key != "" && storageSvc != nil {
+			reader, dlErr := storageSvc.DownloadRaw(ctx, entry.NbtS3Key)
+			if dlErr != nil {
+				slog.Error("make-public: failed to download temp NBT", "error", dlErr, "key", entry.NbtS3Key)
+				return e.String(http.StatusInternalServerError, "failed to retrieve uploaded file")
+			}
+			nbtData, readErr := io.ReadAll(reader)
+			_ = reader.Close()
+			if readErr != nil {
+				slog.Error("make-public: failed to read temp NBT", "error", readErr)
+				return e.String(http.StatusInternalServerError, "failed to read uploaded file")
+			}
+			if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, entry.Filename, nbtData, "application/octet-stream"); uploadErr != nil {
+				slog.Error("make-public: failed to upload NBT to schematics", "error", uploadErr)
+				return e.String(http.StatusInternalServerError, "failed to store schematic file")
+			}
+		}
+
+		// --- Copy additional files (variations) from temp uploads ---
+		tempFiles, _ := appStore.TempUploadFiles.ListByToken(ctx, token)
+		for _, tf := range tempFiles {
+			if tf.NbtS3Key == "" || storageSvc == nil {
+				continue
+			}
+			reader, dlErr := storageSvc.DownloadRaw(ctx, tf.NbtS3Key)
+			if dlErr != nil {
+				slog.Error("make-public: failed to download additional file", "error", dlErr, "key", tf.NbtS3Key)
+				continue
+			}
+			fileData, readErr := io.ReadAll(reader)
+			_ = reader.Close()
+			if readErr != nil {
+				slog.Error("make-public: failed to read additional file", "error", readErr)
+				continue
+			}
+
+			// Upload to schematics S3 prefix
+			s3Filename := schematicID + "_" + tf.Filename
+			if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, s3Filename, fileData, "application/octet-stream"); uploadErr != nil {
+				slog.Error("make-public: failed to upload additional file", "error", uploadErr)
+				continue
+			}
+
+			// Create schematic_files record
+			sf := &store.SchematicFile{
+				SchematicID:  schematicID,
+				Filename:     s3Filename,
+				OriginalName: tf.Filename,
+				Size:         tf.Size,
+				MimeType:     "application/octet-stream",
+			}
+			if err := appStore.SchematicFiles.Create(ctx, sf); err != nil {
+				slog.Error("make-public: failed to create schematic file record", "error", err)
+			}
+		}
+
+		// --- Create schematic record ---
+		now := time.Now()
+		schem := &store.Schematic{
+			ID:                 schematicID,
+			AuthorID:           userID,
+			Name:               nameSlug,
+			Title:              title,
+			Description:        sanitizedContent,
+			Excerpt:            excerpt,
+			Content:            sanitizedContent,
+			Postdate:           &now,
+			FeaturedImage:      featuredFilename,
+			Gallery:            galleryFilenames,
+			SchematicFile:      entry.Filename,
+			Video:              video,
+			CreatemodVersionID: createmodVersionID,
+			MinecraftVersionID: minecraftVersionID,
+			BlockCount:         entry.BlockCount,
+			DimX:               entry.DimX,
+			DimY:               entry.DimY,
+			DimZ:               entry.DimZ,
+			Materials:          entry.Materials,
+			Mods:               entry.Mods,
+			Paid:               paid,
+			ExternalURL:        externalURL,
+			Moderated:          false,
+			ScheduledAt:        scheduledAt,
+		}
+
+		if err := appStore.Schematics.Create(ctx, schem); err != nil {
+			slog.Error("make-public: failed to create schematic", "error", err, "title", title)
+			return e.String(http.StatusInternalServerError, "failed to create schematic")
+		}
+
+		// --- Set categories and tags ---
+		if len(catIDs) > 0 {
+			if err := appStore.Schematics.SetCategories(ctx, schem.ID, catIDs); err != nil {
+				slog.Warn("make-public: failed to set categories", "error", err, "id", schem.ID)
+			}
+		}
+		if len(tagIDs) > 0 {
+			if err := appStore.Schematics.SetTags(ctx, schem.ID, tagIDs); err != nil {
+				slog.Warn("make-public: failed to set tags", "error", err, "id", schem.ID)
+			}
+		}
+
+		// --- Run OpenAI moderation ---
+		autoApproved := false
+		if moderationSvc != nil {
+			policyResult, policyErr := moderationSvc.CheckSchematic(title, sanitizedContent, "")
+			if policyErr != nil {
+				slog.Warn("make-public: moderation policy check unavailable, manual review required", "error", policyErr, "id", schem.ID)
+			} else if !policyResult.Approved {
+				schem.Blacklisted = true
+				schem.ModerationReason = policyResult.Reason
+				if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+					slog.Error("make-public: failed to blacklist schematic", "error", updateErr, "id", schem.ID)
+				}
+			} else {
+				// Policy passed, check quality
+				qualityResult, qualityErr := moderationSvc.CheckSchematicQuality(title, sanitizedContent)
+				if qualityErr != nil {
+					slog.Warn("make-public: moderation quality check unavailable, manual review required", "error", qualityErr, "id", schem.ID)
+				} else if !qualityResult.Approved {
+					schem.Blacklisted = true
+					schem.ModerationReason = qualityResult.Reason
+					if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+						slog.Error("make-public: failed to blacklist schematic", "error", updateErr, "id", schem.ID)
+					}
+				} else {
+					// Both checks passed — auto-approve
+					schem.Moderated = true
+					if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+						slog.Error("make-public: failed to auto-approve schematic", "error", updateErr, "id", schem.ID)
+					} else {
+						autoApproved = true
+					}
+				}
+			}
+		}
+
+		// --- Create NBT hash for duplicate detection ---
+		if entry.Checksum != "" {
+			_ = appStore.NBTHashes.Create(ctx, &store.NBTHash{
+				Hash:        entry.Checksum,
+				SchematicID: &schem.ID,
+				UploadedBy:  &userID,
+			})
+		}
+
+		// --- Cleanup temp data ---
+		// Delete temp upload files from S3
+		for _, tf := range tempFiles {
+			if tf.NbtS3Key != "" && storageSvc != nil {
+				_ = storageSvc.DeleteRaw(ctx, tf.NbtS3Key)
+			}
+		}
+		if entry.NbtS3Key != "" && storageSvc != nil {
+			_ = storageSvc.DeleteRaw(ctx, entry.NbtS3Key)
+		}
+		// Delete temp upload file records
+		_ = appStore.TempUploadFiles.DeleteByToken(ctx, token)
+		// Delete temp upload record
+		_ = appStore.TempUploads.Delete(ctx, token)
+
+		pendingURL := fmt.Sprintf("/upload/pending?name=%s&auto=%t", url.QueryEscape(nameSlug), autoApproved)
 		if e.Request.Header.Get("HX-Request") != "" {
-			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/upload/pending"))
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, pendingURL))
 			return e.HTML(http.StatusNoContent, "")
 		}
-		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/upload/pending"))
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, pendingURL))
 	}
 }
 
@@ -600,6 +894,13 @@ func allCreatemodVersionsFromStore(appStore *store.Store) []models.CreatemodVers
 		}
 	}
 	return result
+}
+
+// generateSchematicID generates a random 15-character hex ID matching the existing ID format.
+func generateSchematicID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)[:15]
 }
 
 func allMinecraftVersionsFromStore(appStore *store.Store) []models.MinecraftVersion {
