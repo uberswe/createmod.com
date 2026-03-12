@@ -198,7 +198,7 @@ func SchematicUpdateHandler(
 			schem.Mods = modsJSON
 
 			// Upload to S3
-			filename := header.Filename
+			filename := sanitizeFilename(header.Filename)
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, "application/octet-stream"); uploadErr != nil {
 					slog.Error("schematic update: failed to upload NBT to S3", "error", uploadErr, "id", schematicID)
@@ -227,7 +227,7 @@ func SchematicUpdateHandler(
 				return e.InternalServerError("failed to read featured image", nil)
 			}
 
-			data, filename, contentType := convertToWebP(data, header.Filename)
+			data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 					slog.Error("schematic update: failed to upload featured image to S3", "error", uploadErr, "id", schematicID)
@@ -266,7 +266,7 @@ func SchematicUpdateHandler(
 						continue
 					}
 
-					data, filename, contentType := convertToWebP(data, fh.Filename)
+					data, filename, contentType := convertToWebP(data, sanitizeFilename(fh.Filename))
 					if storageSvc != nil {
 						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 							slog.Error("schematic update: failed to upload gallery image to S3", "error", uploadErr, "id", schematicID)

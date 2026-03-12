@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"createmod/internal/server"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -72,7 +73,7 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 		d.Description = i18n.T(d.Language, "page.schematics.description")
 		d.Slug = "/schematics"
 		if len(d.Schematics) > 0 {
-			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)
+			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, url.PathEscape(d.Schematics[0].FeaturedImage))
 		}
 
 		html, err := registry.LoadFiles(schematicsTemplates...).Render(d)

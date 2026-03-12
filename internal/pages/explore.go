@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -140,7 +141,7 @@ func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appS
 		d.Description = i18n.T(d.Language, "page.explore.description")
 		d.Slug = "/explore"
 		if len(show) > 0 {
-			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", show[0].ID, show[0].Image)
+			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", show[0].ID, url.PathEscape(show[0].Image))
 		}
 		html, err := registry.LoadFiles(exploreTemplates...).Render(d)
 		if err != nil {

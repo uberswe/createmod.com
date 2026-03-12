@@ -44,7 +44,7 @@
                     {{range $i, $image := .Images }}
                         <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
                             <img class="lazy"
-                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=320x0{{ end }}"
+                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ urlPathEscape $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=320x0{{ end }}"
                                  alt="{{ $image.Title }}">
                         </a>
                     {{end}}
@@ -112,7 +112,7 @@ window['nitroAds'].createAd('explore-adrail', {
       a.title = img.title;
       var el = document.createElement('img');
       el.className = 'lazy';
-      el.setAttribute('data-src', '/api/files/schematics/' + img.id + '/' + img.image + thumbParam(img.size));
+      el.setAttribute('data-src', '/api/files/schematics/' + img.id + '/' + encodeURIComponent(img.image) + thumbParam(img.size));
       el.alt = img.title;
       a.appendChild(el);
       frag.appendChild(a);

@@ -145,8 +145,11 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 		materialsJSON, _ := json.Marshal(parsedMaterials)
 		modsJSON, _ := json.Marshal(mods)
 
+		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
+		safeFilename := sanitizeFilename(header.Filename)
+
 		// Upload NBT file to S3
-		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + header.Filename
+		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
 				slog.Error("failed to upload NBT to S3 (API)", "error", err, "token", token)
@@ -158,7 +161,7 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 		tempUpload := &store.TempUpload{
 			Token:         token,
 			UploadedBy:    authenticatedUserID(e),
-			Filename:      header.Filename,
+			Filename:      safeFilename,
 			Size:          n,
 			Checksum:      checksum,
 			BlockCount:    blockCount,
@@ -181,7 +184,7 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 			Token:      token,
 			URL:        "/u/" + token,
 			Checksum:   checksum,
-			Filename:   header.Filename,
+			Filename:   safeFilename,
 			Size:       n,
 			BlockCount: blockCount,
 			Materials:  parsedMaterials,
@@ -190,7 +193,7 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
 		resp.Dimensions.Z = dimZ
-		resp.FileURL = "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(header.Filename)
+		resp.FileURL = "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(safeFilename)
 		if resp.Materials == nil {
 			resp.Materials = []nbtparser.Material{}
 		}
@@ -315,8 +318,11 @@ func APIUploadAnonymousHandler(cacheService *cache.Service, appStore *store.Stor
 		materialsJSON, _ := json.Marshal(parsedMaterials)
 		modsJSON, _ := json.Marshal(mods)
 
+		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
+		safeFilename := sanitizeFilename(header.Filename)
+
 		// Upload NBT file to S3
-		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + header.Filename
+		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
 				slog.Error("failed to upload NBT to S3 (anonymous API)", "error", err, "token", token)
@@ -328,7 +334,7 @@ func APIUploadAnonymousHandler(cacheService *cache.Service, appStore *store.Stor
 		tempUpload := &store.TempUpload{
 			Token:         token,
 			UploadedBy:    "",
-			Filename:      header.Filename,
+			Filename:      safeFilename,
 			Size:          n,
 			Checksum:      checksum,
 			BlockCount:    blockCount,
@@ -351,7 +357,7 @@ func APIUploadAnonymousHandler(cacheService *cache.Service, appStore *store.Stor
 			Token:      token,
 			URL:        "/u/" + token,
 			Checksum:   checksum,
-			Filename:   header.Filename,
+			Filename:   safeFilename,
 			Size:       n,
 			BlockCount: blockCount,
 			Materials:  parsedMaterials,
@@ -360,7 +366,7 @@ func APIUploadAnonymousHandler(cacheService *cache.Service, appStore *store.Stor
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
 		resp.Dimensions.Z = dimZ
-		resp.FileURL = "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(header.Filename)
+		resp.FileURL = "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(safeFilename)
 		if resp.Materials == nil {
 			resp.Materials = []nbtparser.Material{}
 		}

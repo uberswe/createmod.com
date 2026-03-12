@@ -6,6 +6,8 @@ import (
 	"createmod/internal/models"
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"crypto/rand"
+	"encoding/hex"
 	"github.com/drexedam/gravatar"
 	"createmod/internal/server"
 	"golang.org/x/text/cases"
@@ -13,6 +15,8 @@ import (
 	"html/template"
 	"net/http"
 	"net/mail"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -169,6 +173,37 @@ func safeRedirectPath(returnTo, fallback string) string {
 		}
 	}
 	return returnTo
+}
+
+// safeFilenameRe matches only ASCII letters, digits, hyphens, and underscores.
+var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9_\-]`)
+
+// sanitizeFilename produces a URL-safe, ASCII-only filename from a user-provided
+// filename. It preserves the file extension and replaces non-ASCII / special
+// characters with underscores. If the base name ends up empty after sanitization
+// (e.g. a purely non-Latin filename), a random hex string is used instead.
+func sanitizeFilename(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	base := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	// Replace spaces with underscores, then strip everything non-ASCII-safe
+	base = strings.ReplaceAll(base, " ", "_")
+	base = safeFilenameRe.ReplaceAllString(base, "")
+
+	// Collapse multiple underscores and trim leading/trailing underscores
+	for strings.Contains(base, "__") {
+		base = strings.ReplaceAll(base, "__", "_")
+	}
+	base = strings.Trim(base, "_")
+
+	// If nothing remains, generate a random name
+	if base == "" {
+		buf := make([]byte, 8)
+		_, _ = rand.Read(buf)
+		base = hex.EncodeToString(buf)
+	}
+
+	return base + ext
 }
 
 // sanitizeContentDispositionFilename strips characters that could cause header injection

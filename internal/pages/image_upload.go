@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -78,7 +79,7 @@ func ImageUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		}
 
 		// Convert to WebP (skip GIF and already-WebP files)
-		filename := filepath.Base(header.Filename)
+		filename := sanitizeFilename(filepath.Base(header.Filename))
 		if ext != ".gif" && ext != ".webp" {
 			img, decErr := imgconv.Decode(bytes.NewReader(data))
 			if decErr == nil {
@@ -110,7 +111,7 @@ func ImageUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		}
 
 		// Return location for TinyMCE
-		location := "/api/files/images/" + imageID + "/" + filename
+		location := "/api/files/images/" + imageID + "/" + url.PathEscape(filename)
 		e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		e.Response.WriteHeader(http.StatusOK)
 		return json.NewEncoder(e.Response).Encode(map[string]string{"location": location})

@@ -321,7 +321,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				if allowedImageExts[ext] {
 					data, readErr := io.ReadAll(file)
 					if readErr == nil {
-						data, filename, contentType := convertToWebP(data, header.Filename)
+						data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
 						if storageSvc != nil {
 							if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 								slog.Error("make-public: failed to upload featured image", "error", uploadErr)
@@ -356,7 +356,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 					if readErr != nil {
 						continue
 					}
-					data, filename, contentType := convertToWebP(data, fh.Filename)
+					data, filename, contentType := convertToWebP(data, sanitizeFilename(fh.Filename))
 					if storageSvc != nil {
 						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 							slog.Error("make-public: failed to upload gallery image", "error", uploadErr)
@@ -547,7 +547,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				}
 				var imageURL string
 				if emailImage != "" {
-					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, emailImage)
+					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, url.PathEscape(emailImage))
 				}
 				schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, emailName)
 
@@ -856,8 +856,11 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		materialsJSON, _ := json.Marshal(parsedMaterials)
 		modsJSON, _ := json.Marshal(mods)
 
+		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
+		safeFilename := sanitizeFilename(header.Filename)
+
 		// Upload NBT file to S3
-		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + header.Filename
+		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
 				slog.Error("failed to upload NBT to S3", "error", err, "token", token)
@@ -869,7 +872,7 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		tempUpload := &store.TempUpload{
 			Token:         token,
 			UploadedBy:    authenticatedUserID(e),
-			Filename:      header.Filename,
+			Filename:      safeFilename,
 			Size:          n,
 			Checksum:      checksum,
 			BlockCount:    blockCount,
@@ -887,15 +890,15 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
-		// Build file URL — encode the filename component for safe use in URLs
-		fileURL := "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(header.Filename)
+		// Build file URL — the filename is already sanitized to ASCII-safe characters
+		fileURL := "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(safeFilename)
 
 		// Build JSON response
 		resp := uploadNBTResponse{
 			Token:      token,
 			URL:        "/u/" + token,
 			Checksum:   checksum,
-			Filename:   header.Filename,
+			Filename:   safeFilename,
 			Size:       n,
 			FileURL:    fileURL,
 			BlockCount: blockCount,

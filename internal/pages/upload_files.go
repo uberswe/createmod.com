@@ -138,10 +138,13 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 		materialsJSON, _ := json.Marshal(parsedMaterials)
 		modsJSON, _ := json.Marshal(mods)
 
+		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
+		safeFilename := sanitizeFilename(header.Filename)
+
 		// Create the store record (to get the ID for S3 key)
 		tempFile := &store.TempUploadFile{
 			Token:       token,
-			Filename:    header.Filename,
+			Filename:    safeFilename,
 			Description: description,
 			Size:        n,
 			Checksum:    checksum,
@@ -154,7 +157,7 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 		}
 
 		// Upload NBT file to S3 using a temporary key based on checksum
-		nbtS3Key := s3CollectionTempUploadFiles + "/" + token + "/" + header.Filename
+		nbtS3Key := s3CollectionTempUploadFiles + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
 				slog.Error("failed to upload additional NBT to S3", "error", err, "token", token)
@@ -180,7 +183,7 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 
 		return e.JSON(http.StatusOK, addFileResponse{
 			ID:          tempFile.ID,
-			Filename:    header.Filename,
+			Filename:    safeFilename,
 			Description: description,
 			Size:        n,
 			BlockCount:  blockCount,

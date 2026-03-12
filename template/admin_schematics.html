@@ -48,7 +48,7 @@
                 <tr>
                   <td>
                     {{if .FeaturedImage}}
-                    <span class="avatar avatar-sm" style="background-image: url(/api/files/schematics/{{.ID}}/{{.FeaturedImage}}?thumb=40x40)"></span>
+                    <span class="avatar avatar-sm" style="background-image: url(/api/files/schematics/{{.ID}}/{{urlPathEscape .FeaturedImage}}?thumb=40x40)"></span>
                     {{end}}
                   </td>
                   <td>

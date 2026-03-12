@@ -121,7 +121,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		d.Title = d.Schematic.Title
 		d.Slug = fmt.Sprintf("/schematics/%s", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
-		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
+		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, url.PathEscape(d.Schematic.FeaturedImage))
 		d.SubCategory = "Schematic"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID)
@@ -160,7 +160,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 				scheme = "https"
 			}
 			host := e.Request.Host
-			fileURL := fmt.Sprintf("%s://%s/api/files/schematics/%s/%s", scheme, host, d.Schematic.ID, s.SchematicFile)
+			fileURL := fmt.Sprintf("%s://%s/api/files/schematics/%s/%s", scheme, host, d.Schematic.ID, url.PathEscape(s.SchematicFile))
 			d.BloxelizerURL = "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
 		}
 
@@ -397,7 +397,7 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 	// --- Schematic file URL ---
 	schematicFile := ""
 	if s.SchematicFile != "" {
-		schematicFile = fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, s.SchematicFile)
+		schematicFile = fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(s.SchematicFile))
 	}
 
 	// --- Category ID (first) ---
