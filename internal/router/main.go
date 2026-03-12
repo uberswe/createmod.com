@@ -5,18 +5,19 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
-	"createmod/internal/webhook"
 	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/outurl"
 	"createmod/internal/pages"
 	"createmod/internal/promotion"
+	"createmod/internal/ratelimit"
 	"createmod/internal/search"
 	"createmod/internal/server"
 	"createmod/internal/session"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
+	"createmod/internal/webhook"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -27,7 +28,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -68,6 +68,7 @@ func computeAssetVersion() string {
 type RegisterParams struct {
 	SearchService      *search.Service
 	CacheService       *cache.Service
+	RateLimiter        ratelimit.Limiter
 	DiscordService     *discord.Service
 	ModerationService  *moderation.Service
 	TranslationService *translation.Service
@@ -287,10 +288,10 @@ func Register(p RegisterParams) chi.Router {
 	// API Docs
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
 	// Public JSON API (beta)
-	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchService, p.CacheService, p.AppStore)))
-	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.CacheService, p.AppStore)))
-	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.CacheService, p.AppStore, p.StorageService)))
-	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.CacheService, p.AppStore, p.StorageService)))
+	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchService, p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
+	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	// Reports
 	r.Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
 	// Admin
@@ -310,8 +311,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))
 	// Auth — rate-limited to 10 POST requests per IP per minute
-	authLimiter := newRateLimiter(10, time.Minute)
-	authRateLimit := rateLimitMiddleware(authLimiter)
+	authRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
 	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))
 	r.With(authRateLimit).Post("/login", Adapt(pages.LoginPostHandler(p.AppStore, p.SessionStore)))
 	r.Get("/register", Adapt(pages.RegisterHandler(registry, p.AppStore)))
@@ -383,7 +383,7 @@ func Register(p RegisterParams) chi.Router {
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
-	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.CacheService, p.AppStore)))
+	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Download interstitial page
 	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
 	// External link interstitial (encrypted token, no raw URL exposed)
@@ -768,60 +768,9 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// rateLimiter provides a simple in-memory rate limiter per IP address.
-type rateLimiter struct {
-	mu       sync.Mutex
-	counters map[string]*rateLimitEntry
-	limit    int
-	window   time.Duration
-}
-
-type rateLimitEntry struct {
-	count  int
-	expiry time.Time
-}
-
-func newRateLimiter(limit int, window time.Duration) *rateLimiter {
-	rl := &rateLimiter{
-		counters: make(map[string]*rateLimitEntry),
-		limit:    limit,
-		window:   window,
-	}
-	// Cleanup goroutine — runs every window period to evict expired entries
-	go func() {
-		ticker := time.NewTicker(window)
-		defer ticker.Stop()
-		for range ticker.C {
-			rl.mu.Lock()
-			now := time.Now()
-			for k, v := range rl.counters {
-				if now.After(v.expiry) {
-					delete(rl.counters, k)
-				}
-			}
-			rl.mu.Unlock()
-		}
-	}()
-	return rl
-}
-
-// allow checks whether the given key is within the rate limit.
-// Returns true if allowed, false if the limit has been exceeded.
-func (rl *rateLimiter) allow(key string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	now := time.Now()
-	entry, ok := rl.counters[key]
-	if !ok || now.After(entry.expiry) {
-		rl.counters[key] = &rateLimitEntry{count: 1, expiry: now.Add(rl.window)}
-		return true
-	}
-	entry.count++
-	return entry.count <= rl.limit
-}
-
-// rateLimitMiddleware returns a middleware that limits requests per IP.
-func rateLimitMiddleware(rl *rateLimiter) func(http.Handler) http.Handler {
+// rateLimitMiddlewareNew returns a middleware that limits requests per IP
+// using the shared ratelimit.Limiter (Redis or in-memory).
+func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := r.RemoteAddr
@@ -830,7 +779,8 @@ func rateLimitMiddleware(rl *rateLimiter) func(http.Handler) http.Handler {
 				ip = strings.SplitN(forwarded, ",", 2)[0]
 				ip = strings.TrimSpace(ip)
 			}
-			if !rl.allow(ip) {
+			key := "auth:" + ip
+			if ok, _ := rl.Allow(r.Context(), key, limit, window); !ok {
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
 				return
 			}
