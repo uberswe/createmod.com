@@ -723,15 +723,15 @@ var corsAllowedOrigins = map[string]bool{
 // attributes throughout templates. Removing 'unsafe-inline' would require
 // refactoring all inline code into external files with nonces or hashes.
 //
-// Ad networks (NitroPay) dynamically load resources from many third-party
-// domains, so img-src, frame-src, and connect-src use https: broadly.
+// Third-party scripts dynamically load resources from many domains, so
+// style-src, img-src, font-src, frame-src, and connect-src use https: broadly.
 var cspHeader = strings.Join([]string{
 	"default-src 'self'",
 	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-	"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://rsms.me",
+	"style-src 'self' 'unsafe-inline' https:",
 	"img-src 'self' data: blob: https:",
-	"font-src 'self' https://rsms.me https://cdn.jsdelivr.net",
-	"connect-src 'self' https://blocksitems.com https://www.google-analytics.com https://www.googletagmanager.com https://*.nitropay.com https://*.amazon-adsystem.com https:",
+	"font-src 'self' https:",
+	"connect-src 'self' https:",
 	"frame-src https:",
 	"media-src 'self' https:",
 	"object-src 'none'",
