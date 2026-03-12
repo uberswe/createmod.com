@@ -62,6 +62,28 @@
 
     <script data-cfasync="false">window.nitroAds=window.nitroAds||{createAd:function(){return new Promise(e=>{window.nitroAds.queue.push(["createAd",arguments,e])})},addUserToken:function(){window.nitroAds.queue.push(["addUserToken",arguments])},queue:[]};</script>
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js"></script>
+    <script>
+    // Track NitroPay ad instances and clear them on HTMX navigation so
+    // new page ad scripts can call createAd() on fresh DOM containers.
+    (function(){
+      window._nitroAdInstances = window._nitroAdInstances || [];
+      var origCreateAd = window.nitroAds.createAd.bind(window.nitroAds);
+      window.nitroAds.createAd = function() {
+        var p = origCreateAd.apply(window.nitroAds, arguments);
+        window._nitroAdInstances.push(p);
+        return p;
+      };
+      document.addEventListener('htmx:beforeSwap', function() {
+        var instances = window._nitroAdInstances;
+        window._nitroAdInstances = [];
+        instances.forEach(function(p) {
+          p.then(function(ad) {
+            if (ad && typeof ad.onNavigate === 'function') { ad.onNavigate(); }
+          }).catch(function(){});
+        });
+      });
+    })();
+    </script>
 
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-HG8QRCK47M"></script>

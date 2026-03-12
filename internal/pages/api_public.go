@@ -4,6 +4,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/models"
+	"createmod/internal/ratelimit"
 	"createmod/internal/search"
 	"createmod/internal/store"
 	"crypto/sha256"
@@ -93,23 +94,21 @@ func recordAPIKeyUsageStore(appStore *store.Store, keyID string, endpoint string
 	_ = appStore.APIKeys.LogUsage(ctx, keyID, endpoint)
 }
 
-// rateLimitAllow enforces a simple per-minute limit per API key id using the in-memory cache.
+// rateLimitAllow enforces a simple per-minute limit per API key id using the rate limiter.
 // Returns (allowed, retryAfterSeconds).
-func rateLimitAllow(cacheService *cache.Service, keyID string, limit int) (bool, int) {
-	if keyID == "" || limit <= 0 {
+func rateLimitAllow(rl ratelimit.Limiter, keyID string, limit int) (bool, int) {
+	if keyID == "" || limit <= 0 || rl == nil {
 		return true, 0
 	}
 	now := time.Now()
 	minuteKey := now.Format("20060102T1504")
 	k := "rl:" + keyID + ":" + minuteKey
-	cur, _ := cacheService.GetInt(k)
-	cur++
 	ttl := time.Until(now.Truncate(time.Minute).Add(time.Minute))
 	if ttl <= 0 {
 		ttl = time.Second
 	}
-	cacheService.SetWithTTL(k, cur, ttl)
-	if cur > limit {
+	ok, _ := rl.Allow(context.Background(), k, limit, ttl)
+	if !ok {
 		ra := int(ttl.Seconds())
 		if ra < 1 {
 			ra = 1
@@ -120,7 +119,7 @@ func rateLimitAllow(cacheService *cache.Service, keyID string, limit int) (bool,
 }
 
 // APISchematicsListHandler serves GET /api/schematics as a simple JSON API for searching/listing schematics.
-func APISchematicsListHandler(searchService *search.Service, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func APISchematicsListHandler(searchService *search.Service, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics"
 		keyID, err := requireAPIKeyFromStore(appStore, e)
@@ -128,7 +127,7 @@ func APISchematicsListHandler(searchService *search.Service, cacheService *cache
 			return nil
 		}
 		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-		if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
+		if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
@@ -226,7 +225,7 @@ func APISchematicsListHandler(searchService *search.Service, cacheService *cache
 }
 
 // APISchematicDetailHandler serves GET /api/schematics/{name} returning one schematic by name.
-func APISchematicDetailHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}"
 		keyID, err := requireAPIKeyFromStore(appStore, e)
@@ -234,7 +233,7 @@ func APISchematicDetailHandler(cacheService *cache.Service, appStore *store.Stor
 			return nil
 		}
 		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-		if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
+		if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}

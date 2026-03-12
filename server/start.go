@@ -12,6 +12,7 @@ import (
 	"createmod/internal/modmeta"
 	"createmod/internal/pages"
 	"createmod/internal/pointlog"
+	"createmod/internal/ratelimit"
 	irouter "createmod/internal/router"
 	"createmod/internal/search"
 	"createmod/internal/session"
@@ -43,6 +44,7 @@ type Config struct {
 	CurseForgeApiKey    string
 	Dev                 bool
 	DatabaseURL         string
+	RedisURL            string
 	Store               *store.Store
 	Pool                *pgxpool.Pool
 	Storage             *storage.Service
@@ -63,6 +65,7 @@ type Server struct {
 	searchService        *search.Service
 	sitemapService       *sitemap.Service
 	cacheService         *cache.Service
+	rateLimiter          ratelimit.Limiter
 	discordService       *discord.Service
 	moderationService    *moderation.Service
 	aiDescriptionService *aidescription.Service
@@ -118,6 +121,20 @@ func New(conf Config) *Server {
 	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, slog.Default())
 	translationService := translation.New(conf.OpenAIApiKey, slog.Default(), conf.Store)
 
+	// Initialize rate limiter: use Redis if configured, otherwise fall back to in-memory.
+	var rl ratelimit.Limiter
+	if conf.RedisURL != "" {
+		var err error
+		rl, err = ratelimit.NewRedis(conf.RedisURL)
+		if err != nil {
+			log.Fatalf("Failed to connect to Redis for rate limiting: %v", err)
+		}
+		log.Println("Connected to Redis for rate limiting")
+	} else {
+		rl = ratelimit.NewMemory()
+		log.Println("WARNING: REDIS_URL not set, rate limiting uses per-pod in-memory counters")
+	}
+
 	srv := &Server{
 		conf:                 conf,
 		store:                conf.Store,
@@ -125,6 +142,7 @@ func New(conf Config) *Server {
 		storageService:       conf.Storage,
 		sitemapService:       sitemapService,
 		cacheService:         cache.New(),
+		rateLimiter:          rl,
 		discordService:       discordService,
 		moderationService:    moderationService,
 		aiDescriptionService: aiDescriptionService,
@@ -208,6 +226,7 @@ func (s *Server) Start() {
 	chiRouter := irouter.Register(irouter.RegisterParams{
 		SearchService:      s.searchService,
 		CacheService:       s.cacheService,
+		RateLimiter:        s.rateLimiter,
 		DiscordService:     s.discordService,
 		ModerationService:  s.moderationService,
 		TranslationService: s.translationService,
@@ -256,6 +275,12 @@ func (s *Server) Start() {
 		if s.jobWorker != nil {
 			if err := s.jobWorker.Stop(shutdownCtx); err != nil {
 				slog.Error("failed to stop job worker", "error", err)
+			}
+		}
+
+		if s.rateLimiter != nil {
+			if err := s.rateLimiter.Close(); err != nil {
+				slog.Error("failed to close rate limiter", "error", err)
 			}
 		}
 

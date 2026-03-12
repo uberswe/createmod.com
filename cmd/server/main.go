@@ -22,6 +22,7 @@ const (
 	CurseForgeAPIKey    = "CURSEFORGE_API_KEY"
 	DevEnv              = "DEV"
 	DatabaseURL         = "DATABASE_URL"
+	RedisURL            = "REDIS_URL"
 	S3Endpoint          = "S3_ENDPOINT"
 	S3AccessKey         = "S3_ACCESS_KEY"
 	S3SecretKey         = "S3_SECRET_KEY"
@@ -69,6 +70,7 @@ func main() {
 		OpenAIApiKey:        getEnv(envFile, OpenAIAPIKey),
 		CurseForgeApiKey:    getEnv(envFile, CurseForgeAPIKey),
 		DatabaseURL:         getEnv(envFile, DatabaseURL),
+		RedisURL:            getEnv(envFile, RedisURL),
 		DiscordClientID:     getEnv(envFile, DiscordClientID),
 		DiscordClientSecret: getEnv(envFile, DiscordClientSecret),
 		GithubClientID:      getEnv(envFile, GithubClientID),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/nbtparser"
+	"createmod/internal/ratelimit"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"crypto/rand"
@@ -25,7 +26,7 @@ import (
 // Requires API key authentication. Accepts multipart/form-data with an .nbt file.
 // The upload goes through the same pipeline as web uploads -- returns a preview token, not a published schematic.
 // Uses PostgreSQL store for metadata and direct S3 for file storage.
-func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "POST /api/schematics/upload"
 
@@ -35,7 +36,7 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 		}
 		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
 
-		if ok, retry := rateLimitAllow(cacheService, keyID, 120); !ok {
+		if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
@@ -209,11 +210,11 @@ func APIUploadHandler(cacheService *cache.Service, appStore *store.Store, storag
 // unauthenticated JSON API for uploading schematics. No API key is required.
 // Rate-limited by client IP (10 uploads/min). The upload is created with an
 // empty UploadedBy so it can later be claimed via /u/{token}/claim.
-func APIUploadAnonymousHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		// Rate limit by IP instead of API key
 		clientIP := e.RealIP()
-		if ok, retry := rateLimitAllow(cacheService, "anon:"+clientIP, 10); !ok {
+		if ok, retry := rateLimitAllow(rl, "anon:"+clientIP, 10); !ok {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
