@@ -1,4 +1,4 @@
-@import url('https://rsms.me/inter/inter.css');
+/* Inter font loaded via <link> in head.html to avoid render-blocking @import chain */
 
 :root {
     --tblr-font-sans-serif: 'Inter Var', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
@@ -239,12 +239,19 @@
     --tblr-form-invalid-border-color: #e79898;
 }
 
-/* Additional tweaks ensuring our brand primary reflects across components */
+/* Additional tweaks ensuring our brand primary reflects across components.
+   btn-primary uses a slightly darker shade for WCAG AA contrast (4.5:1)
+   against white text, while keeping the same golden hue. */
 .btn-primary,
 .btn-primary:hover,
 .btn-primary:focus {
-  --tblr-btn-bg: var(--tblr-primary);
-  --tblr-btn-border-color: var(--tblr-primary);
+  --tblr-btn-bg: #9e7735;
+  --tblr-btn-border-color: #9e7735;
+  --tblr-btn-color: #fff;
+}
+.btn-primary:hover {
+  --tblr-btn-bg: #8b6a2e;
+  --tblr-btn-border-color: #8b6a2e;
 }
 
 .alert-primary {

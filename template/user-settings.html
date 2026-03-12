@@ -37,9 +37,9 @@
                                         <div class="row align-items-center mb-3">
                                             <div class="col-auto">
                                                 {{ if .Avatar }}
-                                                <img class="avatar avatar-xl" src="{{ .Avatar }}">
+                                                <img class="avatar avatar-xl" src="{{ .Avatar }}" alt="{{ .Username }}">
                                                 {{ else }}
-                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve">
+                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve" alt="{{ .Username }}">
                                                 {{ end }}
                                             </div>
                                             <div class="col-auto">We use Gravatar for profile pictures, <a href="https://gravatar.com/site/check/">change your avatar via the Gravatar website</a>.</div>

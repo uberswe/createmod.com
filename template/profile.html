@@ -10,9 +10,9 @@
                         <div class="row mb-4 align-items-center">
                             <div class="col-md-auto">
                                 {{ if .UserAvatar }}
-                                <img class="avatar avatar-md" src="{{ .UserAvatar }}">
+                                <img class="avatar avatar-md" src="{{ .UserAvatar }}" alt="{{ .ProfileUsername }}">
                                 {{ else }}
-                                <img class="avatar avatar-md" src="https://mc-heads.net/avatar/Steve">
+                                <img class="avatar avatar-md" src="https://mc-heads.net/avatar/Steve" alt="{{ .ProfileUsername }}">
                                 {{ end }}
                             </div>
                             <div class="col-md-auto align-center">
