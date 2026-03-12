@@ -74,6 +74,18 @@ func CollectionTranslationKey(collectionId, lang string) string {
 	return fmt.Sprintf("collection_translation:%s:%s", collectionId, lang)
 }
 
+func MinecraftVersionKey(id string) string {
+	return fmt.Sprintf("mcversion:%s", id)
+}
+
+func CreatemodVersionKey(id string) string {
+	return fmt.Sprintf("cmversion:%s", id)
+}
+
+func ModMetadataKey(namespace string) string {
+	return fmt.Sprintf("modmeta:%s", namespace)
+}
+
 func (s *Service) Set(key string, value interface{}) {
 	s.c.Set(key, value, cache.DefaultExpiration)
 }

@@ -10,6 +10,102 @@ import (
 	"time"
 )
 
+const batchGetDownloadCounts = `-- name: BatchGetDownloadCounts :many
+SELECT schematic_id, COUNT(*)::INTEGER AS download_count
+FROM schematic_downloads
+WHERE schematic_id = ANY($1::text[])
+GROUP BY schematic_id
+`
+
+type BatchGetDownloadCountsRow struct {
+	SchematicID   string `json:"schematic_id"`
+	DownloadCount int32  `json:"download_count"`
+}
+
+func (q *Queries) BatchGetDownloadCounts(ctx context.Context, dollar_1 []string) ([]BatchGetDownloadCountsRow, error) {
+	rows, err := q.db.Query(ctx, batchGetDownloadCounts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BatchGetDownloadCountsRow{}
+	for rows.Next() {
+		var i BatchGetDownloadCountsRow
+		if err := rows.Scan(&i.SchematicID, &i.DownloadCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const batchGetRatings = `-- name: BatchGetRatings :many
+SELECT schematic_id, COALESCE(AVG(rating), 0)::REAL AS avg_rating, COUNT(*)::INTEGER AS rating_count
+FROM schematic_ratings
+WHERE schematic_id = ANY($1::text[])
+GROUP BY schematic_id
+`
+
+type BatchGetRatingsRow struct {
+	SchematicID string  `json:"schematic_id"`
+	AvgRating   float32 `json:"avg_rating"`
+	RatingCount int32   `json:"rating_count"`
+}
+
+func (q *Queries) BatchGetRatings(ctx context.Context, dollar_1 []string) ([]BatchGetRatingsRow, error) {
+	rows, err := q.db.Query(ctx, batchGetRatings, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BatchGetRatingsRow{}
+	for rows.Next() {
+		var i BatchGetRatingsRow
+		if err := rows.Scan(&i.SchematicID, &i.AvgRating, &i.RatingCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const batchGetViewCounts = `-- name: BatchGetViewCounts :many
+SELECT schematic_id, COALESCE(count, 0)::INTEGER AS view_count
+FROM schematic_views
+WHERE schematic_id = ANY($1::text[]) AND period = 'total'
+`
+
+type BatchGetViewCountsRow struct {
+	SchematicID string `json:"schematic_id"`
+	ViewCount   int32  `json:"view_count"`
+}
+
+func (q *Queries) BatchGetViewCounts(ctx context.Context, dollar_1 []string) ([]BatchGetViewCountsRow, error) {
+	rows, err := q.db.Query(ctx, batchGetViewCounts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BatchGetViewCountsRow{}
+	for rows.Next() {
+		var i BatchGetViewCountsRow
+		if err := rows.Scan(&i.SchematicID, &i.ViewCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const fetchRatingCountBySchematic = `-- name: FetchRatingCountBySchematic :many
 SELECT schematic_id AS id, COUNT(rating)::REAL AS v
 FROM schematic_ratings

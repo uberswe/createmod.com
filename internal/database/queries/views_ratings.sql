@@ -76,3 +76,20 @@ GROUP BY schematic_id;
 SELECT schematic_id AS id, COUNT(*)::REAL AS v
 FROM schematic_downloads
 GROUP BY schematic_id;
+
+-- name: BatchGetViewCounts :many
+SELECT schematic_id, COALESCE(count, 0)::INTEGER AS view_count
+FROM schematic_views
+WHERE schematic_id = ANY($1::text[]) AND period = 'total';
+
+-- name: BatchGetDownloadCounts :many
+SELECT schematic_id, COUNT(*)::INTEGER AS download_count
+FROM schematic_downloads
+WHERE schematic_id = ANY($1::text[])
+GROUP BY schematic_id;
+
+-- name: BatchGetRatings :many
+SELECT schematic_id, COALESCE(AVG(rating), 0)::REAL AS avg_rating, COUNT(*)::INTEGER AS rating_count
+FROM schematic_ratings
+WHERE schematic_id = ANY($1::text[])
+GROUP BY schematic_id;

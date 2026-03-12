@@ -295,6 +295,9 @@ type Schematic struct {
 	Created            time.Time          `json:"created"`
 	Updated            time.Time          `json:"updated"`
 	ExternalUrl        string             `json:"external_url"`
+	TrendingScore      float32            `json:"trending_score"`
+	AvgRating          float32            `json:"avg_rating"`
+	RatingCount        int32              `json:"rating_count"`
 }
 
 type SchematicCategory struct {

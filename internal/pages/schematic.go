@@ -151,7 +151,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		d.Mods = d.Schematic.Mods
 
 		// Build enriched mod info list for display
-		d.ModInfoList = buildModInfoListFromStore(appStore, d.Mods)
+		d.ModInfoList = buildModInfoListFromStore(appStore, d.Mods, cacheService)
 
 		// Construct Bloxelizer URL (only for free schematics with a file)
 		if s.SchematicFile != "" && !d.Schematic.Paid {
@@ -361,16 +361,22 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 	// --- Minecraft version ---
 	minecraftVersion := ""
 	if s.MinecraftVersionID != nil && *s.MinecraftVersionID != "" {
-		if gv, err := appStore.VersionLookup.GetMinecraftVersionByID(ctx, *s.MinecraftVersionID); err == nil && gv != nil {
+		if cached, ok := cacheService.GetString(cache.MinecraftVersionKey(*s.MinecraftVersionID)); ok {
+			minecraftVersion = cached
+		} else if gv, err := appStore.VersionLookup.GetMinecraftVersionByID(ctx, *s.MinecraftVersionID); err == nil && gv != nil {
 			minecraftVersion = gv.Version
+			cacheService.SetWithTTL(cache.MinecraftVersionKey(*s.MinecraftVersionID), gv.Version, 24*time.Hour)
 		}
 	}
 
 	// --- Create mod version ---
 	createmodVersion := ""
 	if s.CreatemodVersionID != nil && *s.CreatemodVersionID != "" {
-		if gv, err := appStore.VersionLookup.GetCreatemodVersionByID(ctx, *s.CreatemodVersionID); err == nil && gv != nil {
+		if cached, ok := cacheService.GetString(cache.CreatemodVersionKey(*s.CreatemodVersionID)); ok {
+			createmodVersion = cached
+		} else if gv, err := appStore.VersionLookup.GetCreatemodVersionByID(ctx, *s.CreatemodVersionID); err == nil && gv != nil {
 			createmodVersion = gv.Version
+			cacheService.SetWithTTL(cache.CreatemodVersionKey(*s.CreatemodVersionID), gv.Version, 24*time.Hour)
 		}
 	}
 
@@ -452,19 +458,207 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 }
 
 // MapStoreSchematics converts a slice of store.Schematic to []models.Schematic,
-// using the cache where possible.
+// using the cache where possible and batch DB queries for uncached schematics.
 func MapStoreSchematics(appStore *store.Store, schematics []store.Schematic, cacheService *cache.Service) []models.Schematic {
-	var result []models.Schematic
+	if len(schematics) == 0 {
+		return nil
+	}
+	ctx := stdctx.Background()
+	result := make([]models.Schematic, len(schematics))
+
+	// Partition into cached vs uncached
+	var uncachedIDs []string
+	uncachedIdx := make(map[string][]int) // schematic ID -> indices in result
 	for i := range schematics {
 		sk := cache.SchematicKey(schematics[i].ID)
-		schematic, found := cacheService.GetSchematic(sk)
-		if !found {
-			schematic = MapStoreSchematicToModel(appStore, schematics[i], cacheService)
-			cacheService.SetSchematic(sk, schematic)
+		if schematic, found := cacheService.GetSchematic(sk); found {
+			result[i] = schematic
+		} else {
+			uncachedIDs = append(uncachedIDs, schematics[i].ID)
+			uncachedIdx[schematics[i].ID] = append(uncachedIdx[schematics[i].ID], i)
 		}
-		result = append(result, schematic)
 	}
+
+	if len(uncachedIDs) == 0 {
+		return result
+	}
+
+	// Batch-fetch enrichment data for all uncached schematics
+	viewCounts, _ := appStore.ViewRatings.BatchGetViewCounts(ctx, uncachedIDs)
+	downloadCounts, _ := appStore.ViewRatings.BatchGetDownloadCounts(ctx, uncachedIDs)
+	ratings, _ := appStore.ViewRatings.BatchGetRatings(ctx, uncachedIDs)
+	batchCategories, _ := appStore.Schematics.BatchGetCategoriesForSchematics(ctx, uncachedIDs)
+	batchTags, _ := appStore.Schematics.BatchGetTagsForSchematics(ctx, uncachedIDs)
+
+	// Build each uncached schematic using batch data
+	for i := range schematics {
+		if _, ok := uncachedIdx[schematics[i].ID]; !ok {
+			continue // already cached
+		}
+		s := schematics[i]
+		schematic := mapSchematicFromBatch(appStore, s, cacheService,
+			viewCounts, downloadCounts, ratings, batchCategories, batchTags)
+		sk := cache.SchematicKey(s.ID)
+		cacheService.SetSchematic(sk, schematic)
+		result[i] = schematic
+	}
+
 	return result
+}
+
+// mapSchematicFromBatch builds a models.Schematic using pre-fetched batch data
+// instead of per-schematic DB calls for views, downloads, ratings, categories, and tags.
+func mapSchematicFromBatch(
+	appStore *store.Store,
+	s store.Schematic,
+	cacheService *cache.Service,
+	viewCounts map[string]int,
+	downloadCounts map[string]int,
+	ratings map[string]*store.SchematicRating,
+	batchCategories map[string][]store.SchematicCategoryInfo,
+	batchTags map[string][]store.SchematicTagInfo,
+) models.Schematic {
+	ctx := stdctx.Background()
+
+	// --- Views (from batch) ---
+	views := viewCounts[s.ID]
+	cacheService.SetInt(cache.ViewKey(s.ID), views)
+
+	// --- Downloads (from batch) ---
+	downloads := downloadCounts[s.ID]
+	cacheService.SetInt(cache.DownloadKey(s.ID), downloads)
+
+	// --- Rating (from batch) ---
+	var rating float64
+	var ratingCount int
+	if sr := ratings[s.ID]; sr != nil && sr.RatingCount > 0 {
+		rating = sr.AvgRating
+		ratingCount = sr.RatingCount
+	}
+	cacheService.SetFloat(cache.RatingKey(s.ID), rating)
+	cacheService.SetInt(cache.RatingCountKey(s.ID), ratingCount)
+
+	// --- Author ---
+	author := findUserFromStore(appStore, s.AuthorID)
+
+	// --- Categories (from batch) ---
+	var categories []models.SchematicCategory
+	if catInfos, ok := batchCategories[s.ID]; ok {
+		for _, c := range catInfos {
+			categories = append(categories, models.SchematicCategory{
+				ID:   c.ID,
+				Key:  c.Key,
+				Name: c.Name,
+			})
+		}
+	}
+
+	// --- Tags (from batch) ---
+	var tags []models.SchematicTag
+	if tagInfos, ok := batchTags[s.ID]; ok {
+		for _, t := range tagInfos {
+			tags = append(tags, models.SchematicTag{
+				ID:   t.ID,
+				Key:  t.Key,
+				Name: t.Name,
+			})
+		}
+	}
+
+	// --- Minecraft version ---
+	minecraftVersion := ""
+	if s.MinecraftVersionID != nil && *s.MinecraftVersionID != "" {
+		if cached, ok := cacheService.GetString(cache.MinecraftVersionKey(*s.MinecraftVersionID)); ok {
+			minecraftVersion = cached
+		} else if gv, err := appStore.VersionLookup.GetMinecraftVersionByID(ctx, *s.MinecraftVersionID); err == nil && gv != nil {
+			minecraftVersion = gv.Version
+			cacheService.SetWithTTL(cache.MinecraftVersionKey(*s.MinecraftVersionID), gv.Version, 24*time.Hour)
+		}
+	}
+
+	// --- Create mod version ---
+	createmodVersion := ""
+	if s.CreatemodVersionID != nil && *s.CreatemodVersionID != "" {
+		if cached, ok := cacheService.GetString(cache.CreatemodVersionKey(*s.CreatemodVersionID)); ok {
+			createmodVersion = cached
+		} else if gv, err := appStore.VersionLookup.GetCreatemodVersionByID(ctx, *s.CreatemodVersionID); err == nil && gv != nil {
+			createmodVersion = gv.Version
+			cacheService.SetWithTTL(cache.CreatemodVersionKey(*s.CreatemodVersionID), gv.Version, 24*time.Hour)
+		}
+	}
+
+	// --- Content sanitization ---
+	sanitizer := htmlsanitizer.NewHTMLSanitizer()
+	sanitizedHTML, err := sanitizer.SanitizeString(strings.ReplaceAll(s.Content, "\n", "<br/>"))
+	if err != nil {
+		sanitizedHTML = template.HTMLEscapeString(strings.ReplaceAll(s.Content, "\n", "<br/>"))
+	}
+
+	// --- Postdate formatting ---
+	postdate := s.Created
+	if s.Postdate != nil {
+		postdate = *s.Postdate
+	}
+
+	// --- Parse mods ---
+	var mods []string
+	if s.Mods != nil {
+		_ = json.Unmarshal(s.Mods, &mods)
+	}
+
+	// --- Schematic file URL ---
+	schematicFile := ""
+	if s.SchematicFile != "" {
+		schematicFile = fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(s.SchematicFile))
+	}
+
+	// --- Category ID (first) ---
+	categoryID := ""
+	if len(categories) > 0 {
+		categoryID = categories[0].ID
+	}
+
+	return models.Schematic{
+		ID:                   s.ID,
+		Created:              s.Created,
+		CreatedFormatted:     postdate.Format(time.DateTime),
+		CreatedHumanReadable: timediff.TimeDiff(postdate),
+		Author:               author,
+		Content:              s.Content,
+		HTMLContent:          template.HTML(sanitizedHTML),
+		Excerpt:              s.Excerpt,
+		FeaturedImage:        s.FeaturedImage,
+		Gallery:              s.Gallery,
+		HasGallery:           len(s.Gallery) > 0,
+		Title:                s.Title,
+		Name:                 s.Name,
+		Video:                s.Video,
+		HasDependencies:      s.HasDependencies,
+		Dependencies:         s.Dependencies,
+		HTMLDependencies:     template.HTML(strings.ReplaceAll(template.HTMLEscapeString(s.Dependencies), "\n", "<br/>")),
+		Categories:           categories,
+		CategoryId:           categoryID,
+		Tags:                 tags,
+		HasTags:              len(tags) > 0,
+		CreatemodVersion:     createmodVersion,
+		MinecraftVersion:     minecraftVersion,
+		Views:                views,
+		Downloads:            downloads,
+		Rating:               fmt.Sprintf("%.1f", rating),
+		RatingCount:          ratingCount,
+		HasRating:            rating > 0,
+		SchematicFile:        schematicFile,
+		AIDescription:        s.AIDescription,
+		Paid:                 s.Paid,
+		Featured:             s.Featured,
+		Materials:            string(s.Materials),
+		ExternalURL:          s.ExternalURL,
+		BlockCount:           s.BlockCount,
+		DimX:                 s.DimX,
+		DimY:                 s.DimY,
+		DimZ:                 s.DimZ,
+		Mods:                 mods,
+	}
 }
 
 // findAuthorSchematicsFromStore returns schematics by the same author,
@@ -634,70 +828,103 @@ func countSchematicViewStore(appStore *store.Store, schematicID string, discordS
 		return
 	}
 
-	// Discord notification at 50 total views
-	if totalViews == 50 && discordService != nil {
-		s, sErr := appStore.Schematics.GetByID(ctx, schematicID)
-		if sErr == nil && s != nil && s.Moderated {
-			go discordService.PostWithUserWebhooks(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", s.Name), appStore.Webhooks, webhookSecret)
-			// Ping feed services so RSS subscribers get notified (production only)
-			if os.Getenv("DEV") != "true" {
-				PingFeedServicesAsync()
+	// Discord notification + achievement awards at milestone view counts
+	// These are rare events (exact counts 50/100/1000/10000), so we run them
+	// in a background goroutine to keep them off the request hot path.
+	if totalViews == 50 || totalViews == 100 || totalViews == 1000 || totalViews == 10000 {
+		go func() {
+			bgCtx := stdctx.Background()
+
+			// Discord notification at 50 total views
+			if totalViews == 50 && discordService != nil {
+				s, sErr := appStore.Schematics.GetByID(bgCtx, schematicID)
+				if sErr == nil && s != nil && s.Moderated {
+					discordService.PostWithUserWebhooks(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", s.Name), appStore.Webhooks, webhookSecret)
+					// Ping feed services so RSS subscribers get notified (production only)
+					if os.Getenv("DEV") != "true" {
+						PingFeedServicesAsync()
+					}
+				}
 			}
-		}
-	}
 
-	// Award view-based achievements at thresholds
-	s, err := appStore.Schematics.GetByID(ctx, schematicID)
-	if err != nil || s == nil || !s.Moderated {
-		return
-	}
-	authorID := s.AuthorID
-	if authorID == "" {
-		return
-	}
+			// Award view-based achievements at thresholds
+			s, err := appStore.Schematics.GetByID(bgCtx, schematicID)
+			if err != nil || s == nil || !s.Moderated {
+				return
+			}
+			authorID := s.AuthorID
+			if authorID == "" {
+				return
+			}
 
-	award := func(key, title, desc, icon string) {
-		ach, err := appStore.Achievements.GetByKey(ctx, key)
-		if err != nil || ach == nil {
-			return
-		}
-		has, err := appStore.Achievements.HasAchievement(ctx, authorID, ach.ID)
-		if err != nil || has {
-			return
-		}
-		_ = appStore.Achievements.Award(ctx, authorID, ach.ID)
-	}
+			award := func(key string) {
+				ach, err := appStore.Achievements.GetByKey(bgCtx, key)
+				if err != nil || ach == nil {
+					return
+				}
+				has, err := appStore.Achievements.HasAchievement(bgCtx, authorID, ach.ID)
+				if err != nil || has {
+					return
+				}
+				_ = appStore.Achievements.Award(bgCtx, authorID, ach.ID)
+			}
 
-	switch totalViews {
-	case 100:
-		award("views_100", "100 Views", "One of your schematics reached 100 total views", "eye")
-		_ = appStore.Users.UpdateUserPoints(ctx, authorID, 5)
-	case 1000:
-		award("views_1000", "1,000 Views", "One of your schematics reached 1,000 total views", "eye")
-		_ = appStore.Users.UpdateUserPoints(ctx, authorID, 25)
-	case 10000:
-		award("views_10000", "10,000 Views", "One of your schematics reached 10,000 total views", "eye")
-		_ = appStore.Users.UpdateUserPoints(ctx, authorID, 100)
+			switch totalViews {
+			case 100:
+				award("views_100")
+				_ = appStore.Users.UpdateUserPoints(bgCtx, authorID, 5)
+			case 1000:
+				award("views_1000")
+				_ = appStore.Users.UpdateUserPoints(bgCtx, authorID, 25)
+			case 10000:
+				award("views_10000")
+				_ = appStore.Users.UpdateUserPoints(bgCtx, authorID, 100)
+			}
+		}()
 	}
 }
 
 // buildModInfoListFromStore builds an enriched list of mod display info
-// from namespaces using the store.
-func buildModInfoListFromStore(appStore *store.Store, mods []string) []ModInfo {
+// from namespaces using the store, with in-memory cache for metadata.
+func buildModInfoListFromStore(appStore *store.Store, mods []string, cacheService ...*cache.Service) []ModInfo {
 	ctx := stdctx.Background()
 	caser := cases.Title(language.English)
 	list := make([]ModInfo, 0, len(mods))
+
+	var cs *cache.Service
+	if len(cacheService) > 0 {
+		cs = cacheService[0]
+	}
+
 	for _, ns := range mods {
 		info := ModInfo{
 			Namespace: ns,
 			Name:      caser.String(strings.ReplaceAll(ns, "_", " ")),
 		}
+
+		// Try cache first
+		if cs != nil {
+			if cached, ok := cs.Get(cache.ModMetadataKey(ns)); ok {
+				if meta, ok := cached.(*store.ModMetadata); ok {
+					if meta.DisplayName != "" {
+						info.Name = meta.DisplayName
+					}
+					info.IconURL = meta.IconURL
+					list = append(list, info)
+					continue
+				}
+			}
+		}
+
 		meta, err := appStore.ModMetadata.GetByNamespace(ctx, ns)
 		if err == nil && meta != nil {
 			if meta.DisplayName != "" {
 				info.Name = meta.DisplayName
 			}
 			info.IconURL = meta.IconURL
+			if cs != nil {
+				cs.SetWithTTL(cache.ModMetadataKey(ns), meta, 1*time.Hour)
+			}
 		}
 		list = append(list, info)
 	}
