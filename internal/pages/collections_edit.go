@@ -314,7 +314,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 				if emailBanner != "" {
 					imageURL = "https://createmod.com" + emailBanner
 				}
-				body := mailer.SchematicEmailHTML(emailTitle, imageURL, collectionURL, "A new collection has been published.")
+				body := mailer.EmailHTML(emailTitle, imageURL, collectionURL, "View Collection", "A new collection has been published.")
 				if err := mailService.Send(&mailer.Message{From: from, To: to, Subject: subject, HTML: body}); err != nil {
 					slog.Error("failed to send collection publish email", "error", err)
 				}

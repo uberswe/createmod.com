@@ -46,11 +46,12 @@ func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) fun
 		if len(to) > 0 {
 			from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
 			subject := fmt.Sprintf("New Report: %s %s", targetType, targetID)
-			body := fmt.Sprintf("<p>Target: %s (%s)</p><p>Reason: %s</p>", targetID, targetType, reason)
+			bodyText := fmt.Sprintf("Target: %s (%s)\nReason: %s", targetID, targetType, reason)
 			if reporterID != "" {
-				body += fmt.Sprintf("<p>Reporter: %s</p>", reporterID)
+				bodyText += fmt.Sprintf("\nReporter: %s", reporterID)
 			}
-			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
+			htmlBody := mailer.EmailHTML(subject, "", "", "", bodyText)
+			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: htmlBody}
 			if err := mailService.Send(msg); err != nil {
 				slog.Error("failed to send report email", "error", err)
 			}
