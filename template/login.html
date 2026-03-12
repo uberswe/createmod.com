@@ -1,5 +1,5 @@
 {{ template "head.html" . }}
-<div class="page page-center">
+<main class="page page-center">
     <div class="container container-tight py-4">
         <div class="text-center mb-4">
             <a href="/" class="navbar-brand navbar-brand-autodark">
@@ -53,9 +53,9 @@
             {{ T .Language "Don't have account yet?" }} <a href="/register" tabindex="-1">{{ T .Language "Sign up" }}</a>
         </div>
         <div class="text-center text-secondary mt-3">
-            {{ T .Language "Or go back to" }} <a href="/" tabindex="-1">Createmod.com</a>
+            {{ T .Language "Or go back to" }} <a href="/" tabindex="-1">CreateMod.com</a>
         </div>
     </div>
-</div>
+</main>
 {{template "footer.html" .}}
 {{template "foot.html" .}}

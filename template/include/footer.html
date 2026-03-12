@@ -8,7 +8,7 @@
                     <a href="{{ LangURL .Language "/" }}" class="footer-brand">
                         <img src="/assets/x/logo.png" alt="CreateMod.com" width="32" height="32">
                     </a>
-                    <p class="footer-tagline">The Create Mod Schematics Repository. Download and share community-built schematics for Minecraft.</p>
+                    <p class="footer-tagline">{{ T .Language "The Create Mod Schematics Repository. Download and share community-built schematics for Minecraft." }}</p>
                     <div class="footer-social">
                         <a href="https://discord.gg/NQJuhb6stv" target="_blank" rel="noopener" aria-label="Discord" class="footer-social-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-1 2.5"/><path d="M8.5 17c0 1 -1.356 3 -1.832 3c-1.429 0 -2.698 -1.667 -3.333 -3c-.635 -1.667 -.476 -5.833 1.428 -11.5c1.388 -1.015 2.782 -1.34 4.237 -1.5l1 2.5"/><path d="M7 16.5c3.5 1 6.5 1 10 0"/><path d="M7 7.5c3.5 -1 6.5 -1 10 0"/></svg>
@@ -57,8 +57,8 @@
                     <h6 class="footer-heading">{{ T .Language "Developers" }}</h6>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/api" }}">{{ T .Language "API Docs" }}</a></li>
-                        <li><a href="https://github.com/uberswe/createmod" target="_blank" rel="noopener">Source Code</a></li>
-                        <li><a href="https://github.com/uberswe/createmod/issues" target="_blank" rel="noopener">Report a Bug</a></li>
+                        <li><a href="https://github.com/uberswe/createmod" target="_blank" rel="noopener">{{ T .Language "Source Code" }}</a></li>
+                        <li><a href="https://github.com/uberswe/createmod/issues" target="_blank" rel="noopener">{{ T .Language "Report a Bug" }}</a></li>
                     </ul>
                 </div>
             </div>
@@ -66,12 +66,12 @@
         <!-- Bottom bar -->
         <div class="footer-bottom">
             <div class="footer-bottom-left">
-                <span>Copyright &copy; 2025 <a href="https://createmod.com">CreateMod.com</a>. All rights reserved.</span>
+                <span>{{ T .Language "Copyright" }} &copy; 2025 <a href="https://createmod.com">CreateMod.com</a>. {{ T .Language "All rights reserved" }}.</span>
             </div>
             <div class="footer-bottom-right">
-                <span>Not approved by or associated with Mojang or Microsoft.</span>
-                <span>Not associated with the Create mod dev team.</span>
-                <span>All content is user-submitted.</span>
+                <span>{{ T .Language "Not approved by or associated with Mojang or Microsoft." }}</span>
+                <span>{{ T .Language "Not associated with the Create mod dev team." }}</span>
+                <span>{{ T .Language "All content is user-submitted." }}</span>
             </div>
         </div>
     </div>

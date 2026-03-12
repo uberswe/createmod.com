@@ -15,7 +15,7 @@ func Test_Download_Interstitial_Template_A11y(t *testing.T) {
 	}
 	s := string(b)
 	must := []string{
-		"role=\"main\"",
+		"<main ",
 		"id=\"countdown\" aria-live=\"polite\"",
 	}
 	for _, m := range must {
@@ -33,7 +33,7 @@ func Test_External_Interstitial_Template_A11y(t *testing.T) {
 	}
 	s := string(b)
 	must := []string{
-		"role=\"main\"",
+		"<main ",
 		"id=\"ext-countdown\" aria-live=\"polite\"",
 	}
 	for _, m := range must {

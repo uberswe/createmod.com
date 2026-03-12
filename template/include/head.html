@@ -10,6 +10,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>CreateMod.com - {{ .Title }}</title>
 
+    {{ if .Description }}<meta name="description" content="{{ .Description }}">{{ end }}
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://createmod.com{{ LangURL .Language .Slug }}">
     <meta property="og:title" content="{{ .Title }} - CreateMod.com">

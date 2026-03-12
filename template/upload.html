@@ -3,7 +3,7 @@
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
         {{template "header.html" .}}
-        <div class="page-body">
+        <main class="page-body">
             <div class="container-wide">
 
                 <!-- Progress Steps -->
@@ -159,7 +159,7 @@
                                 <div class="card-body text-center">
                                     <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
-                                        View in 3D on Bloxelizer
+                                        {{ T .Language "View in 3D on Bloxelizer" }}
                                     </a>
                                 </div>
                             </div>
@@ -225,7 +225,7 @@
                             <div class="card mb-3" id="materials-card" style="display:none;">
                                 <div class="card-header d-flex align-items-center">
                                     <h3 class="card-title mb-0">{{ T .Language "Materials" }}</h3>
-                                    <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="Copy material list as Markdown">
+                                    <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="{{ T .Language "Copy material list as Markdown" }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                         <span class="copy-text">{{ T .Language "Copy list" }}</span>
@@ -234,7 +234,7 @@
                                 <div class="card-body p-0">
                                     <div id="materials-list" class="list-group list-group-flush"></div>
                                     <div class="p-3 border-top">
-                                        <small class="text-muted">Block data from <a href="https://blocksitems.com" target="_blank" rel="noopener">blocksitems.com</a></small>
+                                        <small class="text-muted">{{ T .Language "Block data from" }} <a href="https://blocksitems.com" target="_blank" rel="noopener">blocksitems.com</a></small>
                                     </div>
                                 </div>
                             </div>
@@ -244,7 +244,7 @@
                 </div>
 
             </div>
-        </div>
+        </main>
         {{template "footer.html" .}}
     </div>
 </div>

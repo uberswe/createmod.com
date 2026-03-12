@@ -3,7 +3,7 @@
   {{template "sidebar.html" .}}
   <div class="page-wrapper">
     {{template "header.html" .}}
-    <div class="page-body">
+    <main class="page-body">
       <div class="container-wide">
         <div class="mb-3">
           <div class="row align-items-center">
@@ -78,7 +78,7 @@
         <div class="alert alert-secondary mt-3">{{ T .Language "No schematics in this collection yet." }}</div>
         {{ end }}
       </div>
-    </div>
+    </main>
     {{template "footer.html" .}}
   </div>
 </div>

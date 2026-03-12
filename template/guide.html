@@ -3,37 +3,37 @@
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
         {{template "header.html" .}}
-        <div class="page-body">
+        <main class="page-body">
             <div class="container-wide">
                 <div class="row justify-content-center">
                     <div class="col-lg-10 col-xl-9">
                         <div class="card card-lg">
                             <div class="card-body markdown">
-                                <h2>How To Download A Schematic</h2>
-                                <p>Find a schematic that you want to download</p>
-                                <p>Click the blue download button</p>
-                                <p>The .nbt file will now be in your downloads folder</p>
+                                <h2>{{ T .Language "How To Download A Schematic" }}</h2>
+                                <p>{{ T .Language "Find a schematic that you want to download" }}</p>
+                                <p>{{ T .Language "Click the blue download button" }}</p>
+                                <p>{{ T .Language "The .nbt file will now be in your downloads folder" }}</p>
                                 <p>Place the file in C:\\Users\<b>{ Your User }</b>\AppDataRoaming\<b>{ Minecraft Launcher }</b>\instances\<b>{ Instance Name }</b>\schematics [NOTE: Bolded words depend on your device settings and names.]</p>
-                                <p>Now, in-game place a schematic table, place an empty schematic in the left slot and select the schematic you want to imprint onto it.</p>
-                                <p>Have Fun!</p>
-                                <h2>How To Format A Schematic</h2>
+                                <p>{{ T .Language "Now, in-game place a schematic table, place an empty schematic in the left slot and select the schematic you want to imprint onto it." }}</p>
+                                <p>{{ T .Language "Have Fun!" }}</p>
+                                <h2>{{ T .Language "How To Format A Schematic" }}</h2>
 
-                                <p>Choose a proper name for your schematic which correctly portrays it.</p>
-                                <p>Accurately fill in the initial drop down choices.</p>
-                                <p>Upload a 'featured image' (the thumbnail).</p>
-                                <p>Upload gallery images</p>
-                                <p>Write a unique and fitting description for your schematic.</p>
-                                <p>Tag your item properly, do not use inaccurate tags, do not spam tags.</p>
-                                <p>If you are reuploading a schematic, credit the original creator.</p>
-                                <p>If your schematic has dependencies (other mods are required for it to function), check the box and fill out the next field.</p>
-                                <p>Reminder, posts must be in English.</p>
+                                <p>{{ T .Language "Choose a proper name for your schematic which correctly portrays it." }}</p>
+                                <p>{{ T .Language "Accurately fill in the initial drop down choices." }}</p>
+                                <p>{{ T .Language "Upload a 'featured image' (the thumbnail)." }}</p>
+                                <p>{{ T .Language "Upload gallery images" }}</p>
+                                <p>{{ T .Language "Write a unique and fitting description for your schematic." }}</p>
+                                <p>{{ T .Language "Tag your item properly, do not use inaccurate tags, do not spam tags." }}</p>
+                                <p>{{ T .Language "If you are reuploading a schematic, credit the original creator." }}</p>
+                                <p>{{ T .Language "If your schematic has dependencies (other mods are required for it to function), check the box and fill out the next field." }}</p>
+                                <p>{{ T .Language "Reminder, posts must be in English." }}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
             {{template "footer.html" .}}
         </div>
     </div>
