@@ -3,13 +3,13 @@
   {{template "sidebar.html" .}}
   <div class="page-wrapper">
     {{template "header.html" .}}
-    <div class="page-body">
+    <main class="page-body">
       <div class="container-wide">
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="page-title">Admin: Mod Metadata</h2>
-              <div class="text-secondary">View and edit mod CurseForge/Modrinth URL mappings</div>
+              <h2 class="page-title">{{ T .Language "Admin: Mod Metadata" }}</h2>
+              <div class="text-secondary">{{ T .Language "View and edit mod CurseForge/Modrinth URL mappings" }}</div>
             </div>
           </div>
         </div>
@@ -19,13 +19,13 @@
             <table class="table card-table table-vcenter">
               <thead>
                 <tr>
-                  <th>Icon</th>
-                  <th>Namespace</th>
-                  <th>Display Name</th>
-                  <th>CurseForge URL</th>
-                  <th>Modrinth URL</th>
-                  <th>Manual</th>
-                  <th class="w-1">Actions</th>
+                  <th>{{ T .Language "Icon" }}</th>
+                  <th>{{ T .Language "Namespace" }}</th>
+                  <th>{{ T .Language "Display Name" }}</th>
+                  <th>{{ T .Language "CurseForge URL" }}</th>
+                  <th>{{ T .Language "Modrinth URL" }}</th>
+                  <th>{{ T .Language "Manual" }}</th>
+                  <th class="w-1">{{ T .Language "Actions" }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -56,18 +56,18 @@
                   </td>
                   <td>
                     {{if .ManuallySet}}
-                    <span class="badge bg-blue">Manual</span>
+                    <span class="badge bg-blue">{{ T $.Language "Manual" }}</span>
                     {{else}}
-                    <span class="badge bg-secondary">Auto</span>
+                    <span class="badge bg-secondary">{{ T $.Language "Auto" }}</span>
                     {{end}}
                   </td>
                   <td>
-                    <a href="/admin/mods/{{.Namespace}}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a href="/admin/mods/{{.Namespace}}" class="btn btn-sm btn-outline-primary">{{ T $.Language "Edit" }}</a>
                   </td>
                 </tr>
                 {{else}}
                 <tr>
-                  <td colspan="7" class="text-center text-secondary">No mod metadata found.</td>
+                  <td colspan="7" class="text-center text-secondary">{{ T .Language "No mod metadata found." }}</td>
                 </tr>
                 {{end}}
               </tbody>
@@ -75,7 +75,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
     {{template "footer.html" .}}
   </div>
 </div>

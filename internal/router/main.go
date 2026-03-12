@@ -207,7 +207,7 @@ func Register(p RegisterParams) chi.Router {
 	}))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("User-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\nDisallow: /*?theme=\nAllow: /\nSitemap: https://createmod.com/sitemaps/sitemap.xml"))
+		w.Write([]byte("# Site-specific rules (Cloudflare prepends its managed block above)\nUser-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\n\nSitemap: https://createmod.com/sitemaps/sitemap.xml\n"))
 	})
 	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {

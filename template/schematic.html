@@ -10,7 +10,7 @@
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
         {{template "header.html" .}}
-        <div class="page-body">
+        <main class="page-body">
             <div class="container-wide">
                 {{ if .PendingModeration }}
                 <div class="alert alert-warning mb-3" role="alert">
@@ -97,12 +97,12 @@
                                         <div style="position:relative;display:inline-block;">
                                             <label for="rating-default" class="visually-hidden">Rate this schematic</label>
                                             <select id="rating-default">
-                                                <option value="">Select a rating</option>
-                                                <option value="5">Excellent</option>
-                                                <option value="4" selected>Very Good</option>
-                                                <option value="3">Average</option>
-                                                <option value="2">Poor</option>
-                                                <option value="1">Terrible</option>
+                                                <option value="">{{ T .Language "Select a rating" }}</option>
+                                                <option value="5">{{ T .Language "Excellent" }}</option>
+                                                <option value="4" selected>{{ T .Language "Very Good" }}</option>
+                                                <option value="3">{{ T .Language "Average" }}</option>
+                                                <option value="2">{{ T .Language "Poor" }}</option>
+                                                <option value="1">{{ T .Language "Terrible" }}</option>
                                             </select>
                                             <span id="rating-feedback" style="display:none;position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:6px;white-space:nowrap;padding:4px 10px;border-radius:4px;font-size:.75rem;font-weight:500;background:var(--tblr-success);color:#fff;pointer-events:none;z-index:10;"></span>
                                         </div>
@@ -617,7 +617,7 @@
                 <div id="schematic-mobile" class="d-lg-none mt-3 text-center"></div>
 
             </div>
-        </div>
+        </main>
         <script>
         // Dynamic script loader for HTMX compatibility — external <script defer> tags
         // are not re-executed on HTMX boost navigation, so we load them programmatically.

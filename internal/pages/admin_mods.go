@@ -99,7 +99,7 @@ func AdminModEditHandler(registry *server.Registry, cacheService *cache.Service,
 
 		d := AdminModEditData{Mod: *meta}
 		d.Populate(e)
-		d.Title = "Edit Mod: " + namespace
+		d.Title = i18n.T(d.Language, "Edit Mod:") + " " + namespace
 		d.SubCategory = "Admin"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 

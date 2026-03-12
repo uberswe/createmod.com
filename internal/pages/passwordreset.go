@@ -158,7 +158,7 @@ func PasswordResetConfirmHandler(registry *server.Registry, appStore *store.Stor
 		token := e.Request.PathValue("token")
 		d := passwordResetConfirmData{Token: token}
 		d.Populate(e)
-		d.Title = "Set New Password"
+		d.Title = i18n.T(d.Language, "Set New Password")
 		d.Slug = "/reset-password/" + token
 		html, err := registry.LoadFiles(passwordResetConfirmTemplates...).Render(d)
 		if err != nil {
@@ -179,7 +179,7 @@ func PasswordResetConfirmPostHandler(registry *server.Registry, appStore *store.
 
 		d := passwordResetConfirmData{Token: token}
 		d.Populate(e)
-		d.Title = "Set New Password"
+		d.Title = i18n.T(d.Language, "Set New Password")
 		d.Slug = "/reset-password/" + token
 
 		if password == "" || len(password) < 8 {

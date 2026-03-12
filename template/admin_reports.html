@@ -3,29 +3,29 @@
   {{template "sidebar.html" .}}
   <div class="page-wrapper">
     {{template "header.html" .}}
-    <div class="page-body">
+    <main class="page-body">
       <div class="container-wide">
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="page-title">Admin: Reports</h2>
-              <div class="text-secondary">Manage user-submitted reports</div>
+              <h2 class="page-title">{{ T .Language "Admin: Reports" }}</h2>
+              <div class="text-secondary">{{ T .Language "Manage user-submitted reports" }}</div>
             </div>
           </div>
         </div>
         {{if not .IsAuthenticated}}
-          <div class="alert alert-danger">You must be logged in.</div>
+          <div class="alert alert-danger">{{ T .Language "You must be logged in." }}</div>
         {{end}}
         <div class="card">
           <div class="table-responsive">
             <table class="table card-table table-vcenter">
               <thead>
                 <tr>
-                  <th>Created</th>
-                  <th>Target</th>
-                  <th>Reason</th>
-                  <th>Reporter</th>
-                  <th class="text-end">Actions</th>
+                  <th>{{ T .Language "Created" }}</th>
+                  <th>{{ T .Language "Target" }}</th>
+                  <th>{{ T .Language "Reason" }}</th>
+                  <th>{{ T .Language "Reporter" }}</th>
+                  <th class="text-end">{{ T .Language "Actions" }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -47,20 +47,20 @@
                     {{else if .Reporter}}
                       <span class="text-secondary">{{.Reporter}}</span>
                     {{else}}
-                      <span class="text-secondary">anonymous</span>
+                      <span class="text-secondary">{{ T $.Language "anonymous" }}</span>
                     {{end}}
                   </td>
                   <td class="text-end text-nowrap">
                     <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#resolve-modal-{{.ID}}">
-                      Resolve
+                      {{ T $.Language "Resolve" }}
                     </button>
                     <form method="post" action="/admin/reports/{{.ID}}/ignore" class="d-inline">
                       <button type="submit" class="btn btn-sm btn-secondary" title="Dismiss all reports for this target">
-                        Ignore
+                        {{ T $.Language "Ignore" }}
                       </button>
                     </form>
                     <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal-{{.ID}}">
-                      Delete
+                      {{ T $.Language "Delete" }}
                     </button>
                   </td>
                 </tr>
@@ -71,12 +71,12 @@
                     <div class="modal-content">
                       <form method="post" action="/admin/reports/{{.ID}}/resolve">
                         <div class="modal-header">
-                          <h5 class="modal-title">Resolve Report</h5>
+                          <h5 class="modal-title">{{ T $.Language "Resolve Report" }}</h5>
                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                           <div class="mb-3">
-                            <label class="form-label">Target</label>
+                            <label class="form-label">{{ T $.Language "Target" }}</label>
                             <div>
                               <span class="badge bg-blue-lt">{{.TargetType}}</span>
                               {{if .TargetURL}}
@@ -87,25 +87,25 @@
                             </div>
                           </div>
                           <div class="mb-3">
-                            <label class="form-label">Reported reason</label>
+                            <label class="form-label">{{ T $.Language "Reported reason" }}</label>
                             <div class="text-secondary">{{.Reason}}</div>
                           </div>
                           <div class="mb-3">
-                            <label class="form-label" for="resolution_note_{{.ID}}">Resolution note (optional)</label>
-                            <textarea class="form-control" id="resolution_note_{{.ID}}" name="resolution_note" rows="3" placeholder="What action was taken..."></textarea>
+                            <label class="form-label" for="resolution_note_{{.ID}}">{{ T $.Language "Resolution note (optional)" }}</label>
+                            <textarea class="form-control" id="resolution_note_{{.ID}}" name="resolution_note" rows="3" placeholder="{{ T $.Language "What action was taken..." }}"></textarea>
                           </div>
                           {{if .Reporter}}
                           <div class="mb-0">
                             <label class="form-check form-switch">
                               <input class="form-check-input" type="checkbox" name="notify_reporter" value="true">
-                              <span class="form-check-label">Send resolution email to reporter{{if .ReporterName}} ({{.ReporterName}}){{end}}</span>
+                              <span class="form-check-label">{{ T $.Language "Send resolution email to reporter" }}{{if .ReporterName}} ({{.ReporterName}}){{end}}</span>
                             </label>
                           </div>
                           {{end}}
                         </div>
                         <div class="modal-footer">
-                          <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
-                          <button type="submit" class="btn btn-success">Resolve</button>
+                          <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
+                          <button type="submit" class="btn btn-success">{{ T $.Language "Resolve" }}</button>
                         </div>
                       </form>
                     </div>
@@ -117,15 +117,15 @@
                   <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                     <div class="modal-content">
                       <div class="modal-body">
-                        <div class="modal-title">Are you sure?</div>
+                        <div class="modal-title">{{ T $.Language "Are you sure?" }}</div>
                         <div class="text-secondary mt-2">
                           This will {{if eq .TargetType "schematic"}}soft-delete the schematic{{else if eq .TargetType "comment"}}permanently delete the comment{{else}}delete the reported item{{end}} and dismiss all reports for it.
                         </div>
                       </div>
                       <div class="modal-footer">
-                        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
                         <form method="post" action="/admin/reports/{{.ID}}/delete-target">
-                          <button type="submit" class="btn btn-danger">Yes, delete</button>
+                          <button type="submit" class="btn btn-danger">{{ T $.Language "Yes, delete" }}</button>
                         </form>
                       </div>
                     </div>
@@ -134,7 +134,7 @@
 
                 {{else}}
                 <tr>
-                  <td colspan="5" class="text-center text-secondary">No reports.</td>
+                  <td colspan="5" class="text-center text-secondary">{{ T .Language "No reports." }}</td>
                 </tr>
                 {{end}}
               </tbody>
@@ -142,7 +142,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
     {{template "footer.html" .}}
   </div>
 </div>

@@ -3,7 +3,7 @@
   {{template "sidebar.html" .}}
   <div class="page-wrapper">
     {{template "header.html" .}}
-    <div class="page-body" role="main">
+    <main class="page-body">
       <div class="container-wide">
         {{ if .NotFound }}
         <div class="mb-3">
@@ -93,7 +93,7 @@
         {{end}}
         {{ end }}
       </div>
-    </div>
+    </main>
     {{template "footer.html" .}}
   </div>
 </div>
