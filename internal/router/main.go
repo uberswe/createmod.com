@@ -360,7 +360,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/mods", Adapt(pages.ModsHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
 	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
 	// Collections
-	r.Get("/collections", Adapt(pages.CollectionsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/collections", Adapt(pages.CollectionsHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/collections/new", Adapt(pages.CollectionsNewHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/api/images/upload", Adapt(pages.ImageUploadHandler(p.StorageService)))
 	r.Post("/collections", Adapt(pages.CollectionsCreateHandler(registry, p.CacheService, p.AppStore, p.StorageService)))

@@ -4,6 +4,8 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/server"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"math"
 	"net/http"
@@ -14,7 +16,6 @@ import (
 	"time"
 
 	strip "github.com/grokify/html-strip-tags-go"
-	"createmod/internal/server"
 )
 
 var collectionsTemplates = append([]string{
@@ -59,7 +60,7 @@ func collectionTrendingScore(created time.Time, views float64) float64 {
 }
 
 // CollectionsHandler renders collections with two tabs: public (trending) and mine (user's own).
-func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		// Pagination params
 		page := 1
@@ -91,7 +92,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 			colls, err := appStore.Collections.ListByAuthor(ctx, authenticatedUserID(e))
 			if err == nil {
 				for _, c := range colls {
-					it := storeCollectionToItem(c, appStore)
+					it := storeCollectionToItem(c, appStore, storageSvc)
 					it.IsOwner = true
 					if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
 						continue
@@ -124,7 +125,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 					}
 					scoredItems := make([]scored, 0, len(colls))
 					for _, c := range colls {
-						it := storeCollectionToItem(c, appStore)
+						it := storeCollectionToItem(c, appStore, storageSvc)
 						s := collectionTrendingScore(c.Created, float64(it.Views))
 						scoredItems = append(scoredItems, scored{item: it, score: s})
 					}
@@ -153,7 +154,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 	}
 }
 
-func storeCollectionToItem(c store.Collection, appStore *store.Store) CollectionItem {
+func storeCollectionToItem(c store.Collection, appStore *store.Store, storageSvc *storage.Service) CollectionItem {
 	title := c.Title
 	if title == "" {
 		title = c.Name
@@ -171,6 +172,10 @@ func storeCollectionToItem(c store.Collection, appStore *store.Store) Collection
 		ids, err := appStore.Collections.GetSchematicIDs(context.Background(), c.ID)
 		if err == nil {
 			schematicCount = len(ids)
+		}
+		// Lazily generate collage for collections that have schematics but no image
+		if imageURL == "" && len(ids) > 0 && storageSvc != nil {
+			go generateCollectionCollage(storageSvc, appStore, c.ID)
 		}
 	}
 	return CollectionItem{
