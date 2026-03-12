@@ -14,6 +14,36 @@ import (
 	"createmod/internal/server"
 )
 
+// dailyDownloadLimit is the maximum number of schematic downloads per IP per day.
+const dailyDownloadLimit = 100
+
+// downloadRateLimitAllow checks whether the given IP has exceeded the daily download limit.
+// Returns (allowed, retryAfterSeconds).
+func downloadRateLimitAllow(cacheService *cache.Service, clientIP string) (bool, int) {
+	if clientIP == "" || cacheService == nil {
+		return true, 0
+	}
+	now := time.Now()
+	dayKey := "dldaily:" + clientIP + ":" + now.Format("20060102")
+	cur, _ := cacheService.GetInt(dayKey)
+	cur++
+	// TTL: time remaining until end of the current UTC day
+	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+	ttl := time.Until(endOfDay)
+	if ttl <= 0 {
+		ttl = time.Second
+	}
+	cacheService.SetWithTTL(dayKey, cur, ttl)
+	if cur > dailyDownloadLimit {
+		ra := int(ttl.Seconds())
+		if ra < 1 {
+			ra = 1
+		}
+		return false, ra
+	}
+	return true, 0
+}
+
 // DownloadHandler redirects to the schematic file and increments a download counter.
 // Requires a valid one-time token (?t=) issued by the interstitial page.
 func DownloadHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -22,6 +52,13 @@ func DownloadHandler(cacheService *cache.Service, appStore *store.Store) func(e 
 		if name == "" {
 			return e.String(http.StatusBadRequest, "missing name")
 		}
+
+		// Global per-IP daily download rate limit
+		if ok, retry := downloadRateLimitAllow(cacheService, e.RealIP()); !ok {
+			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+			return e.String(http.StatusTooManyRequests, "Download limit reached. Please try again tomorrow.")
+		}
+
 		// validate one-time token
 		token := e.Request.URL.Query().Get("t")
 		if token == "" {
