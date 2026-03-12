@@ -847,36 +847,52 @@ function copyMaterialsAsMarkdown() {
     }
 </script>
 <script>
-    (function initTinyMCE(retries) {
-        retries = retries || 0;
-        if (typeof tinyMCE === 'undefined') {
-            if (retries < 50) { setTimeout(function(){ initTinyMCE(retries + 1); }, 100); }
-            return;
+    (function() {
+        function initTinyMCEComment(retries) {
+            retries = retries || 0;
+            if (typeof tinyMCE === 'undefined') {
+                if (retries < 50) { setTimeout(function(){ initTinyMCEComment(retries + 1); }, 100); }
+                return;
+            }
+            var el = document.querySelector('#tinymce-comment');
+            if (!el) return;
+            // Dispose any existing instance before re-initializing
+            var existing = tinyMCE.get('tinymce-comment');
+            if (existing) { existing.remove(); }
+            var options = {
+                license_key: "gpl",
+                selector: '#tinymce-comment',
+                height: 300,
+                menubar: false,
+                statusbar: false,
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
+                    'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                ],
+                toolbar: 'undo redo | formatselect | ' +
+                    'bold italic | ' +
+                    'link | bullist numlist outdent indent | ' +
+                    'removeformat',
+                content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; backgroundColor = #353838; }'
+            };
+            if (localStorage.getItem("createmodTheme") === 'dark') {
+                options.skin = 'tinymce-5-dark';
+                options.content_css = 'dark';
+            }
+            tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+            tinyMCE.init(options);
         }
-        let options = {
-            license_key: "gpl",
-            selector: '#tinymce-comment',
-            height: 300,
-            menubar: false,
-            statusbar: false,
-            plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
-                'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-                'bold italic | ' +
-                'link | bullist numlist outdent indent | ' +
-                'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; backgroundColor = #353838; }'
+        // Register htmx:afterSettle listener once to reinitialize after HTMX boost navigation
+        if (!window._htmxTinyMCEReinit) {
+            window._htmxTinyMCEReinit = true;
+            document.addEventListener('htmx:afterSettle', function() {
+                initTinyMCEComment(0);
+            });
         }
-        if (localStorage.getItem("createmodTheme") === 'dark') {
-            options.skin = 'tinymce-5-dark';
-            options.content_css = 'dark';
-        }
-        tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
-        tinyMCE.init(options);
-    })()
+        // Initialize on first load
+        initTinyMCEComment(0);
+    })();
 </script>
 <script>
     (function initStarRating(retries) {
