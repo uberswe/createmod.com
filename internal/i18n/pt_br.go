@@ -138,6 +138,10 @@ var LangPtBR = map[string]string{
 	"Schematics":                                  "Esquematicos",
 	"No schematics in this collection yet.":       "Nenhum esquematico nesta colecao ainda.",
 	"Delete":                                      "Excluir",
+	"Report Collection":                           "Denunciar colecao",
+	"Total schematics":                            "Total de esquemas",
+	"Mods used":                                   "Mods utilizados",
+	"Stats":                                       "Estatisticas",
 
 	// ── Collections New ──
 	"Create a new collection of schematics":                               "Criar uma nova colecao de esquematicos",
@@ -294,7 +298,6 @@ var LangPtBR = map[string]string{
 	"Describe the schematics to blacklist and why": "Descreva os esquemas a bloquear e o motivo",
 	"Submit request":                           "Enviar solicitação",
 	"Usage":                                    "Uso",
-	"Total schematics":                         "Total de esquemáticos",
 	"Total views":                              "Total de visualizações",
 	"Total downloads":                          "Total de downloads",
 	"Points":                                   "Pontos",

@@ -138,6 +138,9 @@ var LangEN = map[string]string{
 	"Schematics":                                  "Schematics",
 	"No schematics in this collection yet.":       "No schematics in this collection yet.",
 	"Delete":                                      "Delete",
+	"Report Collection":                           "Report Collection",
+	"Mods used":                                   "Mods used",
+	"Stats":                                       "Stats",
 
 	// ── Collections New ──
 	"Create a new collection of schematics":          "Create a new collection of schematics",

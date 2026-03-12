@@ -6,6 +6,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -16,6 +17,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/mail"
 	"strings"
 
 	"createmod/internal/server"
@@ -137,7 +139,7 @@ func loadReorderSchematicsFromStore(appStore *store.Store, ids []string) []Reord
 
 // CollectionsUpdateHandler handles POST updates to a collection (author-only).
 // Supports action=save (default), action=publish (with validation + moderation), action=unpublish.
-func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Service, moderationService *moderation.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Service, moderationService *moderation.Service, appStore *store.Store, storageSvc *storage.Service, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -284,6 +286,41 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 		if err := appStore.Collections.Update(ctx, coll); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
+
+		// Regenerate collage on any save (content may have changed)
+		go generateCollectionCollage(storageSvc, appStore, coll.ID)
+
+		// Send admin email on publish
+		if action == "publish" && mailService != nil {
+			emailTitle := coll.Title
+			emailBanner := coll.BannerURL
+			if emailBanner == "" {
+				emailBanner = coll.CollageURL
+			}
+			collectionURL := "https://createmod.com/collections/"
+			if coll.Slug != "" {
+				collectionURL += coll.Slug
+			} else {
+				collectionURL += coll.ID
+			}
+			go func() {
+				to := adminRecipients(appStore, mailService)
+				if len(to) == 0 {
+					return
+				}
+				from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
+				subject := fmt.Sprintf("New Collection Published: %s", emailTitle)
+				imageURL := ""
+				if emailBanner != "" {
+					imageURL = "https://createmod.com" + emailBanner
+				}
+				body := mailer.SchematicEmailHTML(emailTitle, imageURL, collectionURL, "A new collection has been published.")
+				if err := mailService.Send(&mailer.Message{From: from, To: to, Subject: subject, HTML: body}); err != nil {
+					slog.Error("failed to send collection publish email", "error", err)
+				}
+			}()
+		}
+
 		dest := "/collections/" + slug
 		if action == "publish" || action == "unpublish" {
 			dest = "/collections/" + slug + "/edit"

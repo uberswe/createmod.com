@@ -180,6 +180,7 @@ func collectionFromDB(c db.Collection) store.Collection {
 		Slug:        c.Slug,
 		Description: c.Description,
 		BannerURL:   c.BannerUrl,
+		CollageURL:  c.CollageUrl,
 		Featured:    c.Featured,
 		Views:       int(c.Views),
 		Published:   c.Published,
@@ -1391,10 +1392,18 @@ func (cs *CollectionStoreImpl) Update(ctx context.Context, c *store.Collection) 
 		Title:       ptrStr(c.Title),
 		Description: ptrStr(c.Description),
 		BannerUrl:   ptrStr(c.BannerURL),
+		CollageUrl:  ptrStr(c.CollageURL),
 		Featured:    ptrBool(c.Featured),
 		Published:   ptrBool(c.Published),
 	})
 	return err
+}
+
+func (cs *CollectionStoreImpl) UpdateCollageURL(ctx context.Context, id, collageURL string) error {
+	return cs.q.UpdateCollectionCollageURL(ctx, db.UpdateCollectionCollageURLParams{
+		ID:         id,
+		CollageUrl: collageURL,
+	})
 }
 
 func (cs *CollectionStoreImpl) SoftDelete(ctx context.Context, id string) error {

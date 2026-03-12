@@ -52,6 +52,7 @@ type Collection struct {
 	Deleted     string    `json:"deleted"`
 	Created     time.Time `json:"created"`
 	Updated     time.Time `json:"updated"`
+	CollageUrl  string    `json:"collage_url"`
 }
 
 type CollectionTranslation struct {

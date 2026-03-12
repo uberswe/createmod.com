@@ -138,6 +138,10 @@ var LangPL = map[string]string{
 	"Schematics":                                  "Schematy",
 	"No schematics in this collection yet.":       "Brak schematów w tej kolekcji.",
 	"Delete":                                      "Usuń",
+	"Report Collection":                           "Zglos kolekcje",
+	"Total schematics":                            "Lacznie schematow",
+	"Mods used":                                   "Uzyte mody",
+	"Stats":                                       "Statystyki",
 
 	// ── Collections New ──
 	"Create a new collection of schematics":          "Utwórz nową kolekcję schematów",
@@ -294,7 +298,6 @@ var LangPL = map[string]string{
 	"Describe the schematics to blacklist and why": "Opisz schematy do zablokowania i powód",
 	"Submit request":                           "Wyślij prośbę",
 	"Usage":                                    "Statystyki",
-	"Total schematics":                         "Łącznie schematów",
 	"Total views":                              "Łącznie wyświetleń",
 	"Total downloads":                          "Łącznie pobrań",
 	"Points":                                   "Punkty",

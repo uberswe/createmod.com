@@ -200,6 +200,7 @@ type Querier interface {
 	SoftDeleteUser(ctx context.Context, id string) error
 	SumUserPoints(ctx context.Context, userID string) (int32, error)
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
+	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
 	UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error)
 	UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error)
 	UpdateSchematicDownloads(ctx context.Context, arg UpdateSchematicDownloadsParams) error

@@ -138,6 +138,10 @@ var LangZhHans = map[string]string{
 	"Schematics":                                  "蓝图",
 	"No schematics in this collection yet.":       "此合集中暂无蓝图。",
 	"Delete":                                      "删除",
+	"Report Collection":                           "举报合集",
+	"Total schematics":                            "蓝图总数",
+	"Mods used":                                   "使用的模组",
+	"Stats":                                       "统计",
 
 	// ── Collections New ──
 	"Create a new collection of schematics":                                                           "创建新的蓝图合集",
@@ -294,7 +298,6 @@ var LangZhHans = map[string]string{
 	"Describe the schematics to blacklist and why": "描述需要加入黑名单的蓝图及原因",
 	"Submit request":                           "提交请求",
 	"Usage":                                    "使用统计",
-	"Total schematics":                         "蓝图总数",
 	"Total views":                              "总浏览量",
 	"Total downloads":                          "总下载量",
 	"Points":                                   "积分",
