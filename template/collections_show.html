@@ -12,7 +12,7 @@
               <div class="text-secondary">
                 {{ if .Featured }}<span class="badge bg-yellow-lt me-1">{{ T .Language "Featured" }}</span>{{ end }}
                 {{ if not .Published }}<span class="badge bg-secondary me-1">{{ T .Language "Private" }}</span>{{ end }}
-                {{ if .AuthorName }}{{ T .Language "Created by" }} <a href="/author/{{ .AuthorName | ToLower }}">{{ .AuthorName }}</a> · {{ end }}{{ T .Language "Views" }}: {{ .Views }}
+                {{ if .AuthorName }}{{ T .Language "Created by" }} <a href="/author/{{ .AuthorName | ToLower }}">{{ .AuthorName }}</a>{{ end }}
               </div>
               {{ if .IsTranslated }}
               <div class="text-muted small mt-1">
@@ -30,6 +30,7 @@
             </form>
             {{ end }}
             <a class="btn btn-outline-secondary" href="/collections">{{ T .Language "Back to collections" }}</a>
+            <a href="#" class="btn btn-ghost-secondary btn-sm text-muted" data-bs-toggle="modal" data-bs-target="#reportModal">{{ T .Language "Report" }}</a>
           </div>
         </div>
 
@@ -46,37 +47,82 @@
         </div>
         {{ end }}
 
-        {{ if .BannerURL }}
-        <div class="row mb-3">
-          <div class="col-12">
-            <img src="{{ .BannerURL }}" alt="Collection banner" class="img-fluid rounded" />
-          </div>
-        </div>
-        {{ end }}
-        {{ if .DescriptionText }}
-        <div class="row mb-3">
-          <div class="col-12 col-md-10 col-lg-8">
-            <div class="card">
-              <div class="card-header"><h3 class="card-title">{{ T .Language "Description" }}</h3></div>
-              <div class="card-body">
-                {{ .DescriptionHTML }}
+        <div class="d-flex gap-3">
+          <div class="flex-grow-1 min-width-0">
+            {{ if .BannerURL }}
+            <div class="row mb-3">
+              <div class="col-12">
+                <img src="{{ .BannerURL }}" alt="Collection banner" class="img-fluid rounded" />
               </div>
             </div>
-          </div>
-        </div>
-        {{ end }}
+            {{ end }}
 
-        <!-- Schematics -->
-        {{ if .Schematics }}
-        <h3 class="mb-3">{{ T .Language "Schematics" }}</h3>
-        <div class="row g-3">
-          {{ range .Schematics }}
-          {{template "schematic_card_small.html" .}}
-          {{ end }}
-        </div>
-        {{ else }}
-        <div class="alert alert-secondary mt-3">{{ T .Language "No schematics in this collection yet." }}</div>
-        {{ end }}
+            <!-- Description + Stats side by side -->
+            <div class="row mb-3">
+              {{ if .DescriptionText }}
+              <div class="col-12 col-lg-8">
+                <div class="card h-100">
+                  <div class="card-header"><h3 class="card-title">{{ T .Language "Description" }}</h3></div>
+                  <div class="card-body">
+                    {{ .DescriptionHTML }}
+                  </div>
+                </div>
+              </div>
+              {{ end }}
+              <div class="{{ if .DescriptionText }}col-12 col-lg-4{{ else }}col-12 col-lg-6{{ end }}">
+                <div class="card h-100">
+                  <div class="card-header"><h3 class="card-title">{{ T .Language "Stats" }}</h3></div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <div class="text-secondary small">{{ T .Language "Total schematics" }}</div>
+                      <div class="h3 mb-0">{{ .SchematicCount }}</div>
+                    </div>
+                    <div class="mb-2">
+                      <div class="text-secondary small">{{ T .Language "Views" }}</div>
+                      <div class="h3 mb-0">{{ .Views }}</div>
+                    </div>
+                    {{ if .ModInfoList }}
+                    <div>
+                      <div class="text-secondary small mb-1">{{ T .Language "Mods used" }}</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        {{ range .ModInfoList }}
+                        <a href="/mods/{{ .Namespace }}" class="badge bg-blue-lt text-decoration-none d-inline-flex align-items-center gap-1">
+                          {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" class="mod-badge-icon" loading="lazy">{{ end }}
+                          {{ .Name }}
+                        </a>
+                        {{ end }}
+                      </div>
+                    </div>
+                    {{ end }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Schematics -->
+            {{ if .Schematics }}
+            <h3 class="mb-3">{{ T .Language "Schematics" }}</h3>
+            <div class="row g-3">
+              {{ range .Schematics }}
+              {{template "schematic_card_small.html" .}}
+              {{ end }}
+            </div>
+            {{ else }}
+            <div class="alert alert-secondary mt-3">{{ T .Language "No schematics in this collection yet." }}</div>
+            {{ end }}
+
+            <!-- Mobile ad (below content on smaller screens) -->
+            <div id="collshow-mobile" class="d-lg-none mt-3 text-center"></div>
+          </div>
+
+          <!-- Ad Rails -->
+          <div class="ad-rail-sm d-none d-lg-block d-xl-none">
+            <div id="collshow-adrail-lg" class="mb-3"></div>
+          </div>
+          <div class="ad-rail d-none d-xl-block">
+            <div id="collshow-adrail" class="mb-3"></div>
+          </div>
+        </div><!-- /d-flex -->
       </div>
     </main>
     {{template "footer.html" .}}
@@ -93,4 +139,136 @@ function copyShareLink() {
     setTimeout(function() { label.textContent = 'Copy'; }, 2000);
   });
 }
+</script>
+
+<!-- Ad Scripts -->
+<script>
+window['nitroAds'].createAd('collshow-adrail-lg', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["160", "600"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+});
+window['nitroAds'].createAd('collshow-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('collshow-mobile', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+});
+</script>
+
+<!-- Report Modal -->
+<div class="modal report-modal" id="reportModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="report-form-view">
+        <form class="report-form" method="post" action="/reports">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ T .Language "Report Collection" }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="target_type" value="collection">
+            <input type="hidden" name="target_id" value="{{ .CollectionID }}">
+            <input type="hidden" name="return_to" value="{{ .Slug }}">
+            <div class="mb-3">
+              <label class="form-label">{{ T .Language "Reason" }}</label>
+              <textarea class="form-control" name="reason" required placeholder="{{ T .Language "Describe the issue" }}"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-link" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+            <button type="submit" class="btn btn-danger">{{ T .Language "Submit report" }}</button>
+          </div>
+        </form>
+      </div>
+      <div class="report-success-view" style="display:none;">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ T .Language "Report Submitted" }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+          <p class="mb-0">{{ T .Language "Thank you for your report, we will review this within 24 hours." }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ T .Language "Close" }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Handle report modal with confirmation view
+(function() {
+  document.querySelectorAll('.report-modal').forEach(function(modal) {
+    var form = modal.querySelector('.report-form');
+    var formView = modal.querySelector('.report-form-view');
+    var successView = modal.querySelector('.report-success-view');
+    if (!form || !formView || !successView) return;
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+      fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'HX-Request': 'true' }
+      }).then(function(resp) {
+        if (resp.ok || resp.status === 204) {
+          formView.style.display = 'none';
+          successView.style.display = '';
+        } else {
+          if (btn) { btn.disabled = false; btn.textContent = 'Submit report'; }
+          if (typeof showToast === 'function') showToast('Could not submit report. Please try again.', 'danger');
+        }
+      }).catch(function() {
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit report'; }
+        if (typeof showToast === 'function') showToast('Could not submit report. Please try again.', 'danger');
+      });
+    });
+
+    modal.addEventListener('hidden.bs.modal', function() {
+      formView.style.display = '';
+      successView.style.display = 'none';
+      form.reset();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit report'; }
+    });
+  });
+})();
 </script>

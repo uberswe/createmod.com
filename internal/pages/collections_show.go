@@ -37,6 +37,8 @@ type CollectionsShowData struct {
 	CollectionID    string
 	AuthorName      string
 	IsTranslated    bool
+	ModInfoList     []ModInfo
+	SchematicCount  int
 }
 
 // CollectionsShowHandler renders a basic collection detail page by slug or id.
@@ -126,6 +128,22 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 					d.Schematics = MapStoreSchematics(appStore, storeSchematics, cacheService)
 				}
 			}
+			d.SchematicCount = len(d.Schematics)
+
+			// Build mod info list from all schematics (deduplicated)
+			seen := make(map[string]bool)
+			var allMods []string
+			for _, s := range d.Schematics {
+				for _, mod := range s.Mods {
+					if !seen[mod] {
+						seen[mod] = true
+						allMods = append(allMods, mod)
+					}
+				}
+			}
+			if len(allMods) > 0 {
+				d.ModInfoList = buildModInfoListFromStore(appStore, allMods)
+			}
 
 			// Translation: show translated content if user's language is not English
 			showOriginal := e.Request.URL.Query().Get("lang") == "original"
@@ -154,6 +172,12 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 				d.Description = d.DescriptionText
 			} else {
 				d.Description = i18n.T(d.Language, "page.collections.description")
+			}
+			// og:image thumbnail
+			if coll.BannerURL != "" {
+				d.Thumbnail = "https://createmod.com" + coll.BannerURL
+			} else if coll.CollageURL != "" {
+				d.Thumbnail = "https://createmod.com" + coll.CollageURL
 			}
 		} else {
 			// Not found

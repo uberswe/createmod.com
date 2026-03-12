@@ -145,6 +145,7 @@ type Collection struct {
 	Slug        string
 	Description string
 	BannerURL   string
+	CollageURL  string
 	Featured    bool
 	Views       int
 	Published   bool
@@ -449,6 +450,7 @@ type CollectionStore interface {
 	IncrementViews(ctx context.Context, id string) error
 	CountByUser(ctx context.Context, userID string) (int64, error)
 	ListForSitemap(ctx context.Context) ([]SitemapCollection, error)
+	UpdateCollageURL(ctx context.Context, id, collageURL string) error
 }
 
 // AchievementStore handles achievements and points.

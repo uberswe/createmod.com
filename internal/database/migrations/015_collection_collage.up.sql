@@ -1,0 +1,1 @@
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS collage_url TEXT NOT NULL DEFAULT '';

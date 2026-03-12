@@ -19,7 +19,7 @@ func Test_Collections_Template_Has_Expected_Elements(t *testing.T) {
 		"name=\"q\"",
 		"hx-target=\"#collections-results\"",
 		"hx-select=\"#collections-results\"",
-		"View collection",
+		"card-link",
 		"Featured",
 		"nav-tabs",
 		"Public",

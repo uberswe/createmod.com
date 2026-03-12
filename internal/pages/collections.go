@@ -23,13 +23,15 @@ var collectionsTemplates = append([]string{
 
 // CollectionItem is a lightweight view model for collections listing.
 type CollectionItem struct {
-	Title       string
-	Description string
-	URL         string
-	Views       int
-	Featured    bool
-	Published   bool
-	IsOwner     bool
+	Title          string
+	Description    string
+	URL            string
+	ImageURL       string
+	SchematicCount int
+	Views          int
+	Featured       bool
+	Published      bool
+	IsOwner        bool
 }
 
 type CollectionsData struct {
@@ -89,7 +91,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 			colls, err := appStore.Collections.ListByAuthor(ctx, authenticatedUserID(e))
 			if err == nil {
 				for _, c := range colls {
-					it := storeCollectionToItem(c)
+					it := storeCollectionToItem(c, appStore)
 					it.IsOwner = true
 					if q != "" && !strings.Contains(strings.ToLower(it.Title), qLower) {
 						continue
@@ -122,7 +124,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 					}
 					scoredItems := make([]scored, 0, len(colls))
 					for _, c := range colls {
-						it := storeCollectionToItem(c)
+						it := storeCollectionToItem(c, appStore)
 						s := collectionTrendingScore(c.Created, float64(it.Views))
 						scoredItems = append(scoredItems, scored{item: it, score: s})
 					}
@@ -151,7 +153,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 	}
 }
 
-func storeCollectionToItem(c store.Collection) CollectionItem {
+func storeCollectionToItem(c store.Collection, appStore *store.Store) CollectionItem {
 	title := c.Title
 	if title == "" {
 		title = c.Name
@@ -160,13 +162,26 @@ func storeCollectionToItem(c store.Collection) CollectionItem {
 	if c.Slug != "" {
 		link = "/collections/" + c.Slug
 	}
+	imageURL := c.BannerURL
+	if imageURL == "" {
+		imageURL = c.CollageURL
+	}
+	var schematicCount int
+	if appStore != nil {
+		ids, err := appStore.Collections.GetSchematicIDs(context.Background(), c.ID)
+		if err == nil {
+			schematicCount = len(ids)
+		}
+	}
 	return CollectionItem{
-		Title:       title,
-		Description: strip.StripTags(c.Description),
-		URL:         link,
-		Views:       c.Views,
-		Featured:    c.Featured,
-		Published:   c.Published,
+		Title:          title,
+		Description:    strip.StripTags(c.Description),
+		URL:            link,
+		ImageURL:       imageURL,
+		SchematicCount: schematicCount,
+		Views:          c.Views,
+		Featured:       c.Featured,
+		Published:      c.Published,
 	}
 }
 

@@ -2,17 +2,17 @@ package pages
 
 import (
 	"context"
+	"createmod/internal/server"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"net/http"
 	"strings"
-
-	"createmod/internal/server"
 )
 
 // CollectionsReorderHandler handles POST /collections/{slug}/reorder
 // Accepts a comma-separated list of schematic IDs via form field "schematics" (or alias "ids").
 // Author-only. Clears existing join table entries and re-creates them with position ordering.
-func CollectionsReorderHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+func CollectionsReorderHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -73,6 +73,9 @@ func CollectionsReorderHandler(appStore *store.Store) func(e *server.RequestEven
 		for i, id := range ordered {
 			_ = appStore.Collections.AddSchematic(ctx, coll.ID, id, i+1)
 		}
+
+		// Regenerate collage after reorder
+		go generateCollectionCollage(storageSvc, appStore, coll.ID)
 
 		dest := "/collections/" + slug + "/edit"
 		if e.Request.Header.Get("HX-Request") != "" {

@@ -102,6 +102,20 @@ func resolveReportTarget(appStore *store.Store, targetType, targetID string) (st
 			}
 		}
 		return "", targetID
+	case "collection":
+		coll, err := appStore.Collections.GetByID(ctx, targetID)
+		if err == nil && coll != nil {
+			slug := coll.Slug
+			if slug == "" {
+				slug = coll.ID
+			}
+			title := coll.Title
+			if title == "" {
+				title = coll.Name
+			}
+			return "/collections/" + slug, title
+		}
+		return "/collections/" + targetID, targetID
 	}
 	return "", targetID
 }
@@ -222,6 +236,11 @@ func AdminReportDeleteTargetHandler(appStore *store.Store) func(e *server.Reques
 			if err := appStore.Comments.Delete(ctx, target.TargetID); err != nil {
 				slog.Error("admin report: failed to delete comment", "error", err, "id", target.TargetID)
 				return e.String(http.StatusInternalServerError, "failed to delete comment")
+			}
+		case "collection":
+			if err := appStore.Collections.SoftDelete(ctx, target.TargetID); err != nil {
+				slog.Error("admin report: failed to delete collection", "error", err, "id", target.TargetID)
+				return e.String(http.StatusInternalServerError, "failed to delete collection")
 			}
 		default:
 			return e.String(http.StatusBadRequest, "unknown target type: "+target.TargetType)

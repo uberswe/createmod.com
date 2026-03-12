@@ -138,6 +138,10 @@ var LangRU = map[string]string{
 	"Schematics":                                  "Схемы",
 	"No schematics in this collection yet.":       "В этой коллекции пока нет схем.",
 	"Delete":                                      "Удалить",
+	"Report Collection":                           "Пожаловаться на коллекцию",
+	"Total schematics":                            "Всего схем",
+	"Mods used":                                   "Используемые моды",
+	"Stats":                                       "Статистика",
 
 	// ── Collections New ──
 	"Create a new collection of schematics":                               "Создать новую коллекцию схем",
@@ -294,7 +298,6 @@ var LangRU = map[string]string{
 	"Describe the schematics to blacklist and why": "Опишите схемы для блокировки и причину",
 	"Submit request":                           "Отправить запрос",
 	"Usage":                                    "Статистика",
-	"Total schematics":                         "Всего схем",
 	"Total views":                              "Всего просмотров",
 	"Total downloads":                          "Всего загрузок",
 	"Points":                                   "Очки",
