@@ -424,6 +424,6 @@ func allTagsWithCountFromStore(appStore *store.Store, service *cache.Service) []
 			Count: t.Count,
 		}
 	}
-	service.SetTagWithCount(cache.AllTagsWithCountKey, result)
+	service.SetWithTTL(cache.AllTagsWithCountKey, result, 6*time.Hour)
 	return result
 }

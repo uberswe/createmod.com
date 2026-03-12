@@ -276,9 +276,11 @@ func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store) {
 
 
 // ComputeTrendingScoresFromStore computes trending scores using the PostgreSQL store.
-// Returns a map of schematic ID to score.
+// Returns a map of schematic ID to score. Also persists trending scores and
+// rating aggregates to the schematics table for pre-computed query support.
 func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
-	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), 30)
+	ctx := context.Background()
+	td, err := appStore.ViewRatings.FetchTrendingData(ctx, 30)
 	if err != nil || td == nil {
 		return nil
 	}
@@ -287,6 +289,23 @@ func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
 		created := td.SchematicCreated[id]
 		scores[id] = trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
 	}
+
+	// Persist trending scores and rating aggregates to the schematics table
+	for _, id := range td.SchematicIDs {
+		if err := appStore.Schematics.UpdateTrendingScore(ctx, id, scores[id]); err != nil {
+			slog.Error("failed to persist trending score", "schematicID", id, "error", err)
+		}
+
+		rSum := td.RatingSum[id]
+		rCount := td.RatingCount[id]
+		if rCount > 0 {
+			avgRating := rSum / rCount
+			if err := appStore.Schematics.UpdateRatingAggregates(ctx, id, avgRating, int(rCount)); err != nil {
+				slog.Error("failed to persist rating aggregates", "schematicID", id, "error", err)
+			}
+		}
+	}
+
 	return scores
 }
 

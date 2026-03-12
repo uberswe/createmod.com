@@ -46,6 +46,11 @@ func RatingUpsertHandler(appStore *store.Store) func(e *server.RequestEvent) err
 			return e.InternalServerError("could not save rating", nil)
 		}
 
+		// Refresh pre-computed rating aggregates on the schematics table
+		if err := appStore.Schematics.RefreshRatingAggregates(ctx, body.SchematicID); err != nil {
+			slog.Error("failed to refresh rating aggregates", "schematicID", body.SchematicID, "error", err)
+		}
+
 		return e.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	}
 }

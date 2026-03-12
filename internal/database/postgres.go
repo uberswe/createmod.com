@@ -781,6 +781,57 @@ func (ps *PostgresStore) ListByNamePattern(ctx context.Context, pattern string, 
 	return schematicSliceFromDB(rows), nil
 }
 
+func (ps *PostgresStore) UpdateTrendingScore(ctx context.Context, id string, score float64) error {
+	return ps.q.UpdateSchematicTrendingScore(ctx, db.UpdateSchematicTrendingScoreParams{
+		ID:            id,
+		TrendingScore: float32(score),
+	})
+}
+
+func (ps *PostgresStore) UpdateRatingAggregates(ctx context.Context, id string, avgRating float64, ratingCount int) error {
+	return ps.q.UpdateSchematicRatingAggregates(ctx, db.UpdateSchematicRatingAggregatesParams{
+		ID:          id,
+		AvgRating:   float32(avgRating),
+		RatingCount: int32(ratingCount),
+	})
+}
+
+func (ps *PostgresStore) RefreshRatingAggregates(ctx context.Context, id string) error {
+	return ps.q.RefreshSchematicRatingAggregates(ctx, id)
+}
+
+func (ps *PostgresStore) BatchGetCategoriesForSchematics(ctx context.Context, ids []string) (map[string][]store.SchematicCategoryInfo, error) {
+	rows, err := ps.q.BatchGetSchematicCategories(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]store.SchematicCategoryInfo, len(ids))
+	for _, r := range rows {
+		result[r.SchematicID] = append(result[r.SchematicID], store.SchematicCategoryInfo{
+			ID:   r.ID,
+			Key:  r.Key,
+			Name: r.Name,
+		})
+	}
+	return result, nil
+}
+
+func (ps *PostgresStore) BatchGetTagsForSchematics(ctx context.Context, ids []string) (map[string][]store.SchematicTagInfo, error) {
+	rows, err := ps.q.BatchGetSchematicTags(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]store.SchematicTagInfo, len(ids))
+	for _, r := range rows {
+		result[r.SchematicID] = append(result[r.SchematicID], store.SchematicTagInfo{
+			ID:   r.ID,
+			Key:  r.Key,
+			Name: r.Name,
+		})
+	}
+	return result, nil
+}
+
 func (ps *PostgresStore) ListModCounts(ctx context.Context) ([]store.ModCount, error) {
 	rows, err := ps.pool.Query(ctx, `
 		SELECT j.mod_name, COUNT(DISTINCT s.id)::int AS count
@@ -1852,6 +1903,45 @@ func (vs *ViewRatingStoreImpl) FetchTrendingData(ctx context.Context, recentDays
 		RecentDownloads:  recentDownloads,
 		TotalDownloads:   totalDownloads,
 	}, nil
+}
+
+func (vs *ViewRatingStoreImpl) BatchGetViewCounts(ctx context.Context, ids []string) (map[string]int, error) {
+	rows, err := vs.q.BatchGetViewCounts(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(rows))
+	for _, r := range rows {
+		result[r.SchematicID] = int(r.ViewCount)
+	}
+	return result, nil
+}
+
+func (vs *ViewRatingStoreImpl) BatchGetDownloadCounts(ctx context.Context, ids []string) (map[string]int, error) {
+	rows, err := vs.q.BatchGetDownloadCounts(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(rows))
+	for _, r := range rows {
+		result[r.SchematicID] = int(r.DownloadCount)
+	}
+	return result, nil
+}
+
+func (vs *ViewRatingStoreImpl) BatchGetRatings(ctx context.Context, ids []string) (map[string]*store.SchematicRating, error) {
+	rows, err := vs.q.BatchGetRatings(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]*store.SchematicRating, len(rows))
+	for _, r := range rows {
+		result[r.SchematicID] = &store.SchematicRating{
+			AvgRating:   float64(r.AvgRating),
+			RatingCount: int(r.RatingCount),
+		}
+	}
+	return result, nil
 }
 
 // VersionStoreImpl implements store.VersionStore.

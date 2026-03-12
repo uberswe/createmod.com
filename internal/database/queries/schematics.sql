@@ -170,15 +170,26 @@ ORDER BY s.views DESC
 LIMIT $3;
 
 -- name: ListHighestRatedSchematics :many
-SELECT s.* FROM schematics s
-JOIN schematic_ratings sr ON sr.schematic_id = s.id
-WHERE s.deleted IS NULL
-  AND s.moderated = true
-  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
-GROUP BY s.id
-HAVING COUNT(sr.rating) > 0
-ORDER BY AVG(sr.rating) DESC, COUNT(sr.rating) DESC
+SELECT * FROM schematics
+WHERE deleted IS NULL
+  AND moderated = true
+  AND rating_count > 0
+  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+ORDER BY avg_rating DESC, rating_count DESC
 LIMIT $1 OFFSET $2;
+
+-- name: UpdateSchematicTrendingScore :exec
+UPDATE schematics SET trending_score = $2 WHERE id = $1;
+
+-- name: UpdateSchematicRatingAggregates :exec
+UPDATE schematics SET avg_rating = $2, rating_count = $3 WHERE id = $1;
+
+-- name: RefreshSchematicRatingAggregates :exec
+UPDATE schematics SET
+  avg_rating = COALESCE(sub.avg_r, 0),
+  rating_count = COALESCE(sub.cnt, 0)
+FROM (SELECT AVG(rating)::REAL AS avg_r, COUNT(*)::INTEGER AS cnt FROM schematic_ratings WHERE schematic_id = $1) sub
+WHERE schematics.id = $1;
 
 -- name: ListSchematicsForSitemap :many
 SELECT id, name, updated FROM schematics
@@ -234,3 +245,15 @@ WHERE
 
 -- name: GetSchematicByIDAdmin :one
 SELECT * FROM schematics WHERE id = $1;
+
+-- name: BatchGetSchematicCategories :many
+SELECT sc.schematic_id, c.id, c.key, c.name
+FROM schematics_categories sc
+JOIN schematic_categories c ON c.id = sc.category_id
+WHERE sc.schematic_id = ANY($1::text[]);
+
+-- name: BatchGetSchematicTags :many
+SELECT st.schematic_id, t.id, t.key, t.name
+FROM schematics_tags st
+JOIN schematic_tags t ON t.id = st.tag_id
+WHERE st.schematic_id = ANY($1::text[]);

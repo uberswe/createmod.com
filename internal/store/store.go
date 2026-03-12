@@ -198,6 +198,20 @@ type SchematicRating struct {
 	RatingCount int
 }
 
+// SchematicCategoryInfo holds category info for batch enrichment.
+type SchematicCategoryInfo struct {
+	ID   string
+	Key  string
+	Name string
+}
+
+// SchematicTagInfo holds tag info for batch enrichment.
+type SchematicTagInfo struct {
+	ID   string
+	Key  string
+	Name string
+}
+
 // ExternalAuth represents an OAuth provider link.
 type ExternalAuth struct {
 	ID         string
@@ -374,6 +388,13 @@ type SchematicStore interface {
 	ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]Schematic, error)
 	CountForAdmin(ctx context.Context, filter string) (int64, error)
 	GetByIDAdmin(ctx context.Context, id string) (*Schematic, error)
+	// Pre-computed aggregates
+	UpdateTrendingScore(ctx context.Context, id string, score float64) error
+	UpdateRatingAggregates(ctx context.Context, id string, avgRating float64, ratingCount int) error
+	RefreshRatingAggregates(ctx context.Context, id string) error
+	// Batch enrichment
+	BatchGetCategoriesForSchematics(ctx context.Context, ids []string) (map[string][]SchematicCategoryInfo, error)
+	BatchGetTagsForSchematics(ctx context.Context, ids []string) (map[string][]SchematicTagInfo, error)
 	// Mod-related queries
 	ListModCounts(ctx context.Context) ([]ModCount, error)
 	CountVanilla(ctx context.Context) (int, error)
@@ -490,6 +511,10 @@ type ViewRatingStore interface {
 	GetTotalViewCount(ctx context.Context, schematicID string) (int, error)
 	// FetchTrendingData returns bulk engagement signals for computing trending scores.
 	FetchTrendingData(ctx context.Context, recentDays int) (*TrendingData, error)
+	// Batch enrichment
+	BatchGetViewCounts(ctx context.Context, ids []string) (map[string]int, error)
+	BatchGetDownloadCounts(ctx context.Context, ids []string) (map[string]int, error)
+	BatchGetRatings(ctx context.Context, ids []string) (map[string]*SchematicRating, error)
 }
 
 // VersionStore handles schematic version history.

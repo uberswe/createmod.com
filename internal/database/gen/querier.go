@@ -17,6 +17,11 @@ type Querier interface {
 	ApproveComment(ctx context.Context, id string) error
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
+	BatchGetDownloadCounts(ctx context.Context, dollar_1 []string) ([]BatchGetDownloadCountsRow, error)
+	BatchGetRatings(ctx context.Context, dollar_1 []string) ([]BatchGetRatingsRow, error)
+	BatchGetSchematicCategories(ctx context.Context, dollar_1 []string) ([]BatchGetSchematicCategoriesRow, error)
+	BatchGetSchematicTags(ctx context.Context, dollar_1 []string) ([]BatchGetSchematicTagsRow, error)
+	BatchGetViewCounts(ctx context.Context, dollar_1 []string) ([]BatchGetViewCountsRow, error)
 	CheckHashIsBlacklisted(ctx context.Context, hash string) (bool, error)
 	ClaimTempUpload(ctx context.Context, arg ClaimTempUploadParams) (int64, error)
 	CleanupExpiredDownloadTokens(ctx context.Context) error
@@ -191,6 +196,7 @@ type Querier interface {
 	MonthlyUserViews(ctx context.Context, arg MonthlyUserViewsParams) ([]MonthlyUserViewsRow, error)
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
+	RefreshSchematicRatingAggregates(ctx context.Context, id string) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
@@ -205,6 +211,8 @@ type Querier interface {
 	UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error)
 	UpdateSchematicDownloads(ctx context.Context, arg UpdateSchematicDownloadsParams) error
 	UpdateSchematicName(ctx context.Context, arg UpdateSchematicNameParams) error
+	UpdateSchematicRatingAggregates(ctx context.Context, arg UpdateSchematicRatingAggregatesParams) error
+	UpdateSchematicTrendingScore(ctx context.Context, arg UpdateSchematicTrendingScoreParams) error
 	UpdateSchematicViews(ctx context.Context, arg UpdateSchematicViewsParams) error
 	UpdateTempUpload(ctx context.Context, arg UpdateTempUploadParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
