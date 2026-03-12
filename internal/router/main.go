@@ -727,7 +727,7 @@ var corsAllowedOrigins = map[string]bool{
 // domains, so img-src, frame-src, and connect-src use https: broadly.
 var cspHeader = strings.Join([]string{
 	"default-src 'self'",
-	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://s.nitropay.com https://www.nitropay.com https://www.googletagmanager.com https://www.google-analytics.com https://pagead2.googlesyndication.com https://*.amazon-adsystem.com https://secure.cdn.fastclick.net https://btloader.com https://*.btloader.com",
+	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
 	"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://rsms.me",
 	"img-src 'self' data: blob: https:",
 	"font-src 'self' https://rsms.me https://cdn.jsdelivr.net",
