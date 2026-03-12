@@ -120,7 +120,7 @@
                   </div>
                   {{if .Schematic.FeaturedImage}}
                   <div class="mb-2">
-                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{.Schematic.FeaturedImage}}?thumb=200x200" class="img-fluid rounded" alt="thumbnail">
+                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=200x200" class="img-fluid rounded" alt="thumbnail">
                   </div>
                   {{end}}
                   <div class="mb-2">

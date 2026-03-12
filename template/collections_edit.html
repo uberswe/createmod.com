@@ -81,7 +81,7 @@
                   <li class="list-group-item d-flex align-items-center gap-2"
                       draggable="true" data-id="{{ .ID }}" style="cursor: grab;">
                     <span class="me-1 text-secondary" aria-hidden="true">&#x2195;</span>
-                    <img src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=80x45"
+                    <img src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=80x45"
                          alt="" width="80" height="45" class="rounded"
                          style="object-fit: cover; flex-shrink: 0;" />
                     <span class="flex-fill text-truncate">{{ .Title }}</span>

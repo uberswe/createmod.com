@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -301,7 +302,7 @@ func SearchHandler(searchService *search.Service, cacheService *cache.Service, r
 		}
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		if d.SearchResultCount > 0 {
-			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, d.Schematics[0].FeaturedImage)
+			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematics[0].ID, url.PathEscape(d.Schematics[0].FeaturedImage))
 		}
 
 		html, err := registry.LoadFiles(searchTemplates...).Render(d)

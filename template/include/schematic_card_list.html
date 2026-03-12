@@ -1,7 +1,7 @@
 {{define "schematic_card_list.html"}}
 <a href="/schematics/{{ .Name }}" class="search-list-item d-flex text-decoration-none">
   <div class="flex-shrink-0" style="width: 120px; height: 68px; position:relative;">
-    <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ .FeaturedImage }}?thumb=240x136"
+    <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=240x136"
          alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="120" height="68" style="width: 120px; height: 68px; border-radius: .4rem;">
     {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:4px;left:4px;z-index:1;font-size:.6rem;">Paid</span>{{ end }}
   </div>

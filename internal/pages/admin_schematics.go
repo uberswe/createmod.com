@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -321,7 +322,7 @@ func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *ca
 				}
 				var imageURL string
 				if emailImage != "" {
-					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, emailImage)
+					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, url.PathEscape(emailImage))
 				}
 				schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, emailName)
 

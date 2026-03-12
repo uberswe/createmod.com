@@ -11,6 +11,7 @@ import (
 	strip "github.com/grokify/html-strip-tags-go"
 	"createmod/internal/server"
 	"net/http"
+	"net/url"
 )
 
 var editSchematicTemplates = append([]string{
@@ -57,7 +58,7 @@ func EditSchematicHandler(searchService *search.Service, cacheService *cache.Ser
 		d.Title = fmt.Sprintf("%s %s", i18n.T(d.Language, "Editing"), d.Schematic.Title)
 		d.Slug = fmt.Sprintf("/schematics/%s/edit", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
-		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, d.Schematic.FeaturedImage)
+		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, url.PathEscape(d.Schematic.FeaturedImage))
 		d.SubCategory = "Schematic"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Tags = allTagsFromStore(appStore)

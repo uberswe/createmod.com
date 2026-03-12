@@ -1,7 +1,7 @@
 {{template "head.html" .}}
 <!-- Preload the LCP image so the browser starts fetching it immediately -->
-<link rel="preload" as="image" href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540"
-      imagesrcset="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
+<link rel="preload" as="image" href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540"
+      imagesrcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
       imagesizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw" fetchpriority="high">
 <!-- Non-critical page-specific CSS loaded async -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-rating.js@4.3.1/dist/star-rating.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
@@ -43,11 +43,11 @@
                         <!-- Image + Description -->
                         <div class="card card-sm mb-4">
                             <a data-fslightbox="gallery" hx-boost="false"
-                               href="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}">
+                               href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}">
                                 <div class="ratio ratio-16x9">
                                 <img
-                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540"
-                                        srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
+                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540"
+                                        srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
                                         sizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw"
                                         class="card-img-top object-fit-cover" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high">
                                 </div>
@@ -58,9 +58,9 @@
                                     {{ range .Schematic.Gallery }}
                                     <div class="col">
                                         <a data-fslightbox="gallery" hx-boost="false"
-                                           href="/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}">
+                                           href="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}">
                                             <div class="img-responsive img-responsive-1x1 rounded border"
-                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ . }}?thumb=150x150')"></div>
+                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=150x150')"></div>
                                         </a>
                                     </div>
                                     {{ end }}
@@ -489,7 +489,7 @@
                             </div>
                             <div class="list-group list-group-flush">
                                 {{ range .AdditionalFiles }}
-                                <a href="/api/files/schematics/{{ $.Schematic.ID }}/{{ .Filename }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" download="{{ .OriginalName }}">
+                                <a href="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape .Filename }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" download="{{ .OriginalName }}">
                                     <span>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
                                         {{ .OriginalName }}
