@@ -380,6 +380,8 @@ var LangFR = map[string]string{
 	"Create new collection…": "Créer une nouvelle collection…",
 	"Collection name":      "Nom de la collection",
 	"Add":                  "Ajouter",
+	"Easy Schematic Uploads": "Téléversement facile de schematics",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Téléversez des schematics directement depuis Minecraft vers createmod.com avec le mod Create: Schematic Upload. Sauvegardez un schematic en jeu et obtenez un lien de partage instantanément.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contacter CreateMod.com",

@@ -380,6 +380,8 @@ var LangZhHans = map[string]string{
 	"Create new collection…": "创建新合集…",
 	"Collection name":      "合集名称",
 	"Add":                  "添加",
+	"Easy Schematic Uploads": "轻松上传蓝图",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "使用 Create: Schematic Upload 模组，直接从 Minecraft 上传蓝图到 createmod.com。在游戏中保存蓝图，即刻获得分享链接。",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "联系 CreateMod.com",

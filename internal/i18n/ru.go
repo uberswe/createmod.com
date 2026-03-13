@@ -380,6 +380,8 @@ var LangRU = map[string]string{
 	"Create new collection…": "Создать новую коллекцию…",
 	"Collection name":      "Название коллекции",
 	"Add":                  "Добавить",
+	"Easy Schematic Uploads": "Простая загрузка схем",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Загружайте схемы напрямую из Minecraft на createmod.com с помощью мода Create: Schematic Upload. Сохраните схему в игре и мгновенно получите ссылку для обмена.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Связаться с CreateMod.com",
