@@ -292,6 +292,9 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
 
+		// Async image moderation for the banner
+		moderateCollectionBanner(moderationService, appStore, coll.ID, coll.BannerURL)
+
 		// Regenerate collage on any save (content may have changed)
 		go generateCollectionCollage(storageSvc, appStore, coll.ID)
 

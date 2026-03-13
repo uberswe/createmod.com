@@ -46,12 +46,22 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		return nil
 	}
 
+	// Build the full public URL for the featured image (used by moderation and email).
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://createmod.com"
+	}
+	var imageFullURL string
+	if args.ImageURL != "" {
+		imageFullURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, args.SchematicID, url.PathEscape(args.ImageURL))
+	}
+
 	// Run moderation if not already resolved
 	if !schem.Moderated && !schem.Blacklisted && w.deps.Moderation != nil {
 		var emailSubject, emailBodyText string
 
-		// Step 1: Policy check
-		policyResult, policyErr := w.deps.Moderation.CheckSchematic(args.Title, args.Description, "")
+		// Step 1: Policy check (text + image if available)
+		policyResult, policyErr := w.deps.Moderation.CheckSchematic(args.Title, args.Description, imageFullURL)
 		if policyErr != nil {
 			slog.Warn("moderation job: policy check unavailable", "error", policyErr, "schematic_id", args.SchematicID)
 			emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
@@ -92,16 +102,7 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 
 		// Send admin email
 		if w.deps.Mail != nil && emailSubject != "" {
-			baseURL := os.Getenv("BASE_URL")
-			if baseURL == "" {
-				baseURL = "https://createmod.com"
-			}
 			schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, args.Slug)
-			var imageFullURL string
-			if args.ImageURL != "" {
-				imageFullURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, args.SchematicID, url.PathEscape(args.ImageURL))
-			}
-
 			to := moderationAdminRecipients(w.deps.Store, w.deps.Mail)
 			if len(to) > 0 {
 				from := w.deps.Mail.DefaultFrom()
@@ -110,6 +111,22 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				if sendErr := w.deps.Mail.Send(msg); sendErr != nil {
 					slog.Error("moderation job: failed to send admin email", "error", sendErr)
 				}
+			}
+		}
+	}
+
+	// Always run image safety check (even for trusted/pre-approved users).
+	// This catches policy-violating images that bypassed moderation via auto-approval.
+	if w.deps.Moderation != nil && imageFullURL != "" && !schem.Blacklisted {
+		imgResult, imgErr := w.deps.Moderation.CheckImage(imageFullURL)
+		if imgErr != nil {
+			slog.Warn("moderation job: image safety check unavailable", "error", imgErr, "schematic_id", args.SchematicID)
+		} else if !imgResult.Approved {
+			slog.Warn("moderation job: featured image flagged, removing",
+				"schematic_id", args.SchematicID, "reason", imgResult.Reason)
+			schem.FeaturedImage = ""
+			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("moderation job: failed to remove flagged featured image", "error", updateErr, "schematic_id", args.SchematicID)
 			}
 		}
 	}
