@@ -246,6 +246,9 @@ WHERE
 -- name: GetSchematicByIDAdmin :one
 SELECT * FROM schematics WHERE id = $1;
 
+-- name: UpdateSchematicDetectedLanguage :exec
+UPDATE schematics SET detected_language = $2 WHERE id = $1;
+
 -- name: BatchGetSchematicCategories :many
 SELECT sc.schematic_id, c.id, c.key, c.name
 FROM schematics_categories sc

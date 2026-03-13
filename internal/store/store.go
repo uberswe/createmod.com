@@ -400,6 +400,7 @@ type SchematicStore interface {
 	CountVanilla(ctx context.Context) (int, error)
 	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
 	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
+	UpdateDetectedLanguage(ctx context.Context, id, lang string) error
 }
 
 // CategoryStore handles categories.

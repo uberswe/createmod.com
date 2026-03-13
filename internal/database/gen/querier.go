@@ -210,6 +210,7 @@ type Querier interface {
 	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
 	UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error)
 	UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error)
+	UpdateSchematicDetectedLanguage(ctx context.Context, arg UpdateSchematicDetectedLanguageParams) error
 	UpdateSchematicDownloads(ctx context.Context, arg UpdateSchematicDownloadsParams) error
 	UpdateSchematicName(ctx context.Context, arg UpdateSchematicNameParams) error
 	UpdateSchematicRatingAggregates(ctx context.Context, arg UpdateSchematicRatingAggregatesParams) error

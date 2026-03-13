@@ -554,8 +554,11 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			} else {
 				autoApproved = true
 			}
-		} else if enqueueModeration != nil && moderationSvc != nil {
-			// Enqueue async moderation job instead of blocking the request
+		}
+
+		// Always enqueue moderation job: for non-trusted users it runs moderation + language
+		// detection; for trusted users moderation is skipped but language detection still runs.
+		if enqueueModeration != nil {
 			if insertErr := enqueueModeration(ctx, ModerationJobArgs{
 				SchematicID: schem.ID,
 				Title:       title,

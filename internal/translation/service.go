@@ -203,28 +203,69 @@ func (s *Service) TranslateSchematic(schematicID string) {
 	description := rec.Description
 	content := rec.Content
 	detectedLang := rec.DetectedLanguage
+	if detectedLang == "" {
+		detectedLang = "en"
+	}
 
-	// Save original language if not already saved
-	if detectedLang != "" && detectedLang != "en" {
-		// The original text might already be overwritten with English at this point,
-		// so we check if a record for the detected language already exists
+	// Save original text under the detected language
+	if detectedLang != "en" {
 		_ = s.SaveOriginalLanguage(schematicID, detectedLang, title, description, content)
 	}
 
-	// Use the English version (stored on the main record) as the source for all translations
 	for _, lang := range SupportedLanguages {
-		if lang == "en" {
-			// Save English version from the main record
-			_ = s.SaveOriginalLanguage(schematicID, "en", title, description, content)
+		if lang == detectedLang {
+			// Already saved original text for this language
+			_ = s.SaveOriginalLanguage(schematicID, lang, title, description, content)
 			continue
 		}
+		// Translate from the original text to the target language
 		err := s.TranslateAndSave(schematicID, lang, title, description, content)
 		if err != nil {
 			slog.Debug("TranslateSchematic: failed to save translation", "id", schematicID, "lang", lang, "error", err)
 		}
-		// Rate limit: 1 request per second (each TranslateAndSave makes up to 3 API calls)
+		// Rate limit: 1 request per second
 		time.Sleep(time.Second)
 	}
+}
+
+// DetectAndTranslate detects the language of a schematic's text, updates its
+// detected_language field, and generates translations for all supported languages.
+func (s *Service) DetectAndTranslate(schematicID string) {
+	if s.openaiClient == nil || !s.openaiClient.HasApiKey() {
+		return
+	}
+
+	ctx := context.Background()
+	rec, err := s.appStore.Schematics.GetByID(ctx, schematicID)
+	if err != nil {
+		slog.Debug("DetectAndTranslate: schematic not found", "id", schematicID, "error", err)
+		return
+	}
+
+	// Build text for detection from title + content
+	detectText := rec.Title
+	if rec.Content != "" {
+		detectText += " " + rec.Content
+	}
+
+	detectedLang, err := s.openaiClient.DetectLanguage(detectText)
+	if err != nil {
+		slog.Debug("DetectAndTranslate: language detection failed, defaulting to en", "id", schematicID, "error", err)
+		detectedLang = "en"
+	}
+
+	// Persist the detected language on the schematic
+	if err := s.appStore.Schematics.UpdateDetectedLanguage(ctx, schematicID, detectedLang); err != nil {
+		slog.Error("DetectAndTranslate: failed to update detected_language", "id", schematicID, "error", err)
+	}
+
+	// Update the in-memory record so TranslateSchematic uses the correct value
+	rec.DetectedLanguage = detectedLang
+
+	slog.Info("DetectAndTranslate: detected language", "id", schematicID, "lang", detectedLang)
+
+	// Generate translations (TranslateSchematic re-loads from DB, which now has detectedLang set)
+	s.TranslateSchematic(schematicID)
 }
 
 // BackfillMissingTranslations finds schematics with fewer than the expected number of

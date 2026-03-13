@@ -770,6 +770,13 @@ func (ps *PostgresStore) UpdateName(ctx context.Context, id, name string) error 
 	})
 }
 
+func (ps *PostgresStore) UpdateDetectedLanguage(ctx context.Context, id, lang string) error {
+	return ps.q.UpdateSchematicDetectedLanguage(ctx, db.UpdateSchematicDetectedLanguageParams{
+		ID:               id,
+		DetectedLanguage: lang,
+	})
+}
+
 func (ps *PostgresStore) ListByNamePattern(ctx context.Context, pattern string, limit int) ([]store.Schematic, error) {
 	rows, err := ps.q.ListSchematicsByNamePattern(ctx, db.ListSchematicsByNamePatternParams{
 		Name:  pattern,
