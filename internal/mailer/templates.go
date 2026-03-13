@@ -3,13 +3,15 @@ package mailer
 import (
 	"fmt"
 	"html"
+	"strings"
 )
 
-// SchematicEmailHTML builds a formatted HTML email body for schematic-related
-// notifications. If imageURL is empty, the image section is omitted.
-func SchematicEmailHTML(title, imageURL, schematicURL, bodyText string) string {
+// EmailHTML builds a branded HTML email body. If imageURL is empty, the image
+// section is omitted. If linkURL is empty, the button is omitted. buttonLabel
+// defaults to "View" if empty.
+func EmailHTML(title, imageURL, linkURL, buttonLabel, bodyText string) string {
 	escapedTitle := html.EscapeString(title)
-	escapedBody := html.EscapeString(bodyText)
+	escapedBody := strings.ReplaceAll(html.EscapeString(bodyText), "\n", "<br>")
 
 	imageBlock := ""
 	if imageURL != "" {
@@ -19,10 +21,13 @@ func SchematicEmailHTML(title, imageURL, schematicURL, bodyText string) string {
 	}
 
 	linkBlock := ""
-	if schematicURL != "" {
+	if linkURL != "" {
+		if buttonLabel == "" {
+			buttonLabel = "View"
+		}
 		linkBlock = fmt.Sprintf(`<tr><td style="padding:16px 0 0 0;text-align:center">
-<a href="%s" style="display:inline-block;padding:10px 24px;background-color:#206bc4;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold">View Schematic</a>
-</td></tr>`, schematicURL)
+<a href="%s" style="display:inline-block;padding:10px 24px;background-color:#206bc4;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold">%s</a>
+</td></tr>`, linkURL, html.EscapeString(buttonLabel))
 	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -55,4 +60,9 @@ CreateMod.com &mdash; Minecraft Create mod schematics
 </table>
 </body>
 </html>`, escapedTitle, imageBlock, escapedBody, linkBlock)
+}
+
+// SchematicEmailHTML is a convenience wrapper for schematic-related emails.
+func SchematicEmailHTML(title, imageURL, schematicURL, bodyText string) string {
+	return EmailHTML(title, imageURL, schematicURL, "View Schematic", bodyText)
 }
