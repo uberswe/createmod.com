@@ -273,7 +273,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
-	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.SearchService, p.CacheService, p.StorageService, p.AppStore)))
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.SearchService, p.CacheService, p.StorageService, p.AppStore, p.ModerationService)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore)))
 	r.Get("/blacklist-request", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/blacklist"), http.StatusMovedPermanently)

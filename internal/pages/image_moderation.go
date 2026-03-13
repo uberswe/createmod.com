@@ -3,8 +3,10 @@ package pages
 import (
 	"context"
 	"createmod/internal/moderation"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"log/slog"
+	"net/url"
 	"os"
 )
 
@@ -81,6 +83,87 @@ func moderateGuideBanner(moderationSvc *moderation.Service, appStore *store.Stor
 			if updateErr := appStore.Guides.Update(ctx, guide); updateErr != nil {
 				slog.Error("guide image moderation: failed to clear banner",
 					"guide_id", guideID, "error", updateErr)
+			}
+		}
+	}()
+}
+
+// moderateSchematicImages runs OpenAI image moderation on a schematic's
+// featured image and gallery images asynchronously. Flagged images are removed
+// from the schematic record and logged. Only the filenames in imagesToCheck
+// are moderated (pass only newly uploaded filenames to avoid re-checking
+// existing images on every update).
+func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
+	if moderationSvc == nil || len(imagesToCheck) == 0 {
+		return
+	}
+	go func() {
+		baseURL := os.Getenv("BASE_URL")
+		if baseURL == "" {
+			baseURL = "https://createmod.com"
+		}
+		s3Prefix := storage.CollectionPrefix("schematics")
+
+		var flaggedImages []string
+		for _, filename := range imagesToCheck {
+			fullURL := baseURL + "/api/files/" + s3Prefix + "/" + schematicID + "/" + url.PathEscape(filename)
+			result, err := moderationSvc.CheckImage(fullURL)
+			if err != nil {
+				slog.Warn("schematic image moderation unavailable",
+					"schematic_id", schematicID, "filename", filename, "error", err)
+				continue
+			}
+			if !result.Approved {
+				slog.Warn("schematic image flagged by moderation, will remove",
+					"schematic_id", schematicID, "filename", filename, "reason", result.Reason)
+				flaggedImages = append(flaggedImages, filename)
+			}
+		}
+
+		if len(flaggedImages) == 0 {
+			return
+		}
+
+		flaggedSet := make(map[string]struct{}, len(flaggedImages))
+		for _, f := range flaggedImages {
+			flaggedSet[f] = struct{}{}
+		}
+
+		ctx := context.Background()
+		schem, getErr := appStore.Schematics.GetByID(ctx, schematicID)
+		if getErr != nil || schem == nil {
+			slog.Error("schematic image moderation: failed to load schematic",
+				"schematic_id", schematicID, "error", getErr)
+			return
+		}
+
+		changed := false
+		if _, flagged := flaggedSet[schem.FeaturedImage]; flagged {
+			slog.Warn("schematic image moderation: removing featured image",
+				"schematic_id", schematicID, "filename", schem.FeaturedImage)
+			schem.FeaturedImage = ""
+			changed = true
+		}
+
+		var cleanGallery []string
+		for _, g := range schem.Gallery {
+			if _, flagged := flaggedSet[g]; flagged {
+				slog.Warn("schematic image moderation: removing gallery image",
+					"schematic_id", schematicID, "filename", g)
+				changed = true
+				continue
+			}
+			cleanGallery = append(cleanGallery, g)
+		}
+		if cleanGallery == nil {
+			cleanGallery = []string{}
+		}
+		schem.Gallery = cleanGallery
+
+		if changed {
+			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("schematic image moderation: failed to update schematic",
+					"schematic_id", schematicID, "error", updateErr)
 			}
 		}
 	}()

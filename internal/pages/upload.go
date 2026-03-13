@@ -560,6 +560,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		// Always enqueue moderation job: for non-trusted users it runs moderation + language
 		// detection; for trusted users moderation is skipped but language detection still runs.
+		// The moderation job also checks the featured image for policy violations.
 		if enqueueModeration != nil {
 			if insertErr := enqueueModeration(ctx, ModerationJobArgs{
 				SchematicID: schem.ID,
@@ -571,6 +572,9 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				slog.Error("make-public: failed to enqueue moderation job", "error", insertErr, "id", schem.ID)
 			}
 		}
+
+		// Async image moderation for gallery images (featured is handled by the moderation job).
+		moderateSchematicImages(moderationSvc, appStore, schem.ID, galleryFilenames)
 
 		// --- Create NBT hash for duplicate detection ---
 		if entry.Checksum != "" {
