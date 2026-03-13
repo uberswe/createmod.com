@@ -6,6 +6,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/moderation"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"fmt"
@@ -53,7 +54,7 @@ func GuidesNewHandler(registry *server.Registry, cacheService *cache.Service, ap
 }
 
 // GuidesCreateHandler handles POST /guides to insert a new guide record.
-func GuidesCreateHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func GuidesCreateHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -153,6 +154,9 @@ func GuidesCreateHandler(cacheService *cache.Service, appStore *store.Store, sto
 			slog.Warn("guides: failed to create", "error", err)
 			return e.String(http.StatusInternalServerError, "failed to create guide")
 		}
+
+		// Async image moderation for the banner
+		moderateGuideBanner(moderationSvc, appStore, newGuide.ID, newGuide.BannerURL)
 
 		// Award first_guide achievement asynchronously
 		go awardFirstGuide(appStore, authorID)
