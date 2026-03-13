@@ -1,8 +1,24 @@
 <!doctype html>
 <html lang="{{ .Language }}" data-lang-prefix="{{ .LangPrefix }}">
 <script>
-// Inline theme init — runs before any CSS to prevent flash of light background.
-(function(){try{var t=localStorage.getItem("createmodTheme")||"dark";document.documentElement.setAttribute("data-bs-theme",t);if(t==="dark")document.documentElement.style.background="#1f2121";}catch(e){}})();
+// Inline theme init — runs synchronously before any CSS to prevent flash and
+// ensure window.setTheme is available before any onclick handler can fire.
+(function(){try{
+var k="createmodTheme",d="dark";
+var t=localStorage.getItem(k)||d;
+document.documentElement.setAttribute("data-bs-theme",t);
+if(t===d)document.documentElement.style.background="#1f2121";
+window.setTheme=function(theme){
+  try{
+    localStorage.setItem(k,theme);
+    document.documentElement.setAttribute("data-bs-theme",theme);
+    if(document.body)document.body.setAttribute("data-bs-theme",theme);
+    document.querySelectorAll('.hide-theme-light').forEach(function(el){el.style.display=theme==='light'?'none':'';});
+    document.querySelectorAll('.hide-theme-dark').forEach(function(el){el.style.display=theme===d?'none':'';});
+    document.documentElement.style.background="";
+  }catch(e){}
+};
+}catch(e){}})();
 </script>
 <head>
     <meta charset="utf-8"/>
