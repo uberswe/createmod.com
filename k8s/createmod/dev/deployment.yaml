@@ -25,7 +25,7 @@ spec:
         - name: ghcr-pull-secret
       containers:
         - name: createmod
-          image: ghcr.io/uberswe/createmod.com:master-ab28b5b
+          image: ghcr.io/uberswe/createmod.com:master-6bc1691
           imagePullPolicy: Always
           ports:
             - containerPort: 8090
