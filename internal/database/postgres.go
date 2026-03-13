@@ -166,6 +166,7 @@ func guideFromDB(g db.Guide) store.Guide {
 		Slug:        g.Slug,
 		UploadLink:  g.UploadLink,
 		BannerURL:   g.BannerUrl,
+		Views:       int(g.Views),
 		Created:     g.Created,
 		Updated:     g.Updated,
 	}
