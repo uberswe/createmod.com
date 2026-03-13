@@ -80,7 +80,7 @@ func NewBreadcrumbs(lang string, items ...string) []BreadcrumbItem {
 
 // BreadcrumbJSONLD returns a <script type="application/ld+json"> block with
 // Schema.org BreadcrumbList markup. Returns empty template.HTML if no breadcrumbs.
-func (d *DefaultData) BreadcrumbJSONLD() template.HTML {
+func (d DefaultData) BreadcrumbJSONLD() template.HTML {
 	if len(d.Breadcrumbs) == 0 {
 		return ""
 	}
