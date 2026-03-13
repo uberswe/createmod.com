@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"createmod/internal/server"
+
+	"github.com/drexedam/gravatar"
 )
 
 const registerTemplate = "./template/register.html"
@@ -90,10 +92,16 @@ func RegisterPostHandler(appStore *store.Store, sessStore *session.Store) func(e
 		}
 
 		// Create user in PostgreSQL
+		avatarURL := gravatar.New(email).
+			Size(200).
+			Default(gravatar.MysteryMan).
+			Rating(gravatar.Pg).
+			AvatarURL()
 		newUser := &store.User{
 			Email:        email,
 			Username:     strings.ToLower(username),
 			PasswordHash: hash,
+			Avatar:       avatarURL,
 		}
 		if err := appStore.Users.CreateUser(ctx, newUser); err != nil {
 			slog.Error("registration failed", "error", err)

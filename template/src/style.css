@@ -884,3 +884,40 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
         min-height: 250px;
     }
 }
+
+/* ===== Brand buttons ===== */
+.btn-curseforge {
+    color: #fff;
+    background-color: #F16436;
+    border-color: #F16436;
+}
+.btn-curseforge:hover,
+.btn-curseforge:focus {
+    color: #fff;
+    background-color: #d9552b;
+    border-color: #d9552b;
+}
+
+.btn-modrinth {
+    color: #fff;
+    background-color: #1BD96A;
+    border-color: #1BD96A;
+}
+.btn-modrinth:hover,
+.btn-modrinth:focus {
+    color: #fff;
+    background-color: #17b858;
+    border-color: #17b858;
+}
+
+.btn-github {
+    color: #fff;
+    background-color: #24292e;
+    border-color: #24292e;
+}
+.btn-github:hover,
+.btn-github:focus {
+    color: #fff;
+    background-color: #1b1f23;
+    border-color: #1b1f23;
+}
