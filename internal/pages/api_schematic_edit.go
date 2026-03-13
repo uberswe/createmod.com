@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"createmod/internal/cache"
+	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
 	"createmod/internal/search"
 	"createmod/internal/storage"
@@ -36,6 +37,7 @@ func SchematicUpdateHandler(
 	cacheService *cache.Service,
 	storageSvc *storage.Service,
 	appStore *store.Store,
+	moderationSvc *moderation.Service,
 ) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
@@ -208,6 +210,9 @@ func SchematicUpdateHandler(
 			schem.SchematicFile = filename
 		}
 
+		// Track newly uploaded images for async moderation.
+		var newImageFilenames []string
+
 		// --- Handle featured image upload (optional) ---
 		if file, header, fileErr := e.Request.FormFile("featured_image"); fileErr == nil && header != nil {
 			defer func() { _ = file.Close() }()
@@ -235,6 +240,7 @@ func SchematicUpdateHandler(
 				}
 			}
 			schem.FeaturedImage = filename
+			newImageFilenames = append(newImageFilenames, filename)
 		}
 
 		// --- Handle gallery uploads (optional, multiple files) ---
@@ -274,6 +280,7 @@ func SchematicUpdateHandler(
 						}
 					}
 					galleryFilenames = append(galleryFilenames, filename)
+					newImageFilenames = append(newImageFilenames, filename)
 				}
 				schem.Gallery = galleryFilenames
 			}
@@ -301,6 +308,9 @@ func SchematicUpdateHandler(
 				slog.Warn("schematic update: failed to set tags", "error", err, "id", schematicID)
 			}
 		}
+
+		// --- Async image moderation for any newly uploaded images ---
+		moderateSchematicImages(moderationSvc, appStore, schematicID, newImageFilenames)
 
 		// --- Create version snapshot ---
 		createVersionSnapshot(appStore, schematicID, prevSnapshot, schem)

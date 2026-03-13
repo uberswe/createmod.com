@@ -166,7 +166,8 @@ var LangRU = map[string]string{
 	"Reorder schematics":             "Изменить порядок схем",
 	"Drag items to reorder.":         "Перетащите элементы для изменения порядка.",
 	"Save order":                     "Сохранить порядок",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Для публикации коллекция должна иметь название (мин. 10 символов) и описание (мин. 100 символов). Содержимое будет проверено на соответствие правилам.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Для публикации коллекция должна содержать не менее 4 схем, название (мин. 10 символов) и описание (мин. 100 символов). Содержимое будет проверено на соответствие правилам.",
+	"A collection needs at least 4 schematics to publish.": "Для публикации коллекция должна содержать не менее 4 схем.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Руководства по моду Create и Minecraft",

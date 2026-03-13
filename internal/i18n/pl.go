@@ -166,7 +166,8 @@ var LangPL = map[string]string{
 	"Reorder schematics":             "Zmień kolejność schematów",
 	"Drag items to reorder.":         "Przeciągnij elementy, aby zmienić kolejność.",
 	"Save order":                     "Zapisz kolejność",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Aby opublikować, kolekcja musi mieć tytuł (min. 10 znaków) i opis (min. 100 znaków). Treść zostanie sprawdzona pod kątem zgodności z regulaminem.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Aby opublikować, kolekcja musi zawierać co najmniej 4 schematy, tytuł (min. 10 znaków) i opis (min. 100 znaków). Treść zostanie sprawdzona pod kątem zgodności z regulaminem.",
+	"A collection needs at least 4 schematics to publish.": "Kolekcja musi zawierać co najmniej 4 schematy, aby można było ją opublikować.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Poradniki do moda Create i Minecraft",

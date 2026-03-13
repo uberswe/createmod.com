@@ -6,6 +6,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/moderation"
 	"createmod/internal/server"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -47,7 +48,7 @@ func CollectionsNewHandler(registry *server.Registry, cacheService *cache.Servic
 }
 
 // CollectionsCreateHandler handles POST /collections to create a new collection.
-func CollectionsCreateHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func CollectionsCreateHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -127,6 +128,8 @@ func CollectionsCreateHandler(registry *server.Registry, cacheService *cache.Ser
 		if err := appStore.Collections.Create(ctx, newColl); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
+		// Async image moderation for the banner
+		moderateCollectionBanner(moderationSvc, appStore, newColl.ID, newColl.BannerURL)
 		// Award first_collection achievement asynchronously
 		go awardFirstCollection(appStore, authorID)
 
