@@ -118,6 +118,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			Schematic: MapStoreSchematicToModel(appStore, *s, cacheService),
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
 		d.Title = d.Schematic.Title
 		d.Slug = fmt.Sprintf("/schematics/%s", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)

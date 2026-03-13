@@ -33,6 +33,7 @@ func CollectionsNewHandler(registry *server.Registry, cacheService *cache.Servic
 	return func(e *server.RequestEvent) error {
 		d := CollectionsNewData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"), "/collections", i18n.T(d.Language, "Create collection"))
 		d.Title = i18n.T(d.Language, "Create collection")
 		d.Description = i18n.T(d.Language, "Create a new collection of schematics")
 		d.Slug = "/collections/new"

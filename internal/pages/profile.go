@@ -63,6 +63,7 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 	d := ProfileData{}
 	d.Populate(e)
 	caser := cases.Title(language.English)
+	d.Breadcrumbs = NewBreadcrumbs(d.Language, caser.String(username))
 	d.Title = i18n.T(d.Language, "Schematics by") + " " + caser.String(username)
 	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 	d.ProfileUsername = caser.String(username)

@@ -37,6 +37,7 @@ func ExternalLinkInterstitialHandler(registry *server.Registry, cacheService *ca
 
 		d := ExternalInterstitialData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "External Link"))
 		d.Title = i18n.T(d.Language, "You are leaving createmod.com")
 		d.Description = i18n.T(d.Language, "page.external.description")
 		d.Slug = "/out"

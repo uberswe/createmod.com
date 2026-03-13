@@ -125,6 +125,7 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 	return func(e *server.RequestEvent) error {
 		d := UploadData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"))
 		d.UploadStep = 1
 		d.Title = i18n.T(d.Language, "Upload A Schematic")
 		d.Description = i18n.T(d.Language, "page.upload.description")
@@ -232,6 +233,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 
 		d := UploadPendingData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Pending"))
 		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
 		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
@@ -695,6 +697,7 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 
 		d := UploadPreviewData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Preview"))
 		d.Title = i18n.T(d.Language, "Schematic Review")
 		d.Description = i18n.T(d.Language, "page.upload_review.description")
 		d.Slug = "/u/" + token

@@ -122,6 +122,7 @@ func GuidesHandler(registry *server.Registry, cacheService *cache.Service, outSe
 		}
 
 		d.PopulateWithStore(e, appStore)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Guides"))
 		d.Title = i18n.T(d.Language, "Guides")
 		d.Description = i18n.T(d.Language, "Guides for the Create mod and Minecraft")
 		d.Slug = "/guides"

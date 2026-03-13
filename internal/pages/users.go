@@ -71,6 +71,7 @@ func UsersHandler(registry *server.Registry, cacheService *cache.Service, appSto
 			d.NextURL = "/users?p=" + strconv.Itoa(page+1)
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Users"))
 		d.Title = i18n.T(d.Language, "Users")
 		d.Description = i18n.T(d.Language, "Browse users on CreateMod.com")
 		d.Slug = "/users"

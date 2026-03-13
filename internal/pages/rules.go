@@ -22,6 +22,7 @@ func RulesHandler(registry *server.Registry, cacheService *cache.Service, appSto
 	return func(e *server.RequestEvent) error {
 		d := RulesData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Rules"))
 		d.Title = i18n.T(d.Language, "Rules")
 		d.Description = i18n.T(d.Language, "page.rules.description")
 		d.Slug = "/rules"

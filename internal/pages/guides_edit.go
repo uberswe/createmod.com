@@ -68,6 +68,7 @@ func GuidesEditHandler(registry *server.Registry, cacheService *cache.Service, a
 			BannerURL:  guide.BannerURL,
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Guides"), "/guides", d.GuideTitle, "/guides/"+d.GuideID, i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit Guide")
 		d.Description = i18n.T(d.Language, "page.guides_edit.description")
 		d.Slug = "/guides/" + id + "/edit"

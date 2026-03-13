@@ -163,6 +163,8 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 				}
 			}
 
+			d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"), "/collections", d.TitleText)
+
 			// SEO/meta
 			d.Title = d.TitleText
 			if d.Title == "" {

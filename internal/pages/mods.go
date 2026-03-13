@@ -80,6 +80,7 @@ func ModsHandler(cacheService *cache.Service, registry *server.Registry, modMeta
 			TotalMods: len(mods),
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Mods"))
 		d.Title = i18n.T(d.Language, "Mods")
 		d.Description = i18n.T(d.Language, "Browse schematics by mod")
 		d.Slug = "/mods"
@@ -174,6 +175,7 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 		}
 
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Mods"), "/mods", mod.Name)
 		d.Title = mod.Name + " " + i18n.T(d.Language, "Schematics")
 		if isVanilla {
 			d.Subtitle = i18n.T(d.Language, "Schematics that require no mods in Minecraft")

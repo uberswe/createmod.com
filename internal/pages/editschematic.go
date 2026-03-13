@@ -55,6 +55,7 @@ func EditSchematicHandler(searchService *search.Service, cacheService *cache.Ser
 			Schematic: MapStoreSchematicToModel(appStore, *storeSchematic, cacheService),
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title, "/schematics/"+d.Schematic.Name, i18n.T(d.Language, "Edit"))
 		d.Title = fmt.Sprintf("%s %s", i18n.T(d.Language, "Editing"), d.Schematic.Title)
 		d.Slug = fmt.Sprintf("/schematics/%s/edit", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
