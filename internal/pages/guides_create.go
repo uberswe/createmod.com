@@ -39,6 +39,7 @@ func GuidesNewHandler(registry *server.Registry, cacheService *cache.Service, ap
 		}
 		d := GuidesNewData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Guides"), "/guides", i18n.T(d.Language, "New Guide"))
 		d.Title = i18n.T(d.Language, "New Guide")
 		d.Description = i18n.T(d.Language, "page.guides_create.description")
 		d.Slug = "/guides/new"

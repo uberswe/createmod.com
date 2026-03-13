@@ -307,6 +307,7 @@ func VideosHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		}
 
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Create Mod Videos"))
 		d.Title = i18n.T(d.Language, "Create Mod Videos")
 		d.Description = i18n.T(d.Language, "Videos from published schematics")
 		d.Slug = "/videos"

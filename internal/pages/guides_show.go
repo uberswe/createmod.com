@@ -45,6 +45,7 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 		d.PopulateWithStore(e, appStore)
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Slug = "/guides/" + id
+		// Breadcrumbs set after guide is loaded below
 
 		// Try finding by ID first, then by slug
 		guide, err := appStore.Guides.GetByID(ctx, id)
@@ -129,6 +130,8 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 				d.IsTranslated = true
 			}
 		}
+
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Guides"), "/guides", d.GuideTitle)
 
 		// SEO
 		d.Title = d.GuideTitle

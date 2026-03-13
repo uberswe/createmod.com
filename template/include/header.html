@@ -81,3 +81,19 @@
         </div>
     </div>
 </header>
+{{ if .Breadcrumbs }}
+<div class="container-wide mt-2">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            {{ range .Breadcrumbs }}
+            {{ if .URL }}
+            <li class="breadcrumb-item"><a href="{{ LangURL $.Language .URL }}">{{ .Label }}</a></li>
+            {{ else }}
+            <li class="breadcrumb-item active" aria-current="page">{{ .Label }}</li>
+            {{ end }}
+            {{ end }}
+        </ol>
+    </nav>
+</div>
+{{ .BreadcrumbJSONLD }}
+{{ end }}

@@ -229,6 +229,7 @@ func renderCollectionsPage(e *server.RequestEvent, registry *server.Registry, ca
 	}
 
 	d.PopulateWithStore(e, appStore)
+	d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"))
 	d.Title = i18n.T(d.Language, "Collections")
 	d.Description = i18n.T(d.Language, "Community-created collections of schematics")
 	d.Slug = "/collections"

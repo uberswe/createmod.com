@@ -22,6 +22,7 @@ func TermsOfServiceHandler(registry *server.Registry, cacheService *cache.Servic
 	return func(e *server.RequestEvent) error {
 		d := TermsOfServiceData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "page.termsofservice.title"))
 		d.Title = i18n.T(d.Language, "page.termsofservice.title")
 		d.Description = i18n.T(d.Language, "page.termsofservice.description")
 		d.Slug = "/terms-of-service"

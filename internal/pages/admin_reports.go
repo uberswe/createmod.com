@@ -72,6 +72,7 @@ func AdminReportsHandler(registry *server.Registry, cacheService *cache.Service,
 		}
 		d := AdminReportsData{Reports: items}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Reports"))
 		d.Title = i18n.T(d.Language, "Admin: Reports")
 		d.SubCategory = "Admin"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

@@ -22,6 +22,7 @@ func PrivacyPolicyHandler(registry *server.Registry, cacheService *cache.Service
 	return func(e *server.RequestEvent) error {
 		d := PrivacyPolicyData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Privacy Policy"))
 		d.Title = i18n.T(d.Language, "Privacy Policy")
 		d.Description = i18n.T(d.Language, "page.privacypolicy.description")
 		d.Slug = "/privacy-policy"

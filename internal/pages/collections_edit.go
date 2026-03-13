@@ -82,6 +82,7 @@ func CollectionsEditHandler(registry *server.Registry, cacheService *cache.Servi
 		d.Description = coll.Description
 		d.BannerURL = coll.BannerURL
 		d.Published = coll.Published
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"), "/collections", d.TitleText, "/collections/"+slug, i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit collection")
 
 		// Load associated schematics via the join table (store handles position ordering)

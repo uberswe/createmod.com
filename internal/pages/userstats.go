@@ -45,6 +45,7 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 		d := UserStatsData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Statistics"))
 		d.Title = i18n.T(d.Language, "Statistics")
 		d.Description = i18n.T(d.Language, "page.userstats.description")
 		d.Slug = "/settings/statistics"
