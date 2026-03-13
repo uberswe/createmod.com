@@ -32,6 +32,19 @@ import (
 	"github.com/sym01/htmlsanitizer"
 )
 
+// ModerationJobArgs contains the data needed to enqueue an async moderation job.
+type ModerationJobArgs struct {
+	SchematicID string
+	Title       string
+	Description string
+	ImageURL    string
+	Slug        string
+}
+
+// ModerationEnqueuer is a callback that enqueues a moderation job.
+// Nil means no async moderation is available.
+type ModerationEnqueuer func(ctx context.Context, args ModerationJobArgs) error
+
 const uploadPendingTemplate = "./template/upload_pending.html"
 
 // maxUploadSize is the maximum allowed NBT file size (10 MB).
@@ -163,12 +176,60 @@ type UploadPendingData struct {
 	DefaultData
 	SchematicName string
 	SchematicURL  string
+	SchematicID   string
 	AutoApproved  bool
 }
 
 // UploadPendingHandler renders a simple moderation pending confirmation page.
+// When called with HX-Request and an "id" param, returns a partial HTML fragment
+// showing the current moderation status for HTMX polling.
 func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		schematicID := e.Request.URL.Query().Get("id")
+
+		// HTMX poll: return moderation status fragment
+		if schematicID != "" && e.Request.Header.Get("HX-Request") != "" {
+			schem, err := appStore.Schematics.GetByID(e.Request.Context(), schematicID)
+			if err != nil || schem == nil {
+				return e.HTML(http.StatusOK, `<div id="moderation-status" class="text-secondary"><span class="spinner-border spinner-border-sm me-2"></span>Checking moderation status...</div>`)
+			}
+
+			name := e.Request.URL.Query().Get("name")
+			schematicURL := ""
+			if name != "" {
+				schematicURL = "/schematics/" + name
+			}
+
+			if schem.Moderated {
+				return e.HTML(http.StatusOK, fmt.Sprintf(`<div id="moderation-status">
+<div class="d-flex align-items-center mb-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+<span class="h3 mb-0">Your schematic has been published!</span>
+</div>
+<p>Your schematic passed moderation and is now live on the site.</p>
+<div class="mt-3"><a href="%s" class="btn btn-primary">View Schematic</a></div>
+</div>`, schematicURL))
+			}
+			if schem.Blacklisted {
+				return e.HTML(http.StatusOK, `<div id="moderation-status">
+<div class="d-flex align-items-center mb-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-warning me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
+<span class="h3 mb-0">Held for moderation</span>
+</div>
+<p>Your schematic is being held for additional moderation and will be published within 24 hours if accepted.</p>
+</div>`)
+			}
+
+			// Still pending — keep polling
+			return e.HTML(http.StatusOK, fmt.Sprintf(`<div id="moderation-status"
+     hx-get="/upload/pending?id=%s&name=%s"
+     hx-trigger="load delay:3s"
+     hx-target="#moderation-status"
+     hx-swap="outerHTML">
+<span class="spinner-border spinner-border-sm me-2"></span>Checking moderation status...
+</div>`, url.QueryEscape(schematicID), url.QueryEscape(name)))
+		}
+
 		d := UploadPendingData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
@@ -177,11 +238,12 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
-		// Read schematic name and auto-approved status from query params
+		// Read schematic name, ID, and auto-approved status from query params
 		if name := e.Request.URL.Query().Get("name"); name != "" {
 			d.SchematicName = name
 			d.SchematicURL = "/schematics/" + name
 		}
+		d.SchematicID = schematicID
 		d.AutoApproved = e.Request.URL.Query().Get("auto") == "true"
 
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
@@ -195,7 +257,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
-func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service) func(e *server.RequestEvent) error {
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -221,6 +283,11 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 		if entry.UploadedBy != "" && entry.UploadedBy != userID {
 			return e.String(http.StatusForbidden, "you do not own this upload")
+		}
+
+		// Atomically mark as processing to prevent duplicate submissions
+		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
+			return e.String(http.StatusConflict, "this upload is already being processed")
 		}
 
 		// Parse the multipart form (up to 100 MB in memory; the rest spills to
@@ -487,59 +554,41 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			} else {
 				autoApproved = true
 			}
-		} else if moderationSvc != nil {
-			policyResult, policyErr := moderationSvc.CheckSchematic(title, sanitizedContent, "")
-			if policyErr != nil {
-				slog.Warn("make-public: moderation policy check unavailable, manual review required", "error", policyErr, "id", schem.ID)
-			} else if !policyResult.Approved {
-				schem.Blacklisted = true
-				schem.ModerationReason = policyResult.Reason
-				if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
-					slog.Error("make-public: failed to blacklist schematic", "error", updateErr, "id", schem.ID)
-				}
-			} else {
-				// Policy passed, check quality
-				qualityResult, qualityErr := moderationSvc.CheckSchematicQuality(title, sanitizedContent)
-				if qualityErr != nil {
-					slog.Warn("make-public: moderation quality check unavailable, manual review required", "error", qualityErr, "id", schem.ID)
-				} else if !qualityResult.Approved {
-					schem.Blacklisted = true
-					schem.ModerationReason = qualityResult.Reason
-					if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
-						slog.Error("make-public: failed to blacklist schematic", "error", updateErr, "id", schem.ID)
-					}
-				} else {
-					// Both checks passed — auto-approve
-					schem.Moderated = true
-					if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
-						slog.Error("make-public: failed to auto-approve schematic", "error", updateErr, "id", schem.ID)
-					} else {
-						autoApproved = true
-					}
-				}
+		} else if enqueueModeration != nil && moderationSvc != nil {
+			// Enqueue async moderation job instead of blocking the request
+			if insertErr := enqueueModeration(ctx, ModerationJobArgs{
+				SchematicID: schem.ID,
+				Title:       title,
+				Description: sanitizedContent,
+				ImageURL:    featuredFilename,
+				Slug:        nameSlug,
+			}); insertErr != nil {
+				slog.Error("make-public: failed to enqueue moderation job", "error", insertErr, "id", schem.ID)
 			}
 		}
 
 		// --- Create NBT hash for duplicate detection ---
 		if entry.Checksum != "" {
 			if err := appStore.NBTHashes.Create(ctx, &store.NBTHash{
+				ID:          generateSchematicID(),
 				Hash:        entry.Checksum,
 				SchematicID: &schem.ID,
 				UploadedBy:  &userID,
 			}); err != nil {
 				slog.Error("make-public: failed to create NBT hash", "error", err, "id", schem.ID)
-				return e.String(http.StatusInternalServerError, "failed to register file hash")
 			}
 		}
 
 		// --- Send admin email notification ---
-		if mailService != nil {
+		// For non-trusted users with async moderation, the moderation worker
+		// sends the email after moderation completes. Only send here for
+		// trusted users (auto-approved) or when moderation is not available.
+		sendAdminEmail := autoApproved || (moderationSvc == nil && mailService != nil)
+		if sendAdminEmail && mailService != nil {
 			emailTitle := schem.Title
 			emailID := schem.ID
 			emailName := nameSlug
 			emailImage := featuredFilename
-			emailBlacklisted := schem.Blacklisted
-			emailReason := schem.ModerationReason
 			go func() {
 				baseURL := os.Getenv("BASE_URL")
 				if baseURL == "" {
@@ -558,10 +607,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				from := mailService.DefaultFrom()
 
 				var subject, bodyText string
-				if emailBlacklisted {
-					subject = fmt.Sprintf("Schematic Blocked: %s", emailTitle)
-					bodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", emailTitle, emailReason)
-				} else if autoApproved {
+				if autoApproved {
 					subject = fmt.Sprintf("Schematic Auto-Approved: %s", emailTitle)
 					bodyText = fmt.Sprintf("The schematic \"%s\" has been auto-approved and is now live on the site.", emailTitle)
 				} else {
@@ -592,7 +638,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// Delete temp upload record
 		_ = appStore.TempUploads.Delete(ctx, token)
 
-		pendingURL := fmt.Sprintf("/upload/pending?name=%s&auto=%t", url.QueryEscape(nameSlug), autoApproved)
+		pendingURL := fmt.Sprintf("/upload/pending?name=%s&id=%s&auto=%t", url.QueryEscape(nameSlug), url.QueryEscape(schem.ID), autoApproved)
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, pendingURL))
 			return e.HTML(http.StatusNoContent, "")

@@ -1,10 +1,12 @@
 package router
 
 import (
+	"context"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
+	"createmod/internal/jobs"
 	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/outurl"
@@ -33,6 +35,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gosimple/slug"
+	"github.com/riverqueue/river"
 )
 
 // Adapt converts a server.RequestEvent handler into an http.HandlerFunc.
@@ -79,6 +82,7 @@ type RegisterParams struct {
 	DiscordOAuth       *auth.OAuthProvider
 	GithubOAuth        *auth.OAuthProvider
 	MailService        *mailer.Service
+	JobWorker          *jobs.Worker
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
 }
 
@@ -240,7 +244,21 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService)))
+	// Build the moderation enqueuer callback that closes over the job worker.
+	var enqueueModeration pages.ModerationEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueModeration = func(ctx context.Context, args pages.ModerationJobArgs) error {
+			return jw.Insert(ctx, jobs.ModerationArgs{
+				SchematicID: args.SchematicID,
+				Title:       args.Title,
+				Description: args.Description,
+				ImageURL:    args.ImageURL,
+				Slug:        args.Slug,
+			}, &river.InsertOpts{Queue: "ai"})
+		}
+	}
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page

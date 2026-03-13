@@ -4,7 +4,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 RETURNING id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, created, updated;
 
 -- name: GetTempUploadByToken :one
-SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, created, updated
+SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, processing, created, updated
 FROM temp_uploads
 WHERE token = $1;
 
@@ -73,3 +73,8 @@ LIMIT $2;
 -- name: DeleteExpiredUnclaimedTempUploads :execrows
 DELETE FROM temp_uploads
 WHERE uploaded_by = '' AND created < $1;
+
+-- name: MarkTempUploadProcessing :one
+UPDATE temp_uploads SET processing = TRUE, updated = NOW()
+WHERE token = @token AND processing = FALSE
+RETURNING id;

@@ -191,6 +191,7 @@ type Querier interface {
 	ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error)
 	ListVersions(ctx context.Context) ([]CreatemodVersion, error)
 	LogAPIKeyUsage(ctx context.Context, arg LogAPIKeyUsageParams) error
+	MarkTempUploadProcessing(ctx context.Context, token string) (string, error)
 	MonthlyUserDownloads(ctx context.Context, arg MonthlyUserDownloadsParams) ([]MonthlyUserDownloadsRow, error)
 	MonthlyUserUploads(ctx context.Context, arg MonthlyUserUploadsParams) ([]MonthlyUserUploadsRow, error)
 	MonthlyUserViews(ctx context.Context, arg MonthlyUserViewsParams) ([]MonthlyUserViewsRow, error)

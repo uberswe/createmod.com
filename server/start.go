@@ -72,6 +72,7 @@ type Server struct {
 	translationService   *translation.Service
 	pointLogService      *pointlog.Service
 	modMetaService       *modmeta.Service
+	mailService          *appmailer.Service
 	jobWorker            *jobs.Worker
 	discordOAuth         *auth.OAuthProvider
 	githubOAuth          *auth.OAuthProvider
@@ -149,6 +150,7 @@ func New(conf Config) *Server {
 		translationService:   translationService,
 		pointLogService:      pointlog.New(conf.Store),
 		modMetaService:       modmeta.New(conf.CurseForgeApiKey, conf.Store),
+		mailService:          appmailer.New(),
 	}
 
 	srv.sessionStore = session.NewStore(conf.Pool)
@@ -221,8 +223,6 @@ func (s *Server) Start() {
 
 	// ROUTES
 
-	mailService := appmailer.New()
-
 	chiRouter := irouter.Register(irouter.RegisterParams{
 		SearchService:      s.searchService,
 		CacheService:       s.cacheService,
@@ -236,7 +236,8 @@ func (s *Server) Start() {
 		StorageService:     s.storageService,
 		DiscordOAuth:       s.discordOAuth,
 		GithubOAuth:        s.githubOAuth,
-		MailService:        mailService,
+		MailService:        s.mailService,
+		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,
 	})
 
@@ -343,6 +344,8 @@ func (s *Server) startJobWorker() {
 			PointLog:     s.pointLogService,
 			ModMeta:      s.modMetaService,
 			SessionStore: s.sessionStore,
+			Moderation:   s.moderationService,
+			Mail:         s.mailService,
 		},
 	})
 	if err != nil {

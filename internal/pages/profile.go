@@ -29,8 +29,8 @@ var profileTemplates = append([]string{
 }, commonTemplates...)
 
 type ProfileData struct {
-	Username       string
-	Name           string
+	ProfileUsername string
+	Name            string
 	HasSchematics  bool
 	UserAvatar     tmpl.URL
 	Schematics     []models.Schematic
@@ -49,8 +49,9 @@ func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appS
 	return func(e *server.RequestEvent) error {
 		username := e.Request.PathValue("username")
 		if username == "" {
+			// /profile → redirect to the logged-in user's author page
 			if u := session.UserFromContext(e.Request.Context()); u != nil {
-				return showProfile(e, appStore, cacheService, registry, u.Username)
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/author/"+u.Username))
 			}
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
 		}
@@ -64,7 +65,7 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 	caser := cases.Title(language.English)
 	d.Title = i18n.T(d.Language, "Schematics by") + " " + caser.String(username)
 	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-	d.Username = caser.String(username)
+	d.ProfileUsername = caser.String(username)
 	d.Description = i18n.T(d.Language, "Find Create Mod schematics by") + " " + caser.String(username) + " " + i18n.T(d.Language, "on CreateMod.com")
 	d.Slug = "/author/" + username
 

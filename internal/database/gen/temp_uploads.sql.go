@@ -293,7 +293,7 @@ func (q *Queries) GetTempUploadByChecksum(ctx context.Context, checksum string) 
 }
 
 const getTempUploadByToken = `-- name: GetTempUploadByToken :one
-SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, created, updated
+SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, processing, created, updated
 FROM temp_uploads
 WHERE token = $1
 `
@@ -317,6 +317,7 @@ type GetTempUploadByTokenRow struct {
 	NbtS3Key         string          `json:"nbt_s3_key"`
 	ImageS3Key       string          `json:"image_s3_key"`
 	ParsedSummary    string          `json:"parsed_summary"`
+	Processing       bool            `json:"processing"`
 	Created          time.Time       `json:"created"`
 	Updated          time.Time       `json:"updated"`
 }
@@ -343,6 +344,7 @@ func (q *Queries) GetTempUploadByToken(ctx context.Context, token string) (GetTe
 		&i.NbtS3Key,
 		&i.ImageS3Key,
 		&i.ParsedSummary,
+		&i.Processing,
 		&i.Created,
 		&i.Updated,
 	)
@@ -543,6 +545,19 @@ func (q *Queries) ListTempUploadsByUser(ctx context.Context, arg ListTempUploads
 		return nil, err
 	}
 	return items, nil
+}
+
+const markTempUploadProcessing = `-- name: MarkTempUploadProcessing :one
+UPDATE temp_uploads SET processing = TRUE, updated = NOW()
+WHERE token = $1 AND processing = FALSE
+RETURNING id
+`
+
+func (q *Queries) MarkTempUploadProcessing(ctx context.Context, token string) (string, error) {
+	row := q.db.QueryRow(ctx, markTempUploadProcessing, token)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateTempUpload = `-- name: UpdateTempUpload :exec
