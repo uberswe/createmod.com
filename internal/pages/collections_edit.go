@@ -268,6 +268,10 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			if len(strings.TrimSpace(description)) < 100 {
 				return renderEditWithError("Description must be at least 100 characters to publish.")
 			}
+			schematicIDs, _ := appStore.Collections.GetSchematicIDs(ctx, coll.ID)
+			if len(schematicIDs) < 4 {
+				return renderEditWithError("A collection needs at least 4 schematics to publish.")
+			}
 			if moderationService != nil {
 				content := fmt.Sprintf("Title: %s\nDescription: %s", title, description)
 				result, err := moderationService.CheckContent(content)

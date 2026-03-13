@@ -1,0 +1,2 @@
+-- No safe rollback: we cannot determine which collections were previously published.
+-- Collections can be re-published manually by their authors.

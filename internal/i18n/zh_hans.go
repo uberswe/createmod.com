@@ -166,7 +166,8 @@ var LangZhHans = map[string]string{
 	"Reorder schematics":             "重新排列蓝图",
 	"Drag items to reorder.":         "拖动项目以重新排列。",
 	"Save order":                     "保存排序",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "发布合集需要标题（至少 10 个字符）和描述（至少 100 个字符）。内容将接受合规审查。",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "发布合集需要至少 4 个原理图、标题（至少 10 个字符）和描述（至少 100 个字符）。内容将接受合规审查。",
+	"A collection needs at least 4 schematics to publish.": "合集需要至少 4 个原理图才能发布。",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Create 模组和 Minecraft 指南",

@@ -68,7 +68,7 @@
             </form>
             {{ if not .Published }}
             <div class="alert alert-info mt-3">
-              {{ T .Language "To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance." }}
+              {{ T .Language "To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance." }}
             </div>
             {{ end }}
             <form class="card mt-3" action="{{ .Slug }}/reorder" method="post">

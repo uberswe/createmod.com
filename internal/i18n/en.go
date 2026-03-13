@@ -165,7 +165,8 @@ var LangEN = map[string]string{
 	"Reorder schematics":             "Reorder schematics",
 	"Drag items to reorder.":         "Drag items to reorder.",
 	"Save order":                     "Save order",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.",
+	"A collection needs at least 4 schematics to publish.": "A collection needs at least 4 schematics to publish.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Guides for the Create mod and Minecraft",

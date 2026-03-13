@@ -166,7 +166,8 @@ var LangDE = map[string]string{
 	"Reorder schematics":             "Schematics neu anordnen",
 	"Drag items to reorder.":         "Elemente ziehen, um sie neu anzuordnen.",
 	"Save order":                     "Reihenfolge speichern",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Zum Veröffentlichen benötigt deine Sammlung einen Titel (mind. 10 Zeichen) und eine Beschreibung (mind. 100 Zeichen). Inhalte werden auf Regelkonformität geprüft.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Zum Veröffentlichen benötigt deine Sammlung mindestens 4 Schematics, einen Titel (mind. 10 Zeichen) und eine Beschreibung (mind. 100 Zeichen). Inhalte werden auf Regelkonformität geprüft.",
+	"A collection needs at least 4 schematics to publish.": "Eine Sammlung benötigt mindestens 4 Schematics zum Veröffentlichen.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Anleitungen für den Create Mod und Minecraft",

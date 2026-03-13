@@ -166,7 +166,8 @@ var LangPtPT = map[string]string{
 	"Reorder schematics":             "Reordenar esquemas",
 	"Drag items to reorder.":         "Arraste os itens para reordenar.",
 	"Save order":                     "Guardar ordem",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Para publicar, a sua colecao necessita de um titulo (min. 10 caracteres) e uma descricao (min. 100 caracteres). O conteudo sera verificado quanto ao cumprimento das regras.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Para publicar, a sua coleção necessita de pelo menos 4 schematics, um título (min. 10 caracteres) e uma descrição (min. 100 caracteres). O conteúdo será verificado quanto ao cumprimento das regras.",
+	"A collection needs at least 4 schematics to publish.": "Uma coleção necessita de pelo menos 4 schematics para publicar.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Guias para o Create mod e Minecraft",
