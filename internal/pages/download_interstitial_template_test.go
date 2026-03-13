@@ -18,7 +18,8 @@ func Test_Download_Interstitial_Template_Has_Countdown_And_Links(t *testing.T) {
 	must := []string{
 		"Preparing your download",
 		"id=\"countdown\"",
-		"/download/{{ .Name }}?t={{ .Token }}",
+		"id=\"token-id\"",
+		"/api/download-url/",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {

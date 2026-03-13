@@ -94,6 +94,7 @@ type Querier interface {
 	GetCollectionTranslation(ctx context.Context, arg GetCollectionTranslationParams) (CollectionTranslation, error)
 	GetCommentByID(ctx context.Context, id string) (Comment, error)
 	GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error)
+	GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
 	GetGuideByID(ctx context.Context, id string) (Guide, error)
 	GetGuideBySlug(ctx context.Context, slug string) (Guide, error)

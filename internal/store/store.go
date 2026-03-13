@@ -617,6 +617,7 @@ type DownloadToken struct {
 // DownloadTokenStore handles download token persistence.
 type DownloadTokenStore interface {
 	Create(ctx context.Context, dt *DownloadToken) error
+	GetByID(ctx context.Context, id string) (*DownloadToken, error)
 	Consume(ctx context.Context, token string) (*DownloadToken, error) // get + mark used atomically
 	CleanupExpired(ctx context.Context) error
 }

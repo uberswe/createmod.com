@@ -2933,6 +2933,21 @@ func (dt *DownloadTokenStoreImpl) Create(ctx context.Context, t *store.DownloadT
 	return nil
 }
 
+func (dt *DownloadTokenStoreImpl) GetByID(ctx context.Context, id string) (*store.DownloadToken, error) {
+	row, err := dt.q.GetDownloadTokenByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.DownloadToken{
+		ID:        row.ID,
+		Token:     row.Token,
+		Name:      row.Name,
+		ExpiresAt: row.ExpiresAt,
+		Used:      row.Used,
+		Created:   row.Created,
+	}, nil
+}
+
 func (dt *DownloadTokenStoreImpl) Consume(ctx context.Context, token string) (*store.DownloadToken, error) {
 	row, err := dt.q.ConsumeDownloadToken(ctx, token)
 	if err != nil {
