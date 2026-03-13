@@ -425,6 +425,7 @@ type TempUpload struct {
 	CreatemodVersion string          `json:"createmod_version"`
 	NbtS3Key         string          `json:"nbt_s3_key"`
 	ImageS3Key       string          `json:"image_s3_key"`
+	Processing       bool            `json:"processing"`
 }
 
 type TempUploadFile struct {

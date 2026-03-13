@@ -673,6 +673,7 @@ type TempUpload struct {
 	NbtS3Key         string
 	ImageS3Key       string
 	ParsedSummary    string
+	Processing       bool
 	Created          time.Time
 	Updated          time.Time
 }
@@ -722,6 +723,7 @@ type TempUploadStore interface {
 	GetByChecksum(ctx context.Context, checksum string) (*TempUpload, error)
 	Update(ctx context.Context, t *TempUpload) error
 	Claim(ctx context.Context, token string, userID string) error
+	MarkProcessing(ctx context.Context, token string) error
 	Delete(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
 	ListByUser(ctx context.Context, userID string, limit int, offset int) ([]TempUpload, error)

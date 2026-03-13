@@ -2631,6 +2631,7 @@ func (s *TempUploadStoreImpl) GetByToken(ctx context.Context, token string) (*st
 		NbtS3Key:         row.NbtS3Key,
 		ImageS3Key:       row.ImageS3Key,
 		ParsedSummary:    row.ParsedSummary,
+		Processing:       row.Processing,
 		Created:          row.Created,
 		Updated:          row.Updated,
 	}, nil
@@ -2685,6 +2686,14 @@ func (s *TempUploadStoreImpl) Claim(ctx context.Context, token string, userID st
 	}
 	if rows == 0 {
 		return fmt.Errorf("upload already claimed or not found")
+	}
+	return nil
+}
+
+func (s *TempUploadStoreImpl) MarkProcessing(ctx context.Context, token string) error {
+	_, err := s.q.MarkTempUploadProcessing(ctx, token)
+	if err != nil {
+		return fmt.Errorf("upload already processing or not found")
 	}
 	return nil
 }
