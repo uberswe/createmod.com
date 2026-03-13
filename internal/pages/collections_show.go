@@ -5,6 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"fmt"
@@ -42,7 +43,7 @@ type CollectionsShowData struct {
 }
 
 // CollectionsShowHandler renders a basic collection detail page by slug or id.
-func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		slug := e.Request.PathValue("slug")
 
@@ -129,6 +130,11 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 				}
 			}
 			d.SchematicCount = len(d.Schematics)
+
+			// Lazily generate collage for collections that have schematics but no banner or collage
+			if coll.BannerURL == "" && coll.CollageURL == "" && len(schematicIDs) > 0 && storageSvc != nil {
+				go generateCollectionCollage(storageSvc, appStore, coll.ID)
+			}
 
 			// Build mod info list from all schematics (deduplicated)
 			seen := make(map[string]bool)

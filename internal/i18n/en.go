@@ -380,6 +380,8 @@ var LangEN = map[string]string{
 	"Create new collection…": "Create new collection…",
 	"Collection name":      "Collection name",
 	"Add":                  "Add",
+	"Easy Schematic Uploads": "Easy Schematic Uploads",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contact CreateMod.com",
