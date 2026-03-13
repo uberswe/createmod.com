@@ -21,13 +21,19 @@ import (
 // It is designed to be called as a goroutine (fire-and-forget).
 func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Store, collectionID string) {
 	if storageSvc == nil {
+		slog.Warn("collage: storage service is nil", "collection", collectionID)
 		return
 	}
 
 	ctx := context.Background()
 
 	ids, err := appStore.Collections.GetSchematicIDs(ctx, collectionID)
-	if err != nil || len(ids) == 0 {
+	if err != nil {
+		slog.Warn("collage: failed to get schematic IDs", "collection", collectionID, "error", err)
+		return
+	}
+	if len(ids) == 0 {
+		slog.Info("collage: no schematics in collection", "collection", collectionID)
 		return
 	}
 
@@ -37,7 +43,12 @@ func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Stor
 	}
 
 	schematics, err := appStore.Schematics.ListByIDs(ctx, ids)
-	if err != nil || len(schematics) == 0 {
+	if err != nil {
+		slog.Warn("collage: failed to list schematics", "collection", collectionID, "error", err)
+		return
+	}
+	if len(schematics) == 0 {
+		slog.Info("collage: no schematics found by IDs", "collection", collectionID, "ids", ids)
 		return
 	}
 
@@ -45,21 +56,27 @@ func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Stor
 	var images []image.Image
 	for _, id := range ids {
 		for _, s := range schematics {
-			if s.ID == id && s.FeaturedImage != "" {
+			if s.ID == id {
+				if s.FeaturedImage == "" {
+					slog.Info("collage: schematic has no featured image", "schematic", s.ID)
+					break
+				}
 				key := fmt.Sprintf("schematics/%s/%s", s.ID, s.FeaturedImage)
 				rc, err := storageSvc.DownloadRaw(ctx, key)
 				if err != nil {
-					slog.Debug("collage: failed to download image", "key", key, "error", err)
-					continue
+					slog.Warn("collage: failed to download image", "key", key, "error", err)
+					break
 				}
 				data, err := io.ReadAll(rc)
 				rc.Close()
 				if err != nil {
-					continue
+					slog.Warn("collage: failed to read image data", "key", key, "error", err)
+					break
 				}
 				img, err := imgconv.Decode(bytes.NewReader(data))
 				if err != nil {
-					continue
+					slog.Warn("collage: failed to decode image", "key", key, "error", err)
+					break
 				}
 				images = append(images, img)
 				break
@@ -68,8 +85,10 @@ func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Stor
 	}
 
 	if len(images) == 0 {
+		slog.Info("collage: no images collected, skipping", "collection", collectionID)
 		return
 	}
+	slog.Info("collage: generating", "collection", collectionID, "images", len(images))
 
 	const (
 		collageW = 800
