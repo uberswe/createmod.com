@@ -61,7 +61,7 @@ func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Stor
 					slog.Info("collage: schematic has no featured image", "schematic", s.ID)
 					break
 				}
-				key := fmt.Sprintf("schematics/%s/%s", s.ID, s.FeaturedImage)
+				key := fmt.Sprintf("%s/%s/%s", storage.CollectionPrefix("schematics"), s.ID, s.FeaturedImage)
 				rc, err := storageSvc.DownloadRaw(ctx, key)
 				if err != nil {
 					slog.Warn("collage: failed to download image", "key", key, "error", err)
