@@ -6,6 +6,8 @@ import (
 	"context"
 	"createmod/internal/aidescription"
 	"createmod/internal/cache"
+	"createmod/internal/mailer"
+	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
 	"createmod/internal/pointlog"
 	"createmod/internal/search"
@@ -36,6 +38,8 @@ type Deps struct {
 	PointLog     *pointlog.Service
 	ModMeta      *modmeta.Service
 	SessionStore *session.Store
+	Moderation   *moderation.Service
+	Mail         *mailer.Service
 }
 
 // Config holds job worker configuration.
@@ -64,6 +68,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &SitemapWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SessionCleanupWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &TempUploadCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ModerationWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -184,4 +189,10 @@ func (w *Worker) Stop(ctx context.Context) error {
 // Client returns the underlying River client for direct job insertion.
 func (w *Worker) Client() *river.Client[pgx.Tx] {
 	return w.client
+}
+
+// Insert enqueues a job for background processing.
+func (w *Worker) Insert(ctx context.Context, args river.JobArgs, opts *river.InsertOpts) error {
+	_, err := w.client.Insert(ctx, args, opts)
+	return err
 }

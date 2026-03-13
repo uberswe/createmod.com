@@ -129,7 +129,11 @@ func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) fu
 			}
 			ctx := context.Background()
 
-			var recipientEmail, subject, body string
+			schemTitle := schem.Title
+			schemName := schem.Name
+			schematicURL := fmt.Sprintf("https://www.createmod.com/schematics/%s", schemName)
+
+			var recipientEmail, subject, bodyText string
 			if replyToUser == "" {
 				// Notify schematic author
 				u, err := appStore.Users.GetUserByID(ctx, schem.AuthorID)
@@ -137,8 +141,8 @@ func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) fu
 					return
 				}
 				recipientEmail = u.Email
-				subject = fmt.Sprintf("New comment on %s", schem.Title)
-				body = fmt.Sprintf("<p>A new comment has been posted on your CreateMod.com schematic: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a></p>", schem.Name, schem.Name)
+				subject = fmt.Sprintf("New comment on %s", schemTitle)
+				bodyText = "A new comment has been posted on your schematic."
 			} else {
 				// Notify parent comment author
 				u, err := appStore.Users.GetUserByID(ctx, replyToUser)
@@ -146,13 +150,14 @@ func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) fu
 					return
 				}
 				recipientEmail = u.Email
-				subject = fmt.Sprintf("New reply on %s", schem.Title)
-				body = fmt.Sprintf("<p>A new reply has been posted to your comment on CreateMod.com: <a href=\"https://www.createmod.com/schematics/%s\">https://www.createmod.com/schematics/%s</a></p>", schem.Name, schem.Name)
+				subject = fmt.Sprintf("New reply on %s", schemTitle)
+				bodyText = "A new reply has been posted to your comment."
 			}
 
+			htmlBody := mailer.EmailHTML(schemTitle, "", schematicURL, "View Schematic", bodyText)
 			from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
 			to := []mail.Address{{Address: recipientEmail}}
-			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
+			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: htmlBody}
 			if err := mailService.Send(msg); err != nil {
 				slog.Error("failed to send comment notification", "error", err)
 			}

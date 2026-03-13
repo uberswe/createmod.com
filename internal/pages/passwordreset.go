@@ -132,10 +132,11 @@ func PasswordResetPostHandler(mailService *mailer.Service, registry *server.Regi
 						},
 						To:      []mail.Address{{Address: user.Email}},
 						Subject: "Password Reset - CreateMod.com",
-						HTML: fmt.Sprintf(`<p>You requested a password reset for your CreateMod.com account.</p>
-<p><a href="%s">Click here to reset your password</a></p>
-<p>This link will expire in 1 hour.</p>
-<p>If you did not request this, please ignore this email.</p>`, resetURL),
+						HTML: mailer.EmailHTML(
+							"Password Reset",
+							"", resetURL, "Reset Password",
+							"You requested a password reset for your CreateMod.com account. This link will expire in 1 hour. If you did not request this, please ignore this email.",
+						),
 					}
 					if err := mailService.Send(message); err != nil {
 						slog.Error("failed to send password reset email", "error", err)

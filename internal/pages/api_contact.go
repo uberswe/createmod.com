@@ -49,9 +49,10 @@ func ContactSubmitHandler(appStore *store.Store, mailService *mailer.Service) fu
 					return
 				}
 				from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
-				subject := "New CreateMod.com Contact Form Submission"
-				body := fmt.Sprintf("<p>Email: %s</p><p>Content: %s</p>", contactEmail, contactContent)
-				msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
+				subject := "New Contact Form Submission"
+				bodyText := fmt.Sprintf("Email: %s\n\n%s", contactEmail, contactContent)
+				htmlBody := mailer.EmailHTML(subject, "", "", "", bodyText)
+				msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: htmlBody}
 				if err := mailService.Send(msg); err != nil {
 					slog.Error("failed to send contact notification", "error", err)
 				}
