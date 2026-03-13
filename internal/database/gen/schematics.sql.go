@@ -1692,6 +1692,20 @@ func (q *Queries) UpdateSchematic(ctx context.Context, arg UpdateSchematicParams
 	return i, err
 }
 
+const updateSchematicDetectedLanguage = `-- name: UpdateSchematicDetectedLanguage :exec
+UPDATE schematics SET detected_language = $2 WHERE id = $1
+`
+
+type UpdateSchematicDetectedLanguageParams struct {
+	ID               string `json:"id"`
+	DetectedLanguage string `json:"detected_language"`
+}
+
+func (q *Queries) UpdateSchematicDetectedLanguage(ctx context.Context, arg UpdateSchematicDetectedLanguageParams) error {
+	_, err := q.db.Exec(ctx, updateSchematicDetectedLanguage, arg.ID, arg.DetectedLanguage)
+	return err
+}
+
 const updateSchematicDownloads = `-- name: UpdateSchematicDownloads :exec
 UPDATE schematics SET downloads = $2 WHERE id = $1
 `

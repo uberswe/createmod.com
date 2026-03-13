@@ -94,6 +94,7 @@ type Querier interface {
 	GetCollectionTranslation(ctx context.Context, arg GetCollectionTranslationParams) (CollectionTranslation, error)
 	GetCommentByID(ctx context.Context, id string) (Comment, error)
 	GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error)
+	GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
 	GetGuideByID(ctx context.Context, id string) (Guide, error)
 	GetGuideBySlug(ctx context.Context, slug string) (Guide, error)
@@ -210,6 +211,7 @@ type Querier interface {
 	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
 	UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error)
 	UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error)
+	UpdateSchematicDetectedLanguage(ctx context.Context, arg UpdateSchematicDetectedLanguageParams) error
 	UpdateSchematicDownloads(ctx context.Context, arg UpdateSchematicDownloadsParams) error
 	UpdateSchematicName(ctx context.Context, arg UpdateSchematicNameParams) error
 	UpdateSchematicRatingAggregates(ctx context.Context, arg UpdateSchematicRatingAggregatesParams) error

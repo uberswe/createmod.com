@@ -9,5 +9,8 @@ SET used = true
 WHERE token = $1 AND used = false AND expires_at > NOW()
 RETURNING *;
 
+-- name: GetDownloadTokenByID :one
+SELECT * FROM download_tokens WHERE id = $1 AND used = false AND expires_at > NOW();
+
 -- name: CleanupExpiredDownloadTokens :exec
 DELETE FROM download_tokens WHERE expires_at < NOW() - INTERVAL '1 hour';

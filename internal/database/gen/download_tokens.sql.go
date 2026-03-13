@@ -65,3 +65,21 @@ func (q *Queries) CreateDownloadToken(ctx context.Context, arg CreateDownloadTok
 	)
 	return i, err
 }
+
+const getDownloadTokenByID = `-- name: GetDownloadTokenByID :one
+SELECT id, token, name, expires_at, used, created FROM download_tokens WHERE id = $1 AND used = false AND expires_at > NOW()
+`
+
+func (q *Queries) GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error) {
+	row := q.db.QueryRow(ctx, getDownloadTokenByID, id)
+	var i DownloadToken
+	err := row.Scan(
+		&i.ID,
+		&i.Token,
+		&i.Name,
+		&i.ExpiresAt,
+		&i.Used,
+		&i.Created,
+	)
+	return i, err
+}

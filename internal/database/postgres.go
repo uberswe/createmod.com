@@ -770,6 +770,13 @@ func (ps *PostgresStore) UpdateName(ctx context.Context, id, name string) error 
 	})
 }
 
+func (ps *PostgresStore) UpdateDetectedLanguage(ctx context.Context, id, lang string) error {
+	return ps.q.UpdateSchematicDetectedLanguage(ctx, db.UpdateSchematicDetectedLanguageParams{
+		ID:               id,
+		DetectedLanguage: lang,
+	})
+}
+
 func (ps *PostgresStore) ListByNamePattern(ctx context.Context, pattern string, limit int) ([]store.Schematic, error) {
 	rows, err := ps.q.ListSchematicsByNamePattern(ctx, db.ListSchematicsByNamePatternParams{
 		Name:  pattern,
@@ -2924,6 +2931,21 @@ func (dt *DownloadTokenStoreImpl) Create(ctx context.Context, t *store.DownloadT
 	t.ID = row.ID
 	t.Created = row.Created
 	return nil
+}
+
+func (dt *DownloadTokenStoreImpl) GetByID(ctx context.Context, id string) (*store.DownloadToken, error) {
+	row, err := dt.q.GetDownloadTokenByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.DownloadToken{
+		ID:        row.ID,
+		Token:     row.Token,
+		Name:      row.Name,
+		ExpiresAt: row.ExpiresAt,
+		Used:      row.Used,
+		Created:   row.Created,
+	}, nil
 }
 
 func (dt *DownloadTokenStoreImpl) Consume(ctx context.Context, token string) (*store.DownloadToken, error) {
