@@ -1,7 +1,7 @@
 package models
 
 type SchematicCategory struct {
-	ID   string
-	Key  string
-	Name string
+	ID   string `json:"id"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }
