@@ -166,6 +166,7 @@ func Register(p RegisterParams) chi.Router {
 		maintenanceFlag.Store(true)
 	}
 	r.Use(headMethodSupport)
+	r.Use(cleanDoubleSlashes)
 	r.Use(requestLogger)
 	r.Use(securityHeaders)
 	r.Use(maintenanceModeMiddleware(maintenanceFlag))
@@ -228,6 +229,14 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte("# Site-specific rules (Cloudflare prepends its managed block above)\nUser-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\n\nSitemap: https://createmod.com/sitemaps/sitemap.xml\n"))
 	})
 	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
+	// Favicon redirect (browsers request /favicon.ico by default)
+	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/assets/x/favicon-192x192.png", http.StatusMovedPermanently)
+	})
+	// Root sitemap.xml redirect (crawlers look here)
+	r.Get("/sitemap.xml", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/sitemaps/sitemap.xml", http.StatusMovedPermanently)
+	})
 	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {
 		s, ok := p.CacheService.GetString("ads.txt")
 		if ok {
@@ -409,6 +418,13 @@ func Register(p RegisterParams) chi.Router {
 	// Schematics
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
 	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchService, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, webhookSecret)))
+	// Schematic RSS feed (comments)
+	r.Get("/schematics/{name}/feed", Adapt(pages.SchematicFeedHandler(p.AppStore, p.CacheService)))
+	// Redirect legacy /schematics/{name}/page/N to the schematic itself
+	r.Get("/schematics/{name}/page/{page}", func(w http.ResponseWriter, req *http.Request) {
+		name := chi.URLParam(req, "name")
+		http.Redirect(w, req, "/schematics/"+name, http.StatusMovedPermanently)
+	})
 	// Partial comments endpoint for HTMX refresh
 	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.SearchService, p.CacheService, registry, p.DiscordService, p.AppStore)))
 	// Add to collection
@@ -433,6 +449,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
+	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
 	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
 	// Fallback
@@ -772,6 +789,27 @@ var cspHeader = strings.Join([]string{
 	"form-action 'self'",
 	"frame-ancestors 'self'",
 }, "; ")
+
+// cleanDoubleSlashes redirects requests with repeated slashes (e.g. //author/x)
+// to the canonical single-slash path. This handles crawlers and cached links
+// that accidentally have a leading double slash.
+func cleanDoubleSlashes(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "//") {
+			cleaned := r.URL.Path
+			for strings.Contains(cleaned, "//") {
+				cleaned = strings.ReplaceAll(cleaned, "//", "/")
+			}
+			target := cleaned
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 // securityHeaders sets standard security response headers on every request.
 func securityHeaders(next http.Handler) http.Handler {
