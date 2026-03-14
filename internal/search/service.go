@@ -74,6 +74,13 @@ type indexCacheEntry struct {
 	BI bleveIndex     `json:"bi"`
 }
 
+// Ready returns true when the search index has been populated and is ready
+// to serve queries. Used by the readiness probe to delay traffic until the
+// pod can actually produce search results.
+func (s *Service) Ready() bool {
+	return s != nil && s.index != nil && len(s.index) > 0
+}
+
 // SetTrendingScores sets the trending scores map used for trending sort order.
 func (s *Service) SetTrendingScores(scores map[string]float64) {
 	s.trendingScores = scores

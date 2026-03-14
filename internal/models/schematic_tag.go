@@ -1,14 +1,14 @@
 package models
 
 type SchematicTag struct {
-	ID   string
-	Key  string
-	Name string
+	ID   string `json:"id"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
 }
 
 type SchematicTagWithCount struct {
-	ID    string
-	Key   string
-	Name  string
-	Count int64
+	ID    string `json:"id"`
+	Key   string `json:"key"`
+	Name  string `json:"name"`
+	Count int64  `json:"count"`
 }

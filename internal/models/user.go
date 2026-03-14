@@ -5,8 +5,8 @@ import (
 )
 
 type User struct {
-	ID        string
-	Username  string
-	Avatar    template.URL
-	HasAvatar bool
+	ID        string       `json:"id"`
+	Username  string       `json:"username"`
+	Avatar    template.URL `json:"avatar"`
+	HasAvatar bool         `json:"hasAvatar"`
 }

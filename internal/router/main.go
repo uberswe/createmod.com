@@ -183,6 +183,19 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	// Readiness probe — returns 200 only when the search index is populated.
+	// Excluded from maintenance mode so Kubernetes can still probe.
+	r.Get("/api/ready", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if p.SearchService != nil && p.SearchService.Ready() {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ready"}`))
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"status":"not_ready"}`))
+		}
+	})
+
 	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
 	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
 
@@ -599,7 +612,7 @@ func requestLogger(next http.Handler) http.Handler {
 func maintenanceModeMiddleware(flag *atomic.Bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if flag.Load() && r.URL.Path != "/api/health" {
+			if flag.Load() && r.URL.Path != "/api/health" && r.URL.Path != "/api/ready" {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Retry-After", "3600")
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -768,6 +781,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		w.Header().Set("Content-Security-Policy", cspHeader)
+		w.Header().Set("Cache-Control", "no-cache, private")
 
 		// CORS for allowed external origins on API routes
 		if strings.HasPrefix(r.URL.Path, "/api/") {
