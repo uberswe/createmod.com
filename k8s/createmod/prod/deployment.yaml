@@ -21,6 +21,7 @@ spec:
         linkerd.io/inject: enabled
         config.linkerd.io/skip-outbound-ports: "443,6379,9000"
     spec:
+      terminationGracePeriodSeconds: 40
       imagePullSecrets:
         - name: ghcr-pull-secret
       containers:
@@ -36,6 +37,10 @@ spec:
                 name: createmod-config
             - secretRef:
                 name: createmod-secrets
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           livenessProbe:
             httpGet:
               path: /api/health
@@ -55,7 +60,7 @@ spec:
           resources:
             requests:
               cpu: 200m
-              memory: 1Gi
+              memory: 512Mi
             limits:
               cpu: 1000m
               memory: 4Gi
