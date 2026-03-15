@@ -197,6 +197,11 @@ func Register(p RegisterParams) chi.Router {
 		}
 	})
 
+	// Minecraft mod download API (HMAC-signed, XOR-encoded response)
+	modSecret := deriveModDownloadSecret()
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)).
+		Post("/api/mod/download", Adapt(pages.ModDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
+
 	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
 	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
 
@@ -266,6 +271,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
+	// Private upload block modification
+	r.Get("/u/{token}/modify", Adapt(pages.UploadModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/u/{token}/modify/download", Adapt(pages.UploadModifyDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/u/{token}/modify/preview-url", Adapt(pages.UploadModifyPreviewHandler(p.AppStore, p.StorageService)))
 	// Build the moderation enqueuer callback that closes over the job worker.
 	var enqueueModeration pages.ModerationEnqueuer
 	if p.JobWorker != nil {
@@ -437,6 +446,15 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/download-url/{id}", Adapt(pages.DownloadURLHandler(p.AppStore)))
 	// External link interstitial (encrypted token, no raw URL exposed)
 	r.Get("/out/{token}", Adapt(pages.ExternalLinkInterstitialHandler(registry, p.CacheService, outSecret, p.AppStore)))
+	// Schematic block modification
+	r.Get("/schematics/{name}/modify", Adapt(pages.ModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	modifyRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
+	previewRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)
+	r.With(modifyRateLimit).Post("/api/schematics/{id}/modify/download", Adapt(pages.ModifyDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(previewRateLimit).Post("/api/schematics/{id}/modify/preview-url", Adapt(pages.ModifyPreviewHandler(p.AppStore, p.StorageService)))
+	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
+	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
+	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchService)))
@@ -859,6 +877,17 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// deriveModDownloadSecret returns the shared secret for Minecraft mod download
+// API request signing. Falls back to a deterministic insecure default for dev.
+func deriveModDownloadSecret() string {
+	if s := os.Getenv("MOD_DOWNLOAD_SECRET"); s != "" {
+		return s
+	}
+	slog.Warn("MOD_DOWNLOAD_SECRET environment variable is not set; using insecure default — set MOD_DOWNLOAD_SECRET in production")
+	h := sha256.Sum256([]byte("createmod-mod-download:default"))
+	return hex.EncodeToString(h[:])
 }
 
 // deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.

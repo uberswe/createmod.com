@@ -735,4 +735,21 @@ var LangES = map[string]string{
 	"page.404.title": "Página no encontrada - CreateMod.com",
 	"Webhooks": "Webhooks",
 
+	// ── Block Modification ──
+	"modify_blocks":             "Modificar Bloques",
+	"modify_blocks_description": "Reemplazar o eliminar bloques en este esquemático",
+	"original_block":            "Bloque Original",
+	"replacement_block":         "Bloque de Reemplazo",
+	"remove_block":              "Eliminar Bloque",
+	"download_modified":         "Descargar Modificado",
+	"preview_modified":          "Vista Previa Modificado",
+	"save_variation":            "Guardar Variación",
+	"variation_name":            "Nombre de Variación",
+	"saved_variations":          "Variaciones Guardadas",
+	"load_variation":            "Cargar",
+	"delete_variation":          "Eliminar",
+	"no_replacement":            "Sin reemplazo",
+	"block_search_placeholder":  "Buscar un bloque...",
+	"replacements":              "reemplazos",
+
 }

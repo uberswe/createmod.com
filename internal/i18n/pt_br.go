@@ -759,4 +759,21 @@ var LangPtBR = map[string]string{
 
 	// ── Webhooks (settings) ──
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modificar Blocos",
+	"modify_blocks_description": "Substituir ou remover blocos neste esquemático",
+	"original_block":            "Bloco Original",
+	"replacement_block":         "Bloco de Substituição",
+	"remove_block":              "Remover Bloco",
+	"download_modified":         "Baixar Modificado",
+	"preview_modified":          "Visualizar Modificado",
+	"save_variation":            "Salvar Variação",
+	"variation_name":            "Nome da Variação",
+	"saved_variations":          "Variações Salvas",
+	"load_variation":            "Carregar",
+	"delete_variation":          "Excluir",
+	"no_replacement":            "Sem substituição",
+	"block_search_placeholder":  "Buscar um bloco...",
+	"replacements":              "substituições",
 }

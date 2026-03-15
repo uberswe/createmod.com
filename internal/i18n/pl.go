@@ -735,4 +735,21 @@ var LangPL = map[string]string{
 	"Edit Mod:":               "Edytuj mod:",
 	"page.404.title": "Strona nie znaleziona - CreateMod.com",
 	"Webhooks": "Webhooki",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modyfikuj Bloki",
+	"modify_blocks_description": "Zamień lub usuń bloki w tym schemacie",
+	"original_block":            "Oryginalny Blok",
+	"replacement_block":         "Blok Zastępczy",
+	"remove_block":              "Usuń Blok",
+	"download_modified":         "Pobierz Zmodyfikowany",
+	"preview_modified":          "Podgląd Zmodyfikowany",
+	"save_variation":            "Zapisz Wariant",
+	"variation_name":            "Nazwa Wariantu",
+	"saved_variations":          "Zapisane Warianty",
+	"load_variation":            "Wczytaj",
+	"delete_variation":          "Usuń",
+	"no_replacement":            "Brak zamiany",
+	"block_search_placeholder":  "Szukaj bloku...",
+	"replacements":              "zamian",
 }

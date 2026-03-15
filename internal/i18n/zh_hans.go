@@ -735,4 +735,21 @@ var LangZhHans = map[string]string{
 	"Edit Mod:":               "编辑模组：",
 	"page.404.title": "页面未找到 - CreateMod.com",
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "修改方块",
+	"modify_blocks_description": "替换或移除此原理图中的方块",
+	"original_block":            "原始方块",
+	"replacement_block":         "替换方块",
+	"remove_block":              "移除方块",
+	"download_modified":         "下载修改版",
+	"preview_modified":          "预览修改版",
+	"save_variation":            "保存变体",
+	"variation_name":            "变体名称",
+	"saved_variations":          "已保存的变体",
+	"load_variation":            "加载",
+	"delete_variation":          "删除",
+	"no_replacement":            "无替换",
+	"block_search_placeholder":  "搜索方块...",
+	"replacements":              "个替换",
 }

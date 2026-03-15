@@ -270,6 +270,10 @@ func (s *Service) DetectAndTranslate(schematicID string) {
 
 // BackfillMissingTranslations finds schematics with fewer than the expected number of
 // translation records and generates the missing ones.
+//
+// When a schematic is found missing one language, TranslateSchematic translates it to
+// ALL languages. A seen-set prevents the same schematic from being re-processed when
+// it appears in subsequent per-language queries.
 func (s *Service) BackfillMissingTranslations() {
 	if s.openaiClient == nil || !s.openaiClient.HasApiKey() {
 		slog.Info("BackfillMissingTranslations skipped: OpenAI not configured")
@@ -277,24 +281,32 @@ func (s *Service) BackfillMissingTranslations() {
 	}
 	slog.Info("BackfillMissingTranslations started")
 
+	const maxSchematics = 5
 	ctx := context.Background()
 	processed := 0
+	seen := make(map[string]bool)
 
 	for _, lang := range SupportedLanguages {
-		if processed >= 20 {
+		if processed >= maxSchematics {
 			break
 		}
 
-		schematics, err := s.appStore.Translations.ListSchematicsWithoutTranslation(ctx, lang, 20-processed)
+		// Query a few extra to account for schematics we may have already processed
+		// in a previous language iteration.
+		schematics, err := s.appStore.Translations.ListSchematicsWithoutTranslation(ctx, lang, maxSchematics+len(seen))
 		if err != nil {
 			slog.Error("BackfillMissingTranslations query failed", "lang", lang, "error", err)
 			continue
 		}
 
 		for _, schematic := range schematics {
-			if processed >= 20 {
+			if processed >= maxSchematics {
 				break
 			}
+			if seen[schematic.ID] {
+				continue
+			}
+			seen[schematic.ID] = true
 
 			slog.Info("BackfillMissingTranslations: translating schematic", "id", schematic.ID, "lang", lang)
 			s.TranslateSchematic(schematic.ID)
@@ -416,12 +428,13 @@ func (s *Service) BackfillGuideTranslations() {
 	}
 	slog.Info("BackfillGuideTranslations started")
 
+	const maxGuides = 3
 	ctx := context.Background()
 
 	// Expected translations: all languages minus English (guides are assumed English source)
 	expectedCount := len(SupportedLanguages) - 1
 
-	guides, err := s.appStore.Guides.List(ctx, 200, 0)
+	guides, err := s.appStore.Guides.List(ctx, 50, 0)
 	if err != nil {
 		slog.Error("BackfillGuideTranslations query failed", "error", err)
 		return
@@ -429,7 +442,7 @@ func (s *Service) BackfillGuideTranslations() {
 
 	processed := 0
 	for _, guide := range guides {
-		if processed >= 10 {
+		if processed >= maxGuides {
 			break
 		}
 
@@ -564,11 +577,12 @@ func (s *Service) BackfillCollectionTranslations() {
 	}
 	slog.Info("BackfillCollectionTranslations started")
 
+	const maxCollections = 3
 	ctx := context.Background()
 
 	expectedCount := len(SupportedLanguages) - 1
 
-	collections, err := s.appStore.Collections.ListPublished(ctx, 200, 0)
+	collections, err := s.appStore.Collections.ListPublished(ctx, 50, 0)
 	if err != nil {
 		slog.Error("BackfillCollectionTranslations query failed", "error", err)
 		return
@@ -576,7 +590,7 @@ func (s *Service) BackfillCollectionTranslations() {
 
 	processed := 0
 	for _, coll := range collections {
-		if processed >= 10 {
+		if processed >= maxCollections {
 			break
 		}
 

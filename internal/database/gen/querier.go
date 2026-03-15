@@ -30,6 +30,7 @@ type Querier interface {
 	ConsumeDownloadToken(ctx context.Context, token string) (DownloadToken, error)
 	CountApprovedSchematics(ctx context.Context) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
+	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
@@ -49,6 +50,7 @@ type Querier interface {
 	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateSchematic(ctx context.Context, arg CreateSchematicParams) (Schematic, error)
 	CreateSchematicFile(ctx context.Context, arg CreateSchematicFileParams) (SchematicFile, error)
+	CreateSchematicVariation(ctx context.Context, arg CreateSchematicVariationParams) (SchematicVariation, error)
 	CreateSchematicVersion(ctx context.Context, arg CreateSchematicVersionParams) (SchematicVersion, error)
 	CreateSearch(ctx context.Context, arg CreateSearchParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
@@ -69,6 +71,7 @@ type Querier interface {
 	DeleteReportsByTarget(ctx context.Context, arg DeleteReportsByTargetParams) (int64, error)
 	DeleteSchematicFile(ctx context.Context, id string) error
 	DeleteSchematicFilesBySchematicID(ctx context.Context, schematicID string) error
+	DeleteSchematicVariation(ctx context.Context, id string) error
 	DeleteSession(ctx context.Context, id string) error
 	DeleteTagByID(ctx context.Context, id string) error
 	DeleteTempUpload(ctx context.Context, token string) error
@@ -113,6 +116,7 @@ type Querier interface {
 	GetSchematicRating(ctx context.Context, schematicID string) (GetSchematicRatingRow, error)
 	GetSchematicTagIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicTranslation(ctx context.Context, arg GetSchematicTranslationParams) (SchematicTranslation, error)
+	GetSchematicVariationByID(ctx context.Context, id string) (SchematicVariation, error)
 	GetSchematicViewCount(ctx context.Context, schematicID string) (int32, error)
 	GetSession(ctx context.Context, id string) (GetSessionRow, error)
 	GetTagByID(ctx context.Context, id string) (SchematicTag, error)
@@ -168,11 +172,13 @@ type Querier interface {
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
 	ListPendingCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListPendingTags(ctx context.Context) ([]SchematicTag, error)
+	ListPublicSchematicVariationsBySchematic(ctx context.Context, schematicID string) ([]SchematicVariation, error)
 	ListPublishedCollections(ctx context.Context, arg ListPublishedCollectionsParams) ([]Collection, error)
 	ListRandomApprovedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListSchematicFilesBySchematicID(ctx context.Context, schematicID string) ([]SchematicFile, error)
 	ListSchematicTranslations(ctx context.Context, schematicID string) ([]SchematicTranslation, error)
+	ListSchematicVariationsBySchematicAndUser(ctx context.Context, arg ListSchematicVariationsBySchematicAndUserParams) ([]SchematicVariation, error)
 	ListSchematicVersions(ctx context.Context, schematicID string) ([]SchematicVersion, error)
 	ListSchematicsByAuthor(ctx context.Context, arg ListSchematicsByAuthorParams) ([]Schematic, error)
 	ListSchematicsByAuthorExcluding(ctx context.Context, arg ListSchematicsByAuthorExcludingParams) ([]Schematic, error)
@@ -216,6 +222,7 @@ type Querier interface {
 	UpdateSchematicName(ctx context.Context, arg UpdateSchematicNameParams) error
 	UpdateSchematicRatingAggregates(ctx context.Context, arg UpdateSchematicRatingAggregatesParams) error
 	UpdateSchematicTrendingScore(ctx context.Context, arg UpdateSchematicTrendingScoreParams) error
+	UpdateSchematicVariation(ctx context.Context, arg UpdateSchematicVariationParams) error
 	UpdateSchematicViews(ctx context.Context, arg UpdateSchematicViewsParams) error
 	UpdateTempUpload(ctx context.Context, arg UpdateTempUploadParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
