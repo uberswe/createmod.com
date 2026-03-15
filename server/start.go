@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"createmod/internal/abtest"
 	"createmod/internal/aidescription"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
@@ -22,6 +23,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"log/slog"
@@ -78,6 +80,7 @@ type Server struct {
 	jobWorker            *jobs.Worker
 	discordOAuth         *auth.OAuthProvider
 	githubOAuth          *auth.OAuthProvider
+	meiliClient          meilisearch.ServiceManager
 }
 
 // detectLanguageFromRequest returns a normalized language code based on the
@@ -234,6 +237,36 @@ func (s *Server) Start() {
 		slog.Info("maintenance mode active — deferring background jobs until migration completes")
 	}
 
+	// A/B test configuration
+	abCfg := abtest.LoadConfig()
+
+	// Build variant router with search engines.
+	bleveAI := search.NewBleveEngine(s.searchService, false)   // variant B: with AI (current behavior)
+	bleveBase := search.NewBleveEngine(s.searchService, true)  // variant A: base only
+
+	engines := map[string]search.SearchEngine{
+		"A": bleveBase,
+		"B": bleveAI,
+	}
+
+	// Initialize Meilisearch if configured.
+	if abCfg.MeilisearchURL != "" {
+		s.meiliClient = meilisearch.New(abCfg.MeilisearchURL, meilisearch.WithAPIKey(abCfg.MeilisearchKey))
+		if _, err := s.meiliClient.Health(); err != nil {
+			slog.Warn("Meilisearch not reachable, variants C/D/E will fall back to Bleve", "error", err)
+		} else {
+			slog.Info("Connected to Meilisearch", "url", abCfg.MeilisearchURL)
+			if err := search.EnsureMeiliIndexes(s.meiliClient); err != nil {
+				slog.Error("Failed to configure Meilisearch indexes", "error", err)
+			}
+			engines["C"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexBase, s.searchService)
+			engines["D"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexAI, s.searchService)
+			engines["E"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexFull, s.searchService)
+		}
+	}
+
+	variantRouter := abtest.NewVariantRouter(engines, bleveAI)
+
 	// ROUTES
 
 	chiRouter := irouter.Register(irouter.RegisterParams{
@@ -252,6 +285,8 @@ func (s *Server) Start() {
 		MailService:        s.mailService,
 		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,
+		VariantRouter:      variantRouter,
+		ABTestConfig:       abCfg,
 	})
 
 	// Wrap the chi router with the language prefix stripper
@@ -379,6 +414,7 @@ func (s *Server) startJobWorker() {
 			SessionStore: s.sessionStore,
 			Moderation:   s.moderationService,
 			Mail:         s.mailService,
+			MeiliClient:  s.meiliClient,
 		},
 	})
 	if err != nil {

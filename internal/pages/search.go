@@ -2,8 +2,10 @@ package pages
 
 import (
 	"context"
+	"createmod/internal/abtest"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/metrics"
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"createmod/internal/store"
@@ -59,7 +61,7 @@ type SearchData struct {
 	HidePaid          bool
 }
 
-func SearchHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func SearchHandler(variantRouter *abtest.VariantRouter, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
@@ -130,9 +132,51 @@ func SearchHandler(searchService *search.Service, cacheService *cache.Service, r
 		hidePaid := e.Request.URL.Query().Get("hidepaid") == "1"
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
-		slog.Debug("search", "term", term, "searchService", searchService)
-		ids := searchService.Search(term, order, rating, category, searchTags, mcVersion, createVersion, hidePaid)
-		slog.Debug("found ids", "ids", ids)
+
+		// Get variant from context (set by middleware, nil if test disabled).
+		variant := abtest.VariantFromContext(e.Request.Context())
+		engine := variantRouter.GetEngine(variant)
+
+		sq := search.SearchQuery{
+			Term:             term,
+			Order:            order,
+			Rating:           rating,
+			Category:         category,
+			Tags:             searchTags,
+			MinecraftVersion: mcVersion,
+			CreateVersion:    createVersion,
+			HidePaid:         hidePaid,
+		}
+
+		ids, _ := engine.Search(e.Request.Context(), sq)
+
+		// Record metrics.
+		searchDuration := time.Since(start)
+		variantName := "B" // default when test is disabled
+		engineName := "bleve"
+		indexLevel := "ai"
+		if variant != nil {
+			variantName = variant.Name
+			engineName = variant.Engine
+			indexLevel = variant.IndexLevel
+		}
+		metrics.SearchLatency.WithLabelValues(variantName, engineName, indexLevel).Observe(searchDuration.Seconds())
+		zeroResults := "false"
+		if len(ids) == 0 {
+			zeroResults = "true"
+		}
+		metrics.SearchQueries.WithLabelValues(variantName, engineName, indexLevel, zeroResults).Inc()
+
+		slog.Info("search",
+			"event", "search",
+			"variant", variantName,
+			"engine", engineName,
+			"index_level", indexLevel,
+			"query", term,
+			"results_count", len(ids),
+			"zero_results", len(ids) == 0,
+			"latency_ms", searchDuration.Milliseconds(),
+		)
 
 		// Fetch schematics from store by IDs
 		ctx := context.Background()
@@ -280,6 +324,7 @@ func SearchHandler(searchService *search.Service, cacheService *cache.Service, r
 			ViewMode:          viewMode,
 			HidePaid:          hidePaid,
 		}
+		d.Variant = variant
 		d.Populate(e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Search"))
 		// Dynamic title based on search context

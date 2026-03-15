@@ -62,8 +62,10 @@
                                 {{ end }}
                             </div>
                             <div class="row row-cards">
-                                {{range .Schematics }}
-                                    {{ template "schematic_card_medium.html" . }}
+                                {{range $i, $s := .Schematics }}
+                                    <div class="col-lg-4 col-md-6 col-12 mb-3" data-schematic-id="{{ $s.ID }}" data-position="{{ $i }}">
+                                    {{template "schematic_card.html" $s}}
+                                    </div>
                                 {{end}}
                             </div>
                             {{template "search_pagination.html" .}}
@@ -157,6 +159,37 @@
                     "wording": "Report Ad",
                     "position": "top-right"
                 }
+            });
+
+            // Search click tracking for A/B test
+            function trackSearchClick(schematicId, position) {
+                fetch('/api/search/click', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query: document.getElementById('search-hero-input')?.value || '',
+                        result_id: schematicId,
+                        position: position
+                    }),
+                    keepalive: true
+                });
+                if (window.searchVariant) {
+                    gtag('event', 'search_result_click', {
+                        'search_variant': window.searchVariant,
+                        'schematic_id': schematicId,
+                        'result_position': position
+                    });
+                }
+            }
+            // Attach click tracking to search result links
+            document.addEventListener('click', function(e) {
+                var link = e.target && e.target.closest && e.target.closest('.search-center a[href*="/schematics/"]');
+                if (!link) return;
+                var card = link.closest('[data-schematic-id]');
+                if (!card) return;
+                var id = card.getAttribute('data-schematic-id');
+                var pos = parseInt(card.getAttribute('data-position') || '0', 10);
+                trackSearchClick(id, pos);
             });
         </script>
     </div>

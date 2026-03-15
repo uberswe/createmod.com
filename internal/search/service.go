@@ -40,6 +40,7 @@ const (
 type Service struct {
 	index          []schematicIndex
 	bleveIndex     bleve.Index
+	bleveBaseIndex bleve.Index // variant A: no AIDescription
 	storage        *storage.Service
 	trendingScores map[string]float64
 }
@@ -57,6 +58,7 @@ type schematicIndex struct {
 	MinecraftVersion string
 	CreateVersion    string
 	Paid             bool
+	BlockNames       []string
 }
 
 type bleveIndex struct {
@@ -66,6 +68,7 @@ type bleveIndex struct {
 	Tags          []string
 	Categories    []string
 	Author        string
+	BlockNames    []string
 }
 
 // indexCacheEntry holds both filter-index and Bleve-index data for one schematic.
@@ -107,6 +110,38 @@ func newBleveIndex() bleve.Index {
 	schematicMapping.AddFieldMappingsAt("categories", categoriesFieldMapping)
 	authorFieldMapping := bleve.NewTextFieldMapping()
 	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
+	blockNamesFieldMapping := bleve.NewTextFieldMapping()
+	blockNamesFieldMapping.Name = "blocknames"
+	schematicMapping.AddFieldMappingsAt("blocknames", blockNamesFieldMapping)
+
+	mapping.AddDocumentMapping("schematic", schematicMapping)
+
+	idx, err := bleve.NewMemOnly(mapping)
+	if err != nil {
+		panic(err)
+	}
+	return idx
+}
+
+// newBleveBaseIndex creates a fresh in-memory Bleve index WITHOUT the
+// AIDescription or BlockNames fields. Used for variant A (base data only).
+func newBleveBaseIndex() bleve.Index {
+	mapping := bleve.NewIndexMapping()
+
+	schematicMapping := bleve.NewDocumentMapping()
+
+	titleFieldMapping := bleve.NewTextFieldMapping()
+	titleFieldMapping.Name = "title"
+	schematicMapping.AddFieldMappingsAt("title", titleFieldMapping)
+	descriptionFieldMapping := bleve.NewTextFieldMapping()
+	descriptionFieldMapping.Name = "description"
+	schematicMapping.AddFieldMappingsAt("description", descriptionFieldMapping)
+	tagsFieldMapping := bleve.NewTextFieldMapping()
+	schematicMapping.AddFieldMappingsAt("tags", tagsFieldMapping)
+	categoriesFieldMapping := bleve.NewTextFieldMapping()
+	schematicMapping.AddFieldMappingsAt("categories", categoriesFieldMapping)
+	authorFieldMapping := bleve.NewTextFieldMapping()
+	schematicMapping.AddFieldMappingsAt("author", authorFieldMapping)
 
 	mapping.AddDocumentMapping("schematic", schematicMapping)
 
@@ -124,6 +159,7 @@ func newBleveIndex() bleve.Index {
 func New(storageSvc *storage.Service) *Service {
 	s := Service{storage: storageSvc}
 	s.bleveIndex = newBleveIndex()
+	s.bleveBaseIndex = newBleveBaseIndex()
 
 	// Try to warm from storage cache.
 	if err := s.loadCacheFromStorage(); err != nil {
@@ -141,6 +177,7 @@ func New(storageSvc *storage.Service) *Service {
 func NewEmpty(storageSvc *storage.Service) *Service {
 	s := Service{storage: storageSvc}
 	s.bleveIndex = newBleveIndex()
+	s.bleveBaseIndex = newBleveBaseIndex()
 	return &s
 }
 
@@ -328,6 +365,151 @@ func (s *Service) Search(term string, order int, rating int, category string, ta
 	return ids
 }
 
+// SearchWithIndex is like Search but allows selecting which Bleve index to use.
+// When useBase is true, the base index (no AIDescription) is used for text matching.
+func (s *Service) SearchWithIndex(term string, order int, rating int, category string, tags []string, minecraftVersion string, createVersion string, hidePaid bool, useBase bool) []string {
+	if s == nil || s.index == nil {
+		return nil
+	}
+
+	result := make([]schematicIndex, len(s.index))
+	copy(result, s.index)
+
+	if rating > 0 {
+		ratingFloat := float64(rating)
+		ratingResult := make([]schematicIndex, 0)
+		for i := range result {
+			if result[i].Rating >= ratingFloat {
+				ratingResult = append(ratingResult, result[i])
+			}
+		}
+		result = ratingResult
+	}
+	if category != "all" {
+		categoryResult := make([]schematicIndex, 0)
+		for i := range result {
+			cat := strings.ReplaceAll(category, "-", " ")
+			caser := cases.Title(language.English)
+			if slices.Contains(result[i].Categories, caser.String(cat)) {
+				categoryResult = append(categoryResult, result[i])
+			}
+		}
+		result = categoryResult
+	}
+	if len(tags) > 0 && !(len(tags) == 1 && tags[0] == "all") {
+		caser := cases.Title(language.English)
+		tagResult := make([]schematicIndex, 0)
+		for i := range result {
+			matchAll := true
+			for _, tag := range tags {
+				normalized := caser.String(strings.ReplaceAll(tag, "-", " "))
+				if !slices.Contains(result[i].Tags, normalized) {
+					matchAll = false
+					break
+				}
+			}
+			if matchAll {
+				tagResult = append(tagResult, result[i])
+			}
+		}
+		result = tagResult
+	}
+	if createVersion != "all" {
+		cvResult := make([]schematicIndex, 0)
+		for i := range result {
+			if result[i].CreateVersion == createVersion {
+				cvResult = append(cvResult, result[i])
+			}
+		}
+		result = cvResult
+	}
+	if minecraftVersion != "all" {
+		mcvResult := make([]schematicIndex, 0)
+		for i := range result {
+			if result[i].MinecraftVersion == minecraftVersion {
+				mcvResult = append(mcvResult, result[i])
+			}
+		}
+		result = mcvResult
+	}
+	if hidePaid {
+		filtered := make([]schematicIndex, 0, len(result))
+		for i := range result {
+			if !result[i].Paid {
+				filtered = append(filtered, result[i])
+			}
+		}
+		result = filtered
+	}
+
+	if strings.TrimSpace(term) != "" {
+		idx := s.bleveIndex
+		if useBase {
+			idx = s.bleveBaseIndex
+		}
+		newResult := make([]schematicIndex, 0)
+		words := strings.Fields(term)
+		var searchQuery query.Query
+		if len(words) == 1 {
+			searchQuery = bleve.NewQueryStringQuery(term)
+		} else {
+			conjuncts := make([]query.Query, 0, len(words))
+			for _, w := range words {
+				conjuncts = append(conjuncts, bleve.NewMatchQuery(w))
+			}
+			andQuery := bleve.NewConjunctionQuery(conjuncts...)
+			phraseQuery := bleve.NewMatchPhraseQuery(term)
+			phraseQuery.SetBoost(10.0)
+			searchQuery = bleve.NewDisjunctionQuery(andQuery, phraseQuery)
+		}
+		searchRequest := bleve.NewSearchRequest(searchQuery)
+		searchRequest.Size = 5000
+		searchResult, err := idx.Search(searchRequest)
+		if err != nil {
+			slog.Error("error for bleve search query", "error", err.Error())
+		}
+		if searchResult != nil {
+			for _, si := range searchResult.Hits {
+				for i := range result {
+					if result[i].ID == si.ID {
+						newResult = append(newResult, result[i])
+					}
+				}
+			}
+		}
+		result = newResult
+	}
+
+	slices.SortFunc(result, func(a, b schematicIndex) int {
+		switch order {
+		case BestMatchOrder:
+			return 0
+		case NewestOrder:
+			return newestSort(a, b)
+		case OldestOrder:
+			return -newestSort(a, b)
+		case HighestRatingOrder:
+			return highestRatingSort(a, b)
+		case LowestRatingOrder:
+			return -highestRatingSort(a, b)
+		case MostViewedOrder:
+			return mostViewedSort(a, b)
+		case LeastViewedOrder:
+			return -mostViewedSort(a, b)
+		case TrendingOrder:
+			return trendingSort(s.trendingScores, a, b)
+		default:
+			return 0
+		}
+	})
+
+	ids := make([]string, len(result))
+	for i := range result {
+		ids[i] = result[i].ID
+	}
+	return ids
+}
+
 func mostViewedSort(a schematicIndex, b schematicIndex) int {
 	if a.Views >= b.Views {
 		return -1
@@ -371,7 +553,9 @@ func trendingSort(scores map[string]float64, a schematicIndex, b schematicIndex)
 // cache snapshot to storage so subsequent pod starts can warm from it.
 func (s *Service) BuildIndex(schematics []models.Schematic) {
 	idx := newBleveIndex()
+	baseIdx := newBleveBaseIndex()
 	batch := idx.NewBatch()
+	baseBatch := baseIdx.NewBatch()
 	filterIndex := make([]schematicIndex, len(schematics))
 	cacheEntries := make([]indexCacheEntry, len(schematics))
 
@@ -398,6 +582,9 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			si.Tags = append(si.Tags, t.Name)
 		}
 
+		blockNames := ExtractBlockNames(schematics[i].Materials)
+		si.BlockNames = blockNames
+
 		bi := bleveIndex{
 			Title:         si.Title,
 			Description:   si.Description,
@@ -405,6 +592,16 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 			Tags:          si.Tags,
 			Categories:    si.Categories,
 			Author:        si.Author,
+			BlockNames:    blockNames,
+		}
+
+		// Base Bleve document: no AIDescription or BlockNames for variant A.
+		baseBi := bleveIndex{
+			Title:       si.Title,
+			Description: si.Description,
+			Tags:        si.Tags,
+			Categories:  si.Categories,
+			Author:      si.Author,
 		}
 
 		si.MinecraftVersion = schematics[i].MinecraftVersion
@@ -413,6 +610,9 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 
 		if err := batch.Index(si.ID, bi); err != nil {
 			slog.Error("bleve add index", "error", err.Error())
+		}
+		if err := baseBatch.Index(si.ID, baseBi); err != nil {
+			slog.Error("bleve base add index", "error", err.Error())
 		}
 
 		filterIndex[i] = si
@@ -423,17 +623,31 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 		slog.Error("bleve search batching", "error", err.Error())
 		return
 	}
+	if err := baseIdx.Batch(baseBatch); err != nil {
+		slog.Error("bleve base search batching", "error", err.Error())
+		return
+	}
 
-	// Swap in the new index atomically.
+	// Swap in the new indexes atomically.
 	oldIdx := s.bleveIndex
+	oldBaseIdx := s.bleveBaseIndex
 	s.bleveIndex = idx
+	s.bleveBaseIndex = baseIdx
 	s.index = filterIndex
 	if oldIdx != nil {
 		_ = oldIdx.Close()
 	}
+	if oldBaseIdx != nil {
+		_ = oldBaseIdx.Close()
+	}
 
 	// Persist cache to storage in the background.
 	go s.saveCacheToStorage(cacheEntries)
+}
+
+// GetIndex returns the in-memory filter index for use by Meilisearch sync.
+func (s *Service) GetIndex() []schematicIndex {
+	return s.index
 }
 
 // Suggestion represents an autocomplete suggestion result.
@@ -535,6 +749,48 @@ func (s *Service) Suggest(q string, limit int) []Suggestion {
 	return results
 }
 
+// materialEntry represents a single block entry in the Materials JSON.
+type materialEntry struct {
+	BlockID string `json:"block_id"`
+	Count   int    `json:"count"`
+}
+
+// ExtractBlockNames parses the Materials JSON field (e.g. [{"block_id":"create:brass_casing","count":12}])
+// and returns deduplicated, human-readable block names by stripping the namespace
+// and title-casing the result (e.g. "Brass Casing").
+func ExtractBlockNames(materialsJSON string) []string {
+	if materialsJSON == "" {
+		return nil
+	}
+	var entries []materialEntry
+	if err := json.Unmarshal([]byte(materialsJSON), &entries); err != nil {
+		return nil
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(entries))
+	names := make([]string, 0, len(entries))
+	caser := cases.Title(language.English)
+
+	for _, e := range entries {
+		blockID := e.BlockID
+		// Strip namespace prefix (e.g. "create:" or "minecraft:")
+		if idx := strings.LastIndex(blockID, ":"); idx >= 0 {
+			blockID = blockID[idx+1:]
+		}
+		// Convert underscores to spaces and title-case
+		name := caser.String(strings.ReplaceAll(blockID, "_", " "))
+		if _, exists := seen[name]; exists {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+	return names
+}
+
 func stripHtmlRegex(s string) string {
 	r := regexp.MustCompile(regex)
 	return r.ReplaceAllString(s, " ")
@@ -610,9 +866,11 @@ func (s *Service) loadCacheFromStorage() error {
 		return nil
 	}
 
-	// Rebuild both indices from the cached data.
+	// Rebuild all indices from the cached data.
 	idx := newBleveIndex()
+	baseIdx := newBleveBaseIndex()
 	batch := idx.NewBatch()
+	baseBatch := baseIdx.NewBatch()
 	filterIndex := make([]schematicIndex, len(entries))
 
 	for i, e := range entries {
@@ -620,18 +878,38 @@ func (s *Service) loadCacheFromStorage() error {
 		if err := batch.Index(e.SI.ID, e.BI); err != nil {
 			slog.Error("search: bleve index from cache", "error", err)
 		}
+		// Base index: strip AIDescription and BlockNames.
+		baseBi := bleveIndex{
+			Title:       e.BI.Title,
+			Description: e.BI.Description,
+			Tags:        e.BI.Tags,
+			Categories:  e.BI.Categories,
+			Author:      e.BI.Author,
+		}
+		if err := baseBatch.Index(e.SI.ID, baseBi); err != nil {
+			slog.Error("search: bleve base index from cache", "error", err)
+		}
 	}
 
 	if err := idx.Batch(batch); err != nil {
 		slog.Error("search: bleve batch from cache", "error", err)
 		return err
 	}
+	if err := baseIdx.Batch(baseBatch); err != nil {
+		slog.Error("search: bleve base batch from cache", "error", err)
+		return err
+	}
 
 	oldIdx := s.bleveIndex
+	oldBaseIdx := s.bleveBaseIndex
 	s.bleveIndex = idx
+	s.bleveBaseIndex = baseIdx
 	s.index = filterIndex
 	if oldIdx != nil {
 		_ = oldIdx.Close()
+	}
+	if oldBaseIdx != nil {
+		_ = oldBaseIdx.Close()
 	}
 
 	return nil

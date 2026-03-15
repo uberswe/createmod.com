@@ -22,6 +22,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
@@ -40,6 +41,7 @@ type Deps struct {
 	SessionStore *session.Store
 	Moderation   *moderation.Service
 	Mail         *mailer.Service
+	MeiliClient  meilisearch.ServiceManager
 }
 
 // Config holds job worker configuration.

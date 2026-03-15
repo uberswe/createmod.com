@@ -10,7 +10,7 @@ import (
 
 // SearchSuggestHandler returns JSON autocomplete suggestions for the search input.
 // GET /api/search/suggest?q=...
-func SearchSuggestHandler(searchService *search.Service) func(e *server.RequestEvent) error {
+func SearchSuggestHandler(searchService search.SearchEngine) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))
 		if len(q) < 2 {
