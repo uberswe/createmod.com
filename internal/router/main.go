@@ -266,7 +266,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
-	// Temp upload block modification
+	// Private upload block modification
 	r.Get("/u/{token}/modify", Adapt(pages.UploadModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/u/{token}/modify/download", Adapt(pages.UploadModifyDownloadHandler(p.AppStore, p.StorageService)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/u/{token}/modify/preview-url", Adapt(pages.UploadModifyPreviewHandler(p.AppStore, p.StorageService)))

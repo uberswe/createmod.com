@@ -435,7 +435,7 @@ func ListVariationsHandler(appStore *store.Store) func(e *server.RequestEvent) e
 	}
 }
 
-// UploadModifyData holds template data for the temp upload modify page.
+// UploadModifyData holds template data for the private upload modify page.
 type UploadModifyData struct {
 	DefaultData
 	Token     string
@@ -443,7 +443,7 @@ type UploadModifyData struct {
 	Materials []nbtparser.Material
 }
 
-// UploadModifyHandler renders the block replacement page for a temp upload.
+// UploadModifyHandler renders the block replacement page for a private upload.
 // GET /u/{token}/modify
 func UploadModifyHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageService *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
@@ -567,7 +567,7 @@ func UploadModifyDownloadHandler(appStore *store.Store, storageService *storage.
 
 		reader, err := storageService.DownloadRaw(ctx, entry.NbtS3Key)
 		if err != nil {
-			slog.Error("failed to download temp upload for modify", "error", err)
+			slog.Error("failed to download private upload for modify", "error", err)
 			return e.InternalServerError("failed to download schematic", nil)
 		}
 		data, err := io.ReadAll(reader)
