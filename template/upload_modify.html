@@ -50,11 +50,12 @@
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td>
+                                            <td class="replacement-cell">
                                                 <input type="text" class="form-control replacement-input"
                                                        placeholder="{{ T $.Language "block_search_placeholder" }}"
                                                        data-original="{{ .BlockID }}"
                                                        autocomplete="off">
+                                                <div class="block-suggestions"></div>
                                             </td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-sm btn-outline-danger remove-btn"
@@ -112,11 +113,74 @@
     </div>
 </div>
 
+<style>
+    #materials-table tr.table-warning {
+        --tblr-table-bg: rgba(247, 191, 60, 0.08);
+        --tblr-table-color: inherit;
+    }
+    #materials-table tr.table-danger {
+        --tblr-table-bg: rgba(214, 57, 57, 0.08);
+        --tblr-table-color: inherit;
+    }
+    @media (prefers-color-scheme: dark) {
+        #materials-table tr.table-warning {
+            --tblr-table-bg: rgba(247, 191, 60, 0.1);
+        }
+        #materials-table tr.table-danger {
+            --tblr-table-bg: rgba(214, 57, 57, 0.1);
+        }
+    }
+    .block-suggestions {
+        position: absolute;
+        z-index: 1050;
+        background: var(--tblr-bg-surface, #fff);
+        border: 1px solid var(--tblr-border-color, #e6e7e9);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        width: 100%;
+        display: none;
+    }
+    .block-suggestions .suggestion-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .block-suggestions .suggestion-item:hover,
+    .block-suggestions .suggestion-item.active {
+        background: var(--tblr-bg-surface-secondary, #f1f5f9);
+    }
+    .block-suggestions .suggestion-item img {
+        width: 24px;
+        height: 24px;
+        margin-right: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+    .block-suggestions .suggestion-name {
+        color: var(--tblr-body-color);
+    }
+    .block-suggestions .suggestion-id {
+        color: var(--tblr-secondary);
+        font-size: 0.75rem;
+        margin-left: auto;
+        padding-left: 8px;
+    }
+    td.replacement-cell {
+        position: relative;
+    }
+</style>
+
 <script>
 (function() {
     var token = "{{ .Token }}";
     var filename = "{{ .Filename }}";
     var replacements = {};
+    var suggestCache = {};
+    var activeSuggestionIndex = -1;
 
     function getReplacementsList() {
         var list = [];
@@ -150,15 +214,103 @@
         }
     }
 
+    // Autocomplete: fetch suggestions from blocksitems API
+    function fetchSuggestions(query, callback) {
+        if (query.length < 3) { callback([]); return; }
+        if (suggestCache[query]) { callback(suggestCache[query]); return; }
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://blocksitems.com/api/v1/blocks?q=' + encodeURIComponent(query) + '&limit=8', true);
+        xhr.timeout = 4000;
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    var results = (resp.data || []).map(function(b) {
+                        return { id: b.full_id, name: b.display_name || b.full_id };
+                    });
+                    suggestCache[query] = results;
+                    callback(results);
+                } catch(e) { callback([]); }
+            } else { callback([]); }
+        };
+        xhr.onerror = function() { callback([]); };
+        xhr.ontimeout = function() { callback([]); };
+        xhr.send();
+    }
+
+    function showSuggestions(input, items) {
+        var dropdown = input.parentNode.querySelector('.block-suggestions');
+        if (!dropdown) return;
+        activeSuggestionIndex = -1;
+        dropdown.textContent = '';
+        if (items.length === 0) { dropdown.style.display = 'none'; return; }
+
+        items.forEach(function(item, i) {
+            var el = document.createElement('div');
+            el.className = 'suggestion-item';
+            el.setAttribute('data-block-id', item.id);
+            el.setAttribute('data-index', String(i));
+
+            var img = document.createElement('img');
+            img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(item.id) + '/icon?size=32';
+            img.alt = '';
+            img.onerror = function() { this.style.display = 'none'; };
+            el.appendChild(img);
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'suggestion-name';
+            nameSpan.textContent = item.name;
+            el.appendChild(nameSpan);
+
+            var idSpan = document.createElement('span');
+            idSpan.className = 'suggestion-id';
+            idSpan.textContent = item.id;
+            el.appendChild(idSpan);
+
+            el.addEventListener('mousedown', function(ev) {
+                ev.preventDefault();
+                selectSuggestion(input, item.id);
+            });
+
+            dropdown.appendChild(el);
+        });
+        dropdown.style.display = 'block';
+    }
+
+    function selectSuggestion(input, blockId) {
+        input.value = blockId;
+        var dropdown = input.parentNode.querySelector('.block-suggestions');
+        if (dropdown) { dropdown.style.display = 'none'; dropdown.textContent = ''; }
+        var orig = input.getAttribute('data-original');
+        var row = input.closest('tr');
+        if (blockId && blockId !== orig) {
+            replacements[orig] = blockId;
+            row.classList.remove('table-danger');
+            row.classList.add('table-warning');
+            row.querySelector('.reset-btn').classList.remove('d-none');
+        }
+        updateUI();
+    }
+
     // Handle replacement input changes
     document.querySelectorAll('.replacement-input').forEach(function(input) {
         var debounce;
+        var suggestDebounce;
         input.addEventListener('input', function() {
             clearTimeout(debounce);
+            clearTimeout(suggestDebounce);
             var self = this;
+            var val = self.value.trim();
+
+            // Autocomplete suggestions
+            suggestDebounce = setTimeout(function() {
+                fetchSuggestions(val, function(items) {
+                    showSuggestions(self, items);
+                });
+            }, 250);
+
             debounce = setTimeout(function() {
                 var orig = self.getAttribute('data-original');
-                var val = self.value.trim();
                 var row = self.closest('tr');
                 if (val && val !== orig) {
                     replacements[orig] = val;
@@ -172,6 +324,35 @@
                 }
                 updateUI();
             }, 300);
+        });
+
+        input.addEventListener('blur', function() {
+            var dropdown = this.parentNode.querySelector('.block-suggestions');
+            if (dropdown) { dropdown.style.display = 'none'; }
+        });
+
+        input.addEventListener('keydown', function(ev) {
+            var dropdown = this.parentNode.querySelector('.block-suggestions');
+            if (!dropdown || dropdown.style.display === 'none') return;
+            var items = dropdown.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+
+            if (ev.key === 'ArrowDown') {
+                ev.preventDefault();
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
+                items.forEach(function(el, i) { el.classList.toggle('active', i === activeSuggestionIndex); });
+            } else if (ev.key === 'ArrowUp') {
+                ev.preventDefault();
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+                items.forEach(function(el, i) { el.classList.toggle('active', i === activeSuggestionIndex); });
+            } else if (ev.key === 'Enter') {
+                ev.preventDefault();
+                if (activeSuggestionIndex >= 0 && activeSuggestionIndex < items.length) {
+                    selectSuggestion(this, items[activeSuggestionIndex].getAttribute('data-block-id'));
+                }
+            } else if (ev.key === 'Escape') {
+                dropdown.style.display = 'none';
+            }
         });
     });
 
@@ -219,7 +400,11 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({replacements: list})
             }).then(function(resp) {
-                if (!resp.ok) throw new Error('Download failed');
+                if (!resp.ok) {
+                    return resp.text().then(function(msg) {
+                        throw new Error(msg || 'Download failed');
+                    });
+                }
                 return resp.blob();
             }).then(function(blob) {
                 var a = document.createElement('a');
@@ -231,7 +416,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(a.href);
             }).catch(function(err) {
-                alert('Download failed: ' + err.message);
+                alert(err.message);
             }).finally(function() {
                 setBtnLoading(self, false, '{{ T .Language "download_modified" }}');
             });
@@ -253,12 +438,16 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({replacements: list})
             }).then(function(resp) {
-                if (!resp.ok) throw new Error('Preview generation failed');
+                if (!resp.ok) {
+                    return resp.text().then(function(msg) {
+                        throw new Error(msg || 'Preview generation failed');
+                    });
+                }
                 return resp.json();
             }).then(function(data) {
                 if (data.url) window.open(data.url, '_blank');
             }).catch(function(err) {
-                alert('Preview failed: ' + err.message);
+                alert(err.message);
             }).finally(function() {
                 setBtnLoading(self, false, '{{ T .Language "preview_modified" }}');
             });
