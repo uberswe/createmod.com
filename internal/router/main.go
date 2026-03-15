@@ -197,6 +197,11 @@ func Register(p RegisterParams) chi.Router {
 		}
 	})
 
+	// Minecraft mod download API (HMAC-signed, XOR-encoded response)
+	modSecret := deriveModDownloadSecret()
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)).
+		Post("/api/mod/download", Adapt(pages.ModDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
+
 	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
 	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
 
@@ -872,6 +877,17 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// deriveModDownloadSecret returns the shared secret for Minecraft mod download
+// API request signing. Falls back to a deterministic insecure default for dev.
+func deriveModDownloadSecret() string {
+	if s := os.Getenv("MOD_DOWNLOAD_SECRET"); s != "" {
+		return s
+	}
+	slog.Warn("MOD_DOWNLOAD_SECRET environment variable is not set; using insecure default — set MOD_DOWNLOAD_SECRET in production")
+	h := sha256.Sum256([]byte("createmod-mod-download:default"))
+	return hex.EncodeToString(h[:])
 }
 
 // deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.
