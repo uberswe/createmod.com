@@ -266,6 +266,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
+	// Temp upload block modification
+	r.Get("/u/{token}/modify", Adapt(pages.UploadModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/u/{token}/modify/download", Adapt(pages.UploadModifyDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/u/{token}/modify/preview-url", Adapt(pages.UploadModifyPreviewHandler(p.AppStore, p.StorageService)))
 	// Build the moderation enqueuer callback that closes over the job worker.
 	var enqueueModeration pages.ModerationEnqueuer
 	if p.JobWorker != nil {
@@ -437,6 +441,15 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/download-url/{id}", Adapt(pages.DownloadURLHandler(p.AppStore)))
 	// External link interstitial (encrypted token, no raw URL exposed)
 	r.Get("/out/{token}", Adapt(pages.ExternalLinkInterstitialHandler(registry, p.CacheService, outSecret, p.AppStore)))
+	// Schematic block modification
+	r.Get("/schematics/{name}/modify", Adapt(pages.ModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	modifyRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
+	previewRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)
+	r.With(modifyRateLimit).Post("/api/schematics/{id}/modify/download", Adapt(pages.ModifyDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(previewRateLimit).Post("/api/schematics/{id}/modify/preview-url", Adapt(pages.ModifyPreviewHandler(p.AppStore, p.StorageService)))
+	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
+	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
+	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchService)))

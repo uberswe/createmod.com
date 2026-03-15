@@ -2520,7 +2520,8 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		NBTHashes:       &NBTHashStoreImpl{q: q},
 		DownloadTokens:  &DownloadTokenStoreImpl{q: q},
 		SchematicFiles:  &SchematicFileStoreImpl{q: q},
-		Webhooks:        &WebhookStoreImpl{q: q},
+		Webhooks:            &WebhookStoreImpl{q: q},
+		SchematicVariations: &SchematicVariationStoreImpl{q: q},
 	}
 }
 
@@ -2574,7 +2575,8 @@ var (
 	_ store.TempUploadFileStore = (*TempUploadFileStoreImpl)(nil)
 	_ store.DownloadTokenStore  = (*DownloadTokenStoreImpl)(nil)
 	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
-	_ store.WebhookStore        = (*WebhookStoreImpl)(nil)
+	_ store.WebhookStore             = (*WebhookStoreImpl)(nil)
+	_ store.SchematicVariationStore  = (*SchematicVariationStoreImpl)(nil)
 )
 
 // Ensure unused import is satisfied.
@@ -3051,4 +3053,96 @@ func webhookFromDB(row db.UserWebhook) *store.UserWebhook {
 		w.LastFailureAt = &t
 	}
 	return w
+}
+
+// --------------------------------------------------------------------------
+// SchematicVariation Store Implementation
+// --------------------------------------------------------------------------
+
+type SchematicVariationStoreImpl struct{ q *db.Queries }
+
+func (s *SchematicVariationStoreImpl) Create(ctx context.Context, v *store.SchematicVariation) error {
+	row, err := s.q.CreateSchematicVariation(ctx, db.CreateSchematicVariationParams{
+		SchematicID:  v.SchematicID,
+		UserID:       v.UserID,
+		Name:         v.Name,
+		Replacements: v.Replacements,
+		IsPublic:     v.IsPublic,
+	})
+	if err != nil {
+		return err
+	}
+	v.ID = row.ID
+	v.CreatedAt = row.Created
+	v.UpdatedAt = row.Updated
+	return nil
+}
+
+func (s *SchematicVariationStoreImpl) GetByID(ctx context.Context, id string) (*store.SchematicVariation, error) {
+	row, err := s.q.GetSchematicVariationByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return variationFromDB(row), nil
+}
+
+func (s *SchematicVariationStoreImpl) ListBySchematicAndUser(ctx context.Context, schematicID, userID string) ([]*store.SchematicVariation, error) {
+	rows, err := s.q.ListSchematicVariationsBySchematicAndUser(ctx, db.ListSchematicVariationsBySchematicAndUserParams{
+		SchematicID: schematicID,
+		UserID:      userID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*store.SchematicVariation, len(rows))
+	for i, r := range rows {
+		result[i] = variationFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SchematicVariationStoreImpl) ListPublicBySchematic(ctx context.Context, schematicID string) ([]*store.SchematicVariation, error) {
+	rows, err := s.q.ListPublicSchematicVariationsBySchematic(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*store.SchematicVariation, len(rows))
+	for i, r := range rows {
+		result[i] = variationFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SchematicVariationStoreImpl) Update(ctx context.Context, v *store.SchematicVariation) error {
+	return s.q.UpdateSchematicVariation(ctx, db.UpdateSchematicVariationParams{
+		ID:           v.ID,
+		Name:         v.Name,
+		Replacements: v.Replacements,
+		IsPublic:     v.IsPublic,
+	})
+}
+
+func (s *SchematicVariationStoreImpl) Delete(ctx context.Context, id string) error {
+	return s.q.DeleteSchematicVariation(ctx, id)
+}
+
+func (s *SchematicVariationStoreImpl) CountBySchematicAndUser(ctx context.Context, schematicID, userID string) (int, error) {
+	count, err := s.q.CountSchematicVariationsBySchematicAndUser(ctx, db.CountSchematicVariationsBySchematicAndUserParams{
+		SchematicID: schematicID,
+		UserID:      userID,
+	})
+	return int(count), err
+}
+
+func variationFromDB(row db.SchematicVariation) *store.SchematicVariation {
+	return &store.SchematicVariation{
+		ID:           row.ID,
+		SchematicID:  row.SchematicID,
+		UserID:       row.UserID,
+		Name:         row.Name,
+		Replacements: row.Replacements,
+		IsPublic:     row.IsPublic,
+		CreatedAt:    row.Created,
+		UpdatedAt:    row.Updated,
+	}
 }

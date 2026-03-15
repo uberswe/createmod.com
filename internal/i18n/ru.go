@@ -736,4 +736,21 @@ var LangRU = map[string]string{
 	"Edit Mod:":               "Редактировать мод:",
 	"page.404.title": "Страница не найдена - CreateMod.com",
 	"Webhooks": "Вебхуки",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Изменить Блоки",
+	"modify_blocks_description": "Заменить или удалить блоки в этой схеме",
+	"original_block":            "Оригинальный Блок",
+	"replacement_block":         "Блок Замены",
+	"remove_block":              "Удалить Блок",
+	"download_modified":         "Скачать Изменённый",
+	"preview_modified":          "Предпросмотр Изменённого",
+	"save_variation":            "Сохранить Вариацию",
+	"variation_name":            "Название Вариации",
+	"saved_variations":          "Сохранённые Вариации",
+	"load_variation":            "Загрузить",
+	"delete_variation":          "Удалить",
+	"no_replacement":            "Без замены",
+	"block_search_placeholder":  "Поиск блока...",
+	"replacements":              "замен",
 }

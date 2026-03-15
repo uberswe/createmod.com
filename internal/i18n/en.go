@@ -758,4 +758,21 @@ var LangEN = map[string]string{
 
 	// ── Webhooks (settings) ──
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modify Blocks",
+	"modify_blocks_description": "Replace or remove blocks in this schematic",
+	"original_block":            "Original Block",
+	"replacement_block":         "Replacement Block",
+	"remove_block":              "Remove Block",
+	"download_modified":         "Download Modified",
+	"preview_modified":          "Preview Modified",
+	"save_variation":            "Save Variation",
+	"variation_name":            "Variation Name",
+	"saved_variations":          "Saved Variations",
+	"load_variation":            "Load",
+	"delete_variation":          "Delete",
+	"no_replacement":            "No replacement",
+	"block_search_placeholder":  "Search for a block...",
+	"replacements":              "replacements",
 }
