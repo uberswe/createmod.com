@@ -3,6 +3,7 @@ module createmod
 go 1.25.0
 
 require (
+	github.com/Tnze/go-mc v1.20.2
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/blevesearch/bleve/v2 v2.5.7
 	github.com/disintegration/imaging v1.6.2
@@ -24,7 +25,7 @@ require (
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.0
-	github.com/uberswe/mcnbt v0.1.3
+	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.7.16
 	golang.org/x/crypto v0.49.0
 	golang.org/x/image v0.37.0
@@ -36,7 +37,6 @@ require (
 require (
 	github.com/HugoSmits86/nativewebp v1.1.0 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
-	github.com/Tnze/go-mc v1.20.2 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/blevesearch/bleve_index_api v1.2.11 // indirect
 	github.com/blevesearch/geo v0.2.4 // indirect
