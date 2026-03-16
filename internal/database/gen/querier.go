@@ -106,6 +106,7 @@ type Querier interface {
 	GetMinecraftVersionByID(ctx context.Context, id string) (GetMinecraftVersionByIDRow, error)
 	GetModMetadataByNamespace(ctx context.Context, namespace string) (ModMetadatum, error)
 	GetNBTHash(ctx context.Context, hash string) (NbtHash, error)
+	GetOldestSchematicVariationBySchematicAndUser(ctx context.Context, arg GetOldestSchematicVariationBySchematicAndUserParams) (SchematicVariation, error)
 	GetPointLog(ctx context.Context, userID string) ([]PointLog, error)
 	GetSchematicByChecksum(ctx context.Context, hash string) (*string, error)
 	GetSchematicByID(ctx context.Context, id string) (Schematic, error)

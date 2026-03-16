@@ -72,6 +72,34 @@ func (q *Queries) DeleteSchematicVariation(ctx context.Context, id string) error
 	return err
 }
 
+const getOldestSchematicVariationBySchematicAndUser = `-- name: GetOldestSchematicVariationBySchematicAndUser :one
+SELECT id, schematic_id, user_id, name, replacements, is_public, created, updated FROM schematic_variations
+WHERE schematic_id = $1 AND user_id = $2
+ORDER BY created ASC
+LIMIT 1
+`
+
+type GetOldestSchematicVariationBySchematicAndUserParams struct {
+	SchematicID string `json:"schematic_id"`
+	UserID      string `json:"user_id"`
+}
+
+func (q *Queries) GetOldestSchematicVariationBySchematicAndUser(ctx context.Context, arg GetOldestSchematicVariationBySchematicAndUserParams) (SchematicVariation, error) {
+	row := q.db.QueryRow(ctx, getOldestSchematicVariationBySchematicAndUser, arg.SchematicID, arg.UserID)
+	var i SchematicVariation
+	err := row.Scan(
+		&i.ID,
+		&i.SchematicID,
+		&i.UserID,
+		&i.Name,
+		&i.Replacements,
+		&i.IsPublic,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
 const getSchematicVariationByID = `-- name: GetSchematicVariationByID :one
 SELECT id, schematic_id, user_id, name, replacements, is_public, created, updated FROM schematic_variations WHERE id = $1
 `
