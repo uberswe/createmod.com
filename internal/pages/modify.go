@@ -69,7 +69,7 @@ func ModifyHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		// Extract materials from NBT
 		var materials []nbtparser.Material
 		if storageService != nil && s.SchematicFile != "" {
-			reader, dlErr := storageService.DownloadRaw(ctx, "schematics/"+s.ID+"/"+s.SchematicFile)
+			reader, dlErr := storageService.Download(ctx, storage.CollectionPrefix("schematics"), s.ID, s.SchematicFile)
 			if dlErr == nil {
 				data, readErr := io.ReadAll(reader)
 				reader.Close()
@@ -185,7 +185,7 @@ func ModifyDownloadHandler(appStore *store.Store, storageService *storage.Servic
 			}
 		}
 
-		reader, err := storageService.DownloadRaw(ctx, "schematics/"+s.ID+"/"+s.SchematicFile)
+		reader, err := storageService.Download(ctx, storage.CollectionPrefix("schematics"), s.ID, s.SchematicFile)
 		if err != nil {
 			slog.Error("failed to download schematic for modify", "error", err)
 			return e.InternalServerError("failed to download schematic", nil)
@@ -250,7 +250,7 @@ func ModifyPreviewHandler(appStore *store.Store, storageService *storage.Service
 			return e.BadRequestError("too many replacements (max 1000)", nil)
 		}
 
-		reader, err := storageService.DownloadRaw(ctx, "schematics/"+s.ID+"/"+s.SchematicFile)
+		reader, err := storageService.Download(ctx, storage.CollectionPrefix("schematics"), s.ID, s.SchematicFile)
 		if err != nil {
 			return e.InternalServerError("failed to download schematic", nil)
 		}
