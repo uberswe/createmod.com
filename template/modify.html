@@ -550,14 +550,17 @@
 
     // Save variation
     var saveBtn = document.getElementById('save-variation-btn');
+    var savingVariation = false;
     if (saveBtn) {
         saveBtn.addEventListener('click', function() {
+            if (savingVariation) return;
             var list = getReplacementsList();
             if (list.length === 0) return;
 
             var name = document.getElementById('variation-name').value.trim();
             var isPublic = document.getElementById('variation-public').checked;
 
+            savingVariation = true;
             this.disabled = true;
             var self = this;
 
@@ -569,9 +572,10 @@
                 if (!resp.ok) return resp.text().then(function(t) { throw new Error(t); });
                 return resp.json();
             }).then(function() {
-                window.location.reload();
+                window.location.href = window.location.pathname + window.location.search;
             }).catch(function(err) {
                 alert('Save failed: ' + err.message);
+                savingVariation = false;
                 self.disabled = false;
             });
         });
