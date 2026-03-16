@@ -763,6 +763,7 @@ type SchematicVariationStore interface {
 	Update(ctx context.Context, v *SchematicVariation) error
 	Delete(ctx context.Context, id string) error
 	CountBySchematicAndUser(ctx context.Context, schematicID, userID string) (int, error)
+	GetOldestBySchematicAndUser(ctx context.Context, schematicID, userID string) (*SchematicVariation, error)
 }
 
 type Store struct {
