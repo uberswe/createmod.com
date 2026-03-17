@@ -46,9 +46,23 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 		e := server.NewRequestEvent(w, r)
 		if err := h(e); err != nil {
 			if apiErr, ok := err.(*server.APIError); ok {
+				if apiErr.Status >= 500 {
+					slog.Error("handler error",
+						"method", r.Method,
+						"path", r.URL.Path,
+						"status", apiErr.Status,
+						"error", apiErr.Message,
+					)
+				}
 				http.Error(w, apiErr.Message, apiErr.Status)
 				return
 			}
+			slog.Error("handler error",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", 500,
+				"error", err.Error(),
+			)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
