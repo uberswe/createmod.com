@@ -452,6 +452,7 @@ func Register(p RegisterParams) chi.Router {
 	previewRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/modify/download", Adapt(pages.ModifyDownloadHandler(p.AppStore, p.StorageService)))
 	r.With(previewRateLimit).Post("/api/schematics/{id}/modify/preview-url", Adapt(pages.ModifyPreviewHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/modify/preview/{tempID}", Adapt(pages.ModifyPreviewFileHandler(p.StorageService)))
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))

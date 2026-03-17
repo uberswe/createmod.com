@@ -33,20 +33,15 @@ type ModifyData struct {
 	DefaultData
 	Schematic        store.Schematic
 	Materials        []nbtparser.Material
-	Variations       []*store.SchematicVariation
-	PublicVariations  []*store.SchematicVariation
-	PreloadedJSON    string // Pre-filled replacements JSON (from ?v=variationID)
+	Variations    []*store.SchematicVariation
+	PreloadedJSON string // Pre-filled replacements JSON (from ?v=variationID)
 	SchematicID      string
 }
 
 // ModifyHandler renders the block replacement page for a schematic.
+// The page is accessible to all users, but save/variation features require authentication.
 func ModifyHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageService *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		ok, err := requireAuth(e)
-		if !ok {
-			return err
-		}
-
 		slug := chi.URLParam(e.Request, "name")
 		if slug == "" {
 			return e.NotFoundError("Not found", nil)
@@ -60,7 +55,7 @@ func ModifyHandler(registry *server.Registry, cacheService *cache.Service, appSt
 
 		// Must be published (moderated) or the user is the owner
 		userID := authenticatedUserID(e)
-		isOwner := s.AuthorID == userID
+		isOwner := userID != "" && s.AuthorID == userID
 		isPublished := s.Deleted == nil && s.Moderated
 		if !isPublished && !isOwner {
 			return e.NotFoundError("Schematic not found", nil)
@@ -105,25 +100,19 @@ func ModifyHandler(registry *server.Registry, cacheService *cache.Service, appSt
 			i18n.T(d.Language, "modify_blocks"),
 		)
 
-		// Load user's saved variations
-		if appStore.SchematicVariations != nil {
+		// Load user's saved variations (only for authenticated users)
+		if userID != "" && appStore.SchematicVariations != nil {
 			vars, varErr := appStore.SchematicVariations.ListBySchematicAndUser(ctx, s.ID, userID)
 			if varErr == nil {
 				d.Variations = vars
 			}
-			pubVars, pubErr := appStore.SchematicVariations.ListPublicBySchematic(ctx, s.ID)
-			if pubErr == nil {
-				d.PublicVariations = pubVars
-			}
 		}
 
-		// Pre-fill from variation if ?v= param present
+		// Pre-fill from variation if ?v= param present (allow shared links for anyone)
 		if vid := e.Request.URL.Query().Get("v"); vid != "" && appStore.SchematicVariations != nil {
 			v, vErr := appStore.SchematicVariations.GetByID(ctx, vid)
 			if vErr == nil && v != nil && v.SchematicID == s.ID {
-				if v.UserID == userID || v.IsPublic {
-					d.PreloadedJSON = string(v.Replacements)
-				}
+				d.PreloadedJSON = string(v.Replacements)
 			}
 		}
 
@@ -143,11 +132,6 @@ type modifyRequest struct {
 // ModifyDownloadHandler handles POST /api/schematics/{id}/modify/download.
 func ModifyDownloadHandler(appStore *store.Store, storageService *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		ok, err := requireAuth(e)
-		if !ok {
-			return err
-		}
-
 		schematicID := chi.URLParam(e.Request, "id")
 		if schematicID == "" {
 			return e.BadRequestError("missing schematic ID", nil)
@@ -217,11 +201,6 @@ func ModifyDownloadHandler(appStore *store.Store, storageService *storage.Servic
 // ModifyPreviewHandler handles POST /api/schematics/{id}/modify/preview-url.
 func ModifyPreviewHandler(appStore *store.Store, storageService *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		ok, err := requireAuth(e)
-		if !ok {
-			return err
-		}
-
 		schematicID := chi.URLParam(e.Request, "id")
 		if schematicID == "" {
 			return e.BadRequestError("missing schematic ID", nil)
@@ -265,21 +244,65 @@ func ModifyPreviewHandler(appStore *store.Store, storageService *storage.Service
 			return e.InternalServerError("failed to modify schematic: "+err.Error(), nil)
 		}
 
-		tempKey := fmt.Sprintf("temp/variations/%s-%s.nbt", schematicID, generateTempID())
+		tempID := generateTempID()
+		tempKey := fmt.Sprintf("temp/variations/%s.nbt", tempID)
 		if err := storageService.UploadRawBytes(ctx, tempKey, modified, "application/octet-stream"); err != nil {
 			return e.InternalServerError("failed to upload preview", nil)
 		}
 
-		scheme := "http"
-		if e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
-			scheme = "https"
+		scheme := "https"
+		if e.Request.TLS == nil && !strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
+			scheme = "http"
 		}
-		fileURL := fmt.Sprintf("%s://%s/api/files/_raw/%s", scheme, e.Request.Host, url.PathEscape(tempKey))
+		fileURL := fmt.Sprintf("%s://%s/api/modify/preview/%s", scheme, e.Request.Host, tempID)
 		bloxelizerURL := "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
 
 		return e.JSON(http.StatusOK, map[string]string{
 			"url": bloxelizerURL,
 		})
+	}
+}
+
+// ModifyPreviewFileHandler serves a temp preview NBT file.
+// GET /api/modify/preview/{tempID}
+func ModifyPreviewFileHandler(storageService *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		tempID := chi.URLParam(e.Request, "tempID")
+		if tempID == "" {
+			return e.BadRequestError("missing temp ID", nil)
+		}
+
+		// Validate tempID is hex only to prevent path traversal
+		for _, c := range tempID {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+				return e.BadRequestError("invalid temp ID", nil)
+			}
+		}
+
+		if storageService == nil {
+			return e.BadRequestError("storage not available", nil)
+		}
+
+		ctx := e.Request.Context()
+		tempKey := fmt.Sprintf("temp/variations/%s.nbt", tempID)
+
+		reader, err := storageService.DownloadRaw(ctx, tempKey)
+		if err != nil {
+			return e.NotFoundError("preview file not found", nil)
+		}
+		defer reader.Close()
+
+		data, err := io.ReadAll(reader)
+		if err != nil {
+			return e.InternalServerError("failed to read preview file", nil)
+		}
+
+		e.Response.Header().Set("Content-Type", "application/octet-stream")
+		e.Response.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.nbt"`, tempID))
+		e.Response.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+		e.Response.WriteHeader(http.StatusOK)
+		_, _ = e.Response.Write(data)
+		return nil
 	}
 }
 
@@ -418,22 +441,16 @@ func ListVariationsHandler(appStore *store.Store) func(e *server.RequestEvent) e
 		userID := authenticatedUserID(e)
 
 		var userVars []*store.SchematicVariation
-		var publicVars []*store.SchematicVariation
 
 		if appStore.SchematicVariations != nil {
 			uv, err := appStore.SchematicVariations.ListBySchematicAndUser(ctx, schematicID, userID)
 			if err == nil {
 				userVars = uv
 			}
-			pv, err := appStore.SchematicVariations.ListPublicBySchematic(ctx, schematicID)
-			if err == nil {
-				publicVars = pv
-			}
 		}
 
 		return e.JSON(http.StatusOK, map[string]interface{}{
-			"user_variations":   userVars,
-			"public_variations": publicVars,
+			"user_variations": userVars,
 		})
 	}
 }
@@ -652,16 +669,17 @@ func UploadModifyPreviewHandler(appStore *store.Store, storageService *storage.S
 			return e.InternalServerError("failed to modify schematic: "+err.Error(), nil)
 		}
 
-		tempKey := fmt.Sprintf("temp/variations/%s-%s.nbt", token, generateTempID())
+		tempID := generateTempID()
+		tempKey := fmt.Sprintf("temp/variations/%s.nbt", tempID)
 		if err := storageService.UploadRawBytes(ctx, tempKey, modified, "application/octet-stream"); err != nil {
 			return e.InternalServerError("failed to upload preview", nil)
 		}
 
-		scheme := "http"
-		if e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
-			scheme = "https"
+		scheme := "https"
+		if e.Request.TLS == nil && !strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
+			scheme = "http"
 		}
-		fileURL := fmt.Sprintf("%s://%s/api/files/_raw/%s", scheme, e.Request.Host, url.PathEscape(tempKey))
+		fileURL := fmt.Sprintf("%s://%s/api/modify/preview/%s", scheme, e.Request.Host, tempID)
 		bloxelizerURL := "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
 
 		return e.JSON(http.StatusOK, map[string]string{
