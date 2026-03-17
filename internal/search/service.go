@@ -536,52 +536,37 @@ func (s *Service) Suggest(q string, limit int) []Suggestion {
 }
 
 // SearchSimilar returns up to `limit` schematic IDs most similar to the given
-// title, tags, and categories. It uses a disjunction (OR) query so that
-// partial overlap still produces results, and boosts title terms to favour
-// schematics with similar names. IDs in the exclude map are filtered out.
-func (s *Service) SearchSimilar(title string, tags []string, categories []string, exclude map[string]struct{}, limit int) []string {
+// title. It searches the title against other schematics' title and AI
+// description fields using a disjunction (OR) query. Tags and categories are
+// intentionally excluded because they are too broad and cause unrelated
+// schematics to return the same generic results.
+// IDs in the exclude map are filtered out.
+func (s *Service) SearchSimilar(title string, exclude map[string]struct{}, limit int) []string {
 	if s == nil || s.bleveIndex == nil {
 		return nil
 	}
 
-	// Build a set of sub-queries with different boosts.
-	var subQueries []query.Query
+	words := strings.Fields(title)
+	if len(words) == 0 {
+		return nil
+	}
 
-	// Title words — highest relevance signal.
-	for _, w := range strings.Fields(title) {
+	// For each title word, create match queries against the title and
+	// aidescription fields. Title matches are boosted higher.
+	var subQueries []query.Query
+	for _, w := range words {
 		if len(w) < 2 {
 			continue
 		}
-		mq := bleve.NewMatchQuery(w)
-		mq.SetBoost(3.0)
-		mq.SetField("title")
-		subQueries = append(subQueries, mq)
-	}
+		tq := bleve.NewMatchQuery(w)
+		tq.SetBoost(3.0)
+		tq.SetField("title")
+		subQueries = append(subQueries, tq)
 
-	// Tag names — good relevance signal.
-	for _, tag := range tags {
-		for _, w := range strings.Fields(tag) {
-			if len(w) < 2 {
-				continue
-			}
-			mq := bleve.NewMatchQuery(w)
-			mq.SetBoost(2.0)
-			mq.SetField("tags")
-			subQueries = append(subQueries, mq)
-		}
-	}
-
-	// Category names — broad relevance signal.
-	for _, cat := range categories {
-		for _, w := range strings.Fields(cat) {
-			if len(w) < 2 {
-				continue
-			}
-			mq := bleve.NewMatchQuery(w)
-			mq.SetBoost(1.0)
-			mq.SetField("categories")
-			subQueries = append(subQueries, mq)
-		}
+		aq := bleve.NewMatchQuery(w)
+		aq.SetBoost(1.0)
+		aq.SetField("aidescription")
+		subQueries = append(subQueries, aq)
 	}
 
 	if len(subQueries) == 0 {
