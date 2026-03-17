@@ -1828,15 +1828,15 @@ func (vs *ViewRatingStoreImpl) GetTotalViewCount(ctx context.Context, schematicI
 func (vs *ViewRatingStoreImpl) FetchTrendingData(ctx context.Context, recentDays int) (*store.TrendingData, error) {
 	cutoff := time.Now().UTC().Add(-time.Duration(recentDays) * 24 * time.Hour)
 
-	// Fetch all approved schematics
-	schematics, err := vs.q.ListAllApprovedSchematicsForIndex(ctx)
+	// Fetch only IDs and created timestamps (lightweight query for trending calc)
+	schematicRows, err := vs.q.ListApprovedSchematicIDsAndCreated(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list schematics for trending: %w", err)
 	}
 
-	ids := make([]string, len(schematics))
-	createdMap := make(map[string]time.Time, len(schematics))
-	for i, s := range schematics {
+	ids := make([]string, len(schematicRows))
+	createdMap := make(map[string]time.Time, len(schematicRows))
+	for i, s := range schematicRows {
 		ids[i] = s.ID
 		createdMap[s.ID] = s.Created
 	}
