@@ -7,6 +7,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/jobs"
+	"createmod/internal/slowlog"
 	appmailer "createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
@@ -139,6 +140,7 @@ func New(conf Config) *Server {
 		if err := redisClient.Ping(ctx).Err(); err != nil {
 			log.Fatalf("Failed to connect to Redis: %v", err)
 		}
+		redisClient.AddHook(&slowlog.RedisHook{})
 		rl = ratelimit.NewRedisFromClient(redisClient)
 		cacheService = cache.NewWithRedis(redisClient)
 		log.Println("Connected to Redis (shared client for rate limiting + caching)")

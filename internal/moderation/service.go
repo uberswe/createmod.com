@@ -2,6 +2,7 @@ package moderation
 
 import (
 	"createmod/internal/openai"
+	"createmod/internal/slowlog"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -227,7 +228,8 @@ func (s *Service) isValidURL(urlString string) bool {
 
 	// Create an HTTP client with a reasonable timeout
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
+		Transport: &slowlog.SlowHTTPTransport{Base: http.DefaultTransport, Subsystem: "moderation"},
 	}
 
 	// Create a HEAD request to check if the URL resolves without downloading the content
