@@ -5,21 +5,20 @@ import (
 	"compress/gzip"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	nbt "github.com/Tnze/go-mc/nbt"
 )
 
-// TestNBTRoundTripTypes checks whether Tnze/go-mc/nbt preserves
-// tag types during decode→encode round-trip. Create mod schematics use
-// TAG_List(TAG_Int) for "size" and block "pos" fields. If the encoder
-// converts these to TAG_Int_Array, Create mod won't load the schematic.
+// TestNBTRoundTripTypes verifies that decode→encode round-trip preserves
+// semantic content. The Tnze encoder always writes []int32 as TAG_Int_Array
+// and Go map iteration order is nondeterministic, so raw bytes won't match,
+// but the decoded values must be identical.
 func TestNBTRoundTripTypes(t *testing.T) {
-	// Build a minimal Create-format schematic with TAG_List for size and pos
 	var origBuf bytes.Buffer
 	encoder := nbt.NewEncoder(&origBuf)
 
-	// Manually build a structure similar to Create schematics
 	data := map[string]interface{}{
 		"size": []int32{int32(10), int32(20), int32(30)},
 		"palette": []interface{}{
@@ -42,9 +41,8 @@ func TestNBTRoundTripTypes(t *testing.T) {
 	t.Logf("Original encoded bytes: %d", origBuf.Len())
 	dumpTagTypes(t, "ORIGINAL", origBuf.Bytes())
 
-	// Now decode and re-encode (same as ReplacePalette does)
+	// Decode
 	var decoded interface{}
-	var rootTag string
 	decoder := nbt.NewDecoder(bytes.NewReader(origBuf.Bytes()))
 	rootTag, err := decoder.Decode(&decoded)
 	if err != nil {
@@ -55,6 +53,7 @@ func TestNBTRoundTripTypes(t *testing.T) {
 	t.Logf("Decoded type tree:")
 	dumpInterfaceTypes(t, "  ", decoded)
 
+	// Re-encode
 	var reEncodedBuf bytes.Buffer
 	encoder2 := nbt.NewEncoder(&reEncodedBuf)
 	if err := encoder2.Encode(decoded, rootTag); err != nil {
@@ -64,32 +63,27 @@ func TestNBTRoundTripTypes(t *testing.T) {
 	t.Logf("Re-encoded bytes: %d", reEncodedBuf.Len())
 	dumpTagTypes(t, "RE-ENCODED", reEncodedBuf.Bytes())
 
-	// Compare
-	if !bytes.Equal(origBuf.Bytes(), reEncodedBuf.Bytes()) {
-		t.Error("Round-trip changed the NBT bytes! Likely tag type mismatch.")
-		t.Logf("Original hex (first 100): %x", truncBytes(origBuf.Bytes(), 100))
-		t.Logf("Re-encoded hex (first 100): %x", truncBytes(reEncodedBuf.Bytes(), 100))
-	} else {
-		t.Log("Round-trip preserved bytes exactly")
+	// Verify semantic equivalence: decode re-encoded bytes and compare.
+	// Raw bytes may differ due to Go map iteration order, but the decoded
+	// values must be identical.
+	var decoded2 interface{}
+	dec2 := nbt.NewDecoder(bytes.NewReader(reEncodedBuf.Bytes()))
+	if _, err := dec2.Decode(&decoded2); err != nil {
+		t.Fatalf("re-decode failed: %v", err)
+	}
+
+	if !reflect.DeepEqual(decoded, decoded2) {
+		t.Error("round-trip changed the decoded data")
 	}
 }
 
-// TestRealSchematicRoundTrip tests with the actual modified schematic file
+// TestRealSchematicRoundTrip verifies that decode→encode of a real schematic
+// preserves semantic content. Raw bytes will differ because (a) Go map
+// iteration order is nondeterministic and (b) the Tnze encoder converts
+// TAG_List(TAG_Int) to TAG_Int_Array. The patchIntArrayToList workaround
+// used by ReplacePalette restores the correct tag types; that path is tested
+// separately in TestReplacePalettePreservesTagList.
 func TestRealSchematicRoundTrip(t *testing.T) {
-	// Compare original vs modified
-	origPath := "../../large_warehouse_b3x6lmwzw4.nbt"
-	modPath := "../../large-warehouse-modified.nbt"
-	origData, err1 := readTestFile(origPath)
-	modData, err2 := readTestFile(modPath)
-	if err1 == nil && err2 == nil {
-		origDecomp, _ := decompressLimited(origData)
-		modDecomp, _ := decompressLimited(modData)
-		t.Log("=== ORIGINAL FILE ===")
-		dumpTagTypes(t, "ORIGINAL-FILE", origDecomp)
-		t.Log("=== MODIFIED FILE ===")
-		dumpTagTypes(t, "MODIFIED-FILE", modDecomp)
-	}
-
 	const path = "../../large_warehouse_b3x6lmwzw4.nbt"
 	data, err := readTestFile(path)
 	if err != nil {
@@ -106,14 +100,13 @@ func TestRealSchematicRoundTrip(t *testing.T) {
 
 	// Decode
 	var decoded interface{}
-	var rootTag string
 	decoder := nbt.NewDecoder(bytes.NewReader(decompressed))
-	rootTag, err = decoder.Decode(&decoded)
+	rootTag, err := decoder.Decode(&decoded)
 	if err != nil {
 		t.Fatalf("decode failed: %v", err)
 	}
 
-	// Show decoded Go types
+	// Show decoded Go types for key fields
 	if m, ok := decoded.(map[string]interface{}); ok {
 		if sizeVal, exists := m["size"]; exists {
 			t.Logf("Decoded 'size' Go type: %T value: %v", sizeVal, sizeVal)
@@ -139,8 +132,36 @@ func TestRealSchematicRoundTrip(t *testing.T) {
 	t.Log("=== AFTER round-trip ===")
 	dumpTagTypes(t, "RE-ENCODED", reEncodedBuf.Bytes())
 
-	if !bytes.Equal(decompressed, reEncodedBuf.Bytes()) {
-		t.Error("Round-trip changed the NBT bytes!")
+	// Verify semantic equivalence: decode re-encoded bytes and compare.
+	// The Tnze decoder produces different Go types for TAG_List(TAG_Int)
+	// ([]interface{}) vs TAG_Int_Array ([]int32), so we normalize both
+	// before comparison.
+	var decoded2 interface{}
+	dec2 := nbt.NewDecoder(bytes.NewReader(reEncodedBuf.Bytes()))
+	if _, err := dec2.Decode(&decoded2); err != nil {
+		t.Fatalf("re-decode failed: %v", err)
+	}
+
+	norm1 := normalizeNBTValue(decoded)
+	norm2 := normalizeNBTValue(decoded2)
+	if !reflect.DeepEqual(norm1, norm2) {
+		t.Error("round-trip changed the decoded data")
+	}
+
+	// Verify that patchIntArrayToList restores the original TAG_List types.
+	listFields := findListIntFields(decompressed)
+	if len(listFields) == 0 {
+		t.Log("no TAG_List(TAG_Int) fields found in original — nothing to patch")
+		return
+	}
+	t.Logf("TAG_List(TAG_Int) fields in original: %v", listFields)
+
+	patched := patchIntArrayToList(reEncodedBuf.Bytes(), listFields)
+	dumpTagTypes(t, "PATCHED", patched)
+
+	// Confirm size and pos are TAG_List (0x09) after patching, not TAG_Int_Array (0x0B).
+	for field := range listFields {
+		assertFieldTagType(t, patched, field, 9, "patched output")
 	}
 }
 
@@ -206,6 +227,74 @@ func dumpTagTypes(t *testing.T, label string, data []byte) {
 			}
 			idx = absPos + len(needle)
 		}
+	}
+}
+
+// normalizeNBTValue recursively converts NBT decoded values so that
+// TAG_List(TAG_Int) (decoded as []interface{} of int32) and TAG_Int_Array
+// (decoded as []int32) compare as equal.
+func normalizeNBTValue(v interface{}) interface{} {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(val))
+		for k, child := range val {
+			out[k] = normalizeNBTValue(child)
+		}
+		return out
+	case []interface{}:
+		// Check if all elements are int32 — if so, normalize to []int32.
+		allInt32 := len(val) > 0
+		for _, elem := range val {
+			if _, ok := elem.(int32); !ok {
+				allInt32 = false
+				break
+			}
+		}
+		if allInt32 {
+			ints := make([]int32, len(val))
+			for i, elem := range val {
+				ints[i] = elem.(int32)
+			}
+			return ints
+		}
+		// Otherwise recurse into each element.
+		out := make([]interface{}, len(val))
+		for i, elem := range val {
+			out[i] = normalizeNBTValue(elem)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
+// assertFieldTagType checks that the first occurrence of the named field in raw
+// NBT bytes has the expected tag type byte.
+func assertFieldTagType(t *testing.T, data []byte, field string, wantTag byte, label string) {
+	t.Helper()
+	tagNames := map[byte]string{
+		9: "TAG_List", 11: "TAG_Int_Array",
+	}
+	needle := []byte(field)
+	idx := bytes.Index(data, needle)
+	if idx < 3 {
+		return
+	}
+	nameLen := int(data[idx-2])<<8 | int(data[idx-1])
+	if nameLen != len(field) {
+		return
+	}
+	gotTag := data[idx-3]
+	if gotTag != wantTag {
+		wantName := tagNames[wantTag]
+		gotName := tagNames[gotTag]
+		if wantName == "" {
+			wantName = fmt.Sprintf("0x%02x", wantTag)
+		}
+		if gotName == "" {
+			gotName = fmt.Sprintf("0x%02x", gotTag)
+		}
+		t.Errorf("[%s] field %q: got %s, want %s", label, field, gotName, wantName)
 	}
 }
 

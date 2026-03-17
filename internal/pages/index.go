@@ -38,6 +38,7 @@ var indexTabTemplates = append([]string{
 }, commonTemplates...)
 
 const indexPageSize = 8
+const indexHTMLCacheTTL = 5 * time.Minute
 
 // CategorySection holds one category's schematics for the index page.
 type CategorySection struct {
@@ -57,6 +58,20 @@ type IndexData struct {
 	CategorySections []CategorySection
 }
 
+func indexHTMLCacheKey(lang string) string {
+	return fmt.Sprintf("IndexHTML:%s", lang)
+}
+
+// detectLanguageFromRequest determines the language for the current request
+// using the same logic as DefaultData.Populate: X-Createmod-Lang header first,
+// then cm_lang cookie, defaulting to "en".
+func detectLanguageFromRequest(r *http.Request) string {
+	if lang := r.Header.Get("X-Createmod-Lang"); lang != "" && isSupportedLanguage(lang) {
+		return lang
+	}
+	return preferredLanguageFromRequest(r)
+}
+
 func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		q := e.Request.URL.Query()
@@ -72,6 +87,17 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		// HTMX tab request — return just the tab panel partial
 		if isHTMX && tab != "" {
 			return renderTabPartial(cacheService, registry, appStore, e, tab, page)
+		}
+
+		// For anonymous users, serve from rendered HTML cache (5-minute TTL).
+		// Authenticated pages contain user-specific data so are always rendered fresh.
+		isAuth := authenticatedUserID(e) != ""
+		if !isAuth {
+			lang := detectLanguageFromRequest(e.Request)
+			htmlCacheKey := indexHTMLCacheKey(lang)
+			if cached, ok := cacheService.GetString(htmlCacheKey); ok {
+				return e.HTML(http.StatusOK, cached)
+			}
 		}
 
 		// Full page load — serve from pre-warmed cache when available.
@@ -159,6 +185,12 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		if err != nil {
 			return err
 		}
+
+		// Cache the rendered HTML for anonymous users (5-minute TTL)
+		if !isAuth {
+			cacheService.SetWithTTL(indexHTMLCacheKey(d.Language), html, indexHTMLCacheTTL)
+		}
+
 		return e.HTML(http.StatusOK, html)
 	}
 }
@@ -271,6 +303,10 @@ func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store) {
 		cacheService.Delete(cache.TrendingHasNextKey)
 		cacheService.Delete(cache.HighestRatedSchematicsKey)
 		cacheService.Delete(cache.HighestRatedHasNextKey)
+		// Invalidate rendered HTML caches for all languages
+		for lang := range supportedLanguages {
+			cacheService.Delete(indexHTMLCacheKey(lang))
+		}
 		WarmIndexCacheFromStore(appStore, cacheService, slog.Default())
 	}()
 }
