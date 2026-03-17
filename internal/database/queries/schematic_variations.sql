@@ -27,3 +27,9 @@ DELETE FROM schematic_variations WHERE id = $1;
 -- name: CountSchematicVariationsBySchematicAndUser :one
 SELECT COUNT(*)::int FROM schematic_variations
 WHERE schematic_id = $1 AND user_id = $2;
+
+-- name: GetOldestSchematicVariationBySchematicAndUser :one
+SELECT * FROM schematic_variations
+WHERE schematic_id = $1 AND user_id = $2
+ORDER BY created ASC
+LIMIT 1;

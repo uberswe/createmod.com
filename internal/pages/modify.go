@@ -314,7 +314,6 @@ func CreateVariationHandler(appStore *store.Store) func(e *server.RequestEvent) 
 		var req struct {
 			Name         string                  `json:"name"`
 			Replacements []nbtparser.ReplaceBlock `json:"replacements"`
-			IsPublic     bool                     `json:"is_public"`
 		}
 		if err := json.NewDecoder(e.Request.Body).Decode(&req); err != nil {
 			return e.BadRequestError("invalid JSON body", nil)
@@ -338,10 +337,14 @@ func CreateVariationHandler(appStore *store.Store) func(e *server.RequestEvent) 
 			}
 		}
 
+		// Enforce 10-variation limit per user per schematic; delete oldest if at max
 		if appStore.SchematicVariations != nil {
 			count, cErr := appStore.SchematicVariations.CountBySchematicAndUser(ctx, schematicID, userID)
-			if cErr == nil && count >= 50 {
-				return e.BadRequestError("maximum 50 variations per schematic", nil)
+			if cErr == nil && count >= 10 {
+				oldest, oErr := appStore.SchematicVariations.GetOldestBySchematicAndUser(ctx, schematicID, userID)
+				if oErr == nil && oldest != nil {
+					_ = appStore.SchematicVariations.Delete(ctx, oldest.ID)
+				}
 			}
 		}
 
@@ -355,7 +358,7 @@ func CreateVariationHandler(appStore *store.Store) func(e *server.RequestEvent) 
 			UserID:       userID,
 			Name:         req.Name,
 			Replacements: replacementsJSON,
-			IsPublic:     req.IsPublic,
+			IsPublic:     false,
 		}
 		if err := appStore.SchematicVariations.Create(ctx, v); err != nil {
 			slog.Error("failed to create variation", "error", err)

@@ -3134,6 +3134,17 @@ func (s *SchematicVariationStoreImpl) CountBySchematicAndUser(ctx context.Contex
 	return int(count), err
 }
 
+func (s *SchematicVariationStoreImpl) GetOldestBySchematicAndUser(ctx context.Context, schematicID, userID string) (*store.SchematicVariation, error) {
+	row, err := s.q.GetOldestSchematicVariationBySchematicAndUser(ctx, db.GetOldestSchematicVariationBySchematicAndUserParams{
+		SchematicID: schematicID,
+		UserID:      userID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return variationFromDB(row), nil
+}
+
 func variationFromDB(row db.SchematicVariation) *store.SchematicVariation {
 	return &store.SchematicVariation{
 		ID:           row.ID,
