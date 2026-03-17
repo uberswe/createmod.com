@@ -160,14 +160,15 @@ if (!window._htmxErrorInit) {
 })();
 </script>
 {{ if not .HideOutstream }}
-<!-- Floating outstream video player (bottom-right) -->
-<div id="outstream-player"></div>
+<!-- Floating outstream video player (bottom-right) — no container div needed;
+     NitroPay creates its own fixed-position wrapper for the floating format.
+     A placeholder div would inherit the sidebar's stacking context (z-index 1040)
+     and render behind it. -->
 <script>
 window['nitroAds'].createAd('outstream-player', {
   "format": "floating",
   "floating": { "position": "right" },
   "outstream": "auto",
-  "sizes": [[300, 250]],
   "report": {
     "enabled": true,
     "icon": true,
