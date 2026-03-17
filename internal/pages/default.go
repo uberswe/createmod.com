@@ -51,6 +51,7 @@ type DefaultData struct {
 	NextPageURL     string
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
+	HideOutstream   bool
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.

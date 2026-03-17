@@ -57,6 +57,7 @@ func PasswordResetHandler(registry *server.Registry, appStore *store.Store) func
 	return func(e *server.RequestEvent) error {
 		d := passwordResetData{}
 		d.Populate(e)
+		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.passwordreset.title")
 		d.Description = i18n.T(d.Language, "page.passwordreset.description")
 		d.Slug = "/reset-password"
@@ -81,6 +82,7 @@ func PasswordResetPostHandler(mailService *mailer.Service, registry *server.Regi
 		// Always show success to avoid email enumeration
 		d := passwordResetData{Success: true}
 		d.Populate(e)
+		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.passwordreset.title")
 		d.Slug = "/reset-password"
 
@@ -159,6 +161,7 @@ func PasswordResetConfirmHandler(registry *server.Registry, appStore *store.Stor
 		token := e.Request.PathValue("token")
 		d := passwordResetConfirmData{Token: token}
 		d.Populate(e)
+		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "Set New Password")
 		d.Slug = "/reset-password/" + token
 		html, err := registry.LoadFiles(passwordResetConfirmTemplates...).Render(d)
@@ -180,6 +183,7 @@ func PasswordResetConfirmPostHandler(registry *server.Registry, appStore *store.
 
 		d := passwordResetConfirmData{Token: token}
 		d.Populate(e)
+		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "Set New Password")
 		d.Slug = "/reset-password/" + token
 

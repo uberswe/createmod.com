@@ -147,6 +147,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			CategorySections: categorySections,
 		}
 		d.Populate(e)
+		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.index.title")
 		d.Description = i18n.T(d.Language, "page.index.description")
 		d.Slug = "/"
