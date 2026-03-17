@@ -62,6 +62,17 @@ func indexHTMLCacheKey(lang string) string {
 	return fmt.Sprintf("IndexHTML:%s", lang)
 }
 
+// allCategorySectionsPopulated returns true when every category section has at
+// least one schematic. An empty section means the data cache was likely cold.
+func allCategorySectionsPopulated(sections []CategorySection) bool {
+	for _, s := range sections {
+		if len(s.Items) == 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // detectLanguageFromRequest determines the language for the current request
 // using the same logic as DefaultData.Populate: X-Createmod-Lang header first,
 // then cm_lang cookie, defaulting to "en".
@@ -186,8 +197,11 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			return err
 		}
 
-		// Cache the rendered HTML for anonymous users (5-minute TTL)
-		if !isAuth {
+		// Cache the rendered HTML for anonymous users (5-minute TTL).
+		// Only cache when all sections have data — if the data caches were
+		// cold (e.g. pod just started), the page may have been rendered with
+		// empty sections and we don't want to serve that for 5 minutes.
+		if !isAuth && len(latestSchematics) > 0 && len(trendingSchematics) > 0 && len(highestRated) > 0 && allCategorySectionsPopulated(categorySections) {
 			cacheService.SetWithTTL(indexHTMLCacheKey(d.Language), html, indexHTMLCacheTTL)
 		}
 
