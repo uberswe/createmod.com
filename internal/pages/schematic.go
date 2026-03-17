@@ -1041,17 +1041,7 @@ func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.S
 		exclude[a.ID] = struct{}{}
 	}
 
-	// Extract tag and category names for the similarity query.
-	tagNames := make([]string, len(schematic.Tags))
-	for i, t := range schematic.Tags {
-		tagNames[i] = t.Name
-	}
-	catNames := make([]string, len(schematic.Categories))
-	for i, c := range schematic.Categories {
-		catNames[i] = c.Name
-	}
-
-	wantIDs := searchService.SearchSimilar(schematic.Title, tagNames, catNames, exclude, limit)
+	wantIDs := searchService.SearchSimilar(schematic.Title, exclude, limit)
 
 	// If search index returned results, query store and preserve search ranking.
 	if len(wantIDs) > 0 {
