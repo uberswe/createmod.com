@@ -535,6 +535,90 @@ func (s *Service) Suggest(q string, limit int) []Suggestion {
 	return results
 }
 
+// SearchSimilar returns up to `limit` schematic IDs most similar to the given
+// title, tags, and categories. It uses a disjunction (OR) query so that
+// partial overlap still produces results, and boosts title terms to favour
+// schematics with similar names. IDs in the exclude map are filtered out.
+func (s *Service) SearchSimilar(title string, tags []string, categories []string, exclude map[string]struct{}, limit int) []string {
+	if s == nil || s.bleveIndex == nil {
+		return nil
+	}
+
+	// Build a set of sub-queries with different boosts.
+	var subQueries []query.Query
+
+	// Title words — highest relevance signal.
+	for _, w := range strings.Fields(title) {
+		if len(w) < 2 {
+			continue
+		}
+		mq := bleve.NewMatchQuery(w)
+		mq.SetBoost(3.0)
+		mq.SetField("title")
+		subQueries = append(subQueries, mq)
+	}
+
+	// Tag names — good relevance signal.
+	for _, tag := range tags {
+		for _, w := range strings.Fields(tag) {
+			if len(w) < 2 {
+				continue
+			}
+			mq := bleve.NewMatchQuery(w)
+			mq.SetBoost(2.0)
+			mq.SetField("tags")
+			subQueries = append(subQueries, mq)
+		}
+	}
+
+	// Category names — broad relevance signal.
+	for _, cat := range categories {
+		for _, w := range strings.Fields(cat) {
+			if len(w) < 2 {
+				continue
+			}
+			mq := bleve.NewMatchQuery(w)
+			mq.SetBoost(1.0)
+			mq.SetField("categories")
+			subQueries = append(subQueries, mq)
+		}
+	}
+
+	if len(subQueries) == 0 {
+		return nil
+	}
+
+	dq := bleve.NewDisjunctionQuery(subQueries...)
+	// Require at least 2 sub-queries to match so results share meaningful
+	// overlap rather than matching on a single common word.
+	minShouldMatch := 2
+	if len(subQueries) < 2 {
+		minShouldMatch = 1
+	}
+	dq.SetMin(float64(minShouldMatch))
+
+	sr := bleve.NewSearchRequest(dq)
+	sr.Size = limit + len(exclude) + 1 // over-fetch to compensate for exclusions
+
+	searchResult, err := s.bleveIndex.Search(sr)
+	if err != nil {
+		slog.Error("SearchSimilar bleve error", "error", err)
+		return nil
+	}
+
+	ids := make([]string, 0, limit)
+	for _, hit := range searchResult.Hits {
+		if len(ids) >= limit {
+			break
+		}
+		if _, skip := exclude[hit.ID]; skip {
+			continue
+		}
+		ids = append(ids, hit.ID)
+	}
+	return ids
+}
+
 func stripHtmlRegex(s string) string {
 	r := regexp.MustCompile(regex)
 	return r.ReplaceAllString(s, " ")

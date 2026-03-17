@@ -1029,8 +1029,8 @@ func findSimilarByCategoryFromStore(appStore *store.Store, cacheService *cache.S
 	return results
 }
 
-// findSimilarSchematicsFromStore uses the search service for IDs, then
-// looks up schematics via the store.
+// findSimilarSchematicsFromStore uses the search service's dedicated
+// similarity query to find schematics related to the current one.
 func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.Service, schematic models.Schematic, author []models.Schematic, searchService *search.Service) []models.Schematic {
 	const limit = 5
 
@@ -1041,26 +1041,17 @@ func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.S
 		exclude[a.ID] = struct{}{}
 	}
 
-	// Try Bleve full-text search first.
-	keywordString := ""
-	for _, t := range schematic.Tags {
-		keywordString += " " + t.Name
+	// Extract tag and category names for the similarity query.
+	tagNames := make([]string, len(schematic.Tags))
+	for i, t := range schematic.Tags {
+		tagNames[i] = t.Name
 	}
-	for _, c := range schematic.Categories {
-		keywordString += " " + c.Name
+	catNames := make([]string, len(schematic.Categories))
+	for i, c := range schematic.Categories {
+		catNames[i] = c.Name
 	}
-	ids := searchService.Search(fmt.Sprintf("%s %s", schematic.Title, keywordString), search.BestMatchOrder, -1, "all", nil, "all", "all", false)
 
-	wantIDs := make([]string, 0, limit)
-	for _, id := range ids {
-		if len(wantIDs) >= limit {
-			break
-		}
-		if _, skip := exclude[id]; skip {
-			continue
-		}
-		wantIDs = append(wantIDs, id)
-	}
+	wantIDs := searchService.SearchSimilar(schematic.Title, tagNames, catNames, exclude, limit)
 
 	// If search index returned results, query store and preserve search ranking.
 	if len(wantIDs) > 0 {
