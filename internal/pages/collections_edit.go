@@ -82,6 +82,7 @@ func CollectionsEditHandler(registry *server.Registry, cacheService *cache.Servi
 		d.Description = coll.Description
 		d.BannerURL = coll.BannerURL
 		d.Published = coll.Published
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"), "/collections", d.TitleText, "/collections/"+slug, i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit collection")
 
 		// Load associated schematics via the join table (store handles position ordering)
@@ -267,6 +268,10 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			if len(strings.TrimSpace(description)) < 100 {
 				return renderEditWithError("Description must be at least 100 characters to publish.")
 			}
+			schematicIDs, _ := appStore.Collections.GetSchematicIDs(ctx, coll.ID)
+			if len(schematicIDs) < 4 {
+				return renderEditWithError("A collection needs at least 4 schematics to publish.")
+			}
 			if moderationService != nil {
 				content := fmt.Sprintf("Title: %s\nDescription: %s", title, description)
 				result, err := moderationService.CheckContent(content)
@@ -286,6 +291,9 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 		if err := appStore.Collections.Update(ctx, coll); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to save collection")
 		}
+
+		// Async image moderation for the banner
+		moderateCollectionBanner(moderationService, appStore, coll.ID, coll.BannerURL)
 
 		// Regenerate collage on any save (content may have changed)
 		go generateCollectionCollage(storageSvc, appStore, coll.ID)

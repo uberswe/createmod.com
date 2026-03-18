@@ -118,6 +118,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			Schematic: MapStoreSchematicToModel(appStore, *s, cacheService),
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
 		d.Title = d.Schematic.Title
 		d.Slug = fmt.Sprintf("/schematics/%s", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
@@ -204,7 +205,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			d.AdditionalFiles = additionalFiles
 		}
 
-		// Translation: show translated title/description if user's language differs from detected language
+		// Translation: show translated title/content if user's language differs from detected language
 		detectedLang := s.DetectedLanguage
 		if detectedLang == "" {
 			detectedLang = "en"
@@ -212,24 +213,9 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 		d.OriginalLanguage = detectedLang
 		showOriginal := e.Request.URL.Query().Get("lang") == "original"
 		transSanitizer := htmlsanitizer.NewHTMLSanitizer()
-		if !showOriginal && translationService != nil && d.Language != "" && d.Language != "en" {
-			// User's UI language is not English - try to show a translation
-			t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, d.Language)
-			if t != nil && t.Title != "" {
-				d.Schematic.Title = t.Title
-				d.Title = t.Title
-				if t.Content != "" {
-					d.Schematic.Content = t.Content
-					sanitizedTransContent, sanitizeErr := transSanitizer.SanitizeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
-					if sanitizeErr != nil {
-						sanitizedTransContent = template.HTMLEscapeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
-					}
-					d.Schematic.HTMLContent = template.HTML(sanitizedTransContent)
-				}
-				d.IsTranslated = true
-			}
-		} else if showOriginal && translationService != nil && detectedLang != "en" {
-			// User clicked "show original" - display the original language text
+
+		if showOriginal && translationService != nil && detectedLang != "en" {
+			// User clicked "show original" — display the original language text
 			t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, detectedLang)
 			if t != nil && t.Title != "" {
 				d.Schematic.Title = t.Title
@@ -241,6 +227,29 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 						sanitizedOrigContent = template.HTMLEscapeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
 					}
 					d.Schematic.HTMLContent = template.HTML(sanitizedOrigContent)
+				}
+			}
+		} else if !showOriginal && translationService != nil {
+			// Determine the viewer's target language
+			targetLang := d.Language
+			if targetLang == "" {
+				targetLang = "en"
+			}
+			// Show translation when the viewer's language differs from the schematic's language
+			if targetLang != detectedLang {
+				t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, targetLang)
+				if t != nil && t.Title != "" {
+					d.Schematic.Title = t.Title
+					d.Title = t.Title
+					if t.Content != "" {
+						d.Schematic.Content = t.Content
+						sanitizedTransContent, sanitizeErr := transSanitizer.SanitizeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
+						if sanitizeErr != nil {
+							sanitizedTransContent = template.HTMLEscapeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
+						}
+						d.Schematic.HTMLContent = template.HTML(sanitizedTransContent)
+					}
+					d.IsTranslated = true
 				}
 			}
 		}
@@ -1020,8 +1029,8 @@ func findSimilarByCategoryFromStore(appStore *store.Store, cacheService *cache.S
 	return results
 }
 
-// findSimilarSchematicsFromStore uses the search service for IDs, then
-// looks up schematics via the store.
+// findSimilarSchematicsFromStore uses the search service's dedicated
+// similarity query to find schematics related to the current one.
 func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.Service, schematic models.Schematic, author []models.Schematic, searchService *search.Service) []models.Schematic {
 	const limit = 5
 
@@ -1032,26 +1041,7 @@ func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.S
 		exclude[a.ID] = struct{}{}
 	}
 
-	// Try Bleve full-text search first.
-	keywordString := ""
-	for _, t := range schematic.Tags {
-		keywordString += " " + t.Name
-	}
-	for _, c := range schematic.Categories {
-		keywordString += " " + c.Name
-	}
-	ids := searchService.Search(fmt.Sprintf("%s %s", schematic.Title, keywordString), search.BestMatchOrder, -1, "all", nil, "all", "all", false)
-
-	wantIDs := make([]string, 0, limit)
-	for _, id := range ids {
-		if len(wantIDs) >= limit {
-			break
-		}
-		if _, skip := exclude[id]; skip {
-			continue
-		}
-		wantIDs = append(wantIDs, id)
-	}
+	wantIDs := searchService.SearchSimilar(schematic.Title, exclude, limit)
 
 	// If search index returned results, query store and preserve search ranking.
 	if len(wantIDs) > 0 {

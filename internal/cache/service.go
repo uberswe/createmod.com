@@ -1,10 +1,15 @@
 package cache
 
 import (
+	"context"
 	"createmod/internal/models"
+	"encoding/json"
 	"fmt"
-	"github.com/patrickmn/go-cache"
+	"log/slog"
 	"time"
+
+	gocache "github.com/patrickmn/go-cache"
+	"github.com/redis/go-redis/v9"
 )
 
 // It's never the cache
@@ -18,10 +23,23 @@ const (
 	LatestHasNextKey          = "LatestHasNext"
 	HighestRatedHasNextKey    = "HighestRatedHasNext"
 	TrendingHasNextKey        = "TrendingHasNext"
+
+	keyPrefix    = "cm:"
+	defaultTTL   = 60 * time.Minute
+	redisTimeout = 2 * time.Second
 )
 
+// redisEntry is the typed JSON envelope stored in Redis.
+type redisEntry struct {
+	Type  string          `json:"t"`
+	Value json.RawMessage `json:"v"`
+}
+
 type Service struct {
-	c *cache.Cache
+	c      *gocache.Cache   // in-memory (always present)
+	redis  *redis.Client    // nil if Redis not configured
+	pubsub *redis.PubSub   // invalidation subscription
+	stopCh chan struct{}    // stops subscription goroutine
 }
 
 // SetWithTTL sets a key with a specific TTL duration.
@@ -29,16 +47,46 @@ func (s *Service) SetWithTTL(key string, value interface{}, duration time.Durati
 	s.c.Set(key, value, duration)
 }
 
-// Delete removes a key from the cache.
+// Delete removes a key from the cache and publishes invalidation to other pods.
 func (s *Service) Delete(key string) {
 	s.c.Delete(key)
+	if s.redis != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
+		defer cancel()
+		s.redis.Del(ctx, keyPrefix+key)
+		s.publishInvalidation(invalidationMsg{Action: "delete", Keys: []string{key}})
+	}
 }
 
-// New creates the CreateMod.com in-memory cache service
+// New creates the CreateMod.com in-memory cache service.
 func New() *Service {
-	c := cache.New(60*time.Minute, 120*time.Minute)
+	c := gocache.New(defaultTTL, 120*time.Minute)
 	return &Service{
 		c: c,
+	}
+}
+
+// NewWithRedis creates a cache service backed by both in-memory and Redis.
+// Writes go to both; reads try Redis first, fall back to in-memory.
+// A pub/sub subscription is started for cross-pod invalidation.
+func NewWithRedis(client *redis.Client) *Service {
+	c := gocache.New(defaultTTL, 120*time.Minute)
+	s := &Service{
+		c:      c,
+		redis:  client,
+		stopCh: make(chan struct{}),
+	}
+	s.startSubscription()
+	return s
+}
+
+// Close stops the pub/sub subscription goroutine.
+func (s *Service) Close() {
+	if s.stopCh != nil {
+		close(s.stopCh)
+	}
+	if s.pubsub != nil {
+		_ = s.pubsub.Close()
 	}
 }
 
@@ -86,123 +134,255 @@ func ModMetadataKey(namespace string) string {
 	return fmt.Sprintf("modmeta:%s", namespace)
 }
 
+// --- Generic Set/Get (in-memory only for complex types) ---
+
 func (s *Service) Set(key string, value interface{}) {
-	s.c.Set(key, value, cache.DefaultExpiration)
+	s.c.Set(key, value, gocache.DefaultExpiration)
 }
 
 func (s *Service) Get(key string) (interface{}, bool) {
 	return s.c.Get(key)
 }
 
+// --- Typed setters/getters with Redis support ---
+
 func (s *Service) SetInt(key string, i int) {
-	s.c.Set(key, i, cache.DefaultExpiration)
+	s.c.Set(key, i, gocache.DefaultExpiration)
+	s.redisSet(key, "int", i)
 }
 
 func (s *Service) GetInt(key string) (int, bool) {
-	v, found := s.Get(key)
+	// Try Redis first
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "int"); ok {
+			var i int
+			if err := json.Unmarshal(v, &i); err == nil {
+				s.c.Set(key, i, gocache.DefaultExpiration)
+				return i, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return 0, found
+		return 0, false
 	}
 	if i, ok := v.(int); ok {
-		return i, found
+		return i, true
 	}
 	return 0, false
 }
 
 func (s *Service) SetFloat(key string, f float64) {
-	s.c.Set(key, f, cache.DefaultExpiration)
+	s.c.Set(key, f, gocache.DefaultExpiration)
+	s.redisSet(key, "float", f)
 }
 
 func (s *Service) GetFloat(key string) (float64, bool) {
-	v, found := s.Get(key)
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "float"); ok {
+			var f float64
+			if err := json.Unmarshal(v, &f); err == nil {
+				s.c.Set(key, f, gocache.DefaultExpiration)
+				return f, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return 0, found
+		return 0, false
 	}
 	if f, ok := v.(float64); ok {
-		return f, found
+		return f, true
 	}
 	return 0, false
 }
 
 func (s *Service) SetString(key string, value string) {
-	s.c.Set(key, value, cache.DefaultExpiration)
+	s.c.Set(key, value, gocache.DefaultExpiration)
+	s.redisSet(key, "string", value)
 }
 
 func (s *Service) GetString(key string) (string, bool) {
-	v, found := s.Get(key)
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "string"); ok {
+			var str string
+			if err := json.Unmarshal(v, &str); err == nil {
+				s.c.Set(key, str, gocache.DefaultExpiration)
+				return str, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return "", found
+		return "", false
 	}
 	if str, ok := v.(string); ok {
-		return str, found
+		return str, true
 	}
 	return "", false
 }
 
 func (s *Service) SetSchematic(key string, value models.Schematic) {
-	s.c.Set(key, value, cache.DefaultExpiration)
+	s.c.Set(key, value, gocache.DefaultExpiration)
+	s.redisSet(key, "schematic", value)
 }
 
 func (s *Service) DeleteSchematic(key string) {
-	s.c.Delete(key)
+	s.Delete(key)
 }
 
 func (s *Service) GetSchematic(key string) (models.Schematic, bool) {
-	v, found := s.Get(key)
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "schematic"); ok {
+			var schem models.Schematic
+			if err := json.Unmarshal(v, &schem); err == nil {
+				s.c.Set(key, schem, gocache.DefaultExpiration)
+				return schem, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return models.Schematic{}, found
+		return models.Schematic{}, false
 	}
 	if schem, ok := v.(models.Schematic); ok {
-		return schem, found
+		return schem, true
 	}
 	return models.Schematic{}, false
 }
 
 func (s *Service) SetSchematics(key string, value []models.Schematic) {
-	s.c.Set(key, value, cache.DefaultExpiration)
+	s.c.Set(key, value, gocache.DefaultExpiration)
+	s.redisSet(key, "schematics", value)
 }
 
 func (s *Service) GetSchematics(key string) ([]models.Schematic, bool) {
-	v, found := s.Get(key)
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "schematics"); ok {
+			var schem []models.Schematic
+			if err := json.Unmarshal(v, &schem); err == nil {
+				s.c.Set(key, schem, gocache.DefaultExpiration)
+				return schem, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return nil, found
+		return nil, false
 	}
 	if schem, ok := v.([]models.Schematic); ok {
-		return schem, found
+		return schem, true
 	}
 	return nil, false
 }
 
 func (s *Service) SetCategories(key string, value []models.SchematicCategory, duration time.Duration) {
 	s.c.Set(key, value, duration)
+	s.redisSetWithTTL(key, "categories", value, duration)
 }
 
 func (s *Service) GetCategories(key string) ([]models.SchematicCategory, bool) {
-	v, found := s.Get(key)
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "categories"); ok {
+			var categories []models.SchematicCategory
+			if err := json.Unmarshal(v, &categories); err == nil {
+				s.c.Set(key, categories, gocache.DefaultExpiration)
+				return categories, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return nil, found
+		return nil, false
 	}
 	if categories, ok := v.([]models.SchematicCategory); ok {
-		return categories, found
+		return categories, true
 	}
 	return nil, false
 }
 
 func (s *Service) SetTagWithCount(key string, tags []models.SchematicTagWithCount) {
-	s.c.Set(key, tags, cache.DefaultExpiration)
+	s.c.Set(key, tags, gocache.DefaultExpiration)
+	s.redisSet(key, "tagswithcount", tags)
 }
 
 func (s *Service) GetTagWithCount(key string) ([]models.SchematicTagWithCount, bool) {
-	v, found := s.Get(key)
+	if s.redis != nil {
+		if v, ok := s.redisGetTyped(key, "tagswithcount"); ok {
+			var tags []models.SchematicTagWithCount
+			if err := json.Unmarshal(v, &tags); err == nil {
+				s.c.Set(key, tags, gocache.DefaultExpiration)
+				return tags, true
+			}
+		}
+	}
+	v, found := s.c.Get(key)
 	if !found {
-		return nil, found
+		return nil, false
 	}
 	if tags, ok := v.([]models.SchematicTagWithCount); ok {
-		return tags, found
+		return tags, true
 	}
 	return nil, false
 }
 
 func (s *Service) Flush() {
 	s.c.Flush()
+	if s.redis != nil {
+		// Don't flush Redis entirely — rate limiter shares it.
+		// Only publish invalidation so other pods flush their in-memory caches.
+		s.publishInvalidation(invalidationMsg{Action: "flush"})
+	}
+}
+
+// --- Redis helpers ---
+
+// redisSet stores a typed value in Redis with the default TTL.
+func (s *Service) redisSet(key string, typeName string, value interface{}) {
+	if s.redis == nil {
+		return
+	}
+	s.redisSetWithTTL(key, typeName, value, defaultTTL)
+}
+
+// redisSetWithTTL stores a typed value in Redis with a specific TTL.
+func (s *Service) redisSetWithTTL(key string, typeName string, value interface{}, ttl time.Duration) {
+	if s.redis == nil {
+		return
+	}
+	valBytes, err := json.Marshal(value)
+	if err != nil {
+		slog.Debug("cache: redis marshal error", "key", key, "error", err)
+		return
+	}
+	entry := redisEntry{Type: typeName, Value: valBytes}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		slog.Debug("cache: redis envelope marshal error", "key", key, "error", err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
+	defer cancel()
+	if err := s.redis.Set(ctx, keyPrefix+key, data, ttl).Err(); err != nil {
+		slog.Debug("cache: redis SET error", "key", key, "error", err)
+	}
+}
+
+// redisGetTyped retrieves a value from Redis and returns the raw JSON value
+// if the type discriminator matches.
+func (s *Service) redisGetTyped(key string, expectedType string) (json.RawMessage, bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), redisTimeout)
+	defer cancel()
+	data, err := s.redis.Get(ctx, keyPrefix+key).Bytes()
+	if err != nil {
+		return nil, false
+	}
+	var entry redisEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		return nil, false
+	}
+	if entry.Type != expectedType {
+		return nil, false
+	}
+	return entry.Value, true
 }

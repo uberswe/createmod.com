@@ -67,6 +67,7 @@ func AdminModsHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 		d := AdminModsData{Mods: items}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Mods"))
 		d.Title = i18n.T(d.Language, "Admin: Mods")
 		d.SubCategory = "Admin"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -99,6 +100,7 @@ func AdminModEditHandler(registry *server.Registry, cacheService *cache.Service,
 
 		d := AdminModEditData{Mod: *meta}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Mods"), "/admin/mods", i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit Mod:") + " " + namespace
 		d.SubCategory = "Admin"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

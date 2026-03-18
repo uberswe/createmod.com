@@ -802,7 +802,62 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     text-decoration: none !important;
 }
 
-/* Search page ad container - sticky only on desktop */
+/* ===== Ad slot CLS prevention =====
+   Reserve explicit dimensions so the page layout is stable before ads load.
+   Making desktop ad rails sticky keeps them visible during scroll. */
+
+/* Desktop XL ad rail (300px wide, 300x600 / 300x250 ads) */
+.ad-rail {
+    width: 300px;
+    min-width: 300px;
+    flex-shrink: 0;
+    min-height: 600px;
+}
+
+@media (min-width: 1200px) {
+    .ad-rail {
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
+        z-index: 10;
+    }
+}
+
+/* Desktop LG ad rail (160px wide, 160x600 ads — schematic page only) */
+.ad-rail-sm {
+    width: 160px;
+    min-width: 160px;
+    flex-shrink: 0;
+    min-height: 600px;
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .ad-rail-sm {
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
+        z-index: 10;
+    }
+}
+
+/* Search page ad rail (300px, two stacked ads: 300x250 + 300x600) */
+.search-ad-rail {
+    width: 300px;
+    min-width: 300px;
+    flex-shrink: 0;
+    min-height: 600px;
+}
+
+@media (min-width: 1200px) {
+    .search-ad-rail {
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
+        z-index: 10;
+    }
+}
+
+/* Search page left sidebar ad container - sticky only on desktop */
 .search-under-container {
     position: relative;
 }
@@ -813,4 +868,56 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
         top: 20px;
         z-index: 10;
     }
+}
+
+/* Mobile/tablet inline ad slots — reserve space for largest common size (300x250) */
+[id$="-mobile"],
+[id$="-mobile-mid"],
+[id="search-top-mobile"] {
+    min-height: 100px;
+}
+
+@media (min-width: 320px) and (max-width: 1199px) {
+    [id$="-mobile"],
+    [id$="-mobile-mid"],
+    [id="search-top-mobile"] {
+        min-height: 250px;
+    }
+}
+
+/* ===== Brand buttons ===== */
+.btn-curseforge {
+    color: #fff;
+    background-color: #F16436;
+    border-color: #F16436;
+}
+.btn-curseforge:hover,
+.btn-curseforge:focus {
+    color: #fff;
+    background-color: #d9552b;
+    border-color: #d9552b;
+}
+
+.btn-modrinth {
+    color: #fff;
+    background-color: #1BD96A;
+    border-color: #1BD96A;
+}
+.btn-modrinth:hover,
+.btn-modrinth:focus {
+    color: #fff;
+    background-color: #17b858;
+    border-color: #17b858;
+}
+
+.btn-github {
+    color: #fff;
+    background-color: #24292e;
+    border-color: #24292e;
+}
+.btn-github:hover,
+.btn-github:focus {
+    color: #fff;
+    background-color: #1b1f23;
+    border-color: #1b1f23;
 }

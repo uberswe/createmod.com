@@ -125,6 +125,7 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 	return func(e *server.RequestEvent) error {
 		d := UploadData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"))
 		d.UploadStep = 1
 		d.Title = i18n.T(d.Language, "Upload A Schematic")
 		d.Description = i18n.T(d.Language, "page.upload.description")
@@ -232,6 +233,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 
 		d := UploadPendingData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Pending"))
 		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
 		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
@@ -554,8 +556,12 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			} else {
 				autoApproved = true
 			}
-		} else if enqueueModeration != nil && moderationSvc != nil {
-			// Enqueue async moderation job instead of blocking the request
+		}
+
+		// Always enqueue moderation job: for non-trusted users it runs moderation + language
+		// detection; for trusted users moderation is skipped but language detection still runs.
+		// The moderation job also checks the featured image for policy violations.
+		if enqueueModeration != nil {
 			if insertErr := enqueueModeration(ctx, ModerationJobArgs{
 				SchematicID: schem.ID,
 				Title:       title,
@@ -566,6 +572,9 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				slog.Error("make-public: failed to enqueue moderation job", "error", insertErr, "id", schem.ID)
 			}
 		}
+
+		// Async image moderation for gallery images (featured is handled by the moderation job).
+		moderateSchematicImages(moderationSvc, appStore, schem.ID, galleryFilenames)
 
 		// --- Create NBT hash for duplicate detection ---
 		if entry.Checksum != "" {
@@ -692,6 +701,7 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 
 		d := UploadPreviewData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Preview"))
 		d.Title = i18n.T(d.Language, "Schematic Review")
 		d.Description = i18n.T(d.Language, "page.upload_review.description")
 		d.Slug = "/u/" + token

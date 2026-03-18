@@ -22,7 +22,7 @@ var downloadInterstitialTemplates = append([]string{
 type DownloadInterstitialData struct {
 	DefaultData
 	Name        string
-	Token       string
+	TokenID     string
 	Paid        bool
 	ExternalURL string
 }
@@ -53,6 +53,7 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 
 		d := DownloadInterstitialData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", i18n.T(d.Language, "Download"))
 		d.Slug = "/get/" + name
 		d.NoIndex = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -77,7 +78,7 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 			}
 			d.Title = i18n.T(d.Language, "Preparing Download")
 			d.Description = i18n.T(d.Language, "page.download.file.description")
-			d.Token = token
+			d.TokenID = dt.ID
 		}
 
 		html, err := registry.LoadFiles(downloadInterstitialTemplates...).Render(d)
@@ -85,5 +86,23 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 			return err
 		}
 		return e.HTML(http.StatusOK, html)
+	}
+}
+
+func DownloadURLHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		id := e.Request.PathValue("id")
+		if id == "" {
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": "missing id"})
+		}
+
+		dt, err := appStore.DownloadTokens.GetByID(e.Request.Context(), id)
+		if err != nil || dt == nil {
+			return e.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+		}
+
+		return e.JSON(http.StatusOK, map[string]string{
+			"url": "/download/" + dt.Name + "?t=" + dt.Token,
+		})
 	}
 }

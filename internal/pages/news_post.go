@@ -3,6 +3,7 @@ package pages
 import (
 	"createmod/content"
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/news"
 	"createmod/internal/store"
 	"createmod/internal/server"
@@ -37,6 +38,7 @@ func NewsPostHandler(registry *server.Registry, cacheService *cache.Service, app
 				d.Slug = post.URL
 				d.PostDate = post.Date.Format("January 2, 2006")
 				d.Content = post.Body
+				d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "News"), "/news", d.Title)
 			}
 		}
 

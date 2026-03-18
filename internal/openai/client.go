@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"createmod/internal/slowlog"
 )
 
 // Logger is an interface that defines the logging methods we need
@@ -46,7 +48,8 @@ func NewClient(apiKey string, logger Logger) *Client {
 	return &Client{
 		apiKey: apiKey,
 		httpClient: &http.Client{
-			Timeout: time.Second * 10,
+			Timeout:   60 * time.Second,
+			Transport: &slowlog.SlowHTTPTransport{Base: http.DefaultTransport, Subsystem: "openai"},
 		},
 		logger: logger,
 	}
@@ -897,6 +900,80 @@ func (c *Client) TranslateFields(title, description, content, targetLang string)
 		Description: extract("DESCRIPTION", raw),
 		Content:     extract("CONTENT", raw),
 	}, nil
+}
+
+// DetectLanguage asks the model to identify which supported language the text is
+// written in. It returns one of the supported language codes (en, fr, pt-BR,
+// pt-PT, es, de, pl, ru, zh-Hans). On failure or for English text it returns "en".
+func (c *Client) DetectLanguage(text string) (string, error) {
+	if c.apiKey == "" {
+		return "en", fmt.Errorf("OpenAI API key is required")
+	}
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return "en", nil
+	}
+
+	prompt := "Identify the language of the following text. Return exactly one of these codes: en, fr, pt-BR, pt-PT, es, de, pl, ru, zh-Hans\nReturn only the code, nothing else.\n\n" + trimmed
+	request := ChatCompletionRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "You are a language detection assistant. You return only a single language code from the allowed list."},
+			{Role: "user", Content: prompt},
+		},
+	}
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return "en", fmt.Errorf("failed to marshal request: %w", err)
+	}
+	if c.logger != nil {
+		c.logger.Info("OpenAI chat completion request (detectLanguage)", "endpoint", ChatCompletionEndpoint, "request_body_size", len(jsonData))
+	}
+	req, err := http.NewRequest("POST", ChatCompletionEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "en", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to send OpenAI chat completion request (detectLanguage)", "error", err.Error())
+		}
+		return "en", fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "en", fmt.Errorf("failed to read response body: %w", err)
+	}
+	if c.logger != nil {
+		if resp.StatusCode == http.StatusOK {
+			c.logger.Info("OpenAI chat completion response (detectLanguage)", "status_code", resp.StatusCode, "response_body_size", len(respBody))
+		} else {
+			c.logger.Info("OpenAI chat completion response (detectLanguage)", "status_code", resp.StatusCode, "response_body", string(respBody))
+		}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "en", fmt.Errorf("OpenAI API returned status code %d", resp.StatusCode)
+	}
+	var completionResponse ChatCompletionResponse
+	if err := json.Unmarshal(respBody, &completionResponse); err != nil {
+		return "en", fmt.Errorf("failed to decode response: %w", err)
+	}
+	if len(completionResponse.Choices) == 0 {
+		return "en", fmt.Errorf("no choices in OpenAI response")
+	}
+	code := strings.TrimSpace(completionResponse.Choices[0].Message.Content)
+	// Validate the returned code is one of our supported languages
+	supported := map[string]bool{
+		"en": true, "fr": true, "pt-BR": true, "pt-PT": true,
+		"es": true, "de": true, "pl": true, "ru": true, "zh-Hans": true,
+	}
+	if !supported[code] {
+		return "en", nil
+	}
+	return code, nil
 }
 
 // CheckMinecraftBuildImage checks if an image shows an actual Minecraft build

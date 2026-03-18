@@ -166,7 +166,8 @@ var LangPL = map[string]string{
 	"Reorder schematics":             "Zmień kolejność schematów",
 	"Drag items to reorder.":         "Przeciągnij elementy, aby zmienić kolejność.",
 	"Save order":                     "Zapisz kolejność",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Aby opublikować, kolekcja musi mieć tytuł (min. 10 znaków) i opis (min. 100 znaków). Treść zostanie sprawdzona pod kątem zgodności z regulaminem.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Aby opublikować, kolekcja musi zawierać co najmniej 4 schematy, tytuł (min. 10 znaków) i opis (min. 100 znaków). Treść zostanie sprawdzona pod kątem zgodności z regulaminem.",
+	"A collection needs at least 4 schematics to publish.": "Kolekcja musi zawierać co najmniej 4 schematy, aby można było ją opublikować.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Poradniki do moda Create i Minecraft",
@@ -380,6 +381,8 @@ var LangPL = map[string]string{
 	"Create new collection…": "Utwórz nową kolekcję…",
 	"Collection name":      "Nazwa kolekcji",
 	"Add":                  "Dodaj",
+	"Easy Schematic Uploads": "Łatwe przesyłanie schematów",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Przesyłaj schematy bezpośrednio z Minecrafta na createmod.com za pomocą moda Create: Schematic Upload. Zapisz schemat w grze i natychmiast otrzymaj link do udostępnienia.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Kontakt z CreateMod.com",
@@ -732,4 +735,21 @@ var LangPL = map[string]string{
 	"Edit Mod:":               "Edytuj mod:",
 	"page.404.title": "Strona nie znaleziona - CreateMod.com",
 	"Webhooks": "Webhooki",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modyfikuj Bloki",
+	"modify_blocks_description": "Zamień lub usuń bloki w tym schemacie",
+	"original_block":            "Oryginalny Blok",
+	"replacement_block":         "Blok Zastępczy",
+	"remove_block":              "Usuń Blok",
+	"download_modified":         "Pobierz Zmodyfikowany",
+	"preview_modified":          "Podgląd Zmodyfikowany",
+	"save_variation":            "Zapisz Wariant",
+	"variation_name":            "Nazwa Wariantu",
+	"saved_variations":          "Zapisane Warianty",
+	"load_variation":            "Wczytaj",
+	"delete_variation":          "Usuń",
+	"no_replacement":            "Brak zamiany",
+	"block_search_placeholder":  "Szukaj bloku...",
+	"replacements":              "zamian",
 }

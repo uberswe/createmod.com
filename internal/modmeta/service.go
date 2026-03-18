@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode"
 
+	"createmod/internal/slowlog"
 	"createmod/internal/store"
 )
 
@@ -42,7 +43,8 @@ func New(curseForgeKey string, appStore *store.Store) *Service {
 	return &Service{
 		curseForgeKey: curseForgeKey,
 		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
+			Timeout:   15 * time.Second,
+			Transport: &slowlog.SlowHTTPTransport{Base: http.DefaultTransport, Subsystem: "modmeta"},
 		},
 		stopChan: make(chan struct{}),
 		appStore: appStore,

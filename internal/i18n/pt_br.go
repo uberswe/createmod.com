@@ -166,7 +166,8 @@ var LangPtBR = map[string]string{
 	"Reorder schematics":             "Reordenar esquematicos",
 	"Drag items to reorder.":         "Arraste os itens para reordenar.",
 	"Save order":                     "Salvar ordem",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Para publicar, sua colecao precisa de um titulo (min 10 caracteres) e uma descricao (min 100 caracteres). O conteudo sera verificado quanto a conformidade com as regras.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Para publicar, sua coleção precisa de pelo menos 4 schematics, um título (min 10 caracteres) e uma descrição (min 100 caracteres). O conteúdo será verificado quanto à conformidade com as regras.",
+	"A collection needs at least 4 schematics to publish.": "Uma coleção precisa de pelo menos 4 schematics para publicar.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Guias para o Create mod e Minecraft",
@@ -380,6 +381,8 @@ var LangPtBR = map[string]string{
 	"Create new collection…": "Criar nova coleção…",
 	"Collection name":      "Nome da coleção",
 	"Add":                  "Adicionar",
+	"Easy Schematic Uploads": "Upload fácil de esquemáticos",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Envie esquemáticos diretamente do Minecraft para o createmod.com com o mod Create: Schematic Upload. Salve um esquemático no jogo e receba um link compartilhável instantaneamente.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contato CreateMod.com",
@@ -756,4 +759,21 @@ var LangPtBR = map[string]string{
 
 	// ── Webhooks (settings) ──
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modificar Blocos",
+	"modify_blocks_description": "Substituir ou remover blocos neste esquemático",
+	"original_block":            "Bloco Original",
+	"replacement_block":         "Bloco de Substituição",
+	"remove_block":              "Remover Bloco",
+	"download_modified":         "Baixar Modificado",
+	"preview_modified":          "Visualizar Modificado",
+	"save_variation":            "Salvar Variação",
+	"variation_name":            "Nome da Variação",
+	"saved_variations":          "Variações Salvas",
+	"load_variation":            "Carregar",
+	"delete_variation":          "Excluir",
+	"no_replacement":            "Sem substituição",
+	"block_search_placeholder":  "Buscar um bloco...",
+	"replacements":              "substituições",
 }

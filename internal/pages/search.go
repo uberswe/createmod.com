@@ -281,6 +281,7 @@ func SearchHandler(searchService *search.Service, cacheService *cache.Service, r
 			HidePaid:          hidePaid,
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Search"))
 		// Dynamic title based on search context
 		if term != "" && page > 1 {
 			d.Title = fmt.Sprintf("%s "+i18n.T(d.Language, "Schematics - Page")+" %d", term, page)

@@ -400,6 +400,7 @@ type SchematicStore interface {
 	CountVanilla(ctx context.Context) (int, error)
 	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
 	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
+	UpdateDetectedLanguage(ctx context.Context, id, lang string) error
 }
 
 // CategoryStore handles categories.
@@ -616,6 +617,7 @@ type DownloadToken struct {
 // DownloadTokenStore handles download token persistence.
 type DownloadTokenStore interface {
 	Create(ctx context.Context, dt *DownloadToken) error
+	GetByID(ctx context.Context, id string) (*DownloadToken, error)
 	Consume(ctx context.Context, token string) (*DownloadToken, error) // get + mark used atomically
 	CleanupExpired(ctx context.Context) error
 }
@@ -740,32 +742,57 @@ type TempUploadFileStore interface {
 	DeleteByToken(ctx context.Context, token string) error
 }
 
+// SchematicVariation represents a saved block replacement configuration for a schematic.
+type SchematicVariation struct {
+	ID           string
+	SchematicID  string
+	UserID       string
+	Name         string
+	Replacements json.RawMessage // JSON array of {original, replacement}
+	IsPublic     bool
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+// SchematicVariationStore handles schematic variation persistence.
+type SchematicVariationStore interface {
+	Create(ctx context.Context, v *SchematicVariation) error
+	GetByID(ctx context.Context, id string) (*SchematicVariation, error)
+	ListBySchematicAndUser(ctx context.Context, schematicID, userID string) ([]*SchematicVariation, error)
+	ListPublicBySchematic(ctx context.Context, schematicID string) ([]*SchematicVariation, error)
+	Update(ctx context.Context, v *SchematicVariation) error
+	Delete(ctx context.Context, id string) error
+	CountBySchematicAndUser(ctx context.Context, schematicID, userID string) (int, error)
+	GetOldestBySchematicAndUser(ctx context.Context, schematicID, userID string) (*SchematicVariation, error)
+}
+
 type Store struct {
-	Users           UserStore
-	Sessions        SessionStore
-	Schematics      SchematicStore
-	Categories      CategoryStore
-	Tags            TagStore
-	Comments        CommentStore
-	Guides          GuideStore
-	Collections     CollectionStore
-	Achievements    AchievementStore
-	Translations    TranslationStore
-	ViewRatings     ViewRatingStore
-	Versions        VersionStore
-	APIKeys         APIKeyStore
-	Auth            AuthStore
-	Reports         ReportStore
-	ModMetadata     ModMetadataStore
-	VersionLookup   VersionLookupStore
-	SearchTracking  SearchTrackingStore
-	OutgoingClicks  OutgoingClickStore
-	Contact         ContactStore
-	Stats           StatsStore
-	TempUploads     TempUploadStore
-	TempUploadFiles TempUploadFileStore
-	NBTHashes       NBTHashStore
-	DownloadTokens  DownloadTokenStore
-	SchematicFiles  SchematicFileStore
-	Webhooks        WebhookStore
+	Users               UserStore
+	Sessions            SessionStore
+	Schematics          SchematicStore
+	Categories          CategoryStore
+	Tags                TagStore
+	Comments            CommentStore
+	Guides              GuideStore
+	Collections         CollectionStore
+	Achievements        AchievementStore
+	Translations        TranslationStore
+	ViewRatings         ViewRatingStore
+	Versions            VersionStore
+	APIKeys             APIKeyStore
+	Auth                AuthStore
+	Reports             ReportStore
+	ModMetadata         ModMetadataStore
+	VersionLookup       VersionLookupStore
+	SearchTracking      SearchTrackingStore
+	OutgoingClicks      OutgoingClickStore
+	Contact             ContactStore
+	Stats               StatsStore
+	TempUploads         TempUploadStore
+	TempUploadFiles     TempUploadFileStore
+	NBTHashes           NBTHashStore
+	DownloadTokens      DownloadTokenStore
+	SchematicFiles      SchematicFileStore
+	Webhooks            WebhookStore
+	SchematicVariations SchematicVariationStore
 }

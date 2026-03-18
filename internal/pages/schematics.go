@@ -68,6 +68,7 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 		}
 
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"))
 		d.Title = i18n.T(d.Language, "page.schematics.title")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Description = i18n.T(d.Language, "page.schematics.description")

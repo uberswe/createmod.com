@@ -1,0 +1,527 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-xl">
+                <div class="page-header d-print-none mb-3">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <a href="/u/{{ .Token }}" class="btn btn-outline-secondary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+                                {{ T .Language "Back" }}
+                            </a>
+                        </div>
+                        <div class="col">
+                            <h2 class="page-title">{{ T .Language "modify_blocks" }}: {{ .Filename }}</h2>
+                            <div class="text-secondary">{{ T .Language "modify_blocks_description" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
+                <div class="row">
+                    <!-- Left column: Block replacement table -->
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Materials" }}</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-vcenter card-table" id="materials-table">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ T .Language "original_block" }}</th>
+                                            <th style="width: 40%">{{ T .Language "replacement_block" }}</th>
+                                            <th style="width: 100px" class="text-center">{{ T .Language "Actions" }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range .Materials }}
+                                        <tr data-block-id="{{ .BlockID }}" data-count="{{ .Count }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="https://blocksitems.com/api/v1/blocks/{{ .BlockID }}/icon?size=32"
+                                                         alt="{{ .BlockID }}" width="32" height="32" class="me-2 rounded"
+                                                         onerror="this.style.display='none'">
+                                                    <div>
+                                                        <div class="font-weight-medium block-name">{{ .BlockID }}</div>
+                                                        <div class="text-secondary small">x{{ .Count }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="replacement-cell">
+                                                <input type="text" class="form-control replacement-input"
+                                                       placeholder="{{ T $.Language "block_search_placeholder" }}"
+                                                       data-original="{{ .BlockID }}"
+                                                       autocomplete="off">
+                                                <div class="block-suggestions"></div>
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-btn"
+                                                        data-original="{{ .BlockID }}"
+                                                        title="{{ T $.Language "remove_block" }}">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary reset-btn d-none"
+                                                        data-original="{{ .BlockID }}"
+                                                        title="Reset">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {{ if not .Materials }}
+                            <div class="card-body">
+                                <div class="empty">
+                                    <p class="empty-title">{{ T .Language "No results found" }}</p>
+                                    <p class="empty-subtitle text-secondary">{{ T .Language "Materials" }}</p>
+                                </div>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    <!-- Right column: Actions -->
+                    <div class="col-lg-4">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Actions" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <span class="text-secondary" id="replacement-count">0 {{ T .Language "replacements" }}</span>
+                                </div>
+                                <button type="button" class="btn btn-primary w-100 mb-2" id="download-modified-btn" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                    <span class="btn-label">{{ T .Language "download_modified" }}</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary w-100" id="preview-modified-btn" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
+                                    <span class="btn-label">{{ T .Language "preview_modified" }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div><!-- /flex-grow-1 -->
+
+                    <!-- Ad Rails -->
+                    <!-- Narrow 160px rail for lg (992-1199px) -->
+                    <div class="ad-rail-sm d-none d-lg-block d-xl-none">
+                        <div id="upload-modify-adrail-lg" class="mb-3"></div>
+                    </div>
+                    <!-- Wide 300px rail for xl+ (1200px+) -->
+                    <div class="ad-rail d-none d-xl-block">
+                        <div id="upload-modify-adrail" class="mb-3"></div>
+                    </div>
+                </div><!-- /d-flex -->
+                <!-- Mobile ad (below content on smaller screens) -->
+                <div id="upload-modify-mobile" class="d-lg-none mt-3 text-center"></div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+
+<style>
+    #materials-table tr.table-warning {
+        --tblr-table-bg: rgba(247, 191, 60, 0.08);
+        --tblr-table-color: inherit;
+    }
+    #materials-table tr.table-danger {
+        --tblr-table-bg: rgba(214, 57, 57, 0.08);
+        --tblr-table-color: inherit;
+    }
+    @media (prefers-color-scheme: dark) {
+        #materials-table tr.table-warning {
+            --tblr-table-bg: rgba(247, 191, 60, 0.1);
+        }
+        #materials-table tr.table-danger {
+            --tblr-table-bg: rgba(214, 57, 57, 0.1);
+        }
+    }
+    .block-suggestions {
+        position: absolute;
+        z-index: 1050;
+        background: var(--tblr-bg-surface, #fff);
+        border: 1px solid var(--tblr-border-color, #e6e7e9);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        width: 100%;
+        display: none;
+    }
+    .block-suggestions .suggestion-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .block-suggestions .suggestion-item:hover,
+    .block-suggestions .suggestion-item.active {
+        background: var(--tblr-bg-surface-secondary, #f1f5f9);
+    }
+    .block-suggestions .suggestion-item img {
+        width: 24px;
+        height: 24px;
+        margin-right: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+    .block-suggestions .suggestion-name {
+        color: var(--tblr-body-color);
+    }
+    .block-suggestions .suggestion-id {
+        color: var(--tblr-secondary);
+        font-size: 0.75rem;
+        margin-left: auto;
+        padding-left: 8px;
+    }
+    td.replacement-cell {
+        position: relative;
+    }
+</style>
+
+<script>
+(function() {
+    var token = "{{ .Token }}";
+    var filename = "{{ .Filename }}";
+    var replacements = {};
+    var suggestCache = {};
+    var activeSuggestionIndex = -1;
+
+    function getReplacementsList() {
+        var list = [];
+        for (var orig in replacements) {
+            if (replacements.hasOwnProperty(orig)) {
+                list.push({original: orig, replacement: replacements[orig]});
+            }
+        }
+        return list;
+    }
+
+    function updateUI() {
+        var count = Object.keys(replacements).length;
+        var countEl = document.getElementById('replacement-count');
+        if (countEl) countEl.textContent = count + ' replacement' + (count !== 1 ? 's' : '');
+
+        var downloadBtn = document.getElementById('download-modified-btn');
+        var previewBtn = document.getElementById('preview-modified-btn');
+        if (downloadBtn) downloadBtn.disabled = count === 0;
+        if (previewBtn) previewBtn.disabled = count === 0;
+    }
+
+    function setBtnLoading(btn, loading, defaultText) {
+        var label = btn.querySelector('.btn-label');
+        if (loading) {
+            btn.disabled = true;
+            if (label) label.textContent = 'Loading...';
+        } else {
+            if (label) label.textContent = defaultText;
+            updateUI();
+        }
+    }
+
+    // Autocomplete: fetch suggestions from blocksitems API
+    function fetchSuggestions(query, callback) {
+        if (query.length < 3) { callback([]); return; }
+        if (suggestCache[query]) { callback(suggestCache[query]); return; }
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://blocksitems.com/api/v1/blocks?q=' + encodeURIComponent(query) + '&limit=8', true);
+        xhr.timeout = 4000;
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    var results = (resp.data || []).map(function(b) {
+                        return { id: b.full_id, name: b.display_name || b.full_id };
+                    });
+                    suggestCache[query] = results;
+                    callback(results);
+                } catch(e) { callback([]); }
+            } else { callback([]); }
+        };
+        xhr.onerror = function() { callback([]); };
+        xhr.ontimeout = function() { callback([]); };
+        xhr.send();
+    }
+
+    function showSuggestions(input, items) {
+        var dropdown = input.parentNode.querySelector('.block-suggestions');
+        if (!dropdown) return;
+        activeSuggestionIndex = -1;
+        dropdown.textContent = '';
+        if (items.length === 0) { dropdown.style.display = 'none'; return; }
+
+        items.forEach(function(item, i) {
+            var el = document.createElement('div');
+            el.className = 'suggestion-item';
+            el.setAttribute('data-block-id', item.id);
+            el.setAttribute('data-index', String(i));
+
+            var img = document.createElement('img');
+            img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(item.id) + '/icon?size=32';
+            img.alt = '';
+            img.onerror = function() { this.style.display = 'none'; };
+            el.appendChild(img);
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'suggestion-name';
+            nameSpan.textContent = item.name;
+            el.appendChild(nameSpan);
+
+            var idSpan = document.createElement('span');
+            idSpan.className = 'suggestion-id';
+            idSpan.textContent = item.id;
+            el.appendChild(idSpan);
+
+            el.addEventListener('mousedown', function(ev) {
+                ev.preventDefault();
+                selectSuggestion(input, item.id);
+            });
+
+            dropdown.appendChild(el);
+        });
+        dropdown.style.display = 'block';
+    }
+
+    function selectSuggestion(input, blockId) {
+        input.value = blockId;
+        var dropdown = input.parentNode.querySelector('.block-suggestions');
+        if (dropdown) { dropdown.style.display = 'none'; dropdown.textContent = ''; }
+        var orig = input.getAttribute('data-original');
+        var row = input.closest('tr');
+        if (blockId && blockId !== orig) {
+            replacements[orig] = blockId;
+            row.classList.remove('table-danger');
+            row.classList.add('table-warning');
+            row.querySelector('.reset-btn').classList.remove('d-none');
+        }
+        updateUI();
+    }
+
+    // Handle replacement input changes
+    document.querySelectorAll('.replacement-input').forEach(function(input) {
+        var debounce;
+        var suggestDebounce;
+        input.addEventListener('input', function() {
+            clearTimeout(debounce);
+            clearTimeout(suggestDebounce);
+            var self = this;
+            var val = self.value.trim();
+
+            // Autocomplete suggestions
+            suggestDebounce = setTimeout(function() {
+                fetchSuggestions(val, function(items) {
+                    showSuggestions(self, items);
+                });
+            }, 250);
+
+            debounce = setTimeout(function() {
+                var orig = self.getAttribute('data-original');
+                var row = self.closest('tr');
+                if (val && val !== orig) {
+                    replacements[orig] = val;
+                    row.classList.remove('table-danger');
+                    row.classList.add('table-warning');
+                    row.querySelector('.reset-btn').classList.remove('d-none');
+                } else if (!val) {
+                    delete replacements[orig];
+                    row.classList.remove('table-warning', 'table-danger');
+                    row.querySelector('.reset-btn').classList.add('d-none');
+                }
+                updateUI();
+            }, 300);
+        });
+
+        input.addEventListener('blur', function() {
+            var dropdown = this.parentNode.querySelector('.block-suggestions');
+            if (dropdown) { dropdown.style.display = 'none'; }
+        });
+
+        input.addEventListener('keydown', function(ev) {
+            var dropdown = this.parentNode.querySelector('.block-suggestions');
+            if (!dropdown || dropdown.style.display === 'none') return;
+            var items = dropdown.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+
+            if (ev.key === 'ArrowDown') {
+                ev.preventDefault();
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
+                items.forEach(function(el, i) { el.classList.toggle('active', i === activeSuggestionIndex); });
+            } else if (ev.key === 'ArrowUp') {
+                ev.preventDefault();
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+                items.forEach(function(el, i) { el.classList.toggle('active', i === activeSuggestionIndex); });
+            } else if (ev.key === 'Enter') {
+                ev.preventDefault();
+                if (activeSuggestionIndex >= 0 && activeSuggestionIndex < items.length) {
+                    selectSuggestion(this, items[activeSuggestionIndex].getAttribute('data-block-id'));
+                }
+            } else if (ev.key === 'Escape') {
+                dropdown.style.display = 'none';
+            }
+        });
+    });
+
+    // Remove block buttons
+    document.querySelectorAll('.remove-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var orig = this.getAttribute('data-original');
+            replacements[orig] = '';
+            var row = this.closest('tr');
+            var input = row.querySelector('.replacement-input');
+            input.value = 'minecraft:air';
+            row.classList.remove('table-warning');
+            row.classList.add('table-danger');
+            row.querySelector('.reset-btn').classList.remove('d-none');
+            updateUI();
+        });
+    });
+
+    // Reset buttons
+    document.querySelectorAll('.reset-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var orig = this.getAttribute('data-original');
+            delete replacements[orig];
+            var row = this.closest('tr');
+            var input = row.querySelector('.replacement-input');
+            input.value = '';
+            row.classList.remove('table-warning', 'table-danger');
+            this.classList.add('d-none');
+            updateUI();
+        });
+    });
+
+    // Download modified
+    var downloadBtn = document.getElementById('download-modified-btn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function() {
+            var list = getReplacementsList();
+            if (list.length === 0) return;
+
+            setBtnLoading(this, true, '');
+            var self = this;
+
+            fetch('/u/' + token + '/modify/download', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({replacements: list})
+            }).then(function(resp) {
+                if (!resp.ok) {
+                    return resp.text().then(function(msg) {
+                        throw new Error(msg || 'Download failed');
+                    });
+                }
+                return resp.blob();
+            }).then(function(blob) {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                var baseName = filename.replace(/\.nbt$/i, '');
+                a.download = baseName + '-modified.nbt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            }).catch(function(err) {
+                alert(err.message);
+            }).finally(function() {
+                setBtnLoading(self, false, '{{ T .Language "download_modified" }}');
+            });
+        });
+    }
+
+    // Preview modified
+    var previewBtn = document.getElementById('preview-modified-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            var list = getReplacementsList();
+            if (list.length === 0) return;
+
+            setBtnLoading(this, true, '');
+            var self = this;
+
+            fetch('/u/' + token + '/modify/preview-url', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({replacements: list})
+            }).then(function(resp) {
+                if (!resp.ok) {
+                    return resp.text().then(function(msg) {
+                        throw new Error(msg || 'Preview generation failed');
+                    });
+                }
+                return resp.json();
+            }).then(function(data) {
+                if (data.url) window.open(data.url, '_blank');
+            }).catch(function(err) {
+                alert(err.message);
+            }).finally(function() {
+                setBtnLoading(self, false, '{{ T .Language "preview_modified" }}');
+            });
+        });
+    }
+})();
+</script>
+
+<!-- Ad Scripts -->
+<script>
+// Narrow ad rail (lg only: 992-1199px)
+window['nitroAds'].createAd('upload-modify-adrail-lg', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["160", "600"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+});
+// Wide ad rail (xl+: 1200px+)
+window['nitroAds'].createAd('upload-modify-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 30,
+  "format": "display",
+  "sizes": [
+    ["300", "600"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+// Mobile ad (below content on smaller screens)
+window['nitroAds'].createAd('upload-modify-mobile', {
+  "sizes": [
+    ["320", "100"],
+    ["320", "50"],
+    ["300", "250"]
+  ],
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+});
+</script>
+
+{{template "foot.html" .}}

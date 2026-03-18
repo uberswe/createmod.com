@@ -52,6 +52,8 @@ func UserWebhooksHandler(registry *server.Registry, cacheService *cache.Service,
 
 		d := UserWebhookData{}
 		d.Populate(e)
+		d.HideOutstream = true
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Webhooks"))
 		d.Title = i18n.T(d.Language, "Webhooks")
 		d.Slug = "/settings/webhooks"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

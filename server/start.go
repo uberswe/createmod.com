@@ -7,6 +7,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/jobs"
+	"createmod/internal/slowlog"
 	appmailer "createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
@@ -22,6 +23,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"log/slog"
 	"math/rand"
@@ -66,6 +68,7 @@ type Server struct {
 	sitemapService       *sitemap.Service
 	cacheService         *cache.Service
 	rateLimiter          ratelimit.Limiter
+	redisClient          *redis.Client
 	discordService       *discord.Service
 	moderationService    *moderation.Service
 	aiDescriptionService *aidescription.Service
@@ -122,18 +125,29 @@ func New(conf Config) *Server {
 	aiDescriptionService := aidescription.New(conf.OpenAIApiKey, slog.Default())
 	translationService := translation.New(conf.OpenAIApiKey, slog.Default(), conf.Store)
 
-	// Initialize rate limiter: use Redis if configured, otherwise fall back to in-memory.
+	// Initialize shared Redis client, rate limiter, and cache.
 	var rl ratelimit.Limiter
+	var redisClient *redis.Client
+	var cacheService *cache.Service
 	if conf.RedisURL != "" {
-		var err error
-		rl, err = ratelimit.NewRedis(conf.RedisURL)
+		opts, err := redis.ParseURL(conf.RedisURL)
 		if err != nil {
-			log.Fatalf("Failed to connect to Redis for rate limiting: %v", err)
+			log.Fatalf("Failed to parse Redis URL: %v", err)
 		}
-		log.Println("Connected to Redis for rate limiting")
+		redisClient = redis.NewClient(opts)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := redisClient.Ping(ctx).Err(); err != nil {
+			log.Fatalf("Failed to connect to Redis: %v", err)
+		}
+		redisClient.AddHook(&slowlog.RedisHook{})
+		rl = ratelimit.NewRedisFromClient(redisClient)
+		cacheService = cache.NewWithRedis(redisClient)
+		log.Println("Connected to Redis (shared client for rate limiting + caching)")
 	} else {
 		rl = ratelimit.NewMemory()
-		log.Println("WARNING: REDIS_URL not set, rate limiting uses per-pod in-memory counters")
+		cacheService = cache.New()
+		log.Println("WARNING: REDIS_URL not set, rate limiting and caching use per-pod in-memory stores")
 	}
 
 	srv := &Server{
@@ -142,8 +156,9 @@ func New(conf Config) *Server {
 		pool:                 conf.Pool,
 		storageService:       conf.Storage,
 		sitemapService:       sitemapService,
-		cacheService:         cache.New(),
+		cacheService:         cacheService,
 		rateLimiter:          rl,
+		redisClient:          redisClient,
 		discordService:       discordService,
 		moderationService:    moderationService,
 		aiDescriptionService: aiDescriptionService,
@@ -262,7 +277,7 @@ func (s *Server) Start() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Graceful shutdown
+	// Graceful shutdown — ordered: HTTP → jobs → cache → rate limiter → Redis → PostgreSQL
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -273,20 +288,40 @@ func (s *Server) Start() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
+		// 1. Stop accepting new HTTP requests and drain in-flight ones
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("HTTP server shutdown error", "error", err)
+		}
+
+		// 2. Stop background jobs
 		if s.jobWorker != nil {
 			if err := s.jobWorker.Stop(shutdownCtx); err != nil {
 				slog.Error("failed to stop job worker", "error", err)
 			}
 		}
 
+		// 3. Stop cache pub/sub subscription
+		if s.cacheService != nil {
+			s.cacheService.Close()
+		}
+
+		// 4. Close rate limiter (no-op when using shared client)
 		if s.rateLimiter != nil {
 			if err := s.rateLimiter.Close(); err != nil {
 				slog.Error("failed to close rate limiter", "error", err)
 			}
 		}
 
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			slog.Error("HTTP server shutdown error", "error", err)
+		// 5. Close shared Redis connection
+		if s.redisClient != nil {
+			if err := s.redisClient.Close(); err != nil {
+				slog.Error("failed to close Redis client", "error", err)
+			}
+		}
+
+		// 6. Close PostgreSQL pool
+		if s.pool != nil {
+			s.pool.Close()
 		}
 	}()
 

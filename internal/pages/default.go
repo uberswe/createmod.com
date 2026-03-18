@@ -3,11 +3,14 @@ package pages
 import (
 	stdctx "context"
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/session"
 	"createmod/internal/store"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"github.com/drexedam/gravatar"
 	"createmod/internal/server"
 	"golang.org/x/text/cases"
@@ -20,6 +23,12 @@ import (
 	"strings"
 	"time"
 )
+
+// BreadcrumbItem represents a single item in the breadcrumb trail.
+type BreadcrumbItem struct {
+	Label string // display text (translated by the handler)
+	URL   string // empty string = active/current page (last item)
+}
 
 type DefaultData struct {
 	IsAuthenticated bool
@@ -41,6 +50,74 @@ type DefaultData struct {
 	PrevPageURL     string
 	NextPageURL     string
 	NoIndex         bool
+	Breadcrumbs     []BreadcrumbItem
+	HideOutstream   bool
+}
+
+// NewBreadcrumbs builds a breadcrumb trail starting with Home.
+// Arguments are pairs of (label, url) followed by a final label for the active page.
+// Example: NewBreadcrumbs("en", "Schematics", "/schematics", "My Build")
+// produces: [Home(/), Schematics(/schematics), My Build(active)]
+func NewBreadcrumbs(lang string, items ...string) []BreadcrumbItem {
+	home := i18n.T(lang, "Home")
+	if home == "" || home == "Home" {
+		home = "Home"
+	}
+	crumbs := []BreadcrumbItem{{Label: home, URL: "/"}}
+
+	// Process pairs: (label, url), (label, url), ..., final label
+	for i := 0; i < len(items); i++ {
+		if i+1 < len(items) {
+			// This is a (label, url) pair
+			crumbs = append(crumbs, BreadcrumbItem{Label: items[i], URL: items[i+1]})
+			i++ // skip URL
+		} else {
+			// Last item: active page (no URL)
+			crumbs = append(crumbs, BreadcrumbItem{Label: items[i]})
+		}
+	}
+	return crumbs
+}
+
+// BreadcrumbJSONLD returns a <script type="application/ld+json"> block with
+// Schema.org BreadcrumbList markup. Returns empty template.HTML if no breadcrumbs.
+func (d DefaultData) BreadcrumbJSONLD() template.HTML {
+	if len(d.Breadcrumbs) == 0 {
+		return ""
+	}
+	type listItem struct {
+		Type     string `json:"@type"`
+		Position int    `json:"position"`
+		Name     string `json:"name"`
+		Item     string `json:"item,omitempty"`
+	}
+	type breadcrumbList struct {
+		Context  string     `json:"@context"`
+		Type     string     `json:"@type"`
+		ItemList []listItem `json:"itemListElement"`
+	}
+
+	bl := breadcrumbList{
+		Context:  "https://schema.org",
+		Type:     "BreadcrumbList",
+		ItemList: make([]listItem, 0, len(d.Breadcrumbs)),
+	}
+	for i, bc := range d.Breadcrumbs {
+		li := listItem{
+			Type:     "ListItem",
+			Position: i + 1,
+			Name:     bc.Label,
+		}
+		if bc.URL != "" {
+			li.Item = fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, bc.URL))
+		}
+		bl.ItemList = append(bl.ItemList, li)
+	}
+	data, err := json.Marshal(bl)
+	if err != nil {
+		return ""
+	}
+	return template.HTML(fmt.Sprintf(`<script type="application/ld+json">%s</script>`, data))
 }
 
 func (d *DefaultData) Populate(e *server.RequestEvent) {

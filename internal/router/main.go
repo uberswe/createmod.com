@@ -46,9 +46,23 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 		e := server.NewRequestEvent(w, r)
 		if err := h(e); err != nil {
 			if apiErr, ok := err.(*server.APIError); ok {
+				if apiErr.Status >= 500 {
+					slog.Error("handler error",
+						"method", r.Method,
+						"path", r.URL.Path,
+						"status", apiErr.Status,
+						"error", apiErr.Message,
+					)
+				}
 				http.Error(w, apiErr.Message, apiErr.Status)
 				return
 			}
+			slog.Error("handler error",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", 500,
+				"error", err.Error(),
+			)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
@@ -166,6 +180,7 @@ func Register(p RegisterParams) chi.Router {
 		maintenanceFlag.Store(true)
 	}
 	r.Use(headMethodSupport)
+	r.Use(cleanDoubleSlashes)
 	r.Use(requestLogger)
 	r.Use(securityHeaders)
 	r.Use(maintenanceModeMiddleware(maintenanceFlag))
@@ -182,6 +197,24 @@ func Register(p RegisterParams) chi.Router {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// Readiness probe — returns 200 only when the search index is populated.
+	// Excluded from maintenance mode so Kubernetes can still probe.
+	r.Get("/api/ready", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if p.SearchService != nil && p.SearchService.Ready() {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ready"}`))
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(`{"status":"not_ready"}`))
+		}
+	})
+
+	// Minecraft mod download API (HMAC-signed, XOR-encoded response)
+	modSecret := deriveModDownloadSecret()
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)).
+		Post("/api/mod/download", Adapt(pages.ModDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
 
 	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
 	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
@@ -215,6 +248,14 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte("# Site-specific rules (Cloudflare prepends its managed block above)\nUser-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\n\nSitemap: https://createmod.com/sitemaps/sitemap.xml\n"))
 	})
 	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
+	// Favicon redirect (browsers request /favicon.ico by default)
+	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/assets/x/favicon-192x192.png", http.StatusMovedPermanently)
+	})
+	// Root sitemap.xml redirect (crawlers look here)
+	r.Get("/sitemap.xml", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/sitemaps/sitemap.xml", http.StatusMovedPermanently)
+	})
 	r.Get("/ads.txt", func(w http.ResponseWriter, req *http.Request) {
 		s, ok := p.CacheService.GetString("ads.txt")
 		if ok {
@@ -244,6 +285,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
+	// Private upload block modification
+	r.Get("/u/{token}/modify", Adapt(pages.UploadModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/u/{token}/modify/download", Adapt(pages.UploadModifyDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/u/{token}/modify/preview-url", Adapt(pages.UploadModifyPreviewHandler(p.AppStore, p.StorageService)))
 	// Build the moderation enqueuer callback that closes over the job worker.
 	var enqueueModeration pages.ModerationEnqueuer
 	if p.JobWorker != nil {
@@ -273,7 +318,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
-	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.SearchService, p.CacheService, p.StorageService, p.AppStore)))
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.SearchService, p.CacheService, p.StorageService, p.AppStore, p.ModerationService)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore)))
 	r.Get("/blacklist-request", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/blacklist"), http.StatusMovedPermanently)
@@ -369,10 +414,10 @@ func Register(p RegisterParams) chi.Router {
 	// Guides
 	r.Get("/guides", Adapt(pages.GuidesHandler(registry, p.CacheService, outSecret, p.AppStore)))
 	r.Get("/guides/new", Adapt(pages.GuidesNewHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/guides", Adapt(pages.GuidesCreateHandler(p.CacheService, p.AppStore, p.StorageService)))
+	r.Post("/guides", Adapt(pages.GuidesCreateHandler(p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Get("/guides/{id}", Adapt(pages.GuidesShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore)))
 	r.Get("/guides/{id}/edit", Adapt(pages.GuidesEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/guides/{id}", Adapt(pages.GuidesUpdateHandler(p.CacheService, p.AppStore, p.StorageService)))
+	r.Post("/guides/{id}", Adapt(pages.GuidesUpdateHandler(p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Post("/guides/{id}/delete", Adapt(pages.GuidesDeleteHandler(p.AppStore)))
 	// Mods
 	r.Get("/mods", Adapt(pages.ModsHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
@@ -381,8 +426,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/collections", Adapt(pages.CollectionsHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/collections/new", Adapt(pages.CollectionsNewHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/api/images/upload", Adapt(pages.ImageUploadHandler(p.StorageService)))
-	r.Post("/collections", Adapt(pages.CollectionsCreateHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
-	r.Get("/collections/{slug}", Adapt(pages.CollectionsShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore)))
+	r.Post("/collections", Adapt(pages.CollectionsCreateHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
+	r.Get("/collections/{slug}", Adapt(pages.CollectionsShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore, p.StorageService)))
 	r.Get("/collections/{slug}/edit", Adapt(pages.CollectionsEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/collections/{slug}", Adapt(pages.CollectionsUpdateHandler(registry, p.CacheService, p.ModerationService, p.AppStore, p.StorageService, p.MailService)))
 	r.Post("/collections/{slug}/delete", Adapt(pages.CollectionsDeleteHandler(p.AppStore)))
@@ -396,6 +441,13 @@ func Register(p RegisterParams) chi.Router {
 	// Schematics
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
 	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchService, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, webhookSecret)))
+	// Schematic RSS feed (comments)
+	r.Get("/schematics/{name}/feed", Adapt(pages.SchematicFeedHandler(p.AppStore, p.CacheService)))
+	// Redirect legacy /schematics/{name}/page/N to the schematic itself
+	r.Get("/schematics/{name}/page/{page}", func(w http.ResponseWriter, req *http.Request) {
+		name := chi.URLParam(req, "name")
+		http.Redirect(w, req, "/schematics/"+name, http.StatusMovedPermanently)
+	})
 	// Partial comments endpoint for HTMX refresh
 	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.SearchService, p.CacheService, registry, p.DiscordService, p.AppStore)))
 	// Add to collection
@@ -404,8 +456,21 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Download interstitial page
 	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
+	// API endpoint to fetch download URL after interstitial delay
+	r.Get("/api/download-url/{id}", Adapt(pages.DownloadURLHandler(p.AppStore)))
 	// External link interstitial (encrypted token, no raw URL exposed)
 	r.Get("/out/{token}", Adapt(pages.ExternalLinkInterstitialHandler(registry, p.CacheService, outSecret, p.AppStore)))
+	// Schematic block modification
+	r.Get("/schematics/{name}/modify", Adapt(pages.ModifyHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	modifyRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
+	previewRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)
+	r.With(modifyRateLimit).Post("/api/schematics/{id}/modify/download", Adapt(pages.ModifyDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(previewRateLimit).Post("/api/schematics/{id}/modify/preview-url", Adapt(pages.ModifyPreviewHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/modify/preview/{tempID}.nbt", Adapt(pages.ModifyPreviewFileHandler(p.StorageService)))
+	r.Get("/api/modify/preview/{tempID}", Adapt(pages.ModifyPreviewFileHandler(p.StorageService)))
+	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
+	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
+	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchService)))
@@ -418,6 +483,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
+	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
 	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
 	// Fallback
@@ -597,7 +663,7 @@ func requestLogger(next http.Handler) http.Handler {
 func maintenanceModeMiddleware(flag *atomic.Bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if flag.Load() && r.URL.Path != "/api/health" {
+			if flag.Load() && r.URL.Path != "/api/health" && r.URL.Path != "/api/ready" {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Retry-After", "3600")
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -758,6 +824,27 @@ var cspHeader = strings.Join([]string{
 	"frame-ancestors 'self'",
 }, "; ")
 
+// cleanDoubleSlashes redirects requests with repeated slashes (e.g. //author/x)
+// to the canonical single-slash path. This handles crawlers and cached links
+// that accidentally have a leading double slash.
+func cleanDoubleSlashes(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "//") {
+			cleaned := r.URL.Path
+			for strings.Contains(cleaned, "//") {
+				cleaned = strings.ReplaceAll(cleaned, "//", "/")
+			}
+			target := cleaned
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // securityHeaders sets standard security response headers on every request.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -766,6 +853,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		w.Header().Set("Content-Security-Policy", cspHeader)
+		w.Header().Set("Cache-Control", "no-cache, private")
 
 		// CORS for allowed external origins on API routes
 		if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -805,6 +893,17 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// deriveModDownloadSecret returns the shared secret for Minecraft mod download
+// API request signing. Falls back to a deterministic insecure default for dev.
+func deriveModDownloadSecret() string {
+	if s := os.Getenv("MOD_DOWNLOAD_SECRET"); s != "" {
+		return s
+	}
+	slog.Warn("MOD_DOWNLOAD_SECRET environment variable is not set; using insecure default — set MOD_DOWNLOAD_SECRET in production")
+	h := sha256.Sum256([]byte("createmod-mod-download:default"))
+	return hex.EncodeToString(h[:])
 }
 
 // deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.

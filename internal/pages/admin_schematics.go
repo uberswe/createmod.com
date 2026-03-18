@@ -144,6 +144,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 			NextPage:   page + 1,
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Schematics"))
 		d.Title = i18n.T(d.Language, "Admin: Schematics")
 		d.SubCategory = "Admin"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -208,6 +209,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 			Success:             e.Request.URL.Query().Get("success") == "1",
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Schematics"), "/admin/schematics", i18n.T(d.Language, "Edit"))
 		d.Title = fmt.Sprintf("Admin: Edit — %s", schem.Title)
 		d.SubCategory = "Admin"
 

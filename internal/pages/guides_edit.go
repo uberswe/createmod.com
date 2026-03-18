@@ -6,6 +6,7 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/moderation"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"fmt"
@@ -68,6 +69,7 @@ func GuidesEditHandler(registry *server.Registry, cacheService *cache.Service, a
 			BannerURL:  guide.BannerURL,
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Guides"), "/guides", d.GuideTitle, "/guides/"+d.GuideID, i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit Guide")
 		d.Description = i18n.T(d.Language, "page.guides_edit.description")
 		d.Slug = "/guides/" + id + "/edit"
@@ -82,7 +84,7 @@ func GuidesEditHandler(registry *server.Registry, cacheService *cache.Service, a
 }
 
 // GuidesUpdateHandler handles POST /guides/{id} to update an existing guide (owner-only).
-func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
@@ -183,6 +185,9 @@ func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, sto
 		if err := appStore.Guides.Update(ctx, guide); err != nil {
 			slog.Warn("guides: failed to update", "error", err)
 		}
+
+		// Async image moderation for the banner
+		moderateGuideBanner(moderationSvc, appStore, guide.ID, guide.BannerURL)
 
 		dest := "/guides/" + id
 		if e.Request.Header.Get("HX-Request") != "" {

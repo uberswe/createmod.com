@@ -166,7 +166,8 @@ var LangRU = map[string]string{
 	"Reorder schematics":             "Изменить порядок схем",
 	"Drag items to reorder.":         "Перетащите элементы для изменения порядка.",
 	"Save order":                     "Сохранить порядок",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Для публикации коллекция должна иметь название (мин. 10 символов) и описание (мин. 100 символов). Содержимое будет проверено на соответствие правилам.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Для публикации коллекция должна содержать не менее 4 схем, название (мин. 10 символов) и описание (мин. 100 символов). Содержимое будет проверено на соответствие правилам.",
+	"A collection needs at least 4 schematics to publish.": "Для публикации коллекция должна содержать не менее 4 схем.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Руководства по моду Create и Minecraft",
@@ -380,6 +381,8 @@ var LangRU = map[string]string{
 	"Create new collection…": "Создать новую коллекцию…",
 	"Collection name":      "Название коллекции",
 	"Add":                  "Добавить",
+	"Easy Schematic Uploads": "Простая загрузка схем",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Загружайте схемы напрямую из Minecraft на createmod.com с помощью мода Create: Schematic Upload. Сохраните схему в игре и мгновенно получите ссылку для обмена.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Связаться с CreateMod.com",
@@ -733,4 +736,21 @@ var LangRU = map[string]string{
 	"Edit Mod:":               "Редактировать мод:",
 	"page.404.title": "Страница не найдена - CreateMod.com",
 	"Webhooks": "Вебхуки",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Изменить Блоки",
+	"modify_blocks_description": "Заменить или удалить блоки в этой схеме",
+	"original_block":            "Оригинальный Блок",
+	"replacement_block":         "Блок Замены",
+	"remove_block":              "Удалить Блок",
+	"download_modified":         "Скачать Изменённый",
+	"preview_modified":          "Предпросмотр Изменённого",
+	"save_variation":            "Сохранить Вариацию",
+	"variation_name":            "Название Вариации",
+	"saved_variations":          "Сохранённые Вариации",
+	"load_variation":            "Загрузить",
+	"delete_variation":          "Удалить",
+	"no_replacement":            "Без замены",
+	"block_search_placeholder":  "Поиск блока...",
+	"replacements":              "замен",
 }

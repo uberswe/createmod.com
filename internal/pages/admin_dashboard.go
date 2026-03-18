@@ -78,6 +78,7 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 			RecentPending:    items,
 		}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"))
 		d.Title = i18n.T(d.Language, "Admin Dashboard")
 		d.SubCategory = "Admin"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

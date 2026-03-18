@@ -166,7 +166,8 @@ var LangFR = map[string]string{
 	"Reorder schematics":             "Réorganiser les schematics",
 	"Drag items to reorder.":         "Glissez les éléments pour les réorganiser.",
 	"Save order":                     "Enregistrer l'ordre",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Pour publier, votre collection doit avoir un titre (min. 10 caractères) et une description (min. 100 caractères). Le contenu sera vérifié pour conformité aux règles.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Pour publier, votre collection doit contenir au moins 4 schematics, un titre (min. 10 caractères) et une description (min. 100 caractères). Le contenu sera vérifié pour conformité aux règles.",
+	"A collection needs at least 4 schematics to publish.": "Une collection nécessite au moins 4 schematics pour être publiée.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Guides pour le mod Create et Minecraft",
@@ -380,6 +381,8 @@ var LangFR = map[string]string{
 	"Create new collection…": "Créer une nouvelle collection…",
 	"Collection name":      "Nom de la collection",
 	"Add":                  "Ajouter",
+	"Easy Schematic Uploads": "Téléversement facile de schematics",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Téléversez des schematics directement depuis Minecraft vers createmod.com avec le mod Create: Schematic Upload. Sauvegardez un schematic en jeu et obtenez un lien de partage instantanément.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contacter CreateMod.com",
@@ -731,4 +734,21 @@ var LangFR = map[string]string{
 	"Edit Mod:":               "Modifier le mod :",
 	"page.404.title": "Page non trouvée - CreateMod.com",
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modifier les Blocs",
+	"modify_blocks_description": "Remplacer ou supprimer des blocs dans ce schematic",
+	"original_block":            "Bloc Original",
+	"replacement_block":         "Bloc de Remplacement",
+	"remove_block":              "Supprimer le Bloc",
+	"download_modified":         "Télécharger Modifié",
+	"preview_modified":          "Aperçu Modifié",
+	"save_variation":            "Enregistrer la Variation",
+	"variation_name":            "Nom de la Variation",
+	"saved_variations":          "Variations Enregistrées",
+	"load_variation":            "Charger",
+	"delete_variation":          "Supprimer",
+	"no_replacement":            "Pas de remplacement",
+	"block_search_placeholder":  "Rechercher un bloc...",
+	"replacements":              "remplacements",
 }

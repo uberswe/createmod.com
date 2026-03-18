@@ -166,7 +166,8 @@ var LangES = map[string]string{
 	"Reorder schematics":             "Reordenar esquemas",
 	"Drag items to reorder.":         "Arrastra los elementos para reordenar.",
 	"Save order":                     "Guardar orden",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Para publicar, tu coleccion necesita un titulo (minimo 10 caracteres) y una descripcion (minimo 100 caracteres). El contenido sera revisado para cumplir con las normas.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "Para publicar, tu colección necesita al menos 4 schematics, un título (mínimo 10 caracteres) y una descripción (mínimo 100 caracteres). El contenido será revisado para cumplir con las normas.",
+	"A collection needs at least 4 schematics to publish.": "Una colección necesita al menos 4 schematics para publicar.",
 
 	// -- Guides --
 	"Guides for the Create mod and Minecraft": "Guias para el mod Create y Minecraft",
@@ -380,6 +381,8 @@ var LangES = map[string]string{
 	"Create new collection…": "Crear nueva colección…",
 	"Collection name":      "Nombre de la colección",
 	"Add":                  "Añadir",
+	"Easy Schematic Uploads": "Subida fácil de esquemáticos",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Sube esquemáticos directamente desde Minecraft a createmod.com con el mod Create: Schematic Upload. Guarda un esquemático en el juego y obtén un enlace para compartir al instante.",
 
 	// -- Contact --
 	"Contact CreateMod.com":                                      "Contacto CreateMod.com",
@@ -731,5 +734,22 @@ var LangES = map[string]string{
 	"Edit Mod:":               "Editar mod:",
 	"page.404.title": "Página no encontrada - CreateMod.com",
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modificar Bloques",
+	"modify_blocks_description": "Reemplazar o eliminar bloques en este esquemático",
+	"original_block":            "Bloque Original",
+	"replacement_block":         "Bloque de Reemplazo",
+	"remove_block":              "Eliminar Bloque",
+	"download_modified":         "Descargar Modificado",
+	"preview_modified":          "Vista Previa Modificado",
+	"save_variation":            "Guardar Variación",
+	"variation_name":            "Nombre de Variación",
+	"saved_variations":          "Variaciones Guardadas",
+	"load_variation":            "Cargar",
+	"delete_variation":          "Eliminar",
+	"no_replacement":            "Sin reemplazo",
+	"block_search_placeholder":  "Buscar un bloque...",
+	"replacements":              "reemplazos",
 
 }

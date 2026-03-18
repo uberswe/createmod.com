@@ -613,6 +613,36 @@ func (q *Queries) ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Sche
 	return items, nil
 }
 
+const listApprovedSchematicIDsAndCreated = `-- name: ListApprovedSchematicIDsAndCreated :many
+SELECT id, created FROM schematics
+WHERE deleted IS NULL AND moderated = true
+`
+
+type ListApprovedSchematicIDsAndCreatedRow struct {
+	ID      string    `json:"id"`
+	Created time.Time `json:"created"`
+}
+
+func (q *Queries) ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error) {
+	rows, err := q.db.Query(ctx, listApprovedSchematicIDsAndCreated)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListApprovedSchematicIDsAndCreatedRow{}
+	for rows.Next() {
+		var i ListApprovedSchematicIDsAndCreatedRow
+		if err := rows.Scan(&i.ID, &i.Created); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listApprovedSchematics = `-- name: ListApprovedSchematics :many
 SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderated, moderation_reason, blacklisted, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count FROM schematics
 WHERE deleted IS NULL
@@ -1690,6 +1720,20 @@ func (q *Queries) UpdateSchematic(ctx context.Context, arg UpdateSchematicParams
 		&i.RatingCount,
 	)
 	return i, err
+}
+
+const updateSchematicDetectedLanguage = `-- name: UpdateSchematicDetectedLanguage :exec
+UPDATE schematics SET detected_language = $2 WHERE id = $1
+`
+
+type UpdateSchematicDetectedLanguageParams struct {
+	ID               string `json:"id"`
+	DetectedLanguage string `json:"detected_language"`
+}
+
+func (q *Queries) UpdateSchematicDetectedLanguage(ctx context.Context, arg UpdateSchematicDetectedLanguageParams) error {
+	_, err := q.db.Exec(ctx, updateSchematicDetectedLanguage, arg.ID, arg.DetectedLanguage)
+	return err
 }
 
 const updateSchematicDownloads = `-- name: UpdateSchematicDownloads :exec

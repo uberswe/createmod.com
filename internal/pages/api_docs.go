@@ -22,6 +22,7 @@ func APIDocsHandler(registry *server.Registry, cacheService *cache.Service, appS
 	return func(e *server.RequestEvent) error {
 		d := APIDocsData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "API Documentation"))
 		d.Title = i18n.T(d.Language, "API Documentation")
 		d.Description = i18n.T(d.Language, "page.api_docs.description")
 		d.Slug = "/api"

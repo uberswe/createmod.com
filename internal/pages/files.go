@@ -3,6 +3,8 @@ package pages
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -48,6 +50,21 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		// Parse optional thumb parameter
 		thumbParam := e.Request.URL.Query().Get("thumb")
 		thumbW, thumbH := parseThumbnailDimensions(thumbParam)
+
+		// Compute ETag from path components (files are immutable by content hash)
+		etagInput := collection + "/" + recordID + "/" + filename
+		if thumbW > 0 || thumbH > 0 {
+			etagInput += fmt.Sprintf("?thumb=%dx%d", thumbW, thumbH)
+		}
+		h := sha256.Sum256([]byte(etagInput))
+		etag := `"` + hex.EncodeToString(h[:8]) + `"`
+		e.Response.Header().Set("ETag", etag)
+
+		// Check If-None-Match for conditional requests
+		if match := e.Request.Header.Get("If-None-Match"); match != "" && match == etag {
+			e.Response.WriteHeader(http.StatusNotModified)
+			return nil
+		}
 
 		// Set long-lived cache headers (files are immutable by content hash)
 		e.Response.Header().Set("Cache-Control", "public, max-age=31536000")

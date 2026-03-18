@@ -2,6 +2,7 @@ package moderation
 
 import (
 	"createmod/internal/openai"
+	"createmod/internal/slowlog"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -126,6 +127,37 @@ func (s *Service) CheckSchematicQuality(title, description string) (*ModerationR
 	}, nil
 }
 
+// CheckImage runs the OpenAI omni-moderation model against an image URL to
+// detect policy-violating content (NSFW, violence, etc.). It does NOT check
+// whether the image depicts a Minecraft build – use CheckImageQuality for that.
+func (s *Service) CheckImage(imageURL string) (*ModerationResult, error) {
+	if !s.isValidURL(imageURL) {
+		if s.logger != nil {
+			s.logger.Debug("Skipping image moderation check - invalid URL", "url", imageURL)
+		}
+		return &ModerationResult{Approved: true}, nil
+	}
+	if s.logger != nil {
+		s.logger.Debug("Running image moderation check", "url", imageURL)
+	}
+	response, err := s.openaiClient.ModerateTextAndImage("", imageURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to moderate image: %w", err)
+	}
+	if response.IsFlagged() {
+		categories := response.GetFlaggedCategories()
+		reason := fmt.Sprintf("Image violates policy: %s", strings.Join(categories, ", "))
+		if s.logger != nil {
+			s.logger.Debug("Image moderation check failed", "url", imageURL, "reason", reason)
+		}
+		return &ModerationResult{Approved: false, Reason: reason}, nil
+	}
+	if s.logger != nil {
+		s.logger.Debug("Image moderation check passed", "url", imageURL)
+	}
+	return &ModerationResult{Approved: true}, nil
+}
+
 // CheckImageQuality checks if an image shows an actual Minecraft build
 func (s *Service) CheckImageQuality(featuredImagePath string) (*ModerationResult, error) {
 	// Check if the featured image path is a valid URL
@@ -196,7 +228,8 @@ func (s *Service) isValidURL(urlString string) bool {
 
 	// Create an HTTP client with a reasonable timeout
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
+		Transport: &slowlog.SlowHTTPTransport{Base: http.DefaultTransport, Subsystem: "moderation"},
 	}
 
 	// Create a HEAD request to check if the URL resolves without downloading the content

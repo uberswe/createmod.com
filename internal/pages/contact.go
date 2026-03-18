@@ -22,6 +22,7 @@ func ContactHandler(registry *server.Registry, cacheService *cache.Service, appS
 	return func(e *server.RequestEvent) error {
 		d := ContactData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Contact"))
 		d.Title = i18n.T(d.Language, "Contact")
 		d.Description = i18n.T(d.Language, "page.contact.description")
 		d.Slug = "/contact"

@@ -40,6 +40,7 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 
 		d := UploadPublishData{}
 		d.Populate(e)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Publish"))
 		d.UploadStep = 3
 		d.Title = i18n.T(d.Language, "Publish Schematic")
 		d.Description = i18n.T(d.Language, "page.upload.publish.description")

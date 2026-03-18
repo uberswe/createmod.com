@@ -1,16 +1,18 @@
 package pages
 
 import (
-	"createmod/internal/cache"
-	"createmod/internal/server"
-	"createmod/internal/store"
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
 	"time"
+
+	"createmod/internal/cache"
+	"createmod/internal/server"
+	"createmod/internal/store"
 )
 
 type rssFeed struct {
@@ -162,29 +164,205 @@ func RSSFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *
 			},
 		}
 
-		data, err := xml.MarshalIndent(feed, "", "  ")
+		xmlData, err := renderRSSFeed(feed)
 		if err != nil {
 			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to marshal feed"}
 		}
 
-		// Prepend XML declaration
-		xmlData := append([]byte(xml.Header), data...)
-
-		// Fix Go encoding/xml namespace output to use prefixed form for validators.
-		// Go outputs <link xmlns="http://www.w3.org/2005/Atom"> instead of <atom:link>
-		// and <creator xmlns="..."> instead of <dc:creator>.
-		xmlData = bytes.ReplaceAll(xmlData, []byte(`<link xmlns="http://www.w3.org/2005/Atom"`), []byte(`<atom:link`))
-		xmlData = bytes.ReplaceAll(xmlData, []byte(`></link>`), []byte(` />`))
-		xmlData = bytes.ReplaceAll(xmlData, []byte(`<creator xmlns="http://purl.org/dc/elements/1.1/">`), []byte(`<dc:creator>`))
-		xmlData = bytes.ReplaceAll(xmlData, []byte(`</creator>`), []byte(`</dc:creator>`))
-
 		// Cache for 1 hour
 		cacheService.SetWithTTL(rssFeedCacheKey, xmlData, 1*time.Hour)
+		return writeRSSResponse(e, xmlData)
+	}
+}
 
-		e.Response.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
-		e.Response.Header().Set("Cache-Control", "public, max-age=3600")
-		_, writeErr := e.Response.Write(xmlData)
-		return writeErr
+// renderRSSFeed marshals an rssFeed to XML with proper namespace prefixes.
+func renderRSSFeed(feed rssFeed) ([]byte, error) {
+	data, err := xml.MarshalIndent(feed, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	xmlData := append([]byte(xml.Header), data...)
+
+	// Fix Go encoding/xml namespace output to use prefixed form for validators.
+	xmlData = bytes.ReplaceAll(xmlData, []byte(`<link xmlns="http://www.w3.org/2005/Atom"`), []byte(`<atom:link`))
+	xmlData = bytes.ReplaceAll(xmlData, []byte(`></link>`), []byte(` />`))
+	xmlData = bytes.ReplaceAll(xmlData, []byte(`<creator xmlns="http://purl.org/dc/elements/1.1/">`), []byte(`<dc:creator>`))
+	xmlData = bytes.ReplaceAll(xmlData, []byte(`</creator>`), []byte(`</dc:creator>`))
+	return xmlData, nil
+}
+
+// writeRSSResponse writes RSS XML data to the response with appropriate headers.
+func writeRSSResponse(e *server.RequestEvent, xmlData []byte) error {
+	e.Response.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+	e.Response.Header().Set("Cache-Control", "public, max-age=3600")
+	_, err := e.Response.Write(xmlData)
+	return err
+}
+
+// AuthorFeedHandler serves an RSS 2.0 feed of a specific author's schematics.
+// URL pattern: GET /author/{username}/feed
+func AuthorFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		username := e.Request.PathValue("username")
+		if username == "" {
+			return &server.APIError{Status: http.StatusNotFound, Message: "Not found"}
+		}
+
+		cacheKey := "rss_author_" + username
+		if cached, ok := cacheService.Get(cacheKey); ok {
+			if data, ok := cached.([]byte); ok {
+				return writeRSSResponse(e, data)
+			}
+		}
+
+		ctx := e.Request.Context()
+		user, err := appStore.Users.GetUserByUsername(ctx, username)
+		if err != nil || user == nil {
+			return &server.APIError{Status: http.StatusNotFound, Message: "Author not found"}
+		}
+
+		schematics, err := appStore.Schematics.ListByAuthor(ctx, user.ID, 50, 0)
+		if err != nil {
+			slog.Error("author RSS feed: failed to list schematics", "error", err, "username", username)
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to generate feed"}
+		}
+
+		items := make([]rssItem, 0, len(schematics))
+		for _, s := range schematics {
+			pubDate := s.Created.UTC().Format(time.RFC1123Z)
+			if s.Postdate != nil {
+				pubDate = s.Postdate.UTC().Format(time.RFC1123Z)
+			}
+			description := s.Excerpt
+			if description == "" && len(s.Description) > 0 {
+				description = s.Description
+			}
+			description = absifyURLs(description, "https://createmod.com")
+
+			items = append(items, rssItem{
+				Title:       s.Title,
+				Link:        "https://createmod.com/schematics/" + s.Name,
+				Description: description,
+				Creator:     user.Username,
+				PubDate:     pubDate,
+				GUID:        rssGUID{IsPermaLink: "false", Value: s.ID},
+			})
+		}
+
+		lastBuild := time.Now().UTC().Format(time.RFC1123Z)
+		if len(schematics) > 0 {
+			t := schematics[0].Created
+			if schematics[0].Postdate != nil {
+				t = *schematics[0].Postdate
+			}
+			lastBuild = t.UTC().Format(time.RFC1123Z)
+		}
+
+		selfURL := fmt.Sprintf("https://createmod.com/author/%s/feed", username)
+		feed := rssFeed{
+			Version: "2.0",
+			AtomNS:  "http://www.w3.org/2005/Atom",
+			DcNS:    "http://purl.org/dc/elements/1.1/",
+			Channel: rssChannel{
+				Title:         fmt.Sprintf("CreateMod.com - Schematics by %s", user.Username),
+				Link:          fmt.Sprintf("https://createmod.com/author/%s", username),
+				Description:   fmt.Sprintf("Latest schematics by %s on CreateMod.com", user.Username),
+				Language:      "en",
+				LastBuildDate: lastBuild,
+				AtomLink:      atomLink{Href: selfURL, Rel: "self", Type: "application/rss+xml"},
+				Items:         items,
+			},
+		}
+
+		xmlData, err := renderRSSFeed(feed)
+		if err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to marshal feed"}
+		}
+		cacheService.SetWithTTL(cacheKey, xmlData, 1*time.Hour)
+		return writeRSSResponse(e, xmlData)
+	}
+}
+
+// SchematicFeedHandler serves an RSS 2.0 feed of comments on a specific schematic.
+// URL pattern: GET /schematics/{name}/feed
+func SchematicFeedHandler(appStore *store.Store, cacheService *cache.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		name := e.Request.PathValue("name")
+		if name == "" {
+			return &server.APIError{Status: http.StatusNotFound, Message: "Not found"}
+		}
+
+		cacheKey := "rss_schematic_" + name
+		if cached, ok := cacheService.Get(cacheKey); ok {
+			if data, ok := cached.([]byte); ok {
+				return writeRSSResponse(e, data)
+			}
+		}
+
+		ctx := e.Request.Context()
+		schematic, err := appStore.Schematics.GetByName(ctx, name)
+		if err != nil || schematic == nil {
+			return &server.APIError{Status: http.StatusNotFound, Message: "Schematic not found"}
+		}
+
+		comments, err := appStore.Comments.ListBySchematic(ctx, schematic.ID)
+		if err != nil {
+			slog.Error("schematic RSS feed: failed to list comments", "error", err, "name", name)
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to generate feed"}
+		}
+
+		items := make([]rssItem, 0, len(comments))
+		for _, c := range comments {
+			pubDate := c.Created.UTC().Format(time.RFC1123Z)
+			if c.Published != nil {
+				pubDate = c.Published.UTC().Format(time.RFC1123Z)
+			}
+			title := fmt.Sprintf("Comment by %s", c.AuthorUsername)
+			if c.AuthorUsername == "" {
+				title = "Comment"
+			}
+			items = append(items, rssItem{
+				Title:       title,
+				Link:        fmt.Sprintf("https://createmod.com/schematics/%s#comment-%s", name, c.ID),
+				Description: c.Content,
+				Creator:     c.AuthorUsername,
+				PubDate:     pubDate,
+				GUID:        rssGUID{IsPermaLink: "false", Value: c.ID},
+			})
+		}
+
+		lastBuild := time.Now().UTC().Format(time.RFC1123Z)
+		if len(comments) > 0 {
+			last := comments[len(comments)-1]
+			t := last.Created
+			if last.Published != nil {
+				t = *last.Published
+			}
+			lastBuild = t.UTC().Format(time.RFC1123Z)
+		}
+
+		selfURL := fmt.Sprintf("https://createmod.com/schematics/%s/feed", name)
+		feed := rssFeed{
+			Version: "2.0",
+			AtomNS:  "http://www.w3.org/2005/Atom",
+			DcNS:    "http://purl.org/dc/elements/1.1/",
+			Channel: rssChannel{
+				Title:         fmt.Sprintf("CreateMod.com - Comments on %s", schematic.Title),
+				Link:          fmt.Sprintf("https://createmod.com/schematics/%s", name),
+				Description:   fmt.Sprintf("Latest comments on %s", schematic.Title),
+				Language:      "en",
+				LastBuildDate: lastBuild,
+				AtomLink:      atomLink{Href: selfURL, Rel: "self", Type: "application/rss+xml"},
+				Items:         items,
+			},
+		}
+
+		xmlData, err := renderRSSFeed(feed)
+		if err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to marshal feed"}
+		}
+		cacheService.SetWithTTL(cacheKey, xmlData, 1*time.Hour)
+		return writeRSSResponse(e, xmlData)
 	}
 }
 

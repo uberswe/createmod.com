@@ -33,8 +33,16 @@ const (
 	TrendingOrder      = 8
 	regex              = `<.*?>`
 
-	// cacheKey is the storage path for the serialized index cache.
-	cacheKey = "_internal/search_index_cache.json.gz"
+	// cacheKeyPrefix is the storage path prefix for the serialized index cache.
+	// A date suffix (YYYY-MM-DD) is appended to form the full key, so that
+	// Minio/S3 bucket versioning doesn't accumulate thousands of old versions
+	// under a single key.
+	cacheKeyPrefix = "_internal/search_index_cache_"
+	cacheKeySuffix = ".json.gz"
+
+	// legacyCacheKey is the old unversioned key. Kept for migration: we try
+	// loading from it as a fallback and delete it after a successful save.
+	legacyCacheKey = "_internal/search_index_cache.json.gz"
 )
 
 type Service struct {
@@ -72,6 +80,13 @@ type bleveIndex struct {
 type indexCacheEntry struct {
 	SI schematicIndex `json:"si"`
 	BI bleveIndex     `json:"bi"`
+}
+
+// Ready returns true when the search index has been populated and is ready
+// to serve queries. Used by the readiness probe to delay traffic until the
+// pod can actually produce search results.
+func (s *Service) Ready() bool {
+	return s != nil && s.index != nil && len(s.index) > 0
 }
 
 // SetTrendingScores sets the trending scores map used for trending sort order.
@@ -528,6 +543,75 @@ func (s *Service) Suggest(q string, limit int) []Suggestion {
 	return results
 }
 
+// SearchSimilar returns up to `limit` schematic IDs most similar to the given
+// title. It searches the title against other schematics' title and AI
+// description fields using a disjunction (OR) query. Tags and categories are
+// intentionally excluded because they are too broad and cause unrelated
+// schematics to return the same generic results.
+// IDs in the exclude map are filtered out.
+func (s *Service) SearchSimilar(title string, exclude map[string]struct{}, limit int) []string {
+	if s == nil || s.bleveIndex == nil {
+		return nil
+	}
+
+	words := strings.Fields(title)
+	if len(words) == 0 {
+		return nil
+	}
+
+	// For each title word, create match queries against the title and
+	// aidescription fields. Title matches are boosted higher.
+	var subQueries []query.Query
+	for _, w := range words {
+		if len(w) < 2 {
+			continue
+		}
+		tq := bleve.NewMatchQuery(w)
+		tq.SetBoost(3.0)
+		tq.SetField("title")
+		subQueries = append(subQueries, tq)
+
+		aq := bleve.NewMatchQuery(w)
+		aq.SetBoost(1.0)
+		aq.SetField("aidescription")
+		subQueries = append(subQueries, aq)
+	}
+
+	if len(subQueries) == 0 {
+		return nil
+	}
+
+	dq := bleve.NewDisjunctionQuery(subQueries...)
+	// Require at least 2 sub-queries to match so results share meaningful
+	// overlap rather than matching on a single common word.
+	minShouldMatch := 2
+	if len(subQueries) < 2 {
+		minShouldMatch = 1
+	}
+	dq.SetMin(float64(minShouldMatch))
+
+	sr := bleve.NewSearchRequest(dq)
+	sr.Size = limit + len(exclude) + 1 // over-fetch to compensate for exclusions
+
+	searchResult, err := s.bleveIndex.Search(sr)
+	if err != nil {
+		slog.Error("SearchSimilar bleve error", "error", err)
+		return nil
+	}
+
+	ids := make([]string, 0, limit)
+	for _, hit := range searchResult.Hits {
+		if len(ids) >= limit {
+			break
+		}
+		if _, skip := exclude[hit.ID]; skip {
+			continue
+		}
+		ids = append(ids, hit.ID)
+	}
+	return ids
+}
+
 func stripHtmlRegex(s string) string {
 	r := regexp.MustCompile(regex)
 	return r.ReplaceAllString(s, " ")
@@ -537,8 +621,15 @@ func stripHtmlRegex(s string) string {
 // Storage-backed index cache (direct S3 via storage.Service)
 // ---------------------------------------------------------------------------
 
+// cacheKeyForDate returns the date-stamped cache key for the given time.
+func cacheKeyForDate(t time.Time) string {
+	return cacheKeyPrefix + t.UTC().Format("2006-01-02") + cacheKeySuffix
+}
+
 // saveCacheToStorage serializes the index data as gzip-compressed JSON and
-// uploads it to S3.
+// uploads it to S3 using a date-stamped key. After a successful upload it
+// removes the previous day's key and the legacy unversioned key to prevent
+// unbounded version accumulation in versioned S3 buckets.
 func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
 	if s.storage == nil {
 		slog.Warn("search: storage service not configured, skipping cache save")
@@ -562,22 +653,55 @@ func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
 		return
 	}
 
-	if err := s.storage.UploadRawBytes(context.Background(), cacheKey, buf.Bytes(), "application/gzip"); err != nil {
+	now := time.Now()
+	todayKey := cacheKeyForDate(now)
+
+	if err := s.storage.UploadRawBytes(context.Background(), todayKey, buf.Bytes(), "application/gzip"); err != nil {
 		slog.Warn("search: failed to upload index cache", "error", err)
 		return
 	}
 
-	slog.Info("search: uploaded index cache to storage", "entries", len(entries), "bytes", buf.Len())
+	slog.Info("search: uploaded index cache to storage", "key", todayKey, "entries", len(entries), "bytes", buf.Len())
+
+	// Clean up previous day's cache key so old versions don't accumulate.
+	yesterdayKey := cacheKeyForDate(now.AddDate(0, 0, -1))
+	if yesterdayKey != todayKey {
+		if err := s.storage.DeleteRaw(context.Background(), yesterdayKey); err != nil {
+			slog.Debug("search: failed to delete yesterday's cache (may not exist)", "key", yesterdayKey, "error", err)
+		}
+	}
+
+	// Remove legacy unversioned key (one-time migration cleanup).
+	if err := s.storage.DeleteRaw(context.Background(), legacyCacheKey); err != nil {
+		slog.Debug("search: failed to delete legacy cache key (may not exist)", "error", err)
+	}
 }
 
 // loadCacheFromStorage downloads the compressed index cache from S3 and
 // populates both the in-memory filter index and the Bleve full-text index.
+// It tries today's date-stamped key first, then yesterday's, then the
+// legacy unversioned key as a migration fallback.
 func (s *Service) loadCacheFromStorage() error {
 	if s.storage == nil {
 		return fmt.Errorf("storage service not configured")
 	}
 
-	reader, err := s.storage.DownloadRaw(context.Background(), cacheKey)
+	now := time.Now()
+	keysToTry := []string{
+		cacheKeyForDate(now),
+		cacheKeyForDate(now.AddDate(0, 0, -1)),
+		legacyCacheKey,
+	}
+
+	var reader io.ReadCloser
+	var err error
+	for _, key := range keysToTry {
+		reader, err = s.storage.DownloadRaw(context.Background(), key)
+		if err == nil {
+			slog.Info("search: loading cache from storage", "key", key)
+			break
+		}
+	}
 	if err != nil {
 		return err
 	}

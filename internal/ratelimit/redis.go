@@ -24,11 +24,13 @@ return current
 
 // RedisLimiter implements Limiter using Redis as the backing store.
 type RedisLimiter struct {
-	client *redis.Client
+	client     *redis.Client
+	ownsClient bool
 }
 
 // NewRedis creates a new RedisLimiter by parsing the given Redis URL
 // (e.g. "redis://localhost:6379/0") and verifying connectivity.
+// The returned limiter owns the client and will close it on Close().
 func NewRedis(redisURL string) (*RedisLimiter, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -43,7 +45,13 @@ func NewRedis(redisURL string) (*RedisLimiter, error) {
 		return nil, err
 	}
 
-	return &RedisLimiter{client: client}, nil
+	return &RedisLimiter{client: client, ownsClient: true}, nil
+}
+
+// NewRedisFromClient creates a new RedisLimiter using an existing Redis client.
+// The returned limiter does NOT own the client and will not close it on Close().
+func NewRedisFromClient(client *redis.Client) *RedisLimiter {
+	return &RedisLimiter{client: client, ownsClient: false}
 }
 
 func (r *RedisLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, int) {
@@ -76,5 +84,8 @@ func (r *RedisLimiter) Mark(ctx context.Context, key string, ttl time.Duration) 
 }
 
 func (r *RedisLimiter) Close() error {
-	return r.client.Close()
+	if r.ownsClient {
+		return r.client.Close()
+	}
+	return nil
 }

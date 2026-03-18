@@ -22,9 +22,11 @@
                 <a id="manual-link-ext" class="btn btn-primary" hx-boost="false" href="{{ SignedOutURL .ExternalURL "download" .Name }}" aria-label="Continue to seller">{{ T .Language "Continue to seller" }}</a>
                 {{else}}
                 <h1 class="card-title">{{ T .Language "Preparing your download..." }}</h1>
-                <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
-                <p>{{ T .Language "If it doesn't, click the button below:" }}</p>
-                <a id="manual-link" class="btn btn-primary" hx-boost="false" href="/download/{{ .Name }}?t={{ .Token }}" aria-label="Download now">{{ T .Language "Download now" }}</a>
+                <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">5</span> {{ T .Language "seconds." }}</p>
+                <p id="download-hint">{{ T .Language "If it doesn't, click the button below:" }}</p>
+                <a id="manual-link" class="btn btn-primary" hx-boost="false" href="#" style="display:none" aria-label="Download now">{{ T .Language "Download now" }}</a>
+                <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
+                <input type="hidden" id="token-id" value="{{ .TokenID }}">
                 {{end}}
               </div>
             </div>
@@ -42,7 +44,8 @@
 {{template "foot.html" .}}
 <script>
 (function(){
-  var seconds = 10;
+  var paid = {{if .Paid}}true{{else}}false{{end}};
+  var seconds = paid ? 10 : 5;
   var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
   var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
   var timerId = null;
@@ -62,7 +65,30 @@
     if (el) { el.textContent = String(seconds); }
     if (seconds <= 0) {
       stop();
-      if (link && link.href) { window.location.href = link.href; }
+      if (paid) {
+        // Paid: redirect immediately (URL already in href)
+        if (link && link.href) { window.location.href = link.href; }
+      } else {
+        // Free: fetch download URL from API
+        var tokenID = document.getElementById('token-id');
+        if (!tokenID || !tokenID.value) return;
+        fetch('/api/download-url/' + encodeURIComponent(tokenID.value))
+          .then(function(r) {
+            if (!r.ok) throw new Error('not ok');
+            return r.json();
+          })
+          .then(function(data) {
+            if (data.url && link) {
+              link.href = data.url;
+              link.style.display = '';
+              window.location.href = data.url;
+            }
+          })
+          .catch(function() {
+            var errEl = document.getElementById('download-error');
+            if (errEl) errEl.style.display = '';
+          });
+      }
     } else {
       timerId = setTimeout(tick, 1000);
     }

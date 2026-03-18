@@ -165,7 +165,8 @@ var LangEN = map[string]string{
 	"Reorder schematics":             "Reorder schematics",
 	"Drag items to reorder.":         "Drag items to reorder.",
 	"Save order":                     "Save order",
-	"To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "To publish, your collection needs a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.",
+	"To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.": "To publish, your collection needs at least 4 schematics, a title (min 10 characters) and a description (min 100 characters). Content will be checked for policy compliance.",
+	"A collection needs at least 4 schematics to publish.": "A collection needs at least 4 schematics to publish.",
 
 	// ── Guides ──
 	"Guides for the Create mod and Minecraft": "Guides for the Create mod and Minecraft",
@@ -380,6 +381,8 @@ var LangEN = map[string]string{
 	"Create new collection…": "Create new collection…",
 	"Collection name":      "Collection name",
 	"Add":                  "Add",
+	"Easy Schematic Uploads": "Easy Schematic Uploads",
+	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contact CreateMod.com",
@@ -755,4 +758,21 @@ var LangEN = map[string]string{
 
 	// ── Webhooks (settings) ──
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modify Blocks",
+	"modify_blocks_description": "Replace or remove blocks in this schematic",
+	"original_block":            "Original Block",
+	"replacement_block":         "Replacement Block",
+	"remove_block":              "Remove Block",
+	"download_modified":         "Download Modified",
+	"preview_modified":          "Preview Modified",
+	"save_variation":            "Save Variation",
+	"variation_name":            "Variation Name",
+	"saved_variations":          "Saved Variations",
+	"load_variation":            "Load",
+	"delete_variation":          "Delete",
+	"no_replacement":            "No replacement",
+	"block_search_placeholder":  "Search for a block...",
+	"replacements":              "replacements",
 }

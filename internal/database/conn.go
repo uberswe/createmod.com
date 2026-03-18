@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"createmod/internal/slowlog"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -43,6 +45,7 @@ func Connect(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	poolCfg.MaxConns = cfg.MaxConns
 	poolCfg.MinConns = cfg.MinConns
 	poolCfg.MaxConnLifetime = cfg.MaxConnLifetime
+	poolCfg.ConnConfig.Tracer = &slowlog.PgxTracer{}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
