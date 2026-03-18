@@ -12,6 +12,8 @@ CREATE INDEX IF NOT EXISTS idx_schematic_views_type0_recent
 CREATE INDEX IF NOT EXISTS idx_schematics_categories_cat_schematic
     ON schematics_categories(category_id, schematic_id);
 
--- ListTopSearches: index on query for GROUP BY aggregation (15s full table scan -> index scan)
+-- ListTopSearches: hash index on query for GROUP BY aggregation (15s full table scan -> hash agg)
+-- Using HASH because some query values exceed btree's 2704-byte row size limit.
+-- Hash indexes support equality and GROUP BY which is all ListTopSearches needs.
 CREATE INDEX IF NOT EXISTS idx_searches_query
-    ON searches(query);
+    ON searches USING hash (query);
