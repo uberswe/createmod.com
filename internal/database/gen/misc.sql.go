@@ -708,27 +708,21 @@ func (q *Queries) ListSchematicVersions(ctx context.Context, schematicID string)
 }
 
 const listTopSearches = `-- name: ListTopSearches :many
-SELECT query, COUNT(*) AS search_count
-FROM searches
-GROUP BY query
+SELECT query, search_count
+FROM search_query_counts
 ORDER BY search_count DESC
 LIMIT $1
 `
 
-type ListTopSearchesRow struct {
-	Query       string `json:"query"`
-	SearchCount int64  `json:"search_count"`
-}
-
-func (q *Queries) ListTopSearches(ctx context.Context, limit int32) ([]ListTopSearchesRow, error) {
+func (q *Queries) ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error) {
 	rows, err := q.db.Query(ctx, listTopSearches, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListTopSearchesRow{}
+	items := []SearchQueryCount{}
 	for rows.Next() {
-		var i ListTopSearchesRow
+		var i SearchQueryCount
 		if err := rows.Scan(&i.Query, &i.SearchCount); err != nil {
 			return nil, err
 		}
@@ -790,6 +784,15 @@ func (q *Queries) RecordOutgoingClick(ctx context.Context, arg RecordOutgoingCli
 		arg.SourceID,
 		arg.UserID,
 	)
+	return err
+}
+
+const refreshSearchQueryCounts = `-- name: RefreshSearchQueryCounts :exec
+REFRESH MATERIALIZED VIEW CONCURRENTLY search_query_counts
+`
+
+func (q *Queries) RefreshSearchQueryCounts(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, refreshSearchQueryCounts)
 	return err
 }
 
