@@ -568,12 +568,12 @@ func (s *Service) SearchSimilar(title string, exclude map[string]struct{}, limit
 		}
 		tq := bleve.NewMatchQuery(w)
 		tq.SetBoost(3.0)
-		tq.SetField("title")
+		tq.SetField("Title")
 		subQueries = append(subQueries, tq)
 
 		aq := bleve.NewMatchQuery(w)
 		aq.SetBoost(1.0)
-		aq.SetField("aidescription")
+		aq.SetField("AIDescription")
 		subQueries = append(subQueries, aq)
 	}
 

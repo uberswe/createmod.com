@@ -407,6 +407,11 @@ type Search struct {
 	Created      time.Time `json:"created"`
 }
 
+type SearchQueryCount struct {
+	Query       string `json:"query"`
+	SearchCount int64  `json:"search_count"`
+}
+
 type Session struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`

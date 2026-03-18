@@ -569,6 +569,7 @@ type VersionLookupStore interface {
 type SearchTrackingStore interface {
 	RecordSearch(ctx context.Context, query string, resultsCount int, userID, ip string) error
 	ListTopSearches(ctx context.Context, limit int) ([]SearchEntry, error)
+	RefreshSearchQueryCounts(ctx context.Context) error
 }
 
 // OutgoingClickStore handles external link click tracking.

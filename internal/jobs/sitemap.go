@@ -25,6 +25,11 @@ func (w *SitemapWorker) Work(ctx context.Context, job *river.Job[SitemapArgs]) e
 		return nil
 	}
 
+	// Refresh the materialized view so ListTopSearches reads fresh data.
+	if err := w.deps.Store.SearchTracking.RefreshSearchQueryCounts(ctx); err != nil {
+		slog.Warn("sitemap: failed to refresh search query counts", "error", err)
+	}
+
 	w.deps.Sitemap.Generate(w.deps.Store)
 
 	// Invalidate the RSS feed cache so the next request rebuilds it with fresh data.
