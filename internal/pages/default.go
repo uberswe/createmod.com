@@ -53,6 +53,7 @@ type DefaultData struct {
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
 	Variant         *abtest.Variant
+	HideOutstream   bool
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.

@@ -734,4 +734,21 @@ var LangFR = map[string]string{
 	"Edit Mod:":               "Modifier le mod :",
 	"page.404.title": "Page non trouvée - CreateMod.com",
 	"Webhooks": "Webhooks",
+
+	// ── Block Modification ──
+	"modify_blocks":             "Modifier les Blocs",
+	"modify_blocks_description": "Remplacer ou supprimer des blocs dans ce schematic",
+	"original_block":            "Bloc Original",
+	"replacement_block":         "Bloc de Remplacement",
+	"remove_block":              "Supprimer le Bloc",
+	"download_modified":         "Télécharger Modifié",
+	"preview_modified":          "Aperçu Modifié",
+	"save_variation":            "Enregistrer la Variation",
+	"variation_name":            "Nom de la Variation",
+	"saved_variations":          "Variations Enregistrées",
+	"load_variation":            "Charger",
+	"delete_variation":          "Supprimer",
+	"no_replacement":            "Pas de remplacement",
+	"block_search_placeholder":  "Rechercher un bloc...",
+	"replacements":              "remplacements",
 }

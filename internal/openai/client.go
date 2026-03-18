@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"createmod/internal/slowlog"
 )
 
 // Logger is an interface that defines the logging methods we need
@@ -46,7 +48,8 @@ func NewClient(apiKey string, logger Logger) *Client {
 	return &Client{
 		apiKey: apiKey,
 		httpClient: &http.Client{
-			Timeout: time.Second * 10,
+			Timeout:   60 * time.Second,
+			Transport: &slowlog.SlowHTTPTransport{Base: http.DefaultTransport, Subsystem: "openai"},
 		},
 		logger: logger,
 	}

@@ -26,7 +26,7 @@ require (
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.0
-	github.com/uberswe/mcnbt v0.1.3
+	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.7.16
 	golang.org/x/crypto v0.49.0
 	golang.org/x/image v0.37.0

@@ -6,8 +6,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"time"
+
+	"createmod/internal/slowlog"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -63,6 +66,26 @@ func New(cfg Config) (*Service, error) {
 	}, nil
 }
 
+// logSlowOp logs a warning if the elapsed time since start exceeds the slow
+// operation threshold.
+func logSlowOp(operation, key string, start time.Time, err error) {
+	elapsed := time.Since(start)
+	if elapsed < slowlog.Threshold {
+		return
+	}
+	var errVal any
+	if err != nil {
+		errVal = err.Error()
+	}
+	slog.Warn("slow s3 operation",
+		"subsystem", "s3",
+		"duration_ms", elapsed.Milliseconds(),
+		"operation", operation,
+		"key", key,
+		"error", errVal,
+	)
+}
+
 // objectKey builds the S3 key for a PocketBase-compatible file path.
 // Format: {collection}/{recordId}/{filename}
 // This maintains backward compatibility with existing file URLs.
@@ -73,6 +96,7 @@ func objectKey(collection, recordID, filename string) string {
 // Upload stores a file in S3.
 func (s *Service) Upload(ctx context.Context, collection, recordID, filename string, reader io.Reader, size int64, contentType string) error {
 	key := objectKey(collection, recordID, filename)
+	start := time.Now()
 
 	opts := minio.PutObjectOptions{}
 	if contentType != "" {
@@ -80,6 +104,7 @@ func (s *Service) Upload(ctx context.Context, collection, recordID, filename str
 	}
 
 	_, err := s.client.PutObject(ctx, s.bucket, key, reader, size, opts)
+	logSlowOp("Upload", key, start, err)
 	if err != nil {
 		return fmt.Errorf("uploading %s: %w", key, err)
 	}
@@ -90,9 +115,11 @@ func (s *Service) Upload(ctx context.Context, collection, recordID, filename str
 // Download retrieves a file from S3.
 func (s *Service) Download(ctx context.Context, collection, recordID, filename string) (io.ReadCloser, error) {
 	key := objectKey(collection, recordID, filename)
+	start := time.Now()
 
 	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
+		logSlowOp("Download", key, start, err)
 		return nil, fmt.Errorf("downloading %s: %w", key, err)
 	}
 
@@ -101,17 +128,21 @@ func (s *Service) Download(ctx context.Context, collection, recordID, filename s
 	// Read() call, which may happen after HTTP headers are already sent.
 	if _, err := obj.Stat(); err != nil {
 		obj.Close()
+		logSlowOp("Download", key, start, err)
 		return nil, fmt.Errorf("downloading %s: %w", key, err)
 	}
 
+	logSlowOp("Download", key, start, nil)
 	return obj, nil
 }
 
 // Delete removes a file from S3.
 func (s *Service) Delete(ctx context.Context, collection, recordID, filename string) error {
 	key := objectKey(collection, recordID, filename)
+	start := time.Now()
 
 	err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
+	logSlowOp("Delete", key, start, err)
 	if err != nil {
 		return fmt.Errorf("deleting %s: %w", key, err)
 	}
@@ -122,9 +153,11 @@ func (s *Service) Delete(ctx context.Context, collection, recordID, filename str
 // PresignedURL generates a presigned URL for temporary direct access.
 func (s *Service) PresignedURL(ctx context.Context, collection, recordID, filename string, expires time.Duration) (string, error) {
 	key := objectKey(collection, recordID, filename)
+	start := time.Now()
 
 	reqParams := make(url.Values)
 	u, err := s.client.PresignedGetObject(ctx, s.bucket, key, expires, reqParams)
+	logSlowOp("PresignedURL", key, start, err)
 	if err != nil {
 		return "", fmt.Errorf("generating presigned URL for %s: %w", key, err)
 	}
@@ -135,17 +168,21 @@ func (s *Service) PresignedURL(ctx context.Context, collection, recordID, filena
 // Exists checks if a file exists in S3.
 func (s *Service) Exists(ctx context.Context, collection, recordID, filename string) (bool, error) {
 	key := objectKey(collection, recordID, filename)
+	start := time.Now()
 
 	_, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
 	if err != nil {
 		// Check if it's a "not found" error
 		errResp := minio.ToErrorResponse(err)
 		if errResp.Code == "NoSuchKey" {
+			logSlowOp("Exists", key, start, nil)
 			return false, nil
 		}
+		logSlowOp("Exists", key, start, err)
 		return false, fmt.Errorf("checking %s: %w", key, err)
 	}
 
+	logSlowOp("Exists", key, start, nil)
 	return true, nil
 }
 
@@ -176,11 +213,13 @@ func (b *byteReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 
 // UploadRaw stores data at an arbitrary S3 key (not scoped to a collection).
 func (s *Service) UploadRaw(ctx context.Context, key string, reader io.Reader, size int64, contentType string) error {
+	start := time.Now()
 	opts := minio.PutObjectOptions{}
 	if contentType != "" {
 		opts.ContentType = contentType
 	}
 	_, err := s.client.PutObject(ctx, s.bucket, key, reader, size, opts)
+	logSlowOp("UploadRaw", key, start, err)
 	if err != nil {
 		return fmt.Errorf("uploading %s: %w", key, err)
 	}
@@ -197,33 +236,43 @@ func (s *Service) UploadRawBytes(ctx context.Context, key string, data []byte, c
 
 // DownloadRaw retrieves a file from S3 by arbitrary key.
 func (s *Service) DownloadRaw(ctx context.Context, key string) (io.ReadCloser, error) {
+	start := time.Now()
 	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
+		logSlowOp("DownloadRaw", key, start, err)
 		return nil, fmt.Errorf("downloading %s: %w", key, err)
 	}
 	if _, err := obj.Stat(); err != nil {
 		obj.Close()
+		logSlowOp("DownloadRaw", key, start, err)
 		return nil, fmt.Errorf("downloading %s: %w", key, err)
 	}
+	logSlowOp("DownloadRaw", key, start, nil)
 	return obj, nil
 }
 
 // ExistsRaw checks if an arbitrary key exists in S3.
 func (s *Service) ExistsRaw(ctx context.Context, key string) (bool, error) {
+	start := time.Now()
 	_, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
 	if err != nil {
 		errResp := minio.ToErrorResponse(err)
 		if errResp.Code == "NoSuchKey" {
+			logSlowOp("ExistsRaw", key, start, nil)
 			return false, nil
 		}
+		logSlowOp("ExistsRaw", key, start, err)
 		return false, fmt.Errorf("checking %s: %w", key, err)
 	}
+	logSlowOp("ExistsRaw", key, start, nil)
 	return true, nil
 }
 
 // DeleteRaw removes an arbitrary key from S3.
 func (s *Service) DeleteRaw(ctx context.Context, key string) error {
+	start := time.Now()
 	err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
+	logSlowOp("DeleteRaw", key, start, err)
 	if err != nil {
 		return fmt.Errorf("deleting %s: %w", key, err)
 	}
@@ -233,12 +282,18 @@ func (s *Service) DeleteRaw(ctx context.Context, key string) error {
 // Stat returns the object info (size, content-type, etc.) for a file in S3.
 func (s *Service) Stat(ctx context.Context, collection, recordID, filename string) (minio.ObjectInfo, error) {
 	key := objectKey(collection, recordID, filename)
-	return s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	start := time.Now()
+	info, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	logSlowOp("Stat", key, start, err)
+	return info, err
 }
 
 // StatRaw returns the object info for an arbitrary S3 key.
 func (s *Service) StatRaw(ctx context.Context, key string) (minio.ObjectInfo, error) {
-	return s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	start := time.Now()
+	info, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
+	logSlowOp("StatRaw", key, start, err)
+	return info, err
 }
 
 // Bucket returns the configured bucket name.

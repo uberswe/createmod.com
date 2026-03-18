@@ -138,20 +138,24 @@ Vite builds from `template/src/` to `template/dist/`. CSS uses Tailwind + PurgeC
 
 **Playwright E2E tests** (`tests/e2e/specs/`): Run via GitHub Actions against Docker containers. Not configured for local execution.
 
-## Production Deployment (pre-big-deployment baseline, 2026-03-09)
+## Production Deployment
 
-Last known-good production state before the CI/CD consolidation and dependency updates. Use this to revert if a future deployment causes issues.
-
-- **Image:** `ghcr.io/uberswe/createmod.com:master-2a18cbb`
+- **Kind:** `Deployment`
 - **Namespace:** `createmod-com-prod`
-- **Resource:** `StatefulSet/createmod`
-- **Replicas:** 1
-- **Resources:** CPU 200m-1000m, Memory 2Gi-16Gi
-- **Storage:** 20Gi PVC (`local-path` StorageClass)
+- **Replicas:** 2 base, HPA scales 2–6 (70% CPU target)
+- **Resources:** CPU 200m–1000m, Memory 1Gi–4Gi
 - **Port:** 8090
 - **Health:** `/api/health` (liveness: 10s init, 30s period; readiness: 5s init, 10s period)
-- **Annotations:** `linkerd.io/inject: enabled`, `config.linkerd.io/skip-outbound-ports: "443"`
+- **Annotations:** `linkerd.io/inject: enabled`, `config.linkerd.io/skip-outbound-ports: "443,6379,9000"`
 
-To revert production, update `k8s/createmod/prod/deployment.yaml` image to `ghcr.io/uberswe/createmod.com:master-2a18cbb` and apply.
+Image is set in `k8s/createmod/prod/deployment.yaml`. HPA config in `k8s/createmod/prod/hpa.yaml`.
 
-**Dev baseline:** `ghcr.io/uberswe/createmod.com:development-4fbe4d6` in namespace `createmod-com-dev`.
+**Dev:** 1 replica base, HPA 1–3, namespace `createmod-com-dev`. Config in `k8s/createmod/dev/`.
+
+### Multi-pod implications
+
+Caching (`go-cache`) and search (Bleve) are per-pod in-memory. With 2–6 replicas:
+- Cache mutations (e.g., new schematic) only invalidate on the pod handling the request; other pods serve stale data for up to 60 minutes.
+- Each pod rebuilds its own Bleve index on startup and carries a full copy in memory.
+- River job deduplication (`UniqueOpts`) ensures periodic jobs (search rebuild, trending) run on only one pod, but cache warming runs on all pods independently.
+- Redis is used for rate limiting but not yet for caching or search.
