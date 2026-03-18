@@ -672,6 +672,21 @@
                 document.head.appendChild(s);
             });
         })();
+        // Re-initialize FSLightbox after HTMX page swaps so the lightbox
+        // picks up newly inserted data-fslightbox links.
+        (function(){
+            function reinitLightbox() {
+                if (typeof refreshFsLightbox === 'function') {
+                    refreshFsLightbox();
+                }
+            }
+            if (!window._htmxFsLightboxReinit) {
+                window._htmxFsLightboxReinit = true;
+                document.addEventListener('htmx:afterSettle', reinitLightbox);
+            }
+            // Also reinit on initial load in case the script was already cached.
+            reinitLightbox();
+        })();
         </script>
         {{template "footer.html" .}}
     </div>
