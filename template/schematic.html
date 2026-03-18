@@ -196,6 +196,7 @@
                                     <div class="datagrid-item">
                                         <div class="datagrid-title">{{ T .Language "Author" }}</div>
                                         <div class="datagrid-content">
+                                            {{ if .Schematic.Author }}
                                             <div class="d-flex align-items-center">
                                                 {{ if .Schematic.Author.HasAvatar }}
                                                 <img class="avatar avatar-xs me-2 rounded" src="{{ .Schematic.Author.Avatar }}" alt="{{ .Schematic.Author.Username }}">
@@ -205,6 +206,9 @@
                                                 <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{
                                                     .Schematic.Author.Username }}</a>
                                             </div>
+                                            {{ else }}
+                                            <span class="text-muted">{{ T .Language "Unknown" }}</span>
+                                            {{ end }}
                                         </div>
                                     </div>
                                     <div class="datagrid-item">
@@ -591,7 +595,7 @@
                         {{ end }}
 
                         <!-- More From Author -->
-                        {{ if .AuthorHasMore }}
+                        {{ if and .AuthorHasMore .Schematic.Author }}
                         <div class="mb-3">
                             <h3>{{ T .Language "More From" }} <a
                                     href="/author/{{ .Schematic.Author.Username | ToLower }}">{{

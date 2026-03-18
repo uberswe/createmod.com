@@ -2249,7 +2249,26 @@ func (vl *VersionLookupStoreImpl) GetCreatemodVersionByID(ctx context.Context, i
 // SearchTrackingStoreImpl implements store.SearchTrackingStore.
 type SearchTrackingStoreImpl struct{ q *db.Queries }
 
+// sanitizeSearchQuery strips control characters and truncates to 200 chars.
+func sanitizeSearchQuery(q string) string {
+	clean := make([]rune, 0, len(q))
+	for _, r := range q {
+		if r < 32 || r == 127 {
+			continue
+		}
+		clean = append(clean, r)
+	}
+	if len(clean) > 200 {
+		clean = clean[:200]
+	}
+	return string(clean)
+}
+
 func (st *SearchTrackingStoreImpl) RecordSearch(ctx context.Context, query string, resultsCount int, userID, ip string) error {
+	query = sanitizeSearchQuery(query)
+	if query == "" {
+		return nil
+	}
 	var uid *string
 	if userID != "" {
 		uid = &userID
@@ -2276,6 +2295,10 @@ func (st *SearchTrackingStoreImpl) ListTopSearches(ctx context.Context, limit in
 		}
 	}
 	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) RefreshSearchQueryCounts(ctx context.Context) error {
+	return st.q.RefreshSearchQueryCounts(ctx)
 }
 
 // OutgoingClickStoreImpl implements store.OutgoingClickStore.

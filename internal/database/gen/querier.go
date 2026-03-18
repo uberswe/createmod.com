@@ -194,7 +194,7 @@ type Querier interface {
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)
 	ListTempUploadFilesByToken(ctx context.Context, token string) ([]TempUploadFile, error)
 	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
-	ListTopSearches(ctx context.Context, limit int32) ([]ListTopSearchesRow, error)
+	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error)
@@ -207,6 +207,7 @@ type Querier interface {
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RefreshSchematicRatingAggregates(ctx context.Context, id string) error
+	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error

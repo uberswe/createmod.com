@@ -129,8 +129,10 @@ SELECT id, version, created FROM minecraft_versions WHERE id = $1;
 SELECT id, version, created FROM createmod_versions WHERE id = $1;
 
 -- name: ListTopSearches :many
-SELECT query, COUNT(*) AS search_count
-FROM searches
-GROUP BY query
+SELECT query, search_count
+FROM search_query_counts
 ORDER BY search_count DESC
 LIMIT $1;
+
+-- name: RefreshSearchQueryCounts :exec
+REFRESH MATERIALIZED VIEW CONCURRENTLY search_query_counts;

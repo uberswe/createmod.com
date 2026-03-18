@@ -6,6 +6,7 @@ import (
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"time"
 
@@ -147,8 +148,12 @@ func (s *Service) Generate(appStore *store.Store) {
 	smSearches.SetOutputPath(tmpDir + "/")
 
 	for i := range searches {
+		q := searches[i].Query
+		if q == "" {
+			continue
+		}
 		err := smSearches.Add(&smg.SitemapLoc{
-			Loc:        fmt.Sprintf("/search/%s", searches[i].Query),
+			Loc:        fmt.Sprintf("/search/%s", url.PathEscape(q)),
 			LastMod:    &now,
 			ChangeFreq: smg.Weekly,
 			Priority:   0.7,
