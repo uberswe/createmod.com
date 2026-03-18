@@ -46,9 +46,23 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 		e := server.NewRequestEvent(w, r)
 		if err := h(e); err != nil {
 			if apiErr, ok := err.(*server.APIError); ok {
+				if apiErr.Status >= 500 {
+					slog.Error("handler error",
+						"method", r.Method,
+						"path", r.URL.Path,
+						"status", apiErr.Status,
+						"error", apiErr.Message,
+					)
+				}
 				http.Error(w, apiErr.Message, apiErr.Status)
 				return
 			}
+			slog.Error("handler error",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"status", 500,
+				"error", err.Error(),
+			)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
@@ -452,6 +466,7 @@ func Register(p RegisterParams) chi.Router {
 	previewRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/modify/download", Adapt(pages.ModifyDownloadHandler(p.AppStore, p.StorageService)))
 	r.With(previewRateLimit).Post("/api/schematics/{id}/modify/preview-url", Adapt(pages.ModifyPreviewHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/modify/preview/{tempID}.nbt", Adapt(pages.ModifyPreviewFileHandler(p.StorageService)))
 	r.Get("/api/modify/preview/{tempID}", Adapt(pages.ModifyPreviewFileHandler(p.StorageService)))
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))

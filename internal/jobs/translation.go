@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/riverqueue/river"
 )
@@ -16,6 +17,10 @@ func (TranslationArgs) Kind() string { return "translation_backfill" }
 type TranslationWorker struct {
 	river.WorkerDefaults[TranslationArgs]
 	deps Deps
+}
+
+func (w *TranslationWorker) Timeout(job *river.Job[TranslationArgs]) time.Duration {
+	return 30 * time.Minute
 }
 
 func (w *TranslationWorker) Work(ctx context.Context, job *river.Job[TranslationArgs]) error {

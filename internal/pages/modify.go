@@ -254,7 +254,7 @@ func ModifyPreviewHandler(appStore *store.Store, storageService *storage.Service
 		if e.Request.TLS == nil && !strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
 			scheme = "http"
 		}
-		fileURL := fmt.Sprintf("%s://%s/api/modify/preview/%s", scheme, e.Request.Host, tempID)
+		fileURL := fmt.Sprintf("%s://%s/api/modify/preview/%s.nbt", scheme, e.Request.Host, tempID)
 		bloxelizerURL := "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
 
 		return e.JSON(http.StatusOK, map[string]string{
@@ -271,6 +271,9 @@ func ModifyPreviewFileHandler(storageService *storage.Service) func(e *server.Re
 		if tempID == "" {
 			return e.BadRequestError("missing temp ID", nil)
 		}
+
+		// Strip .nbt suffix if present (route may match with or without it)
+		tempID = strings.TrimSuffix(tempID, ".nbt")
 
 		// Validate tempID is hex only to prevent path traversal
 		for _, c := range tempID {
@@ -298,8 +301,9 @@ func ModifyPreviewFileHandler(storageService *storage.Service) func(e *server.Re
 		}
 
 		e.Response.Header().Set("Content-Type", "application/octet-stream")
-		e.Response.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.nbt"`, tempID))
+		e.Response.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s.nbt"`, tempID))
 		e.Response.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+		e.Response.Header().Set("Access-Control-Allow-Origin", "*")
 		e.Response.WriteHeader(http.StatusOK)
 		_, _ = e.Response.Write(data)
 		return nil
@@ -679,7 +683,7 @@ func UploadModifyPreviewHandler(appStore *store.Store, storageService *storage.S
 		if e.Request.TLS == nil && !strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
 			scheme = "http"
 		}
-		fileURL := fmt.Sprintf("%s://%s/api/modify/preview/%s", scheme, e.Request.Host, tempID)
+		fileURL := fmt.Sprintf("%s://%s/api/modify/preview/%s.nbt", scheme, e.Request.Host, tempID)
 		bloxelizerURL := "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
 
 		return e.JSON(http.StatusOK, map[string]string{

@@ -33,8 +33,16 @@ const (
 	TrendingOrder      = 8
 	regex              = `<.*?>`
 
-	// cacheKey is the storage path for the serialized index cache.
-	cacheKey = "_internal/search_index_cache.json.gz"
+	// cacheKeyPrefix is the storage path prefix for the serialized index cache.
+	// A date suffix (YYYY-MM-DD) is appended to form the full key, so that
+	// Minio/S3 bucket versioning doesn't accumulate thousands of old versions
+	// under a single key.
+	cacheKeyPrefix = "_internal/search_index_cache_"
+	cacheKeySuffix = ".json.gz"
+
+	// legacyCacheKey is the old unversioned key. Kept for migration: we try
+	// loading from it as a fallback and delete it after a successful save.
+	legacyCacheKey = "_internal/search_index_cache.json.gz"
 )
 
 type Service struct {
@@ -613,8 +621,15 @@ func stripHtmlRegex(s string) string {
 // Storage-backed index cache (direct S3 via storage.Service)
 // ---------------------------------------------------------------------------
 
+// cacheKeyForDate returns the date-stamped cache key for the given time.
+func cacheKeyForDate(t time.Time) string {
+	return cacheKeyPrefix + t.UTC().Format("2006-01-02") + cacheKeySuffix
+}
+
 // saveCacheToStorage serializes the index data as gzip-compressed JSON and
-// uploads it to S3.
+// uploads it to S3 using a date-stamped key. After a successful upload it
+// removes the previous day's key and the legacy unversioned key to prevent
+// unbounded version accumulation in versioned S3 buckets.
 func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
 	if s.storage == nil {
 		slog.Warn("search: storage service not configured, skipping cache save")
@@ -638,22 +653,55 @@ func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
 		return
 	}
 
-	if err := s.storage.UploadRawBytes(context.Background(), cacheKey, buf.Bytes(), "application/gzip"); err != nil {
+	now := time.Now()
+	todayKey := cacheKeyForDate(now)
+
+	if err := s.storage.UploadRawBytes(context.Background(), todayKey, buf.Bytes(), "application/gzip"); err != nil {
 		slog.Warn("search: failed to upload index cache", "error", err)
 		return
 	}
 
-	slog.Info("search: uploaded index cache to storage", "entries", len(entries), "bytes", buf.Len())
+	slog.Info("search: uploaded index cache to storage", "key", todayKey, "entries", len(entries), "bytes", buf.Len())
+
+	// Clean up previous day's cache key so old versions don't accumulate.
+	yesterdayKey := cacheKeyForDate(now.AddDate(0, 0, -1))
+	if yesterdayKey != todayKey {
+		if err := s.storage.DeleteRaw(context.Background(), yesterdayKey); err != nil {
+			slog.Debug("search: failed to delete yesterday's cache (may not exist)", "key", yesterdayKey, "error", err)
+		}
+	}
+
+	// Remove legacy unversioned key (one-time migration cleanup).
+	if err := s.storage.DeleteRaw(context.Background(), legacyCacheKey); err != nil {
+		slog.Debug("search: failed to delete legacy cache key (may not exist)", "error", err)
+	}
 }
 
 // loadCacheFromStorage downloads the compressed index cache from S3 and
 // populates both the in-memory filter index and the Bleve full-text index.
+// It tries today's date-stamped key first, then yesterday's, then the
+// legacy unversioned key as a migration fallback.
 func (s *Service) loadCacheFromStorage() error {
 	if s.storage == nil {
 		return fmt.Errorf("storage service not configured")
 	}
 
-	reader, err := s.storage.DownloadRaw(context.Background(), cacheKey)
+	now := time.Now()
+	keysToTry := []string{
+		cacheKeyForDate(now),
+		cacheKeyForDate(now.AddDate(0, 0, -1)),
+		legacyCacheKey,
+	}
+
+	var reader io.ReadCloser
+	var err error
+	for _, key := range keysToTry {
+		reader, err = s.storage.DownloadRaw(context.Background(), key)
+		if err == nil {
+			slog.Info("search: loading cache from storage", "key", key)
+			break
+		}
+	}
 	if err != nil {
 		return err
 	}

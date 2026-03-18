@@ -151,6 +151,7 @@ type Querier interface {
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)
+	ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error)
 	ListApprovedSchematics(ctx context.Context, arg ListApprovedSchematicsParams) ([]Schematic, error)
 	ListApprovedSchematicsWithVideo(ctx context.Context, arg ListApprovedSchematicsWithVideoParams) ([]Schematic, error)
 	ListCategories(ctx context.Context) ([]SchematicCategory, error)
