@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"createmod/internal/abtest"
 	"createmod/internal/aidescription"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
@@ -23,6 +24,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"log/slog"
@@ -79,6 +81,7 @@ type Server struct {
 	jobWorker            *jobs.Worker
 	discordOAuth         *auth.OAuthProvider
 	githubOAuth          *auth.OAuthProvider
+	meiliClient          meilisearch.ServiceManager
 }
 
 // detectLanguageFromRequest returns a normalized language code based on the
@@ -200,11 +203,20 @@ func (s *Server) Start() {
 	// When maintenance mode is active, skip heavy background jobs.
 	migrating := s.conf.MaintenanceMode != nil && s.conf.MaintenanceMode.Load()
 
+	// Load trending A/B test configuration
+	trendingCfg := abtest.LoadTrendingConfig()
+	var trendingWindowDays []int
+	if trendingCfg.Enabled {
+		trendingWindowDays = trendingCfg.AllWindowDays()
+	} else {
+		trendingWindowDays = []int{30}
+	}
+
 	if !migrating {
 		// Warm per-pod in-memory caches in the background so startup isn't
 		// blocked. Handlers tolerate cold caches (they compute on miss).
 		go func() {
-			pages.WarmIndexCache(s.cacheService, s.store)
+			pages.WarmIndexCache(s.cacheService, s.store, trendingWindowDays)
 			pages.WarmVideosCache(s.cacheService, s.store)
 		}()
 
@@ -231,10 +243,40 @@ func (s *Server) Start() {
 		// schematic repair, temp upload cleanup, trending scores, etc.) is
 		// handled by River periodic jobs with UniqueOpts deduplication, so
 		// only one pod executes each job even when running multiple replicas.
-		s.startJobWorker()
+		s.startJobWorker(trendingWindowDays)
 	} else {
 		slog.Info("maintenance mode active — deferring background jobs until migration completes")
 	}
+
+	// A/B test configuration
+	abCfg := abtest.LoadConfig()
+
+	// Build variant router with search engines.
+	bleveAI := search.NewBleveEngine(s.searchService, false)   // variant B: with AI (current behavior)
+	bleveBase := search.NewBleveEngine(s.searchService, true)  // variant A: base only
+
+	engines := map[string]search.SearchEngine{
+		"A": bleveBase,
+		"B": bleveAI,
+	}
+
+	// Initialize Meilisearch if configured.
+	if abCfg.MeilisearchURL != "" {
+		s.meiliClient = meilisearch.New(abCfg.MeilisearchURL, meilisearch.WithAPIKey(abCfg.MeilisearchKey))
+		if _, err := s.meiliClient.Health(); err != nil {
+			slog.Warn("Meilisearch not reachable, variants C/D/E will fall back to Bleve", "error", err)
+		} else {
+			slog.Info("Connected to Meilisearch", "url", abCfg.MeilisearchURL)
+			if err := search.EnsureMeiliIndexes(s.meiliClient); err != nil {
+				slog.Error("Failed to configure Meilisearch indexes", "error", err)
+			}
+			engines["C"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexBase, s.searchService)
+			engines["D"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexAI, s.searchService)
+			engines["E"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexFull, s.searchService)
+		}
+	}
+
+	variantRouter := abtest.NewVariantRouter(engines, bleveAI)
 
 	// ROUTES
 
@@ -254,6 +296,9 @@ func (s *Server) Start() {
 		MailService:        s.mailService,
 		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,
+		VariantRouter:      variantRouter,
+		ABTestConfig:       abCfg,
+		TrendingConfig:     trendingCfg,
 	})
 
 	// Wrap the chi router with the language prefix stripper
@@ -364,10 +409,11 @@ func anyLetter(r rune) bool {
 
 
 // startJobWorker initialises and starts the River background job worker.
-func (s *Server) startJobWorker() {
+func (s *Server) startJobWorker(windowDays []int) {
 	jobCtx := context.Background()
 	w, err := jobs.New(jobCtx, jobs.Config{
-		Pool: s.pool,
+		Pool:       s.pool,
+		WindowDays: windowDays,
 		Deps: jobs.Deps{
 			Store:        s.store,
 			Storage:      s.storageService,
@@ -381,6 +427,7 @@ func (s *Server) startJobWorker() {
 			SessionStore: s.sessionStore,
 			Moderation:   s.moderationService,
 			Mail:         s.mailService,
+			MeiliClient:  s.meiliClient,
 		},
 	})
 	if err != nil {

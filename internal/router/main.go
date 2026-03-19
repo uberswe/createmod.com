@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"createmod/internal/abtest"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
@@ -35,6 +36,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gosimple/slug"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
 )
 
@@ -98,6 +100,9 @@ type RegisterParams struct {
 	MailService        *mailer.Service
 	JobWorker          *jobs.Worker
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
+	VariantRouter      *abtest.VariantRouter
+	ABTestConfig       *abtest.Config
+	TrendingConfig     *abtest.TrendingConfig
 }
 
 func Register(p RegisterParams) chi.Router {
@@ -211,6 +216,9 @@ func Register(p RegisterParams) chi.Router {
 		}
 	})
 
+	// Prometheus metrics endpoint
+	r.Handle("/metrics", promhttp.Handler())
+
 	// Minecraft mod download API (HMAC-signed, XOR-encoded response)
 	modSecret := deriveModDownloadSecret()
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)).
@@ -273,8 +281,13 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte(s))
 	})
 
+	// Trending variant middleware — assigns variant cookie on index routes when test is enabled.
+	trendingVariantMW := trendingVariantMiddleware(p.TrendingConfig)
+
 	// Index
-	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore)))
+	r.With(trendingVariantMW).Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore, p.TrendingConfig)))
+	// Click tracking for trending A/B test
+	r.With(trendingVariantMW).Post("/api/index/click", Adapt(pages.IndexClickHandler()))
 	r.Get("/upload", Adapt(pages.UploadHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	// Private preview URL for temporary uploads
@@ -472,15 +485,20 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	// Search autocomplete
-	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchService)))
-	r.Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.Get("/search/{term}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.Post("/search/{term}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.Get("/search/page/{page}", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.Get("/search", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
+	// Search variant middleware — assigns variant cookie on search routes when test is enabled.
+	searchVariantMW := searchVariantMiddleware(p.ABTestConfig)
+
+	// Search autocomplete — always uses Bleve suggest (via the fallback engine).
+	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.VariantRouter.Fallback())))
+	// Click tracking for search A/B test
+	r.With(searchVariantMW).Post("/api/search/click", Adapt(pages.SearchClickHandler()))
+	r.With(searchVariantMW).Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.With(searchVariantMW).Get("/search/{term}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.With(searchVariantMW).Post("/search/{term}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.With(searchVariantMW).Get("/search/page/{page}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.With(searchVariantMW).Get("/search", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.With(searchVariantMW).Get("/search/", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.With(searchVariantMW).Post("/search/", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
@@ -889,6 +907,44 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			if ok, _ := rl.Allow(r.Context(), key, limit, window); !ok {
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
 				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// trendingVariantMiddleware returns a middleware that assigns a trending A/B test
+// variant to the request via cookie. When the test is disabled, it is a no-op.
+func trendingVariantMiddleware(cfg *abtest.TrendingConfig) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if cfg == nil || !cfg.Enabled {
+				next.ServeHTTP(w, r)
+				return
+			}
+			v := abtest.AssignTrendingVariant(r, w, cfg.Variants)
+			if v != nil {
+				ctx := abtest.ContextWithTrendingVariant(r.Context(), v)
+				r = r.WithContext(ctx)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// searchVariantMiddleware returns a middleware that assigns a search A/B test
+// variant to the request via cookie. When the test is disabled, it is a no-op.
+func searchVariantMiddleware(cfg *abtest.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if cfg == nil || !cfg.Enabled {
+				next.ServeHTTP(w, r)
+				return
+			}
+			v := abtest.AssignVariant(r, w, cfg.Variants)
+			if v != nil {
+				ctx := abtest.ContextWithVariant(r.Context(), v)
+				r = r.WithContext(ctx)
 			}
 			next.ServeHTTP(w, r)
 		})

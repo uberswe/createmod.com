@@ -29,6 +29,26 @@ const (
 	redisTimeout = 2 * time.Second
 )
 
+// TrendingKeyForWindow returns a cache key for trending schematics with a specific time window.
+func TrendingKeyForWindow(days int) string {
+	return fmt.Sprintf("TrendingSchematics:%d", days)
+}
+
+// TrendingHasNextKeyForWindow returns a cache key for the trending hasNext flag with a specific window.
+func TrendingHasNextKeyForWindow(days int) string {
+	return fmt.Sprintf("TrendingHasNext:%d", days)
+}
+
+// CategorySectionKeyForWindow returns a cache key for a category section with a specific window.
+func CategorySectionKeyForWindow(catKey string, days int) string {
+	return fmt.Sprintf("CategorySection:%s:%d", catKey, days)
+}
+
+// CategorySectionHasNextKeyForWindow returns a cache key for a category section hasNext flag with a specific window.
+func CategorySectionHasNextKeyForWindow(catKey string, days int) string {
+	return fmt.Sprintf("CategorySectionHasNext:%s:%d", catKey, days)
+}
+
 // redisEntry is the typed JSON envelope stored in Redis.
 type redisEntry struct {
 	Type  string          `json:"t"`

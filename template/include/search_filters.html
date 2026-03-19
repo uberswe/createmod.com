@@ -103,5 +103,22 @@
             </button>
         </div>
     </form>
+    <script>
+    (function(){
+      if (window._cmFilterTrack) return;
+      window._cmFilterTrack = true;
+      document.addEventListener('change', function(e) {
+        var form = e.target && e.target.closest && e.target.closest('#advanced-search-form');
+        if (!form) return;
+        var el = e.target;
+        var filterType = el.name || 'unknown';
+        var filterValue = el.type === 'checkbox' ? (el.checked ? el.value : '') : el.value;
+        gtag('event', 'search_filter', {
+          'filter_type': filterType,
+          'filter_value': filterValue
+        });
+      });
+    })();
+    </script>
 </div>
 {{end}}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"createmod/internal/pages"
+	"createmod/internal/search"
 
 	"github.com/riverqueue/river"
 )
@@ -44,6 +45,33 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 		w.deps.Search.SetTrendingScores(scores)
 	}
 
+	// Sync Meilisearch indexes if client is available.
+	if w.deps.MeiliClient != nil {
+		w.syncMeiliIndexes()
+	}
+
 	slog.Info("search index rebuild complete", "count", len(mapped))
 	return nil
+}
+
+// syncMeiliIndexes converts the in-memory index to Meilisearch documents
+// and syncs all three Meilisearch indexes.
+func (w *SearchIndexWorker) syncMeiliIndexes() {
+	filterIndex := w.deps.Search.GetIndex()
+	if len(filterIndex) == 0 {
+		return
+	}
+
+	// Build Meilisearch documents from the filter index.
+	// We don't have the cache entries here, so we re-derive AIDescription
+	// from the filter index (it's already been built into the Bleve index).
+	docs := search.MapToMeiliDocuments(filterIndex, nil)
+
+	for _, indexUID := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull} {
+		if err := search.SyncMeiliIndex(w.deps.MeiliClient, indexUID, docs); err != nil {
+			slog.Error("meili sync failed", "index", indexUID, "error", err)
+		} else {
+			slog.Info("meili sync complete", "index", indexUID, "docs", len(docs))
+		}
+	}
 }

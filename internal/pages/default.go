@@ -2,6 +2,7 @@ package pages
 
 import (
 	stdctx "context"
+	"createmod/internal/abtest"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
@@ -51,7 +52,10 @@ type DefaultData struct {
 	NextPageURL     string
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
-	HideOutstream   bool
+	Variant            *abtest.Variant
+	TrendingVariant    string
+	TrendingWindowDays int
+	HideOutstream      bool
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
