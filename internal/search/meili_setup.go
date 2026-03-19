@@ -14,6 +14,7 @@ const (
 	MeiliIndexBase = "schematics_base"
 	MeiliIndexAI   = "schematics_ai"
 	MeiliIndexFull = "schematics_full"
+	MeiliIndexMods = "schematics_mods"
 )
 
 // MeiliDocument represents a schematic document in Meilisearch.
@@ -26,6 +27,7 @@ type MeiliDocument struct {
 	Categories       []string `json:"categories"`
 	Author           string   `json:"author"`
 	BlockNames       []string `json:"block_names,omitempty"`
+	ModNames         []string `json:"mod_names,omitempty"`
 	Rating           float64  `json:"rating"`
 	Views            int64    `json:"views"`
 	Paid             bool     `json:"paid"`
@@ -51,6 +53,10 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 		{
 			UID:        MeiliIndexFull,
 			Searchable: []string{"title", "tags", "block_names", "description", "ai_description", "author"},
+		},
+		{
+			UID:        MeiliIndexMods,
+			Searchable: []string{"title", "tags", "block_names", "mod_names", "description", "ai_description", "author"},
 		},
 	}
 
@@ -151,13 +157,19 @@ func SyncMeiliIndex(client meilisearch.ServiceManager, indexUID string, docs []M
 		for i := range cleaned {
 			cleaned[i].AIDescription = ""
 			cleaned[i].BlockNames = nil
+			cleaned[i].ModNames = nil
 		}
 	case MeiliIndexAI:
 		for i := range cleaned {
 			cleaned[i].BlockNames = nil
+			cleaned[i].ModNames = nil
 		}
 	case MeiliIndexFull:
-		// Keep everything.
+		for i := range cleaned {
+			cleaned[i].ModNames = nil
+		}
+	case MeiliIndexMods:
+		// Keep everything including ModNames.
 	}
 
 	index := client.Index(indexUID)
@@ -200,6 +212,7 @@ func MapToMeiliDocuments(filterIndex []schematicIndex, bleveEntries []indexCache
 			CreateVersion:    si.CreateVersion,
 			CreatedTimestamp:  si.Created.Unix(),
 			BlockNames:       si.BlockNames,
+			ModNames:         si.ModNames,
 		}
 		// Pull AIDescription from the Bleve cache entry if available.
 		if i < len(bleveEntries) {

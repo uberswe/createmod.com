@@ -19,7 +19,7 @@ func TestBleveEngine_VariantA_NoAIDescription(t *testing.T) {
 			AIDescription: "automated wheat harvesting machine with redstone",
 			Rating:        "4.0",
 		},
-	})
+	}, nil)
 
 	// Variant A (base): should NOT find the schematic when searching for AI-only text.
 	baseEngine := NewBleveEngine(svc, true)
@@ -61,7 +61,7 @@ func TestBleveEngine_VariantA_MatchesTitle(t *testing.T) {
 			Content: "Generates cobblestone automatically",
 			Rating:  "3.5",
 		},
-	})
+	}, nil)
 
 	baseEngine := NewBleveEngine(svc, true)
 	results, err := baseEngine.Search(context.Background(), SearchQuery{
@@ -87,7 +87,7 @@ func TestBleveEngine_Ready(t *testing.T) {
 
 	svc.BuildIndex([]models.Schematic{
 		{ID: "s1", Title: "Test", Content: "test", Rating: "3.0"},
-	})
+	}, nil)
 	if !engine.Ready() {
 		t.Error("engine should be ready after index build")
 	}
