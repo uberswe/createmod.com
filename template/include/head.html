@@ -123,6 +123,17 @@ window.setTheme=function(theme){
     </script>
     {{ end }}
 
+    {{ if .TrendingVariant }}
+    <script>
+      window.trendingVariant = '{{ .TrendingVariant }}';
+      window.trendingWindowDays = '{{ .TrendingWindowDays }}';
+      gtag('set', 'user_properties', {
+        'trending_variant': window.trendingVariant,
+        'trending_window_days': window.trendingWindowDays
+      });
+    </script>
+    {{ end }}
+
     <style>
       /* HTMX loading indicator bar */
       .htmx-indicator {

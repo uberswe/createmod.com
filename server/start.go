@@ -203,11 +203,20 @@ func (s *Server) Start() {
 	// When maintenance mode is active, skip heavy background jobs.
 	migrating := s.conf.MaintenanceMode != nil && s.conf.MaintenanceMode.Load()
 
+	// Load trending A/B test configuration
+	trendingCfg := abtest.LoadTrendingConfig()
+	var trendingWindowDays []int
+	if trendingCfg.Enabled {
+		trendingWindowDays = trendingCfg.AllWindowDays()
+	} else {
+		trendingWindowDays = []int{30}
+	}
+
 	if !migrating {
 		// Warm per-pod in-memory caches in the background so startup isn't
 		// blocked. Handlers tolerate cold caches (they compute on miss).
 		go func() {
-			pages.WarmIndexCache(s.cacheService, s.store)
+			pages.WarmIndexCache(s.cacheService, s.store, trendingWindowDays)
 			pages.WarmVideosCache(s.cacheService, s.store)
 		}()
 
@@ -234,7 +243,7 @@ func (s *Server) Start() {
 		// schematic repair, temp upload cleanup, trending scores, etc.) is
 		// handled by River periodic jobs with UniqueOpts deduplication, so
 		// only one pod executes each job even when running multiple replicas.
-		s.startJobWorker()
+		s.startJobWorker(trendingWindowDays)
 	} else {
 		slog.Info("maintenance mode active — deferring background jobs until migration completes")
 	}
@@ -289,6 +298,7 @@ func (s *Server) Start() {
 		MaintenanceMode:    s.conf.MaintenanceMode,
 		VariantRouter:      variantRouter,
 		ABTestConfig:       abCfg,
+		TrendingConfig:     trendingCfg,
 	})
 
 	// Wrap the chi router with the language prefix stripper
@@ -399,10 +409,11 @@ func anyLetter(r rune) bool {
 
 
 // startJobWorker initialises and starts the River background job worker.
-func (s *Server) startJobWorker() {
+func (s *Server) startJobWorker(windowDays []int) {
 	jobCtx := context.Background()
 	w, err := jobs.New(jobCtx, jobs.Config{
-		Pool: s.pool,
+		Pool:       s.pool,
+		WindowDays: windowDays,
 		Deps: jobs.Deps{
 			Store:        s.store,
 			Storage:      s.storageService,

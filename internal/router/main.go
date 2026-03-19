@@ -102,6 +102,7 @@ type RegisterParams struct {
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
 	VariantRouter      *abtest.VariantRouter
 	ABTestConfig       *abtest.Config
+	TrendingConfig     *abtest.TrendingConfig
 }
 
 func Register(p RegisterParams) chi.Router {
@@ -280,8 +281,13 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte(s))
 	})
 
+	// Trending variant middleware — assigns variant cookie on index routes when test is enabled.
+	trendingVariantMW := trendingVariantMiddleware(p.TrendingConfig)
+
 	// Index
-	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore)))
+	r.With(trendingVariantMW).Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore, p.TrendingConfig)))
+	// Click tracking for trending A/B test
+	r.With(trendingVariantMW).Post("/api/index/click", Adapt(pages.IndexClickHandler()))
 	r.Get("/upload", Adapt(pages.UploadHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	// Private preview URL for temporary uploads
@@ -901,6 +907,25 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			if ok, _ := rl.Allow(r.Context(), key, limit, window); !ok {
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
 				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// trendingVariantMiddleware returns a middleware that assigns a trending A/B test
+// variant to the request via cookie. When the test is disabled, it is a no-op.
+func trendingVariantMiddleware(cfg *abtest.TrendingConfig) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if cfg == nil || !cfg.Enabled {
+				next.ServeHTTP(w, r)
+				return
+			}
+			v := abtest.AssignTrendingVariant(r, w, cfg.Variants)
+			if v != nil {
+				ctx := abtest.ContextWithTrendingVariant(r.Context(), v)
+				r = r.WithContext(ctx)
 			}
 			next.ServeHTTP(w, r)
 		})

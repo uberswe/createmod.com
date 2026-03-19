@@ -181,6 +181,25 @@
                     });
                 }
             }
+            // GA4: Track search query on page load
+            (function() {
+              var searchInput = document.getElementById('search-hero-input');
+              var term = searchInput ? searchInput.value : '';
+              if (term) {
+                gtag('event', 'search', { 'search_term': term });
+              }
+              // Track search result count
+              var countEl = document.querySelector('#search-results .text-secondary.small');
+              if (countEl && term) {
+                var match = countEl.textContent.match(/(\d+)/);
+                var count = match ? parseInt(match[1], 10) : 0;
+                gtag('event', 'view_search_results', {
+                  'search_term': term,
+                  'result_count': count
+                });
+              }
+            })();
+
             // Attach click tracking to search result links
             document.addEventListener('click', function(e) {
                 var link = e.target && e.target.closest && e.target.closest('.search-center a[href*="/schematics/"]');

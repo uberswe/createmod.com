@@ -1012,6 +1012,10 @@ function copyMaterialsAsMarkdown() {
                         if (resp.ok) {
                             showFeedback(hasRated ? 'Rating updated!' : 'Rating saved!');
                             hasRated = true;
+                            gtag('event', 'rating_submit', {
+                              'schematic_id': '{{ .Schematic.ID }}',
+                              'rating_value': parseInt(ratingVal, 10)
+                            });
                         } else {
                             var body = await resp.json().catch(function(){ return {}; });
                             showFeedback(body.message || 'Could not save rating', 'warning');
@@ -1050,6 +1054,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     try {
       var status = evt.detail && evt.detail.xhr ? evt.detail.xhr.status : 0;
       if (status >= 200 && status < 300) {
+        gtag('event', 'comment_post', { 'schematic_id': '{{ .Schematic.ID }}' });
         htmx.ajax('GET','/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'});
         var s = document.getElementById('comment-success'); if (s) { s.style.display = 'block'; }
         if (window.tinyMCE && tinyMCE.activeEditor) { tinyMCE.activeEditor.setContent(''); }
@@ -1211,5 +1216,73 @@ window['nitroAds'].createAd('schematic-mobile', {
     var clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
     window.history.replaceState({}, '', clean);
   }
+})();
+</script>
+
+<script>
+(function(){
+  if (window._cmSchematicTrack) return;
+  window._cmSchematicTrack = true;
+
+  var sid = '{{ .Schematic.ID }}';
+  var sname = '{{ .Schematic.Name }}';
+  var isPaid = {{ if .Schematic.Paid }}true{{ else }}false{{ end }};
+
+  // Download click
+  document.addEventListener('click', function(e) {
+    var btn = e.target && e.target.closest && e.target.closest('#download-btn');
+    if (!btn) return;
+    gtag('event', 'file_download', {
+      'schematic_id': sid,
+      'schematic_name': sname,
+      'is_paid': isPaid
+    });
+  });
+
+  // Copy link
+  var origCopyLink = window.copyLink;
+  if (origCopyLink) {
+    window.copyLink = function(event) {
+      gtag('event', 'share_link', {
+        'schematic_id': sid,
+        'content_type': 'schematic'
+      });
+      return origCopyLink(event);
+    };
+  }
+
+  // Copy materials
+  var origCopyMat = window.copyMaterialsAsMarkdown;
+  if (origCopyMat) {
+    window.copyMaterialsAsMarkdown = function() {
+      var count = document.querySelectorAll('#materials-list .material-row').length;
+      gtag('event', 'copy_materials', {
+        'schematic_id': sid,
+        'item_count': count
+      });
+      return origCopyMat();
+    };
+  }
+
+  // Outbound link clicks
+  document.addEventListener('click', function(e) {
+    var link = e.target && e.target.closest && e.target.closest('a[target="_blank"][rel*="noopener"]');
+    if (!link || !link.href) return;
+    try {
+      var domain = new URL(link.href).hostname;
+      gtag('event', 'select_content', {
+        'content_type': 'external_link',
+        'item_id': domain,
+        'schematic_id': sid
+      });
+    } catch(err) {}
+  });
+
+  // Collection add form submit
+  document.addEventListener('submit', function(e) {
+    var form = e.target && e.target.closest && e.target.closest('form[action*="add-to-collection"]');
+    if (!form) return;
+    gtag('event', 'add_to_collection', { 'schematic_id': sid });
+  });
 })();
 </script>

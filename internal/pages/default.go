@@ -52,8 +52,10 @@ type DefaultData struct {
 	NextPageURL     string
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
-	Variant         *abtest.Variant
-	HideOutstream   bool
+	Variant            *abtest.Variant
+	TrendingVariant    string
+	TrendingWindowDays int
+	HideOutstream      bool
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.

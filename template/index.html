@@ -9,7 +9,7 @@
                     <div class="flex-grow-1 min-width-0">
                         <!-- Trending -->
                         <h2 class="mb-3"><a href="/search?sort=8" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
-                        <div id="tab-panel-trending" class="tab-panel">
+                        <div id="tab-panel-trending" class="tab-panel" data-trending-section="trending">
                             <div class="row g-3">
                                 {{ range .Trending }}
                                 {{template "schematic_card_small.html" .}}
@@ -65,7 +65,7 @@
                         <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
                         {{ range .CategorySections }}
                         <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ .Category.Name }} &rarr;</a></h3>
-                        <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel">
+                        <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel" data-trending-section="cat-{{ .Category.Key }}">
                             <div class="row g-3">
                                 {{ range .Items }}
                                 {{template "schematic_card_small.html" .}}
@@ -124,4 +124,38 @@ window['nitroAds'].createAd('index-mobile-mid', {
   },
   "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
 });
+</script>
+<script>
+(function() {
+  if (!window.trendingVariant) return;
+
+  document.querySelectorAll('[data-trending-section] a[href*="/schematics/"]').forEach(function(link, i) {
+    link.addEventListener('click', function() {
+      var section = link.closest('[data-trending-section]');
+      var sectionName = section ? section.dataset.trendingSection : 'unknown';
+      var schematicId = link.href.split('/schematics/')[1];
+      if (schematicId) schematicId = schematicId.split(/[?#]/)[0];
+      else schematicId = '';
+
+      gtag('event', 'trending_click', {
+        'trending_variant': window.trendingVariant,
+        'trending_window_days': window.trendingWindowDays,
+        'schematic_id': schematicId,
+        'result_position': i,
+        'section': sectionName
+      });
+
+      fetch('/api/index/click', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          schematic_id: schematicId,
+          position: i,
+          section: sectionName
+        }),
+        keepalive: true
+      });
+    });
+  });
+})();
 </script>

@@ -362,6 +362,11 @@ function uploadFile(file) {
             try {
                 var data = JSON.parse(xhr.responseText);
                 uploadData = data;
+                gtag('event', 'upload_complete', {
+                  'file_name': data.filename || '',
+                  'block_count': data.block_count || 0,
+                  'mod_count': (data.mods && data.mods.length) || 0
+                });
                 document.getElementById('upload-card').style.display = 'none';
                 renderResults(data);
             } catch(e) {
@@ -588,6 +593,7 @@ function animateCopyButton(btn) {
 }
 
 function copyShareLink() {
+    gtag('event', 'share_link', { 'content_type': 'upload' });
     var input = document.getElementById('share-link');
     var btn = document.getElementById('copy-link-btn');
     if (!input) return;
@@ -725,6 +731,8 @@ function deleteAdditionalFileUpload(fileId, rowEl) {
 
 function copyMaterialsAsMarkdown() {
     if (!uploadData || !uploadData.materials) return;
+    var matCount = uploadData.materials.length;
+    gtag('event', 'copy_materials', { 'item_count': matCount });
     var lines = ['| Material | Count | Stacks |', '|---|---|---|'];
     uploadData.materials.forEach(function(m) {
         var name = (blockNameMap[m.block_id] && blockNameMap[m.block_id].display_name) || formatBlockName(m.block_id);
@@ -756,5 +764,13 @@ function copyMaterialsAsMarkdown() {
         animateCopyButton(btn);
     }
 }
+
+// GA4: Track publish button click
+document.addEventListener('click', function(e) {
+  var btn = e.target && e.target.closest && e.target.closest('#publish-btn');
+  if (btn) {
+    gtag('event', 'publish_click');
+  }
+});
 </script>
 {{template "foot.html" .}}

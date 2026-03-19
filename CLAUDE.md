@@ -159,3 +159,23 @@ Caching (`go-cache`) and search (Bleve) are per-pod in-memory. With 2–6 replic
 - Each pod rebuilds its own Bleve index on startup and carries a full copy in memory.
 - River job deduplication (`UniqueOpts`) ensures periodic jobs (search rebuild, trending) run on only one pod, but cache warming runs on all pods independently.
 - Redis is used for rate limiting but not yet for caching or search.
+
+## Design Context
+
+### Users
+Minecraft players and builders who use the Create mod. They visit to discover inspiring builds, download schematics for their own worlds, and share their creations with the community. Context ranges from casual browsing to purposeful search. The core job: find, share, and celebrate Create mod builds.
+
+### Brand Personality
+**Creative, Warm, Community.** The voice is encouraging and approachable — like a fellow builder showing you their workshop. Avoids corporate sterility and over-engineered gaming aesthetics.
+
+**Emotional goals:** Inspiration and discovery first, supported by confidence and efficiency, belonging and pride, and moments of delight.
+
+### Aesthetic Direction
+Clean and modern with warmth. Modrinth is the closest reference. Gold/bronze primary (`#bf9045`) ties to the Create mod's brass-and-cog aesthetic. Dark mode default. Avoid cluttered gaming-site aesthetics or sterile enterprise UI.
+
+### Design Principles
+1. **Content is the hero.** UI frames and elevates community content, never competes with it.
+2. **Warm precision.** Combine community warmth with the clarity of a well-organized tool.
+3. **Progressive disclosure.** Show what matters first, reveal detail on interaction.
+4. **Accessible by default.** WCAG AA, good contrast, visible focus states, reduced-motion respect.
+5. **Craft in the details.** Smooth transitions, consistent spacing, thoughtful hover states signal care.

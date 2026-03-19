@@ -94,7 +94,7 @@ func UserDeleteHandler(appStore *store.Store, cacheService *cache.Service, sessS
 				_ = appStore.Schematics.SoftDelete(ctx, schem.ID)
 			}
 			if len(schematics) > 0 {
-				RefreshIndexCache(cacheService, appStore)
+				RefreshIndexCache(cacheService, appStore, nil)
 			}
 		}
 

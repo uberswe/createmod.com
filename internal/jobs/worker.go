@@ -46,8 +46,9 @@ type Deps struct {
 
 // Config holds job worker configuration.
 type Config struct {
-	Pool *pgxpool.Pool
-	Deps Deps
+	Pool       *pgxpool.Pool
+	Deps       Deps
+	WindowDays []int // trending A/B test time windows to warm
 }
 
 // Worker wraps the River client for job processing.
@@ -62,7 +63,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 
 	// Register all job workers with dependencies
 	river.AddWorker(workers, &SearchIndexWorker{deps: cfg.Deps})
-	river.AddWorker(workers, &TrendingWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &TrendingWorker{deps: cfg.Deps, WindowDays: cfg.WindowDays})
 	river.AddWorker(workers, &AIDescriptionWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &TranslationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &PointLogWorker{deps: cfg.Deps})

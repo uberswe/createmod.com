@@ -97,3 +97,18 @@
 </div>
 {{ .BreadcrumbJSONLD }}
 {{ end }}
+<script>
+(function(){
+  if (window._cmHeaderTrack) return;
+  window._cmHeaderTrack = true;
+  document.addEventListener('submit', function(e) {
+    var form = e.target && e.target.closest && e.target.closest('#search-form, .mobile-search-bar');
+    if (!form) return;
+    var input = form.querySelector('input[name="q"]');
+    var term = input ? input.value : '';
+    if (term) {
+      gtag('event', 'search', { 'search_term': term });
+    }
+  });
+})();
+</script>

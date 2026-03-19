@@ -69,4 +69,14 @@
     </div>
 </div>
 {{template "footer.html" .}}
+<script>
+(function(){
+  var form = document.querySelector('form[action="/register"]');
+  if (form) {
+    form.addEventListener('submit', function() {
+      gtag('event', 'sign_up', { 'method': 'email' });
+    });
+  }
+})();
+</script>
 {{template "foot.html" .}}

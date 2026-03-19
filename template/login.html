@@ -58,4 +58,22 @@
     </div>
 </main>
 {{template "footer.html" .}}
+<script>
+(function(){
+  // Track email login attempt
+  var form = document.getElementById('login-form');
+  if (form) {
+    form.addEventListener('submit', function() {
+      gtag('event', 'login', { 'method': 'email' });
+    });
+  }
+  // Track OAuth login clicks
+  document.addEventListener('click', function(e) {
+    var link = e.target && e.target.closest && e.target.closest('a[href^="/auth/"]');
+    if (!link) return;
+    var method = link.href.indexOf('discord') !== -1 ? 'discord' : 'github';
+    gtag('event', 'login', { 'method': method });
+  });
+})();
+</script>
 {{template "foot.html" .}}

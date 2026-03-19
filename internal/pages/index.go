@@ -2,8 +2,10 @@ package pages
 
 import (
 	"context"
+	"createmod/internal/abtest"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/metrics"
 	"createmod/internal/models"
 	"createmod/internal/store"
 	"fmt"
@@ -62,6 +64,10 @@ func indexHTMLCacheKey(lang string) string {
 	return fmt.Sprintf("IndexHTML:%s", lang)
 }
 
+func indexHTMLCacheKeyWithWindow(lang string, windowDays int) string {
+	return fmt.Sprintf("IndexHTML:%s:%d", lang, windowDays)
+}
+
 // allCategorySectionsPopulated returns true when every category section has at
 // least one schematic. An empty section means the data cache was likely cold.
 func allCategorySectionsPopulated(sections []CategorySection) bool {
@@ -83,7 +89,7 @@ func detectLanguageFromRequest(r *http.Request) string {
 	return preferredLanguageFromRequest(r)
 }
 
-func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, trendingConfig *abtest.TrendingConfig) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		q := e.Request.URL.Query()
 		tab := q.Get("tab")
@@ -95,17 +101,29 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		}
 		isHTMX := e.Request.Header.Get("HX-Request") != ""
 
+		// Determine trending variant and window
+		tv := abtest.TrendingVariantFromContext(e.Request.Context())
+		windowDays := 30
+		variantName := ""
+		if tv != nil && trendingConfig != nil && trendingConfig.Enabled {
+			windowDays = tv.WindowDays
+			variantName = tv.Name
+		}
+
 		// HTMX tab request — return just the tab panel partial
 		if isHTMX && tab != "" {
-			return renderTabPartial(cacheService, registry, appStore, e, tab, page)
+			return renderTabPartial(cacheService, registry, appStore, e, tab, page, windowDays)
 		}
+
+		// Record page view metric
+		metrics.IndexPageViews.WithLabelValues(variantName, fmt.Sprintf("%d", windowDays)).Inc()
 
 		// For anonymous users, serve from rendered HTML cache (5-minute TTL).
 		// Authenticated pages contain user-specific data so are always rendered fresh.
 		isAuth := authenticatedUserID(e) != ""
 		if !isAuth {
 			lang := detectLanguageFromRequest(e.Request)
-			htmlCacheKey := indexHTMLCacheKey(lang)
+			htmlCacheKey := indexHTMLCacheKeyWithWindow(lang, windowDays)
 			if cached, ok := cacheService.GetString(htmlCacheKey); ok {
 				return e.HTML(http.StatusOK, cached)
 			}
@@ -113,7 +131,11 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 
 		// Full page load — serve from pre-warmed cache when available.
 		latestSchematics, latestCached := cacheService.GetSchematics(cache.LatestSchematicsKey)
-		trendingSchematics, _ := cacheService.GetSchematics(cache.TrendingSchematicsKey)
+
+		// Load trending from window-specific cache key
+		trendingCacheKey := cache.TrendingKeyForWindow(windowDays)
+		trendingHasNextKey := cache.TrendingHasNextKeyForWindow(windowDays)
+		trendingSchematics, _ := cacheService.GetSchematics(trendingCacheKey)
 		highestRated, _ := cacheService.GetSchematics(cache.HighestRatedSchematicsKey)
 
 		// The trending cache stores the full sorted list; slice to page 1.
@@ -130,7 +152,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 				latestHasNext = b
 			}
 		}
-		if v, ok := cacheService.Get(cache.TrendingHasNextKey); ok {
+		if v, ok := cacheService.Get(trendingHasNextKey); ok {
 			if b, ok := v.(bool); ok {
 				trendingHasNext = b
 			}
@@ -146,7 +168,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			latestStoreResults, lhn := fetchLatestPageFromStore(appStore, 1)
 			latestSchematics = MapStoreSchematics(appStore, latestStoreResults, cacheService)
 			latestHasNext = lhn
-			trendingSchematics, trendingHasNext = getTrendingSchematicsPageFromStore(appStore, cacheService, 1)
+			trendingSchematics, trendingHasNext = getTrendingSchematicsPageForWindow(appStore, cacheService, 1, windowDays)
 			highestRated, highestHasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
 		}
 
@@ -154,8 +176,8 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		categories := allCategoriesFromStoreOnly(appStore, cacheService)
 		categorySections := make([]CategorySection, 0, len(categories))
 		for _, cat := range categories {
-			cacheKey := fmt.Sprintf("CategorySection:%s", cat.Key)
-			cacheHasNextKey := fmt.Sprintf("CategorySectionHasNext:%s", cat.Key)
+			cacheKey := cache.CategorySectionKeyForWindow(cat.Key, windowDays)
+			cacheHasNextKey := cache.CategorySectionHasNextKeyForWindow(cat.Key, windowDays)
 			items, cached := cacheService.GetSchematics(cacheKey)
 			catHasNext := false
 			if cached {
@@ -165,7 +187,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 					}
 				}
 			} else {
-				items, catHasNext = getCategoryTrendingPageFromStore(appStore, cacheService, cat.ID, 1)
+				items, catHasNext = getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, windowDays)
 			}
 			categorySections = append(categorySections, CategorySection{
 				Category: cat,
@@ -184,6 +206,8 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			CategorySections: categorySections,
 		}
 		d.Populate(e)
+		d.TrendingVariant = variantName
+		d.TrendingWindowDays = windowDays
 		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.index.title")
 		d.Description = i18n.T(d.Language, "page.index.description")
@@ -202,7 +226,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		// cold (e.g. pod just started), the page may have been rendered with
 		// empty sections and we don't want to serve that for 5 minutes.
 		if !isAuth && len(latestSchematics) > 0 && len(trendingSchematics) > 0 && len(highestRated) > 0 && allCategorySectionsPopulated(categorySections) {
-			cacheService.SetWithTTL(indexHTMLCacheKey(d.Language), html, indexHTMLCacheTTL)
+			cacheService.SetWithTTL(indexHTMLCacheKeyWithWindow(d.Language, windowDays), html, indexHTMLCacheTTL)
 		}
 
 		return e.HTML(http.StatusOK, html)
@@ -221,13 +245,13 @@ type TabData struct {
 	NextURL string
 }
 
-func renderTabPartial(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, e *server.RequestEvent, tab string, page int) error {
+func renderTabPartial(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, e *server.RequestEvent, tab string, page int, windowDays int) error {
 	var items []models.Schematic
 	var hasNext bool
 
 	switch {
 	case tab == "trending":
-		items, hasNext = getTrendingSchematicsPageFromStore(appStore, cacheService, page)
+		items, hasNext = getTrendingSchematicsPageForWindow(appStore, cacheService, page, windowDays)
 	case tab == "highest":
 		items, hasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, page)
 	case strings.HasPrefix(tab, "cat-"):
@@ -243,7 +267,7 @@ func renderTabPartial(cacheService *cache.Service, registry *server.Registry, ap
 		if catID == "" {
 			return e.NotFoundError("", nil)
 		}
-		items, hasNext = getCategoryTrendingPageFromStore(appStore, cacheService, catID, page)
+		items, hasNext = getCategoryTrendingPageForWindow(appStore, cacheService, catID, page, windowDays)
 	default:
 		tab = "latest"
 		storeResults, hn := fetchLatestPageFromStore(appStore, page)
@@ -301,15 +325,15 @@ func trendingScore(created time.Time, recentViews float64, totalViews float64, r
 // WarmIndexCache pre-computes and caches all data needed for the index page
 // so that no user request ever hits the database for page-1 data.
 // Called at boot and periodically by a background ticker.
-func WarmIndexCache(cacheService *cache.Service, appStore *store.Store) {
+func WarmIndexCache(cacheService *cache.Service, appStore *store.Store, windowDays []int) {
 	// Delegate to the store-based implementation
-	WarmIndexCacheFromStore(appStore, cacheService, slog.Default())
+	WarmIndexCacheFromStore(appStore, cacheService, slog.Default(), windowDays)
 }
 
 // RefreshIndexCache asynchronously clears and re-warms the index page cache.
 // Call this after a schematic is created, updated, or deleted so the homepage
 // reflects the change without waiting for the next periodic job.
-func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store) {
+func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store, windowDays []int) {
 	go func() {
 		cacheService.Delete(cache.LatestSchematicsKey)
 		cacheService.Delete(cache.LatestHasNextKey)
@@ -317,11 +341,19 @@ func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store) {
 		cacheService.Delete(cache.TrendingHasNextKey)
 		cacheService.Delete(cache.HighestRatedSchematicsKey)
 		cacheService.Delete(cache.HighestRatedHasNextKey)
-		// Invalidate rendered HTML caches for all languages
+		// Clear window-specific keys
+		for _, wd := range windowDays {
+			cacheService.Delete(cache.TrendingKeyForWindow(wd))
+			cacheService.Delete(cache.TrendingHasNextKeyForWindow(wd))
+		}
+		// Invalidate rendered HTML caches for all languages and windows
 		for lang := range supportedLanguages {
 			cacheService.Delete(indexHTMLCacheKey(lang))
+			for _, wd := range windowDays {
+				cacheService.Delete(indexHTMLCacheKeyWithWindow(lang, wd))
+			}
 		}
-		WarmIndexCacheFromStore(appStore, cacheService, slog.Default())
+		WarmIndexCacheFromStore(appStore, cacheService, slog.Default(), windowDays)
 	}()
 }
 
@@ -391,13 +423,20 @@ func getHighestRatedSchematicsPageFromStore(appStore *store.Store, cacheService 
 }
 
 // getAllTrendingSchematicsFromStore returns the full sorted trending list using the PostgreSQL store.
+// Uses the default 30-day window and default cache key.
 func getAllTrendingSchematicsFromStore(appStore *store.Store, cacheService *cache.Service) []models.Schematic {
-	cached, found := cacheService.GetSchematics(cache.TrendingSchematicsKey)
+	return getAllTrendingSchematicsForWindow(appStore, cacheService, 30)
+}
+
+// getAllTrendingSchematicsForWindow returns the full sorted trending list for a specific time window.
+func getAllTrendingSchematicsForWindow(appStore *store.Store, cacheService *cache.Service, recentDays int) []models.Schematic {
+	cacheKey := cache.TrendingKeyForWindow(recentDays)
+	cached, found := cacheService.GetSchematics(cacheKey)
 	if found {
 		return cached
 	}
 
-	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), 30)
+	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), recentDays)
 	if err != nil || td == nil || len(td.SchematicIDs) == 0 {
 		return nil
 	}
@@ -437,13 +476,18 @@ func getAllTrendingSchematicsFromStore(appStore *store.Store, cacheService *cach
 	}
 
 	all := MapStoreSchematics(appStore, ordered, cacheService)
-	cacheService.SetSchematics(cache.TrendingSchematicsKey, all)
+	cacheService.SetSchematics(cacheKey, all)
 	return all
 }
 
-// getTrendingSchematicsPageFromStore returns a page of trending schematics from the PostgreSQL store.
+// getTrendingSchematicsPageFromStore returns a page of trending schematics from the PostgreSQL store (default 30-day window).
 func getTrendingSchematicsPageFromStore(appStore *store.Store, cacheService *cache.Service, page int) ([]models.Schematic, bool) {
-	all := getAllTrendingSchematicsFromStore(appStore, cacheService)
+	return getTrendingSchematicsPageForWindow(appStore, cacheService, page, 30)
+}
+
+// getTrendingSchematicsPageForWindow returns a page of trending schematics for a specific time window.
+func getTrendingSchematicsPageForWindow(appStore *store.Store, cacheService *cache.Service, page int, recentDays int) ([]models.Schematic, bool) {
+	all := getAllTrendingSchematicsForWindow(appStore, cacheService, recentDays)
 	offset := (page - 1) * indexPageSize
 	if offset >= len(all) {
 		return nil, false
@@ -456,9 +500,14 @@ func getTrendingSchematicsPageFromStore(appStore *store.Store, cacheService *cac
 	return all[offset:end], hasNext
 }
 
-// getCategoryTrendingPageFromStore returns a page of trending schematics filtered to a specific category from the PostgreSQL store.
+// getCategoryTrendingPageFromStore returns a page of trending schematics filtered to a specific category (default 30-day window).
 func getCategoryTrendingPageFromStore(appStore *store.Store, cacheService *cache.Service, categoryID string, page int) ([]models.Schematic, bool) {
-	all := getAllTrendingSchematicsFromStore(appStore, cacheService)
+	return getCategoryTrendingPageForWindow(appStore, cacheService, categoryID, page, 30)
+}
+
+// getCategoryTrendingPageForWindow returns a page of trending schematics filtered to a specific category for a given window.
+func getCategoryTrendingPageForWindow(appStore *store.Store, cacheService *cache.Service, categoryID string, page int, recentDays int) ([]models.Schematic, bool) {
+	all := getAllTrendingSchematicsForWindow(appStore, cacheService, recentDays)
 	var filtered []models.Schematic
 	for _, s := range all {
 		for _, c := range s.Categories {
@@ -508,19 +557,33 @@ func findUserFromStore(appStore *store.Store, userID string) *models.User {
 
 // WarmIndexCacheFromStore pre-computes and caches all data needed for the index page
 // using only the PostgreSQL store (no PocketBase dependency).
-func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service, logger interface{ Debug(string, ...any) }) {
+// windowDays specifies which trending time windows to warm; if nil/empty, defaults to [30].
+func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service, logger interface{ Debug(string, ...any) }, windowDays []int) {
 	logger.Debug("Warming index page cache (store)")
+
+	if len(windowDays) == 0 {
+		windowDays = []int{30}
+	}
 
 	// 1. Latest schematics (page 1)
 	latestResults, latestHasNext := fetchLatestPageFromStore(appStore, 1)
 	cacheService.SetSchematics(cache.LatestSchematicsKey, MapStoreSchematics(appStore, latestResults, cacheService))
 	cacheService.Set(cache.LatestHasNextKey, latestHasNext)
 
-	// 2. Trending schematics
+	// 2. Trending schematics — warm all requested windows
+	for _, wd := range windowDays {
+		ck := cache.TrendingKeyForWindow(wd)
+		cacheService.Delete(ck)
+		allTrending := getAllTrendingSchematicsForWindow(appStore, cacheService, wd)
+		trendingHasNext := len(allTrending) > indexPageSize
+		cacheService.Set(cache.TrendingHasNextKeyForWindow(wd), trendingHasNext)
+	}
+
+	// Backward compat: also populate default (non-windowed) keys with 30-day data
 	cacheService.Delete(cache.TrendingSchematicsKey)
-	allTrending := getAllTrendingSchematicsFromStore(appStore, cacheService)
-	trendingHasNext := len(allTrending) > indexPageSize
-	cacheService.Set(cache.TrendingHasNextKey, trendingHasNext)
+	defaultTrending := getAllTrendingSchematicsForWindow(appStore, cacheService, 30)
+	cacheService.SetSchematics(cache.TrendingSchematicsKey, defaultTrending)
+	cacheService.Set(cache.TrendingHasNextKey, len(defaultTrending) > indexPageSize)
 
 	// 3. Highest rated schematics (page 1)
 	highestRated, highestHasNext := getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
@@ -530,10 +593,16 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 	// 4. Categories
 	allCategoriesFromStoreOnly(appStore, cacheService)
 
-	// 5. Category sections
+	// 5. Category sections — warm for all requested windows
 	categories := allCategoriesFromStoreOnly(appStore, cacheService)
 	for _, cat := range categories {
-		items, catHasNext := getCategoryTrendingPageFromStore(appStore, cacheService, cat.ID, 1)
+		for _, wd := range windowDays {
+			items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, wd)
+			cacheService.SetSchematics(cache.CategorySectionKeyForWindow(cat.Key, wd), items)
+			cacheService.Set(cache.CategorySectionHasNextKeyForWindow(cat.Key, wd), catHasNext)
+		}
+		// Backward compat: default keys with 30-day data
+		items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, 30)
 		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
 		cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
 	}
