@@ -6,9 +6,9 @@
     </div>
     {{ if or .HasPrev .HasNext }}
     <div class="d-flex justify-content-between align-items-center mt-4">
-        <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
+        <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
         <div class="text-secondary">Page {{ .Page }}</div>
-        <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
+        <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
     </div>
     {{ end }}
 </div>
