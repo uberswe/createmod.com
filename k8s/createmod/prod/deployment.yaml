@@ -20,6 +20,7 @@ spec:
       annotations:
         linkerd.io/inject: enabled
         config.linkerd.io/skip-outbound-ports: "443,6379,9000"
+        config.linkerd.io/skip-inbound-ports: "8090"
     spec:
       terminationGracePeriodSeconds: 40
       imagePullSecrets:
