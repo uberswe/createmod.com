@@ -229,7 +229,7 @@ func (s *Server) Start() {
 	if abCfg.MeilisearchURL != "" {
 		s.meiliClient = meilisearch.New(abCfg.MeilisearchURL, meilisearch.WithAPIKey(abCfg.MeilisearchKey))
 		if _, err := s.meiliClient.Health(); err != nil {
-			slog.Warn("Meilisearch not reachable, variants C/D/E will fall back to Bleve", "error", err)
+			slog.Warn("Meilisearch not reachable, variants C/D/E/F will fall back to Bleve", "error", err)
 		} else {
 			slog.Info("Connected to Meilisearch", "url", abCfg.MeilisearchURL)
 			if err := search.EnsureMeiliIndexes(s.meiliClient); err != nil {
@@ -238,6 +238,7 @@ func (s *Server) Start() {
 			engines["C"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexBase, s.searchService)
 			engines["D"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexAI, s.searchService)
 			engines["E"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexFull, s.searchService)
+			engines["F"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexMods, s.searchService)
 		}
 	}
 
@@ -263,19 +264,29 @@ func (s *Server) Start() {
 				slog.Error("per-pod search index build failed", "error", err)
 				return
 			}
+			// Load mod metadata for display names.
+			modDisplayNames := make(map[string]string)
+			if allMeta, err := s.store.ModMetadata.ListAll(context.Background()); err == nil {
+				for _, m := range allMeta {
+					if m.DisplayName != "" {
+						modDisplayNames[m.Namespace] = m.DisplayName
+					}
+				}
+			}
+
 			mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
-			s.searchService.BuildIndex(mapped)
+			s.searchService.BuildIndex(mapped, modDisplayNames)
 			if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
 				s.searchService.SetTrendingScores(scores)
 			}
 			slog.Info("per-pod search index build complete", "count", len(mapped))
 
-			// Sync to Meilisearch so variants C/D/E have data immediately.
+			// Sync to Meilisearch so variants C/D/E/F have data immediately.
 			if s.meiliClient != nil {
 				filterIndex := s.searchService.GetIndex()
 				if len(filterIndex) > 0 {
 					docs := search.MapToMeiliDocuments(filterIndex, nil)
-					for _, uid := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull} {
+					for _, uid := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull, search.MeiliIndexMods} {
 						if err := search.SyncMeiliIndex(s.meiliClient, uid, docs); err != nil {
 							slog.Error("per-pod meili sync failed", "index", uid, "error", err)
 						} else {

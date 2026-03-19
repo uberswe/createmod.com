@@ -3,20 +3,21 @@ package abtest
 
 // Variant describes a search test variant.
 type Variant struct {
-	Name       string // "A", "B", "C", "D", "E"
+	Name       string // "A", "B", "C", "D", "E", "F"
 	Engine     string // "bleve" or "meilisearch"
-	IndexLevel string // "base", "ai", "full"
+	IndexLevel string // "base", "ai", "full", "mods"
 	Weight     int    // relative weight for random assignment
 }
 
-// DefaultVariants returns the five search test variants with equal weight.
+// DefaultVariants returns the six search test variants with equal weight.
 func DefaultVariants() []Variant {
 	return []Variant{
-		{Name: "A", Engine: "bleve", IndexLevel: "base", Weight: 20},
-		{Name: "B", Engine: "bleve", IndexLevel: "ai", Weight: 20},
-		{Name: "C", Engine: "meilisearch", IndexLevel: "base", Weight: 20},
-		{Name: "D", Engine: "meilisearch", IndexLevel: "ai", Weight: 20},
-		{Name: "E", Engine: "meilisearch", IndexLevel: "full", Weight: 20},
+		{Name: "A", Engine: "bleve", IndexLevel: "base", Weight: 17},
+		{Name: "B", Engine: "bleve", IndexLevel: "ai", Weight: 17},
+		{Name: "C", Engine: "meilisearch", IndexLevel: "base", Weight: 17},
+		{Name: "D", Engine: "meilisearch", IndexLevel: "ai", Weight: 17},
+		{Name: "E", Engine: "meilisearch", IndexLevel: "full", Weight: 17},
+		{Name: "F", Engine: "meilisearch", IndexLevel: "mods", Weight: 17},
 	}
 }
 

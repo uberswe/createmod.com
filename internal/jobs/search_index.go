@@ -37,8 +37,21 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 		slog.Error("search index rebuild: failed to load schematics", "error", err)
 		return err
 	}
+
+	// Load mod metadata for display names.
+	modDisplayNames := make(map[string]string)
+	if allMeta, err := w.deps.Store.ModMetadata.ListAll(ctx); err == nil {
+		for _, m := range allMeta {
+			if m.DisplayName != "" {
+				modDisplayNames[m.Namespace] = m.DisplayName
+			}
+		}
+	} else {
+		slog.Warn("search index rebuild: failed to load mod metadata", "error", err)
+	}
+
 	mapped := pages.MapStoreSchematics(w.deps.Store, storeSchematics, w.deps.Cache)
-	w.deps.Search.BuildIndex(mapped)
+	w.deps.Search.BuildIndex(mapped, modDisplayNames)
 
 	// Also refresh trending scores so they're available right after index rebuild.
 	if scores := pages.ComputeTrendingScoresFromStore(w.deps.Store); scores != nil {
@@ -67,7 +80,7 @@ func (w *SearchIndexWorker) syncMeiliIndexes() {
 	// from the filter index (it's already been built into the Bleve index).
 	docs := search.MapToMeiliDocuments(filterIndex, nil)
 
-	for _, indexUID := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull} {
+	for _, indexUID := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull, search.MeiliIndexMods} {
 		if err := search.SyncMeiliIndex(w.deps.MeiliClient, indexUID, docs); err != nil {
 			slog.Error("meili sync failed", "index", indexUID, "error", err)
 		} else {

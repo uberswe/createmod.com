@@ -67,6 +67,7 @@ type schematicIndex struct {
 	CreateVersion    string
 	Paid             bool
 	BlockNames       []string
+	ModNames         []string
 }
 
 type bleveIndex struct {
@@ -559,7 +560,7 @@ func trendingSort(scores map[string]float64, a schematicIndex, b schematicIndex)
 // BuildIndex takes a set of schematics and rebuilds both the in-memory filter
 // index and the Bleve full-text index. After building, it uploads a compressed
 // cache snapshot to storage so subsequent pod starts can warm from it.
-func (s *Service) BuildIndex(schematics []models.Schematic) {
+func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[string]string) {
 	idx := newBleveIndex()
 	baseIdx := newBleveBaseIndex()
 	batch := idx.NewBatch()
@@ -592,6 +593,17 @@ func (s *Service) BuildIndex(schematics []models.Schematic) {
 
 		blockNames := ExtractBlockNames(schematics[i].Materials)
 		si.BlockNames = blockNames
+
+		// Resolve mod namespaces to display names.
+		if modDisplayNames != nil {
+			var modNames []string
+			for _, ns := range schematics[i].Mods {
+				if name, ok := modDisplayNames[ns]; ok && name != "" {
+					modNames = append(modNames, name)
+				}
+			}
+			si.ModNames = modNames
+		}
 
 		bi := bleveIndex{
 			Title:         si.Title,
