@@ -212,43 +212,8 @@ func (s *Server) Start() {
 		trendingWindowDays = []int{30}
 	}
 
-	if !migrating {
-		// Warm per-pod in-memory caches in the background so startup isn't
-		// blocked. Handlers tolerate cold caches (they compute on miss).
-		go func() {
-			pages.WarmIndexCache(s.cacheService, s.store, trendingWindowDays)
-			pages.WarmVideosCache(s.cacheService, s.store)
-		}()
-
-		// Build search index per-pod. The index is in-memory so each pod
-		// needs its own copy; River's deduplication means only one pod
-		// would run the periodic job, leaving other pods with empty indexes.
-		go func() {
-			slog.Info("per-pod search index build starting")
-			s.searchService.WarmFromStorage()
-			storeSchematics, err := s.store.Schematics.ListAllForIndex(context.Background())
-			if err != nil {
-				slog.Error("per-pod search index build failed", "error", err)
-				return
-			}
-			mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
-			s.searchService.BuildIndex(mapped)
-			if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
-				s.searchService.SetTrendingScores(scores)
-			}
-			slog.Info("per-pod search index build complete", "count", len(mapped))
-		}()
-
-		// All other periodic work (search index rebuild, sitemap generation,
-		// schematic repair, temp upload cleanup, trending scores, etc.) is
-		// handled by River periodic jobs with UniqueOpts deduplication, so
-		// only one pod executes each job even when running multiple replicas.
-		s.startJobWorker(trendingWindowDays)
-	} else {
-		slog.Info("maintenance mode active — deferring background jobs until migration completes")
-	}
-
-	// A/B test configuration
+	// A/B test configuration — load before startup goroutine so Meilisearch
+	// client is available for the initial index sync.
 	abCfg := abtest.LoadConfig()
 
 	// Build variant router with search engines.
@@ -277,6 +242,58 @@ func (s *Server) Start() {
 	}
 
 	variantRouter := abtest.NewVariantRouter(engines, bleveAI)
+
+	if !migrating {
+		// Warm per-pod in-memory caches in the background so startup isn't
+		// blocked. Handlers tolerate cold caches (they compute on miss).
+		go func() {
+			pages.WarmIndexCache(s.cacheService, s.store, trendingWindowDays)
+			pages.WarmVideosCache(s.cacheService, s.store)
+		}()
+
+		// Build search index per-pod. The index is in-memory so each pod
+		// needs its own copy; River's deduplication means only one pod
+		// would run the periodic job, leaving other pods with empty indexes.
+		// After building Bleve, also sync to Meilisearch if available.
+		go func() {
+			slog.Info("per-pod search index build starting")
+			s.searchService.WarmFromStorage()
+			storeSchematics, err := s.store.Schematics.ListAllForIndex(context.Background())
+			if err != nil {
+				slog.Error("per-pod search index build failed", "error", err)
+				return
+			}
+			mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
+			s.searchService.BuildIndex(mapped)
+			if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
+				s.searchService.SetTrendingScores(scores)
+			}
+			slog.Info("per-pod search index build complete", "count", len(mapped))
+
+			// Sync to Meilisearch so variants C/D/E have data immediately.
+			if s.meiliClient != nil {
+				filterIndex := s.searchService.GetIndex()
+				if len(filterIndex) > 0 {
+					docs := search.MapToMeiliDocuments(filterIndex, nil)
+					for _, uid := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull} {
+						if err := search.SyncMeiliIndex(s.meiliClient, uid, docs); err != nil {
+							slog.Error("per-pod meili sync failed", "index", uid, "error", err)
+						} else {
+							slog.Info("per-pod meili sync complete", "index", uid, "docs", len(docs))
+						}
+					}
+				}
+			}
+		}()
+
+		// All other periodic work (search index rebuild, sitemap generation,
+		// schematic repair, temp upload cleanup, trending scores, etc.) is
+		// handled by River periodic jobs with UniqueOpts deduplication, so
+		// only one pod executes each job even when running multiple replicas.
+		s.startJobWorker(trendingWindowDays)
+	} else {
+		slog.Info("maintenance mode active — deferring background jobs until migration completes")
+	}
 
 	// ROUTES
 
