@@ -22,4 +22,4 @@ data:
   OTEL_TRACES_SAMPLER_ARG: "1.0"
   # Meilisearch / Search A/B Test
   MEILISEARCH_URL: "http://meilisearch.createmod-com-dev.svc.cluster.local:7700"
-  SEARCH_TEST_ENABLED: "false"
+  SEARCH_TEST_ENABLED: "true"
