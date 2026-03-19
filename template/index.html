@@ -145,16 +145,11 @@ window['nitroAds'].createAd('index-mobile-mid', {
         'section': sectionName
       });
 
-      fetch('/api/index/click', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
+      navigator.sendBeacon('/api/index/click', new Blob([JSON.stringify({
           schematic_id: schematicId,
           position: i,
           section: sectionName
-        }),
-        keepalive: true
-      });
+        })], {type: 'application/json'}));
     });
   });
 })();
