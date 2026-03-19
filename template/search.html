@@ -163,16 +163,11 @@
 
             // Search click tracking for A/B test
             function trackSearchClick(schematicId, position) {
-                fetch('/api/search/click', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        query: document.getElementById('search-hero-input')?.value || '',
-                        result_id: schematicId,
-                        position: position
-                    }),
-                    keepalive: true
-                });
+                navigator.sendBeacon('/api/search/click', new Blob([JSON.stringify({
+                    query: document.getElementById('search-hero-input')?.value || '',
+                    result_id: schematicId,
+                    position: position
+                })], {type: 'application/json'}));
                 if (window.searchVariant) {
                     gtag('event', 'search_result_click', {
                         'search_variant': window.searchVariant,
