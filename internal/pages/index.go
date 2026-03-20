@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"createmod/internal/abtest"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/metrics"
@@ -89,7 +88,7 @@ func detectLanguageFromRequest(r *http.Request) string {
 	return preferredLanguageFromRequest(r)
 }
 
-func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, trendingConfig *abtest.TrendingConfig) func(e *server.RequestEvent) error {
+func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		q := e.Request.URL.Query()
 		tab := q.Get("tab")
@@ -101,14 +100,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		}
 		isHTMX := e.Request.Header.Get("HX-Request") != ""
 
-		// Determine trending variant and window
-		tv := abtest.TrendingVariantFromContext(e.Request.Context())
-		windowDays := 30
-		variantName := ""
-		if tv != nil && trendingConfig != nil && trendingConfig.Enabled {
-			windowDays = tv.WindowDays
-			variantName = tv.Name
-		}
+		windowDays := 7
 
 		// HTMX tab request — return just the tab panel partial
 		if isHTMX && tab != "" {
@@ -116,7 +108,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		}
 
 		// Record page view metric
-		metrics.IndexPageViews.WithLabelValues(variantName, fmt.Sprintf("%d", windowDays)).Inc()
+		metrics.IndexPageViews.WithLabelValues(fmt.Sprintf("%d", windowDays)).Inc()
 
 		// For anonymous users, serve from rendered HTML cache (5-minute TTL).
 		// Authenticated pages contain user-specific data so are always rendered fresh.
@@ -206,8 +198,6 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			CategorySections: categorySections,
 		}
 		d.Populate(e)
-		d.TrendingVariant = variantName
-		d.TrendingWindowDays = windowDays
 		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.index.title")
 		d.Description = i18n.T(d.Language, "page.index.description")

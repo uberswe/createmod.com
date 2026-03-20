@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"createmod/internal/abtest"
 	"createmod/internal/aidescription"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
@@ -203,46 +202,27 @@ func (s *Server) Start() {
 	// When maintenance mode is active, skip heavy background jobs.
 	migrating := s.conf.MaintenanceMode != nil && s.conf.MaintenanceMode.Load()
 
-	// Load trending A/B test configuration
-	trendingCfg := abtest.LoadTrendingConfig()
-	var trendingWindowDays []int
-	if trendingCfg.Enabled {
-		trendingWindowDays = trendingCfg.AllWindowDays()
-	} else {
-		trendingWindowDays = []int{30}
-	}
+	trendingWindowDays := []int{7}
 
-	// A/B test configuration — load before startup goroutine so Meilisearch
-	// client is available for the initial index sync.
-	abCfg := abtest.LoadConfig()
-
-	// Build variant router with search engines.
-	bleveAI := search.NewBleveEngine(s.searchService, false)   // variant B: with AI (current behavior)
-	bleveBase := search.NewBleveEngine(s.searchService, true)  // variant A: base only
-
-	engines := map[string]search.SearchEngine{
-		"A": bleveBase,
-		"B": bleveAI,
-	}
-
-	// Initialize Meilisearch if configured.
-	if abCfg.MeilisearchURL != "" {
-		s.meiliClient = meilisearch.New(abCfg.MeilisearchURL, meilisearch.WithAPIKey(abCfg.MeilisearchKey))
+	// Initialize Meilisearch.
+	meiliURL := os.Getenv("MEILISEARCH_URL")
+	meiliKey := os.Getenv("MEILISEARCH_KEY")
+	var searchEngine search.SearchEngine
+	if meiliURL != "" {
+		s.meiliClient = meilisearch.New(meiliURL, meilisearch.WithAPIKey(meiliKey))
 		if _, err := s.meiliClient.Health(); err != nil {
-			slog.Warn("Meilisearch not reachable, variants C/D/E/F will fall back to Bleve", "error", err)
+			slog.Error("Meilisearch not reachable", "error", err)
 		} else {
-			slog.Info("Connected to Meilisearch", "url", abCfg.MeilisearchURL)
+			slog.Info("Connected to Meilisearch", "url", meiliURL)
 			if err := search.EnsureMeiliIndexes(s.meiliClient); err != nil {
 				slog.Error("Failed to configure Meilisearch indexes", "error", err)
 			}
-			engines["C"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexBase, s.searchService)
-			engines["D"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexAI, s.searchService)
-			engines["E"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexFull, s.searchService)
-			engines["F"] = search.NewMeiliEngine(s.meiliClient, search.MeiliIndexMods, s.searchService)
+			searchEngine = search.NewMeiliEngine(s.meiliClient, search.MeiliIndex, s.searchService)
 		}
 	}
-
-	variantRouter := abtest.NewVariantRouter(engines, bleveAI)
+	if searchEngine == nil {
+		slog.Warn("Meilisearch not configured; search will be unavailable")
+	}
 
 	if !migrating {
 		// Warm per-pod in-memory caches in the background so startup isn't
@@ -255,7 +235,6 @@ func (s *Server) Start() {
 		// Build search index per-pod. The index is in-memory so each pod
 		// needs its own copy; River's deduplication means only one pod
 		// would run the periodic job, leaving other pods with empty indexes.
-		// After building Bleve, also sync to Meilisearch if available.
 		go func() {
 			slog.Info("per-pod search index build starting")
 			s.searchService.WarmFromStorage()
@@ -281,17 +260,15 @@ func (s *Server) Start() {
 			}
 			slog.Info("per-pod search index build complete", "count", len(mapped))
 
-			// Sync to Meilisearch so variants C/D/E/F have data immediately.
+			// Sync to Meilisearch.
 			if s.meiliClient != nil {
 				filterIndex := s.searchService.GetIndex()
 				if len(filterIndex) > 0 {
-					docs := search.MapToMeiliDocuments(filterIndex, nil)
-					for _, uid := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull, search.MeiliIndexMods} {
-						if err := search.SyncMeiliIndex(s.meiliClient, uid, docs); err != nil {
-							slog.Error("per-pod meili sync failed", "index", uid, "error", err)
-						} else {
-							slog.Info("per-pod meili sync complete", "index", uid, "docs", len(docs))
-						}
+					docs := search.MapToMeiliDocuments(filterIndex)
+					if err := search.SyncMeiliIndex(s.meiliClient, search.MeiliIndex, docs); err != nil {
+						slog.Error("per-pod meili sync failed", "index", search.MeiliIndex, "error", err)
+					} else {
+						slog.Info("per-pod meili sync complete", "index", search.MeiliIndex, "docs", len(docs))
 					}
 				}
 			}
@@ -310,6 +287,7 @@ func (s *Server) Start() {
 
 	chiRouter := irouter.Register(irouter.RegisterParams{
 		SearchService:      s.searchService,
+		SearchEngine:       searchEngine,
 		CacheService:       s.cacheService,
 		RateLimiter:        s.rateLimiter,
 		DiscordService:     s.discordService,
@@ -324,9 +302,6 @@ func (s *Server) Start() {
 		MailService:        s.mailService,
 		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,
-		VariantRouter:      variantRouter,
-		ABTestConfig:       abCfg,
-		TrendingConfig:     trendingCfg,
 	})
 
 	// Wrap the chi router with the language prefix stripper
@@ -440,8 +415,7 @@ func anyLetter(r rune) bool {
 func (s *Server) startJobWorker(windowDays []int) {
 	jobCtx := context.Background()
 	w, err := jobs.New(jobCtx, jobs.Config{
-		Pool:       s.pool,
-		WindowDays: windowDays,
+		Pool: s.pool,
 		Deps: jobs.Deps{
 			Store:        s.store,
 			Storage:      s.storageService,

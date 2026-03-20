@@ -127,8 +127,6 @@ window['nitroAds'].createAd('index-mobile-mid', {
 </script>
 <script>
 (function() {
-  if (!window.trendingVariant) return;
-
   document.querySelectorAll('[data-trending-section] a[href*="/schematics/"]').forEach(function(link, i) {
     link.addEventListener('click', function() {
       var section = link.closest('[data-trending-section]');
@@ -136,14 +134,6 @@ window['nitroAds'].createAd('index-mobile-mid', {
       var schematicId = link.href.split('/schematics/')[1];
       if (schematicId) schematicId = schematicId.split(/[?#]/)[0];
       else schematicId = '';
-
-      gtag('event', 'trending_click', {
-        'trending_variant': window.trendingVariant,
-        'trending_window_days': window.trendingWindowDays,
-        'schematic_id': schematicId,
-        'result_position': i,
-        'section': sectionName
-      });
 
       navigator.sendBeacon('/api/index/click', new Blob([JSON.stringify({
           schematic_id: schematicId,
