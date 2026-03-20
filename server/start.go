@@ -221,7 +221,8 @@ func (s *Server) Start() {
 		}
 	}
 	if searchEngine == nil {
-		slog.Warn("Meilisearch not configured; search will be unavailable")
+		slog.Warn("Meilisearch not configured; search will return empty results")
+		searchEngine = search.NewNoopEngine()
 	}
 
 	if !migrating {
