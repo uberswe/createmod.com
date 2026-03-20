@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"createmod/internal/abtest"
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/discord"
@@ -86,6 +85,7 @@ func computeAssetVersion() string {
 // RegisterParams holds all dependencies needed for route registration.
 type RegisterParams struct {
 	SearchService      *search.Service
+	SearchEngine       search.SearchEngine
 	CacheService       *cache.Service
 	RateLimiter        ratelimit.Limiter
 	DiscordService     *discord.Service
@@ -100,9 +100,6 @@ type RegisterParams struct {
 	MailService        *mailer.Service
 	JobWorker          *jobs.Worker
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
-	VariantRouter      *abtest.VariantRouter
-	ABTestConfig       *abtest.Config
-	TrendingConfig     *abtest.TrendingConfig
 }
 
 func Register(p RegisterParams) chi.Router {
@@ -281,13 +278,9 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte(s))
 	})
 
-	// Trending variant middleware — assigns variant cookie on index routes when test is enabled.
-	trendingVariantMW := trendingVariantMiddleware(p.TrendingConfig)
-
 	// Index
-	r.With(trendingVariantMW).Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore, p.TrendingConfig)))
-	// Click tracking for trending A/B test
-	r.With(trendingVariantMW).Post("/api/index/click", Adapt(pages.IndexClickHandler()))
+	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore)))
+	r.Post("/api/index/click", Adapt(pages.IndexClickHandler()))
 	r.Get("/upload", Adapt(pages.UploadHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	// Private preview URL for temporary uploads
@@ -331,7 +324,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
-	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.SearchService, p.CacheService, p.StorageService, p.AppStore, p.ModerationService)))
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore)))
 	r.Get("/blacklist-request", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/blacklist"), http.StatusMovedPermanently)
@@ -364,7 +357,7 @@ func Register(p RegisterParams) chi.Router {
 	// API Docs
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
 	// Public JSON API (beta)
-	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchService, p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
@@ -378,7 +371,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
 	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.SearchService, p.CacheService, p.AppStore, p.MailService)))
+	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService)))
 	r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore)))
 	r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
@@ -453,7 +446,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/lang", Adapt(pages.SetLanguageHandler()))
 	// Schematics
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
-	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchService, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, webhookSecret)))
+	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, webhookSecret)))
 	// Schematic RSS feed (comments)
 	r.Get("/schematics/{name}/feed", Adapt(pages.SchematicFeedHandler(p.AppStore, p.CacheService)))
 	// Redirect legacy /schematics/{name}/page/N to the schematic itself
@@ -462,7 +455,7 @@ func Register(p RegisterParams) chi.Router {
 		http.Redirect(w, req, "/schematics/"+name, http.StatusMovedPermanently)
 	})
 	// Partial comments endpoint for HTMX refresh
-	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.SearchService, p.CacheService, registry, p.DiscordService, p.AppStore)))
+	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.CacheService, registry, p.DiscordService, p.AppStore)))
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
@@ -484,21 +477,18 @@ func Register(p RegisterParams) chi.Router {
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
-	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchService, p.CacheService, registry, p.AppStore)))
-	// Search variant middleware — assigns variant cookie on search routes when test is enabled.
-	searchVariantMW := searchVariantMiddleware(p.ABTestConfig)
-
-	// Search autocomplete — always uses Bleve suggest (via the fallback engine).
-	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.VariantRouter.Fallback())))
-	// Click tracking for search A/B test
-	r.With(searchVariantMW).Post("/api/search/click", Adapt(pages.SearchClickHandler()))
-	r.With(searchVariantMW).Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.With(searchVariantMW).Get("/search/{term}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.With(searchVariantMW).Post("/search/{term}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.With(searchVariantMW).Get("/search/page/{page}", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.With(searchVariantMW).Get("/search", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.With(searchVariantMW).Get("/search/", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
-	r.With(searchVariantMW).Post("/search/", Adapt(pages.SearchHandler(p.VariantRouter, p.SearchService, p.CacheService, registry, p.AppStore)))
+	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.CacheService, registry, p.AppStore)))
+	// Search autocomplete
+	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
+	// Click tracking
+	r.Post("/api/search/click", Adapt(pages.SearchClickHandler()))
+	r.Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Post("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Get("/search", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
@@ -907,44 +897,6 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			if ok, _ := rl.Allow(r.Context(), key, limit, window); !ok {
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
 				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// trendingVariantMiddleware returns a middleware that assigns a trending A/B test
-// variant to the request via cookie. When the test is disabled, it is a no-op.
-func trendingVariantMiddleware(cfg *abtest.TrendingConfig) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if cfg == nil || !cfg.Enabled {
-				next.ServeHTTP(w, r)
-				return
-			}
-			v := abtest.AssignTrendingVariant(r, w, cfg.Variants)
-			if v != nil {
-				ctx := abtest.ContextWithTrendingVariant(r.Context(), v)
-				r = r.WithContext(ctx)
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// searchVariantMiddleware returns a middleware that assigns a search A/B test
-// variant to the request via cookie. When the test is disabled, it is a no-op.
-func searchVariantMiddleware(cfg *abtest.Config) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if cfg == nil || !cfg.Enabled {
-				next.ServeHTTP(w, r)
-				return
-			}
-			v := abtest.AssignVariant(r, w, cfg.Variants)
-			if v != nil {
-				ctx := abtest.ContextWithVariant(r.Context(), v)
-				r = r.WithContext(ctx)
 			}
 			next.ServeHTTP(w, r)
 		})

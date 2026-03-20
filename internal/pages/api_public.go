@@ -119,7 +119,7 @@ func rateLimitAllow(rl ratelimit.Limiter, keyID string, limit int) (bool, int) {
 }
 
 // APISchematicsListHandler serves GET /api/schematics as a simple JSON API for searching/listing schematics.
-func APISchematicsListHandler(searchService *search.Service, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics"
 		keyID, err := requireAPIKeyFromStore(appStore, e)
@@ -168,9 +168,15 @@ func APISchematicsListHandler(searchService *search.Service, rl ratelimit.Limite
 			items = MapStoreSchematics(appStore, schematics, cacheService)
 			total = (page-1)*pageSize + len(items)
 		} else {
-			// Search via in-memory searchService, then store fetch in order
+			// Search via search engine, then store fetch in order
 			term := strings.ReplaceAll(q, "-", " ")
-			ids := searchService.Search(term, search.MostViewedOrder, -1, "all", nil, "all", "all", false)
+			sq := search.SearchQuery{
+				Term:     term,
+				Order:    search.MostViewedOrder,
+				Rating:   -1,
+				Category: "all",
+			}
+			ids, _ := searchEngine.Search(ctx, sq)
 			if len(ids) > 0 {
 				storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
 				if err != nil {

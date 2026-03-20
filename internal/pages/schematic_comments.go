@@ -5,7 +5,6 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
-	"createmod/internal/search"
 	"createmod/internal/store"
 	"fmt"
 	"createmod/internal/server"
@@ -18,7 +17,7 @@ var schematicCommentsTemplates = []string{
 
 // SchematicCommentsHandler returns only the comments list for a schematic.
 // Useful for HTMX partial refresh of comments.
-func SchematicCommentsHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, _ *discord.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func SchematicCommentsHandler(cacheService *cache.Service, registry *server.Registry, _ *discord.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		storeSchematic, err := appStore.Schematics.GetByName(context.Background(), name)

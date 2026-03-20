@@ -1,11 +1,9 @@
 package pages
 
 import (
-	"createmod/internal/abtest"
 	"createmod/internal/metrics"
 	"createmod/internal/server"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 )
@@ -16,7 +14,7 @@ type indexClickRequest struct {
 	Section     string `json:"section"`
 }
 
-// IndexClickHandler records a trending schematic click for A/B test analytics.
+// IndexClickHandler records a trending schematic click for analytics.
 // POST /api/index/click
 func IndexClickHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
@@ -25,20 +23,11 @@ func IndexClickHandler() func(e *server.RequestEvent) error {
 			return &server.APIError{Status: 400, Message: "invalid request body"}
 		}
 
-		variant := abtest.TrendingVariantFromContext(e.Request.Context())
-		variantName := ""
-		windowDays := "30"
-		if variant != nil {
-			variantName = variant.Name
-			windowDays = fmt.Sprintf("%d", variant.WindowDays)
-		}
-
-		metrics.IndexClicks.WithLabelValues(variantName, windowDays, req.Section).Inc()
+		metrics.IndexClicks.WithLabelValues("7", req.Section).Inc()
 
 		slog.Info("index",
 			"event", "index_click",
-			"variant", variantName,
-			"window_days", windowDays,
+			"window_days", "7",
 			"schematic_id", req.SchematicID,
 			"position", req.Position,
 			"section", req.Section,

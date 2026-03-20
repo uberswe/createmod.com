@@ -161,20 +161,13 @@
                 }
             });
 
-            // Search click tracking for A/B test
+            // Search click tracking
             function trackSearchClick(schematicId, position) {
                 navigator.sendBeacon('/api/search/click', new Blob([JSON.stringify({
                     query: document.getElementById('search-hero-input')?.value || '',
                     result_id: schematicId,
                     position: position
                 })], {type: 'application/json'}));
-                if (window.searchVariant) {
-                    gtag('event', 'search_result_click', {
-                        'search_variant': window.searchVariant,
-                        'schematic_id': schematicId,
-                        'result_position': position
-                    });
-                }
             }
             // GA4: Track search query on page load
             (function() {

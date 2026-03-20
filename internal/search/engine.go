@@ -2,11 +2,12 @@ package search
 
 import "context"
 
-// SearchEngine abstracts a search backend so different implementations
-// (Bleve, Meilisearch) can be swapped via the A/B test variant router.
+// SearchEngine abstracts the search backend.
 type SearchEngine interface {
 	// Search returns schematic IDs matching the given query.
 	Search(ctx context.Context, query SearchQuery) ([]string, error)
+	// SearchSimilar returns schematic IDs similar to the given schematic.
+	SearchSimilar(ctx context.Context, schematicID string, tags []string, limit int) ([]string, error)
 	// Suggest returns autocomplete suggestions for the given prefix.
 	Suggest(q string, limit int) []Suggestion
 	// Ready reports whether the engine can serve queries.

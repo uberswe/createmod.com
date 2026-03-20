@@ -17,8 +17,7 @@ func (TrendingArgs) Kind() string { return "trending_scores" }
 // TrendingWorker computes trending scores for schematics.
 type TrendingWorker struct {
 	river.WorkerDefaults[TrendingArgs]
-	deps       Deps
-	WindowDays []int
+	deps Deps
 }
 
 func (w *TrendingWorker) Work(ctx context.Context, job *river.Job[TrendingArgs]) error {
@@ -34,7 +33,7 @@ func (w *TrendingWorker) Work(ctx context.Context, job *river.Job[TrendingArgs])
 
 	// Warm caches
 	if w.deps.Cache != nil {
-		pages.WarmIndexCache(w.deps.Cache, w.deps.Store, w.WindowDays)
+		pages.WarmIndexCache(w.deps.Cache, w.deps.Store, []int{7})
 		pages.WarmVideosCache(w.deps.Cache, w.deps.Store)
 	}
 

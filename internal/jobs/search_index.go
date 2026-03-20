@@ -15,7 +15,7 @@ type SearchIndexArgs struct{}
 
 func (SearchIndexArgs) Kind() string { return "search_index_rebuild" }
 
-// SearchIndexWorker rebuilds the Bleve search index.
+// SearchIndexWorker rebuilds the search index.
 type SearchIndexWorker struct {
 	river.WorkerDefaults[SearchIndexArgs]
 	deps Deps
@@ -68,23 +68,17 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 }
 
 // syncMeiliIndexes converts the in-memory index to Meilisearch documents
-// and syncs all three Meilisearch indexes.
+// and syncs the Meilisearch index.
 func (w *SearchIndexWorker) syncMeiliIndexes() {
 	filterIndex := w.deps.Search.GetIndex()
 	if len(filterIndex) == 0 {
 		return
 	}
 
-	// Build Meilisearch documents from the filter index.
-	// We don't have the cache entries here, so we re-derive AIDescription
-	// from the filter index (it's already been built into the Bleve index).
-	docs := search.MapToMeiliDocuments(filterIndex, nil)
-
-	for _, indexUID := range []string{search.MeiliIndexBase, search.MeiliIndexAI, search.MeiliIndexFull, search.MeiliIndexMods} {
-		if err := search.SyncMeiliIndex(w.deps.MeiliClient, indexUID, docs); err != nil {
-			slog.Error("meili sync failed", "index", indexUID, "error", err)
-		} else {
-			slog.Info("meili sync complete", "index", indexUID, "docs", len(docs))
-		}
+	docs := search.MapToMeiliDocuments(filterIndex)
+	if err := search.SyncMeiliIndex(w.deps.MeiliClient, search.MeiliIndex, docs); err != nil {
+		slog.Error("meili sync failed", "index", search.MeiliIndex, "error", err)
+	} else {
+		slog.Info("meili sync complete", "index", search.MeiliIndex, "docs", len(docs))
 	}
 }

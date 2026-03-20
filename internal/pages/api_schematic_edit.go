@@ -7,7 +7,6 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
-	"createmod/internal/search"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"encoding/json"
@@ -33,7 +32,6 @@ var s3CollectionSchematics = storage.CollectionPrefix("schematics")
 // Accepts multipart form data with optional file uploads for schematic_file, featured_image, and gallery.
 // Creates a version snapshot of the previous state before applying updates.
 func SchematicUpdateHandler(
-	searchService *search.Service,
 	cacheService *cache.Service,
 	storageSvc *storage.Service,
 	appStore *store.Store,
