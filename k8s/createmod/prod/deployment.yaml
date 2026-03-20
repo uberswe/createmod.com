@@ -34,6 +34,12 @@ spec:
             - containerPort: 8090
               name: http
               protocol: TCP
+          env:
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: meilisearch-secret
+                  key: MEILI_MASTER_KEY
           envFrom:
             - configMapRef:
                 name: createmod-config
