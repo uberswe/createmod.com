@@ -57,7 +57,7 @@
                 </div>
             </div>
             {{ if .IsAuthenticated }}
-            <div class="relative" x-data="dropdown">
+            <div class="auth-section relative" x-data="dropdown">
                 <a href="#" class="nav-link flex items-center p-0" @click.prevent="toggle()" hx-boost="false" hx-disable aria-label="Open user menu">
                     {{ if .HasAvatar }}
                     <img class="avatar avatar-sm" src="{{ .Avatar }}" alt="{{ .Username }}" onerror="this.onerror=null;this.src='https://mc-heads.net/avatar/Steve'">

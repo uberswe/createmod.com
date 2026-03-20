@@ -76,8 +76,8 @@ test.describe('login flow', () => {
     await expect(page.locator('#login-button')).not.toBeVisible();
     await expect(page.locator('.auth-section')).toBeVisible({ timeout: 10000 });
 
-    // Click the avatar dropdown to reveal menu
-    await page.locator('.auth-section [data-bs-toggle="dropdown"]').click();
+    // Click the avatar dropdown to reveal menu (Alpine.js toggle)
+    await page.locator('.auth-section > a.nav-link').click();
 
     // The dropdown menu should become visible after clicking
     const dropdownMenu = page.locator('.auth-section .dropdown-menu');
