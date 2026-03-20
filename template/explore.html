@@ -15,7 +15,7 @@
     width: 100%;
     display: block;
     border-radius: 0.375rem;
-    background: var(--tblr-border-color, #e0e0e0);
+    background: var(--color-border, #e0e0e0);
     aspect-ratio: 4 / 3;
     object-fit: cover;
     transition: transform 0.2s ease;
@@ -38,8 +38,8 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <main class="page-body">
-            <div class="d-flex gap-3">
-                <div class="flex-grow-1 min-width-0">
+            <div class="flex gap-3">
+                <div class="grow min-w-0">
                     <div class="explore-grid" id="explore-grid">
                     {{range $i, $image := .Images }}
                         <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
@@ -52,13 +52,13 @@
                     <div id="explore-sentinel" style="height:1px"></div>
                     <div class="explore-loader" id="explore-spinner" style="display:none">
                         <div class="spinner-border text-muted" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                            <span class="sr-only">Loading...</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Ad Rail (desktop only) -->
-                <div class="ad-rail d-none d-xl-block">
+                <div class="ad-rail hidden xl:block">
                     <div id="explore-adrail" class="mb-3"></div>
                 </div>
             </div>
@@ -141,7 +141,9 @@ window['nitroAds'].createAd('explore-adrail', {
     if (loading) return;
     loading = true;
     if (spinner) spinner.style.display = '';
-    fetch('/api/explore/images?seed=' + seed + '&cursor=' + cursor + '&limit=30')
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
+    fetch('/api/explore/images?seed=' + seed + '&cursor=' + cursor + '&limit=30', { signal: controller.signal })
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.images && data.images.length > 0) {
@@ -156,9 +158,15 @@ window['nitroAds'].createAd('explore-adrail', {
           loadMore();
         }
       })
-      .catch(function() {
+      .catch(function(err) {
+        if (err && err.name === 'AbortError') {
+          console.warn('Explore fetch timed out');
+        }
         loading = false;
         if (spinner) spinner.style.display = 'none';
+      })
+      .finally(function() {
+        clearTimeout(timeoutId);
       });
   }
 

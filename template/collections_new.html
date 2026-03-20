@@ -5,9 +5,9 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="page-title">{{ T .Language "Create collection" }}</h2>
               <div class="text-secondary">{{ T .Language "Create a new collection of schematics" }}</div>
             </div>
@@ -18,32 +18,32 @@
           Please <a href="/login">log in</a> to create a collection.
         </div>
         {{end}}
-        <div class="row row-cards">
-          <div class="col-12 col-md-8">
+        <div class="grid grid-cols-1 gap-3">
+          <div class="w-full max-w-3xl">
             <form class="card" action="/collections" method="post" enctype="multipart/form-data" onsubmit="if(window.tinyMCE){tinyMCE.triggerSave(true,true);}">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Collection details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
-                  <input type="text" class="form-control" id="title" name="title" placeholder="{{ T .Language "My awesome collection" }}" required oninput="updateTitleCount()" />
+                  <input type="text" class="form-input" id="title" name="title" placeholder="{{ T .Language "My awesome collection" }}" required oninput="updateTitleCount()" />
                   <small class="form-hint">
                     <span id="title-count" class="text-danger">0</span> / 10 {{ T .Language "characters minimum" }}
                   </small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="description">{{ T .Language "Description" }}</label>
-                  <textarea class="form-control" id="description" name="description" rows="5" placeholder="{{ T .Language "Describe your collection" }}"></textarea>
+                  <textarea class="form-input" id="description" name="description" rows="5" placeholder="{{ T .Language "Describe your collection" }}"></textarea>
                   <small class="form-hint">
                     <span id="desc-count" class="text-danger">0</span> / 100 {{ T .Language "characters minimum" }}
                   </small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="banner">{{ T .Language "Banner image (optional)" }}</label>
-                  <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
+                  <input type="file" class="form-input" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
                   <small class="form-hint">{{ T .Language "Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP." }}</small>
                 </div>
               </div>
-              <div class="card-footer text-end">
+              <div class="card-footer text-right">
                 <a href="/collections" class="btn btn-link">{{ T .Language "Cancel" }}</a>
                 <button type="submit" class="btn btn-primary" {{if not .IsAuthenticated}}disabled{{end}}>{{ T .Language "Create collection" }}</button>
               </div>

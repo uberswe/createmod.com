@@ -5,13 +5,13 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="row g-2 g-md-3">
-                    <div class="col-lg-8">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                    <div class="lg:col-span-8">
                         <div class="card card-md">
                             <div class="card-body">
                                 {{ if .AutoApproved }}
-                                <div class="d-flex align-items-center mb-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                <div class="flex items-center mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success mr-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                     <h1 class="card-title mb-0">{{ T .Language "Your schematic has been published!" }}</h1>
                                 </div>
                                 <p>{{ T .Language "Your schematic passed moderation and is now live on the site." }}</p>
@@ -24,7 +24,7 @@
                                      hx-trigger="load delay:3s"
                                      hx-target="#moderation-status"
                                      hx-swap="outerHTML">
-                                    <span class="spinner-border spinner-border-sm me-2"></span>{{ T .Language "Checking moderation status..." }}
+                                    <span class="spinner-border spinner-border-sm mr-2"></span>{{ T .Language "Checking moderation status..." }}
                                 </div>
                                 {{ end }}
                                 {{ end }}
@@ -33,9 +33,9 @@
                                 <div class="mb-3">
                                     <label class="form-label text-secondary">{{ T .Language "Schematic URL" }}</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="schematic-url" value="https://createmod.com{{ .SchematicURL }}" readonly>
-                                        <button class="btn btn-outline-secondary" type="button" id="copy-url-btn" onclick="copySchematicURL()">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
+                                        <input type="text" class="form-input" id="schematic-url" value="https://createmod.com{{ .SchematicURL }}" readonly>
+                                        <button class="btn btn-outline" type="button" id="copy-url-btn" onclick="copySchematicURL()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon mr-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                             {{ T .Language "Copy Link" }}
                                         </button>
                                     </div>
@@ -43,21 +43,21 @@
                                 </div>
                                 <div class="mt-3">
                                     <a href="{{ .SchematicURL }}" class="btn btn-primary">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon mr-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>
                                         {{ T .Language "View Schematic" }}
                                     </a>
-                                    <a href="/upload" class="btn btn-secondary ms-2">{{ T .Language "Upload Another" }}</a>
+                                    <a href="/upload" class="btn btn-secondary ml-2">{{ T .Language "Upload Another" }}</a>
                                 </div>
                                 {{ else }}
                                 <div class="mt-3">
                                     <a href="/" class="btn btn-primary">{{ T .Language "Go to Home" }}</a>
-                                    <a href="/upload" class="btn btn-secondary ms-2">{{ T .Language "Upload Another" }}</a>
+                                    <a href="/upload" class="btn btn-secondary ml-2">{{ T .Language "Upload Another" }}</a>
                                 </div>
                                 {{ end }}
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-4">
+                    <div class="lg:col-span-4">
                         <div class="card">
                             <div class="card-body">
                                 <h3 class="card-title">{{ T .Language "What happens next?" }}</h3>
@@ -89,10 +89,10 @@ function copySchematicURL() {
     try {
         navigator.clipboard.writeText(input.value).then(function() {
             if (feedback) { feedback.style.display = ''; }
-            if (btn) { btn.classList.add('btn-success'); btn.classList.remove('btn-outline-secondary'); }
+            if (btn) { btn.classList.add('btn-success'); btn.classList.remove('btn-outline'); }
             setTimeout(function() {
                 if (feedback) { feedback.style.display = 'none'; }
-                if (btn) { btn.classList.remove('btn-success'); btn.classList.add('btn-outline-secondary'); }
+                if (btn) { btn.classList.remove('btn-success'); btn.classList.add('btn-outline'); }
             }, 2500);
         });
     } catch(e) {

@@ -5,9 +5,9 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="page-title">{{ T .Language "Admin: Reports" }}</h2>
               <div class="text-secondary">{{ T .Language "Manage user-submitted reports" }}</div>
             </div>
@@ -25,12 +25,12 @@
                   <th>{{ T .Language "Target" }}</th>
                   <th>{{ T .Language "Reason" }}</th>
                   <th>{{ T .Language "Reporter" }}</th>
-                  <th class="text-end">{{ T .Language "Actions" }}</th>
+                  <th class="text-right">{{ T .Language "Actions" }}</th>
                 </tr>
               </thead>
               <tbody>
                 {{range .Reports}}
-                <tr>
+                <tr x-data="{ resolveOpen: false, deleteOpen: false }">
                   <td class="text-nowrap">{{HumanDate .Created}}</td>
                   <td>
                     <span class="badge bg-blue-lt">{{.TargetType}}</span>
@@ -50,18 +50,87 @@
                       <span class="text-secondary">{{ T $.Language "anonymous" }}</span>
                     {{end}}
                   </td>
-                  <td class="text-end text-nowrap">
-                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#resolve-modal-{{.ID}}">
+                  <td class="text-right text-nowrap">
+                    <button type="button" class="btn btn-sm btn-success" @click="resolveOpen = true">
                       {{ T $.Language "Resolve" }}
                     </button>
-                    <form method="post" action="/admin/reports/{{.ID}}/ignore" class="d-inline" hx-boost="false">
+                    <form method="post" action="/admin/reports/{{.ID}}/ignore" class="inline" hx-boost="false">
                       <button type="submit" class="btn btn-sm btn-secondary" title="Dismiss all reports for this target">
                         {{ T $.Language "Ignore" }}
                       </button>
                     </form>
-                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal-{{.ID}}">
+                    <button type="button" class="btn btn-sm btn-danger" @click="deleteOpen = true">
                       {{ T $.Language "Delete" }}
                     </button>
+
+                    <!-- Resolve Modal -->
+                    <div x-show="resolveOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+                      <div class="fixed inset-0 bg-black/50" @click="resolveOpen = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+                      <div class="relative z-10 w-full max-w-lg mx-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" @keydown.escape.window="resolveOpen = false">
+                        <div class="card">
+                          <form method="post" action="/admin/reports/{{.ID}}/resolve" hx-boost="false">
+                            <div class="card-header">
+                              <h5 class="card-title">{{ T $.Language "Resolve Report" }}</h5>
+                              <button type="button" class="btn-close ml-auto" @click="resolveOpen = false" aria-label="Close"></button>
+                            </div>
+                            <div class="card-body text-left">
+                              <div class="mb-3">
+                                <label class="form-label">{{ T $.Language "Target" }}</label>
+                                <div>
+                                  <span class="badge bg-blue-lt">{{.TargetType}}</span>
+                                  {{if .TargetURL}}
+                                    <a href="{{.TargetURL}}" target="_blank">{{.TargetLabel}}</a>
+                                  {{else}}
+                                    {{.TargetLabel}}
+                                  {{end}}
+                                </div>
+                              </div>
+                              <div class="mb-3">
+                                <label class="form-label">{{ T $.Language "Reported reason" }}</label>
+                                <div class="text-secondary">{{.Reason}}</div>
+                              </div>
+                              <div class="mb-3">
+                                <label class="form-label" for="resolution_note_{{.ID}}">{{ T $.Language "Resolution note (optional)" }}</label>
+                                <textarea class="form-input" id="resolution_note_{{.ID}}" name="resolution_note" rows="3" placeholder="{{ T $.Language "What action was taken..." }}"></textarea>
+                              </div>
+                              {{if .Reporter}}
+                              <div class="mb-0">
+                                <label class="form-check form-switch">
+                                  <input class="form-check-input" type="checkbox" name="notify_reporter" value="true">
+                                  <span class="form-check-label">{{ T $.Language "Send resolution email to reporter" }}{{if .ReporterName}} ({{.ReporterName}}){{end}}</span>
+                                </label>
+                              </div>
+                              {{end}}
+                            </div>
+                            <div class="card-footer flex justify-end gap-2">
+                              <button type="button" class="btn btn-link text-secondary mr-auto" @click="resolveOpen = false">{{ T $.Language "Cancel" }}</button>
+                              <button type="submit" class="btn btn-success">{{ T $.Language "Resolve" }}</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Delete Target Modal -->
+                    <div x-show="deleteOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+                      <div class="fixed inset-0 bg-black/50" @click="deleteOpen = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+                      <div class="relative z-10 w-full max-w-sm mx-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" @keydown.escape.window="deleteOpen = false">
+                        <div class="card">
+                          <div class="card-body text-left">
+                            <div class="card-title">{{ T $.Language "Are you sure?" }}</div>
+                            <div class="text-secondary mt-2">
+                              This will {{if eq .TargetType "schematic"}}soft-delete the schematic{{else if eq .TargetType "comment"}}permanently delete the comment{{else if eq .TargetType "collection"}}soft-delete the collection{{else}}delete the reported item{{end}} and dismiss all reports for it.
+                            </div>
+                          </div>
+                          <div class="card-footer flex justify-end gap-2">
+                            <button type="button" class="btn btn-link text-secondary mr-auto" @click="deleteOpen = false">{{ T $.Language "Cancel" }}</button>
+                            <form method="post" action="/admin/reports/{{.ID}}/delete-target" hx-boost="false">
+                              <button type="submit" class="btn btn-danger">{{ T $.Language "Yes, delete" }}</button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </td>
                 </tr>
                 {{else}}
@@ -73,76 +142,6 @@
             </table>
           </div>
         </div>
-
-        <!-- Modals rendered outside the table for valid HTML -->
-        {{range .Reports}}
-        <!-- Resolve Modal -->
-        <div class="modal modal-blur fade" id="resolve-modal-{{.ID}}" tabindex="-1" role="dialog" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-              <form method="post" action="/admin/reports/{{.ID}}/resolve" hx-boost="false">
-                <div class="modal-header">
-                  <h5 class="modal-title">{{ T $.Language "Resolve Report" }}</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                  <div class="mb-3">
-                    <label class="form-label">{{ T $.Language "Target" }}</label>
-                    <div>
-                      <span class="badge bg-blue-lt">{{.TargetType}}</span>
-                      {{if .TargetURL}}
-                        <a href="{{.TargetURL}}" target="_blank">{{.TargetLabel}}</a>
-                      {{else}}
-                        {{.TargetLabel}}
-                      {{end}}
-                    </div>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">{{ T $.Language "Reported reason" }}</label>
-                    <div class="text-secondary">{{.Reason}}</div>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label" for="resolution_note_{{.ID}}">{{ T $.Language "Resolution note (optional)" }}</label>
-                    <textarea class="form-control" id="resolution_note_{{.ID}}" name="resolution_note" rows="3" placeholder="{{ T $.Language "What action was taken..." }}"></textarea>
-                  </div>
-                  {{if .Reporter}}
-                  <div class="mb-0">
-                    <label class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" name="notify_reporter" value="true">
-                      <span class="form-check-label">{{ T $.Language "Send resolution email to reporter" }}{{if .ReporterName}} ({{.ReporterName}}){{end}}</span>
-                    </label>
-                  </div>
-                  {{end}}
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
-                  <button type="submit" class="btn btn-success">{{ T $.Language "Resolve" }}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <!-- Delete Target Modal -->
-        <div class="modal modal-blur fade" id="delete-modal-{{.ID}}" tabindex="-1" role="dialog" aria-hidden="true">
-          <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
-            <div class="modal-content">
-              <div class="modal-body">
-                <div class="modal-title">{{ T $.Language "Are you sure?" }}</div>
-                <div class="text-secondary mt-2">
-                  This will {{if eq .TargetType "schematic"}}soft-delete the schematic{{else if eq .TargetType "comment"}}permanently delete the comment{{else if eq .TargetType "collection"}}soft-delete the collection{{else}}delete the reported item{{end}} and dismiss all reports for it.
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
-                <form method="post" action="/admin/reports/{{.ID}}/delete-target" hx-boost="false">
-                  <button type="submit" class="btn btn-danger">{{ T $.Language "Yes, delete" }}</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-        {{end}}
 
       </div>
     </main>

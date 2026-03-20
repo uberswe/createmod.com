@@ -4,8 +4,7 @@
     --tblr-font-sans-serif: 'Inter Var', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
 }
 
-:root,
-[data-bs-theme=light] {
+:root {
     --tblr-blue: #bf9045;
     --tblr-indigo: #4263eb;
     --tblr-purple: #ae3ec9;
@@ -184,7 +183,7 @@
     --tblr-form-invalid-border-color: #d63939;
 }
 
-[data-bs-theme=dark], body[data-bs-theme=dark] [data-bs-theme=light] {
+html.dark {
     color-scheme: dark;
     --tblr-body-color: #dce1e7;
     --tblr-body-color-rgb: 220, 225, 231;
@@ -265,7 +264,7 @@
 
 
 /* Override dark theme variables to requested palette */
-[data-bs-theme=dark], body[data-bs-theme=dark] [data-bs-theme=light] {
+html.dark {
   --tblr-body-color: #dce1e7;
   --tblr-body-color-rgb: 220, 225, 231;
   --tblr-muted: #49566c;

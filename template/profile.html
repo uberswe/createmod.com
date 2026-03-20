@@ -5,42 +5,41 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="d-flex gap-3">
-                    <div class="flex-grow-1 min-width-0">
-                        <div class="row mb-4 align-items-center">
-                            <div class="col-md-auto">
+                <div class="flex gap-3">
+                    <div class="grow min-w-0">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="">
                                 {{ if .UserAvatar }}
-                                <img class="avatar avatar-md" src="{{ .UserAvatar }}" alt="{{ .ProfileUsername }}">
+                                <img class="avatar avatar-md" src="{{ .UserAvatar }}" alt="{{ .ProfileUsername }}" onerror="this.onerror=null;this.src='https://mc-heads.net/avatar/Steve'">
                                 {{ else }}
-                                <img class="avatar avatar-md" src="https://mc-heads.net/avatar/Steve" alt="{{ .ProfileUsername }}">
+                                <img class="avatar avatar-md" src="https://mc-heads.net/avatar/Steve" alt="{{ .ProfileUsername }}" onerror="this.onerror=null;this.src='https://mc-heads.net/avatar/Steve'">
                                 {{ end }}
                             </div>
-                            <div class="col-md-auto align-center">
+                            <div class="">
                                 <h2 class="mb-0">{{ .ProfileUsername }}</h2>
                                 {{ if .HasSchematics }}
-                                <span class="badge bg-green ms-2" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
+                                <span class="badge bg-green ml-2" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
                                 {{ end }}
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-12 col-md-8">
+                        <div class="mb-3">
                                 <div class="card">
                                     <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Usage" }}</h3></div>
                                     <div class="card-body">
-                                        <div class="row g-3">
-                                            <div class="col-12 col-md-3">
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            <div class="">
                                                 <div class="text-secondary">{{ T .Language "Total schematics" }}</div>
                                                 <div class="h3 mb-0">{{ .SchematicCount }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="">
                                                 <div class="text-secondary">{{ T .Language "Total views" }}</div>
                                                 <div class="h3 mb-0">{{ .TotalViews }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="">
                                                 <div class="text-secondary">{{ T .Language "Total downloads" }}</div>
                                                 <div class="h3 mb-0">{{ .TotalDownloads }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="">
                                                 <div class="text-secondary">{{ T .Language "Points" }}</div>
                                                 <div class="h3 mb-0">{{ .Points }}</div>
                                             </div>
@@ -49,7 +48,7 @@
                                         <hr />
                                         <div>
                                             <div class="text-secondary mb-2">{{ T .Language "Achievements" }}</div>
-                                            <div class="d-flex flex-wrap gap-2">
+                                            <div class="flex flex-wrap gap-2">
                                                 {{ range .Achievements }}
                                                 <span class="badge badge-outline text-yellow" title="{{ .Description }}">{{ .Title }}</span>
                                                 {{ end }}
@@ -59,15 +58,13 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
                         <!-- Mobile ad (smaller screens) -->
-                        <div id="profile-mobile" class="d-xl-none mb-3 text-center"></div>
+                        <div id="profile-mobile" class="xl:hidden mb-3 text-center"></div>
 
                         {{ if .HasSchematics }}
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="d-flex align-items-center gap-2">
+                        <div class="mb-3">
+                                <div class="flex items-center gap-2">
                                     <label class="form-label mb-0 text-secondary">{{ T .Language "Sort by" }}</label>
                                     <select class="form-select form-select-sm" style="width:auto;" onchange="window.location.href=this.value;">
                                         <option value="{{ .Slug }}?sort=recent"{{ if eq .Sort "recent" }} selected{{ end }}>{{ T .Language "Most recent" }}</option>
@@ -76,10 +73,9 @@
                                         <option value="{{ .Slug }}?sort=downloads"{{ if eq .Sort "downloads" }} selected{{ end }}>{{ T .Language "Most downloads" }}</option>
                                     </select>
                                 </div>
-                            </div>
                         </div>
                         {{ end }}
-                        <div class="row row-cards">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                             {{ if .HasSchematics }}
                             {{range .Schematics }}
                                 {{ template "schematic_card_small.html" . }}
@@ -91,7 +87,7 @@
                     </div>
 
                     <!-- Ad Rail (desktop only) -->
-                    <div class="ad-rail d-none d-xl-block">
+                    <div class="ad-rail hidden xl:block">
                         <div id="profile-adrail" class="mb-3"></div>
                     </div>
                 </div>

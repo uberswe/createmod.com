@@ -1,13 +1,13 @@
 {{template "head.html" .}}
-<div class="page">
+<div class="page" x-data="{ deleteModalOpen: false }">
   {{template "sidebar.html" .}}
   <div class="page-wrapper">
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <div class="mb-1">
                 <a href="/admin/schematics" class="text-secondary">&larr; {{ T .Language "Back to schematics" }}</a>
               </div>
@@ -16,61 +16,61 @@
           </div>
         </div>
         {{if .Success}}
-        <div class="alert alert-success alert-dismissible" role="alert">
+        <div class="alert alert-success alert-dismissible" role="alert" x-data="{ show: true }" x-show="show">
           {{ T .Language "Schematic updated successfully." }}
-          <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+          <a class="btn-close" @click="show = false" aria-label="close"></a>
         </div>
         {{end}}
         <form method="post" action="/admin/schematics/{{.Schematic.ID}}">
-          <div class="row">
-            <div class="col-lg-8">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-8">
               <div class="card mb-3">
                 <div class="card-header"><h3 class="card-title">{{ T .Language "Content" }}</h3></div>
                 <div class="card-body">
                   <div class="mb-3">
                     <label class="form-label required">{{ T .Language "Title" }}</label>
-                    <input type="text" class="form-control" name="title" value="{{.Schematic.Title}}">
+                    <input type="text" class="form-input" name="title" value="{{.Schematic.Title}}">
                   </div>
                   <div class="mb-3">
                     <label class="form-label">{{ T .Language "Description / Content" }}</label>
-                    <textarea class="form-control" name="content" rows="8">{{.Schematic.Content}}</textarea>
+                    <textarea class="form-input" name="content" rows="8">{{.Schematic.Content}}</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">{{ T .Language "Video URL" }}</label>
-                    <input type="text" class="form-control" name="video" value="{{.Schematic.Video}}">
+                    <input type="text" class="form-input" name="video" value="{{.Schematic.Video}}">
                   </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-3">
                       <label class="form-label">{{ T .Language "Category" }}</label>
-                      <select name="categories" class="form-select">
+                      <select name="categories" class="form-input">
                         <option value="">— none —</option>
                         {{range .Categories}}
                         <option value="{{.ID}}" {{if tagSelected $.SchematicCategories .ID}}selected{{end}}>{{.Name}}</option>
                         {{end}}
                       </select>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="mb-3">
                       <label class="form-label">{{ T .Language "Tags" }}</label>
-                      <select name="tags" class="form-select" multiple size="5">
+                      <select name="tags" class="form-input" multiple size="5">
                         {{range .Tags}}
                         <option value="{{.ID}}" {{if tagSelected $.SchematicTags .ID}}selected{{end}}>{{.Name}}</option>
                         {{end}}
                       </select>
                     </div>
                   </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-3">
                       <label class="form-label">{{ T .Language "Create Mod Version" }}</label>
-                      <select name="createmod_version" class="form-select">
+                      <select name="createmod_version" class="form-input">
                         <option value="">— none —</option>
                         {{range .CreatemodVersions}}
                         <option value="{{.ID}}" {{if eq $.CreatemodVersionID .ID}}selected{{end}}>{{.Version}}</option>
                         {{end}}
                       </select>
                     </div>
-                    <div class="col-md-6 mb-3">
+                    <div class="mb-3">
                       <label class="form-label">{{ T .Language "Minecraft Version" }}</label>
-                      <select name="minecraft_version" class="form-select">
+                      <select name="minecraft_version" class="form-input">
                         <option value="">— none —</option>
                         {{range .MinecraftVersions}}
                         <option value="{{.ID}}" {{if eq $.MinecraftVersionID .ID}}selected{{end}}>{{.Version}}</option>
@@ -86,12 +86,12 @@
                   </div>
                   <div class="mb-3">
                     <label class="form-label">{{ T .Language "External URL" }}</label>
-                    <input type="url" class="form-control" name="external_url" value="{{.Schematic.ExternalURL}}">
+                    <input type="url" class="form-input" name="external_url" value="{{.Schematic.ExternalURL}}">
                   </div>
                 </div>
               </div>
             </div>
-            <div class="col-lg-4">
+            <div class="lg:col-span-4">
               <div class="card mb-3">
                 <div class="card-header"><h3 class="card-title">{{ T .Language "Info" }}</h3></div>
                 <div class="card-body">
@@ -120,11 +120,11 @@
                   </div>
                   {{if .Schematic.FeaturedImage}}
                   <div class="mb-2">
-                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=200x200" class="img-fluid rounded" alt="thumbnail">
+                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=200x200" class="w-full rounded" alt="thumbnail">
                   </div>
                   {{end}}
                   <div class="mb-2">
-                    <a href="/schematics/{{.Schematic.Name}}" class="btn btn-sm btn-outline-primary w-100" target="_blank">{{ T .Language "View public page" }}</a>
+                    <a href="/schematics/{{.Schematic.Name}}" class="btn btn-sm btn-outline-primary w-full" target="_blank">{{ T .Language "View public page" }}</a>
                   </div>
                 </div>
               </div>
@@ -145,7 +145,7 @@
                   </div>
                   <div class="mb-3">
                     <label class="form-label">{{ T .Language "Update Moderation Reason" }}</label>
-                    <textarea class="form-control" name="moderation_reason" rows="3" placeholder="Optional reason...">{{.Schematic.ModerationReason}}</textarea>
+                    <textarea class="form-input" name="moderation_reason" rows="3" placeholder="Optional reason...">{{.Schematic.ModerationReason}}</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-check form-switch">
@@ -164,16 +164,16 @@
               <div class="card mb-3 border-danger">
                 <div class="card-header bg-danger-lt"><h3 class="card-title">{{ T .Language "Danger Zone" }}</h3></div>
                 <div class="card-body">
-                  <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                  <button type="button" class="btn btn-danger w-full" @click="deleteModalOpen = true">
                     {{ T .Language "Soft Delete Schematic" }}
                   </button>
                 </div>
               </div>
             </div>
           </div>
-          <div class="row mb-4">
-            <div class="col-lg-8">
-              <button type="submit" class="btn btn-primary w-100">{{ T .Language "Save Changes" }}</button>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
+            <div class="lg:col-span-8">
+              <button type="submit" class="btn btn-primary w-full">{{ T .Language "Save Changes" }}</button>
             </div>
           </div>
         </form>
@@ -182,15 +182,17 @@
     {{template "footer.html" .}}
   </div>
 </div>
-<div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-body">
-        <div class="modal-title">{{ T .Language "Are you sure?" }}</div>
+<!-- Delete Schematic Modal -->
+<div x-show="deleteModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="fixed inset-0 bg-black/50" @click="deleteModalOpen = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+  <div class="relative z-10 w-full max-w-sm mx-4" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" @keydown.escape.window="deleteModalOpen = false">
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title">{{ T .Language "Are you sure?" }}</div>
         <div>{{ T .Language "This will soft-delete the schematic. It will no longer appear in public listings." }}</div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+      <div class="card-footer flex justify-end gap-2">
+        <button type="button" class="btn btn-link text-secondary mr-auto" @click="deleteModalOpen = false">{{ T .Language "Cancel" }}</button>
         <form method="post" action="/admin/schematics/{{.Schematic.ID}}/delete">
           <button type="submit" class="btn btn-danger">{{ T .Language "Yes, delete" }}</button>
         </form>

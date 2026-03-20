@@ -5,33 +5,33 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="mb-3 d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="page-title mb-1">{{ T .Language "Videos" }}</h2>
               <div class="text-secondary">{{ T .Language "Videos from published schematics" }}</div>
             </div>
-            <div class="col-auto ms-auto">
-              <form class="d-flex" action="/videos" method="get" hx-get="/videos" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML" hx-push-url="true">
-                <input type="search" class="form-control" name="q" placeholder="{{ T .Language "Search videos" }}" value="{{ .Query }}" />
-                <button class="btn ms-2" type="submit">{{ T .Language "Search" }}</button>
+            <div class="shrink-0 ml-auto">
+              <form class="flex" action="/videos" method="get" hx-get="/videos" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML" hx-push-url="true">
+                <input type="search" class="form-input" name="q" placeholder="{{ T .Language "Search videos" }}" value="{{ .Query }}" />
+                <button class="btn ml-2" type="submit">{{ T .Language "Search" }}</button>
               </form>
             </div>
           </div>
         </div>
-        <div class="d-flex gap-3">
-        <div class="flex-grow-1 min-width-0">
+        <div class="flex gap-3">
+        <div class="grow min-w-0">
         <div id="videos-results">
           {{ $root := . }}
-          <div class="row row-cards">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {{range .Videos}}
-            <div class="col-12 col-sm-6 col-lg-4">
+            <div class="col-span-1">
               <div class="card">
-                <a href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}" class="d-block">
-                  <img src="{{ .ThumbnailURL }}" alt="{{ .Title }}" class="card-img-top" style="aspect-ratio:16/9;object-fit:cover;" />
+                <a href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}" class="block">
+                  <img src="{{ .ThumbnailURL }}" alt="{{ .Title }}" class="w-full" style="aspect-ratio:16/9;object-fit:cover;" />
                 </a>
                 <div class="card-body">
-                  <div class="card-title h4 text-truncate">{{ .Title }}</div>
+                  <div class="card-title h4 truncate">{{ .Title }}</div>
                   <div class="btn-list">
                     <a class="btn btn-primary" href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}">{{ T $root.Language "View on YouTube" }}</a>
                     <a class="btn" href="{{ .SchematicURL }}">{{ T $root.Language "View schematic" }}</a>
@@ -41,21 +41,21 @@
             </div>
             {{end}}
           </div>
-          <div class="d-flex justify-content-between align-items-center mt-4">
-            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML show:window:top" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+          <div class="flex justify-between items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML show:window:top" hx-push-url="true" class="btn btn-outline"{{ else }}class="btn btn-outline disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
             <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
-            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML show:window:top" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#videos-results" hx-select="#videos-results" hx-swap="outerHTML show:window:top" hx-push-url="true" class="btn btn-outline"{{ else }}class="btn btn-outline disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
           </div>
         </div>
-        </div><!-- /flex-grow-1 -->
+        </div><!-- /grow -->
 
         <!-- Ad Rail (desktop only) -->
-        <div class="ad-rail d-none d-xl-block">
+        <div class="ad-rail hidden xl:block">
             <div id="videos-adrail" class="mb-3" style="min-height:250px;"></div>
         </div>
-        </div><!-- /d-flex -->
+        </div><!-- /flex -->
         <!-- Mobile ad (below content on smaller screens) -->
-        <div id="videos-mobile" class="d-xl-none mt-3 text-center"></div>
+        <div id="videos-mobile" class="xl:hidden mt-3 text-center"></div>
       </div>
     </main>
     {{template "footer.html" .}}

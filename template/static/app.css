@@ -11,7 +11,7 @@
 /**************
   Dark theme: improve contrast for muted text and secondary buttons
 ***************/
-[data-bs-theme=dark] {
+html.dark {
   /* Default --tblr-muted (#49566c) is nearly invisible on dark backgrounds.
      Lighten to a readable gray that still feels subdued. */
   --tblr-muted: #9ea5ad;
@@ -24,34 +24,33 @@
 /* btn-outline-secondary and btn-ghost-secondary use --tblr-secondary which
    is a dark brown (rgb(189,140,62)) — hard to read on dark card surfaces.
    Override to a lighter neutral that contrasts well with #353838 cards. */
-[data-bs-theme=dark] .btn-outline-secondary {
+html.dark .btn-outline-secondary {
   --tblr-btn-color: #a0a6ad;
   --tblr-btn-border-color: #6c7380;
   --tblr-btn-hover-color: #fff;
   --tblr-btn-hover-bg: rgba(160, 166, 173, 0.15);
   --tblr-btn-hover-border-color: #a0a6ad;
 }
-[data-bs-theme=dark] .btn-ghost-secondary {
+html.dark .btn-ghost-secondary {
   --tblr-btn-color: #a0a6ad;
   --tblr-btn-hover-color: #fff;
   --tblr-btn-hover-bg: rgba(160, 166, 173, 0.1);
 }
 
 /* .text-muted in dark mode — ensure it uses the improved secondary color */
-[data-bs-theme=dark] .text-muted {
+html.dark .text-muted {
   color: var(--tblr-secondary-color) !important;
 }
 
 /* .text-secondary in dark mode needs the same bump */
-[data-bs-theme=dark] .text-secondary {
+html.dark .text-secondary {
   color: var(--tblr-secondary-color) !important;
 }
 
 /**************
   Light theme: warm beige backgrounds
 ***************/
-:root,
-[data-bs-theme=light] {
+:root {
   --tblr-body-bg: #f5f0e8;
   --tblr-body-bg-rgb: 245, 240, 232;
   --tblr-light: #f5f0e8;
@@ -133,11 +132,11 @@ a:hover {
   color: #566070 !important;
   border-color: #8a97ab !important;
 }
-[data-bs-theme=dark] .badge-outline.text-blue {
+html.dark .badge-outline.text-blue {
   color: #d4a54e !important;
   border-color: #d4a54e !important;
 }
-[data-bs-theme=dark] .badge-outline.text-secondary {
+html.dark .badge-outline.text-secondary {
   color: #a8b0bb !important;
   border-color: #6c7380 !important;
 }
@@ -156,7 +155,7 @@ a:hover {
 .datagrid-title {
   color: #4d5560 !important;
 }
-[data-bs-theme=dark] .datagrid-title {
+html.dark .datagrid-title {
   color: #a8b0bb !important;
 }
 
@@ -477,7 +476,7 @@ body.sidebar-ready .sidebar-rail {
   cursor: pointer;
   transition: color 0.15s ease;
 }
-[data-bs-theme=dark] .sidebar-toggle {
+html.dark .sidebar-toggle {
   color: #a8b0bb;
 }
 .sidebar-toggle:hover {

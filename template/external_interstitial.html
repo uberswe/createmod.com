@@ -5,14 +5,14 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="d-flex gap-3 justify-content-center">
+        <div class="flex gap-3 justify-center">
           <!-- Left Ad Rail (desktop only) -->
-          <div class="ad-rail d-none d-xl-block">
+          <div class="ad-rail hidden xl:block">
             <div id="extinterstitial-adrail-left" class="mb-3" style="min-height:250px;"></div>
           </div>
           <div style="max-width:540px; width:100%; padding:2rem 0;">
             <!-- Mobile ad (above card on smaller screens) -->
-            <div id="extinterstitial-mobile" class="d-xl-none mb-3 text-center"></div>
+            <div id="extinterstitial-mobile" class="xl:hidden mb-3 text-center"></div>
             <div class="card">
               <div class="card-body text-center">
                 <h1 class="card-title">{{ T .Language "You are leaving createmod.com" }}</h1>
@@ -25,7 +25,7 @@
             </div>
           </div>
           <!-- Right Ad Rail (desktop only) -->
-          <div class="ad-rail d-none d-xl-block">
+          <div class="ad-rail hidden xl:block">
             <div id="extinterstitial-adrail-right" class="mb-3" style="min-height:250px;"></div>
           </div>
         </div>
