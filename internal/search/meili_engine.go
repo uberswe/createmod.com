@@ -6,15 +6,17 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/meilisearch/meilisearch-go"
 )
 
 // MeiliEngine implements SearchEngine using a Meilisearch index.
 type MeiliEngine struct {
-	client  meilisearch.ServiceManager
+	client   meilisearch.ServiceManager
 	indexUID string
-	svc     *Service // for suggest, trending scores, and filter index
+	svc      *Service // for suggest, trending scores, and filter index
+	resync   sync.Once
 }
 
 // NewMeiliEngine creates a SearchEngine backed by Meilisearch.
@@ -59,6 +61,7 @@ func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, erro
 		ids = append(ids, doc.ID)
 	}
 
+	m.triggerResyncIfEmpty(q, len(ids))
 	return ids, nil
 }
 
@@ -88,6 +91,8 @@ func (m *MeiliEngine) trendingSearch(ctx context.Context, q SearchQuery) ([]stri
 		}
 		ids = append(ids, doc.ID)
 	}
+
+	m.triggerResyncIfEmpty(q, len(ids))
 
 	// Re-sort by trending scores from the in-memory service.
 	scores := m.svc.trendingScores
@@ -218,6 +223,31 @@ func (m *MeiliEngine) buildSort(order int) []string {
 		// BestMatch: use Meilisearch relevancy (no sort).
 		return nil
 	}
+}
+
+// triggerResyncIfEmpty kicks off a one-time background Meilisearch sync when a
+// broad query (empty term, no filters) returns 0 hits but the in-memory index
+// has documents. This covers the case where the pod started before Meilisearch
+// was reachable or before auth was configured.
+func (m *MeiliEngine) triggerResyncIfEmpty(q SearchQuery, hitCount int) {
+	if hitCount > 0 || q.Term != "" || q.Category != "" && q.Category != "all" || len(q.Tags) > 0 {
+		return
+	}
+	idx := m.svc.GetIndex()
+	if len(idx) == 0 {
+		return
+	}
+	m.resync.Do(func() {
+		go func() {
+			slog.Info("meili: 0-result broad query detected, triggering background resync", "index", m.indexUID, "docs", len(idx))
+			docs := MapToMeiliDocuments(idx)
+			if err := SyncMeiliIndex(m.client, m.indexUID, docs); err != nil {
+				slog.Error("meili: background resync failed", "index", m.indexUID, "error", err)
+			} else {
+				slog.Info("meili: background resync complete", "index", m.indexUID, "docs", len(docs))
+			}
+		}()
+	})
 }
 
 // escapeMeiliString escapes double quotes in filter values.
