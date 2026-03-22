@@ -17,7 +17,6 @@ type Schematic struct {
 	HTMLContent          template.HTML      `json:"htmlContent"`
 	Excerpt              string             `json:"excerpt"`
 	FeaturedImage        string             `json:"featuredImage"`
-	HasFeaturedImage     bool               `json:"hasFeaturedImage"`
 	HasGallery           bool               `json:"hasGallery"`
 	Gallery              []string           `json:"gallery"`
 	Title                string             `json:"title"`
