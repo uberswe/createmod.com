@@ -10,21 +10,21 @@
                 <!-- Progress Steps -->
                 {{ template "upload_steps.html" . }}
 
-                <div class="row row-cards justify-content-center">
-                    <div class="col-lg-8 col-xl-6">
+                <div class="flex justify-center">
+                    <div class="w-full max-w-2xl">
 
                         <!-- Schematic Summary -->
                         <div class="card mb-3">
                             <div class="card-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="me-3">
+                                <div class="flex items-center">
+                                    <div class="mr-3">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-primary" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M12 11l0 6" /><path d="M9 14l3 -3l3 3" /></svg>
                                     </div>
                                     <div>
                                         <h3 class="card-title mb-0">{{ .Filename }}</h3>
                                         <p class="text-secondary mb-0">
-                                            {{ .DimX }} x {{ .DimY }} x {{ .DimZ }} blocks
-                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} total blocks{{ end }}
+                                            {{ .DimX }} x {{ .DimY }} x {{ .DimZ }} {{ T .Language "blocks" }}
+                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} {{ T .Language "total blocks" }}{{ end }}
                                         </p>
                                     </div>
                                 </div>
@@ -34,26 +34,26 @@
                         <!-- Included Files Summary -->
                         {{ if .AdditionalFiles }}
                         <div class="card mb-3">
-                            <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title mb-0">Included Files</h3>
-                                <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline-secondary ms-auto">Edit Files</a>
+                            <div class="card-header flex items-center">
+                                <h3 class="card-title mb-0">{{ T .Language "Included Files" }}</h3>
+                                <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline ml-auto">{{ T .Language "Edit Files" }}</a>
                             </div>
                             <div class="card-body p-0">
                                 <div class="list-group list-group-flush">
                                     <div class="list-group-item">
-                                        <div class="fw-bold">{{ .Filename }} <span class="badge bg-blue-lt">Primary</span></div>
-                                        <div class="text-secondary small">
+                                        <div class="font-bold">{{ .Filename }} <span class="badge bg-blue-lt">{{ T .Language "Primary" }}</span></div>
+                                        <div class="text-secondary text-sm">
                                             {{ .DimX }} x {{ .DimY }} x {{ .DimZ }}
-                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} blocks{{ end }}
+                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} {{ T .Language "blocks" }}{{ end }}
                                         </div>
                                     </div>
                                     {{ range .AdditionalFiles }}
                                     <div class="list-group-item">
-                                        <div class="fw-bold">{{ .Filename }}</div>
-                                        {{ if .Description }}<div class="text-secondary small">{{ .Description }}</div>{{ end }}
-                                        <div class="text-secondary small">
+                                        <div class="font-bold">{{ .Filename }}</div>
+                                        {{ if .Description }}<div class="text-secondary text-sm">{{ .Description }}</div>{{ end }}
+                                        <div class="text-secondary text-sm">
                                             {{ if or .DimX .DimY .DimZ }}{{ .DimX }} x {{ .DimY }} x {{ .DimZ }}{{ end }}
-                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} blocks{{ end }}
+                                            {{ if .BlockCount }}&middot; {{ .BlockCount }} {{ T $.Language "blocks" }}{{ end }}
                                         </div>
                                     </div>
                                     {{ end }}
@@ -65,51 +65,51 @@
                         <!-- Publish Form -->
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Publish Schematic</h3>
+                                <h3 class="card-title">{{ T .Language "Publish Schematic" }}</h3>
                             </div>
                             <div class="card-body">
                                 <input type="hidden" id="publish-token" value="{{ .Token }}">
 
                                 <div class="mb-3">
-                                    <label class="form-label required">Title</label>
-                                    <input type="text" id="schematic-title" class="form-control" name="title"
-                                           placeholder="Schematic Title">
+                                    <label class="form-label required">{{ T .Language "Title" }}</label>
+                                    <input type="text" id="schematic-title" class="form-input" name="title"
+                                           placeholder="{{ T .Language "Schematic Title" }}">
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Description</label>
+                                    <label class="form-label">{{ T .Language "Description" }}</label>
                                     <textarea id="tinymce-schematic"
-                                              placeholder="Describe your schematic and include any details on how to get it running."></textarea>
+                                              placeholder="{{ T .Language "Describe your schematic and include any details on how to get it running." }}"></textarea>
                                 </div>
-                                <div class="row">
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Category</label>
-                                        <select name="category" id="schematic-category" class="form-select">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                    <div class="mb-3">
+                                        <label class="form-label required">{{ T .Language "Category" }}</label>
+                                        <select name="category" id="schematic-category" class="form-input">
                                             {{ range .Categories}}
                                             <option value="{{ .ID }}">{{ .Name }}</option>
                                             {{ end }}
                                         </select>
                                     </div>
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label">Tags</label>
-                                        <select type="text" class="form-select" placeholder="Select tags" id="select-tags" value="" multiple>
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ T .Language "Tags" }}</label>
+                                        <select type="text" class="form-input" placeholder="{{ T .Language "Select tags" }}" id="select-tags" value="" multiple>
                                             {{ range .Tags}}
                                             <option value="{{ .ID }}">{{ .Name }}</option>
                                             {{ end }}
                                         </select>
                                     </div>
                                 </div>
-                                <div class="row">
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Create Version</label>
-                                        <select id="create-version" name="" class="form-select">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                    <div class="mb-3">
+                                        <label class="form-label required">{{ T .Language "Create Version" }}</label>
+                                        <select id="create-version" name="" class="form-input">
                                             {{ range .CreatemodVersions}}
                                             <option value="{{ .ID }}">{{ .Version }}</option>
                                             {{ end }}
                                         </select>
                                     </div>
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Minecraft Version</label>
-                                        <select id="minecraft-version" name="" class="form-select">
+                                    <div class="mb-3">
+                                        <label class="form-label required">{{ T .Language "Minecraft Version" }}</label>
+                                        <select id="minecraft-version" name="" class="form-input">
                                             {{ range .MinecraftVersions}}
                                             <option value="{{ .ID }}">{{ .Version }}</option>
                                             {{ end }}
@@ -117,22 +117,22 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Schematic Video</label>
-                                    <input id="video" type="text" class="form-control" name="video"
-                                           placeholder="Schematic Video URL">
+                                    <label class="form-label">{{ T .Language "Schematic Video" }}</label>
+                                    <input id="video" type="text" class="form-input" name="video"
+                                           placeholder="{{ T .Language "Schematic Video URL" }}">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-check form-switch">
                                         <input type="checkbox" class="form-check-input" id="schematic-paid">
-                                        <span class="form-check-label">Paid schematic</span>
+                                        <span class="form-check-label">{{ T .Language "Paid schematic" }}</span>
                                     </label>
-                                    <small class="form-hint">Mark this schematic as paid. Downloads will be disabled and users will be directed to your external link.</small>
+                                    <small class="form-hint">{{ T .Language "Mark this schematic as paid. Downloads will be disabled and users will be directed to your external link." }}</small>
                                 </div>
                                 <div class="mb-3" id="external-url-group" style="display:none">
-                                    <label class="form-label required">External Link</label>
-                                    <input type="url" id="external-url" class="form-control" name="external_url"
+                                    <label class="form-label required">{{ T .Language "External Link" }}</label>
+                                    <input type="url" id="external-url" class="form-input" name="external_url"
                                            placeholder="https://patreon.com/...">
-                                    <small class="form-hint">Link to Patreon, Ko-fi, Discord, or other platform where users can get this schematic.</small>
+                                    <small class="form-hint">{{ T .Language "Link to Patreon, Ko-fi, Discord, or other platform where users can get this schematic." }}</small>
                                 </div>
 
                                 <div class="mb-3">
@@ -144,30 +144,30 @@
                                 </div>
                                 <div class="mb-3" id="schedule-group" style="display:none">
                                     <label class="form-label">{{ T .Language "Publish date & time" }}</label>
-                                    <input type="datetime-local" id="scheduled-at" class="form-control">
+                                    <input type="datetime-local" id="scheduled-at" class="form-input">
                                     <small class="form-hint">{{ T .Language "Time is in your local timezone." }}</small>
                                 </div>
 
-                                <div class="row">
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Featured Image</label>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                    <div class="mb-3">
+                                        <label class="form-label required">{{ T .Language "Featured Image" }}</label>
                                         <div class="dropzone" id="dropzone-featured">
                                             <div class="fallback">
                                                 <input name="featured-file" type="file" accept="image/*"/>
                                             </div>
                                             <div class="dz-message">
-                                                <span class="dropzone-msg-desc">Click or drag a screenshot of your build</span>
+                                                <span class="dropzone-msg-desc">{{ T .Language "Click or drag a screenshot of your build" }}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label">Gallery Images</label>
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ T .Language "Gallery Images" }}</label>
                                         <div class="dropzone" id="dropzone-gallery">
                                             <div class="fallback">
                                                 <input name="gallery-file" type="file" accept="image/*" multiple/>
                                             </div>
                                             <div class="dz-message">
-                                                <span class="dropzone-msg-desc">Click or drag images to showcase your schematic</span>
+                                                <span class="dropzone-msg-desc">{{ T .Language "Click or drag images to showcase your schematic" }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -175,7 +175,7 @@
 
                                 {{ if .TrustedUser }}
                                 <div class="alert alert-success mt-3" id="trusted-notice">
-                                    <div class="d-flex align-items-center">
+                                    <div class="flex items-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                         <div>
                                             <span id="trusted-notice-text">{{ T .Language "This schematic will be auto-approved and published immediately." }}</span>
@@ -184,7 +184,7 @@
                                 </div>
                                 {{ else }}
                                 <div class="alert alert-info mt-3">
-                                    <div class="d-flex align-items-center">
+                                    <div class="flex items-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
                                         <div>{{ T .Language "Your schematic will be reviewed before it appears publicly." }}</div>
                                     </div>
@@ -192,19 +192,19 @@
                                 {{ end }}
 
                                 <div class="mt-4">
-                                    <button class="btn btn-primary w-100" id="publish-schematic-btn">
-                                        Publish
+                                    <button class="btn btn-primary w-full" id="publish-schematic-btn">
+                                        {{ T .Language "Publish" }}
                                     </button>
                                     <div id="progress-upload" style="display: none;" class="progress mt-2">
                                         <div class="progress-bar bg-green"></div>
                                     </div>
                                     <div id="publish-success" class="alert alert-important alert-success mt-3" style="display: none;" role="alert">
-                                        <div class="d-flex">
+                                        <div class="flex">
                                             <div>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                             </div>
                                             <div>
-                                                Schematic has been published! It may take up to 24 hours for moderation.
+                                                {{ T .Language "Schematic has been published! It may take up to 24 hours for moderation." }}
                                             </div>
                                         </div>
                                     </div>
@@ -231,14 +231,14 @@
         background: #ffffff !important;
         color: #bf9045 !important;
     }
-    body[data-bs-theme=dark] .ts-control {
+    html.dark .ts-control {
         background: #1f2121 !important;
         border: none !important;
     }
-    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
+    html.dark .ts-wrapper.multi .ts-control>div {
         background: #bf9045 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown {
+    html.dark .ts-dropdown {
         background: #1f2121 !important;
         color: #bf9045 !important;
     }
@@ -313,6 +313,13 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script>
+var i18n = {
+    errMustHaveTitle: {{ printf "%q" (T .Language "Please give your schematic a title.") }},
+    errMustHaveDescription: {{ printf "%q" (T .Language "Please add a description so others know what your build does.") }},
+    errMustHaveFeaturedImage: {{ printf "%q" (T .Language "Please add a screenshot of your build as the featured image.") }},
+    errPublishFailed: {{ printf "%q" (T .Language "Could not publish your schematic. Check your connection and try again.") }},
+    errNetwork: {{ printf "%q" (T .Language "Network error — please check your connection and try again.") }}
+};
 document.addEventListener("DOMContentLoaded", function() {
     if (!window.Dropzone) return;
     Dropzone.autoDiscover = false;
@@ -402,13 +409,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (!titleElement.value) {
             titleElement.classList.add("is-invalid");
-            errors.push("A schematic must have a title");
+            errors.push(i18n.errMustHaveTitle);
         }
         if (!content) {
-            errors.push("A schematic must have a description");
+            errors.push(i18n.errMustHaveDescription);
         }
         if (dropzoneFeatured.files.length === 0) {
-            errors.push("A schematic must have a featured image");
+            errors.push(i18n.errMustHaveFeaturedImage);
         }
 
         if (errors.length === 0) {
@@ -432,14 +439,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 } else {
                     document.getElementById("publish-schematic-btn").disabled = false;
-                    if (typeof showToast === 'function') showToast('Publishing failed. Please try again.', 'danger');
+                    if (typeof showToast === 'function') showToast(i18n.errPublishFailed, 'danger');
                 }
             };
             xhr.onerror = function() {
                 progressBar.classList.remove("progress-bar-indeterminate");
                 progressBar.style.display = "none";
                 document.getElementById("publish-schematic-btn").disabled = false;
-                if (typeof showToast === 'function') showToast('Network error. Please try again.', 'danger');
+                if (typeof showToast === 'function') showToast(i18n.errNetwork, 'danger');
             };
             xhr.send(formData);
         } else {

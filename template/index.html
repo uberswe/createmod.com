@@ -5,58 +5,58 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="d-flex gap-3">
-                    <div class="flex-grow-1 min-width-0">
+                <div class="flex gap-3">
+                    <div class="grow min-w-0">
                         <!-- Trending -->
-                        <h2 class="mb-3"><a href="/search?sort=8" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
+                        <h2 class="mb-3"><a href="/search?sort=8" class="text-inherit no-underline">{{ T .Language "Trending" }} &rarr;</a></h2>
                         <div id="tab-panel-trending" class="tab-panel" data-trending-section="trending">
-                            <div class="row g-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .Trending }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
                             {{ if .TrendingHasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                            <div class="flex justify-between items-center mt-4">
+                                <a class="btn btn-outline disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
                                 <div class="text-secondary">{{ T .Language "Page" }} 1</div>
-                                <a href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                                <a href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline">{{ T .Language "Next" }}</a>
                             </div>
                             {{ end }}
                         </div>
 
                         <!-- Mobile ad between sections -->
-                        <div id="index-mobile-mid" class="d-xl-none mb-3 mt-4 text-center"></div>
+                        <div id="index-mobile-mid" class="xl:hidden mb-3 mt-4 text-center"></div>
 
                         <!-- Latest -->
-                        <h2 class="mb-3 mt-4"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} &rarr;</a></h2>
+                        <h2 class="mb-3 mt-4"><a href="/search?sort=2" class="text-inherit no-underline">{{ T .Language "Latest" }} &rarr;</a></h2>
                         <div id="tab-panel-latest" class="tab-panel">
-                            <div class="row g-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .Schematics }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
                             {{ if .HasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                            <div class="flex justify-between items-center mt-4">
+                                <a class="btn btn-outline disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
                                 <div class="text-secondary">{{ T .Language "Page" }} 1</div>
-                                <a href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                                <a href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline">{{ T .Language "Next" }}</a>
                             </div>
                             {{ end }}
                         </div>
 
                         <!-- Highest Rated -->
-                        <h2 class="mb-3 mt-4"><a href="/search?sort=4" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
+                        <h2 class="mb-3 mt-4"><a href="/search?sort=4" class="text-inherit no-underline">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
                         <div id="tab-panel-highest" class="tab-panel">
-                            <div class="row g-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .HighestRated }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
                             {{ if .HighestHasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
+                            <div class="flex justify-between items-center mt-4">
+                                <a class="btn btn-outline disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
                                 <div class="text-secondary">{{ T .Language "Page" }} 1</div>
-                                <a href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                                <a href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline">{{ T .Language "Next" }}</a>
                             </div>
                             {{ end }}
                         </div>
@@ -64,18 +64,18 @@
                         <!-- Categories -->
                         <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
                         {{ range .CategorySections }}
-                        <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ .Category.Name }} &rarr;</a></h3>
+                        <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-inherit no-underline">{{ .Category.Name }} &rarr;</a></h3>
                         <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel" data-trending-section="cat-{{ .Category.Key }}">
-                            <div class="row g-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .Items }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
                             {{ if .HasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T $.Language "Previous" }}</a>
+                            <div class="flex justify-between items-center mt-4">
+                                <a class="btn btn-outline disabled" tabindex="-1" aria-disabled="true">{{ T $.Language "Previous" }}</a>
                                 <div class="text-secondary">{{ T $.Language "Page" }} 1</div>
-                                <a href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T $.Language "Next" }}</a>
+                                <a href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline">{{ T $.Language "Next" }}</a>
                             </div>
                             {{ end }}
                         </div>
@@ -83,7 +83,7 @@
                     </div>
 
                     <!-- Ad Rail (desktop only) -->
-                    <div class="ad-rail d-none d-xl-block">
+                    <div class="ad-rail hidden xl:block">
                         <div id="index-adrail" class="mb-3"></div>
                     </div>
                 </div>

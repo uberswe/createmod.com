@@ -5,9 +5,9 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="page-title">Admin: Schematics</h2>
               <div class="text-secondary">{{ .Total }} schematics matching filter</div>
             </div>
@@ -53,7 +53,7 @@
                   </td>
                   <td>
                     <a href="/admin/schematics/{{.ID}}">{{.Title}}</a>
-                    <div class="text-secondary text-truncate" style="max-width: 200px;">{{.Name}}</div>
+                    <div class="text-secondary truncate" style="max-width: 200px;">{{.Name}}</div>
                   </td>
                   <td>{{.AuthorUsername}}</td>
                   <td>
@@ -69,7 +69,7 @@
                   </td>
                   <td>
                     {{if .ModerationReason}}
-                    <div class="text-truncate" style="max-width: 250px;" title="{{.ModerationReason}}">{{.ModerationReason}}</div>
+                    <div class="truncate" style="max-width: 250px;" title="{{.ModerationReason}}">{{.ModerationReason}}</div>
                     {{else}}
                     <span class="text-secondary">—</span>
                     {{end}}
@@ -89,7 +89,7 @@
           </div>
         </div>
         {{if gt .TotalPages 1}}
-        <div class="d-flex justify-content-center">
+        <div class="flex justify-center">
           <ul class="pagination">
             {{if gt .Page 1}}
             <li class="page-item">

@@ -1,0 +1,21 @@
+<div class="w-full md:col-span-3 border-r">
+    <div class="card-body">
+        <h4 class="subheader">{{ T .Language "Account settings" }}</h4>
+        <div class="list-group list-group-transparent">
+            <a href="/settings"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings" }} active{{ end }}">{{ T .Language "My Account" }}</a>
+            <a href="/settings/password"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings/password" }} active{{ end }}">{{ T .Language "Password" }}</a>
+            <a href="/settings/points"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings/points" }} active{{ end }}">{{ T .Language "Points" }}</a>
+            <a href="/settings/api-keys"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings/api-keys" }} active{{ end }}">{{ T .Language "API Keys" }}</a>
+            <a href="/settings/webhooks"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings/webhooks" }} active{{ end }}">{{ T .Language "Webhooks" }}</a>
+            <a href="/settings/statistics"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings/statistics" }} active{{ end }}">{{ T .Language "Statistics" }}</a>
+            <a href="/settings/blacklist"
+               class="list-group-item list-group-item-action flex items-center{{ if eq .Slug "/settings/blacklist" }} active{{ end }}">{{ T .Language "Block List" }}</a>
+        </div>
+    </div>
+</div>

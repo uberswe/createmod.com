@@ -6,24 +6,24 @@
     <main class="page-body">
       <div class="container-wide">
         <div class="mb-3">
-          <div class="row align-items-center">
-            <div class="col">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="mb-1">{{ T .Language "Edit Guide" }}</h2>
               <div class="text-secondary">{{ T .Language "Update your guide content" }}</div>
             </div>
-            <div class="col-auto ms-auto">
-              <a class="btn btn-outline-secondary" href="/guides/{{ .GuideID }}">{{ T .Language "Cancel" }}</a>
+            <div class="shrink-0 ml-auto">
+              <a class="btn btn-outline" href="/guides/{{ .GuideID }}">{{ T .Language "Cancel" }}</a>
             </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-12 col-lg-9">
+        <div class="flex flex-wrap">
+          <div class="w-full lg:max-w-3xl">
             <form class="card" action="/guides/{{ .GuideID }}" method="post" enctype="multipart/form-data" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Guide details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
-                  <input type="text" class="form-control" id="title" name="title" value="{{ .GuideTitle }}" required />
+                  <input type="text" class="form-input" id="title" name="title" value="{{ .GuideTitle }}" required />
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="banner">{{ T .Language "Banner image" }}</label>
@@ -32,30 +32,30 @@
                     <img src="{{ .BannerURL }}" alt="{{ T .Language "Current banner" }}" class="rounded" style="max-width:100%;height:auto;" loading="lazy" />
                   </div>
                   {{ end }}
-                  <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
+                  <input type="file" class="form-input" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
                   <small class="form-hint">{{ T .Language "Recommended: 1600x400 (4:1 ratio). Max 2MB. Will be cropped and converted to WebP." }}{{ if .BannerURL }} {{ T .Language "Leave empty to keep current banner." }}{{ end }}</small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="guide-editor">{{ T .Language "Content" }}</label>
-                  <textarea class="form-control" id="guide-editor" name="content" rows="16">{{ .Content }}</textarea>
+                  <textarea class="form-input" id="guide-editor" name="content" rows="16">{{ .Content }}</textarea>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="excerpt">{{ T .Language "Excerpt / Summary" }}</label>
-                  <textarea class="form-control" id="excerpt" name="excerpt" rows="3" placeholder="{{ T .Language "Short summary shown in guide listings" }}">{{ .Excerpt }}</textarea>
+                  <textarea class="form-input" id="excerpt" name="excerpt" rows="3" placeholder="{{ T .Language "Short summary shown in guide listings" }}">{{ .Excerpt }}</textarea>
                   <small class="form-hint">{{ T .Language "If left empty, an excerpt will be auto-generated from the content." }}</small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="video_url">{{ T .Language "Optional video link (YouTube)" }}</label>
-                  <input type="url" class="form-control" id="video_url" name="video_url" value="{{ .VideoURL }}" placeholder="https://www.youtube.com/watch?v=..." />
+                  <input type="url" class="form-input" id="video_url" name="video_url" value="{{ .VideoURL }}" placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="external_url">{{ T .Language "Optional external guide link" }}</label>
-                  <input type="url" class="form-control" id="external_url" name="external_url" value="{{ .WikiURL }}" placeholder="https://example.com/your-guide" />
+                  <input type="url" class="form-input" id="external_url" name="external_url" value="{{ .WikiURL }}" placeholder="https://example.com/your-guide" />
                 </div>
               </div>
-              <div class="card-footer d-flex justify-content-end">
+              <div class="card-footer flex justify-end">
                 <a href="/guides/{{ .GuideID }}" class="btn btn-link">{{ T .Language "Cancel" }}</a>
-                <button type="submit" class="btn btn-primary ms-2">{{ T .Language "Save changes" }}</button>
+                <button type="submit" class="btn btn-primary ml-2">{{ T .Language "Save changes" }}</button>
               </div>
             </form>
           </div>

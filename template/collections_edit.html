@@ -5,20 +5,20 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
-              <div class="d-flex align-items-center">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
+              <div class="flex items-center">
                 <h2 class="page-title mb-0">{{ T .Language "Edit collection" }}</h2>
                 {{ if .Published }}
-                <span class="badge bg-green-lt ms-2">{{ T .Language "Published" }}</span>
+                <span class="badge bg-green-lt ml-2">{{ T .Language "Published" }}</span>
                 {{ else }}
-                <span class="badge bg-secondary-lt ms-2">{{ T .Language "Private" }}</span>
+                <span class="badge bg-surface-secondary ml-2">{{ T .Language "Private" }}</span>
                 {{ end }}
               </div>
               <div class="text-secondary">{{ T .Language "Update your collection details" }}</div>
             </div>
-            <div class="col-auto ms-auto">
+            <div class="shrink-0 ml-auto">
               <a class="btn" href="{{ .Slug }}">{{ T .Language "Back" }}</a>
             </div>
           </div>
@@ -26,36 +26,36 @@
         {{ if .Error }}
         <div class="alert alert-danger mb-3">{{ .Error }}</div>
         {{ end }}
-        <div class="row row-cards">
-          <div class="col-12 col-md-8">
+        <div class="grid grid-cols-1 gap-3">
+          <div class="w-full max-w-3xl">
             <form class="card" action="{{ .Slug }}" method="post" enctype="multipart/form-data" onsubmit="if(window.tinyMCE){tinyMCE.triggerSave(true,true);}">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Collection details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
-                  <input type="text" class="form-control" id="title" name="title" value="{{ .TitleText }}" required oninput="updateTitleCount()" />
+                  <input type="text" class="form-input" id="title" name="title" value="{{ .TitleText }}" required oninput="updateTitleCount()" />
                   <small class="form-hint">
                     <span id="title-count" class="text-danger">0</span> / 10 {{ T .Language "characters minimum" }}
                   </small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="description">{{ T .Language "Description" }}</label>
-                  <textarea class="form-control" id="description" name="description" rows="5">{{ .DescriptionHTML }}</textarea>
+                  <textarea class="form-input" id="description" name="description" rows="5">{{ .DescriptionHTML }}</textarea>
                   <small class="form-hint">
                     <span id="desc-count" class="text-danger">0</span> / 100 {{ T .Language "characters minimum" }}
                   </small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="banner">{{ T .Language "Banner image (optional)" }}</label>
-                  <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
+                  <input type="file" class="form-input" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
                   <small class="form-hint">{{ T .Language "Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP." }}</small>
                 </div>
               </div>
-              <div class="card-footer d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2">
-                  <button type="submit" class="btn btn-outline-danger" formaction="{{ .Slug }}/delete" formmethod="post" onclick="return confirm('Delete this collection?');">{{ T .Language "Delete" }}</button>
+              <div class="card-footer flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                  <button type="submit" class="btn btn-outline-danger" formaction="{{ .Slug }}/delete" formmethod="post" onclick="return confirm({{ printf "%q" (T .Language "Delete this collection? The schematics inside will not be deleted.") }});">{{ T .Language "Delete" }}</button>
                 </div>
-                <div class="d-flex align-items-center gap-2">
+                <div class="flex items-center gap-2">
                   {{ if .Published }}
                   <button type="submit" name="action" value="unpublish" class="btn btn-outline-warning">{{ T .Language "Unpublish" }}</button>
                   {{ else }}
@@ -78,13 +78,13 @@
                 {{ if .ReorderSchematics }}
                 <ul id="schem-list" class="list-group mb-2">
                   {{ range .ReorderSchematics }}
-                  <li class="list-group-item d-flex align-items-center gap-2"
+                  <li class="list-group-item flex items-center gap-2"
                       draggable="true" data-id="{{ .ID }}" style="cursor: grab;">
-                    <span class="me-1 text-secondary" aria-hidden="true">&#x2195;</span>
+                    <span class="mr-1 text-secondary" aria-hidden="true">&#x2195;</span>
                     <img src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=80x45"
                          alt="" width="80" height="45" class="rounded"
                          style="object-fit: cover; flex-shrink: 0;" />
-                    <span class="flex-fill text-truncate">{{ .Title }}</span>
+                    <span class="flex-1 truncate">{{ .Title }}</span>
                   </li>
                   {{ end }}
                 </ul>

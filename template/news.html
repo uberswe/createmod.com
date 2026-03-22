@@ -5,21 +5,21 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="row g-3">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <!-- Left column: News posts -->
-                    <div class="col-lg-8">
+                    <div class="lg:col-span-2">
                         <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
                         {{ if .Posts }}
                             {{ $root := . }}
                             {{ range $i, $post := .Posts }}
                             <div class="card news-card mb-3">
                                 <div class="card-body py-3">
-                                    <div class="d-flex align-items-start">
-                                        <div class="flex-fill">
-                                            <div class="d-flex align-items-center mb-1">
-                                                <h3 class="mb-0"><a href="{{ $post.URL }}" class="text-reset">{{ $post.Title }}</a></h3>
+                                    <div class="flex items-start">
+                                        <div class="flex-1">
+                                            <div class="flex items-center mb-1">
+                                                <h3 class="mb-0"><a href="{{ $post.URL }}" class="text-inherit">{{ $post.Title }}</a></h3>
                                                 {{ if eq $i 0 }}
-                                                <span class="badge bg-green-lt ms-2">Latest</span>
+                                                <span class="badge bg-green-lt ml-2">Latest</span>
                                                 {{ end }}
                                             </div>
                                             <div class="text-secondary news-excerpt">
@@ -30,7 +30,7 @@
                                                 {{ end }}
                                             </div>
                                         </div>
-                                        <div class="text-secondary text-nowrap ms-3" style="font-size: 0.85rem;">
+                                        <div class="text-secondary text-nowrap ml-3" style="font-size: 0.85rem;">
                                             {{ DateOnly $post.PostDate }}
                                         </div>
                                     </div>
@@ -48,14 +48,14 @@
                     </div>
 
                     <!-- Right column: Site stats -->
-                    <div class="col-lg-4">
+                    <div class="lg:col-span-1">
                         <h2 class="page-title mb-3">{{ T .Language "Site Stats (7 days)" }}</h2>
 
                         <!-- Views chart -->
                         <div class="card mb-3">
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Views" }}</h3>
-                                <span class="ms-auto text-secondary">{{ .TotalViews7 }} {{ T .Language "total" }}</span>
+                                <span class="ml-auto text-secondary">{{ .TotalViews7 }} {{ T .Language "total" }}</span>
                             </div>
                             <div class="card-body">
                                 <div class="stats-chart" id="views-chart">
@@ -79,7 +79,7 @@
                         <div class="card mb-3">
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Downloads" }}</h3>
-                                <span class="ms-auto text-secondary">{{ .TotalDL7 }} {{ T .Language "total" }}</span>
+                                <span class="ml-auto text-secondary">{{ .TotalDL7 }} {{ T .Language "total" }}</span>
                             </div>
                             <div class="card-body">
                                 <div class="stats-chart" id="downloads-chart">
@@ -113,7 +113,7 @@
     cursor: pointer;
 }
 .news-card:hover {
-    border-color: var(--tblr-primary);
+    border-color: var(--color-primary);
     box-shadow: 0 1px 6px rgba(0,0,0,0.08);
 }
 .news-card h3 a {
@@ -126,7 +126,7 @@
     z-index: 0;
 }
 .news-card h3 a:hover {
-    color: var(--tblr-primary) !important;
+    color: var(--color-primary) !important;
 }
 .news-excerpt {
     position: relative;
@@ -161,7 +161,7 @@
 .stats-bar {
     width: 100%;
     min-height: 2px;
-    background: var(--tblr-primary);
+    background: var(--color-primary);
     border-radius: 2px 2px 0 0;
     transition: height 0.3s ease;
 }
@@ -170,13 +170,13 @@
     justify-content: space-between;
     margin-top: 4px;
     font-size: 0.7rem;
-    color: var(--tblr-secondary);
+    color: var(--color-secondary);
 }
 .stats-tooltip {
     position: absolute;
-    background: var(--tblr-bg-surface, #fff);
-    color: var(--tblr-body-color, #1e293b);
-    border: 1px solid var(--tblr-border-color, #e6e7e9);
+    background: var(--color-bg-surface, #fff);
+    color: var(--color-body, #1e293b);
+    border: 1px solid var(--color-border, #e6e7e9);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 0.75rem;

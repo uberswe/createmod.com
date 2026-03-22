@@ -5,8 +5,8 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="row row-cards">
-                    <div class="col-md-6">
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="w-full md:w-1/2">
                         <form class="card">
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Contact CreateMod.com" }}</h3>
@@ -15,24 +15,24 @@
                                 <div class="mb-3">
                                     <label class="form-label required">{{ T .Language "Email address" }}</label>
                                     <div>
-                                        <input type="email" class="form-control" aria-describedby="emailHelp"
+                                        <input type="email" class="form-input" aria-describedby="emailHelp"
                                                placeholder="{{ T .Language "Enter email" }}" id="contact-email">
                                         <small class="form-hint">{{ T .Language "We'll never share your email with anyone else." }}</small>
                                     </div>
                                 </div>
                                 <div class="mb-3 mb-0">
                                     <label class="form-label">{{ T .Language "Message" }}</label>
-                                    <textarea id="contact-content" rows="10" class="form-control"
+                                    <textarea id="contact-content" rows="10" class="form-input"
                                               placeholder="{{ T .Language "Type your message here" }}"></textarea>
                                 </div>
                             </div>
-                            <div class="card-footer text-end">
+                            <div class="card-footer text-right">
                                 <button type="submit" class="btn btn-primary" id="contact-form-btn">{{ T .Language "Send" }}</button>
                             </div>
                             <div class="mb-12">
                                 <div id="contact-success" class="alert alert-important alert-success"
                                      style="display: none;" role="alert">
-                                    <div class="d-flex">
+                                    <div class="flex">
                                         <div>
                                             <svg xmlns="http://www.w3.org/2000/svg"
                                                  class="icon alert-icon" width="24" height="24"
@@ -51,13 +51,13 @@
                             </div>
                         </form>
                     </div>
-                    <div class="col-md-6">
-                        <div class="row mb-2">
+                    <div class="w-full md:w-1/2">
+                        <div class="flex flex-wrap mb-2">
                             <div class="card card-sm">
                                 <div class="card-body">
                                     <a href="https://discord.gg/NQJuhb6stv">
-                                        <div class="row align-items-center">
-                                            <div class="col-auto">
+                                        <div class="flex items-center">
+                                            <div class="shrink-0">
 					<span class="bg-indigo text-white avatar">
 	<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"
          class="icon icon-tabler icons-tabler-filled icon-tabler-brand-discord"><path stroke="none" d="M0 0h24v24H0z"
@@ -65,8 +65,8 @@
             d="M14.983 3l.123 .006c2.014 .214 3.527 .672 4.966 1.673a1 1 0 0 1 .371 .488c1.876 5.315 2.373 9.987 1.451 12.28c-1.003 2.005 -2.606 3.553 -4.394 3.553c-.732 0 -1.693 -.968 -2.328 -2.045a21.512 21.512 0 0 0 2.103 -.493a1 1 0 1 0 -.55 -1.924c-3.32 .95 -6.13 .95 -9.45 0a1 1 0 0 0 -.55 1.924c.717 .204 1.416 .37 2.103 .494c-.635 1.075 -1.596 2.044 -2.328 2.044c-1.788 0 -3.391 -1.548 -4.428 -3.629c-.888 -2.217 -.39 -6.89 1.485 -12.204a1 1 0 0 1 .371 -.488c1.439 -1.001 2.952 -1.459 4.966 -1.673a1 1 0 0 1 .935 .435l.063 .107l.651 1.285l.137 -.016a12.97 12.97 0 0 1 2.643 0l.134 .016l.65 -1.284a1 1 0 0 1 .754 -.54l.122 -.009zm-5.983 7a2 2 0 0 0 -1.977 1.697l-.018 .154l-.005 .149l.005 .15a2 2 0 1 0 1.995 -2.15zm6 0a2 2 0 0 0 -1.977 1.697l-.018 .154l-.005 .149l.005 .15a2 2 0 1 0 1.995 -2.15z"/></svg>
 </span>
                                             </div>
-                                            <div class="col">
-                                                <div class="font-weight-medium">
+                                            <div class="grow min-w-0">
+                                                <div class="font-medium">
                                                     {{ T .Language "Click to Join Uberswe's Discord" }}
                                                 </div>
                                                 <div class="text-secondary">
@@ -78,11 +78,11 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
+                        <div class="flex flex-wrap">
                             <div class="card card-sm">
                                 <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-auto">
+                                    <div class="flex flex-wrap">
+                                        <div class="shrink-0">
                                             <p>{{ T .Language "This site is NOT associated with the Create mod dev team." }}</p>
                                             <p>{{ T .Language "You can join the official Create mod Discord via this link:" }} <b><a
                                                     href="https://discord.gg/P8Z56ashyS">https://discord.gg/P8Z56ashyS</a></b>.
@@ -100,6 +100,9 @@
     </div>
 </div>
 <script>
+    var i18n = {
+        errUnexpected: {{ printf "%q" (T .Language "We could not send your message. Please check your connection and try again.") }}
+    };
     document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('contact-form-btn').addEventListener("click", async function (e) {
             e.preventDefault()
@@ -115,7 +118,7 @@
                     div = document.createElement('div');
                     div.classList.add("invalid-feedback")
                     div.style.display = "block"
-                    div.innerText = "An unexpected error occurred, please try again"
+                    div.innerText = i18n.errUnexpected
                     document.getElementById("contact-form-btn").parentNode.insertAdjacentElement("beforeend", div)
                     document.getElementById("contact-form-btn").disabled = false
                 } else {
@@ -126,7 +129,7 @@
                 div = document.createElement('div');
                 div.classList.add("invalid-feedback")
                 div.style.display = "block"
-                div.innerText = "An unexpected error occurred, please try again"
+                div.innerText = i18n.errUnexpected
                 document.getElementById("contact-form-btn").parentNode.insertAdjacentElement("beforeend", div)
                 document.getElementById("contact-form-btn").disabled = false
             }
