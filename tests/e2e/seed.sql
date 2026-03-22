@@ -18,7 +18,7 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- 2. Test schematic: e2e-test-schematic (moderated, visible)
-INSERT INTO schematics (id, author_id, name, title, description, moderated, created, updated)
+INSERT INTO schematics (id, author_id, name, title, description, moderated, featured_image, created, updated)
 VALUES (
     'e2e000000000002',
     'e2e000000000001',
@@ -26,6 +26,7 @@ VALUES (
     'E2E Test Schematic',
     'Schematic created by E2E seed SQL.',
     true,
+    'test_featured.webp',
     NOW(),
     NOW()
 ) ON CONFLICT (id) DO NOTHING;
