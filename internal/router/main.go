@@ -446,7 +446,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/lang", Adapt(pages.SetLanguageHandler()))
 	// Schematics
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
-	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, webhookSecret)))
+	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, p.StorageService, webhookSecret)))
 	// Schematic RSS feed (comments)
 	r.Get("/schematics/{name}/feed", Adapt(pages.SchematicFeedHandler(p.AppStore, p.CacheService)))
 	// Redirect legacy /schematics/{name}/page/N to the schematic itself

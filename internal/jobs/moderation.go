@@ -122,11 +122,12 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		if imgErr != nil {
 			slog.Warn("moderation job: image safety check unavailable", "error", imgErr, "schematic_id", args.SchematicID)
 		} else if !imgResult.Approved {
-			slog.Warn("moderation job: featured image flagged, removing",
+			slog.Warn("moderation job: featured image flagged, holding for review",
 				"schematic_id", args.SchematicID, "reason", imgResult.Reason)
-			schem.FeaturedImage = ""
+			schem.Moderated = false
+			schem.ModerationReason = fmt.Sprintf("Featured image flagged by automated moderation: %s", imgResult.Reason)
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-				slog.Error("moderation job: failed to remove flagged featured image", "error", updateErr, "schematic_id", args.SchematicID)
+				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
 			}
 		}
 	}
