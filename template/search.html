@@ -14,7 +14,7 @@
                                stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path
                                   d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
                         </span>
-                        <input id="search-hero-input" type="text" value="{{ .Term }}" name="q" class="form-control form-control-lg" placeholder="{{ T .Language "Search schematics..." }}"
+                        <input id="search-hero-input" type="text" value="{{ .Term }}" name="q" class="form-input form-input-lg" placeholder="{{ T .Language "Search schematics..." }}"
                                aria-label="Search CreateMod.com" autocomplete="off"
                                hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"
                                hx-trigger="keyup changed delay:400ms, search" hx-include="#advanced-search-form">
@@ -22,9 +22,9 @@
                 </div>
 
                 <!-- 3-column layout -->
-                <div class="search-layout">
+                <div class="search-layout" x-data="{ filtersOpen: false }">
                     <!-- Left: Filter sidebar -->
-                    <div class="search-sidebar d-none d-lg-block">
+                    <div class="search-sidebar hidden lg:block">
                         {{template "search_filters.html" .}}
                         <div class="mt-4 search-under-container">
                             <div id="search-under" style="min-height: 550px; display: block; margin-bottom: 2rem;"></div>
@@ -32,38 +32,44 @@
                     </div>
 
                     <!-- Mobile filter toggle -->
-                    <div class="d-lg-none mb-3">
-                        <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobile-filters" aria-controls="mobile-filters">
+                    <div class="lg:hidden mb-3">
+                        <button class="btn btn-outline w-full" type="button" @click="filtersOpen = true">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z" /></svg>
                             {{ T .Language "Filters" }}
                         </button>
                     </div>
-                    <!-- Mobile filters offcanvas -->
-                    <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="mobile-filters" aria-labelledby="mobile-filters-label">
-                        <div class="offcanvas-header">
-                            <h5 class="offcanvas-title" id="mobile-filters-label">{{ T .Language "Filters" }}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-                        </div>
-                        <div class="offcanvas-body" id="mobile-filters-body">
+                    <!-- Mobile filters offcanvas (Alpine) -->
+                    <div class="lg:hidden" x-show="filtersOpen" x-cloak>
+                        <!-- Backdrop -->
+                        <div class="fixed inset-0 bg-black/50 z-40" @click="filtersOpen = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+                        <!-- Panel -->
+                        <div class="fixed inset-y-0 left-0 z-50 w-80 max-w-full bg-surface shadow-xl overflow-y-auto" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full">
+                            <div class="flex items-center justify-between p-4 border-b border-themed">
+                                <h5 class="text-lg font-semibold">{{ T .Language "Filters" }}</h5>
+                                <button type="button" class="btn-close" @click="filtersOpen = false" aria-label="Close"></button>
+                            </div>
+                            <div class="p-4" id="mobile-filters-body">
+                                {{template "search_filters.html" .}}
+                            </div>
                         </div>
                     </div>
 
                     <!-- Mobile: top ad -->
-                    <div id="search-top-mobile" class="d-lg-none mb-3 text-center"></div>
+                    <div id="search-top-mobile" class="lg:hidden mb-3 text-center"></div>
 
                     <!-- Center: Results -->
                     <div class="search-center">
                         <div id="search-results">
-                            <div class="text-secondary small mb-3">
+                            <div class="text-secondary text-sm mb-3">
                                 {{ if eq .SearchResultCount 0 }}
                                     {{ T .Language "No results found" }}
                                 {{ else }}
                                     {{ .SearchResultCount }} {{ T .Language "schematics found in" }} {{ .SearchSpeed }}s
                                 {{ end }}
                             </div>
-                            <div class="row row-cards">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{range $i, $s := .Schematics }}
-                                    <div class="col-lg-4 col-md-6 col-12 mb-3" data-schematic-id="{{ $s.ID }}" data-position="{{ $i }}">
+                                    <div class="col-span-1" data-schematic-id="{{ $s.ID }}" data-position="{{ $i }}">
                                     {{template "schematic_card.html" $s}}
                                     </div>
                                 {{end}}
@@ -73,7 +79,7 @@
                     </div>
 
                     <!-- Right: Ad rail (desktop only) -->
-                    <div class="search-ad-rail d-none d-xl-block">
+                    <div class="search-ad-rail hidden xl:block">
                         <div id="search-adrail-top" class="mb-3"></div>
                         <div id="search-adrail-bottom"></div>
                     </div>
@@ -82,31 +88,6 @@
         </main>
         {{template "footer.html" .}}
         <script>
-            // Populate mobile offcanvas with a copy of the desktop filters on open
-            var mobileFilters = document.getElementById('mobile-filters');
-            if (mobileFilters) {
-                mobileFilters.addEventListener('show.bs.offcanvas', function () {
-                    var src = document.querySelector('.search-sidebar #search-filters');
-                    var dest = document.getElementById('mobile-filters-body');
-                    if (src && dest) {
-                        var clone = src.cloneNode(true);
-                        // Remove HTMX attributes from clone so it acts as a plain form
-                        var form = clone.querySelector('form');
-                        if (form) {
-                            form.removeAttribute('hx-get');
-                            form.removeAttribute('hx-target');
-                            form.removeAttribute('hx-select');
-                            form.removeAttribute('hx-swap');
-                            form.removeAttribute('hx-push-url');
-                            form.removeAttribute('hx-trigger');
-                            form.removeAttribute('hx-include');
-                            form.id = 'mobile-search-form';
-                        }
-                        dest.innerHTML = '';
-                        dest.appendChild(clone);
-                    }
-                });
-            }
             // Mobile top banner
             window['nitroAds'].createAd('search-top-mobile', {
                 "sizes": [
@@ -177,7 +158,7 @@
                 gtag('event', 'search', { 'search_term': term });
               }
               // Track search result count
-              var countEl = document.querySelector('#search-results .text-secondary.small');
+              var countEl = document.querySelector('#search-results .text-secondary.text-sm');
               if (countEl && term) {
                 var match = countEl.textContent.match(/(\d+)/);
                 var count = match ? parseInt(match[1], 10) : 0;

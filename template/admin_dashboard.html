@@ -5,19 +5,19 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="page-title">Admin Dashboard</h2>
             </div>
           </div>
         </div>
         <!-- Action items -->
-        <div class="row row-deck row-cards mb-3">
-          <div class="col-sm-6 col-lg-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Pending Schematics</div>
                 </div>
                 <div class="h1 mb-3">{{.PendingCount}}</div>
@@ -25,10 +25,10 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Open Reports</div>
                 </div>
                 <div class="h1 mb-3">{{.ReportsCount}}</div>
@@ -36,10 +36,10 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Pending Categories</div>
                 </div>
                 <div class="h1 mb-3">{{.PendingCatsCount}}</div>
@@ -47,10 +47,10 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Pending Tags</div>
                 </div>
                 <div class="h1 mb-3">{{.PendingTagsCount}}</div>
@@ -58,10 +58,10 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-3">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Mod Metadata</div>
                 </div>
                 <div class="mt-3">
@@ -72,37 +72,37 @@
           </div>
         </div>
         <!-- Stats -->
-        <div class="row row-deck row-cards mb-3">
-          <div class="col-sm-6 col-lg-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Total Schematics</div>
                 </div>
                 <div class="h1 mb-3">{{.TotalCount}}</div>
-                <a href="/admin/schematics?filter=all" class="btn btn-outline-secondary btn-sm">View All</a>
+                <a href="/admin/schematics?filter=all" class="btn btn-outline btn-sm">View All</a>
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-4">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Moderated</div>
                 </div>
                 <div class="h1 mb-3">{{.ModeratedCount}}</div>
-                <a href="/admin/schematics?filter=moderated" class="btn btn-outline-secondary btn-sm">View</a>
+                <a href="/admin/schematics?filter=moderated" class="btn btn-outline btn-sm">View</a>
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-4">
+          <div>
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center">
+                <div class="flex items-center">
                   <div class="subheader">Deleted</div>
                 </div>
                 <div class="h1 mb-3">{{.DeletedCount}}</div>
-                <a href="/admin/schematics?filter=deleted" class="btn btn-outline-secondary btn-sm">View</a>
+                <a href="/admin/schematics?filter=deleted" class="btn btn-outline btn-sm">View</a>
               </div>
             </div>
           </div>
@@ -137,7 +137,7 @@
                   </td>
                   <td>
                     <a href="/admin/schematics/{{.ID}}">{{.Title}}</a>
-                    <div class="text-secondary text-truncate" style="max-width: 200px;">{{.Name}}</div>
+                    <div class="text-secondary truncate" style="max-width: 200px;">{{.Name}}</div>
                   </td>
                   <td>{{.AuthorUsername}}</td>
                   <td>

@@ -1,18 +1,18 @@
 {{ template "head.html" . }}
-<main class="page page-center">
-    <div class="container container-tight py-4">
+<main class="page flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-sm mx-auto py-4 px-4">
         <div class="text-center mb-4">
-            <a href="/" class="navbar-brand navbar-brand-autodark">
-                <img src="/assets/x/logo.png" alt="CreateMod.com">
+            <a href="/">
+                <img src="/assets/x/logo.png" alt="CreateMod.com" width="60" height="60">
             </a>
         </div>
         <div class="card card-md">
             <div class="card-body">
-                <h2 class="h2 text-center mb-4">{{ T .Language "Login to your account" }}</h2>
-                <form id="login-form" method="post" action="/login" autocomplete="off" novalidate hx-boost="false">
+                <h2 class="text-xl font-bold text-center mb-4">{{ T .Language "Login to your account" }}</h2>
+                <form id="login-form" method="post" action="/login" autocomplete="off" novalidate hx-boost="false" x-data="{ submitting: false }" @submit="submitting = true">
                     <div class="mb-3">
                         <label class="form-label">{{ T .Language "Email or username" }}</label>
-                        <input name="username" id="username" type="email" class="form-control" placeholder="your@email.com" autocomplete="off">
+                        <input name="username" id="username" type="email" class="form-input" placeholder="your@email.com" autocomplete="off">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">
@@ -21,39 +21,40 @@
                     <a href="/reset-password">{{ T .Language "I forgot my password" }}</a>
                   </span>
                         </label>
-                        <div class="input-group input-group-flat">
-                            <input name="password" id="password" type="password" class="form-control"  placeholder="Your password"  autocomplete="off">
+                        <div class="input-group" x-data="{ showPass: false }">
+                            <input name="password" id="password" :type="showPass ? 'text' : 'password'" class="form-input" placeholder="{{ T .Language "Your password" }}" autocomplete="off">
                             <span class="input-group-text">
-                    <a href="#" class="link-secondary" title="{{ T .Language "Show password" }}" data-bs-toggle="tooltip">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>
+                    <a href="#" class="text-secondary" @click.prevent="showPass = !showPass" :title="showPass ? '{{ T .Language "Hide password" }}' : '{{ T .Language "Show password" }}'">
+                      <svg x-show="!showPass" xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>
+                      <svg x-show="showPass" x-cloak xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" /><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" /><path d="M3 3l18 18" /></svg>
                     </a>
                   </span>
                         </div>
                     </div>
                     <div class="form-footer">
-                        <button type="submit" class="btn btn-primary w-100">{{ T .Language "Sign in" }}</button>
+                        <button type="submit" class="btn btn-primary w-full" :disabled="submitting">{{ T .Language "Sign in" }}</button>
                     </div>
                 </form>
             </div>
             <div class="hr-text">{{ T .Language "or" }}</div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col"><a href="/auth/discord" hx-boost="false" class="btn w-100">
-                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-brand-discord text-discord"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
+                <div class="grid grid-cols-2 gap-3">
+                    <a href="/auth/discord" hx-boost="false" class="btn w-full">
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon text-discord"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
                         {{ T .Language "Login with Discord" }}
-                    </a></div>
-                    <div class="col"><a href="/auth/github" hx-boost="false" class="btn w-100">
+                    </a>
+                    <a href="/auth/github" hx-boost="false" class="btn w-full">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon text-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" /></svg>
                         {{ T .Language "Login with Github" }}
-                    </a></div>
+                    </a>
                 </div>
             </div>
         </div>
         <div class="text-center text-secondary mt-3">
-            {{ T .Language "Don't have account yet?" }} <a href="/register" tabindex="-1">{{ T .Language "Sign up" }}</a>
+            {{ T .Language "Don't have account yet?" }} <a href="/register">{{ T .Language "Sign up" }}</a>
         </div>
         <div class="text-center text-secondary mt-3">
-            {{ T .Language "Or go back to" }} <a href="/" tabindex="-1">CreateMod.com</a>
+            {{ T .Language "Or go back to" }} <a href="/">CreateMod.com</a>
         </div>
     </div>
 </main>

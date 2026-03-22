@@ -6,13 +6,13 @@
 (function(){try{
 var k="createmodTheme",d="dark";
 var t=localStorage.getItem(k)||d;
-document.documentElement.setAttribute("data-bs-theme",t);
-if(t===d)document.documentElement.style.background="#1f2121";
+if(t===d){document.documentElement.classList.add("dark");document.documentElement.style.background="#1f2121";}
+else{document.documentElement.classList.remove("dark");}
 window.setTheme=function(theme){
   try{
     localStorage.setItem(k,theme);
-    document.documentElement.setAttribute("data-bs-theme",theme);
-    if(document.body)document.body.setAttribute("data-bs-theme",theme);
+    if(theme===d){document.documentElement.classList.add("dark");}
+    else{document.documentElement.classList.remove("dark");}
     document.querySelectorAll('.hide-theme-light').forEach(function(el){el.style.display=theme==='light'?'none':'';});
     document.querySelectorAll('.hide-theme-dark').forEach(function(el){el.style.display=theme===d?'none':'';});
     document.documentElement.style.background="";
@@ -54,17 +54,9 @@ window.setTheme=function(theme){
     <!-- Preconnect to CDN and font origins to reduce latency -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://rsms.me" crossorigin>
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://s.nitropay.com" crossorigin>
-    <!-- Inter font — loaded async to avoid blocking LCP -->
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" crossorigin="anonymous" media="print" onload="this.media='all'">
-    <!-- Tabler CSS via CDN (critical — render-blocking) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
-    <!-- Theme variables & Tabler overrides (local) -->
+    <!-- Tailwind CSS + components (Vite-built) -->
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
-    <!-- Project overrides (small tweaks) -->
-    <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
     <!-- Non-critical CSS: load async to avoid blocking LCP -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
@@ -73,8 +65,8 @@ window.setTheme=function(theme){
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12/dist/htmx.min.js" defer crossorigin="anonymous"></script>
     <!-- DOMPurify – client-side HTML sanitization for defense-in-depth -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer crossorigin="anonymous"></script>
-    <!-- Tabler JS (Bootstrap 5 bundle) — in <head> to prevent re-execution on HTMX body swaps -->
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/js/tabler.min.js" defer crossorigin="anonymous" integrity="sha384-2r3eTK9ussulv0Rm7xjvQuXVu5gRqRuctZwtAMvMjBWlcw69acmlK94r+ijsLkJu"></script>
+    <!-- Alpine.js + app logic (Vite-built) -->
+    <script src="/assets/x/main.js?v={{ AssetVer }}" defer></script>
 
     <script data-cfasync="false">window.nitroAds=window.nitroAds||{createAd:function(){return new Promise(e=>{window.nitroAds.queue.push(["createAd",arguments,e])})},addUserToken:function(){window.nitroAds.queue.push(["addUserToken",arguments])},queue:[]};</script>
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js"></script>
@@ -118,7 +110,7 @@ window.setTheme=function(theme){
         left: 0;
         height: 3px;
         width: 0;
-        background: var(--tblr-primary, #bf9045);
+        background: var(--color-primary, #bf9045);
         z-index: 2000;
         transition: width 0.3s ease;
         opacity: 0;
@@ -137,8 +129,6 @@ window.setTheme=function(theme){
 </head>
 <body hx-boost="true" hx-indicator="#htmx-indicator">
 <script>
-  // Apply theme to body immediately to prevent flash of light content.
-  (function(){try{var t=document.documentElement.getAttribute("data-bs-theme");if(t)document.body.setAttribute("data-bs-theme",t);}catch(e){}})();
   (function(){
     try {
       // Restore sidebar state from localStorage before first paint.

@@ -33,8 +33,8 @@ RUN go mod download
 # Copy the source from the current directory to the Working Directory inside the container
 COPY . .
 
-# Copy built frontend assets from frontend-builder stage
-COPY --from=frontend-builder /app/template/dist ./template/dist
+# Copy built frontend assets into the static directory the server serves from
+COPY --from=frontend-builder /app/template/dist/ ./template/static/
 
 # Build the Go app
 RUN go build -o main ./cmd/server/main.go

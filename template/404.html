@@ -6,12 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>{{ T .Language "page.404.title" }}</title>
     <link rel="shortcut icon" href="/assets/x/favicon-192x192.png" type="image/x-icon">
-    <!-- Tabler CSS via CDN -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
-    <!-- Local theme variables & overrides -->
+    <!-- Tailwind CSS + site styles -->
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
-    <!-- Project overrides and site styles -->
-    <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-HG8QRCK47M"></script>
     <script>
@@ -21,9 +17,9 @@
         gtag('config', 'G-HG8QRCK47M');
     </script>
 </head>
-<body class="border-top-wide border-primary d-flex flex-column">
+<body class="border-top-wide border-primary flex flex-col">
 <main class="page page-center">
-    <div class="container-tight py-4">
+    <div class="max-w-sm mx-auto py-4">
         <div class="empty">
             <img src="/assets/x/logo.png" alt="CreateMod logo">
             <div class="empty-header">404</div>

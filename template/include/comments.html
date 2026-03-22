@@ -1,66 +1,58 @@
 <div id="comments-list">
+    {{ if .Comments }}
     {{range .Comments}}
-    <div class="col-12 mb-2">
-        <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
+    <div class="mb-2">
+        <div class="card card-sm{{ if eq .Indent 1 }} md:ml-4{{end }}">
             <div class="card-body">
                 <div class="text-secondary">
                     {{ .Content }}
                 </div>
                 <div class="mt-4">
-                    <div class="row">
-                        <div class="col">
-                            <div class="row">
-                                <div class="col-1">
-                                    <div class="avatar-list avatar-list-stacked">
-                                        {{ if .AuthorHasAvatar }}
-                                        <span class="avatar avatar-xs rounded" style="background-image: url('{{ .AuthorAvatar }}')"></span>
-                                        {{ else }}
-                                        <span class="avatar avatar-xs rounded" style="background-image: url('https://mc-heads.net/avatar/Steve')"></span>
-                                        {{ end }}
-                                    </div>
-                                </div>
-                                <div class="col">
-                                    <a href="/author/{{ .AuthorUsername }}" class="link-blue">
-                                        {{ .Author }}
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <a href="#{{ .ID }}" class="link-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ .Published }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
-                                    <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/>
-                                    <path d="M16 3v4"/>
-                                    <path d="M8 3v4"/>
-                                    <path d="M4 11h16"/>
-                                    <path d="M11 15h1"/>
-                                    <path d="M12 15v3"/>
-                                </svg>
-                                {{ .Created }}
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            {{ if .AuthorHasAvatar }}
+                            <span class="avatar avatar-xs rounded" style="background-image: url('{{ .AuthorAvatar }}')"></span>
+                            {{ else }}
+                            <span class="avatar avatar-xs rounded" style="background-image: url('https://mc-heads.net/avatar/Steve')"></span>
+                            {{ end }}
+                            <a href="/author/{{ .AuthorUsername }}" class="text-blue-500 hover:underline">
+                                {{ .Author }}
                             </a>
                         </div>
+                        <a href="#{{ .ID }}" class="text-muted" title="{{ .Published }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
+                                <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/>
+                                <path d="M16 3v4"/>
+                                <path d="M8 3v4"/>
+                                <path d="M4 11h16"/>
+                                <path d="M11 15h1"/>
+                                <path d="M12 15v3"/>
+                            </svg>
+                            {{ .Created }}
+                        </a>
                         {{ if $.IsAuthenticated }}
-                        <div class="col-auto">
-                            <a href="#tinymce-comment" onclick="commentReply('{{ .ID }}', '{{ .Author }}')" class="link">
-                                Reply
-                            </a>
-                        </div>
+                        <a href="#tinymce-comment" onclick="commentReply('{{ .ID }}', '{{ .Author }}')" class="nav-link">
+                            {{ T $.Language "Reply" }}
+                        </a>
                         {{ end }}
-                        <div class="col-auto">
-                            <a id="{{ .ID }}" href="#{{ .ID }}" class="link-muted">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
-                                    <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
-                                    <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
-                                    <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
-                                    <path d="M8.7 10.7l6.6 -3.4"/>
-                                    <path d="M8.7 13.3l6.6 3.4"/>
-                                </svg>
-                            </a>
-                        </div>
+                        <a id="{{ .ID }}" href="#{{ .ID }}" class="text-muted">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-1">
+                                <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                <path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                <path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/>
+                                <path d="M8.7 10.7l6.6 -3.4"/>
+                                <path d="M8.7 13.3l6.6 3.4"/>
+                            </svg>
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     {{end}}
+    {{ else }}
+    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+        <p>{{ T .Language "No comments yet. Be the first to share your thoughts!" }}</p>
+    </div>
+    {{ end }}
 </div>

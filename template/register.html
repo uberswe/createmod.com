@@ -1,28 +1,28 @@
 {{ template "head.html" . }}
-<main class="page page-center">
-    <div class="container container-tight py-4">
+<main class="page flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-sm mx-auto py-4 px-4">
         <div class="text-center mb-4">
             <a href="/" class="navbar-brand navbar-brand-autodark">
                 <img src="/assets/x/logo.png" alt="CreateMod.com">
             </a>
         </div>
-        <form class="card card-md" method="post" action="/register" autocomplete="off" id="signup-form" novalidate hx-boost="false">
+        <form class="card card-md" method="post" action="/register" autocomplete="off" id="signup-form" novalidate hx-boost="false" x-data="{ submitting: false }" @submit="submitting = true">
             <div class="card-body">
-                <h2 class="card-title text-center mb-4">{{ T .Language "Create new account" }}</h2>
+                <h2 class="text-xl font-bold text-center mb-4">{{ T .Language "Create new account" }}</h2>
                 <div class="mb-3">
                     <label class="form-label">{{ T .Language "Username" }}</label>
-                    <input name="username" id="username" type="text" class="form-control" placeholder="{{ T .Language "Enter username" }}" required minlength="3" maxlength="30">
+                    <input name="username" id="username" type="text" class="form-input" placeholder="{{ T .Language "Enter username" }}" required minlength="3" maxlength="30">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">{{ T .Language "Email address" }}</label>
-                    <input name="email" id="email" type="email" class="form-control" placeholder="{{ T .Language "Enter email" }}" required>
+                    <input name="email" id="email" type="email" class="form-input" placeholder="{{ T .Language "Enter email" }}" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">{{ T .Language "Password" }}</label>
-                    <div class="input-group input-group-flat">
-                        <input name="password" id="password" type="password" class="form-control"  placeholder="{{ T .Language "Password (min 8 characters)" }}"  autocomplete="new-password" required minlength="8">
+                    <div class="input-group">
+                        <input name="password" id="password" type="password" class="form-input"  placeholder="{{ T .Language "Password (min 8 characters)" }}"  autocomplete="new-password" required minlength="8">
                         <span class="input-group-text">
-                  <a href="#" class="link-secondary" title="{{ T .Language "Show password" }}" data-bs-toggle="tooltip">
+                  <a href="#" class="text-secondary" title="{{ T .Language "Show password" }}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg>
                   </a>
                 </span>
@@ -35,7 +35,7 @@
                     </label>
                 </div>
                 <div class="form-footer">
-                    <button type="submit" class="btn btn-primary w-100">{{ T .Language "Create account" }}</button>
+                    <button type="submit" class="btn btn-primary w-full" :disabled="submitting">{{ T .Language "Create account" }}</button>
                 </div>
             </div>
         </form>
@@ -44,25 +44,22 @@
         </div>
     </div>
 </main>
-<div class="modal modal-blur fade" id="modal-success" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            <div class="modal-status bg-success"></div>
-            <div class="modal-body text-center py-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-green icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 12l2 2l4 -4" /></svg>
-                <h3>{{ T .Language "Account Created" }}</h3>
-                <div class="text-secondary">{{ T .Language "Your account has been created. Please check your email for a verification link." }}</div>
-            </div>
-            <div class="modal-footer">
-                <div class="w-100">
-                    <div class="row">
-                        <div class="col">
-                            <a href="/" class="btn w-100">
-                                {{ T .Language "Return to CreateMod.com" }}
-                            </a>
-                        </div>
-                    </div>
+<div x-data="modal" id="register-success-modal">
+    <div x-show="open" x-cloak class="modal-container" @keydown.escape.window="close()">
+        <div class="modal-backdrop" @click="close()" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+        <div class="modal-panel modal-panel-sm" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+            <div class="card">
+                <button type="button" class="btn-close" @click="close()" aria-label="Close"></button>
+                <div class="modal-status bg-success"></div>
+                <div class="card-body text-center py-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-green icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M9 12l2 2l4 -4" /></svg>
+                    <h3>{{ T .Language "Account Created" }}</h3>
+                    <div class="text-secondary">{{ T .Language "Your account has been created. Please check your email for a verification link." }}</div>
+                </div>
+                <div class="card-footer">
+                    <a href="/" class="btn w-full">
+                        {{ T .Language "Return to CreateMod.com" }}
+                    </a>
                 </div>
             </div>
         </div>

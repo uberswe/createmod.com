@@ -6,46 +6,46 @@
     <main class="page-body">
       <div class="container-wide">
         <div class="mb-3">
-          <div class="row align-items-center">
-            <div class="col">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="mb-1">{{ T .Language "New Guide" }}</h2>
               <div class="text-secondary">{{ T .Language "Create a new guide" }}</div>
             </div>
-            <div class="col-auto ms-auto">
-              <a class="btn btn-outline-secondary" href="/guides">{{ T .Language "Back" }}</a>
+            <div class="shrink-0 ml-auto">
+              <a class="btn btn-outline" href="/guides">{{ T .Language "Back" }}</a>
             </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-12 col-lg-9">
+        <div class="flex flex-wrap">
+          <div class="w-full lg:max-w-3xl">
             <form class="card" action="/guides" method="post" enctype="multipart/form-data" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Guide details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
                   <label class="form-label required" for="title">{{ T .Language "Title" }}</label>
-                  <input type="text" class="form-control" id="title" name="title" placeholder="{{ T .Language "My first guide" }}" required />
+                  <input type="text" class="form-input" id="title" name="title" placeholder="{{ T .Language "My first guide" }}" required />
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="banner">{{ T .Language "Banner image" }}</label>
-                  <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
+                  <input type="file" class="form-input" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
                   <small class="form-hint">{{ T .Language "Recommended: 1600x400 (4:1 ratio). Max 2MB. Will be cropped and converted to WebP." }}</small>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="guide-editor">{{ T .Language "Content" }}</label>
-                  <textarea class="form-control" id="guide-editor" name="content" rows="16" placeholder="{{ T .Language "Write your guide here..." }}"></textarea>
+                  <textarea class="form-input" id="guide-editor" name="content" rows="16" placeholder="{{ T .Language "Write your guide here..." }}"></textarea>
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="video_url">{{ T .Language "Optional video link (YouTube)" }}</label>
-                  <input type="url" class="form-control" id="video_url" name="video_url" placeholder="https://www.youtube.com/watch?v=..." />
+                  <input type="url" class="form-input" id="video_url" name="video_url" placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
                 <div class="mb-3">
                   <label class="form-label" for="external_url">{{ T .Language "Optional external guide link" }}</label>
-                  <input type="url" class="form-control" id="external_url" name="external_url" placeholder="https://example.com/your-guide" />
+                  <input type="url" class="form-input" id="external_url" name="external_url" placeholder="https://example.com/your-guide" />
                 </div>
               </div>
-              <div class="card-footer d-flex justify-content-end">
+              <div class="card-footer flex justify-end">
                 <a href="/guides" class="btn btn-link">{{ T .Language "Cancel" }}</a>
-                <button type="submit" class="btn btn-primary ms-2">{{ T .Language "Publish" }}</button>
+                <button type="submit" class="btn btn-primary ml-2">{{ T .Language "Publish" }}</button>
               </div>
             </form>
           </div>

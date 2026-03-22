@@ -5,12 +5,15 @@ test.describe('Search page filters', () => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
+    // Use the desktop sidebar form (not the mobile offcanvas duplicate)
+    const desktopForm = page.locator('.search-sidebar #advanced-search-form');
+
     // The "Best match" radio (value="1") should be checked by default
-    const bestMatch = page.locator('#advanced-search-form input[name="sort"][value="1"]');
+    const bestMatch = desktopForm.locator('input[name="sort"][value="1"]');
     await expect(bestMatch).toBeChecked();
 
     // "Most views" (value="6") should NOT be checked
-    const mostViews = page.locator('#advanced-search-form input[name="sort"][value="6"]');
+    const mostViews = desktopForm.locator('input[name="sort"][value="6"]');
     await expect(mostViews).not.toBeChecked();
   });
 
@@ -22,8 +25,11 @@ test.describe('Search page filters', () => {
     await page.waitForSelector('#search-results');
     const initialText = await page.locator('#search-results').textContent();
 
+    // Use the desktop sidebar form
+    const desktopForm = page.locator('.search-sidebar #advanced-search-form');
+
     // Click "Newest" sort option
-    const newest = page.locator('#advanced-search-form input[name="sort"][value="2"]');
+    const newest = desktopForm.locator('input[name="sort"][value="2"]');
     await newest.check();
 
     // Wait for HTMX to update the results
@@ -39,8 +45,11 @@ test.describe('Search page filters', () => {
 
     await page.waitForSelector('#search-results');
 
+    // Use the desktop sidebar form
+    const desktopForm = page.locator('.search-sidebar #advanced-search-form');
+
     // Change category dropdown
-    const categorySelect = page.locator('#advanced-search-form select[name="category"]');
+    const categorySelect = desktopForm.locator('select[name="category"]');
     const options = await categorySelect.locator('option').all();
 
     // If there are categories beyond "All", select the second one
@@ -78,8 +87,8 @@ test.describe('Search page filters', () => {
 
     await page.waitForSelector('#search-results');
 
-    // Move the rating range slider to 4 stars
-    const slider = page.locator('#rating-slider');
+    // Use the desktop sidebar slider (not the mobile duplicate)
+    const slider = page.locator('.search-sidebar #rating-slider');
     await slider.fill('4');
     await slider.dispatchEvent('input');
 
