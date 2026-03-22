@@ -13,7 +13,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/grokify/html-strip-tags-go v0.1.0
 	github.com/gtuk/discordwebhook v1.2.0
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/meilisearch/meilisearch-go v0.36.1
 	github.com/mergestat/timediff v0.0.4
