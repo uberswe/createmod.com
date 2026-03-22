@@ -10,7 +10,7 @@
                         <!-- Trending -->
                         <h2 class="mb-3"><a href="/search?sort=8" class="text-inherit no-underline">{{ T .Language "Trending" }} &rarr;</a></h2>
                         <div id="tab-panel-trending" class="tab-panel" data-trending-section="trending">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .Trending }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
@@ -30,7 +30,7 @@
                         <!-- Latest -->
                         <h2 class="mb-3 mt-4"><a href="/search?sort=2" class="text-inherit no-underline">{{ T .Language "Latest" }} &rarr;</a></h2>
                         <div id="tab-panel-latest" class="tab-panel">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .Schematics }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
@@ -47,7 +47,7 @@
                         <!-- Highest Rated -->
                         <h2 class="mb-3 mt-4"><a href="/search?sort=4" class="text-inherit no-underline">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
                         <div id="tab-panel-highest" class="tab-panel">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .HighestRated }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
@@ -66,7 +66,7 @@
                         {{ range .CategorySections }}
                         <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-inherit no-underline">{{ .Category.Name }} &rarr;</a></h3>
                         <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel" data-trending-section="cat-{{ .Category.Key }}">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {{ range .Items }}
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}

@@ -6,12 +6,14 @@
         <main class="page-body">
             <div class="container-wide">
                 <div class="flex justify-center">
-                    <div class="w-full max-w-4xl">
-                        <div class="card card-lg">
-                            <div class="card-body markdown">
-                                <h2>{{ T .Language "Community Rules" }}</h2>
+                    <div class="w-full max-w-3xl">
+                        <h2 class="mb-4">{{ T .Language "Community Rules" }}</h2>
 
-                                <h3>{{ T .Language "General Guidelines" }}</h3>
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h3 class="card-title mb-0">{{ T .Language "General Guidelines" }}</h3>
+                            </div>
+                            <div class="card-body markdown">
                                 <ol>
                                     <li><strong>{{ T .Language "Understand Before You Upload:" }}</strong> {{ T .Language "Please review existing posts and familiarize yourself with our formatting standards before submitting your schematic." }}</li>
                                     <li><strong>{{ T .Language "Post Original Work:" }}</strong> {{ T .Language "Upload only your own creations. If you're sharing someone else's work, you must include proper and visible credit." }}</li>
@@ -24,8 +26,14 @@
                                     <li><strong>{{ T .Language "Accurate Thumbnails:" }}</strong> {{ T .Language "Thumbnails must clearly represent the schematic being uploaded." }}</li>
                                     <li><strong>{{ T .Language "Respect Ownership:" }}</strong> {{ T .Language "Do not redistribute content uploaded by others without explicit permission." }}</li>
                                 </ol>
+                            </div>
+                        </div>
 
-                                <h3>{{ T .Language "Bannable Offenses" }}</h3>
+                        <div class="card mb-4" style="border-color: var(--color-danger);">
+                            <div class="card-header" style="border-bottom-color: var(--color-danger);">
+                                <h3 class="card-title mb-0 text-red">{{ T .Language "Bannable Offenses" }}</h3>
+                            </div>
+                            <div class="card-body markdown">
                                 <p><em>{{ T .Language "All bans are final and linked to IP addresses. Illegal activity will be reported to law enforcement." }}</em></p>
                                 <ol>
                                     <li><strong>{{ T .Language "Manipulating Ratings:" }}</strong> {{ T .Language "Do not attempt to artificially inflate or deflate schematic ratings." }}</li>
