@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"createmod/internal/abtest"
 	"createmod/internal/metrics"
 	"createmod/internal/server"
 	"encoding/json"
@@ -15,7 +14,7 @@ type searchClickRequest struct {
 	Position int    `json:"position"`
 }
 
-// SearchClickHandler records a search result click for A/B test analytics.
+// SearchClickHandler records a search result click for analytics.
 // POST /api/search/click
 func SearchClickHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
@@ -24,23 +23,12 @@ func SearchClickHandler() func(e *server.RequestEvent) error {
 			return &server.APIError{Status: 400, Message: "invalid request body"}
 		}
 
-		variant := abtest.VariantFromContext(e.Request.Context())
-		variantName := "B"
-		engineName := "bleve"
-		indexLevel := "ai"
-		if variant != nil {
-			variantName = variant.Name
-			engineName = variant.Engine
-			indexLevel = variant.IndexLevel
-		}
-
-		metrics.SearchClicks.WithLabelValues(variantName, engineName, indexLevel).Inc()
+		metrics.SearchClicks.WithLabelValues("meilisearch", "mods").Inc()
 
 		slog.Info("search",
 			"event", "search_click",
-			"variant", variantName,
-			"engine", engineName,
-			"index_level", indexLevel,
+			"engine", "meilisearch",
+			"index", "mods",
 			"query", req.Query,
 			"result_id", req.ResultID,
 			"position", req.Position,

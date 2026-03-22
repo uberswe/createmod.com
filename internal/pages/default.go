@@ -2,7 +2,6 @@ package pages
 
 import (
 	stdctx "context"
-	"createmod/internal/abtest"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
@@ -52,9 +51,6 @@ type DefaultData struct {
 	NextPageURL     string
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
-	Variant            *abtest.Variant
-	TrendingVariant    string
-	TrendingWindowDays int
 	HideOutstream      bool
 }
 

@@ -6,15 +6,15 @@ import (
 )
 
 var (
-	// IndexPageViews counts index page views per trending variant.
+	// IndexPageViews counts index page views.
 	IndexPageViews = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "createmod_index_page_views_total",
-		Help: "Total index page views per trending variant.",
-	}, []string{"variant", "window_days"})
+		Help: "Total index page views.",
+	}, []string{"window_days"})
 
-	// IndexClicks counts index page schematic clicks per trending variant.
+	// IndexClicks counts index page schematic clicks.
 	IndexClicks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "createmod_index_clicks_total",
-		Help: "Total index page schematic clicks per trending variant.",
-	}, []string{"variant", "window_days", "section"})
+		Help: "Total index page schematic clicks.",
+	}, []string{"window_days", "section"})
 )

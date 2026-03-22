@@ -20,8 +20,5 @@ data:
   OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
   OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
   OTEL_TRACES_SAMPLER_ARG: "0.1"
-  # Meilisearch / Search A/B Test
+  # Meilisearch
   MEILISEARCH_URL: "http://meilisearch.createmod-com-prod.svc.cluster.local:7700"
-  SEARCH_TEST_ENABLED: "true"
-  # Trending A/B Test
-  TRENDING_TEST_ENABLED: "true"

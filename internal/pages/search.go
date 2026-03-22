@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"createmod/internal/abtest"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/metrics"
@@ -61,7 +60,7 @@ type SearchData struct {
 	HidePaid          bool
 }
 
-func SearchHandler(variantRouter *abtest.VariantRouter, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
@@ -133,10 +132,6 @@ func SearchHandler(variantRouter *abtest.VariantRouter, searchService *search.Se
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
 
-		// Get variant from context (set by middleware, nil if test disabled).
-		variant := abtest.VariantFromContext(e.Request.Context())
-		engine := variantRouter.GetEngine(variant)
-
 		sq := search.SearchQuery{
 			Term:             term,
 			Order:            order,
@@ -148,30 +143,21 @@ func SearchHandler(variantRouter *abtest.VariantRouter, searchService *search.Se
 			HidePaid:         hidePaid,
 		}
 
-		ids, _ := engine.Search(e.Request.Context(), sq)
+		ids, _ := searchEngine.Search(e.Request.Context(), sq)
 
 		// Record metrics.
 		searchDuration := time.Since(start)
-		variantName := "B" // default when test is disabled
-		engineName := "bleve"
-		indexLevel := "ai"
-		if variant != nil {
-			variantName = variant.Name
-			engineName = variant.Engine
-			indexLevel = variant.IndexLevel
-		}
-		metrics.SearchLatency.WithLabelValues(variantName, engineName, indexLevel).Observe(searchDuration.Seconds())
+		metrics.SearchLatency.WithLabelValues("meilisearch", "mods").Observe(searchDuration.Seconds())
 		zeroResults := "false"
 		if len(ids) == 0 {
 			zeroResults = "true"
 		}
-		metrics.SearchQueries.WithLabelValues(variantName, engineName, indexLevel, zeroResults).Inc()
+		metrics.SearchQueries.WithLabelValues("meilisearch", "mods", zeroResults).Inc()
 
 		slog.Info("search",
 			"event", "search",
-			"variant", variantName,
-			"engine", engineName,
-			"index_level", indexLevel,
+			"engine", "meilisearch",
+			"index", "mods",
 			"query", term,
 			"results_count", len(ids),
 			"zero_results", len(ids) == 0,
@@ -324,7 +310,6 @@ func SearchHandler(variantRouter *abtest.VariantRouter, searchService *search.Se
 			ViewMode:          viewMode,
 			HidePaid:          hidePaid,
 		}
-		d.Variant = variant
 		d.Populate(e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Search"))
 		// Dynamic title based on search context

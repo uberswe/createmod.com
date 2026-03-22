@@ -80,7 +80,7 @@ type ModInfo struct {
 	IconURL   string
 }
 
-func SchematicHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, webhookSecret string) func(e *server.RequestEvent) error {
+func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, webhookSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
@@ -131,7 +131,7 @@ func SchematicHandler(searchService *search.Service, cacheService *cache.Service
 			authorID = d.Schematic.Author.ID
 		}
 		d.FromAuthor = findAuthorSchematicsFromStore(appStore, cacheService, d.Schematic.ID, authorID, 5)
-		d.Similar = findSimilarSchematicsFromStore(appStore, cacheService, d.Schematic, d.FromAuthor, searchService)
+		d.Similar = findSimilarSchematicsFromStore(appStore, cacheService, d.Schematic, d.FromAuthor, searchEngine)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
 		d.PendingModeration = !s.Moderated && d.IsAuthor
@@ -1031,7 +1031,7 @@ func findSimilarByCategoryFromStore(appStore *store.Store, cacheService *cache.S
 
 // findSimilarSchematicsFromStore uses the search service's dedicated
 // similarity query to find schematics related to the current one.
-func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.Service, schematic models.Schematic, author []models.Schematic, searchService *search.Service) []models.Schematic {
+func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.Service, schematic models.Schematic, author []models.Schematic, searchEngine search.SearchEngine) []models.Schematic {
 	const limit = 5
 
 	// Build exclude set: current schematic + author schematics.
@@ -1041,9 +1041,15 @@ func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.S
 		exclude[a.ID] = struct{}{}
 	}
 
-	wantIDs := searchService.SearchSimilar(schematic.Title, exclude, limit)
+	// Collect tag names for the similarity search.
+	tags := make([]string, 0, len(schematic.Tags))
+	for _, t := range schematic.Tags {
+		tags = append(tags, t.Name)
+	}
 
-	// If search index returned results, query store and preserve search ranking.
+	wantIDs, _ := searchEngine.SearchSimilar(stdctx.Background(), schematic.ID, tags, limit)
+
+	// If search engine returned results, query store and preserve ranking.
 	if len(wantIDs) > 0 {
 		ctx := stdctx.Background()
 		storeSchematics, err := appStore.Schematics.ListByIDs(ctx, wantIDs)
@@ -1064,6 +1070,6 @@ func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.S
 		return sortedModels
 	}
 
-	// Fallback: search index empty/unavailable, query store by shared categories.
+	// Fallback: search engine unavailable, query store by shared categories.
 	return findSimilarByCategoryFromStore(appStore, cacheService, schematic, exclude, limit)
 }

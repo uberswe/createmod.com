@@ -5,7 +5,6 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
-	"createmod/internal/search"
 	"createmod/internal/store"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
@@ -36,7 +35,7 @@ type SchematicTagWithSelected struct {
 	Selected bool
 }
 
-func EditSchematicHandler(searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		storeSchematic, err := appStore.Schematics.GetByName(context.Background(), name)

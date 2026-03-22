@@ -1,4 +1,4 @@
-// Package metrics provides Prometheus instrumentation for search A/B testing.
+// Package metrics provides Prometheus instrumentation for search.
 package metrics
 
 import (
@@ -7,28 +7,22 @@ import (
 )
 
 var (
-	// SearchLatency tracks search request duration per variant.
+	// SearchLatency tracks search request duration.
 	SearchLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "createmod_search_latency_seconds",
 		Help:    "Search request latency in seconds.",
 		Buckets: prometheus.DefBuckets,
-	}, []string{"variant", "engine", "index_level"})
+	}, []string{"engine", "index"})
 
-	// SearchQueries counts total search queries per variant.
+	// SearchQueries counts total search queries.
 	SearchQueries = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "createmod_search_queries_total",
 		Help: "Total number of search queries.",
-	}, []string{"variant", "engine", "index_level", "zero_results"})
+	}, []string{"engine", "index", "zero_results"})
 
-	// SearchClicks counts search result clicks per variant.
+	// SearchClicks counts search result clicks.
 	SearchClicks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "createmod_search_clicks_total",
 		Help: "Total number of search result clicks.",
-	}, []string{"variant", "engine", "index_level"})
-
-	// SearchFallbacks counts fallback events (Meilisearch → Bleve).
-	SearchFallbacks = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "createmod_search_fallbacks_total",
-		Help: "Total number of search engine fallback events.",
-	}, []string{"variant"})
+	}, []string{"engine", "index"})
 )

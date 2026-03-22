@@ -102,30 +102,6 @@ window.setTheme=function(theme){
         gtag('config', 'G-HG8QRCK47M');
     </script>
 
-    {{ if .Variant }}
-    <script>
-      window.searchVariant = '{{ .Variant.Name }}';
-      window.searchEngine = '{{ .Variant.Engine }}';
-      window.searchIndexLevel = '{{ .Variant.IndexLevel }}';
-      gtag('set', 'user_properties', {
-        'search_variant': window.searchVariant,
-        'search_engine': window.searchEngine,
-        'search_index_level': window.searchIndexLevel
-      });
-    </script>
-    {{ end }}
-
-    {{ if .TrendingVariant }}
-    <script>
-      window.trendingVariant = '{{ .TrendingVariant }}';
-      window.trendingWindowDays = '{{ .TrendingWindowDays }}';
-      gtag('set', 'user_properties', {
-        'trending_variant': window.trendingVariant,
-        'trending_window_days': window.trendingWindowDays
-      });
-    </script>
-    {{ end }}
-
     <style>
       /* HTMX loading indicator bar */
       .htmx-indicator {

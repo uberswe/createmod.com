@@ -6,7 +6,6 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/mailer"
 	"createmod/internal/models"
-	"createmod/internal/search"
 	"createmod/internal/server"
 	"createmod/internal/store"
 	"fmt"
@@ -222,7 +221,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 }
 
 // AdminSchematicUpdateHandler handles POST /admin/schematics/{id} to update a schematic as admin.
-func AdminSchematicUpdateHandler(searchService *search.Service, cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
+func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if !isSuperAdmin(e) {
 			return e.String(http.StatusForbidden, "forbidden")

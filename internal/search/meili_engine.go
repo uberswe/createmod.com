@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -13,22 +15,24 @@ import (
 type MeiliEngine struct {
 	client   meilisearch.ServiceManager
 	indexUID string
-	fallback *Service // Bleve fallback for suggest, trending sort, and errors
+	svc      *Service // for suggest, trending scores, and filter index
+	resync   sync.Once
 }
 
 // NewMeiliEngine creates a SearchEngine backed by Meilisearch.
-func NewMeiliEngine(client meilisearch.ServiceManager, indexUID string, fallback *Service) *MeiliEngine {
+func NewMeiliEngine(client meilisearch.ServiceManager, indexUID string, svc *Service) *MeiliEngine {
 	return &MeiliEngine{
 		client:   client,
 		indexUID: indexUID,
-		fallback: fallback,
+		svc:      svc,
 	}
 }
 
 func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, error) {
-	// Trending sort not supported by Meilisearch; fall back to Bleve.
+	// Trending sort: query Meilisearch for filtered results, then re-sort
+	// by in-memory trending scores.
 	if q.Order == TrendingOrder {
-		return m.fallbackSearch(q, "trending sort not supported in meili")
+		return m.trendingSearch(ctx, q)
 	}
 
 	filter := m.buildFilter(q)
@@ -43,7 +47,91 @@ func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, erro
 	index := m.client.Index(m.indexUID)
 	result, err := index.SearchWithContext(ctx, q.Term, searchReq)
 	if err != nil {
-		return m.fallbackSearch(q, fmt.Sprintf("meili search error: %v", err))
+		return nil, fmt.Errorf("meili search error: %w", err)
+	}
+
+	ids := make([]string, 0, len(result.Hits))
+	for _, hit := range result.Hits {
+		var doc struct {
+			ID string `json:"id"`
+		}
+		if err := hit.DecodeInto(&doc); err != nil || doc.ID == "" {
+			continue
+		}
+		ids = append(ids, doc.ID)
+	}
+
+	m.triggerResyncIfEmpty(q, len(ids))
+	return ids, nil
+}
+
+// trendingSearch queries Meilisearch for filtered results, then re-sorts
+// them by in-memory trending scores.
+func (m *MeiliEngine) trendingSearch(ctx context.Context, q SearchQuery) ([]string, error) {
+	filter := m.buildFilter(q)
+
+	searchReq := &meilisearch.SearchRequest{
+		Limit:  5000,
+		Filter: filter,
+	}
+
+	index := m.client.Index(m.indexUID)
+	result, err := index.SearchWithContext(ctx, q.Term, searchReq)
+	if err != nil {
+		return nil, fmt.Errorf("meili trending search error: %w", err)
+	}
+
+	ids := make([]string, 0, len(result.Hits))
+	for _, hit := range result.Hits {
+		var doc struct {
+			ID string `json:"id"`
+		}
+		if err := hit.DecodeInto(&doc); err != nil || doc.ID == "" {
+			continue
+		}
+		ids = append(ids, doc.ID)
+	}
+
+	m.triggerResyncIfEmpty(q, len(ids))
+
+	// Re-sort by trending scores from the in-memory service.
+	scores := m.svc.trendingScores
+	if scores != nil && len(ids) > 1 {
+		slices.SortFunc(ids, func(a, b string) int {
+			sa := scores[a]
+			sb := scores[b]
+			if sa > sb {
+				return -1
+			}
+			if sa < sb {
+				return 1
+			}
+			return 0
+		})
+	}
+
+	return ids, nil
+}
+
+func (m *MeiliEngine) SearchSimilar(ctx context.Context, schematicID string, tags []string, limit int) ([]string, error) {
+	// Build a search query from the tags.
+	term := strings.Join(tags, " ")
+	if term == "" {
+		return nil, nil
+	}
+
+	filter := fmt.Sprintf(`id != "%s"`, escapeMeiliString(schematicID))
+
+	searchReq := &meilisearch.SearchRequest{
+		Limit:  int64(limit),
+		Filter: filter,
+	}
+
+	index := m.client.Index(m.indexUID)
+	result, err := index.SearchWithContext(ctx, term, searchReq)
+	if err != nil {
+		slog.Error("meili SearchSimilar error", "error", err)
+		return nil, err
 	}
 
 	ids := make([]string, 0, len(result.Hits))
@@ -61,9 +149,7 @@ func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, erro
 }
 
 func (m *MeiliEngine) Suggest(q string, limit int) []Suggestion {
-	// Delegate to Bleve — in-memory suggest is fast and Meilisearch
-	// doesn't have an equivalent autocomplete API.
-	return m.fallback.Suggest(q, limit)
+	return m.svc.Suggest(q, limit)
 }
 
 func (m *MeiliEngine) Ready() bool {
@@ -80,14 +166,6 @@ func (m *MeiliEngine) Health(ctx context.Context) error {
 	}
 	_, err := m.client.Health()
 	return err
-}
-
-// fallbackSearch logs a warning and falls back to Bleve base search.
-func (m *MeiliEngine) fallbackSearch(q SearchQuery, reason string) ([]string, error) {
-	slog.Warn("meili: falling back to bleve", "reason", reason, "index", m.indexUID)
-	ids := m.fallback.Search(q.Term, q.Order, q.Rating, q.Category, q.Tags,
-		q.MinecraftVersion, q.CreateVersion, q.HidePaid)
-	return ids, nil
 }
 
 // buildFilter constructs a Meilisearch filter string from SearchQuery parameters.
@@ -142,9 +220,34 @@ func (m *MeiliEngine) buildSort(order int) []string {
 	case LeastViewedOrder:
 		return []string{"views:asc"}
 	default:
-		// BestMatch, Trending: use Meilisearch relevancy (no sort).
+		// BestMatch: use Meilisearch relevancy (no sort).
 		return nil
 	}
+}
+
+// triggerResyncIfEmpty kicks off a one-time background Meilisearch sync when a
+// broad query (empty term, no filters) returns 0 hits but the in-memory index
+// has documents. This covers the case where the pod started before Meilisearch
+// was reachable or before auth was configured.
+func (m *MeiliEngine) triggerResyncIfEmpty(q SearchQuery, hitCount int) {
+	if hitCount > 0 || q.Term != "" || q.Category != "" && q.Category != "all" || len(q.Tags) > 0 {
+		return
+	}
+	idx := m.svc.GetIndex()
+	if len(idx) == 0 {
+		return
+	}
+	m.resync.Do(func() {
+		go func() {
+			slog.Info("meili: 0-result broad query detected, triggering background resync", "index", m.indexUID, "docs", len(idx))
+			docs := MapToMeiliDocuments(idx)
+			if err := SyncMeiliIndex(m.client, m.indexUID, docs); err != nil {
+				slog.Error("meili: background resync failed", "index", m.indexUID, "error", err)
+			} else {
+				slog.Info("meili: background resync complete", "index", m.indexUID, "docs", len(docs))
+			}
+		}()
+	})
 }
 
 // escapeMeiliString escapes double quotes in filter values.

@@ -9,13 +9,8 @@ import (
 	"github.com/meilisearch/meilisearch-go"
 )
 
-// Meilisearch index UIDs for each enrichment level.
-const (
-	MeiliIndexBase = "schematics_base"
-	MeiliIndexAI   = "schematics_ai"
-	MeiliIndexFull = "schematics_full"
-	MeiliIndexMods = "schematics_mods"
-)
+// MeiliIndex is the single Meilisearch index used for search.
+const MeiliIndex = "schematics_mods"
 
 // MeiliDocument represents a schematic document in Meilisearch.
 type MeiliDocument struct {
@@ -36,32 +31,12 @@ type MeiliDocument struct {
 	CreatedTimestamp  int64    `json:"created_timestamp"`
 }
 
-// EnsureMeiliIndexes creates the three Meilisearch indexes with proper settings.
+// EnsureMeiliIndexes creates the Meilisearch index with proper settings.
 func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
-	indexes := []struct {
-		UID        string
-		Searchable []string
-	}{
-		{
-			UID:        MeiliIndexBase,
-			Searchable: []string{"title", "tags", "description", "author"},
-		},
-		{
-			UID:        MeiliIndexAI,
-			Searchable: []string{"title", "tags", "description", "ai_description", "author"},
-		},
-		{
-			UID:        MeiliIndexFull,
-			Searchable: []string{"title", "tags", "block_names", "description", "ai_description", "author"},
-		},
-		{
-			UID:        MeiliIndexMods,
-			Searchable: []string{"title", "tags", "block_names", "mod_names", "description", "ai_description", "author"},
-		},
-	}
+	searchable := []string{"title", "tags", "block_names", "mod_names", "description", "ai_description", "author"}
 
 	filterableStr := []string{
-		"categories", "minecraft_version", "create_version",
+		"id", "categories", "minecraft_version", "create_version",
 		"tags", "rating", "paid", "views", "created_timestamp",
 	}
 	filterable := make([]interface{}, len(filterableStr))
@@ -70,43 +45,41 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 	}
 	sortable := []string{"rating", "views", "created_timestamp"}
 
-	for _, idx := range indexes {
-		// Create index if it doesn't exist.
-		task, err := client.CreateIndex(&meilisearch.IndexConfig{
-			Uid:        idx.UID,
-			PrimaryKey: "id",
-		})
-		if err != nil {
-			slog.Warn("meili: create index (may already exist)", "uid", idx.UID, "error", err)
-		} else {
-			waitForTask(client, task)
-		}
-
-		index := client.Index(idx.UID)
-
-		// Set searchable attributes.
-		if task, err := index.UpdateSearchableAttributes(&idx.Searchable); err != nil {
-			slog.Error("meili: update searchable attributes", "uid", idx.UID, "error", err)
-		} else {
-			waitForTask(client, task)
-		}
-
-		// Set filterable attributes.
-		if task, err := index.UpdateFilterableAttributes(&filterable); err != nil {
-			slog.Error("meili: update filterable attributes", "uid", idx.UID, "error", err)
-		} else {
-			waitForTask(client, task)
-		}
-
-		// Set sortable attributes.
-		if task, err := index.UpdateSortableAttributes(&sortable); err != nil {
-			slog.Error("meili: update sortable attributes", "uid", idx.UID, "error", err)
-		} else {
-			waitForTask(client, task)
-		}
-
-		slog.Info("meili: index configured", "uid", idx.UID)
+	// Create index if it doesn't exist.
+	task, err := client.CreateIndex(&meilisearch.IndexConfig{
+		Uid:        MeiliIndex,
+		PrimaryKey: "id",
+	})
+	if err != nil {
+		slog.Warn("meili: create index (may already exist)", "uid", MeiliIndex, "error", err)
+	} else {
+		waitForTask(client, task)
 	}
+
+	index := client.Index(MeiliIndex)
+
+	// Set searchable attributes.
+	if task, err := index.UpdateSearchableAttributes(&searchable); err != nil {
+		slog.Error("meili: update searchable attributes", "uid", MeiliIndex, "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	// Set filterable attributes.
+	if task, err := index.UpdateFilterableAttributes(&filterable); err != nil {
+		slog.Error("meili: update filterable attributes", "uid", MeiliIndex, "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	// Set sortable attributes.
+	if task, err := index.UpdateSortableAttributes(&sortable); err != nil {
+		slog.Error("meili: update sortable attributes", "uid", MeiliIndex, "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	slog.Info("meili: index configured", "uid", MeiliIndex)
 
 	return nil
 }
@@ -142,46 +115,22 @@ func waitForTask(client meilisearch.ServiceManager, taskInfo *meilisearch.TaskIn
 	}
 }
 
-// SyncMeiliIndex indexes documents into a specific Meilisearch index.
-// It strips fields not relevant to the index level.
+// SyncMeiliIndex indexes documents into the Meilisearch index.
 func SyncMeiliIndex(client meilisearch.ServiceManager, indexUID string, docs []MeiliDocument) error {
 	if len(docs) == 0 {
 		return nil
-	}
-
-	// Strip fields based on index level.
-	cleaned := make([]MeiliDocument, len(docs))
-	copy(cleaned, docs)
-	switch indexUID {
-	case MeiliIndexBase:
-		for i := range cleaned {
-			cleaned[i].AIDescription = ""
-			cleaned[i].BlockNames = nil
-			cleaned[i].ModNames = nil
-		}
-	case MeiliIndexAI:
-		for i := range cleaned {
-			cleaned[i].BlockNames = nil
-			cleaned[i].ModNames = nil
-		}
-	case MeiliIndexFull:
-		for i := range cleaned {
-			cleaned[i].ModNames = nil
-		}
-	case MeiliIndexMods:
-		// Keep everything including ModNames.
 	}
 
 	index := client.Index(indexUID)
 
 	// Batch in groups of 1000.
 	const batchSize = 1000
-	for start := 0; start < len(cleaned); start += batchSize {
+	for start := 0; start < len(docs); start += batchSize {
 		end := start + batchSize
-		if end > len(cleaned) {
-			end = len(cleaned)
+		if end > len(docs) {
+			end = len(docs)
 		}
-		batch := cleaned[start:end]
+		batch := docs[start:end]
 
 		pk := "id"
 		task, err := index.AddDocuments(batch, &meilisearch.DocumentOptions{PrimaryKey: &pk})
@@ -195,13 +144,14 @@ func SyncMeiliIndex(client meilisearch.ServiceManager, indexUID string, docs []M
 }
 
 // MapToMeiliDocuments converts schematic index entries to Meilisearch documents.
-func MapToMeiliDocuments(filterIndex []schematicIndex, bleveEntries []indexCacheEntry) []MeiliDocument {
+func MapToMeiliDocuments(filterIndex []schematicIndex) []MeiliDocument {
 	docs := make([]MeiliDocument, len(filterIndex))
 	for i, si := range filterIndex {
-		doc := MeiliDocument{
+		docs[i] = MeiliDocument{
 			ID:               si.ID,
 			Title:            si.Title,
 			Description:      si.Description,
+			AIDescription:    si.AIDescription,
 			Tags:             si.Tags,
 			Categories:       si.Categories,
 			Author:           si.Author,
@@ -214,11 +164,6 @@ func MapToMeiliDocuments(filterIndex []schematicIndex, bleveEntries []indexCache
 			BlockNames:       si.BlockNames,
 			ModNames:         si.ModNames,
 		}
-		// Pull AIDescription from the Bleve cache entry if available.
-		if i < len(bleveEntries) {
-			doc.AIDescription = bleveEntries[i].BI.AIDescription
-		}
-		docs[i] = doc
 	}
 	return docs
 }
