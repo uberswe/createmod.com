@@ -494,6 +494,11 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
+		// --- Validate required featured image ---
+		if featuredFilename == "" {
+			return e.String(http.StatusBadRequest, "a schematic must have a featured image")
+		}
+
 		// --- Create schematic record ---
 		now := time.Now()
 		schem := &store.Schematic{

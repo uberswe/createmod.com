@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"strings"
 )
 
 // moderateCollectionBanner runs the OpenAI image moderation check on a
@@ -137,30 +138,25 @@ func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.
 			return
 		}
 
-		changed := false
+		// Collect reasons for flagged images
+		var flaggedReasons []string
 		if _, flagged := flaggedSet[schem.FeaturedImage]; flagged {
-			slog.Warn("schematic image moderation: removing featured image",
+			slog.Warn("schematic image moderation: featured image flagged",
 				"schematic_id", schematicID, "filename", schem.FeaturedImage)
-			schem.FeaturedImage = ""
-			changed = true
+			flaggedReasons = append(flaggedReasons, "featured image flagged: "+schem.FeaturedImage)
 		}
-
-		var cleanGallery []string
 		for _, g := range schem.Gallery {
 			if _, flagged := flaggedSet[g]; flagged {
-				slog.Warn("schematic image moderation: removing gallery image",
+				slog.Warn("schematic image moderation: gallery image flagged",
 					"schematic_id", schematicID, "filename", g)
-				changed = true
-				continue
+				flaggedReasons = append(flaggedReasons, "gallery image flagged: "+g)
 			}
-			cleanGallery = append(cleanGallery, g)
 		}
-		if cleanGallery == nil {
-			cleanGallery = []string{}
-		}
-		schem.Gallery = cleanGallery
 
-		if changed {
+		if len(flaggedReasons) > 0 {
+			// Hold the schematic for manual review instead of removing images
+			schem.Moderated = false
+			schem.ModerationReason = "Images flagged by automated moderation: " + strings.Join(flaggedReasons, "; ")
 			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("schematic image moderation: failed to update schematic",
 					"schematic_id", schematicID, "error", updateErr)

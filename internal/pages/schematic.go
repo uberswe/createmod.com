@@ -9,8 +9,9 @@ import (
 	"createmod/internal/nbtparser"
 	"createmod/internal/promotion"
 	"createmod/internal/search"
-	"createmod/internal/translation"
+	"createmod/internal/storage"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -80,7 +81,7 @@ type ModInfo struct {
 	IconURL   string
 }
 
-func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, webhookSecret string) func(e *server.RequestEvent) error {
+func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, storageSvc *storage.Service, webhookSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
@@ -122,7 +123,9 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		d.Title = d.Schematic.Title
 		d.Slug = fmt.Sprintf("/schematics/%s", d.Schematic.Name)
 		d.Description = strip.StripTags(d.Schematic.Content)
-		d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, url.PathEscape(d.Schematic.FeaturedImage))
+		if d.Schematic.FeaturedImage != "" {
+			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, url.PathEscape(d.Schematic.FeaturedImage))
+		}
 		d.SubCategory = "Schematic"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID)
@@ -252,6 +255,12 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 					d.IsTranslated = true
 				}
 			}
+		}
+
+		// If the schematic has no featured image but has a YouTube video,
+		// attempt to recover the thumbnail in the background.
+		if s.FeaturedImage == "" && s.Video != "" && storageSvc != nil {
+			recoverYouTubeThumbnail(appStore, storageSvc, cacheService, s.ID, s.Video)
 		}
 
 		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
@@ -431,6 +440,7 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		HTMLContent:          template.HTML(sanitizedHTML),
 		Excerpt:              s.Excerpt,
 		FeaturedImage:        s.FeaturedImage,
+		HasFeaturedImage:     s.FeaturedImage != "",
 		Gallery:              s.Gallery,
 		HasGallery:           len(s.Gallery) > 0,
 		Title:                s.Title,
@@ -637,6 +647,7 @@ func mapSchematicFromBatch(
 		HTMLContent:          template.HTML(sanitizedHTML),
 		Excerpt:              s.Excerpt,
 		FeaturedImage:        s.FeaturedImage,
+		HasFeaturedImage:     s.FeaturedImage != "",
 		Gallery:              s.Gallery,
 		HasGallery:           len(s.Gallery) > 0,
 		Title:                s.Title,
