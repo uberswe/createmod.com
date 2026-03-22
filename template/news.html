@@ -5,9 +5,9 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     <!-- Left column: News posts -->
-                    <div class="lg:col-span-8">
+                    <div class="lg:col-span-2">
                         <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
                         {{ if .Posts }}
                             {{ $root := . }}
@@ -48,7 +48,7 @@
                     </div>
 
                     <!-- Right column: Site stats -->
-                    <div class="lg:col-span-4">
+                    <div class="lg:col-span-1">
                         <h2 class="page-title mb-3">{{ T .Language "Site Stats (7 days)" }}</h2>
 
                         <!-- Views chart -->

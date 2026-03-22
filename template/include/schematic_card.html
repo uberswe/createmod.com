@@ -1,6 +1,6 @@
 {{define "schematic_card.html"}}
-<a href="/schematics/{{ .Name }}" class="block no-underline">
-  <div class="card card-sm card-hover-lift overflow-hidden">
+<a href="/schematics/{{ .Name }}" class="block no-underline h-full">
+  <div class="card card-sm card-hover-lift overflow-hidden h-full flex flex-col">
     <div class="card-body-borderless ratio ratio-16x9">
       <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180"
            srcset="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180 320w, /api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=640x360 640w"
@@ -9,7 +9,7 @@
            onerror="this.onerror=null;this.style.opacity='0.3'">
       {{ if .Paid }}<span class="badge bg-red card-badge-overlay">Paid</span>{{ end }}
     </div>
-    <div class="card-body p-2">
+    <div class="card-body p-2 flex flex-col flex-1">
       <div class="flex items-start justify-between">
         <h4 class="card-title mb-1 truncate max-w-[80%]">
           {{ .Title }}
@@ -35,7 +35,7 @@
         {{ end }}
         {{ if .Author }}<span class="truncate max-w-[100px]">by {{ .Author.Username }}</span>{{ end }}
       </div>
-      <div class="flex items-center gap-1 mt-1 flex-wrap">
+      <div class="flex items-center gap-1 mt-auto pt-1 flex-wrap">
         {{ range .Categories }}
         <span class="badge badge-outline text-blue">{{ .Name }}</span>
         {{ end }}
