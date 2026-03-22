@@ -260,7 +260,9 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		// If the schematic has no featured image but has a YouTube video,
 		// attempt to recover the thumbnail in the background.
 		if s.FeaturedImage == "" && s.Video != "" && storageSvc != nil {
-			recoverYouTubeThumbnail(appStore, storageSvc, cacheService, s.ID, s.Video)
+			if vid := youtubeID(s.Video); vid != "" {
+				recoverYouTubeThumbnail(appStore, storageSvc, cacheService, s.ID, vid)
+			}
 		}
 
 		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
