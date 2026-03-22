@@ -28,11 +28,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {{range .Items}}
             <div class="w-full">
-              <a href="{{ .URL }}" class="card h-full no-underline card-link">
+              <a href="{{ .URL }}" class="card h-full no-underline card-link flex flex-col">
                 {{ if .BannerURL }}
-                <img src="{{ .BannerURL }}" alt="{{ .Title }}" class="card-img-top" style="height:100px;object-fit:cover;" loading="lazy" />
+                <img src="{{ .BannerURL }}" alt="{{ .Title }}" class="card-img-top" style="height:160px;object-fit:cover;" loading="lazy" />
                 {{ end }}
-                <div class="card-body flex flex-col">
+                <div class="card-body flex flex-col flex-1">
                   <div class="card-title h4 truncate">{{ .Title }}</div>
                   {{ if .Excerpt }}
                   <div class="text-secondary mb-3" style="max-height: 4.5em; overflow: hidden;">{{ .Excerpt }}</div>
