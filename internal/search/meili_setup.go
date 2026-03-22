@@ -36,7 +36,7 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 	searchable := []string{"title", "tags", "block_names", "mod_names", "description", "ai_description", "author"}
 
 	filterableStr := []string{
-		"categories", "minecraft_version", "create_version",
+		"id", "categories", "minecraft_version", "create_version",
 		"tags", "rating", "paid", "views", "created_timestamp",
 	}
 	filterable := make([]interface{}, len(filterableStr))
