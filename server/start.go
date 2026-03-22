@@ -207,6 +207,9 @@ func (s *Server) Start() {
 	// Initialize Meilisearch.
 	meiliURL := os.Getenv("MEILISEARCH_URL")
 	meiliKey := os.Getenv("MEILISEARCH_KEY")
+	if meiliKey == "" {
+		meiliKey = os.Getenv("MEILI_MASTER_KEY")
+	}
 	var searchEngine search.SearchEngine
 	if meiliURL != "" {
 		s.meiliClient = meilisearch.New(meiliURL, meilisearch.WithAPIKey(meiliKey))

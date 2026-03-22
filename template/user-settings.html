@@ -1,59 +1,43 @@
 {{ template "head.html" . }}
-<div class="page">
+<div class="page" x-data="modal">
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="row row-cards">
-                    <div class="col-12">
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="w-full">
                         <div class="card">
-                            <div class="row g-0">
-                                <div class="col-12 col-md-3 border-end">
-                                    <div class="card-body">
-                                        <h4 class="subheader">{{ T .Language "Account settings" }}</h4>
-                                        <div class="list-group list-group-transparent">
-                                            <a href="/settings"
-                                               class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "My Account" }}</a>
-                                            <a href="/settings/password"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Password" }}</a>
-                                            <a href="/settings/points"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Points" }}</a>
-                                            <a href="/settings/api-keys"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "API Keys" }}</a>
-                                            <a href="/settings/webhooks"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Webhooks" }}</a>
-                                            <a href="/settings/statistics"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Statistics" }}</a>
-                                            <a href="/settings/blacklist"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Blacklist Request" }}</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-9 d-flex flex-column">
+                            <div class="grid grid-cols-12">
+                                {{ template "settings_sidebar.html" . }}
+                                <div class="w-full md:col-span-9 flex flex-col">
                                     <div class="card-body">
                                         <h2 class="mb-4">{{ T .Language "My Account" }}</h2>
                                         <h3 class="card-title">{{ T .Language "Profile Details" }}</h3>
-                                        <div class="row align-items-center mb-3">
-                                            <div class="col-auto">
+                                        <div class="flex items-center gap-3 mb-3">
+                                            <div class="shrink-0">
                                                 {{ if .Avatar }}
-                                                <img class="avatar avatar-xl" src="{{ .Avatar }}" alt="{{ .Username }}">
+                                                <img class="avatar avatar-xl" src="{{ .Avatar }}" alt="{{ .Username }}" onerror="this.onerror=null;this.src='https://mc-heads.net/avatar/Steve'">
                                                 {{ else }}
-                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve" alt="{{ .Username }}">
+                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve" alt="{{ .Username }}" onerror="this.onerror=null;this.src='https://mc-heads.net/avatar/Steve'">
                                                 {{ end }}
                                             </div>
-                                            <div class="col-auto">We use Gravatar for profile pictures, <a href="https://gravatar.com/site/check/">change your avatar via the Gravatar website</a>.</div>
+                                            <div class="shrink-0">{{ T .Language "Your profile picture comes from" }} <a href="https://gravatar.com/site/check/" target="_blank" rel="noopener">Gravatar</a>. {{ T .Language "Visit gravatar.com to change it." }}</div>
                                         </div>
                                         <form id="profile-form" hx-patch="/api/users/{{ .UserID }}" hx-swap="none">
                                             <div class="mb-3">
                                                 <label class="form-label" for="settings-username">{{ T .Language "Username" }}</label>
-                                                <input id="settings-username" name="username" type="text" class="form-control" value="{{ .Username }}" required>
+                                                <input id="settings-username" name="username" type="text" class="form-input" value="{{ .Username }}" required>
                                             </div>
                                             <div class="form-footer">
                                                 <button type="submit" class="btn btn-primary">{{ T .Language "Save changes" }}</button>
                                             </div>
                                         </form>
                                         <script>
+                                          var i18n = {
+                                            msgProfileUpdated: {{ printf "%q" (T .Language "Profile updated") }},
+                                            errUpdateFailed: {{ printf "%q" (T .Language "Update failed. Please try again.") }}
+                                          };
                                           // Simple client-side required validation and feedback
                                           (function(){
                                             var pf = document.getElementById('profile-form');
@@ -73,9 +57,9 @@
                                                 var ok = evt.detail && evt.detail.xhr && evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300;
                                                 try {
                                                   if (typeof showToast === 'function') {
-                                                    showToast(ok ? 'Profile updated' : 'Update failed. Please try again.', ok ? 'success' : 'danger');
+                                                    showToast(ok ? i18n.msgProfileUpdated : i18n.errUpdateFailed, ok ? 'success' : 'danger');
                                                   } else {
-                                                    alert(ok ? 'Profile updated' : 'Update failed. Please try again.');
+                                                    alert(ok ? i18n.msgProfileUpdated : i18n.errUpdateFailed);
                                                   }
                                                 } catch (e) {}
                                               }
@@ -83,17 +67,17 @@
                                           })();
                                         </script>
                                         <h3 class="card-title mt-4">{{ T .Language "Alternate Login Options" }}</h3>
-                                        <div class="row g-3 mb-2">
-                                            <div class="col-md">
-                                                <a href="/auth/discord" hx-boost="false" class="btn w-100">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
+                                            <div>
+                                                <a href="/auth/discord" hx-boost="false" class="btn w-full">
                                                     <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-brand-discord text-discord"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
                                                     {{ T .Language "Link your Discord account" }}
                                                 </a>
                                             </div>
                                         </div>
-                                        <div class="row g-3">
-                                            <div class="col-md">
-                                                <a href="/auth/github" hx-boost="false" class="btn w-100">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            <div>
+                                                <a href="/auth/github" hx-boost="false" class="btn w-full">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon text-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" /></svg>
                                                     {{ T .Language "Link your Github account" }}
                                                 </a>
@@ -107,9 +91,9 @@
                                             </a>
                                         </div>
                                         <h3 class="card-title mt-4">{{ T .Language "Account Actions" }}</h3>
-                                        <p class="card-subtitle">{{ T .Language "You can delete your account permanently." }}</p>
+                                        <p class="card-subtitle">{{ T .Language "Permanently delete your account. This cannot be undone." }}</p>
                                         <div>
-                                            <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                                            <button class="btn btn-danger w-full" @click="show()">
                                                 {{ T .Language "Delete Account" }}
                                             </button>
                                         </div>
@@ -121,17 +105,19 @@
                 </div>
             </div>
         </main>
-        <div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <div class="modal-body">
-                        <div class="modal-title">{{ T .Language "Are you sure?" }}</div>
+        <!-- Delete Account Modal -->
+        <div x-show="open" x-cloak class="modal-container" @keydown.escape.window="close()">
+            <div class="modal-backdrop" @click="close()" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
+            <div class="modal-panel modal-panel-sm" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-title">{{ T .Language "Are you sure?" }}</div>
                         <div>{{ T .Language "If you proceed, you will no longer have access to your account. Your schematics will be removed." }}</div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                    <div class="card-footer flex justify-end gap-2">
+                        <button type="button" class="btn btn-link text-secondary mr-auto" @click="close()">{{ T .Language "Cancel" }}</button>
                         <form id="delete-account-form" hx-delete="/api/users/{{ .UserID }}" hx-swap="none">
-                            <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">{{ T .Language "Yes, delete my account" }}</button>
+                            <button type="submit" class="btn btn-danger" @click="close()">{{ T .Language "Yes, delete my account" }}</button>
                         </form>
                     </div>
                 </div>

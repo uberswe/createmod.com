@@ -5,9 +5,9 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center">
+            <div class="grow min-w-0">
               <h2 class="page-title">{{ T .Language "Admin: Mod Metadata" }}</h2>
               <div class="text-secondary">{{ T .Language "View and edit mod CurseForge/Modrinth URL mappings" }}</div>
             </div>
@@ -42,14 +42,14 @@
                   <td>{{if .DisplayName}}{{.DisplayName}}{{else}}<span class="text-secondary">-</span>{{end}}</td>
                   <td>
                     {{if .CurseforgeURL}}
-                    <a href="{{.CurseforgeURL}}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width:250px">{{.CurseforgeURL}}</a>
+                    <a href="{{.CurseforgeURL}}" target="_blank" rel="noopener" class="truncate inline-block" style="max-width:250px">{{.CurseforgeURL}}</a>
                     {{else}}
                     <span class="text-secondary">-</span>
                     {{end}}
                   </td>
                   <td>
                     {{if .ModrinthURL}}
-                    <a href="{{.ModrinthURL}}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width:250px">{{.ModrinthURL}}</a>
+                    <a href="{{.ModrinthURL}}" target="_blank" rel="noopener" class="truncate inline-block" style="max-width:250px">{{.ModrinthURL}}</a>
                     {{else}}
                     <span class="text-secondary">-</span>
                     {{end}}

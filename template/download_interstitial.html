@@ -5,14 +5,14 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="d-flex gap-3 justify-content-center">
+        <div class="flex gap-3 justify-center">
           <!-- Left Ad Rail (desktop only) -->
-          <div class="ad-rail d-none d-xl-block">
+          <div class="ad-rail hidden xl:block">
             <div id="dlinterstitial-adrail-left" class="mb-3" style="min-height:250px;"></div>
           </div>
           <div style="max-width:540px; width:100%; padding:2rem 0;">
             <!-- Mobile ad (above card on smaller screens) -->
-            <div id="dlinterstitial-mobile" class="d-xl-none mb-3 text-center"></div>
+            <div id="dlinterstitial-mobile" class="xl:hidden mb-3 text-center"></div>
             <div class="card">
               <div class="card-body text-center">
                 {{if .Paid}}
@@ -25,14 +25,14 @@
                 <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">5</span> {{ T .Language "seconds." }}</p>
                 <p id="download-hint">{{ T .Language "If it doesn't, click the button below:" }}</p>
                 <a id="manual-link" class="btn btn-primary" hx-boost="false" href="#" style="display:none" aria-label="Download now">{{ T .Language "Download now" }}</a>
-                <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
+                <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "We could not prepare your download. Please go back and try the download button again." }}</p>
                 <input type="hidden" id="token-id" value="{{ .TokenID }}">
                 {{end}}
               </div>
             </div>
           </div>
           <!-- Right Ad Rail (desktop only) -->
-          <div class="ad-rail d-none d-xl-block">
+          <div class="ad-rail hidden xl:block">
             <div id="dlinterstitial-adrail-right" class="mb-3" style="min-height:250px;"></div>
           </div>
         </div>

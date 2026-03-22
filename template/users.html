@@ -5,23 +5,23 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
+        <div class="mb-3 print:hidden">
+          <div class="flex items-center gap-3">
+            <div class="flex-1">
               <h2 class="page-title">Users</h2>
               <div class="text-secondary">Browse community members</div>
             </div>
           </div>
         </div>
         <div id="users-results">
-          <div class="row row-cards">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {{range  .Users}}
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+            <div class="">
               <div class="card">
                 <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="flex-fill">
-                      <div class="font-weight-medium">
+                  <div class="flex items-center">
+                    <div class="flex-1">
+                      <div class="font-medium">
                         <a href="/author/{{ .Username }}">{{ .Username }}</a>
                       </div>
                     </div>
@@ -31,10 +31,10 @@
             </div>
             {{end}}
           </div>
-          <div class="d-flex justify-content-between align-items-center mt-4">
-            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#users-results" hx-select="#users-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
+          <div class="flex justify-between items-center mt-4">
+            <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#users-results" hx-select="#users-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline"{{ else }}class="btn btn-outline disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
             <div class="text-secondary">Page {{ .Page }}</div>
-            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#users-results" hx-select="#users-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
+            <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#users-results" hx-select="#users-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline"{{ else }}class="btn btn-outline disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
           </div>
         </div>
       </div>

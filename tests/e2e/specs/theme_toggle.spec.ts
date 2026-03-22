@@ -23,9 +23,9 @@ test.describe('Theme toggle', () => {
     // Click the light mode toggle
     await lightBtn.click();
 
-    // After clicking, data-bs-theme should be "light"
-    const theme = await page.evaluate(() => document.documentElement.getAttribute('data-bs-theme'));
-    expect(theme).toBe('light');
+    // After clicking, the 'dark' class should be removed (light theme)
+    const hasDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    expect(hasDark).toBe(false);
 
     // localStorage should persist the choice
     const stored = await page.evaluate(() => localStorage.getItem('createmodTheme'));
@@ -38,17 +38,17 @@ test.describe('Theme toggle', () => {
 
     // First switch to light
     await page.evaluate(() => (window as any).setTheme('light'));
-    const lightTheme = await page.evaluate(() => document.documentElement.getAttribute('data-bs-theme'));
-    expect(lightTheme).toBe('light');
+    const hasDarkAfterLight = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    expect(hasDarkAfterLight).toBe(false);
 
     // The dark-mode button (hide-theme-dark) should now be visible
     const darkBtn = page.locator('button.hide-theme-dark');
     await expect(darkBtn).toBeAttached();
     await darkBtn.click();
 
-    // After clicking, theme should be dark again
-    const theme = await page.evaluate(() => document.documentElement.getAttribute('data-bs-theme'));
-    expect(theme).toBe('dark');
+    // After clicking, the 'dark' class should be present again
+    const hasDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    expect(hasDark).toBe(true);
 
     const stored = await page.evaluate(() => localStorage.getItem('createmodTheme'));
     expect(stored).toBe('dark');
@@ -64,9 +64,9 @@ test.describe('Theme toggle', () => {
     // Navigate to another page
     await page.goto(url + '/rules');
 
-    // Theme should still be light
-    const theme = await page.evaluate(() => document.documentElement.getAttribute('data-bs-theme'));
-    expect(theme).toBe('light');
+    // Theme should still be light (no 'dark' class)
+    const hasDark = await page.evaluate(() => document.documentElement.classList.contains('dark'));
+    expect(hasDark).toBe(false);
   });
 
   test('toggle buttons have correct visibility for dark theme', async ({ page, baseURL }) => {

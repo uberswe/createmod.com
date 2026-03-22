@@ -12,17 +12,17 @@
                 </div>
 
                 <!-- Upload Zone Card (centered, narrower) -->
-                <div class="row row-cards justify-content-center">
-                    <div class="col-lg-8 col-xl-6">
+                <div class="flex justify-center">
+                    <div class="w-full max-w-2xl">
                         <div class="card mb-3" id="upload-card">
                             <div class="card-body">
                                 <h3 class="card-title">{{ T .Language "Upload Schematic" }}</h3>
                                 <p class="text-secondary">{{ T .Language "Upload a Create Mod schematic to analyze it, get a private share link, or publish it to the community." }}</p>
 
-                                <div id="upload-zone" style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;"
-                                     ondragover="event.preventDefault(); this.style.borderColor='var(--tblr-primary)'; this.style.backgroundColor='rgba(191,144,69,0.05)';"
-                                     ondragleave="this.style.borderColor='var(--tblr-border-color)'; this.style.backgroundColor='';"
-                                     ondrop="event.preventDefault(); this.style.borderColor='var(--tblr-border-color)'; this.style.backgroundColor=''; handleFileDrop(event.dataTransfer.files);">
+                                <div id="upload-zone" class="upload-zone"
+                                     ondragover="event.preventDefault(); this.classList.add('upload-zone-active');"
+                                     ondragleave="this.classList.remove('upload-zone-active');"
+                                     ondrop="event.preventDefault(); this.classList.remove('upload-zone-active'); handleFileDrop(event.dataTransfer.files);">
                                     <input type="file" id="nbt-file-input" accept=".nbt" style="display:none;" onchange="handleFileDrop(this.files);">
                                     <div id="upload-prompt" onclick="document.getElementById('nbt-file-input').click();">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 9l5 -5l5 5" /><path d="M12 4l0 12" /></svg>
@@ -45,8 +45,8 @@
                 <!-- Private Schematics (only for authenticated users with uploads) -->
                 {{ if and .IsAuthenticated .PrivateSchematics }}
                 <div id="private-schematics">
-                    <div class="row row-cards justify-content-center">
-                        <div class="col-lg-8 col-xl-6">
+                    <div class="flex justify-center">
+                        <div class="w-full max-w-2xl">
                             <div class="card mb-3">
                                 <div class="card-header">
                                     <h3 class="card-title">{{ T .Language "Your Private Schematics" }}</h3>
@@ -78,15 +78,15 @@
                                     </table>
                                 </div>
                                 {{ if or .PrivateHasPrev .PrivateHasNext }}
-                                <div class="card-footer d-flex justify-content-between align-items-center">
+                                <div class="card-footer flex justify-between items-center">
                                     <a {{ if .PrivateHasPrev }}href="{{ .PrivatePrevURL }}"
                                        hx-get="{{ .PrivatePrevURL }}"
                                        hx-target="#private-schematics"
                                        hx-select="#private-schematics"
                                        hx-swap="outerHTML"
                                        hx-push-url="true"
-                                       class="btn btn-outline-secondary btn-sm"
-                                    {{ else }}class="btn btn-outline-secondary btn-sm disabled"
+                                       class="btn btn-outline btn-sm"
+                                    {{ else }}class="btn btn-outline btn-sm disabled"
                                        tabindex="-1" aria-disabled="true"{{ end }}>
                                         {{ T .Language "Previous" }}
                                     </a>
@@ -97,8 +97,8 @@
                                        hx-select="#private-schematics"
                                        hx-swap="outerHTML"
                                        hx-push-url="true"
-                                       class="btn btn-outline-secondary btn-sm"
-                                    {{ else }}class="btn btn-outline-secondary btn-sm disabled"
+                                       class="btn btn-outline btn-sm"
+                                    {{ else }}class="btn btn-outline btn-sm disabled"
                                        tabindex="-1" aria-disabled="true"{{ end }}>
                                         {{ T .Language "Next" }}
                                     </a>
@@ -112,10 +112,10 @@
 
                 <!-- Results Section (hidden until upload succeeds) — two-column layout -->
                 <div id="upload-results" style="display:none;">
-                    <div class="row row-cards">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
                         <!-- Left column: Stats, Mods, Actions -->
-                        <div class="col-lg-5 col-xl-4">
+                        <div class="lg:col-span-5 xl:col-span-4">
 
                             <!-- Schematic Statistics Card -->
                             <div class="card mb-3">
@@ -157,8 +157,8 @@
                             <!-- Bloxelizer 3D Viewer Link -->
                             <div class="card mb-3" id="bloxelizer-card" style="display:none;">
                                 <div class="card-body text-center">
-                                    <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
+                                    <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-full">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon mr-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
                                         {{ T .Language "View in 3D on Bloxelizer" }}
                                     </a>
                                 </div>
@@ -171,15 +171,15 @@
                                     <div class="mb-3">
                                         <label class="form-label">{{ T .Language "Share link" }}</label>
                                         <div class="input-group">
-                                            <input type="text" class="form-control" id="share-link" readonly>
-                                            <button class="btn btn-outline-secondary" type="button" id="copy-link-btn" onclick="copyShareLink()">
+                                            <input type="text" class="form-input" id="share-link" readonly>
+                                            <button class="btn btn-outline" type="button" id="copy-link-btn" onclick="copyShareLink()">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                                 <span class="copy-text">{{ T .Language "Copy" }}</span>
                                             </button>
                                         </div>
                                     </div>
-                                    <a id="publish-btn" href="#" class="btn btn-primary w-100">
+                                    <a id="publish-btn" href="#" class="btn btn-primary w-full">
                                         {{ T .Language "Publish Schematic" }}
                                     </a>
                                     {{ else }}
@@ -194,7 +194,7 @@
                             <!-- Additional Files (Variations) -->
                             {{ if .IsAuthenticated }}
                             <div class="card mb-3" id="add-more-files-card" style="display:none;">
-                                <div class="card-header d-flex align-items-center">
+                                <div class="card-header flex items-center">
                                     <h3 class="card-title mb-0">{{ T .Language "Additional Files (Variations)" }}</h3>
                                 </div>
                                 <div class="card-body">
@@ -203,11 +203,11 @@
                                     <div class="border rounded p-3 mt-2">
                                         <div class="mb-2">
                                             <label class="form-label">{{ T .Language "NBT File" }}</label>
-                                            <input type="file" id="add-file-nbt-upload" class="form-control" accept=".nbt">
+                                            <input type="file" id="add-file-nbt-upload" class="form-input" accept=".nbt">
                                         </div>
                                         <div class="mb-2">
                                             <label class="form-label">{{ T .Language "Description" }}</label>
-                                            <input type="text" id="add-file-desc-upload" class="form-control" placeholder="e.g. Compact version, Mirror variant...">
+                                            <input type="text" id="add-file-desc-upload" class="form-input" placeholder="{{ T .Language "e.g. Compact version, Mirror variant..." }}">
                                         </div>
                                         <div id="add-file-error-upload" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
                                         <button class="btn btn-sm btn-outline-primary mt-2" id="add-file-btn-upload" onclick="submitAdditionalFileUpload()">
@@ -221,11 +221,11 @@
                         </div>
 
                         <!-- Right column: Materials -->
-                        <div class="col-lg-7 col-xl-8">
+                        <div class="lg:col-span-7 xl:col-span-8">
                             <div class="card mb-3" id="materials-card" style="display:none;">
-                                <div class="card-header d-flex align-items-center">
+                                <div class="card-header flex items-center">
                                     <h3 class="card-title mb-0">{{ T .Language "Materials" }}</h3>
-                                    <button class="btn btn-ghost-secondary btn-sm ms-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="{{ T .Language "Copy material list as Markdown" }}">
+                                    <button class="btn btn-ghost-secondary btn-sm ml-auto" id="copy-materials-btn" onclick="copyMaterialsAsMarkdown()" title="{{ T .Language "Copy material list as Markdown" }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon copy-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon check-icon" style="display:none;" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                         <span class="copy-text">{{ T .Language "Copy list" }}</span>
@@ -249,75 +249,16 @@
     </div>
 </div>
 
-<style>
-.material-row {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    gap: 0.75rem;
-    border-bottom: 1px solid var(--tblr-border-color);
-}
-.material-row:last-child {
-    border-bottom: none;
-}
-.material-icon-wrap {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--tblr-bg-surface-secondary);
-    border-radius: 4px;
-}
-.material-icon-wrap img {
-    width: 32px;
-    height: 32px;
-    image-rendering: pixelated;
-}
-.material-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-.material-name {
-    font-weight: 500;
-    font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.material-block-id {
-    font-size: 0.75rem;
-    color: var(--tblr-secondary-color);
-    opacity: 0.7;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.material-count {
-    flex-shrink: 0;
-    font-size: 0.9rem;
-    color: var(--tblr-body-color);
-    opacity: 0.75;
-    font-variant-numeric: tabular-nums;
-}
-.material-stacks {
-    flex-shrink: 0;
-    font-size: 0.75rem;
-    color: var(--tblr-body-color);
-    opacity: 0.5;
-    min-width: 70px;
-    text-align: right;
-}
-.copy-success .copy-icon { display: none !important; }
-.copy-success .check-icon { display: inline-block !important; color: #2fb344; }
-.copy-success .copy-text { color: #2fb344; }
-.copy-success { border-color: #2fb344 !important; color: #2fb344 !important; }
-</style>
 
 <script>
+var i18n = {
+    errSelectNbt: {{ printf "%q" (T .Language "Please select a .nbt schematic file.") }},
+    errFileTooLarge: {{ printf "%q" (T .Language "This file is too large. The maximum size is 10 MB.") }},
+    errAnalyzeFailed: {{ printf "%q" (T .Language "Something went wrong analyzing your schematic. Please try uploading again.") }},
+    errUploadFailed: {{ printf "%q" (T .Language "Could not upload this file. Please try again.") }},
+    errNetwork: {{ printf "%q" (T .Language "Network error — please check your connection and try again.") }},
+    remove: {{ printf "%q" (T .Language "Remove") }}
+};
 var uploadData = null;
 var blockNameMap = {};
 
@@ -325,11 +266,11 @@ function handleFileDrop(files) {
     if (!files || files.length === 0) return;
     var file = files[0];
     if (!file.name.toLowerCase().endsWith('.nbt')) {
-        showUploadError('Please select a .nbt file.');
+        showUploadError(i18n.errSelectNbt);
         return;
     }
     if (file.size > 10 * 1024 * 1024) {
-        showUploadError('File is too large. Maximum size is 10MB.');
+        showUploadError(i18n.errFileTooLarge);
         return;
     }
     uploadFile(file);
@@ -371,22 +312,22 @@ function uploadFile(file) {
                 renderResults(data);
             } catch(e) {
                 document.getElementById('upload-prompt').style.display = '';
-                showUploadError('Unexpected response from server.');
+                showUploadError(i18n.errAnalyzeFailed);
             }
         } else {
             document.getElementById('upload-prompt').style.display = '';
             try {
                 var err = JSON.parse(xhr.responseText);
-                showUploadError(err.error || 'Upload failed.');
+                showUploadError(err.error || i18n.errUploadFailed);
             } catch(e) {
-                showUploadError(xhr.responseText || 'Upload failed.');
+                showUploadError(xhr.responseText || i18n.errUploadFailed);
             }
         }
     };
     xhr.onerror = function() {
         document.getElementById('upload-spinner').style.display = 'none';
         document.getElementById('upload-prompt').style.display = '';
-        showUploadError('Network error. Please try again.');
+        showUploadError(i18n.errNetwork);
     };
     xhr.send(formData);
 }
@@ -471,7 +412,7 @@ function createMaterialRow(m) {
         var placeholder = document.createElement('div');
         placeholder.style.width = '32px';
         placeholder.style.height = '32px';
-        placeholder.style.background = 'var(--tblr-border-color)';
+        placeholder.style.background = 'var(--color-border)';
         placeholder.style.borderRadius = '2px';
         this.parentNode.appendChild(placeholder);
     };
@@ -529,7 +470,7 @@ function renderMods(mods) {
     mods.forEach(function(mod) {
         var link = document.createElement('a');
         link.href = '/mods/' + mod;
-        link.className = 'badge bg-blue-lt me-1 mb-1 text-decoration-none';
+        link.className = 'badge bg-blue-lt mr-1 mb-1 no-underline';
         link.style.fontSize = '0.85rem';
         link.textContent = capitalize(mod);
         container.appendChild(link);
@@ -619,18 +560,18 @@ function submitAdditionalFileUpload() {
     errorEl.style.display = 'none';
 
     if (!fileInput.files || fileInput.files.length === 0) {
-        errorEl.textContent = 'Please select a .nbt file.';
+        errorEl.textContent = i18n.errSelectNbt;
         errorEl.style.display = '';
         return;
     }
     var file = fileInput.files[0];
     if (!file.name.toLowerCase().endsWith('.nbt')) {
-        errorEl.textContent = 'Please select a .nbt file.';
+        errorEl.textContent = i18n.errSelectNbt;
         errorEl.style.display = '';
         return;
     }
     if (file.size > 10 * 1024 * 1024) {
-        errorEl.textContent = 'File is too large. Maximum size is 10MB.';
+        errorEl.textContent = i18n.errFileTooLarge;
         errorEl.style.display = '';
         return;
     }
@@ -652,22 +593,22 @@ function submitAdditionalFileUpload() {
                 fileInput.value = '';
                 descInput.value = '';
             } catch(e) {
-                errorEl.textContent = 'Unexpected response.';
+                errorEl.textContent = i18n.errAnalyzeFailed;
                 errorEl.style.display = '';
             }
         } else {
             try {
                 var err = JSON.parse(xhr.responseText);
-                errorEl.textContent = err.error || 'Upload failed.';
+                errorEl.textContent = err.error || i18n.errUploadFailed;
             } catch(e) {
-                errorEl.textContent = 'Upload failed.';
+                errorEl.textContent = i18n.errUploadFailed;
             }
             errorEl.style.display = '';
         }
     };
     xhr.onerror = function() {
         submitBtn.disabled = false;
-        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.textContent = i18n.errNetwork;
         errorEl.style.display = '';
     };
     xhr.send(formData);
@@ -676,23 +617,23 @@ function submitAdditionalFileUpload() {
 function renderAdditionalFileRow(data) {
     var list = document.getElementById('additional-files-list-upload');
     var row = document.createElement('div');
-    row.className = 'd-flex align-items-center mb-2 p-2 border rounded additional-file-row-upload';
+    row.className = 'flex items-center mb-2 p-2 border rounded additional-file-row-upload';
     row.setAttribute('data-file-id', data.id);
 
     var info = document.createElement('div');
-    info.className = 'flex-fill';
+    info.className = 'flex-1';
     var nameEl = document.createElement('div');
-    nameEl.className = 'fw-bold';
+    nameEl.className = 'font-bold';
     nameEl.textContent = data.filename;
     info.appendChild(nameEl);
     if (data.description) {
         var descEl = document.createElement('div');
-        descEl.className = 'text-secondary small';
+        descEl.className = 'text-secondary text-sm';
         descEl.textContent = data.description;
         info.appendChild(descEl);
     }
     var statsEl = document.createElement('div');
-    statsEl.className = 'text-muted small';
+    statsEl.className = 'text-muted text-sm';
     var statsText = '';
     if (data.dim_x || data.dim_y || data.dim_z) {
         statsText += data.dim_x + ' x ' + data.dim_y + ' x ' + data.dim_z;
@@ -707,8 +648,8 @@ function renderAdditionalFileRow(data) {
 
     var removeBtn = document.createElement('button');
     removeBtn.className = 'btn btn-sm btn-outline-danger';
-    removeBtn.title = 'Remove';
-    removeBtn.textContent = 'Remove';
+    removeBtn.title = i18n.remove;
+    removeBtn.textContent = i18n.remove;
     removeBtn.onclick = function() {
         deleteAdditionalFileUpload(data.id, row);
     };

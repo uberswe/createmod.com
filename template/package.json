@@ -1,22 +1,17 @@
 {
   "type": "module",
   "scripts": {
-    "build:css": "postcss src/style.css -o dist/style.css",
     "dev": "vite",
-    "build": "vite build && npm run build:css"
+    "build": "vite build"
   },
   "devDependencies": {
-    "@fullhuman/postcss-purgecss": "^8.0.0",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.1",
-    "postcss-cli": "^11.0.0",
-    "postcss-import": "^16.1.0",
-    "purgecss": "^8.0.0",
-    "vite": "^7.2.2",
+    "@tailwindcss/vite": "^4.1.3",
+    "tailwindcss": "^4.1.3",
+    "vite": "^8.0.0",
     "vite-plugin-static-copy": "^3.0.0"
   },
   "dependencies": {
-    "@tabler/core": "^1.1.1",
+    "alpinejs": "^3.14.9",
     "autosize": "^6.0.1",
     "dropzone": "^6.0.0-beta.2",
     "fslightbox": "^3.4.2",

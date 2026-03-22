@@ -5,37 +5,17 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="row row-cards">
-                    <div class="col-12">
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="w-full">
                         <div class="card">
-                            <div class="row g-0">
-                                <div class="col-12 col-md-3 border-end">
+                            <div class="grid grid-cols-12">
+                                {{ template "settings_sidebar.html" . }}
+                                <div class="w-full md:col-span-9 flex flex-col">
                                     <div class="card-body">
-                                        <h4 class="subheader">{{ T .Language "Account settings" }}</h4>
-                                        <div class="list-group list-group-transparent">
-                                            <a href="/settings"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "My Account" }}</a>
-                                            <a href="/settings/password"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Password" }}</a>
-                                            <a href="/settings/points"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Points" }}</a>
-                                            <a href="/settings/api-keys"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "API Keys" }}</a>
-                                            <a href="/settings/webhooks"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Webhooks" }}</a>
-                                            <a href="/settings/statistics"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Statistics" }}</a>
-                                            <a href="/settings/blacklist"
-                                               class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "Blacklist Schematics" }}</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 col-md-9 d-flex flex-column">
-                                    <div class="card-body">
-                                        <h2 class="mb-4">{{ T .Language "Blacklist Schematics" }}</h2>
+                                        <h2 class="mb-4">{{ T .Language "Block List" }}</h2>
 
                                         <div class="alert alert-info">
-                                            <h4 class="alert-title">{{ T .Language "How blacklisting works" }}</h4>
+                                            <h4 class="alert-title">{{ T .Language "How the block list works" }}</h4>
                                             <ul class="mt-2 mb-0">
                                                 <li>{{ T .Language "Upload your .nbt schematic files to prevent them from being shared on CreateMod.com." }}</li>
                                                 <li>{{ T .Language "Files are validated and a unique fingerprint (hash) is stored. The actual schematic files are NOT stored and cannot be downloaded by anyone." }}</li>
@@ -45,20 +25,20 @@
                                         </div>
 
                                         <div class="mb-4">
-                                            <label class="form-label" for="blacklist-files">{{ T .Language "Upload .nbt files to blacklist" }}</label>
-                                            <input type="file" id="blacklist-files" class="form-control" accept=".nbt" multiple>
+                                            <label class="form-label" for="blacklist-files">{{ T .Language "Upload .nbt files to block" }}</label>
+                                            <input type="file" id="blacklist-files" class="form-input" accept=".nbt" multiple>
                                             <div class="mt-2">
-                                                <button id="blacklist-upload-btn" class="btn btn-danger" disabled>{{ T .Language "Upload to Blacklist" }}</button>
+                                                <button id="blacklist-upload-btn" class="btn btn-danger" disabled>{{ T .Language "Add to Block List" }}</button>
                                             </div>
                                         </div>
 
                                         <div id="blacklist-results" class="mb-4" style="display:none;">
-                                            <h4>{{ T .Language "Results" }}</h4>
+                                            <h4>{{ T .Language "Block List Status" }}</h4>
                                             <div id="blacklist-results-list"></div>
                                         </div>
 
                                         {{ if .Hashes }}
-                                        <h3 class="mt-4 mb-3">{{ T .Language "Blacklisted Hashes" }}</h3>
+                                        <h3 class="mt-4 mb-3">{{ T .Language "Blocked Hashes" }}</h3>
                                         <div class="table-responsive">
                                             <table class="table table-vcenter">
                                                 <thead>
@@ -84,7 +64,7 @@
                                             </table>
                                         </div>
                                         {{ else }}
-                                        <p class="text-secondary mt-4" id="no-hashes-msg">{{ T .Language "No blacklisted hashes yet. Upload .nbt files above to get started." }}</p>
+                                        <p class="text-secondary mt-4" id="no-hashes-msg">{{ T .Language "No blocked hashes yet. Upload .nbt files above to get started." }}</p>
                                         {{ end }}
                                     </div>
                                 </div>
@@ -98,6 +78,17 @@
     </div>
 </div>
 <script>
+var i18n = {
+    uploading: {{ printf "%q" (T .Language "Uploading...") }},
+    addedToBlockList: {{ printf "%q" (T .Language "Added to block list") }},
+    alreadyExists: {{ printf "%q" (T .Language "Already exists") }},
+    error: {{ printf "%q" (T .Language "Something went wrong processing this file.") }},
+    uploadFailed: {{ printf "%q" (T .Language "Upload failed") }},
+    addToBlockList: {{ printf "%q" (T .Language "Add to Block List") }},
+    confirmRemoveHash: {{ printf "%q" (T .Language "Remove this file from your block list? It could then be re-uploaded by others.") }},
+    errDeleteFailed: {{ printf "%q" (T .Language "Failed to delete") }},
+    errRemoveFailed: {{ printf "%q" (T .Language "Could not remove this file. Please try again.") }}
+};
 (function() {
     var fileInput = document.getElementById('blacklist-files');
     var uploadBtn = document.getElementById('blacklist-upload-btn');
@@ -120,7 +111,7 @@
         if (!files.length) return;
 
         uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Uploading...';
+        uploadBtn.textContent = i18n.uploading;
 
         var formData = new FormData();
         for (var i = 0; i < files.length; i++) {
@@ -142,14 +133,14 @@
                     var alertClass;
                     if (r.status === 'ok') {
                         alertClass = 'alert-success';
-                        msg += 'Blacklisted successfully';
+                        msg += i18n.addedToBlockList;
                         if (r.hash) msg += ' (' + r.hash.substring(0, 16) + '...)';
                     } else if (r.status === 'exists') {
                         alertClass = 'alert-warning';
-                        msg += r.error || 'Already exists';
+                        msg += r.error || i18n.alreadyExists;
                     } else {
                         alertClass = 'alert-danger';
-                        msg += r.error || 'Error';
+                        msg += r.error || i18n.error;
                     }
                     resultsList.appendChild(createAlert(alertClass, msg));
                 });
@@ -163,11 +154,11 @@
         .catch(function(err) {
             resultsDiv.style.display = '';
             while (resultsList.firstChild) resultsList.removeChild(resultsList.firstChild);
-            resultsList.appendChild(createAlert('alert-danger', 'Upload failed: ' + err.message));
+            resultsList.appendChild(createAlert('alert-danger', i18n.uploadFailed + ': ' + err.message));
         })
         .finally(function() {
             uploadBtn.disabled = false;
-            uploadBtn.textContent = 'Upload to Blacklist';
+            uploadBtn.textContent = i18n.addToBlockList;
             fileInput.value = '';
         });
     });
@@ -175,7 +166,7 @@
     document.querySelectorAll('.blacklist-delete-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = btn.getAttribute('data-id');
-            if (!confirm('Remove this blacklisted hash?')) return;
+            if (!confirm(i18n.confirmRemoveHash)) return;
 
             fetch('/settings/blacklist/' + id, { method: 'DELETE' })
             .then(function(resp) { return resp.json(); })
@@ -190,7 +181,7 @@
                 }
             })
             .catch(function(err) {
-                alert('Failed to delete: ' + err.message);
+                if (typeof showToast === 'function') showToast(i18n.errRemoveFailed, 'danger');
             });
         });
     });

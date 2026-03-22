@@ -28,12 +28,18 @@ spec:
         - name: ghcr-pull-secret
       containers:
         - name: createmod
-          image: ghcr.io/uberswe/createmod.com:master-cb07f63
+          image: ghcr.io/uberswe/createmod.com:master-1e93906
           imagePullPolicy: Always
           ports:
             - containerPort: 8090
               name: http
               protocol: TCP
+          env:
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: meilisearch-secret
+                  key: MEILI_MASTER_KEY
           envFrom:
             - configMapRef:
                 name: createmod-config

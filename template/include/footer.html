@@ -1,10 +1,10 @@
-<footer class="site-footer d-print-none">
+<footer class="site-footer print:hidden">
     <!-- Main footer content -->
     <div class="container-wide">
         <div class="footer-top">
-            <div class="row g-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 <!-- Brand column -->
-                <div class="col-12 col-md-6 col-lg-3">
+                <div class="lg:col-span-2">
                     <a href="{{ LangURL .Language "/" }}" class="footer-brand">
                         <img src="/assets/x/logo.png" alt="CreateMod.com" width="48" height="48">
                     </a>
@@ -22,7 +22,7 @@
                     </div>
                 </div>
                 <!-- Browse column -->
-                <div class="col-6 col-md-3 col-lg-2 offset-lg-1">
+                <div>
                     <h6 class="footer-heading">{{ T .Language "Browse" }}</h6>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/" }}">{{ T .Language "Latest Schematics" }}</a></li>
@@ -32,7 +32,7 @@
                     </ul>
                 </div>
                 <!-- Community column -->
-                <div class="col-6 col-md-3 col-lg-2">
+                <div>
                     <h6 class="footer-heading">{{ T .Language "Community" }}</h6>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/guides" }}">{{ T .Language "Guides" }}</a></li>
@@ -42,7 +42,7 @@
                     </ul>
                 </div>
                 <!-- Legal column -->
-                <div class="col-6 col-md-3 col-lg-2">
+                <div>
                     <h6 class="footer-heading">{{ T .Language "Legal" }}</h6>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/terms-of-service" }}">{{ T .Language "Terms of Service" }}</a></li>
@@ -53,7 +53,7 @@
                     <div id="ncmp-consent-link"></div>
                 </div>
                 <!-- Open Source column -->
-                <div class="col-6 col-md-3 col-lg-2">
+                <div>
                     <h6 class="footer-heading">{{ T .Language "Developers" }}</h6>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/api" }}">{{ T .Language "API Docs" }}</a></li>
@@ -66,7 +66,7 @@
         <!-- Bottom bar -->
         <div class="footer-bottom">
             <div class="footer-bottom-left">
-                <span>{{ T .Language "Copyright" }} &copy; 2025 <a href="https://createmod.com">CreateMod.com</a>. {{ T .Language "All rights reserved" }}.</span>
+                <span>{{ T .Language "Copyright" }} &copy; 2026 <a href="https://createmod.com">CreateMod.com</a>. {{ T .Language "All rights reserved" }}.</span>
             </div>
             <div class="footer-bottom-right">
                 <span>{{ T .Language "Not approved by or associated with Mojang or Microsoft." }}</span>

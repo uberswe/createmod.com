@@ -23,7 +23,7 @@
         <div class="api-docs-layout">
           <!-- Left Nav -->
           <nav class="api-docs-nav">
-            <ul class="nav flex-column">
+            <ul class="nav flex-col">
               <li class="nav-item"><a class="nav-link" href="#authentication">{{ T .Language "Authentication" }}</a></li>
               <li class="nav-item"><a class="nav-link" href="#rate-limits">{{ T .Language "Rate Limits" }}</a></li>
               <li class="nav-item"><a class="nav-link" href="#errors">{{ T .Language "Error Codes" }}</a></li>
@@ -51,10 +51,10 @@
                 <div class="api-try-card">
                   <h5>{{ T .Language "API Key" }}</h5>
                   <div class="mb-2">
-                    <input type="text" class="form-control form-control-sm api-global-key" id="api-key-input" placeholder="your_api_key">
+                    <input type="text" class="form-input form-input-sm api-global-key" id="api-key-input" placeholder="your_api_key">
                   </div>
                   {{ if .IsAuthenticated }}
-                  <button class="btn btn-sm btn-outline-primary w-100" id="generate-test-key" onclick="generateTestKey()">{{ T .Language "Generate test key" }}</button>
+                  <button class="btn btn-sm btn-outline-primary w-full" id="generate-test-key" onclick="generateTestKey()">{{ T .Language "Generate test key" }}</button>
                   {{ else }}
                   <p class="text-secondary mb-0" style="font-size: 0.8rem;"><a href="/login">{{ T .Language "Log in" }}</a> {{ T .Language "to generate a test key instantly." }}</p>
                   {{ end }}
@@ -113,26 +113,27 @@
                 </div>
 
                 <h4>{{ T .Language "Code Samples" }}</h4>
-                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#list-curl" type="button">curl</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#list-js" type="button">JavaScript</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#list-python" type="button">Python</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#list-go" type="button">Go</button></li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane fade show active" id="list-curl">
-                    <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
+                <div x-data="{ activeTab: 'curl' }">
+                  <ul class="nav nav-pills api-tabs mb-2" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'curl' }" @click="activeTab = 'curl'" type="button">curl</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'js' }" @click="activeTab = 'js'" type="button">JavaScript</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'python' }" @click="activeTab = 'python'" type="button">Python</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'go' }" @click="activeTab = 'go'" type="button">Go</button></li>
+                  </ul>
+                  <div>
+                    <div x-show="activeTab === 'curl'">
+                      <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
   "https://createmod.com/api/schematics?query=windmill&amp;page=1"</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="list-js">
-                    <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics?query=windmill", {
+                    </div>
+                    <div x-show="activeTab === 'js'" x-cloak>
+                      <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics?query=windmill", {
   headers: { "X-API-Key": "YOUR_KEY" }
 });
 const data = await resp.json();
 console.log(data.items);</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="list-python">
-                    <div class="api-code-block"><pre><code>import requests
+                    </div>
+                    <div x-show="activeTab === 'python'" x-cloak>
+                      <div class="api-code-block"><pre><code>import requests
 
 resp = requests.get(
     "https://createmod.com/api/schematics",
@@ -141,14 +142,15 @@ resp = requests.get(
 )
 data = resp.json()
 print(data["items"])</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="list-go">
-                    <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
+                    </div>
+                    <div x-show="activeTab === 'go'" x-cloak>
+                      <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
     "https://createmod.com/api/schematics?query=windmill", nil)
 req.Header.Set("X-API-Key", "YOUR_KEY")
 resp, _ := http.DefaultClient.Do(req)
 defer resp.Body.Close()
 // decode resp.Body as JSON</code></pre></div>
+                    </div>
                   </div>
                 </div>
 
@@ -180,13 +182,13 @@ defer resp.Body.Close()
                   <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics</h6>
                   <div class="mb-2">
                     <label class="form-label">query</label>
-                    <input type="text" class="form-control form-control-sm" id="try-list-query" placeholder="windmill">
+                    <input type="text" class="form-input form-input-sm" id="try-list-query" placeholder="windmill">
                   </div>
                   <div class="mb-2">
                     <label class="form-label">page</label>
-                    <input type="number" class="form-control form-control-sm" id="try-list-page" value="1" min="1">
+                    <input type="number" class="form-input form-input-sm" id="try-list-page" value="1" min="1">
                   </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryListSchematics()">{{ T .Language "Send Request" }}</button>
+                  <button class="btn btn-primary btn-sm w-full" onclick="tryListSchematics()">{{ T .Language "Send Request" }}</button>
                   <div class="api-try-response mt-2" id="try-list-response" style="display:none;">
                     <pre class="api-code-block mb-0"><code id="try-list-output"></code></pre>
                   </div>
@@ -216,26 +218,27 @@ defer resp.Body.Close()
                 </div>
 
                 <h4>{{ T .Language "Code Samples" }}</h4>
-                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#detail-curl" type="button">curl</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-js" type="button">JavaScript</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-python" type="button">Python</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#detail-go" type="button">Go</button></li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane fade show active" id="detail-curl">
-                    <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
+                <div x-data="{ activeTab: 'curl' }">
+                  <ul class="nav nav-pills api-tabs mb-2" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'curl' }" @click="activeTab = 'curl'" type="button">curl</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'js' }" @click="activeTab = 'js'" type="button">JavaScript</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'python' }" @click="activeTab = 'python'" type="button">Python</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'go' }" @click="activeTab = 'go'" type="button">Go</button></li>
+                  </ul>
+                  <div>
+                    <div x-show="activeTab === 'curl'">
+                      <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
   "https://createmod.com/api/schematics/windmill-farm"</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="detail-js">
-                    <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics/windmill-farm", {
+                    </div>
+                    <div x-show="activeTab === 'js'" x-cloak>
+                      <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics/windmill-farm", {
   headers: { "X-API-Key": "YOUR_KEY" }
 });
 const schematic = await resp.json();
 console.log(schematic.title);</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="detail-python">
-                    <div class="api-code-block"><pre><code>import requests
+                    </div>
+                    <div x-show="activeTab === 'python'" x-cloak>
+                      <div class="api-code-block"><pre><code>import requests
 
 resp = requests.get(
     "https://createmod.com/api/schematics/windmill-farm",
@@ -243,14 +246,15 @@ resp = requests.get(
 )
 schematic = resp.json()
 print(schematic["title"])</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="detail-go">
-                    <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
+                    </div>
+                    <div x-show="activeTab === 'go'" x-cloak>
+                      <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
     "https://createmod.com/api/schematics/windmill-farm", nil)
 req.Header.Set("X-API-Key", "YOUR_KEY")
 resp, _ := http.DefaultClient.Do(req)
 defer resp.Body.Close()
 // decode resp.Body as JSON</code></pre></div>
+                    </div>
                   </div>
                 </div>
 
@@ -279,9 +283,9 @@ defer resp.Body.Close()
                   <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}</h6>
                   <div class="mb-2">
                     <label class="form-label">name</label>
-                    <input type="text" class="form-control form-control-sm" id="try-detail-name" placeholder="windmill-farm">
+                    <input type="text" class="form-input form-input-sm" id="try-detail-name" placeholder="windmill-farm">
                   </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryGetSchematic()">{{ T .Language "Send Request" }}</button>
+                  <button class="btn btn-primary btn-sm w-full" onclick="tryGetSchematic()">{{ T .Language "Send Request" }}</button>
                   <div class="api-try-response mt-2" id="try-detail-response" style="display:none;">
                     <pre class="api-code-block mb-0"><code id="try-detail-output"></code></pre>
                   </div>
@@ -312,21 +316,22 @@ defer resp.Body.Close()
                 </div>
 
                 <h4>{{ T .Language "Code Samples" }}</h4>
-                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#upload-curl" type="button">curl</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#upload-js" type="button">JavaScript</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#upload-python" type="button">Python</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#upload-go" type="button">Go</button></li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane fade show active" id="upload-curl">
-                    <div class="api-code-block"><pre><code>curl -X POST \
+                <div x-data="{ activeTab: 'curl' }">
+                  <ul class="nav nav-pills api-tabs mb-2" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'curl' }" @click="activeTab = 'curl'" type="button">curl</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'js' }" @click="activeTab = 'js'" type="button">JavaScript</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'python' }" @click="activeTab = 'python'" type="button">Python</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" :class="{ 'active': activeTab === 'go' }" @click="activeTab = 'go'" type="button">Go</button></li>
+                  </ul>
+                  <div>
+                    <div x-show="activeTab === 'curl'">
+                      <div class="api-code-block"><pre><code>curl -X POST \
   -H "X-API-Key: YOUR_KEY" \
   -F "file=@my_schematic.nbt" \
   "https://createmod.com/api/schematics/upload"</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="upload-js">
-                    <div class="api-code-block"><pre><code>const form = new FormData();
+                    </div>
+                    <div x-show="activeTab === 'js'" x-cloak>
+                      <div class="api-code-block"><pre><code>const form = new FormData();
 form.append("file", fileInput.files[0]);
 
 const resp = await fetch("https://createmod.com/api/schematics/upload", {
@@ -336,9 +341,9 @@ const resp = await fetch("https://createmod.com/api/schematics/upload", {
 });
 const data = await resp.json();
 console.log(data.token, data.url);</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="upload-python">
-                    <div class="api-code-block"><pre><code>import requests
+                    </div>
+                    <div x-show="activeTab === 'python'" x-cloak>
+                      <div class="api-code-block"><pre><code>import requests
 
 with open("my_schematic.nbt", "rb") as f:
     resp = requests.post(
@@ -348,9 +353,9 @@ with open("my_schematic.nbt", "rb") as f:
     )
 data = resp.json()
 print(data["token"], data["url"])</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="upload-go">
-                    <div class="api-code-block"><pre><code>body := &amp;bytes.Buffer{}
+                    </div>
+                    <div x-show="activeTab === 'go'" x-cloak>
+                      <div class="api-code-block"><pre><code>body := &amp;bytes.Buffer{}
 writer := multipart.NewWriter(body)
 part, _ := writer.CreateFormFile("file", "my_schematic.nbt")
 io.Copy(part, fileReader)
@@ -362,6 +367,7 @@ req.Header.Set("X-API-Key", "YOUR_KEY")
 req.Header.Set("Content-Type", writer.FormDataContentType())
 resp, _ := http.DefaultClient.Do(req)
 // decode resp.Body as JSON</code></pre></div>
+                    </div>
                   </div>
                 </div>
 
@@ -385,9 +391,9 @@ resp, _ := http.DefaultClient.Do(req)
                   <h6><span class="api-method-badge api-method-post">POST</span> /api/schematics/upload</h6>
                   <div class="mb-2">
                     <label class="form-label">.nbt {{ T .Language "file" }}</label>
-                    <input type="file" class="form-control form-control-sm" id="try-upload-file" accept=".nbt">
+                    <input type="file" class="form-input form-input-sm" id="try-upload-file" accept=".nbt">
                   </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryUploadSchematic()">{{ T .Language "Send Request" }}</button>
+                  <button class="btn btn-primary btn-sm w-full" onclick="tryUploadSchematic()">{{ T .Language "Send Request" }}</button>
                   <div class="api-try-response mt-2" id="try-upload-response" style="display:none;">
                     <pre class="api-code-block mb-0"><code id="try-upload-output"></code></pre>
                   </div>
