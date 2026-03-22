@@ -1,6 +1,6 @@
 {{template "head.html" .}}
 <!-- Preload the LCP image so the browser starts fetching it immediately -->
-{{ if .Schematic.HasFeaturedImage }}
+{{ if ne .Schematic.FeaturedImage "" }}
 <link rel="preload" as="image" href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540"
       imagesrcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
       imagesizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw" fetchpriority="high">
@@ -44,7 +44,7 @@
 
                         <!-- Image + Description -->
                         <div class="card card-sm mb-4">
-                            {{ if .Schematic.HasFeaturedImage }}
+                            {{ if ne .Schematic.FeaturedImage "" }}
                             <a data-fslightbox="gallery" hx-boost="false"
                                href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}">
                                 <div class="ratio ratio-16x9">

@@ -3,7 +3,7 @@
   <a href="/schematics/{{ .Name }}" class="d-block text-decoration-none">
     <div class="card card-featured card-hover-lift overflow-hidden">
       <div class="ratio ratio-16x9" style="position:relative;">
-        {{ if .HasFeaturedImage }}
+        {{ if ne .FeaturedImage "" }}
         <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180"
              srcset="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180 320w, /api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=640x360 640w"
              sizes="(max-width: 767px) 100vw, 33vw"
