@@ -1,0 +1,405 @@
+{
+	"info": {
+		"name": "CreateMod - Mod API",
+		"description": "HMAC-signed API endpoints for the Minecraft mod and public JSON API.\n\n## Authentication\n\nAll endpoints support two authentication methods:\n\n1. **API Key** — Pass `X-API-Key: your_api_key` header (or `?api_key=` query param). Get a key at /settings/api-keys.\n2. **HMAC Signature** — Pass `X-Mod-Message` and `X-Mod-Signature` headers. Used by the Minecraft mod.\n\nThe mod download endpoint (`POST /api/mod/download`) uses a JSON body with `message` and `signature` fields instead of headers.\n\n## Setup\n\n1. Set the `base_url` variable (e.g. `http://localhost:8090` or `https://createmod.com`)\n2. Set `mod_download_secret` to match your server's `MOD_DOWNLOAD_SECRET` env var\n3. Set `schematic_identifier` to the slug of the schematic you want to download\n4. Optionally change `mod_version` and `mc_username`\n\nThe pre-request scripts automatically generate the timestamp, message, and HMAC-SHA256 signature.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://createmod.com",
+			"type": "string"
+		},
+		{
+			"key": "mod_download_secret",
+			"value": "your-secret-here",
+			"type": "string"
+		},
+		{
+			"key": "mod_version",
+			"value": "1.0.0",
+			"type": "string"
+		},
+		{
+			"key": "mc_username",
+			"value": "TestPlayer",
+			"type": "string"
+		},
+		{
+			"key": "schematic_identifier",
+			"value": "large-warehouse",
+			"type": "string"
+		},
+		{
+			"key": "search_query",
+			"value": "warehouse",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Mod Download",
+			"description": "Original HMAC-signed mod download endpoints (POST body auth, XOR-encoded response).",
+			"item": [
+				{
+					"name": "Download Schematic",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const timestamp = Math.floor(Date.now() / 1000).toString();",
+									"const modVersion = pm.collectionVariables.get('mod_version');",
+									"const mcUsername = pm.collectionVariables.get('mc_username');",
+									"const identifier = pm.collectionVariables.get('schematic_identifier');",
+									"const secret = pm.collectionVariables.get('mod_download_secret');",
+									"",
+									"const message = `${timestamp}:${modVersion}:${mcUsername}:${identifier}`;",
+									"",
+									"const signature = CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex);",
+									"",
+									"pm.collectionVariables.set('generated_message', message);",
+									"pm.collectionVariables.set('generated_signature', signature);",
+									"",
+									"console.log('Message:', message);",
+									"console.log('Signature:', signature);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has XOR encoding header', function () {",
+									"    pm.response.to.have.header('X-Mod-Encoding', 'xor-v1');",
+									"});",
+									"",
+									"pm.test('Response has original size header', function () {",
+									"    pm.expect(pm.response.headers.get('X-Original-Size')).to.not.be.undefined;",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"{{generated_message}}\",\n  \"signature\": \"{{generated_signature}}\",\n  \"type\": \"schematic\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mod/download",
+							"host": ["{{base_url}}"],
+							"path": ["api", "mod", "download"]
+						},
+						"description": "Downloads a schematic file via HMAC-signed request.\n\n**Message format:** `{timestamp}:{modVersion}:{mcUsername}:{identifier}`\n\n**Signature:** HMAC-SHA256 of the message, hex-encoded.\n\n**Response:** XOR-encoded binary data with headers:\n- `X-Mod-Encoding: xor-v1`\n- `X-Original-Size: {byte_count}`\n\nThe pre-request script generates the message and signature automatically.\n\n**Timestamp window:** Must be within 5 minutes (not older) and 30 seconds (not in the future).\n\n**Rate limit:** 100 downloads per IP per day."
+					}
+				},
+				{
+					"name": "Download Temp Upload",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const timestamp = Math.floor(Date.now() / 1000).toString();",
+									"const modVersion = pm.collectionVariables.get('mod_version');",
+									"const mcUsername = pm.collectionVariables.get('mc_username');",
+									"const identifier = pm.collectionVariables.get('schematic_identifier');",
+									"const secret = pm.collectionVariables.get('mod_download_secret');",
+									"",
+									"const message = `${timestamp}:${modVersion}:${mcUsername}:${identifier}`;",
+									"",
+									"const signature = CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex);",
+									"",
+									"pm.collectionVariables.set('generated_message', message);",
+									"pm.collectionVariables.set('generated_signature', signature);",
+									"",
+									"console.log('Message:', message);",
+									"console.log('Signature:', signature);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"{{generated_message}}\",\n  \"signature\": \"{{generated_signature}}\",\n  \"type\": \"upload\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mod/download",
+							"host": ["{{base_url}}"],
+							"path": ["api", "mod", "download"]
+						},
+						"description": "Downloads a temporary upload file (before it's published as a schematic).\n\nSame HMAC signing as the schematic download, but with `type: \"upload\"` and the identifier set to the temp upload token."
+					}
+				}
+			]
+		},
+		{
+			"name": "Public JSON API (HMAC Auth)",
+			"description": "Public JSON API endpoints authenticated via HMAC headers.\n\nThese endpoints also accept `X-API-Key` header authentication, but the requests below demonstrate HMAC auth using `X-Mod-Message` and `X-Mod-Signature` headers.\n\n**Rate limits (HMAC):** 100 requests/minute per IP for search and detail, 10 requests/minute per IP for upload.",
+			"item": [
+				{
+					"name": "Search Schematics (HMAC)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const timestamp = Math.floor(Date.now() / 1000).toString();",
+									"const modVersion = pm.collectionVariables.get('mod_version');",
+									"const mcUsername = pm.collectionVariables.get('mc_username');",
+									"const identifier = pm.collectionVariables.get('schematic_identifier');",
+									"const secret = pm.collectionVariables.get('mod_download_secret');",
+									"",
+									"const message = `${timestamp}:${modVersion}:${mcUsername}:${identifier}`;",
+									"",
+									"const signature = CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex);",
+									"",
+									"pm.collectionVariables.set('generated_message', message);",
+									"pm.collectionVariables.set('generated_signature', signature);",
+									"",
+									"console.log('Message:', message);",
+									"console.log('Signature:', signature);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is JSON', function () {",
+									"    pm.response.to.have.header('Content-Type', 'application/json; charset=utf-8');",
+									"});",
+									"",
+									"pm.test('Response has items array', function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property('items');",
+									"    pm.expect(json.items).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('Response has pagination fields', function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property('page');",
+									"    pm.expect(json).to.have.property('pageSize');",
+									"    pm.expect(json).to.have.property('hasNext');",
+									"    pm.expect(json).to.have.property('hasPrev');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Mod-Message",
+								"value": "{{generated_message}}"
+							},
+							{
+								"key": "X-Mod-Signature",
+								"value": "{{generated_signature}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/schematics?query={{search_query}}&page=1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "schematics"],
+							"query": [
+								{
+									"key": "query",
+									"value": "{{search_query}}",
+									"description": "Search term (also accepts 'q')"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (also accepts 'p')"
+								}
+							]
+						},
+						"description": "Search or list schematics via HMAC authentication.\n\n**Auth:** `X-Mod-Message` and `X-Mod-Signature` headers (or `X-API-Key`).\n\n**Query params:**\n- `query` (or `q`) — search term. If empty, returns newest schematics.\n- `page` (or `p`) — page number (default 1, 24 items per page).\n\n**Response:** JSON with `items`, `page`, `pageSize`, `hasPrev`, `hasNext`, `total`, `term`.\n\n**Rate limit (HMAC):** 100 requests/minute per IP.\n**Rate limit (API key):** 120 requests/minute per key."
+					}
+				},
+				{
+					"name": "Get Schematic Detail (HMAC)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const timestamp = Math.floor(Date.now() / 1000).toString();",
+									"const modVersion = pm.collectionVariables.get('mod_version');",
+									"const mcUsername = pm.collectionVariables.get('mc_username');",
+									"const identifier = pm.collectionVariables.get('schematic_identifier');",
+									"const secret = pm.collectionVariables.get('mod_download_secret');",
+									"",
+									"const message = `${timestamp}:${modVersion}:${mcUsername}:${identifier}`;",
+									"",
+									"const signature = CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex);",
+									"",
+									"pm.collectionVariables.set('generated_message', message);",
+									"pm.collectionVariables.set('generated_signature', signature);",
+									"",
+									"console.log('Message:', message);",
+									"console.log('Signature:', signature);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is JSON', function () {",
+									"    pm.response.to.have.header('Content-Type', 'application/json; charset=utf-8');",
+									"});",
+									"",
+									"pm.test('Response has schematic name', function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property('name');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Mod-Message",
+								"value": "{{generated_message}}"
+							},
+							{
+								"key": "X-Mod-Signature",
+								"value": "{{generated_signature}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/schematics/{{schematic_identifier}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "schematics", "{{schematic_identifier}}"]
+						},
+						"description": "Get a single schematic's details by name/slug via HMAC authentication.\n\n**Auth:** `X-Mod-Message` and `X-Mod-Signature` headers (or `X-API-Key`).\n\n**Path param:** `{name}` — the schematic's URL slug.\n\n**Response:** JSON object with full schematic details (name, description, dimensions, block count, materials, mods, images, etc.).\n\n**Rate limit (HMAC):** 100 requests/minute per IP.\n**Rate limit (API key):** 120 requests/minute per key."
+					}
+				},
+				{
+					"name": "Upload Schematic (HMAC)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const timestamp = Math.floor(Date.now() / 1000).toString();",
+									"const modVersion = pm.collectionVariables.get('mod_version');",
+									"const mcUsername = pm.collectionVariables.get('mc_username');",
+									"const identifier = pm.collectionVariables.get('schematic_identifier');",
+									"const secret = pm.collectionVariables.get('mod_download_secret');",
+									"",
+									"const message = `${timestamp}:${modVersion}:${mcUsername}:${identifier}`;",
+									"",
+									"const signature = CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex);",
+									"",
+									"pm.collectionVariables.set('generated_message', message);",
+									"pm.collectionVariables.set('generated_signature', signature);",
+									"",
+									"console.log('Message:', message);",
+									"console.log('Signature:', signature);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is JSON', function () {",
+									"    pm.response.to.have.header('Content-Type', 'application/json; charset=utf-8');",
+									"});",
+									"",
+									"pm.test('Response has token', function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property('token');",
+									"});",
+									"",
+									"pm.test('Response has preview URL', function () {",
+									"    const json = pm.response.json();",
+									"    pm.expect(json).to.have.property('url');",
+									"    pm.expect(json.url).to.match(/^\\/u\\//);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Mod-Message",
+								"value": "{{generated_message}}"
+							},
+							{
+								"key": "X-Mod-Signature",
+								"value": "{{generated_signature}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "",
+									"description": "The .nbt schematic file to upload (max 10MB)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/schematics/upload",
+							"host": ["{{base_url}}"],
+							"path": ["api", "schematics", "upload"]
+						},
+						"description": "Upload a schematic .nbt file via HMAC authentication.\n\n**Auth:** `X-Mod-Message` and `X-Mod-Signature` headers (or `X-API-Key`).\n\n**Body:** multipart/form-data with field `file` (or `nbt`) containing the .nbt file.\n\n**HMAC uploads are anonymous** — the upload has no owner and can be claimed later via `POST /u/{token}/claim`.\n\n**Response:** JSON with `token`, `url` (preview path), `checksum`, `filename`, `size`, `blockCount`, `dimensions`, `materials`, `mods`, `fileUrl`.\n\n**Rate limit (HMAC):** 10 uploads/minute per IP.\n**Rate limit (API key):** 120 requests/minute per key."
+					}
+				}
+			]
+		}
+	]
+}
