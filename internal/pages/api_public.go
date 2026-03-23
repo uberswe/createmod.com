@@ -211,6 +211,11 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 			}
 		}
 
+		// Strip internal file paths from public responses.
+		for i := range items {
+			items[i].SchematicFile = ""
+		}
+
 		resp := apiListResponse{
 			Items:    items,
 			Page:     page,
@@ -262,6 +267,7 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			return nil
 		}
 		item := MapStoreSchematicToModel(appStore, *s, cacheService)
+		item.SchematicFile = ""
 		e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 		e.Response.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(e.Response).Encode(item); err != nil {

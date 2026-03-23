@@ -72,10 +72,6 @@ func parseModMessage(message string, maxAge time.Duration) (timestamp int64, mod
 	mcUsername = parts[2]
 	identifier = parts[3]
 
-	if identifier == "" {
-		return 0, "", "", "", fmt.Errorf("identifier is empty")
-	}
-
 	return timestamp, modVersion, mcUsername, identifier, nil
 }
 
