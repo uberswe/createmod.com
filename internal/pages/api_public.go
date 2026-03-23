@@ -18,6 +18,88 @@ import (
 	"time"
 )
 
+// hmacAuth describes a successfully validated HMAC request.
+type hmacAuth struct {
+	Timestamp  int64
+	ModVersion string
+	McUsername string
+	Identifier string
+}
+
+// authenticateHMAC checks for X-Mod-Message and X-Mod-Signature headers and
+// validates them against the shared secret. Returns the parsed auth info on
+// success, or nil if the headers are absent or invalid.
+func authenticateHMAC(r *http.Request, secret string) *hmacAuth {
+	message := strings.TrimSpace(r.Header.Get("X-Mod-Message"))
+	signature := strings.TrimSpace(r.Header.Get("X-Mod-Signature"))
+	if message == "" || signature == "" {
+		return nil
+	}
+	if !validateModSignature(message, signature, secret) {
+		return nil
+	}
+	timestamp, modVersion, mcUsername, identifier, err := parseModMessage(message, maxModTimestampAge)
+	if err != nil {
+		return nil
+	}
+	return &hmacAuth{
+		Timestamp:  timestamp,
+		ModVersion: modVersion,
+		McUsername: mcUsername,
+		Identifier: identifier,
+	}
+}
+
+// requireAPIKeyOrHMAC tries API key auth first, then HMAC auth. Returns:
+//   - keyID (non-empty for API key auth, empty for HMAC)
+//   - isHMAC (true if authenticated via HMAC)
+//   - error (non-nil if both auth methods failed; response already written)
+func requireAPIKeyOrHMAC(appStore *store.Store, e *server.RequestEvent, modSecret string) (string, bool, error) {
+	// Try API key first
+	apiKey := getAPIKeyFromRequest(e.Request)
+	if apiKey != "" {
+		keyID, ok := verifyAPIKeyFromStore(appStore, apiKey)
+		if ok {
+			return keyID, false, nil
+		}
+	}
+
+	// Try HMAC
+	if auth := authenticateHMAC(e.Request, modSecret); auth != nil {
+		return "", true, nil
+	}
+
+	// Neither worked
+	_ = writeJSON(e, http.StatusUnauthorized, map[string]string{
+		"error": "Authentication required. Use X-API-Key header or HMAC signature (X-Mod-Message + X-Mod-Signature)",
+	})
+	return "", false, fmt.Errorf("missing authentication")
+}
+
+// searchRateLimitAllow enforces a per-minute IP rate limit for HMAC-authenticated
+// search requests. Returns (allowed, retryAfterSeconds).
+func searchRateLimitAllow(rl ratelimit.Limiter, clientIP string, limit int) (bool, int) {
+	if clientIP == "" || rl == nil || limit <= 0 {
+		return true, 0
+	}
+	now := time.Now()
+	minuteKey := now.Format("20060102T1504")
+	k := "hmac:search:" + clientIP + ":" + minuteKey
+	ttl := time.Until(now.Truncate(time.Minute).Add(time.Minute))
+	if ttl <= 0 {
+		ttl = time.Second
+	}
+	ok, _ := rl.Allow(context.Background(), k, limit, ttl)
+	if !ok {
+		ra := int(ttl.Seconds())
+		if ra < 1 {
+			ra = 1
+		}
+		return false, ra
+	}
+	return true, 0
+}
+
 // apiListResponse is the JSON shape for list/search responses.
 type apiListResponse struct {
 	Items    []models.Schematic `json:"items"`
@@ -119,17 +201,26 @@ func rateLimitAllow(rl ratelimit.Limiter, keyID string, limit int) (bool, int) {
 }
 
 // APISchematicsListHandler serves GET /api/schematics as a simple JSON API for searching/listing schematics.
-func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+// Accepts either X-API-Key or HMAC authentication (X-Mod-Message + X-Mod-Signature headers).
+func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics"
-		keyID, err := requireAPIKeyFromStore(appStore, e)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
 		if err != nil {
 			return nil
 		}
-		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-		if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
-			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+		if isHMAC {
+			// Rate limit HMAC requests by IP: 100/min
+			if ok, retry := searchRateLimitAllow(rl, e.RealIP(), 100); !ok {
+				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			}
+		} else {
+			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+			if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			}
 		}
 		q := e.Request.URL.Query().Get("query")
 		if q == "" {
@@ -236,17 +327,26 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 }
 
 // APISchematicDetailHandler serves GET /api/schematics/{name} returning one schematic by name.
-func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+// Accepts either X-API-Key or HMAC authentication (X-Mod-Message + X-Mod-Signature headers).
+func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}"
-		keyID, err := requireAPIKeyFromStore(appStore, e)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
 		if err != nil {
 			return nil
 		}
-		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-		if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
-			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+		if isHMAC {
+			// Rate limit HMAC requests by IP: 100/min
+			if ok, retry := searchRateLimitAllow(rl, e.RealIP(), 100); !ok {
+				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			}
+		} else {
+			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+			if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			}
 		}
 		name := e.Request.PathValue("name")
 		if strings.TrimSpace(name) == "" {

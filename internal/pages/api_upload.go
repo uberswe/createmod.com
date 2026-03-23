@@ -23,22 +23,31 @@ import (
 )
 
 // APIUploadHandler serves POST /api/schematics/upload as a JSON API for uploading schematics.
-// Requires API key authentication. Accepts multipart/form-data with an .nbt file.
+// Accepts either API key or HMAC authentication. When authenticated via HMAC,
+// the upload is anonymous (empty UploadedBy) and can be claimed via /u/{token}/claim.
+// Accepts multipart/form-data with an .nbt file.
 // The upload goes through the same pipeline as web uploads -- returns a preview token, not a published schematic.
 // Uses PostgreSQL store for metadata and direct S3 for file storage.
-func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, modSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "POST /api/schematics/upload"
 
-		keyID, err := requireAPIKeyFromStore(appStore, e)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
 		if err != nil {
 			return nil
 		}
-		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-
-		if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
-			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
-			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+		if isHMAC {
+			// Rate limit HMAC uploads by IP: 10/min (same as anonymous uploads)
+			if ok, retry := searchRateLimitAllow(rl, e.RealIP(), 10); !ok {
+				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			}
+		} else {
+			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+			if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
+				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			}
 		}
 
 		_ = e.Request.ParseMultipartForm(maxUploadSize + 1<<20)
@@ -159,9 +168,14 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		}
 
 		// Persist to PostgreSQL store
+		// HMAC-authenticated uploads are anonymous (claimable via /u/{token}/claim)
+		uploadedBy := authenticatedUserID(e)
+		if isHMAC {
+			uploadedBy = ""
+		}
 		tempUpload := &store.TempUpload{
 			Token:         token,
-			UploadedBy:    authenticatedUserID(e),
+			UploadedBy:    uploadedBy,
 			Filename:      safeFilename,
 			Size:          n,
 			Checksum:      checksum,
