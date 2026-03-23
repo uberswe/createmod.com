@@ -6,6 +6,7 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -95,7 +96,7 @@ func ModsHandler(cacheService *cache.Service, registry *server.Registry, modMeta
 }
 
 // ModDetailHandler renders a specific mod's schematics at GET /mods/{slug}.
-func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, modMetaService interface{}, appStore *store.Store) func(e *server.RequestEvent) error {
+func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, modMetaService interface{}, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		slug := e.Request.PathValue("slug")
 		if slug == "" {
@@ -175,6 +176,7 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 		}
 
 		d.Populate(e)
+		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Mods"), "/mods", mod.Name)
 		d.Title = mod.Name + " " + i18n.T(d.Language, "Schematics")
 		if isVanilla {
