@@ -122,9 +122,12 @@ func Test_parseModMessage(t *testing.T) {
 
 	t.Run("empty identifier", func(t *testing.T) {
 		msg := strconv.FormatInt(now, 10) + ":1.0.0:Player:"
-		_, _, _, _, err := parseModMessage(msg, maxAge)
-		if err == nil {
-			t.Fatal("expected error for empty identifier")
+		_, _, _, id, err := parseModMessage(msg, maxAge)
+		if err != nil {
+			t.Fatalf("unexpected error for empty identifier: %v", err)
+		}
+		if id != "" {
+			t.Fatalf("expected empty identifier, got %s", id)
 		}
 	})
 
