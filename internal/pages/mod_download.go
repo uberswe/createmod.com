@@ -185,7 +185,7 @@ func modDownloadSchematic(ctx context.Context, appStore *store.Store, storageSvc
 		return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}
 	}
 
-	if s.Status != "" && s.Status != "approved" {
+	if !s.Moderated {
 		return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}
 	}
 
