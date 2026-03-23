@@ -5,6 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
@@ -21,11 +22,12 @@ var exploreTemplates = append([]string{
 }, commonTemplates...)
 
 type ExploreImage struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Title string `json:"title"`
-	Image string `json:"image"`
-	Size  string `json:"size"` // "sm", "md", or "lg"
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Title            string `json:"title"`
+	Image            string `json:"image"`
+	Size             string `json:"size"` // "sm", "md", or "lg"
+	DetectedLanguage string `json:"-"`
 }
 
 type ExploreData struct {
@@ -64,22 +66,45 @@ func buildExploreImages(appStore *store.Store, cacheService *cache.Service) ([]E
 				continue
 			}
 			images = append(images, ExploreImage{
-				ID:    s.ID,
-				Title: s.Title,
-				Name:  s.Name,
-				Image: g,
+				ID:               s.ID,
+				Title:            s.Title,
+				Name:             s.Name,
+				Image:            g,
+				DetectedLanguage: s.DetectedLanguage,
 			})
 		}
 		images = append(images, ExploreImage{
-			ID:    s.ID,
-			Title: s.Title,
-			Name:  s.Name,
-			Image: s.FeaturedImage,
+			ID:               s.ID,
+			Title:            s.Title,
+			Name:             s.Name,
+			Image:            s.FeaturedImage,
+			DetectedLanguage: s.DetectedLanguage,
 		})
 	}
 
 	cacheService.SetWithTTL(exploreCacheKey, images, exploreCacheDuration)
 	return images, nil
+}
+
+// translateExploreImageTitles replaces each explore image's title with its cached
+// translation when the viewer's language differs from the image's detected language.
+func translateExploreImageTitles(images []ExploreImage, translationService *translation.Service, cacheService *cache.Service, targetLang string) {
+	if translationService == nil || cacheService == nil || targetLang == "" {
+		return
+	}
+	for i := range images {
+		detectedLang := images[i].DetectedLanguage
+		if detectedLang == "" {
+			detectedLang = "en"
+		}
+		if detectedLang == targetLang {
+			continue
+		}
+		t := translationService.GetTranslationCached(cacheService, images[i].ID, targetLang)
+		if t != nil && t.Title != "" {
+			images[i].Title = t.Title
+		}
+	}
 }
 
 // shuffleImages returns a deterministically shuffled copy of images using the
@@ -115,7 +140,7 @@ func shuffleImages(images []ExploreImage, seed int64) []ExploreImage {
 	return dest
 }
 
-func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		images, err := buildExploreImages(appStore, cacheService)
 		if err != nil {
@@ -136,6 +161,7 @@ func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appS
 			Seed:   seed,
 		}
 		d.Populate(e)
+		translateExploreImageTitles(d.Images, translationService, cacheService, d.Language)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "page.explore.title"))
 		d.Title = i18n.T(d.Language, "page.explore.title")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -154,7 +180,7 @@ func ExploreHandler(cacheService *cache.Service, registry *server.Registry, appS
 
 // ExploreAPIHandler serves GET /api/explore/images?seed=X&cursor=N&limit=30
 // Returns a JSON batch of shuffled explore images for infinite scroll.
-func ExploreAPIHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func ExploreAPIHandler(cacheService *cache.Service, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		images, err := buildExploreImages(appStore, cacheService)
 		if err != nil {
@@ -202,6 +228,7 @@ func ExploreAPIHandler(cacheService *cache.Service, appStore *store.Store) func(
 			end = total
 		}
 		batch := shuffled[cursor:end]
+		translateExploreImageTitles(batch, translationService, cacheService, detectLanguageFromRequest(e.Request))
 
 		resp := map[string]interface{}{
 			"images":   batch,

@@ -135,6 +135,8 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 		d.FromAuthor = findAuthorSchematicsFromStore(appStore, cacheService, d.Schematic.ID, authorID, 5)
 		d.Similar = findSimilarSchematicsFromStore(appStore, cacheService, d.Schematic, d.FromAuthor, searchEngine)
+		translateSchematicTitles(d.FromAuthor, translationService, cacheService, d.Language)
+		translateSchematicTitles(d.Similar, translationService, cacheService, d.Language)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
 		d.PendingModeration = !s.Moderated && d.IsAuthor
@@ -472,6 +474,7 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		DimY:                 s.DimY,
 		DimZ:                 s.DimZ,
 		Mods:                 mods,
+		DetectedLanguage:     s.DetectedLanguage,
 	}
 
 	return result
@@ -524,6 +527,27 @@ func MapStoreSchematics(appStore *store.Store, schematics []store.Schematic, cac
 	}
 
 	return result
+}
+
+// translateSchematicTitles replaces each schematic's title with its cached
+// translation when the viewer's language differs from the schematic's detected language.
+func translateSchematicTitles(schematics []models.Schematic, translationService *translation.Service, cacheService *cache.Service, targetLang string) {
+	if translationService == nil || cacheService == nil || targetLang == "" {
+		return
+	}
+	for i := range schematics {
+		detectedLang := schematics[i].DetectedLanguage
+		if detectedLang == "" {
+			detectedLang = "en"
+		}
+		if detectedLang == targetLang {
+			continue
+		}
+		t := translationService.GetTranslationCached(cacheService, schematics[i].ID, targetLang)
+		if t != nil && t.Title != "" {
+			schematics[i].Title = t.Title
+		}
+	}
 }
 
 // mapSchematicFromBatch builds a models.Schematic using pre-fetched batch data
@@ -678,6 +702,7 @@ func mapSchematicFromBatch(
 		DimY:                 s.DimY,
 		DimZ:                 s.DimZ,
 		Mods:                 mods,
+		DetectedLanguage:     s.DetectedLanguage,
 	}
 }
 

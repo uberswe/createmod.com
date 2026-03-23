@@ -8,6 +8,7 @@ import (
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -60,7 +61,7 @@ type SearchData struct {
 	HidePaid          bool
 }
 
-func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
@@ -311,6 +312,7 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			HidePaid:          hidePaid,
 		}
 		d.Populate(e)
+		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Search"))
 		// Dynamic title based on search context
 		if term != "" && page > 1 {
