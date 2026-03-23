@@ -6,6 +6,7 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"fmt"
 	"createmod/internal/server"
 	"net/http"
@@ -30,7 +31,7 @@ type SchematicsData struct {
 	NextURL    string
 }
 
-func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		// Pagination params
 		page := 1
@@ -68,6 +69,7 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 		}
 
 		d.Populate(e)
+		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"))
 		d.Title = i18n.T(d.Language, "page.schematics.title")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

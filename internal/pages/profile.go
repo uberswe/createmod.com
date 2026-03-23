@@ -6,6 +6,7 @@ import (
 	"createmod/internal/models"
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"github.com/drexedam/gravatar"
 	"createmod/internal/server"
 	"golang.org/x/text/cases"
@@ -45,7 +46,7 @@ type ProfileData struct {
 	DefaultData
 }
 
-func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		username := e.Request.PathValue("username")
 		if username == "" {
@@ -55,11 +56,11 @@ func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appS
 			}
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
 		}
-		return showProfile(e, appStore, cacheService, registry, username)
+		return showProfile(e, appStore, cacheService, registry, translationService, username)
 	}
 }
 
-func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *cache.Service, registry *server.Registry, username string) error {
+func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *cache.Service, registry *server.Registry, translationService *translation.Service, username string) error {
 	d := ProfileData{}
 	d.Populate(e)
 	caser := cases.Title(language.English)
@@ -77,6 +78,7 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 	}
 
 	d.Schematics = findAuthorSchematicsFromStore(appStore, cacheService, "", user.ID, 1000)
+	translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 	if user.Avatar != "" {
 		d.UserAvatar = tmpl.URL(user.Avatar)
 		d.Thumbnail = user.Avatar

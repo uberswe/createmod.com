@@ -7,6 +7,7 @@ import (
 	"createmod/internal/metrics"
 	"createmod/internal/models"
 	"createmod/internal/store"
+	"createmod/internal/translation"
 	"fmt"
 	tmpl "html/template"
 	"log/slog"
@@ -88,7 +89,7 @@ func detectLanguageFromRequest(r *http.Request) string {
 	return preferredLanguageFromRequest(r)
 }
 
-func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		q := e.Request.URL.Query()
 		tab := q.Get("tab")
@@ -104,7 +105,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 
 		// HTMX tab request — return just the tab panel partial
 		if isHTMX && tab != "" {
-			return renderTabPartial(cacheService, registry, appStore, e, tab, page, windowDays)
+			return renderTabPartial(cacheService, registry, appStore, translationService, e, tab, page, windowDays)
 		}
 
 		// Record page view metric
@@ -198,6 +199,12 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			CategorySections: categorySections,
 		}
 		d.Populate(e)
+		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
+		translateSchematicTitles(d.Trending, translationService, cacheService, d.Language)
+		translateSchematicTitles(d.HighestRated, translationService, cacheService, d.Language)
+		for i := range d.CategorySections {
+			translateSchematicTitles(d.CategorySections[i].Items, translationService, cacheService, d.Language)
+		}
 		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.index.title")
 		d.Description = i18n.T(d.Language, "page.index.description")
@@ -235,7 +242,7 @@ type TabData struct {
 	NextURL string
 }
 
-func renderTabPartial(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, e *server.RequestEvent, tab string, page int, windowDays int) error {
+func renderTabPartial(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service, e *server.RequestEvent, tab string, page int, windowDays int) error {
 	var items []models.Schematic
 	var hasNext bool
 
@@ -279,6 +286,7 @@ func renderTabPartial(cacheService *cache.Service, registry *server.Registry, ap
 		d.NextURL = fmt.Sprintf("/?tab=%s&p=%d", tab, page+1)
 	}
 	d.Populate(e)
+	translateSchematicTitles(d.Items, translationService, cacheService, d.Language)
 
 	html, err := registry.LoadFiles(indexTabTemplates...).Render(d)
 	if err != nil {

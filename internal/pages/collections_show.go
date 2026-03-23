@@ -130,6 +130,7 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 				}
 			}
 			d.SchematicCount = len(d.Schematics)
+			translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 
 			// Lazily generate collage for collections that have schematics but no banner or collage
 			if coll.BannerURL == "" && coll.CollageURL == "" && len(schematicIDs) > 0 && storageSvc != nil {

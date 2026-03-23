@@ -279,7 +279,7 @@ func Register(p RegisterParams) chi.Router {
 	})
 
 	// Index
-	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/api/index/click", Adapt(pages.IndexClickHandler()))
 	r.Get("/upload", Adapt(pages.UploadHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
@@ -334,8 +334,8 @@ func Register(p RegisterParams) chi.Router {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/guides"), http.StatusMovedPermanently)
 	})
 	r.Get("/rules", Adapt(pages.RulesHandler(registry, p.CacheService, p.AppStore)))
-	r.Get("/explore", Adapt(pages.ExploreHandler(p.CacheService, registry, p.AppStore)))
-	r.Get("/api/explore/images", Adapt(pages.ExploreAPIHandler(p.CacheService, p.AppStore)))
+	r.Get("/explore", Adapt(pages.ExploreHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/api/explore/images", Adapt(pages.ExploreAPIHandler(p.CacheService, p.AppStore, p.TranslationService)))
 	r.Get("/terms-of-service", Adapt(pages.TermsOfServiceHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/privacy-policy", Adapt(pages.PrivacyPolicyHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings", Adapt(pages.UserSettingsHandler(registry, p.CacheService, p.AppStore)))
@@ -427,7 +427,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/guides/{id}/delete", Adapt(pages.GuidesDeleteHandler(p.AppStore)))
 	// Mods
 	r.Get("/mods", Adapt(pages.ModsHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
-	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
+	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.CacheService, registry, p.ModMetaService, p.AppStore, p.TranslationService)))
 	// Collections
 	r.Get("/collections", Adapt(pages.CollectionsHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/collections/new", Adapt(pages.CollectionsNewHandler(registry, p.CacheService, p.AppStore)))
@@ -445,7 +445,7 @@ func Register(p RegisterParams) chi.Router {
 	// Language setter
 	r.Get("/lang", Adapt(pages.SetLanguageHandler()))
 	// Schematics
-	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, p.StorageService, webhookSecret)))
 	// Schematic RSS feed (comments)
 	r.Get("/schematics/{name}/feed", Adapt(pages.SchematicFeedHandler(p.AppStore, p.CacheService)))
@@ -482,18 +482,18 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
 	// Click tracking
 	r.Post("/api/search/click", Adapt(pages.SearchClickHandler()))
-	r.Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
-	r.Get("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
-	r.Post("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
-	r.Get("/search/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
-	r.Get("/search", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
-	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
-	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
+	r.Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Post("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/search/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/search", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
-	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
-	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	// Fallback
 	r.Get("/*", Adapt(pages.FourOhFourHandler(registry, p.AppStore)))
 
