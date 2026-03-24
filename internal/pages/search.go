@@ -9,6 +9,7 @@ import (
 	"createmod/internal/search"
 	"createmod/internal/store"
 	"createmod/internal/translation"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -28,6 +29,13 @@ var searchTemplates = append([]string{
 	"./template/include/search_filters.html",
 	"./template/include/search_pagination.html",
 }, commonTemplates...)
+
+// ModOption represents a mod entry for the search filter multiselect.
+type ModOption struct {
+	Namespace   string // raw mod namespace for URL params (e.g. "create")
+	DisplayName string // human-readable name (e.g. "Create")
+	Count       int
+}
 
 type SearchData struct {
 	DefaultData
@@ -59,6 +67,16 @@ type SearchData struct {
 	NextURL           string
 	ViewMode          string
 	HidePaid          bool
+	MinBlockCount     int
+	MaxBlockCount     int
+	MinDimX           int
+	MaxDimX           int
+	MinDimY           int
+	MaxDimY           int
+	MinDimZ           int
+	MaxDimZ           int
+	SelectedMods      []string
+	AllMods           []ModOption
 }
 
 func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
@@ -131,6 +149,63 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 
 		hidePaid := e.Request.URL.Query().Get("hidepaid") == "1"
 
+		// Parse dimension and block count range filters
+		parseIntParam := func(key string) int {
+			v := e.Request.URL.Query().Get(key)
+			if v == "" {
+				return 0
+			}
+			n, err := strconv.Atoi(v)
+			if err != nil || n < 0 {
+				return 0
+			}
+			return n
+		}
+		minBlockCount := parseIntParam("minbc")
+		maxBlockCount := parseIntParam("maxbc")
+		minDimX := parseIntParam("minx")
+		maxDimX := parseIntParam("maxx")
+		minDimY := parseIntParam("miny")
+		maxDimY := parseIntParam("maxy")
+		minDimZ := parseIntParam("minz")
+		maxDimZ := parseIntParam("maxz")
+
+		// Parse mod filter (comma-separated "mods" param or multiple "mod" checkbox params)
+		var selectedMods []string
+		if modsParam := e.Request.URL.Query().Get("mods"); modsParam != "" {
+			for _, m := range strings.Split(modsParam, ",") {
+				m = strings.TrimSpace(m)
+				if m != "" {
+					selectedMods = append(selectedMods, m)
+				}
+			}
+		}
+		if len(selectedMods) == 0 {
+			if modValues := e.Request.URL.Query()["mod"]; len(modValues) > 0 {
+				for _, m := range modValues {
+					m = strings.TrimSpace(m)
+					if m != "" {
+						selectedMods = append(selectedMods, m)
+					}
+				}
+			}
+		}
+
+		// Build mod options list and resolve selected namespaces to display names for Meilisearch
+		allMods := allModOptionsFromStore(appStore, cacheService)
+		var meiliModNames []string
+		if len(selectedMods) > 0 {
+			nsToDisplay := make(map[string]string, len(allMods))
+			for _, mo := range allMods {
+				nsToDisplay[mo.Namespace] = mo.DisplayName
+			}
+			for _, ns := range selectedMods {
+				if dn, ok := nsToDisplay[ns]; ok {
+					meiliModNames = append(meiliModNames, dn)
+				}
+			}
+		}
+
 		term := strings.ReplaceAll(slugTerm, "-", " ")
 
 		sq := search.SearchQuery{
@@ -142,6 +217,15 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			MinecraftVersion: mcVersion,
 			CreateVersion:    createVersion,
 			HidePaid:         hidePaid,
+			MinBlockCount:    minBlockCount,
+			MaxBlockCount:    maxBlockCount,
+			MinDimX:          minDimX,
+			MaxDimX:          maxDimX,
+			MinDimY:          minDimY,
+			MaxDimY:          maxDimY,
+			MinDimZ:          minDimZ,
+			MaxDimZ:          maxDimZ,
+			Mods:             meiliModNames,
 		}
 
 		ids, _ := searchEngine.Search(e.Request.Context(), sq)
@@ -185,6 +269,22 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 				}
 				orderedSchematics = append(orderedSchematics, s)
 			}
+		}
+
+		// Post-filter for exact mod matching: when mods are selected, keep only
+		// schematics whose mod list matches exactly the selected set.
+		if len(selectedMods) > 0 {
+			selectedSet := make(map[string]bool, len(selectedMods))
+			for _, m := range selectedMods {
+				selectedSet[m] = true
+			}
+			filtered := orderedSchematics[:0]
+			for _, s := range orderedSchematics {
+				if modsExactMatch(s.Mods, selectedSet) {
+					filtered = append(filtered, s)
+				}
+			}
+			orderedSchematics = filtered
 		}
 
 		// Pagination: check path value first, fall back to ?p= query param
@@ -244,6 +344,33 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 		queryParts = append(queryParts, fmt.Sprintf("cv=%s", createVersion))
 		if hidePaid {
 			queryParts = append(queryParts, "hidepaid=1")
+		}
+		if minBlockCount > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("minbc=%d", minBlockCount))
+		}
+		if maxBlockCount > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxbc=%d", maxBlockCount))
+		}
+		if minDimX > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("minx=%d", minDimX))
+		}
+		if maxDimX > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxx=%d", maxDimX))
+		}
+		if minDimY > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("miny=%d", minDimY))
+		}
+		if maxDimY > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxy=%d", maxDimY))
+		}
+		if minDimZ > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("minz=%d", minDimZ))
+		}
+		if maxDimZ > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxz=%d", maxDimZ))
+		}
+		if len(selectedMods) > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("mods=%s", strings.Join(selectedMods, ",")))
 		}
 		// Build query-param pagination URLs (works with both path-based and HTMX ?q= requests)
 		buildPageURL := func(p int) string {
@@ -310,6 +437,16 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			NextURL:           nextURL,
 			ViewMode:          viewMode,
 			HidePaid:          hidePaid,
+			MinBlockCount:     minBlockCount,
+			MaxBlockCount:     maxBlockCount,
+			MinDimX:           minDimX,
+			MaxDimX:           maxDimX,
+			MinDimY:           minDimY,
+			MaxDimY:           maxDimY,
+			MinDimZ:           minDimZ,
+			MaxDimZ:           maxDimZ,
+			SelectedMods:      selectedMods,
+			AllMods:           allMods,
 		}
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
@@ -401,6 +538,14 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 			Tag              string `json:"tag" form:"tag"`
 			MinecraftVersion string `json:"mcv" form:"mcv"`
 			CreateVersion    string `json:"cv" form:"cv"`
+			MinBlockCount    string `json:"minbc" form:"minbc"`
+			MaxBlockCount    string `json:"maxbc" form:"maxbc"`
+			MinDimX          string `json:"minx" form:"minx"`
+			MaxDimX          string `json:"maxx" form:"maxx"`
+			MinDimY          string `json:"miny" form:"miny"`
+			MaxDimY          string `json:"maxy" form:"maxy"`
+			MinDimZ          string `json:"minz" form:"minz"`
+			MaxDimZ          string `json:"maxz" form:"maxz"`
 		}{}
 		if err := e.BindBody(&data); err != nil {
 			return &server.APIError{Status: 400, Message: "Failed to read request data"}
@@ -418,8 +563,43 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 		if tagParam == "" {
 			tagParam = "all"
 		}
+		// Handle multi-mod: form may submit multiple mod values via checkboxes
+		var modsParam string
+		if err := e.Request.ParseForm(); err == nil {
+			if modValues := e.Request.Form["mod"]; len(modValues) > 0 {
+				modsParam = strings.Join(modValues, ",")
+			}
+		}
 		term := slug.Make(data.Term)
-		return e.Redirect(http.StatusTemporaryRedirect, LangRedirectURL(e, fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, tagParam, data.MinecraftVersion, data.CreateVersion)))
+		redirectURL := fmt.Sprintf("/search/%s?sort=%s&rating=%s&category=%s&tag=%s&mcv=%s&cv=%s", term, data.Sort, data.Rating, data.Category, tagParam, data.MinecraftVersion, data.CreateVersion)
+		if data.MinBlockCount != "" && data.MinBlockCount != "0" {
+			redirectURL += "&minbc=" + data.MinBlockCount
+		}
+		if data.MaxBlockCount != "" && data.MaxBlockCount != "0" {
+			redirectURL += "&maxbc=" + data.MaxBlockCount
+		}
+		if data.MinDimX != "" && data.MinDimX != "0" {
+			redirectURL += "&minx=" + data.MinDimX
+		}
+		if data.MaxDimX != "" && data.MaxDimX != "0" {
+			redirectURL += "&maxx=" + data.MaxDimX
+		}
+		if data.MinDimY != "" && data.MinDimY != "0" {
+			redirectURL += "&miny=" + data.MinDimY
+		}
+		if data.MaxDimY != "" && data.MaxDimY != "0" {
+			redirectURL += "&maxy=" + data.MaxDimY
+		}
+		if data.MinDimZ != "" && data.MinDimZ != "0" {
+			redirectURL += "&minz=" + data.MinDimZ
+		}
+		if data.MaxDimZ != "" && data.MaxDimZ != "0" {
+			redirectURL += "&maxz=" + data.MaxDimZ
+		}
+		if modsParam != "" {
+			redirectURL += "&mods=" + modsParam
+		}
+		return e.Redirect(http.StatusTemporaryRedirect, LangRedirectURL(e, redirectURL))
 	}
 }
 
@@ -459,4 +639,55 @@ func allTagsWithCountFromStore(appStore *store.Store, service *cache.Service) []
 	}
 	service.SetWithTTL(cache.AllTagsWithCountKey, result, 6*time.Hour)
 	return result
+}
+
+// modsExactMatch returns true if the schematic's mods (JSON array of namespace
+// strings) match exactly the selected set of mod namespaces.
+func modsExactMatch(modsJSON json.RawMessage, selectedSet map[string]bool) bool {
+	if len(modsJSON) == 0 {
+		return len(selectedSet) == 0
+	}
+	var mods []string
+	if err := json.Unmarshal(modsJSON, &mods); err != nil {
+		return false
+	}
+	if len(mods) != len(selectedSet) {
+		return false
+	}
+	for _, m := range mods {
+		if !selectedSet[m] {
+			return false
+		}
+	}
+	return true
+}
+
+// allModOptionsFromStore returns mod options with display names for the search filter.
+func allModOptionsFromStore(appStore *store.Store, cacheService *cache.Service) []ModOption {
+	const cacheKey = "search_mod_options"
+	if val, found := cacheService.Get(cacheKey); found {
+		if opts, ok := val.([]ModOption); ok {
+			return opts
+		}
+	}
+	ctx := context.Background()
+	modCounts, err := appStore.Schematics.ListModCounts(ctx)
+	if err != nil {
+		return nil
+	}
+	opts := make([]ModOption, 0, len(modCounts))
+	for _, mc := range modCounts {
+		name := strings.TrimSpace(mc.ModName)
+		if name == "" {
+			continue
+		}
+		displayName := name
+		meta, err := appStore.ModMetadata.GetByNamespace(ctx, name)
+		if err == nil && meta != nil && meta.DisplayName != "" {
+			displayName = meta.DisplayName
+		}
+		opts = append(opts, ModOption{Namespace: name, DisplayName: displayName, Count: mc.Count})
+	}
+	cacheService.SetWithTTL(cacheKey, opts, 6*time.Hour)
+	return opts
 }

@@ -64,6 +64,10 @@ type schematicIndex struct {
 	Paid             bool
 	BlockNames       []string
 	ModNames         []string
+	BlockCount       int
+	DimX             int
+	DimY             int
+	DimZ             int
 }
 
 // indexCacheEntry holds filter-index data for one schematic.
@@ -149,6 +153,10 @@ func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[
 		si.MinecraftVersion = schematics[i].MinecraftVersion
 		si.CreateVersion = schematics[i].CreatemodVersion
 		si.Paid = schematics[i].Paid
+		si.BlockCount = schematics[i].BlockCount
+		si.DimX = schematics[i].DimX
+		si.DimY = schematics[i].DimY
+		si.DimZ = schematics[i].DimZ
 
 		filterIndex[i] = si
 		cacheEntries[i] = indexCacheEntry{SI: si}
