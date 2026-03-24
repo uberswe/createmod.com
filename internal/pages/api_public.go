@@ -244,62 +244,49 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 		total := 0
 		hasNext := false
 
-		if strings.TrimSpace(q) == "" {
-			// Fallback: newest schematics via store
-			limit := pageSize + 1
-			offset := (page - 1) * pageSize
-			schematics, err := appStore.Schematics.ListApproved(ctx, limit, offset)
+		term := strings.ReplaceAll(strings.TrimSpace(q), "-", " ")
+		order := search.TrendingOrder
+		if term != "" {
+			order = search.BestMatchOrder
+		}
+		sq := search.SearchQuery{
+			Term:     term,
+			Order:    order,
+			Rating:   -1,
+			Category: "all",
+		}
+		ids, _ := searchEngine.Search(ctx, sq)
+		if len(ids) > 0 {
+			storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
 			if err != nil {
-				return e.String(http.StatusInternalServerError, "failed to list schematics")
+				return e.String(http.StatusInternalServerError, "failed to fetch schematics")
 			}
-			hasNext = len(schematics) > pageSize
-			if hasNext {
-				schematics = schematics[:pageSize]
+			// Preserve search order
+			byID := make(map[string]store.Schematic, len(storeSchematics))
+			for _, s := range storeSchematics {
+				byID[s.ID] = s
 			}
-			items = MapStoreSchematics(appStore, schematics, cacheService)
-			total = (page-1)*pageSize + len(items)
-		} else {
-			// Search via search engine, then store fetch in order
-			term := strings.ReplaceAll(q, "-", " ")
-			sq := search.SearchQuery{
-				Term:     term,
-				Order:    search.MostViewedOrder,
-				Rating:   -1,
-				Category: "all",
+			ordered := make([]store.Schematic, 0, len(ids))
+			for _, id := range ids {
+				if s, ok := byID[id]; ok {
+					ordered = append(ordered, s)
+				}
 			}
-			ids, _ := searchEngine.Search(ctx, sq)
-			if len(ids) > 0 {
-				storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
-				if err != nil {
-					return e.String(http.StatusInternalServerError, "failed to fetch schematics")
-				}
-				// Preserve search order
-				byID := make(map[string]store.Schematic, len(storeSchematics))
-				for _, s := range storeSchematics {
-					byID[s.ID] = s
-				}
-				ordered := make([]store.Schematic, 0, len(ids))
-				for _, id := range ids {
-					if s, ok := byID[id]; ok {
-						ordered = append(ordered, s)
-					}
-				}
-				total = len(ordered)
-				start := (page - 1) * pageSize
-				if start < 0 {
-					start = 0
-				}
-				end := start + pageSize
-				if end > total {
-					end = total
-				}
-				var cur []store.Schematic
-				if total > 0 && start < total {
-					cur = ordered[start:end]
-				}
-				hasNext = end < total
-				items = MapStoreSchematics(appStore, cur, cacheService)
+			total = len(ordered)
+			start := (page - 1) * pageSize
+			if start < 0 {
+				start = 0
 			}
+			end := start + pageSize
+			if end > total {
+				end = total
+			}
+			var cur []store.Schematic
+			if total > 0 && start < total {
+				cur = ordered[start:end]
+			}
+			hasNext = end < total
+			items = MapStoreSchematics(appStore, cur, cacheService)
 		}
 
 		// Strip internal file paths from public responses.
