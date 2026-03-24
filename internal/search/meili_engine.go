@@ -197,10 +197,6 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf(`create_version = "%s"`, escapeMeiliString(q.CreateVersion)))
 	}
 
-	if q.HidePaid {
-		parts = append(parts, "paid = false")
-	}
-
 	// Dimension and block count range filters
 	if q.MinBlockCount > 0 {
 		parts = append(parts, fmt.Sprintf("block_count >= %d", q.MinBlockCount))
@@ -228,7 +224,6 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 	}
 
 	// Mod filter: pre-filter to schematics containing at least the selected mods.
-	// Exact-match enforcement is done post-query in the handler.
 	for _, mod := range q.Mods {
 		parts = append(parts, fmt.Sprintf(`mod_names = "%s"`, escapeMeiliString(mod)))
 	}

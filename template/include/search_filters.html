@@ -85,41 +85,42 @@
                 {{ end }}
             </select>
         </div>
+        {{ if gt .MaxDimYAll 0 }}
         <div class="subheader mb-2">{{ T .Language "Dimensions" }}</div>
         <div class="mb-3">
             <div class="mb-2">
-                <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y)</label>
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y): <span id="dimy-label">{{ if and (gt .MinDimY 0) (gt .MaxDimY 0) }}{{ .MinDimY }}–{{ .MaxDimY }}{{ else if gt .MinDimY 0 }}{{ .MinDimY }}+{{ else if gt .MaxDimY 0 }}0–{{ .MaxDimY }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
                 <div class="d-flex gap-2 align-items-center">
-                    <input type="number" class="form-control form-control-sm" name="miny" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinDimY 0 }}{{ .MinDimY }}{{ end }}" style="width:5rem;">
-                    <span class="text-secondary">–</span>
-                    <input type="number" class="form-control form-control-sm" name="maxy" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxDimY 0 }}{{ .MaxDimY }}{{ end }}" style="width:5rem;">
+                    <input type="range" class="form-range flex-grow-1" name="miny" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ .MinDimY }}" oninput="updateRangeLabel('dimy',this.value,document.querySelector('[name=maxy]').value,{{ .MaxDimYAll }})">
+                    <input type="range" class="form-range flex-grow-1" name="maxy" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ if gt .MaxDimY 0 }}{{ .MaxDimY }}{{ else }}{{ .MaxDimYAll }}{{ end }}" oninput="updateRangeLabel('dimy',document.querySelector('[name=miny]').value,this.value,{{ .MaxDimYAll }})">
                 </div>
             </div>
             <div class="mb-2">
-                <label class="form-label small text-secondary mb-1">{{ T .Language "Width" }} (X)</label>
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Width" }} (X): <span id="dimx-label">{{ if and (gt .MinDimX 0) (gt .MaxDimX 0) }}{{ .MinDimX }}–{{ .MaxDimX }}{{ else if gt .MinDimX 0 }}{{ .MinDimX }}+{{ else if gt .MaxDimX 0 }}0–{{ .MaxDimX }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
                 <div class="d-flex gap-2 align-items-center">
-                    <input type="number" class="form-control form-control-sm" name="minx" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinDimX 0 }}{{ .MinDimX }}{{ end }}" style="width:5rem;">
-                    <span class="text-secondary">–</span>
-                    <input type="number" class="form-control form-control-sm" name="maxx" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxDimX 0 }}{{ .MaxDimX }}{{ end }}" style="width:5rem;">
+                    <input type="range" class="form-range flex-grow-1" name="minx" min="0" max="{{ .MaxDimXAll }}" step="1" value="{{ .MinDimX }}" oninput="updateRangeLabel('dimx',this.value,document.querySelector('[name=maxx]').value,{{ .MaxDimXAll }})">
+                    <input type="range" class="form-range flex-grow-1" name="maxx" min="0" max="{{ .MaxDimXAll }}" step="1" value="{{ if gt .MaxDimX 0 }}{{ .MaxDimX }}{{ else }}{{ .MaxDimXAll }}{{ end }}" oninput="updateRangeLabel('dimx',document.querySelector('[name=minx]').value,this.value,{{ .MaxDimXAll }})">
                 </div>
             </div>
             <div class="mb-2">
-                <label class="form-label small text-secondary mb-1">{{ T .Language "Length" }} (Z)</label>
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Length" }} (Z): <span id="dimz-label">{{ if and (gt .MinDimZ 0) (gt .MaxDimZ 0) }}{{ .MinDimZ }}–{{ .MaxDimZ }}{{ else if gt .MinDimZ 0 }}{{ .MinDimZ }}+{{ else if gt .MaxDimZ 0 }}0–{{ .MaxDimZ }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
                 <div class="d-flex gap-2 align-items-center">
-                    <input type="number" class="form-control form-control-sm" name="minz" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinDimZ 0 }}{{ .MinDimZ }}{{ end }}" style="width:5rem;">
-                    <span class="text-secondary">–</span>
-                    <input type="number" class="form-control form-control-sm" name="maxz" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxDimZ 0 }}{{ .MaxDimZ }}{{ end }}" style="width:5rem;">
+                    <input type="range" class="form-range flex-grow-1" name="minz" min="0" max="{{ .MaxDimZAll }}" step="1" value="{{ .MinDimZ }}" oninput="updateRangeLabel('dimz',this.value,document.querySelector('[name=maxz]').value,{{ .MaxDimZAll }})">
+                    <input type="range" class="form-range flex-grow-1" name="maxz" min="0" max="{{ .MaxDimZAll }}" step="1" value="{{ if gt .MaxDimZ 0 }}{{ .MaxDimZ }}{{ else }}{{ .MaxDimZAll }}{{ end }}" oninput="updateRangeLabel('dimz',document.querySelector('[name=minz]').value,this.value,{{ .MaxDimZAll }})">
                 </div>
             </div>
         </div>
+        {{ end }}
+        {{ if gt .MaxBlockCountAll 0 }}
         <div class="subheader mb-2">{{ T .Language "Block Count" }}</div>
         <div class="mb-3">
+            <label class="form-label small text-secondary mb-1"><span id="bc-label">{{ if and (gt .MinBlockCount 0) (gt .MaxBlockCount 0) }}{{ .MinBlockCount }}–{{ .MaxBlockCount }}{{ else if gt .MinBlockCount 0 }}{{ .MinBlockCount }}+{{ else if gt .MaxBlockCount 0 }}0–{{ .MaxBlockCount }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
             <div class="d-flex gap-2 align-items-center">
-                <input type="number" class="form-control form-control-sm" name="minbc" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinBlockCount 0 }}{{ .MinBlockCount }}{{ end }}" style="width:5rem;">
-                <span class="text-secondary">–</span>
-                <input type="number" class="form-control form-control-sm" name="maxbc" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ end }}" style="width:5rem;">
+                <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="1" value="{{ .MinBlockCount }}" oninput="updateRangeLabel('bc',this.value,document.querySelector('[name=maxbc]').value,{{ .MaxBlockCountAll }})">
+                <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="1" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="updateRangeLabel('bc',document.querySelector('[name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
             </div>
         </div>
+        {{ end }}
         {{ if gt (len .AllMods) 0 }}
         <div class="subheader mb-2">{{ T .Language "Mods" }}</div>
         <div class="mb-3 search-tag-list">
@@ -131,14 +132,7 @@
             {{ end }}
         </div>
         {{ end }}
-        <div class="subheader mb-2">{{ T .Language "Other" }}</div>
-        <div class="mb-3">
-            <label class="form-check">
-                <input type="checkbox" class="form-check-input" name="hidepaid" value="1" {{ if .HidePaid }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Hide paid schematics" }}</span>
-            </label>
-        </div>
-        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) .HidePaid (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinDimX 0) (gt .MaxDimX 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt .MinDimZ 0) (gt .MaxDimZ 0) (gt (len .SelectedMods) 0) }}
+        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinDimX 0) (gt .MaxDimX 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt .MinDimZ 0) (gt .MaxDimZ 0) (gt (len .SelectedMods) 0) }}
         <div class="mb-3">
             <a href="/search/{{ .TermSlug }}" class="text-secondary small">{{ T .Language "Clear all filters" }}</a>
         </div>
@@ -150,19 +144,53 @@
         </div>
     </form>
     <script>
+    function updateRangeLabel(id, minVal, maxVal, globalMax) {
+      var el = document.getElementById(id + '-label');
+      if (!el) return;
+      var mn = parseInt(minVal) || 0;
+      var mx = parseInt(maxVal) || 0;
+      if (mn === 0 && mx >= globalMax) {
+        el.textContent = '{{ T .Language "Any" }}';
+      } else if (mn > 0 && mx >= globalMax) {
+        el.textContent = mn + '+';
+      } else if (mn === 0 && mx < globalMax) {
+        el.textContent = '0\u2013' + mx;
+      } else {
+        el.textContent = mn + '\u2013' + mx;
+      }
+    }
     (function(){
       if (window._cmFilterTrack) return;
       window._cmFilterTrack = true;
+      // On range sliders, only fire HTMX on mouseup/touchend (not every input)
+      // so the form doesn't spam requests while dragging.
+      var form = document.getElementById('advanced-search-form');
+      if (form) {
+        form.querySelectorAll('input[type=range]').forEach(function(slider) {
+          // Suppress the default change event from triggering HTMX while dragging
+          slider.addEventListener('input', function(e) { e.stopPropagation(); });
+        });
+      }
       document.addEventListener('change', function(e) {
-        var form = e.target && e.target.closest && e.target.closest('#advanced-search-form');
-        if (!form) return;
+        var f = e.target && e.target.closest && e.target.closest('#advanced-search-form');
+        if (!f) return;
         var el = e.target;
+        // For range sliders, zero out values at boundaries so they don't clutter the URL
+        if (el.type === 'range') {
+          var max = parseInt(el.max) || 0;
+          var val = parseInt(el.value) || 0;
+          if (el.name.indexOf('max') === 0 || el.name === 'maxbc' || el.name === 'maxy' || el.name === 'maxx' || el.name === 'maxz') {
+            if (val >= max) el.value = '0';
+          }
+        }
         var filterType = el.name || 'unknown';
         var filterValue = el.type === 'checkbox' ? (el.checked ? el.value : '') : el.value;
-        gtag('event', 'search_filter', {
-          'filter_type': filterType,
-          'filter_value': filterValue
-        });
+        if (typeof gtag === 'function') {
+          gtag('event', 'search_filter', {
+            'filter_type': filterType,
+            'filter_value': filterValue
+          });
+        }
       });
     })();
     </script>

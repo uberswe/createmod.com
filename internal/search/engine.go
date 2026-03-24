@@ -25,7 +25,6 @@ type SearchQuery struct {
 	Order            int
 	Rating           int
 	Tags             []string
-	HidePaid         bool
 	MinBlockCount    int
 	MaxBlockCount    int
 	MinDimX          int
@@ -34,5 +33,5 @@ type SearchQuery struct {
 	MaxDimY          int
 	MinDimZ          int
 	MaxDimZ          int
-	Mods             []string // exact mod namespaces to filter by
+	Mods             []string // mod display names to filter by (AND semantics)
 }

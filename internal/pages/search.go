@@ -9,7 +9,6 @@ import (
 	"createmod/internal/search"
 	"createmod/internal/store"
 	"createmod/internal/translation"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -66,7 +65,6 @@ type SearchData struct {
 	PrevURL           string
 	NextURL           string
 	ViewMode          string
-	HidePaid          bool
 	MinBlockCount     int
 	MaxBlockCount     int
 	MinDimX           int
@@ -77,9 +75,13 @@ type SearchData struct {
 	MaxDimZ           int
 	SelectedMods      []string
 	AllMods           []ModOption
+	MaxBlockCountAll  int // global max for slider upper bound
+	MaxDimXAll        int
+	MaxDimYAll        int
+	MaxDimZAll        int
 }
 
-func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
+func SearchHandler(searchEngine search.SearchEngine, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		start := time.Now()
 		slugTerm := e.Request.PathValue("term")
@@ -147,8 +149,6 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			createVersion = e.Request.URL.Query().Get("cv")
 		}
 
-		hidePaid := e.Request.URL.Query().Get("hidepaid") == "1"
-
 		// Parse dimension and block count range filters
 		parseIntParam := func(key string) int {
 			v := e.Request.URL.Query().Get(key)
@@ -193,6 +193,7 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 
 		// Build mod options list and resolve selected namespaces to display names for Meilisearch
 		allMods := allModOptionsFromStore(appStore, cacheService)
+		maxStats := searchService.MaxStats()
 		var meiliModNames []string
 		if len(selectedMods) > 0 {
 			nsToDisplay := make(map[string]string, len(allMods))
@@ -216,7 +217,6 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			Tags:             searchTags,
 			MinecraftVersion: mcVersion,
 			CreateVersion:    createVersion,
-			HidePaid:         hidePaid,
 			MinBlockCount:    minBlockCount,
 			MaxBlockCount:    maxBlockCount,
 			MinDimX:          minDimX,
@@ -269,22 +269,6 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 				}
 				orderedSchematics = append(orderedSchematics, s)
 			}
-		}
-
-		// Post-filter for exact mod matching: when mods are selected, keep only
-		// schematics whose mod list matches exactly the selected set.
-		if len(selectedMods) > 0 {
-			selectedSet := make(map[string]bool, len(selectedMods))
-			for _, m := range selectedMods {
-				selectedSet[m] = true
-			}
-			filtered := orderedSchematics[:0]
-			for _, s := range orderedSchematics {
-				if modsExactMatch(s.Mods, selectedSet) {
-					filtered = append(filtered, s)
-				}
-			}
-			orderedSchematics = filtered
 		}
 
 		// Pagination: check path value first, fall back to ?p= query param
@@ -342,9 +326,6 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 		queryParts = append(queryParts, fmt.Sprintf("tag=%s", tagURLParam))
 		queryParts = append(queryParts, fmt.Sprintf("mcv=%s", mcVersion))
 		queryParts = append(queryParts, fmt.Sprintf("cv=%s", createVersion))
-		if hidePaid {
-			queryParts = append(queryParts, "hidepaid=1")
-		}
 		if minBlockCount > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("minbc=%d", minBlockCount))
 		}
@@ -436,7 +417,6 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			PrevURL:           prevURL,
 			NextURL:           nextURL,
 			ViewMode:          viewMode,
-			HidePaid:          hidePaid,
 			MinBlockCount:     minBlockCount,
 			MaxBlockCount:     maxBlockCount,
 			MinDimX:           minDimX,
@@ -447,6 +427,10 @@ func SearchHandler(searchEngine search.SearchEngine, cacheService *cache.Service
 			MaxDimZ:           maxDimZ,
 			SelectedMods:      selectedMods,
 			AllMods:           allMods,
+			MaxBlockCountAll:  maxStats.BlockCount,
+			MaxDimXAll:        maxStats.DimX,
+			MaxDimYAll:        maxStats.DimY,
+			MaxDimZAll:        maxStats.DimZ,
 		}
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
@@ -639,27 +623,6 @@ func allTagsWithCountFromStore(appStore *store.Store, service *cache.Service) []
 	}
 	service.SetWithTTL(cache.AllTagsWithCountKey, result, 6*time.Hour)
 	return result
-}
-
-// modsExactMatch returns true if the schematic's mods (JSON array of namespace
-// strings) match exactly the selected set of mod namespaces.
-func modsExactMatch(modsJSON json.RawMessage, selectedSet map[string]bool) bool {
-	if len(modsJSON) == 0 {
-		return len(selectedSet) == 0
-	}
-	var mods []string
-	if err := json.Unmarshal(modsJSON, &mods); err != nil {
-		return false
-	}
-	if len(mods) != len(selectedSet) {
-		return false
-	}
-	for _, m := range mods {
-		if !selectedSet[m] {
-			return false
-		}
-	}
-	return true
 }
 
 // allModOptionsFromStore returns mod options with display names for the search filter.

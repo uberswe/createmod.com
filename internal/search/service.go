@@ -173,6 +173,35 @@ func (s *Service) GetIndex() []schematicIndex {
 	return s.index
 }
 
+// FilterMaxStats holds the global maximum values for slider-based search filters.
+type FilterMaxStats struct {
+	BlockCount int
+	DimX       int
+	DimY       int
+	DimZ       int
+}
+
+// MaxStats returns the maximum block count and dimension values across all
+// indexed schematics. Used to set slider upper bounds in the search UI.
+func (s *Service) MaxStats() FilterMaxStats {
+	var stats FilterMaxStats
+	for _, si := range s.index {
+		if si.BlockCount > stats.BlockCount {
+			stats.BlockCount = si.BlockCount
+		}
+		if si.DimX > stats.DimX {
+			stats.DimX = si.DimX
+		}
+		if si.DimY > stats.DimY {
+			stats.DimY = si.DimY
+		}
+		if si.DimZ > stats.DimZ {
+			stats.DimZ = si.DimZ
+		}
+	}
+	return stats
+}
+
 // Suggestion represents an autocomplete suggestion result.
 type Suggestion struct {
 	Text string `json:"text"`
