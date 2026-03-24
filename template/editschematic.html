@@ -73,20 +73,6 @@
                                             <input id="video" type="text" class="form-control" name="video"
                                                    placeholder="Schematic Video URL" value="{{ .Schematic.Video }}">
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-check form-switch">
-                                                <input type="checkbox" class="form-check-input" id="schematic-paid"
-                                                       {{ if .Schematic.Paid }}checked{{ end }}>
-                                                <span class="form-check-label">Paid schematic</span>
-                                            </label>
-                                            <small class="form-hint">Mark this schematic as paid. Downloads will be disabled and users will be directed to your external link.</small>
-                                        </div>
-                                        <div class="mb-3" id="external-url-group" style="{{ if not .Schematic.Paid }}display:none{{ end }}">
-                                            <label class="form-label required">External Link</label>
-                                            <input type="url" id="external-url" class="form-control" name="external_url"
-                                                   placeholder="https://patreon.com/..." value="{{ .Schematic.ExternalURL }}">
-                                            <small class="form-hint">Link to Patreon, Ko-fi, Discord, or other platform where users can get this schematic.</small>
-                                        </div>
                                     </div>
                                     <div class="col-md-12 col-lg-6">
                                         <div class="mb-3">
@@ -296,10 +282,6 @@
     document.addEventListener("DOMContentLoaded", function() {
         let schematicID = "{{ .Schematic.ID }}"
 
-        document.getElementById('schematic-paid').addEventListener('change', function() {
-            document.getElementById('external-url-group').style.display = this.checked ? '' : 'none';
-        });
-
         // based on https://stackoverflow.com/a/61357880/1260548
         let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
             url: "/files/upload",
@@ -374,8 +356,6 @@
             formData.append("createmod_version", document.getElementById("create-version").value)
             formData.append("minecraft_version", document.getElementById("minecraft-version").value)
             formData.append("video", document.getElementById("video").value)
-            formData.append("paid", document.getElementById("schematic-paid").checked ? "true" : "false")
-            formData.append("external_url", document.getElementById("external-url").value)
 
             if (titleElement.value === undefined || titleElement.value === "") {
                 titleElement.classList.add("is-invalid")

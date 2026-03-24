@@ -50,14 +50,24 @@ func TestMeiliEngine_BuildFilter(t *testing.T) {
 			expect: `create_version = "0.5.1"`,
 		},
 		{
-			name:   "hide paid",
-			query:  SearchQuery{Category: "all", Rating: -1, HidePaid: true},
-			expect: "paid = false",
+			name:   "block count range",
+			query:  SearchQuery{Category: "all", Rating: -1, MinBlockCount: 10, MaxBlockCount: 500},
+			expect: "block_count >= 10 AND block_count <= 500",
+		},
+		{
+			name:   "dimension filter",
+			query:  SearchQuery{Category: "all", Rating: -1, MinDimY: 5, MaxDimY: 100},
+			expect: "dim_y >= 5 AND dim_y <= 100",
+		},
+		{
+			name:   "mod filter",
+			query:  SearchQuery{Category: "all", Rating: -1, Mods: []string{"Create", "Minecraft"}},
+			expect: `mod_names = "Create" AND mod_names = "Minecraft"`,
 		},
 		{
 			name:   "combined",
-			query:  SearchQuery{Category: "automation", Rating: 3, Tags: []string{"redstone"}, MinecraftVersion: "1.20.1", HidePaid: true},
-			expect: `rating >= 3 AND categories = "automation" AND tags = "redstone" AND minecraft_version = "1.20.1" AND paid = false`,
+			query:  SearchQuery{Category: "automation", Rating: 3, Tags: []string{"redstone"}, MinecraftVersion: "1.20.1"},
+			expect: `rating >= 3 AND categories = "automation" AND tags = "redstone" AND minecraft_version = "1.20.1"`,
 		},
 	}
 

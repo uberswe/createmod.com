@@ -197,10 +197,6 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf(`create_version = "%s"`, escapeMeiliString(q.CreateVersion)))
 	}
 
-	if q.HidePaid {
-		parts = append(parts, "paid = false")
-	}
-
 	// Dimension and block count range filters
 	if q.MinBlockCount > 0 {
 		parts = append(parts, fmt.Sprintf("block_count >= %d", q.MinBlockCount))
