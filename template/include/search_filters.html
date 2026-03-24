@@ -85,6 +85,52 @@
                 {{ end }}
             </select>
         </div>
+        <div class="subheader mb-2">{{ T .Language "Dimensions" }}</div>
+        <div class="mb-3">
+            <div class="mb-2">
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y)</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="number" class="form-control form-control-sm" name="miny" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinDimY 0 }}{{ .MinDimY }}{{ end }}" style="width:5rem;">
+                    <span class="text-secondary">–</span>
+                    <input type="number" class="form-control form-control-sm" name="maxy" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxDimY 0 }}{{ .MaxDimY }}{{ end }}" style="width:5rem;">
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Width" }} (X)</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="number" class="form-control form-control-sm" name="minx" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinDimX 0 }}{{ .MinDimX }}{{ end }}" style="width:5rem;">
+                    <span class="text-secondary">–</span>
+                    <input type="number" class="form-control form-control-sm" name="maxx" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxDimX 0 }}{{ .MaxDimX }}{{ end }}" style="width:5rem;">
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Length" }} (Z)</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="number" class="form-control form-control-sm" name="minz" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinDimZ 0 }}{{ .MinDimZ }}{{ end }}" style="width:5rem;">
+                    <span class="text-secondary">–</span>
+                    <input type="number" class="form-control form-control-sm" name="maxz" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxDimZ 0 }}{{ .MaxDimZ }}{{ end }}" style="width:5rem;">
+                </div>
+            </div>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Block Count" }}</div>
+        <div class="mb-3">
+            <div class="d-flex gap-2 align-items-center">
+                <input type="number" class="form-control form-control-sm" name="minbc" placeholder="{{ T .Language "Min" }}" min="0" value="{{ if gt .MinBlockCount 0 }}{{ .MinBlockCount }}{{ end }}" style="width:5rem;">
+                <span class="text-secondary">–</span>
+                <input type="number" class="form-control form-control-sm" name="maxbc" placeholder="{{ T .Language "Max" }}" min="0" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ end }}" style="width:5rem;">
+            </div>
+        </div>
+        {{ if gt (len .AllMods) 0 }}
+        <div class="subheader mb-2">{{ T .Language "Mods" }}</div>
+        <div class="mb-3 search-tag-list">
+            {{ range .AllMods }}
+            <label class="form-check">
+                <input type="checkbox" class="form-check-input" name="mod" value="{{ .Namespace }}" {{ if tagSelected $.SelectedMods .Namespace }}checked{{ end }}>
+                <span class="form-check-label">{{ .DisplayName }} <span class="text-secondary">({{ .Count }})</span></span>
+            </label>
+            {{ end }}
+        </div>
+        {{ end }}
         <div class="subheader mb-2">{{ T .Language "Other" }}</div>
         <div class="mb-3">
             <label class="form-check">
@@ -92,7 +138,7 @@
                 <span class="form-check-label">{{ T .Language "Hide paid schematics" }}</span>
             </label>
         </div>
-        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) .HidePaid }}
+        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) .HidePaid (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinDimX 0) (gt .MaxDimX 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt .MinDimZ 0) (gt .MaxDimZ 0) (gt (len .SelectedMods) 0) }}
         <div class="mb-3">
             <a href="/search/{{ .TermSlug }}" class="text-secondary small">{{ T .Language "Clear all filters" }}</a>
         </div>

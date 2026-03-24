@@ -26,4 +26,13 @@ type SearchQuery struct {
 	Rating           int
 	Tags             []string
 	HidePaid         bool
+	MinBlockCount    int
+	MaxBlockCount    int
+	MinDimX          int
+	MaxDimX          int
+	MinDimY          int
+	MaxDimY          int
+	MinDimZ          int
+	MaxDimZ          int
+	Mods             []string // exact mod namespaces to filter by
 }

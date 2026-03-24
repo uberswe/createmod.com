@@ -29,6 +29,10 @@ type MeiliDocument struct {
 	MinecraftVersion string   `json:"minecraft_version"`
 	CreateVersion    string   `json:"create_version"`
 	CreatedTimestamp  int64    `json:"created_timestamp"`
+	BlockCount       int      `json:"block_count"`
+	DimX             int      `json:"dim_x"`
+	DimY             int      `json:"dim_y"`
+	DimZ             int      `json:"dim_z"`
 }
 
 // EnsureMeiliIndexes creates the Meilisearch index with proper settings.
@@ -38,6 +42,7 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 	filterableStr := []string{
 		"id", "categories", "minecraft_version", "create_version",
 		"tags", "rating", "paid", "views", "created_timestamp",
+		"block_count", "dim_x", "dim_y", "dim_z", "mod_names",
 	}
 	filterable := make([]interface{}, len(filterableStr))
 	for i, s := range filterableStr {
@@ -163,6 +168,10 @@ func MapToMeiliDocuments(filterIndex []schematicIndex) []MeiliDocument {
 			CreatedTimestamp:  si.Created.Unix(),
 			BlockNames:       si.BlockNames,
 			ModNames:         si.ModNames,
+			BlockCount:       si.BlockCount,
+			DimX:             si.DimX,
+			DimY:             si.DimY,
+			DimZ:             si.DimZ,
 		}
 	}
 	return docs
