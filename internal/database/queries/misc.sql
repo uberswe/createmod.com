@@ -136,3 +136,15 @@ LIMIT $1;
 
 -- name: RefreshSearchQueryCounts :exec
 REFRESH MATERIALIZED VIEW CONCURRENTLY search_query_counts;
+
+-- name: PruneOldSearches :execrows
+WITH single_use AS (
+  SELECT LEFT(query, 500) AS q
+  FROM searches
+  GROUP BY LEFT(query, 500)
+  HAVING COUNT(*) = 1
+)
+DELETE FROM searches s
+USING single_use su
+WHERE LEFT(s.query, 500) = su.q
+  AND s.created < NOW() - INTERVAL '90 days';

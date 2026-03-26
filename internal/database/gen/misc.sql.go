@@ -763,6 +763,27 @@ func (q *Queries) ListVersions(ctx context.Context) ([]CreatemodVersion, error) 
 	return items, nil
 }
 
+const pruneOldSearches = `-- name: PruneOldSearches :execrows
+WITH single_use AS (
+  SELECT LEFT(query, 500) AS q
+  FROM searches
+  GROUP BY LEFT(query, 500)
+  HAVING COUNT(*) = 1
+)
+DELETE FROM searches s
+USING single_use su
+WHERE LEFT(s.query, 500) = su.q
+  AND s.created < NOW() - INTERVAL '90 days'
+`
+
+func (q *Queries) PruneOldSearches(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneOldSearches)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const recordOutgoingClick = `-- name: RecordOutgoingClick :exec
 INSERT INTO outgoing_clicks (id, url, source, source_id, user_id)
 VALUES ($1, $2, $3, $4, $5)
