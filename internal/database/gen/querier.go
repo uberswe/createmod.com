@@ -204,6 +204,7 @@ type Querier interface {
 	MonthlyUserDownloads(ctx context.Context, arg MonthlyUserDownloadsParams) ([]MonthlyUserDownloadsRow, error)
 	MonthlyUserUploads(ctx context.Context, arg MonthlyUserUploadsParams) ([]MonthlyUserUploadsRow, error)
 	MonthlyUserViews(ctx context.Context, arg MonthlyUserViewsParams) ([]MonthlyUserViewsRow, error)
+	PruneOldSearches(ctx context.Context) (int64, error)
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RefreshSchematicRatingAggregates(ctx context.Context, id string) error

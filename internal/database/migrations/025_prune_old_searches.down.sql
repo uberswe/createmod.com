@@ -1,0 +1,2 @@
+-- Down migration: no-op. Deleted rows cannot be restored.
+-- The index already existed before this migration.

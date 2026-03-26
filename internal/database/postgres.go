@@ -2301,6 +2301,10 @@ func (st *SearchTrackingStoreImpl) RefreshSearchQueryCounts(ctx context.Context)
 	return st.q.RefreshSearchQueryCounts(ctx)
 }
 
+func (st *SearchTrackingStoreImpl) PruneOldSearches(ctx context.Context) (int64, error) {
+	return st.q.PruneOldSearches(ctx)
+}
+
 // OutgoingClickStoreImpl implements store.OutgoingClickStore.
 type OutgoingClickStoreImpl struct{ q *db.Queries }
 
