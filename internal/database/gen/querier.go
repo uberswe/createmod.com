@@ -208,6 +208,10 @@ type Querier interface {
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RefreshSchematicRatingAggregates(ctx context.Context, id string) error
+	// Non-concurrent refresh: replaces the MV contents in one shot without the
+	// expensive diff against the old rows.  The only reader (ListTopSearches) is
+	// called from the same sitemap job immediately after this refresh, so the
+	// brief exclusive lock has no user-facing impact.
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
