@@ -135,7 +135,11 @@ ORDER BY search_count DESC
 LIMIT $1;
 
 -- name: RefreshSearchQueryCounts :exec
-REFRESH MATERIALIZED VIEW CONCURRENTLY search_query_counts;
+-- Non-concurrent refresh: replaces the MV contents in one shot without the
+-- expensive diff against the old rows.  The only reader (ListTopSearches) is
+-- called from the same sitemap job immediately after this refresh, so the
+-- brief exclusive lock has no user-facing impact.
+REFRESH MATERIALIZED VIEW search_query_counts;
 
 -- name: PruneOldSearches :execrows
 WITH single_use AS (
