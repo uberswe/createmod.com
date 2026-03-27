@@ -63,7 +63,7 @@
                                                 <label class="form-label required">Minecraft Version</label>
                                                 <select id="minecraft-version" name="" class="form-select">
                                                     {{ range .MinecraftVersions}}
-                                                    <option value="{{ .ID }}">{{ .Version }}</option>
+                                                    <option {{ if eq .ID $.MinecraftVersionId}}selected {{ end }}value="{{ .ID }}">{{ .Version }}</option>
                                                     {{ end }}
                                                 </select>
                                             </div>
@@ -203,54 +203,83 @@
         color: #bf9045 !important;
     }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js" defer crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
 <script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function () {
-        var el;
-        window.TomSelect && (new TomSelect(el = document.getElementById('select-tags'), {
+// Dynamically load CDN scripts so the edit page works both on full page
+// loads and after HTMX-boosted navigations (defer scripts are not
+// re-executed when HTMX swaps the body).
+(function initEditSchematic(retries) {
+    retries = retries || 0;
+
+    // --- Load CDN scripts on first call ---
+    if (retries === 0) {
+        var libs = [
+            { global: 'Dropzone',  src: 'https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js' },
+            { global: 'tinyMCE',   src: 'https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js' },
+            { global: 'TomSelect', src: 'https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js' }
+        ];
+        libs.forEach(function(lib) {
+            if (!window[lib.global]) {
+                var s = document.createElement('script');
+                s.src = lib.src;
+                document.head.appendChild(s);
+            }
+        });
+    }
+
+    // --- Wait until all three globals are available ---
+    if (typeof Dropzone === 'undefined' || typeof tinyMCE === 'undefined' || typeof TomSelect === 'undefined') {
+        if (retries < 200) {
+            setTimeout(function() { initEditSchematic(retries + 1); }, 50);
+        }
+        return;
+    }
+
+    // --- TomSelect for tags and category ---
+    var tagsEl = document.getElementById('select-tags');
+    if (tagsEl && !tagsEl.tomselect) {
+        new TomSelect(tagsEl, {
             copyClassesToDropdown: false,
             dropdownParent: 'body',
             controlInput: '<input>',
             create: true,
             createOnBlur: true,
-            render:{
-                item: function(data,escape) {
-                    if( data.customProperties ){
+            render: {
+                item: function(data, escape) {
+                    if (data.customProperties) {
                         return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
                     }
                     return '<div>' + escape(data.text) + '</div>';
                 },
-                option: function(data,escape){
-                    if( data.customProperties ){
+                option: function(data, escape) {
+                    if (data.customProperties) {
                         return '<div><span class="dropdown-item-indicator">' + data.customProperties + '</span>' + escape(data.text) + '</div>';
                     }
                     return '<div>' + escape(data.text) + '</div>';
                 },
-                option_create: function(data,escape) {
+                option_create: function(data, escape) {
                     return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
                 },
             },
-        }));
-        window.TomSelect && (new TomSelect(document.getElementById('schematic-category'), {
+        });
+    }
+    var catEl = document.getElementById('schematic-category');
+    if (catEl && !catEl.tomselect) {
+        new TomSelect(catEl, {
             create: true,
             createOnBlur: true,
             maxItems: 1,
-            render:{
-                option_create: function(data,escape) {
+            render: {
+                option_create: function(data, escape) {
                     return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
                 },
             },
-        }));
-    });
-    // @formatter:on
-</script>
-<script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function () {
-        let options = {
+        });
+    }
+
+    // --- TinyMCE ---
+    var editorEl = document.getElementById('tinymce-schematic');
+    if (editorEl && !tinyMCE.get('tinymce-schematic')) {
+        var options = {
             license_key: "gpl",
             selector: '#tinymce-schematic',
             height: 300,
@@ -266,172 +295,167 @@
                 'link | bullist numlist outdent indent | ' +
                 'removeformat',
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
-        }
+        };
         if (localStorage.getItem("createmodTheme") === 'dark') {
             options.skin = 'tinymce-5-dark';
             options.content_css = 'dark';
         }
-        tinyMCE.baseURL ="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
+        tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
         tinyMCE.init(options);
-    })
-    // @formatter:on
-</script>
+    }
 
-<script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function() {
-        let schematicID = "{{ .Schematic.ID }}"
+    // --- Dropzone instances ---
+    Dropzone.autoDiscover = false;
+    var dropzoneSchematic = new Dropzone("#dropzone-schematic", {
+        url: "/files/upload",
+        method: "POST",
+        acceptedFiles: '.nbt',
+        thumbnailMethod: 'crop',
+        addRemoveLinks: true,
+        autoProcessQueue: false,
+        uploadMultiple: false,
+        parallelUploads: 1,
+        maxFiles: 1,
+    });
+    var dropzoneFeatured = new Dropzone("#dropzone-featured", {
+        acceptedFiles: 'image/*',
+        thumbnailMethod: 'crop',
+        addRemoveLinks: true,
+        autoProcessQueue: false,
+        uploadMultiple: false,
+        parallelUploads: 1,
+        maxFiles: 1,
+    });
+    var dropzoneGallery = new Dropzone("#dropzone-gallery", {
+        acceptedFiles: 'image/*',
+        thumbnailMethod: 'crop',
+        addRemoveLinks: true,
+        autoProcessQueue: false,
+        uploadMultiple: true,
+        parallelUploads: 10,
+        maxFiles: 10,
+    });
 
-        // based on https://stackoverflow.com/a/61357880/1260548
-        let dropzoneSchematic = new Dropzone("#dropzone-schematic", {
-            url: "/files/upload",
-            method: "POST",
-            acceptedFiles: '.nbt',
-            thumbnailMethod: 'crop',
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: false,
-            parallelUploads: 1,
-            maxFiles: 1,
-        })
-        let dropzoneFeatured = new Dropzone("#dropzone-featured", {
-            acceptedFiles: 'image/*',
-            thumbnailMethod: 'crop',
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: false,
-            parallelUploads: 1,
-            maxFiles: 1,
-        })
-        let dropzoneGallery = new Dropzone("#dropzone-gallery", {
-            acceptedFiles: 'image/*',
-            thumbnailMethod: 'crop',
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: true,
-            parallelUploads: 10,
-            maxFiles: 10,
-        })
+    // --- Delete handler ---
+    var schematicID = "{{ .Schematic.ID }}";
 
-        document.getElementById('delete-schematic-btn').addEventListener("click", async function (e) {
-            try {
-                const resp = await fetch('/schematics/' + schematicID, { method: 'DELETE' });
-                if (resp.ok || resp.status === 204) {
-                    location.href = "/";
-                } else {
-                    alert("Failed to delete schematic. Please try again.");
-                }
-            } catch(err) {
-                console.log(err);
+    document.getElementById('delete-schematic-btn').addEventListener("click", async function () {
+        try {
+            var resp = await fetch('/schematics/' + schematicID, { method: 'DELETE' });
+            if (resp.ok || resp.status === 204) {
+                location.href = "/";
+            } else {
                 alert("Failed to delete schematic. Please try again.");
             }
-        });
-
-        document.getElementById('upload-schematic-btn').addEventListener("click", async function (e) {
-            let titleElement = document.getElementById("schematic-title")
-            let descriptionElement = document.getElementById("tinymce-schematic")
-            document.getElementById("upload-schematic-btn").disabled = true
-
-            let errors = []
-
-            const formData = new FormData();
-            for (let file of dropzoneSchematic.files) {
-                formData.append("schematic_file", file)
-            }
-            for (let file of dropzoneFeatured.files) {
-                formData.append("featured_image", file)
-            }
-            for (let file of dropzoneGallery.files) {
-                formData.append("gallery", file)
-            }
-            formData.append("title", titleElement.value)
-            formData.append("author", "{{ .UserID }}")
-            formData.append("content", tinyMCE.activeEditor.getContent())
-            formData.append("description", tinyMCE.activeEditor.getContent())
-            formData.append("categories", document.getElementById("schematic-category").value)
-            let tagIDs = getSelectValues(document.getElementById("select-tags"))
-            for (const tid of tagIDs) {
-                formData.append("tags", tid)
-            }
-            formData.append("createmod_version", document.getElementById("create-version").value)
-            formData.append("minecraft_version", document.getElementById("minecraft-version").value)
-            formData.append("video", document.getElementById("video").value)
-
-            if (titleElement.value === undefined || titleElement.value === "") {
-                titleElement.classList.add("is-invalid")
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.innerText = "A schematic must have a title"
-                errors.push("A schematic must have a title")
-                titleElement.parentNode.insertAdjacentElement("beforeend", div)
-            }
-            if (descriptionElement === undefined || tinyMCE.activeEditor === null || tinyMCE.activeEditor.getContent() === "") {
-                descriptionElement.classList.add("is-invalid")
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.innerText = "A schematic must have a description"
-                errors.push("A schematic must have a description")
-                descriptionElement.parentNode.insertAdjacentElement("beforeend", div)
-            }
-
-            if (errors.length === 0) {
-                let progressBar = document.getElementById("progress-upload")
-                let successAlert = document.getElementById("upload-success")
-                try {
-                    progressBar.style.display = "block"
-                    progressBar.classList.add("progress-bar-indeterminate")
-                const resp = await fetch('/schematics/' + schematicID + '/update', { method: 'POST', body: formData });
-                const createdRecord = await resp.json().catch(function(){ return {}; });
-                if (!resp.ok) {
-                    div = document.createElement('div');
-                    div.classList.add("invalid-feedback")
-                    div.style.display = "block"
-                    div.innerText = "An unexpected error occurred, please try again"
-                    document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
-                    document.getElementById("upload-schematic-btn").disabled = false
-                    progressBar.classList.remove("progress-bar-indeterminate")
-                    progressBar.display = "none"
-                } else {
-                    progressBar.classList.remove("progress-bar-indeterminate")
-                    progressBar.style.display = "none"
-                    successAlert.style.display = "block"
-                }
-                } catch(e) {
-                    console.log(e)
-                    div = document.createElement('div');
-                    div.classList.add("invalid-feedback")
-                    div.style.display = "block"
-                    div.innerText = "An unexpected error occurred, please try again"
-                    document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
-                    document.getElementById("upload-schematic-btn").disabled = false
-                    progressBar.classList.remove("progress-bar-indeterminate")
-                    progressBar.display = "none"
-                }
-            } else {
-                div = document.createElement('div');
-                div.classList.add("invalid-feedback")
-                div.style.display = "block"
-                div.innerText = "There were errors, please check above"
-                document.getElementById("upload-schematic-btn").parentNode.insertAdjacentElement("beforeend", div)
-                document.getElementById("upload-schematic-btn").disabled = false
-            }
-
-        });
-
-        function getSelectValues(select) {
-            var result = [];
-            var options = select && select.options;
-            var opt;
-
-            for (var i=0, iLen=options.length; i<iLen; i++) {
-                opt = options[i];
-
-                if (opt.selected) {
-                    result.push(opt.value || opt.text);
-                }
-            }
-            return result;
+        } catch(err) {
+            console.log(err);
+            alert("Failed to delete schematic. Please try again.");
         }
-    })
+    });
+
+    // --- Save handler ---
+    document.getElementById('upload-schematic-btn').addEventListener("click", async function () {
+        var titleElement = document.getElementById("schematic-title");
+        var btn = document.getElementById("upload-schematic-btn");
+        btn.disabled = true;
+
+        var errors = [];
+
+        var formData = new FormData();
+        for (var i = 0; i < dropzoneSchematic.files.length; i++) {
+            formData.append("schematic_file", dropzoneSchematic.files[i]);
+        }
+        for (var i = 0; i < dropzoneFeatured.files.length; i++) {
+            formData.append("featured_image", dropzoneFeatured.files[i]);
+        }
+        for (var i = 0; i < dropzoneGallery.files.length; i++) {
+            formData.append("gallery", dropzoneGallery.files[i]);
+        }
+        formData.append("title", titleElement.value);
+        formData.append("author", "{{ .UserID }}");
+        var content = '';
+        var editor = tinyMCE.get('tinymce-schematic');
+        if (editor) {
+            content = editor.getContent();
+        }
+        formData.append("content", content);
+        formData.append("description", content);
+        formData.append("categories", document.getElementById("schematic-category").value);
+        var tagSelect = document.getElementById("select-tags");
+        if (tagSelect) {
+            var opts = tagSelect.options;
+            for (var k = 0; k < opts.length; k++) {
+                if (opts[k].selected) {
+                    formData.append("tags", opts[k].value || opts[k].text);
+                }
+            }
+        }
+        formData.append("createmod_version", document.getElementById("create-version").value);
+        formData.append("minecraft_version", document.getElementById("minecraft-version").value);
+        formData.append("video", document.getElementById("video").value);
+
+        if (!titleElement.value) {
+            titleElement.classList.add("is-invalid");
+            var div = document.createElement('div');
+            div.classList.add("invalid-feedback");
+            div.innerText = "A schematic must have a title";
+            errors.push(div.innerText);
+            titleElement.parentNode.insertAdjacentElement("beforeend", div);
+        }
+        if (!content) {
+            var descEl = document.getElementById("tinymce-schematic");
+            if (descEl) {
+                descEl.classList.add("is-invalid");
+                var div = document.createElement('div');
+                div.classList.add("invalid-feedback");
+                div.innerText = "A schematic must have a description";
+                errors.push(div.innerText);
+                descEl.parentNode.insertAdjacentElement("beforeend", div);
+            }
+        }
+
+        if (errors.length === 0) {
+            var progressBar = document.getElementById("progress-upload");
+            var successAlert = document.getElementById("upload-success");
+            try {
+                progressBar.style.display = "block";
+                progressBar.classList.add("progress-bar-indeterminate");
+                var resp = await fetch('/schematics/' + schematicID + '/update', { method: 'POST', body: formData });
+                await resp.json().catch(function(){ return {}; });
+                if (!resp.ok) {
+                    var div = document.createElement('div');
+                    div.classList.add("invalid-feedback");
+                    div.style.display = "block";
+                    div.innerText = "An unexpected error occurred, please try again";
+                    btn.parentNode.insertAdjacentElement("beforeend", div);
+                    btn.disabled = false;
+                    progressBar.classList.remove("progress-bar-indeterminate");
+                    progressBar.style.display = "none";
+                } else {
+                    progressBar.classList.remove("progress-bar-indeterminate");
+                    progressBar.style.display = "none";
+                    successAlert.style.display = "block";
+                }
+            } catch(e) {
+                console.log(e);
+                var div = document.createElement('div');
+                div.classList.add("invalid-feedback");
+                div.style.display = "block";
+                div.innerText = "An unexpected error occurred, please try again";
+                btn.parentNode.insertAdjacentElement("beforeend", div);
+                btn.disabled = false;
+                progressBar.classList.remove("progress-bar-indeterminate");
+                progressBar.style.display = "none";
+            }
+        } else {
+            var div = document.createElement('div');
+            div.classList.add("invalid-feedback");
+            div.style.display = "block";
+            div.innerText = "There were errors, please check above";
+            btn.parentNode.insertAdjacentElement("beforeend", div);
+            btn.disabled = false;
+        }
+    });
+})();
 </script>
 {{template "foot.html" .}}
