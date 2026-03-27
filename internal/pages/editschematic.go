@@ -28,6 +28,7 @@ type EditSchematicData struct {
 	Tags               []models.SchematicTag
 	TagsWithSelected   []SchematicTagWithSelected
 	CreateModVersionId string
+	MinecraftVersionId string
 }
 
 type SchematicTagWithSelected struct {
@@ -67,6 +68,9 @@ func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry
 		d.IsAuthor = d.Schematic.Author.ID == d.UserID
 		if storeSchematic.CreatemodVersionID != nil {
 			d.CreateModVersionId = *storeSchematic.CreatemodVersionID
+		}
+		if storeSchematic.MinecraftVersionID != nil {
+			d.MinecraftVersionId = *storeSchematic.MinecraftVersionID
 		}
 
 		for _, t := range d.Tags {
