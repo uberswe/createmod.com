@@ -49,11 +49,17 @@ spec:
             preStop:
               exec:
                 command: ["sleep", "5"]
+          startupProbe:
+            httpGet:
+              path: /api/ready
+              port: 8090
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /api/health
               port: 8090
-            initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 3
             failureThreshold: 3
@@ -61,14 +67,13 @@ spec:
             httpGet:
               path: /api/ready
               port: 8090
-            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 2
-            failureThreshold: 6
+            failureThreshold: 3
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
             limits:
               cpu: 1000m
               memory: 4Gi
