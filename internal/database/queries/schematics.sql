@@ -204,6 +204,11 @@ WHERE author_id = $1
   AND deleted IS NULL
   AND moderated = true;
 
+-- name: CountSoftDeletedByAuthor :one
+SELECT COUNT(*) FROM schematics
+WHERE author_id = $1
+  AND deleted IS NOT NULL;
+
 -- name: GetSchematicByChecksum :one
 SELECT nh.schematic_id FROM nbt_hashes nh
 JOIN schematics s ON s.id = nh.schematic_id

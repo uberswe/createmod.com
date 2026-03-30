@@ -59,12 +59,16 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 		d.CreatemodVersions = allCreatemodVersionsFromStore(appStore)
 		d.AdditionalFiles = additionalFiles
 
-		// Check if user has previously approved schematics (trusted user)
+		// Check if user qualifies as trusted: at least 3 previously
+		// approved schematics and zero soft-deleted schematics.
 		userID := authenticatedUserID(e)
 		if userID != "" {
 			authorCount, countErr := appStore.Schematics.CountByAuthor(e.Request.Context(), userID)
-			if countErr == nil && authorCount > 0 {
-				d.TrustedUser = true
+			if countErr == nil && authorCount >= 3 {
+				deletedCount, delErr := appStore.Schematics.CountSoftDeletedByAuthor(e.Request.Context(), userID)
+				if delErr == nil && deletedCount == 0 {
+					d.TrustedUser = true
+				}
 			}
 		}
 

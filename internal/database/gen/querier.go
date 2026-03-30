@@ -33,6 +33,7 @@ type Querier interface {
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
+	CountSoftDeletedByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)

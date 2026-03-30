@@ -753,6 +753,10 @@ func (ps *PostgresStore) CountByAuthor(ctx context.Context, authorID string) (in
 	return ps.q.CountSchematicsByAuthor(ctx, &authorID)
 }
 
+func (ps *PostgresStore) CountSoftDeletedByAuthor(ctx context.Context, authorID string) (int64, error) {
+	return ps.q.CountSoftDeletedByAuthor(ctx, &authorID)
+}
+
 func (ps *PostgresStore) GetByChecksum(ctx context.Context, checksum string) (string, error) {
 	id, err := ps.q.GetSchematicByChecksum(ctx, checksum)
 	if err != nil {
