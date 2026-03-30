@@ -100,6 +100,12 @@ func SchematicUpdateHandler(
 
 			// Regenerate excerpt from content
 			plainText := strip.StripTags(sanitizedContent)
+
+			// Validate description quality
+			if err := validateDescription(plainText); err != nil {
+				return e.BadRequestError(err.Error(), nil)
+			}
+
 			if len(plainText) > 180 {
 				schem.Excerpt = plainText[:180] + "..."
 			} else {

@@ -76,9 +76,10 @@
                                            placeholder="Schematic Title">
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Description</label>
+                                    <label class="form-label required">Description</label>
                                     <textarea id="tinymce-schematic"
                                               placeholder="Describe your schematic and include any details on how to get it running."></textarea>
+                                    <small class="form-hint">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
                                 </div>
                                 <div class="row">
                                     <div class="mb-3 col-md-12 col-lg-6">
@@ -337,6 +338,30 @@ document.addEventListener("DOMContentLoaded", function() {
         maxFiles: 10,
     });
 
+    function validateDescriptionClient(html) {
+        if (!html) return "A schematic must have a description";
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var text = (doc.body.textContent || '').trim();
+        if (!text) return "A schematic must have a description";
+        var words = text.split(/\s+/).filter(function(w) { return w.length > 0; });
+        if (words.length < 5) return "Please write at least 5 words describing your schematic";
+        for (var i = 0; i < words.length; i++) {
+            if (words[i].length > 30) return "Your description contains invalid text. Please write a real description.";
+        }
+        var freq = {};
+        for (var i = 0; i < words.length; i++) {
+            var lw = words[i].toLowerCase();
+            freq[lw] = (freq[lw] || 0) + 1;
+        }
+        if (Object.keys(freq).length === 1) return "Please write a real description of your schematic";
+        var repeated = 0;
+        for (var key in freq) {
+            if (freq[key] > 1) repeated += freq[key];
+        }
+        if (repeated > Math.floor(words.length / 2)) return "Please write a more detailed description of your schematic";
+        return null;
+    }
+
     document.getElementById('publish-schematic-btn').addEventListener("click", function (e) {
         var titleElement = document.getElementById("schematic-title");
         document.getElementById("publish-schematic-btn").disabled = true;
@@ -385,8 +410,9 @@ document.addEventListener("DOMContentLoaded", function() {
             titleElement.classList.add("is-invalid");
             errors.push("A schematic must have a title");
         }
-        if (!content) {
-            errors.push("A schematic must have a description");
+        var descError = validateDescriptionClient(content);
+        if (descError) {
+            errors.push(descError);
         }
         if (dropzoneFeatured.files.length === 0) {
             errors.push("A schematic must have a featured image");
@@ -413,7 +439,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 } else {
                     document.getElementById("publish-schematic-btn").disabled = false;
-                    if (typeof showToast === 'function') showToast('Publishing failed. Please try again.', 'danger');
+                    var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
+                    if (typeof showToast === 'function') showToast(errMsg, 'danger');
                 }
             };
             xhr.onerror = function() {

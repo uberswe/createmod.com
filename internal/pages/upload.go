@@ -323,6 +323,12 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		// Generate excerpt
 		excerpt := strip.StripTags(sanitizedContent)
+
+		// Validate description quality
+		if err := validateDescription(excerpt); err != nil {
+			return e.BadRequestError(err.Error(), nil)
+		}
+
 		if len(excerpt) > 180 {
 			excerpt = excerpt[:180]
 		}
