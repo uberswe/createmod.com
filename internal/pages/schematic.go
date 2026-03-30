@@ -810,8 +810,8 @@ func mapStoreComment(c models.DatabaseComment, storeComments []store.Comment) mo
 		ParentID: c.ParentID,
 	}
 
-	sanitizer := htmlsanitizer.NewHTMLSanitizer()
-	sanitizedHTML, err := sanitizer.SanitizeString(c.Content)
+	commentSanitizer := newCommentSanitizer()
+	sanitizedHTML, err := commentSanitizer.SanitizeString(c.Content)
 	if err != nil {
 		// Fallback legacy sanitizer
 		sanitizedHTML = strings.ReplaceAll(template.HTMLEscapeString(c.Content), "\n", "<br/>")

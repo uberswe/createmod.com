@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"net/mail"
 	"time"
-
-	"github.com/sym01/htmlsanitizer"
 )
 
 // CommentCreateHandler handles POST /api/comments to create a new comment.
@@ -69,8 +67,8 @@ func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) fu
 			}
 		}
 
-		// Sanitize content
-		sanitizer := htmlsanitizer.NewHTMLSanitizer()
+		// Sanitize content with restrictive comment-specific allowlist
+		sanitizer := newCommentSanitizer()
 		sanitizedContent, err := sanitizer.SanitizeString(content)
 		if err != nil {
 			return e.BadRequestError("invalid content", nil)
