@@ -132,6 +132,24 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		}
 	}
 
+	// Always run image quality check (even for trusted/pre-approved users).
+	// This verifies the featured image depicts an actual Minecraft build, catching
+	// off-topic uploads like anime characters or unrelated photos.
+	if w.deps.Moderation != nil && imageFullURL != "" && !schem.Blacklisted {
+		qualResult, qualErr := w.deps.Moderation.CheckImageQuality(imageFullURL)
+		if qualErr != nil {
+			slog.Warn("moderation job: image quality check unavailable", "error", qualErr, "schematic_id", args.SchematicID)
+		} else if !qualResult.Approved {
+			slog.Warn("moderation job: featured image not a Minecraft build, holding for review",
+				"schematic_id", args.SchematicID, "reason", qualResult.Reason)
+			schem.Moderated = false
+			schem.ModerationReason = fmt.Sprintf("Featured image is not a Minecraft build: %s", qualResult.Reason)
+			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
+			}
+		}
+	}
+
 	// Run language detection and translation (regardless of moderation outcome)
 	if w.deps.Translation != nil {
 		w.deps.Translation.DetectAndTranslate(args.SchematicID)

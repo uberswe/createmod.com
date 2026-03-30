@@ -118,6 +118,19 @@ func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.
 				slog.Warn("schematic image flagged by moderation, will remove",
 					"schematic_id", schematicID, "filename", filename, "reason", result.Reason)
 				flaggedImages = append(flaggedImages, filename)
+				continue
+			}
+			// Also verify images depict actual Minecraft builds
+			qualResult, qualErr := moderationSvc.CheckImageQuality(fullURL)
+			if qualErr != nil {
+				slog.Warn("schematic image quality check unavailable",
+					"schematic_id", schematicID, "filename", filename, "error", qualErr)
+				continue
+			}
+			if !qualResult.Approved {
+				slog.Warn("schematic image not a Minecraft build, will flag",
+					"schematic_id", schematicID, "filename", filename, "reason", qualResult.Reason)
+				flaggedImages = append(flaggedImages, filename)
 			}
 		}
 
