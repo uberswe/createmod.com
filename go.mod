@@ -29,7 +29,7 @@ require (
 	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.7.17
 	golang.org/x/crypto v0.49.0
-	golang.org/x/image v0.37.0
+	golang.org/x/image v0.38.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/text v0.35.0
 	gopkg.in/yaml.v3 v3.0.1
