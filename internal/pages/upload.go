@@ -287,11 +287,6 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusForbidden, "you do not own this upload")
 		}
 
-		// Atomically mark as processing to prevent duplicate submissions
-		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
-			return e.String(http.StatusConflict, "this upload is already being processed")
-		}
-
 		// Parse the multipart form (up to 100 MB in memory; the rest spills to
 		// temp files).  Using ParseMultipartForm instead of ParseForm ensures
 		// that the request body is fully consumed even when the client sends
@@ -505,6 +500,13 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusBadRequest, "a schematic must have a featured image")
 		}
 
+		// Atomically mark as processing to prevent duplicate submissions.
+		// This is placed after all validation so that a validation failure
+		// does not lock the upload and block a corrected retry.
+		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
+			return e.String(http.StatusConflict, "this upload is already being processed")
+		}
+
 		// --- Create schematic record ---
 		now := time.Now()
 		schem := &store.Schematic{
@@ -551,12 +553,17 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
-		// --- Check trusted-user status (has previously approved schematics) ---
+		// --- Check trusted-user status ---
+		// A user is trusted (auto-approved) only when they have at least 3
+		// previously approved schematics AND zero soft-deleted schematics.
 		autoApproved := false
 		trustedUser := false
 		authorCount, countErr := appStore.Schematics.CountByAuthor(ctx, userID)
-		if countErr == nil && authorCount > 0 {
-			trustedUser = true
+		if countErr == nil && authorCount >= 3 {
+			deletedCount, delErr := appStore.Schematics.CountSoftDeletedByAuthor(ctx, userID)
+			if delErr == nil && deletedCount == 0 {
+				trustedUser = true
+			}
 		}
 
 		if trustedUser {

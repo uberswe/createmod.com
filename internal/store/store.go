@@ -381,6 +381,7 @@ type SchematicStore interface {
 	ListHighestRated(ctx context.Context, limit, offset int) ([]Schematic, error)
 	ListForSitemap(ctx context.Context) ([]SitemapSchematic, error)
 	CountByAuthor(ctx context.Context, authorID string) (int64, error)
+	CountSoftDeletedByAuthor(ctx context.Context, authorID string) (int64, error)
 	GetByChecksum(ctx context.Context, checksum string) (string, error) // returns schematic ID
 	UpdateName(ctx context.Context, id, name string) error
 	ListByNamePattern(ctx context.Context, pattern string, limit int) ([]Schematic, error)

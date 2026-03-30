@@ -169,6 +169,19 @@ func (q *Queries) CountSchematicsForAdmin(ctx context.Context, filter string) (i
 	return count, err
 }
 
+const countSoftDeletedByAuthor = `-- name: CountSoftDeletedByAuthor :one
+SELECT COUNT(*) FROM schematics
+WHERE author_id = $1
+  AND deleted IS NOT NULL
+`
+
+func (q *Queries) CountSoftDeletedByAuthor(ctx context.Context, authorID *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSoftDeletedByAuthor, authorID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSchematic = `-- name: CreateSchematic :one
 INSERT INTO schematics (
     id, author_id, name, title, description, excerpt, content,
