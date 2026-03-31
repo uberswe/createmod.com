@@ -362,7 +362,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	// Reports
-	r.Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
+	reportRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Hour)
+	r.With(reportRateLimit).Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
 	// Admin
 	r.Get("/admin", Adapt(pages.AdminDashboardHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/reports", Adapt(pages.AdminReportsHandler(registry, p.CacheService, p.AppStore)))
