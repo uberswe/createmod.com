@@ -1,13 +1,17 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/mailer"
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"net/url"
+	"os"
 	"regexp"
+	"strings"
 
 	"createmod/internal/server"
 )
@@ -64,13 +68,22 @@ func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) fun
 		// Best-effort email notification to all admins
 		to := adminRecipients(appStore, mailService)
 		if len(to) > 0 {
-			from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
-			subject := fmt.Sprintf("New Report: %s %s", targetType, targetID)
-			bodyText := fmt.Sprintf("Target: %s (%s)\nReason: %s", targetID, targetType, reason)
-			if reporterID != "" {
-				bodyText += fmt.Sprintf("\nReporter: %s", reporterID)
+			base := reportBaseURL()
+			targetPath, targetLabel := resolveReportTarget(appStore, targetType, targetID)
+			targetURL := ""
+			if targetPath != "" {
+				targetURL = base + targetPath
+			} else {
+				targetURL = base + "/admin/reports"
 			}
-			htmlBody := mailer.EmailHTML(subject, "", "", "", bodyText)
+			imageURL := reportTargetImage(ctx, appStore, targetType, targetID, base)
+			reporterLabel := resolveReportUser(ctx, appStore, reporterID)
+
+			from := mail.Address{Address: mailService.SenderAddress, Name: mailService.SenderName}
+			subject := fmt.Sprintf("New Report: %s — %s", targetType, targetLabel)
+			bodyText := fmt.Sprintf("Target: %s (%s)\nReason: %s\nReporter: %s", targetLabel, targetType, reason, reporterLabel)
+			buttonLabel := "View " + strings.ToUpper(targetType[:1]) + targetType[1:]
+			htmlBody := mailer.EmailHTML(subject, imageURL, targetURL, buttonLabel, bodyText)
 			msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: htmlBody}
 			if err := mailService.Send(msg); err != nil {
 				slog.Error("failed to send report email", "error", err)
@@ -84,4 +97,36 @@ func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) fun
 		}
 		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo))
 	}
+}
+
+// reportBaseURL returns the site base URL from env or the default.
+func reportBaseURL() string {
+	if u := os.Getenv("BASE_URL"); u != "" {
+		return u
+	}
+	return "https://createmod.com"
+}
+
+// reportTargetImage returns a featured image URL for schematic reports, or empty string.
+func reportTargetImage(ctx context.Context, appStore *store.Store, targetType, targetID, baseURL string) string {
+	if targetType != "schematic" {
+		return ""
+	}
+	s, err := appStore.Schematics.GetByID(ctx, targetID)
+	if err == nil && s != nil && s.FeaturedImage != "" {
+		return baseURL + "/api/files/schematics/" + s.ID + "/" + url.PathEscape(s.FeaturedImage)
+	}
+	return ""
+}
+
+// resolveReportUser returns a display string for the reporter.
+func resolveReportUser(ctx context.Context, appStore *store.Store, userID string) string {
+	if userID == "" {
+		return "anonymous"
+	}
+	u, err := appStore.Users.GetUserByID(ctx, userID)
+	if err == nil && u != nil {
+		return u.Username + " (" + userID + ")"
+	}
+	return userID
 }
