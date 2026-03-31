@@ -28,7 +28,7 @@ func ReportSubmitHandler(mailService *mailer.Service, appStore *store.Store) fun
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
 		}
-		if err := e.Request.ParseForm(); err != nil {
+		if err := e.Request.ParseMultipartForm(32 << 10); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
 		}
 		targetType := e.Request.FormValue("target_type")
