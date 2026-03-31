@@ -264,7 +264,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		orderedSchematics := make([]store.Schematic, 0, len(ids))
 		for _, id := range ids {
 			if s, ok := byID[id]; ok {
-				if s.Deleted != nil || !s.Moderated {
+				if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
 					continue
 				}
 				orderedSchematics = append(orderedSchematics, s)

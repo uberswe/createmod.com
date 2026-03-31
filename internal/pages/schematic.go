@@ -65,8 +65,10 @@ type SchematicData struct {
 	ModInfoList     []ModInfo
 	// Additional files (variations)
 	AdditionalFiles []store.SchematicFile
-	// PendingModeration is true when the schematic is not yet moderated and the viewer is the author.
-	PendingModeration bool
+	// ModerationBanner is set to the moderation state ("auto_review", "flagged", "rejected") when the viewer is the author.
+	ModerationBanner string
+	// ModerationReason is the reason for moderation action, shown to the author.
+	ModerationReason string
 	// ScheduledFor is set when the schematic is scheduled for future publication and the viewer is the author.
 	ScheduledFor *time.Time
 	// Translation fields
@@ -86,7 +88,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
 		s, err := appStore.Schematics.GetByName(ctx, name)
-		if err != nil || s == nil || s.Deleted != nil || s.Blacklisted {
+		if err != nil || s == nil || s.ModerationState == store.ModerationDeleted {
 			// Try to find and fix a schematic with percent-encoded characters in its name
 			if newName, found := tryFixEncodedSchematicNameStore(appStore, name); found {
 				return e.Redirect(http.StatusMovedPermanently, LangRedirectURL(e, "/schematics/"+newName))
@@ -139,7 +141,19 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		translateSchematicTitles(d.Similar, translationService, cacheService, d.Language)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
-		d.PendingModeration = !s.Moderated && d.IsAuthor
+		// Non-owners cannot view non-public schematics
+		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor {
+			return e.NotFoundError("Schematic not found", nil)
+		}
+		// Show moderation banner to the author for non-public states
+		if d.IsAuthor && !store.IsPublicState(s.ModerationState) {
+			d.ModerationBanner = s.ModerationState
+			d.ModerationReason = s.ModerationReason
+		}
+		// Prevent search engine indexing of non-public schematics
+		if !store.IsPublicState(s.ModerationState) {
+			d.NoIndex = true
+		}
 		if isScheduled && d.IsAuthor {
 			d.ScheduledFor = s.ScheduledAt
 		}
@@ -883,7 +897,7 @@ func countSchematicViewStore(appStore *store.Store, schematicID string, discordS
 			// Discord notification at 50 total views
 			if totalViews == 50 && discordService != nil {
 				s, sErr := appStore.Schematics.GetByID(bgCtx, schematicID)
-				if sErr == nil && s != nil && s.Moderated {
+				if sErr == nil && s != nil && store.IsPublicState(s.ModerationState) {
 					discordService.PostWithUserWebhooks(fmt.Sprintf("New Schematic Posted: https://createmod.com/schematics/%s", s.Name), appStore.Webhooks, webhookSecret)
 					// Ping feed services so RSS subscribers get notified (production only)
 					if os.Getenv("DEV") != "true" {
@@ -894,7 +908,7 @@ func countSchematicViewStore(appStore *store.Store, schematicID string, discordS
 
 			// Award view-based achievements at thresholds
 			s, err := appStore.Schematics.GetByID(bgCtx, schematicID)
-			if err != nil || s == nil || !s.Moderated {
+			if err != nil || s == nil || !store.IsPublicState(s.ModerationState) {
 				return
 			}
 			authorID := s.AuthorID

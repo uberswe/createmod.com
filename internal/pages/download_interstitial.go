@@ -46,7 +46,7 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 		// Try to load schematic to determine if it's paid and already published
 		paid := false
 		external := ""
-		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && s.Moderated && (s.Deleted == nil || s.Deleted.IsZero()) {
+		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && store.IsPublicState(s.ModerationState) && (s.Deleted == nil || s.Deleted.IsZero()) {
 			paid = s.Paid
 			external = s.ExternalURL
 		}

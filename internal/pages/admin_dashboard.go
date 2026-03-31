@@ -35,7 +35,7 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 		ctx := context.Background()
 
 		pendingCount, _ := appStore.Schematics.CountForAdmin(ctx, "pending")
-		moderatedCount, _ := appStore.Schematics.CountForAdmin(ctx, "moderated")
+		moderatedCount, _ := appStore.Schematics.CountForAdmin(ctx, "published")
 		deletedCount, _ := appStore.Schematics.CountForAdmin(ctx, "deleted")
 		totalCount, _ := appStore.Schematics.CountForAdmin(ctx, "")
 
@@ -58,10 +58,8 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 				Title:            s.Title,
 				Name:             s.Name,
 				AuthorUsername:    username,
-				Moderated:        s.Moderated,
+				ModerationState:  s.ModerationState,
 				ModerationReason: s.ModerationReason,
-				Blacklisted:      s.Blacklisted,
-				Deleted:          s.Deleted != nil,
 				Created:          s.Created,
 				FeaturedImage:    s.FeaturedImage,
 			})
@@ -78,6 +76,7 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 			RecentPending:    items,
 		}
 		d.Populate(e)
+		d.AdminSection = "dashboard"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"))
 		d.Title = i18n.T(d.Language, "Admin Dashboard")
 		d.SubCategory = "Admin"

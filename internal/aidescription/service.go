@@ -79,7 +79,7 @@ func (s *Service) ProcessSchematics(storageSvc *storage.Service, appStore *store
 	// Limit to 10 per run to control OpenAI costs (uses gpt-4.1 with image input).
 	var pending []store.Schematic
 	for _, sc := range schematics {
-		if sc.AIDescription == "" && sc.Moderated && sc.Deleted == nil {
+		if sc.AIDescription == "" && store.IsPublicState(sc.ModerationState) && sc.Deleted == nil {
 			pending = append(pending, sc)
 		}
 		if len(pending) >= 10 {

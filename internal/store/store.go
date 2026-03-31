@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+// Moderation state constants for the schematic state machine.
+const (
+	ModerationAutoReview = "auto_review"
+	ModerationPublished  = "published"
+	ModerationFlagged    = "flagged"
+	ModerationApproved   = "approved"
+	ModerationRejected   = "rejected"
+	ModerationDeleted    = "deleted"
+)
+
+// IsPublicState returns true if the moderation state means the schematic is publicly visible.
+func IsPublicState(state string) bool {
+	return state == ModerationPublished || state == ModerationApproved
+}
+
 // User represents a user account.
 type User struct {
 	ID           string
@@ -65,9 +80,8 @@ type Schematic struct {
 	ExternalURL        string
 	Featured           bool
 	AIDescription      string
-	Moderated          bool
+	ModerationState    string
 	ModerationReason   string
-	Blacklisted        bool
 	ScheduledAt        *time.Time
 	Deleted            *time.Time
 	OldID              *int
@@ -368,6 +382,7 @@ type SchematicStore interface {
 	ListAllForIndex(ctx context.Context) ([]Schematic, error)
 	Create(ctx context.Context, s *Schematic) error
 	Update(ctx context.Context, s *Schematic) error
+	SetModerationState(ctx context.Context, id, state, reason string) error
 	SoftDelete(ctx context.Context, id string) error
 	// Relations
 	GetCategoryIDs(ctx context.Context, schematicID string) ([]string, error)

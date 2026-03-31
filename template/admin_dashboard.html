@@ -5,6 +5,7 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
+        {{template "admin_nav.html" .}}
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
@@ -88,10 +89,10 @@
             <div class="card">
               <div class="card-body">
                 <div class="d-flex align-items-center">
-                  <div class="subheader">Moderated</div>
+                  <div class="subheader">Published</div>
                 </div>
                 <div class="h1 mb-3">{{.ModeratedCount}}</div>
-                <a href="/admin/schematics?filter=moderated" class="btn btn-outline-secondary btn-sm">View</a>
+                <a href="/admin/schematics?filter=published" class="btn btn-outline-secondary btn-sm">View</a>
               </div>
             </div>
           </div>
@@ -141,12 +142,16 @@
                   </td>
                   <td>{{.AuthorUsername}}</td>
                   <td>
-                    {{if .Deleted}}
+                    {{if eq .ModerationState "published"}}
+                      <span class="badge bg-green-lt">Published</span>
+                    {{else if eq .ModerationState "approved"}}
+                      <span class="badge bg-green-lt">Approved</span>
+                    {{else if eq .ModerationState "flagged"}}
+                      <span class="badge bg-orange-lt">Flagged</span>
+                    {{else if eq .ModerationState "rejected"}}
+                      <span class="badge bg-red-lt">Rejected</span>
+                    {{else if eq .ModerationState "deleted"}}
                       <span class="badge bg-red-lt">Deleted</span>
-                    {{else if .Blacklisted}}
-                      <span class="badge bg-secondary">Blacklisted</span>
-                    {{else if .Moderated}}
-                      <span class="badge bg-green-lt">Moderated</span>
                     {{else}}
                       <span class="badge bg-yellow-lt">Pending</span>
                     {{end}}

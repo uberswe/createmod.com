@@ -283,9 +283,7 @@ type Schematic struct {
 	Paid               bool               `json:"paid"`
 	Featured           bool               `json:"featured"`
 	AiDescription      string             `json:"ai_description"`
-	Moderated          bool               `json:"moderated"`
 	ModerationReason   string             `json:"moderation_reason"`
-	Blacklisted        bool               `json:"blacklisted"`
 	ScheduledAt        pgtype.Timestamptz `json:"scheduled_at"`
 	Deleted            pgtype.Timestamptz `json:"deleted"`
 	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
@@ -298,6 +296,7 @@ type Schematic struct {
 	TrendingScore      float32            `json:"trending_score"`
 	AvgRating          float32            `json:"avg_rating"`
 	RatingCount        int32              `json:"rating_count"`
+	ModerationState    string             `json:"moderation_state"`
 }
 
 type SchematicCategory struct {

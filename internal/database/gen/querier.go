@@ -216,6 +216,7 @@ type Querier interface {
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
+	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
 	SetSchematicTags(ctx context.Context, schematicID string) error
 	SoftDeleteCollection(ctx context.Context, id string) error

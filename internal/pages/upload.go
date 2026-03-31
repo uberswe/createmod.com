@@ -201,7 +201,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 				schematicURL = "/schematics/" + name
 			}
 
-			if schem.Moderated {
+			if store.IsPublicState(schem.ModerationState) {
 				return e.HTML(http.StatusOK, fmt.Sprintf(`<div id="moderation-status">
 <div class="d-flex align-items-center mb-3">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
@@ -211,7 +211,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 <div class="mt-3"><a href="%s" class="btn btn-primary">View Schematic</a></div>
 </div>`, schematicURL))
 			}
-			if schem.Blacklisted {
+			if schem.ModerationState == store.ModerationFlagged || schem.ModerationState == store.ModerationRejected {
 				return e.HTML(http.StatusOK, `<div id="moderation-status">
 <div class="d-flex align-items-center mb-3">
 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-warning me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
@@ -532,7 +532,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			Mods:               entry.Mods,
 			Paid:               paid,
 			ExternalURL:        externalURL,
-			Moderated:          false,
+			ModerationState:    store.ModerationAutoReview,
 			ScheduledAt:        scheduledAt,
 		}
 
@@ -568,7 +568,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		if trustedUser {
 			// Trusted users skip moderation and are auto-approved
-			schem.Moderated = true
+			schem.ModerationState = store.ModerationPublished
 			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("make-public: failed to auto-approve trusted user schematic", "error", updateErr, "id", schem.ID)
 			} else {

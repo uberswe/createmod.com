@@ -32,10 +32,8 @@ type AdminSchematicItem struct {
 	Title            string
 	Name             string
 	AuthorUsername   string
-	Moderated        bool
+	ModerationState  string
 	ModerationReason string
-	Blacklisted      bool
-	Deleted          bool
 	Created          time.Time
 	FeaturedImage    string
 }
@@ -81,7 +79,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 		if filter == "" {
 			filter = "pending"
 		}
-		if filter != "all" && filter != "pending" && filter != "moderated" && filter != "deleted" {
+		if filter != "all" && filter != "pending" && filter != "published" && filter != "flagged" && filter != "rejected" && filter != "deleted" {
 			filter = "pending"
 		}
 
@@ -124,10 +122,8 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 				Title:            s.Title,
 				Name:             s.Name,
 				AuthorUsername:   username,
-				Moderated:        s.Moderated,
+				ModerationState:  s.ModerationState,
 				ModerationReason: s.ModerationReason,
-				Blacklisted:      s.Blacklisted,
-				Deleted:          s.Deleted != nil,
 				Created:          s.Created,
 				FeaturedImage:    s.FeaturedImage,
 			})
@@ -143,6 +139,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 			NextPage:   page + 1,
 		}
 		d.Populate(e)
+		d.AdminSection = "schematics"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Schematics"))
 		d.Title = i18n.T(d.Language, "Admin: Schematics")
 		d.SubCategory = "Admin"
@@ -208,6 +205,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 			Success:             e.Request.URL.Query().Get("success") == "1",
 		}
 		d.Populate(e)
+		d.AdminSection = "schematics"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Schematics"), "/admin/schematics", i18n.T(d.Language, "Edit"))
 		d.Title = fmt.Sprintf("Admin: Edit — %s", schem.Title)
 		d.SubCategory = "Admin"
@@ -238,8 +236,8 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 			return e.String(http.StatusNotFound, "schematic not found")
 		}
 
-		// Track whether moderated changes from false to true
-		wasModerated := schem.Moderated
+		// Track whether state changes from non-public to public
+		wasPublic := store.IsPublicState(schem.ModerationState)
 
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form data")
@@ -270,11 +268,12 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 		}
 
 		// Moderation controls
-		schem.Moderated = e.Request.FormValue("moderated") == "on"
+		if newState := e.Request.FormValue("moderation_state"); newState != "" {
+			schem.ModerationState = newState
+		}
 		if reason := e.Request.FormValue("moderation_reason"); reason != "" {
 			schem.ModerationReason = reason
 		}
-		schem.Blacklisted = e.Request.FormValue("blacklisted") == "on"
 		schem.Featured = e.Request.FormValue("featured") == "on"
 
 		// Update modified timestamp
@@ -305,8 +304,8 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
 		RefreshIndexCache(cacheService, appStore, nil)
 
-		// If moderation just flipped to true, notify the author
-		if !wasModerated && schem.Moderated && mailService != nil && schem.AuthorID != "" {
+		// If moderation just changed from non-public to public, notify the author
+		if !wasPublic && store.IsPublicState(schem.ModerationState) && mailService != nil && schem.AuthorID != "" {
 			authorID := schem.AuthorID
 			emailTitle := schem.Title
 			emailID := schem.ID

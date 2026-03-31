@@ -5,6 +5,7 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
+        {{template "admin_nav.html" .}}
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
@@ -20,7 +21,13 @@
                 <a class="nav-link{{ if eq .Filter "pending" }} active{{ end }}" href="/admin/schematics?filter=pending">Pending</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link{{ if eq .Filter "moderated" }} active{{ end }}" href="/admin/schematics?filter=moderated">Moderated</a>
+                <a class="nav-link{{ if eq .Filter "published" }} active{{ end }}" href="/admin/schematics?filter=published">Published</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "flagged" }} active{{ end }}" href="/admin/schematics?filter=flagged">Flagged</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "rejected" }} active{{ end }}" href="/admin/schematics?filter=rejected">Rejected</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link{{ if eq .Filter "deleted" }} active{{ end }}" href="/admin/schematics?filter=deleted">Deleted</a>
@@ -57,12 +64,16 @@
                   </td>
                   <td>{{.AuthorUsername}}</td>
                   <td>
-                    {{if .Deleted}}
+                    {{if eq .ModerationState "published"}}
+                      <span class="badge bg-green-lt">Published</span>
+                    {{else if eq .ModerationState "approved"}}
+                      <span class="badge bg-green-lt">Approved</span>
+                    {{else if eq .ModerationState "flagged"}}
+                      <span class="badge bg-orange-lt">Flagged</span>
+                    {{else if eq .ModerationState "rejected"}}
+                      <span class="badge bg-red-lt">Rejected</span>
+                    {{else if eq .ModerationState "deleted"}}
                       <span class="badge bg-red-lt">Deleted</span>
-                    {{else if .Blacklisted}}
-                      <span class="badge bg-secondary">Blacklisted</span>
-                    {{else if .Moderated}}
-                      <span class="badge bg-green-lt">Moderated</span>
                     {{else}}
                       <span class="badge bg-yellow-lt">Pending</span>
                     {{end}}

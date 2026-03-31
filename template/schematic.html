@@ -14,13 +14,42 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                {{ if .PendingModeration }}
+                {{ if eq .ModerationBanner "auto_review" }}
+                <div class="alert alert-info mb-3" role="alert">
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 7l0 5l3 3" /></svg>
+                        <div>
+                            <h4 class="alert-title mb-0">{{ T .Language "Under Review" }}</h4>
+                            <div class="text-secondary">{{ T .Language "Your schematic is being reviewed. This usually takes a few minutes." }}</div>
+                        </div>
+                    </div>
+                </div>
+                {{ else if eq .ModerationBanner "flagged" }}
                 <div class="alert alert-warning mb-3" role="alert">
                     <div class="d-flex align-items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
                         <div>
-                            <h4 class="alert-title mb-0">{{ T .Language "Pending Moderation" }}</h4>
-                            <div class="text-secondary">{{ T .Language "This schematic is pending moderation and is not yet publicly listed." }}</div>
+                            <h4 class="alert-title mb-0">{{ T .Language "Flagged for Review" }}</h4>
+                            <div class="text-secondary">{{ T .Language "Your schematic has been flagged for manual review by an administrator." }}</div>
+                            {{ if .ModerationReason }}
+                            <div class="text-secondary mt-1"><strong>{{ T .Language "Reason:" }}</strong> {{ .ModerationReason }}</div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                {{ else if eq .ModerationBanner "rejected" }}
+                <div class="alert alert-danger mb-3" role="alert">
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
+                        <div>
+                            <h4 class="alert-title mb-0">{{ T .Language "Did Not Pass Moderation" }}</h4>
+                            <div class="text-secondary">{{ T .Language "Your schematic did not pass moderation and is not publicly listed." }}</div>
+                            {{ if .ModerationReason }}
+                            <div class="text-secondary mt-1"><strong>{{ T .Language "Reason:" }}</strong> {{ .ModerationReason }}</div>
+                            {{ end }}
+                            <div class="mt-2">
+                                <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-sm btn-outline-danger">{{ T .Language "Edit Schematic" }}</a>
+                            </div>
                         </div>
                     </div>
                 </div>

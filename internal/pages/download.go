@@ -80,9 +80,9 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 			return e.String(http.StatusForbidden, "This schematic is paid; please use the external link on the schematic page.")
 		}
 
-		// Block download for blacklisted schematics
-		if s.Blacklisted {
-			return e.String(http.StatusForbidden, "This schematic has been blacklisted and cannot be downloaded.")
+		// Block download for rejected or deleted schematics
+		if s.ModerationState == store.ModerationRejected || s.ModerationState == store.ModerationDeleted {
+			return e.String(http.StatusForbidden, "This schematic has been blocked and cannot be downloaded.")
 		}
 
 		// Increment download counter (best-effort, IP-deduped)

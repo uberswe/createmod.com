@@ -64,6 +64,7 @@ func AdminTagsHandler(registry *server.Registry, cacheService *cache.Service, ap
 			PendingTags:       tags,
 		}
 		d.Populate(e)
+		d.AdminSection = "tags"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Tags"))
 		d.Title = i18n.T(d.Language, "Admin: Tags & Categories")
 		d.SubCategory = "Admin"
