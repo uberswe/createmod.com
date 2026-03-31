@@ -7,6 +7,7 @@ import (
 	"createmod/internal/mailer"
 	"createmod/internal/models"
 	"createmod/internal/server"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
@@ -219,7 +220,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 }
 
 // AdminSchematicUpdateHandler handles POST /admin/schematics/{id} to update a schematic as admin.
-func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
+func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if !isSuperAdmin(e) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -265,6 +266,35 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 		schem.ExternalURL = strings.TrimSpace(e.Request.FormValue("external_url"))
 		if !schem.Paid {
 			schem.ExternalURL = ""
+		}
+
+		// Image removal
+		if e.Request.FormValue("remove_featured_image") == "true" && schem.FeaturedImage != "" {
+			if storageSvc != nil {
+				if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, id, schem.FeaturedImage); delErr != nil {
+					slog.Warn("admin schematic update: failed to delete featured image from S3", "error", delErr, "id", id)
+				}
+			}
+			schem.FeaturedImage = ""
+		}
+		if removeGalleryImages := e.Request.Form["remove_gallery_images"]; len(removeGalleryImages) > 0 {
+			removeSet := make(map[string]bool, len(removeGalleryImages))
+			for _, fn := range removeGalleryImages {
+				removeSet[fn] = true
+			}
+			filtered := make([]string, 0, len(schem.Gallery))
+			for _, fn := range schem.Gallery {
+				if removeSet[fn] {
+					if storageSvc != nil {
+						if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, id, fn); delErr != nil {
+							slog.Warn("admin schematic update: failed to delete gallery image from S3", "error", delErr, "id", id, "file", fn)
+						}
+					}
+					continue
+				}
+				filtered = append(filtered, fn)
+			}
+			schem.Gallery = filtered
 		}
 
 		// Moderation controls
