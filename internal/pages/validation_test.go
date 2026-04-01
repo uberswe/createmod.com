@@ -52,19 +52,24 @@ func Test_validateDescription(t *testing.T) {
 			errMsg:  "Your description contains invalid text. Please write a real description.",
 		},
 		{
-			name:    "more than half words repeated",
-			input:   "blah blah blah blah something else",
+			name:    "low unique word ratio (spam)",
+			input:   "go go go go go go go go go go go go go go go go go go go now",
 			wantErr: true,
 			errMsg:  "Please write a more detailed description of your schematic",
 		},
 		{
-			name:    "repeated words at exactly half boundary passes",
+			name:    "borderline unique ratio passes",
 			input:   "hello world foo bar baz qux",
 			wantErr: false,
 		},
 		{
 			name:    "real description with some repeated words",
 			input:   "This is a train that runs on rails and carries passengers to the station",
+			wantErr: false,
+		},
+		{
+			name:    "long real description with naturally repeated words",
+			input:   "A schematic that produces all the dyes Since I couldnt find a schematic that processed all the dyes in one schematic i decided to upload my own Items process all in one chunk",
 			wantErr: false,
 		},
 	}
