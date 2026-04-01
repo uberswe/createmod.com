@@ -79,7 +79,7 @@
                                     <label class="form-label required">Description</label>
                                     <textarea id="tinymce-schematic"
                                               placeholder="Describe your schematic and include any details on how to get it running."></textarea>
-                                    <small class="form-hint">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
+                                    <small class="form-hint mt-2 d-block text-secondary">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
                                 </div>
                                 <div class="row">
                                     <div class="mb-3 col-md-12 col-lg-6">
@@ -136,29 +136,16 @@
                                     <small class="form-hint">{{ T .Language "Time is in your local timezone." }}</small>
                                 </div>
 
-                                <div class="row">
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Featured Image</label>
-                                        <div class="dropzone" id="dropzone-featured">
-                                            <div class="fallback">
-                                                <input name="featured-file" type="file" accept="image/*"/>
-                                            </div>
-                                            <div class="dz-message">
-                                                <span class="dropzone-msg-desc">Click or drag a screenshot of your build</span>
-                                            </div>
+                                <div class="mb-3">
+                                    <label class="form-label required">Images</label>
+                                    <small class="form-hint mb-2">Upload screenshots of your build. Click an image to set it as the featured image. The first image is featured by default.</small>
+                                    <div class="image-upload-grid" id="image-upload-grid">
+                                        <div class="image-upload-add" id="image-upload-add">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                                            <span>Add Images</span>
                                         </div>
                                     </div>
-                                    <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label">Gallery Images</label>
-                                        <div class="dropzone" id="dropzone-gallery">
-                                            <div class="fallback">
-                                                <input name="gallery-file" type="file" accept="image/*" multiple/>
-                                            </div>
-                                            <div class="dz-message">
-                                                <span class="dropzone-msg-desc">Click or drag images to showcase your schematic</span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <input type="file" id="image-file-input" accept="image/*" multiple style="display:none;">
                                 </div>
 
                                 {{ if .TrustedUser }}
@@ -211,27 +198,143 @@
     body .ts-control {
         background: #ffffff !important;
         border: none !important;
+        color: #1e293b !important;
+    }
+    body .ts-control input {
+        color: #1e293b !important;
     }
     body .ts-wrapper.multi .ts-control>div {
         background: #bf9045 !important;
+        color: #ffffff !important;
     }
     body .ts-dropdown {
         background: #ffffff !important;
-        color: #bf9045 !important;
+        color: #1e293b !important;
+    }
+    body .ts-dropdown .option {
+        color: #1e293b !important;
+    }
+    body .ts-dropdown .active {
+        background: #bf9045 !important;
+        color: #ffffff !important;
+    }
+    body .ts-dropdown .create {
+        color: #6b7280 !important;
     }
     body[data-bs-theme=dark] .ts-control {
         background: #1f2121 !important;
         border: none !important;
+        color: #e2e8f0 !important;
+    }
+    body[data-bs-theme=dark] .ts-control input {
+        color: #e2e8f0 !important;
     }
     body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
         background: #bf9045 !important;
+        color: #ffffff !important;
+    }
+    body[data-bs-theme=dark] .ts-wrapper.single .ts-control .item {
+        color: #e2e8f0 !important;
     }
     body[data-bs-theme=dark] .ts-dropdown {
         background: #1f2121 !important;
-        color: #bf9045 !important;
+        color: #e2e8f0 !important;
+    }
+    body[data-bs-theme=dark] .ts-dropdown .option {
+        color: #e2e8f0 !important;
+    }
+    body[data-bs-theme=dark] .ts-dropdown .active {
+        background: #bf9045 !important;
+        color: #ffffff !important;
+    }
+    body[data-bs-theme=dark] .ts-dropdown .create {
+        color: #9ca3af !important;
+    }
+    /* Unified image upload area */
+    .image-upload-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.75rem;
+    }
+    .image-upload-item {
+        position: relative;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        aspect-ratio: 1;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: border-color 0.15s;
+    }
+    .image-upload-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .image-upload-item.is-featured {
+        border-color: #bf9045;
+    }
+    .image-upload-item .featured-badge {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        background: #bf9045;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        pointer-events: none;
+    }
+    .image-upload-item .remove-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 14px;
+        line-height: 20px;
+        text-align: center;
+        cursor: pointer;
+        padding: 0;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    .image-upload-item:hover .remove-btn {
+        opacity: 1;
+    }
+    .image-upload-add {
+        aspect-ratio: 1;
+        border: 2px dashed #6b7280;
+        border-radius: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        color: #6b7280;
+        font-size: 0.8rem;
+        min-height: 120px;
+    }
+    .image-upload-add:hover {
+        border-color: #bf9045;
+        background: rgba(191,144,69,0.05);
+    }
+    .image-upload-add svg {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
+    }
+    .image-upload-add.drag-over {
+        border-color: #bf9045;
+        background: rgba(191,144,69,0.1);
     }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js" defer crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
 <script>
@@ -302,9 +405,121 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    if (!window.Dropzone) return;
-    Dropzone.autoDiscover = false;
+    // --- Image upload state ---
+    var uploadedImages = []; // {file: File, url: string (object URL)}
+    var featuredIndex = 0;
+    var grid = document.getElementById('image-upload-grid');
+    var addBtn = document.getElementById('image-upload-add');
+    var fileInput = document.getElementById('image-file-input');
+    var maxImages = 11; // 1 featured + 10 gallery
 
+    function renderImages() {
+        // Remove all image items (keep the add button)
+        var items = grid.querySelectorAll('.image-upload-item');
+        for (var i = 0; i < items.length; i++) {
+            items[i].remove();
+        }
+        // Clamp featuredIndex
+        if (uploadedImages.length > 0 && featuredIndex >= uploadedImages.length) {
+            featuredIndex = 0;
+        }
+        // Insert image items before the add button
+        for (var i = 0; i < uploadedImages.length; i++) {
+            (function(idx) {
+                var item = document.createElement('div');
+                item.className = 'image-upload-item' + (idx === featuredIndex ? ' is-featured' : '');
+                item.title = idx === featuredIndex ? 'Featured image' : 'Click to set as featured';
+
+                var img = document.createElement('img');
+                img.src = uploadedImages[idx].url;
+                img.alt = 'Image ' + (idx + 1);
+                item.appendChild(img);
+
+                if (idx === featuredIndex) {
+                    var badge = document.createElement('span');
+                    badge.className = 'featured-badge';
+                    badge.textContent = 'Featured';
+                    item.appendChild(badge);
+                }
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '\u00D7';
+                removeBtn.title = 'Remove image';
+                removeBtn.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    URL.revokeObjectURL(uploadedImages[idx].url);
+                    uploadedImages.splice(idx, 1);
+                    if (featuredIndex >= uploadedImages.length) featuredIndex = 0;
+                    else if (featuredIndex > idx) featuredIndex--;
+                    else if (featuredIndex === idx) featuredIndex = 0;
+                    renderImages();
+                });
+                item.appendChild(removeBtn);
+
+                item.addEventListener('click', function() {
+                    featuredIndex = idx;
+                    renderImages();
+                });
+
+                grid.insertBefore(item, addBtn);
+            })(i);
+        }
+        // Hide add button if max reached
+        addBtn.style.display = uploadedImages.length >= maxImages ? 'none' : '';
+    }
+
+    function addFiles(files) {
+        var validExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+        for (var i = 0; i < files.length; i++) {
+            if (uploadedImages.length >= maxImages) break;
+            var file = files[i];
+            if (!file.type.startsWith('image/')) continue;
+            var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (validExts.indexOf(ext) === -1) continue;
+            if (file.size > 5 * 1024 * 1024) {
+                if (typeof showToast === 'function') showToast('Image "' + file.name + '" exceeds 5 MB limit.', 'warning');
+                continue;
+            }
+            uploadedImages.push({ file: file, url: URL.createObjectURL(file) });
+        }
+        renderImages();
+    }
+
+    addBtn.addEventListener('click', function() { fileInput.click(); });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            addFiles(fileInput.files);
+            fileInput.value = '';
+        }
+    });
+
+    // Drag and drop on the add button
+    addBtn.addEventListener('dragover', function(ev) { ev.preventDefault(); addBtn.classList.add('drag-over'); });
+    addBtn.addEventListener('dragleave', function() { addBtn.classList.remove('drag-over'); });
+    addBtn.addEventListener('drop', function(ev) {
+        ev.preventDefault();
+        addBtn.classList.remove('drag-over');
+        if (ev.dataTransfer && ev.dataTransfer.files.length > 0) {
+            addFiles(ev.dataTransfer.files);
+        }
+    });
+
+    // Also allow drag-drop on the whole grid
+    grid.addEventListener('dragover', function(ev) { ev.preventDefault(); addBtn.classList.add('drag-over'); });
+    grid.addEventListener('dragleave', function(ev) {
+        if (!grid.contains(ev.relatedTarget)) addBtn.classList.remove('drag-over');
+    });
+    grid.addEventListener('drop', function(ev) {
+        ev.preventDefault();
+        addBtn.classList.remove('drag-over');
+        if (ev.dataTransfer && ev.dataTransfer.files.length > 0) {
+            addFiles(ev.dataTransfer.files);
+        }
+    });
+
+    // Schedule toggle
     document.getElementById('schedule-toggle').addEventListener('change', function() {
         document.getElementById('schedule-group').style.display = this.checked ? '' : 'none';
         {{ if .TrustedUser }}
@@ -315,27 +530,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 : "{{ T .Language "This schematic will be auto-approved and published immediately." }}";
         }
         {{ end }}
-    });
-
-    var dropzoneFeatured = new Dropzone("#dropzone-featured", {
-        url: '/upload', // placeholder
-        acceptedFiles: 'image/*',
-        thumbnailMethod: 'crop',
-        addRemoveLinks: true,
-        autoProcessQueue: false,
-        uploadMultiple: false,
-        parallelUploads: 1,
-        maxFiles: 1,
-    });
-    var dropzoneGallery = new Dropzone("#dropzone-gallery", {
-        url: '/upload', // placeholder
-        acceptedFiles: 'image/*',
-        thumbnailMethod: 'crop',
-        addRemoveLinks: true,
-        autoProcessQueue: false,
-        uploadMultiple: true,
-        parallelUploads: 10,
-        maxFiles: 10,
     });
 
     function validateDescriptionClient(html) {
@@ -372,12 +566,17 @@ document.addEventListener("DOMContentLoaded", function() {
         var token = document.getElementById('publish-token').value;
         formData.append("upload_token", token);
 
-        for (var i = 0; i < dropzoneFeatured.files.length; i++) {
-            formData.append("featured_image", dropzoneFeatured.files[i]);
+        // Append featured image (the one at featuredIndex)
+        if (uploadedImages.length > 0) {
+            formData.append("featured_image", uploadedImages[featuredIndex].file);
         }
-        for (var j = 0; j < dropzoneGallery.files.length; j++) {
-            formData.append("gallery", dropzoneGallery.files[j]);
+        // Append gallery images (all others)
+        for (var j = 0; j < uploadedImages.length; j++) {
+            if (j !== featuredIndex) {
+                formData.append("gallery", uploadedImages[j].file);
+            }
         }
+
         formData.append("title", titleElement.value);
         formData.append("author", "{{ .UserID }}");
         var content = '';
@@ -414,8 +613,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (descError) {
             errors.push(descError);
         }
-        if (dropzoneFeatured.files.length === 0) {
-            errors.push("A schematic must have a featured image");
+        if (uploadedImages.length === 0) {
+            errors.push("Please upload at least one image");
         }
 
         if (errors.length === 0) {
@@ -423,8 +622,6 @@ document.addEventListener("DOMContentLoaded", function() {
             var successAlert = document.getElementById("publish-success");
             progressBar.style.display = "block";
             progressBar.classList.add("progress-bar-indeterminate");
-            // Future: POST formData to create schematic via PocketBase
-            // For now, redirect to make-public endpoint
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/u/' + token + '/make-public', true);
             xhr.setRequestHeader('HX-Request', 'true');
