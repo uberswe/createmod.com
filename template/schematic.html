@@ -146,7 +146,7 @@
                                             <span id="rating-feedback" style="display:none;position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:6px;white-space:nowrap;padding:4px 10px;border-radius:4px;font-size:.75rem;font-weight:500;background:var(--tblr-success);color:#fff;pointer-events:none;z-index:10;"></span>
                                         </div>
                                         {{ if .IsAuthor }}
-                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-secondary btn-sm" id="edit-btn">
+                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary" id="edit-btn">
                                             {{ T .Language "Edit" }}
                                         </a>
                                         {{ end }}
