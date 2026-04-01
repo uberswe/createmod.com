@@ -388,6 +388,11 @@
                                                             </svg>
                                                         </a>
                                                     </div>
+                                                    {{ if and $.IsAuthenticated (eq .AuthorID $.UserID) }}
+                                                    <div class="col-auto">
+                                                        <a href="#" class="link text-danger delete-comment-btn" data-comment-id="{{ .ID }}">{{ T $.Language "Delete" }}</a>
+                                                    </div>
+                                                    {{ end }}
                                                     <div class="col-auto">
                                                         <a href="#reportCommentModal-{{ .ID }}" class="link text-danger" data-bs-toggle="modal" data-bs-target="#reportCommentModal-{{ .ID }}">{{ T $.Language "Report" }}</a>
                                                     </div>
@@ -1084,6 +1089,22 @@ function copyMaterialsAsMarkdown() {
         document.getElementById("parent-comment").value = id;
         return false;
     }
+
+    document.addEventListener('click', function(evt) {
+        var btn = evt.target.closest('.delete-comment-btn');
+        if (!btn) return;
+        evt.preventDefault();
+        if (!confirm('Are you sure you want to delete this comment?')) return;
+        var commentId = btn.getAttribute('data-comment-id');
+        fetch('/api/comments/' + commentId, {
+            method: 'DELETE',
+            headers: { 'HX-Request': 'true' }
+        }).then(function(resp) {
+            if (resp.ok) {
+                htmx.ajax('GET', '/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'});
+            }
+        });
+    });
 </script>
 <script>
 document.addEventListener('htmx:afterRequest', function(evt) {

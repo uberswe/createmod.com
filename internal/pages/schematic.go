@@ -841,6 +841,9 @@ func mapStoreComment(c models.DatabaseComment, storeComments []store.Comment) mo
 			if sc.AuthorAvatar != "" {
 				comment.AuthorHasAvatar = true
 			}
+			if sc.AuthorID != nil {
+				comment.AuthorID = *sc.AuthorID
+			}
 			break
 		}
 	}

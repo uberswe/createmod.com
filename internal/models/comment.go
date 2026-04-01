@@ -10,6 +10,7 @@ type Comment struct {
 	Created         string
 	Published       string
 	Author          string
+	AuthorID        string
 	AuthorUsername  string
 	AuthorHasAvatar bool
 	AuthorAvatar    string
