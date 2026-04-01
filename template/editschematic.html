@@ -391,7 +391,13 @@
 
     // --- TinyMCE ---
     var editorEl = document.getElementById('tinymce-schematic');
-    if (editorEl && !tinyMCE.get('tinymce-schematic')) {
+    if (editorEl) {
+        // Remove any stale instance left over from a previous HTMX navigation
+        // (the old DOM is gone but TinyMCE still tracks the editor by id).
+        var existing = tinyMCE.get('tinymce-schematic');
+        if (existing) {
+            try { existing.remove(); } catch(_) {}
+        }
         var options = {
             license_key: "gpl",
             selector: '#tinymce-schematic',
