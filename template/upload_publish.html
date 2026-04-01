@@ -522,6 +522,7 @@ document.addEventListener("DOMContentLoaded", function() {
     addBtn.addEventListener('dragleave', function() { addBtn.classList.remove('drag-over'); });
     addBtn.addEventListener('drop', function(ev) {
         ev.preventDefault();
+        ev.stopPropagation();
         addBtn.classList.remove('drag-over');
         if (ev.dataTransfer && ev.dataTransfer.files.length > 0) {
             addFiles(ev.dataTransfer.files);

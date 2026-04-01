@@ -672,7 +672,16 @@
         formData.append("description", content);
         formData.append("categories", document.getElementById("schematic-category").value);
         var tagSelect = document.getElementById("select-tags");
-        if (tagSelect) {
+        if (tagSelect && tagSelect.tomselect) {
+            var tagValues = tagSelect.tomselect.getValue();
+            if (Array.isArray(tagValues)) {
+                for (var k = 0; k < tagValues.length; k++) {
+                    formData.append("tags", tagValues[k]);
+                }
+            } else if (tagValues) {
+                formData.append("tags", tagValues);
+            }
+        } else if (tagSelect) {
             var opts = tagSelect.options;
             for (var k = 0; k < opts.length; k++) {
                 if (opts[k].selected) {
