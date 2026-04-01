@@ -256,12 +256,10 @@ func SchematicUpdateHandler(
 					slog.Error("schematic update: failed to upload featured image to S3", "error", uploadErr, "id", schematicID)
 					return e.InternalServerError("failed to store featured image", nil)
 				}
-				// Delete old featured image from S3 if it changed
-				if oldFeatured != "" && oldFeatured != filename {
-					if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, schematicID, oldFeatured); delErr != nil {
-						slog.Warn("schematic update: failed to delete old featured image from S3", "error", delErr, "id", schematicID)
-					}
-				}
+			}
+			// Demote old featured image to gallery instead of deleting it
+			if oldFeatured != "" && oldFeatured != filename {
+				schem.Gallery = append([]string{oldFeatured}, schem.Gallery...)
 			}
 			schem.FeaturedImage = filename
 			newImageFilenames = append(newImageFilenames, filename)
