@@ -856,7 +856,7 @@ func (ps *PostgresStore) ListModCounts(ctx context.Context) ([]store.ModCount, e
 		FROM schematics s,
 		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
 		WHERE s.deleted IS NULL
-		  AND s.moderated = true
+		  AND s.moderation_state = 'published'
 		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 		GROUP BY j.mod_name
 		ORDER BY count DESC
@@ -882,7 +882,7 @@ func (ps *PostgresStore) CountVanilla(ctx context.Context) (int, error) {
 	err := ps.pool.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM schematics
 		WHERE deleted IS NULL
-		  AND moderated = true
+		  AND moderation_state = 'published'
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
 	`).Scan(&count)
@@ -901,7 +901,7 @@ func (ps *PostgresStore) ListByMod(ctx context.Context, mod string, limit, offse
 		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
 		WHERE j.mod_name = $1
 		  AND s.deleted IS NULL
-		  AND s.moderated = true
+		  AND s.moderation_state = 'published'
 		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 	`, mod).Scan(&totalCount)
 	if err != nil {
@@ -915,7 +915,7 @@ func (ps *PostgresStore) ListByMod(ctx context.Context, mod string, limit, offse
 		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
 		WHERE j.mod_name = $1
 		  AND s.deleted IS NULL
-		  AND s.moderated = true
+		  AND s.moderation_state = 'published'
 		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 		ORDER BY s.id
 		LIMIT $2 OFFSET $3
@@ -954,7 +954,7 @@ func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]
 	err := ps.pool.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM schematics
 		WHERE deleted IS NULL
-		  AND moderated = true
+		  AND moderation_state = 'published'
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
 	`).Scan(&totalCount)
@@ -966,7 +966,7 @@ func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]
 	idRows, err := ps.pool.Query(ctx, `
 		SELECT id FROM schematics
 		WHERE deleted IS NULL
-		  AND moderated = true
+		  AND moderation_state = 'published'
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
 		ORDER BY created DESC
