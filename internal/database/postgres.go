@@ -117,9 +117,8 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		ExternalURL:        s.ExternalUrl,
 		Featured:           s.Featured,
 		AIDescription:      s.AiDescription,
-		Moderated:          s.Moderated,
+		ModerationState:    s.ModerationState,
 		ModerationReason:   s.ModerationReason,
-		Blacklisted:        s.Blacklisted,
 		ScheduledAt:        fromPgTimestamptz(s.ScheduledAt),
 		Deleted:            fromPgTimestamptz(s.Deleted),
 		OldID:              ptrInt32ToInt(s.OldID),
@@ -579,7 +578,7 @@ func (ps *PostgresStore) Create(ctx context.Context, s *store.Schematic) error {
 		Materials:          json.RawMessage(s.Materials),
 		Mods:               json.RawMessage(s.Mods),
 		Paid:               s.Paid,
-		Moderated:          s.Moderated,
+		ModerationState:    s.ModerationState,
 		Type:               s.Type,
 		Status:             s.Status,
 	})
@@ -606,9 +605,8 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		CreatemodVersionID: s.CreatemodVersionID,
 		MinecraftVersionID: s.MinecraftVersionID,
 		AiDescription:      ptrStr(s.AIDescription),
-		Moderated:          ptrBool(s.Moderated),
+		ModerationState:    ptrStr(s.ModerationState),
 		ModerationReason:   ptrStr(s.ModerationReason),
-		Blacklisted:        ptrBool(s.Blacklisted),
 		Featured:           ptrBool(s.Featured),
 		ScheduledAt:        toPgTimestamptz(s.ScheduledAt),
 		BlockCount:         ptrInt32(int32(s.BlockCount)),
@@ -625,6 +623,14 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 
 func (ps *PostgresStore) SoftDelete(ctx context.Context, id string) error {
 	return ps.q.SoftDeleteSchematic(ctx, id)
+}
+
+func (ps *PostgresStore) SetModerationState(ctx context.Context, id, state, reason string) error {
+	return ps.q.SetModerationState(ctx, db.SetModerationStateParams{
+		ID:               id,
+		ModerationState:  state,
+		ModerationReason: reason,
+	})
 }
 
 func (ps *PostgresStore) ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]store.Schematic, error) {
@@ -850,7 +856,7 @@ func (ps *PostgresStore) ListModCounts(ctx context.Context) ([]store.ModCount, e
 		FROM schematics s,
 		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
 		WHERE s.deleted IS NULL
-		  AND s.moderated = true
+		  AND s.moderation_state = 'published'
 		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 		GROUP BY j.mod_name
 		ORDER BY count DESC
@@ -876,7 +882,7 @@ func (ps *PostgresStore) CountVanilla(ctx context.Context) (int, error) {
 	err := ps.pool.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM schematics
 		WHERE deleted IS NULL
-		  AND moderated = true
+		  AND moderation_state = 'published'
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
 	`).Scan(&count)
@@ -895,7 +901,7 @@ func (ps *PostgresStore) ListByMod(ctx context.Context, mod string, limit, offse
 		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
 		WHERE j.mod_name = $1
 		  AND s.deleted IS NULL
-		  AND s.moderated = true
+		  AND s.moderation_state = 'published'
 		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 	`, mod).Scan(&totalCount)
 	if err != nil {
@@ -909,7 +915,7 @@ func (ps *PostgresStore) ListByMod(ctx context.Context, mod string, limit, offse
 		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
 		WHERE j.mod_name = $1
 		  AND s.deleted IS NULL
-		  AND s.moderated = true
+		  AND s.moderation_state = 'published'
 		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 		ORDER BY s.id
 		LIMIT $2 OFFSET $3
@@ -948,7 +954,7 @@ func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]
 	err := ps.pool.QueryRow(ctx, `
 		SELECT COUNT(*)::int FROM schematics
 		WHERE deleted IS NULL
-		  AND moderated = true
+		  AND moderation_state = 'published'
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
 	`).Scan(&totalCount)
@@ -960,7 +966,7 @@ func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]
 	idRows, err := ps.pool.Query(ctx, `
 		SELECT id FROM schematics
 		WHERE deleted IS NULL
-		  AND moderated = true
+		  AND moderation_state = 'published'
 		  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 		  AND (mods IS NULL OR mods = '[]'::jsonb OR mods = 'null'::jsonb)
 		ORDER BY created DESC

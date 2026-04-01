@@ -168,7 +168,7 @@ func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.
 
 		if len(flaggedReasons) > 0 {
 			// Hold the schematic for manual review instead of removing images
-			schem.Moderated = false
+			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = "Images flagged by automated moderation: " + strings.Join(flaggedReasons, "; ")
 			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("schematic image moderation: failed to update schematic",

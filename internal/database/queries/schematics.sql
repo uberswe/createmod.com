@@ -1,32 +1,29 @@
 -- name: GetSchematicByID :one
-SELECT * FROM schematics WHERE id = $1 AND deleted IS NULL;
+SELECT * FROM schematics WHERE id = $1 AND moderation_state != 'deleted';
 
 -- name: GetSchematicByName :one
 SELECT * FROM schematics
 WHERE name = $1
-  AND deleted IS NULL
+  AND moderation_state != 'deleted'
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 LIMIT 1;
 
 -- name: ListApprovedSchematics :many
 SELECT * FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY created DESC
 LIMIT $1 OFFSET $2;
 
 -- name: CountApprovedSchematics :one
 SELECT COUNT(*) FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW());
 
 -- name: ListSchematicsByAuthor :many
 SELECT * FROM schematics
 WHERE author_id = $1
-  AND deleted IS NULL
-  AND moderated = true
+  AND moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY created DESC
 LIMIT $2 OFFSET $3;
@@ -35,8 +32,7 @@ LIMIT $2 OFFSET $3;
 SELECT * FROM schematics
 WHERE author_id = $1
   AND id != $2
-  AND deleted IS NULL
-  AND moderated = true
+  AND moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY created DESC
 LIMIT $3;
@@ -44,12 +40,11 @@ LIMIT $3;
 -- name: ListSchematicsByIDs :many
 SELECT * FROM schematics
 WHERE id = ANY($1::text[])
-  AND deleted IS NULL;
+  AND moderation_state != 'deleted';
 
 -- name: ListFeaturedSchematics :many
 SELECT * FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND featured = true
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY created DESC
@@ -57,8 +52,7 @@ LIMIT $1;
 
 -- name: ListAllApprovedSchematicsForIndex :many
 SELECT * FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
 ORDER BY created DESC;
 
 -- name: CreateSchematic :one
@@ -67,7 +61,7 @@ INSERT INTO schematics (
     postdate, detected_language, featured_image, gallery, schematic_file,
     video, has_dependencies, dependencies, createmod_version_id,
     minecraft_version_id, block_count, dim_x, dim_y, dim_z,
-    materials, mods, paid, moderated, type, status
+    materials, mods, paid, moderation_state, type, status
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     $8, $9, $10, $11, $12,
@@ -91,9 +85,8 @@ UPDATE schematics SET
     createmod_version_id = COALESCE(sqlc.narg('createmod_version_id'), createmod_version_id),
     minecraft_version_id = COALESCE(sqlc.narg('minecraft_version_id'), minecraft_version_id),
     ai_description = COALESCE(sqlc.narg('ai_description'), ai_description),
-    moderated = COALESCE(sqlc.narg('moderated'), moderated),
+    moderation_state = COALESCE(sqlc.narg('moderation_state'), moderation_state),
     moderation_reason = COALESCE(sqlc.narg('moderation_reason'), moderation_reason),
-    blacklisted = COALESCE(sqlc.narg('blacklisted'), blacklisted),
     featured = COALESCE(sqlc.narg('featured'), featured),
     scheduled_at = COALESCE(sqlc.narg('scheduled_at'), scheduled_at),
     block_count = COALESCE(sqlc.narg('block_count'), block_count),
@@ -107,8 +100,11 @@ UPDATE schematics SET
 WHERE id = $1
 RETURNING *;
 
+-- name: SetModerationState :exec
+UPDATE schematics SET moderation_state = $2, moderation_reason = $3, updated = NOW() WHERE id = $1;
+
 -- name: SoftDeleteSchematic :exec
-UPDATE schematics SET deleted = NOW(), deleted_at = NOW() WHERE id = $1;
+UPDATE schematics SET deleted = NOW(), deleted_at = NOW(), moderation_state = 'deleted' WHERE id = $1;
 
 -- name: UpdateSchematicViews :exec
 UPDATE schematics SET views = $2 WHERE id = $1;
@@ -143,8 +139,7 @@ ON CONFLICT DO NOTHING;
 
 -- name: ListApprovedSchematicsWithVideo :many
 SELECT * FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND video != ''
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY created DESC
@@ -152,8 +147,7 @@ LIMIT $1 OFFSET $2;
 
 -- name: ListRandomApprovedSchematics :many
 SELECT * FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY RANDOM()
 LIMIT $1;
@@ -163,16 +157,14 @@ SELECT DISTINCT s.* FROM schematics s
 JOIN schematics_categories sc ON sc.schematic_id = s.id
 WHERE sc.category_id = ANY($1::text[])
   AND s.id != ALL($2::text[])
-  AND s.deleted IS NULL
-  AND s.moderated = true
+  AND s.moderation_state IN ('published', 'approved')
   AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
 ORDER BY s.views DESC
 LIMIT $3;
 
 -- name: ListHighestRatedSchematics :many
 SELECT * FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND rating_count > 0
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY avg_rating DESC, rating_count DESC
@@ -193,16 +185,14 @@ WHERE schematics.id = $1;
 
 -- name: ListSchematicsForSitemap :many
 SELECT id, name, updated FROM schematics
-WHERE deleted IS NULL
-  AND moderated = true
+WHERE moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY updated DESC;
 
 -- name: CountSchematicsByAuthor :one
 SELECT COUNT(*) FROM schematics
 WHERE author_id = $1
-  AND deleted IS NULL
-  AND moderated = true;
+  AND moderation_state IN ('published', 'approved');
 
 -- name: CountSoftDeletedByAuthor :one
 SELECT COUNT(*) FROM schematics
@@ -213,7 +203,7 @@ WHERE author_id = $1
 SELECT nh.schematic_id FROM nbt_hashes nh
 JOIN schematics s ON s.id = nh.schematic_id
 WHERE nh.hash = $1
-  AND s.moderated = true
+  AND s.moderation_state IN ('published', 'approved')
   AND s.deleted IS NULL
 LIMIT 1;
 
@@ -223,16 +213,18 @@ UPDATE schematics SET name = $2 WHERE id = $1;
 -- name: ListSchematicsByNamePattern :many
 SELECT * FROM schematics
 WHERE name LIKE $1
-  AND deleted IS NULL
+  AND moderation_state != 'deleted'
 LIMIT $2;
 
 -- name: ListSchematicsForAdmin :many
 SELECT * FROM schematics
 WHERE
   CASE
-    WHEN @filter::text = 'pending' THEN moderated = false AND deleted IS NULL
-    WHEN @filter::text = 'moderated' THEN moderated = true AND deleted IS NULL
-    WHEN @filter::text = 'deleted' THEN deleted IS NOT NULL
+    WHEN @filter::text = 'pending' THEN moderation_state IN ('auto_review', 'flagged')
+    WHEN @filter::text = 'published' THEN moderation_state IN ('published', 'approved')
+    WHEN @filter::text = 'flagged' THEN moderation_state = 'flagged'
+    WHEN @filter::text = 'rejected' THEN moderation_state = 'rejected'
+    WHEN @filter::text = 'deleted' THEN moderation_state = 'deleted'
     ELSE true
   END
 ORDER BY created DESC
@@ -242,9 +234,11 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*) FROM schematics
 WHERE
   CASE
-    WHEN @filter::text = 'pending' THEN moderated = false AND deleted IS NULL
-    WHEN @filter::text = 'moderated' THEN moderated = true AND deleted IS NULL
-    WHEN @filter::text = 'deleted' THEN deleted IS NOT NULL
+    WHEN @filter::text = 'pending' THEN moderation_state IN ('auto_review', 'flagged')
+    WHEN @filter::text = 'published' THEN moderation_state IN ('published', 'approved')
+    WHEN @filter::text = 'flagged' THEN moderation_state = 'flagged'
+    WHEN @filter::text = 'rejected' THEN moderation_state = 'rejected'
+    WHEN @filter::text = 'deleted' THEN moderation_state = 'deleted'
     ELSE true
   END;
 
@@ -256,7 +250,7 @@ UPDATE schematics SET detected_language = $2 WHERE id = $1;
 
 -- name: ListApprovedSchematicIDsAndCreated :many
 SELECT id, created FROM schematics
-WHERE deleted IS NULL AND moderated = true;
+WHERE moderation_state IN ('published', 'approved');
 
 -- name: BatchGetSchematicCategories :many
 SELECT sc.schematic_id, c.id, c.key, c.name

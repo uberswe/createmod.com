@@ -93,6 +93,15 @@
                                                 </div>
                                             </form>
                                         </div>
+                                        {{ if .Schematic.FeaturedImage }}
+                                        <div class="mb-3" id="existing-featured">
+                                            <label class="form-label">Current Featured Image</label>
+                                            <div class="d-flex align-items-start gap-2">
+                                                <img src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=150x150" class="rounded" alt="Featured image" style="max-width:150px;max-height:150px;">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" id="remove-featured-btn" title="Remove featured image">Remove</button>
+                                            </div>
+                                        </div>
+                                        {{ end }}
                                         <div class="mb-3">
                                             <form class="dropzone" id="dropzone-featured" action="/upload"
                                                   autocomplete="off" novalidate>
@@ -101,10 +110,23 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Featured Image</h3>
-                                                    <span class="dropzone-msg-desc">Leave this empty unless you want to replace the current image</span>
+                                                    <span class="dropzone-msg-desc">Upload a new featured image</span>
                                                 </div>
                                             </form>
                                         </div>
+                                        {{ if .Schematic.Gallery }}
+                                        <div class="mb-3" id="existing-gallery">
+                                            <label class="form-label">Current Gallery Images</label>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                {{ range .Schematic.Gallery }}
+                                                <div class="position-relative existing-gallery-item" data-filename="{{ . }}">
+                                                    <img src="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=100x100" class="rounded" alt="Gallery image" style="width:100px;height:100px;object-fit:cover;">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center remove-gallery-btn" style="width:22px;height:22px;font-size:12px;line-height:1;" title="Remove">&times;</button>
+                                                </div>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
                                         <div class="mb-3">
                                             <form class="dropzone" id="dropzone-gallery" action="/upload"
                                                   autocomplete="off" novalidate>
@@ -113,7 +135,7 @@
                                                 </div>
                                                 <div class="dz-message">
                                                     <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                    <span class="dropzone-msg-desc">Leave this empty unless you want to replace the current images</span>
+                                                    <span class="dropzone-msg-desc">Add more gallery images</span>
                                                 </div>
                                             </form>
                                         </div>
@@ -337,6 +359,31 @@
         maxFiles: 10,
     });
 
+    // --- Image removal tracking ---
+    var removedGallery = [];
+    var removeFeatured = false;
+
+    var removeFeaturedBtn = document.getElementById('remove-featured-btn');
+    if (removeFeaturedBtn) {
+        removeFeaturedBtn.addEventListener('click', function() {
+            removeFeatured = true;
+            var container = document.getElementById('existing-featured');
+            if (container) container.style.display = 'none';
+        });
+    }
+
+    var galleryRemoveBtns = document.querySelectorAll('.remove-gallery-btn');
+    galleryRemoveBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var item = btn.closest('.existing-gallery-item');
+            if (item) {
+                var filename = item.getAttribute('data-filename');
+                if (filename) removedGallery.push(filename);
+                item.style.display = 'none';
+            }
+        });
+    });
+
     // --- Delete handler ---
     var schematicID = "{{ .Schematic.ID }}";
 
@@ -419,6 +466,12 @@
         formData.append("createmod_version", document.getElementById("create-version").value);
         formData.append("minecraft_version", document.getElementById("minecraft-version").value);
         formData.append("video", document.getElementById("video").value);
+        if (removedGallery.length > 0) {
+            formData.append("remove_images", removedGallery.join(","));
+        }
+        if (removeFeatured) {
+            formData.append("remove_featured_image", "true");
+        }
 
         if (!titleElement.value) {
             titleElement.classList.add("is-invalid");

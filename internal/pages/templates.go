@@ -17,6 +17,7 @@ var commonTemplates = []string{
 	"./template/include/header.html",
 	"./template/include/footer.html",
 	"./template/include/foot.html",
+	"./template/include/admin_nav.html",
 }
 
 // NewTestRegistry creates a template registry with the FuncMap needed

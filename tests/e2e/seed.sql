@@ -17,15 +17,15 @@ VALUES (
     NOW()
 ) ON CONFLICT (id) DO NOTHING;
 
--- 2. Test schematic: e2e-test-schematic (moderated, visible)
-INSERT INTO schematics (id, author_id, name, title, description, moderated, featured_image, created, updated)
+-- 2. Test schematic: e2e-test-schematic (published, visible)
+INSERT INTO schematics (id, author_id, name, title, description, moderation_state, featured_image, created, updated)
 VALUES (
     'e2e000000000002',
     'e2e000000000001',
     'e2e-test-schematic',
     'E2E Test Schematic',
     'Schematic created by E2E seed SQL.',
-    true,
+    'published',
     'test_featured.webp',
     NOW(),
     NOW()

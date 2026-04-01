@@ -20,7 +20,7 @@ RETURNING *;
 SELECT s.id, s.title, s.description, s.content
 FROM schematics s
 WHERE s.deleted IS NULL
-  AND s.moderated = true
+  AND s.moderation_state = 'published'
   AND NOT EXISTS (
       SELECT 1 FROM schematic_translations st
       WHERE st.schematic_id = s.id AND st.language = $1

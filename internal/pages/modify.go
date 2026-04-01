@@ -56,7 +56,7 @@ func ModifyHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		// Must be published (moderated) or the user is the owner
 		userID := authenticatedUserID(e)
 		isOwner := userID != "" && s.AuthorID == userID
-		isPublished := s.Deleted == nil && s.Moderated
+		isPublished := s.Deleted == nil && (store.IsPublicState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
 		if !isPublished && !isOwner {
 			return e.NotFoundError("Schematic not found", nil)
 		}

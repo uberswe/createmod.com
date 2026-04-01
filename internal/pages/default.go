@@ -52,6 +52,7 @@ type DefaultData struct {
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
 	HideOutstream      bool
+	AdminSection       string
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.

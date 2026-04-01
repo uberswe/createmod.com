@@ -56,8 +56,8 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		imageFullURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, args.SchematicID, url.PathEscape(args.ImageURL))
 	}
 
-	// Run moderation if not already resolved
-	if !schem.Moderated && !schem.Blacklisted && w.deps.Moderation != nil {
+	// Run moderation if still in auto_review
+	if schem.ModerationState == store.ModerationAutoReview && w.deps.Moderation != nil {
 		var emailSubject, emailBodyText string
 
 		// Step 1: Policy check (text + image if available)
@@ -67,10 +67,10 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
 			emailBodyText = fmt.Sprintf("The schematic \"%s\" could not be auto-moderated (moderation unavailable). It requires manual review.", args.Title)
 		} else if !policyResult.Approved {
-			schem.Blacklisted = true
+			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = policyResult.Reason
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-				slog.Error("moderation job: failed to blacklist schematic", "error", updateErr, "schematic_id", args.SchematicID)
+				slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
 			}
 			emailSubject = fmt.Sprintf("Schematic Blocked: %s", args.Title)
 			emailBodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", args.Title, policyResult.Reason)
@@ -82,16 +82,16 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
 				emailBodyText = fmt.Sprintf("The schematic \"%s\" could not be auto-moderated (quality check unavailable). It requires manual review.", args.Title)
 			} else if !qualityResult.Approved {
-				schem.Blacklisted = true
+				schem.ModerationState = store.ModerationFlagged
 				schem.ModerationReason = qualityResult.Reason
 				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-					slog.Error("moderation job: failed to blacklist schematic", "error", updateErr, "schematic_id", args.SchematicID)
+					slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
 				}
 				emailSubject = fmt.Sprintf("Schematic Blocked: %s", args.Title)
 				emailBodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", args.Title, qualityResult.Reason)
 			} else {
 				// Both checks passed
-				schem.Moderated = true
+				schem.ModerationState = store.ModerationPublished
 				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 					slog.Error("moderation job: failed to approve schematic", "error", updateErr, "schematic_id", args.SchematicID)
 				}
@@ -117,14 +117,14 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 
 	// Always run image safety check (even for trusted/pre-approved users).
 	// This catches policy-violating images that bypassed moderation via auto-approval.
-	if w.deps.Moderation != nil && imageFullURL != "" && !schem.Blacklisted {
+	if w.deps.Moderation != nil && imageFullURL != "" && schem.ModerationState != store.ModerationDeleted {
 		imgResult, imgErr := w.deps.Moderation.CheckImage(imageFullURL)
 		if imgErr != nil {
 			slog.Warn("moderation job: image safety check unavailable", "error", imgErr, "schematic_id", args.SchematicID)
 		} else if !imgResult.Approved {
 			slog.Warn("moderation job: featured image flagged, holding for review",
 				"schematic_id", args.SchematicID, "reason", imgResult.Reason)
-			schem.Moderated = false
+			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = fmt.Sprintf("Featured image flagged by automated moderation: %s", imgResult.Reason)
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
@@ -135,14 +135,14 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 	// Always run image quality check (even for trusted/pre-approved users).
 	// This verifies the featured image depicts an actual Minecraft build, catching
 	// off-topic uploads like anime characters or unrelated photos.
-	if w.deps.Moderation != nil && imageFullURL != "" && !schem.Blacklisted {
+	if w.deps.Moderation != nil && imageFullURL != "" && schem.ModerationState != store.ModerationDeleted {
 		qualResult, qualErr := w.deps.Moderation.CheckImageQuality(imageFullURL)
 		if qualErr != nil {
 			slog.Warn("moderation job: image quality check unavailable", "error", qualErr, "schematic_id", args.SchematicID)
 		} else if !qualResult.Approved {
 			slog.Warn("moderation job: featured image not a Minecraft build, holding for review",
 				"schematic_id", args.SchematicID, "reason", qualResult.Reason)
-			schem.Moderated = false
+			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = fmt.Sprintf("Featured image is not a Minecraft build: %s", qualResult.Reason)
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
@@ -155,7 +155,7 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		w.deps.Translation.DetectAndTranslate(args.SchematicID)
 	}
 
-	slog.Info("async moderation complete", "schematic_id", args.SchematicID, "moderated", schem.Moderated, "blacklisted", schem.Blacklisted)
+	slog.Info("async moderation complete", "schematic_id", args.SchematicID, "moderation_state", schem.ModerationState)
 	return nil
 }
 

@@ -470,7 +470,7 @@ SELECT t.id, t.key, t.name, COUNT(st.schematic_id) AS count
 FROM schematic_tags t
 LEFT JOIN schematics_tags st ON st.tag_id = t.id
 LEFT JOIN schematics s ON s.id = st.schematic_id
-    AND s.deleted IS NULL AND s.moderated = true
+    AND s.deleted IS NULL AND s.moderation_state = 'published'
 WHERE t.public = true
 GROUP BY t.id, t.key, t.name
 ORDER BY count DESC

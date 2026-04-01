@@ -81,6 +81,8 @@ func SchematicUpdateHandler(
 		tags := resolveTagIDs(ctx, appStore, e.Request.Form["tags"])
 		createmodVersion := strings.TrimSpace(e.Request.FormValue("createmod_version"))
 		minecraftVersion := strings.TrimSpace(e.Request.FormValue("minecraft_version"))
+		removeImagesRaw := strings.TrimSpace(e.Request.FormValue("remove_images"))
+		removeFeaturedImage := e.Request.FormValue("remove_featured_image") == "true"
 
 		// --- Apply text field updates ---
 		if title != "" {
@@ -217,6 +219,16 @@ func SchematicUpdateHandler(
 		// Track newly uploaded images for async moderation.
 		var newImageFilenames []string
 
+		// --- Handle featured image removal ---
+		if removeFeaturedImage && schem.FeaturedImage != "" {
+			if storageSvc != nil {
+				if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, schematicID, schem.FeaturedImage); delErr != nil {
+					slog.Warn("schematic update: failed to delete old featured image from S3", "error", delErr, "id", schematicID)
+				}
+			}
+			schem.FeaturedImage = ""
+		}
+
 		// --- Handle featured image upload (optional) ---
 		if file, header, fileErr := e.Request.FormFile("featured_image"); fileErr == nil && header != nil {
 			defer func() { _ = file.Close() }()
@@ -236,26 +248,54 @@ func SchematicUpdateHandler(
 				return e.InternalServerError("failed to read featured image", nil)
 			}
 
+			oldFeatured := schem.FeaturedImage
 			data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 					slog.Error("schematic update: failed to upload featured image to S3", "error", uploadErr, "id", schematicID)
 					return e.InternalServerError("failed to store featured image", nil)
 				}
+				// Delete old featured image from S3 if it changed
+				if oldFeatured != "" && oldFeatured != filename {
+					if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, schematicID, oldFeatured); delErr != nil {
+						slog.Warn("schematic update: failed to delete old featured image from S3", "error", delErr, "id", schematicID)
+					}
+				}
 			}
 			schem.FeaturedImage = filename
 			newImageFilenames = append(newImageFilenames, filename)
 		}
 
+		// --- Handle gallery image removal ---
+		var removeSet map[string]bool
+		if removeImagesRaw != "" {
+			parts := strings.Split(removeImagesRaw, ",")
+			removeSet = make(map[string]bool, len(parts))
+			for _, p := range parts {
+				if fn := strings.TrimSpace(p); fn != "" {
+					removeSet[fn] = true
+				}
+			}
+		}
+
+		// Start with existing gallery, removing any marked for deletion
+		galleryFilenames := make([]string, 0, len(schem.Gallery))
+		for _, fn := range schem.Gallery {
+			if removeSet[fn] {
+				// Delete removed gallery image from S3
+				if storageSvc != nil {
+					if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, schematicID, fn); delErr != nil {
+						slog.Warn("schematic update: failed to delete gallery image from S3", "error", delErr, "id", schematicID, "file", fn)
+					}
+				}
+				continue
+			}
+			galleryFilenames = append(galleryFilenames, fn)
+		}
+
 		// --- Handle gallery uploads (optional, multiple files) ---
 		if e.Request.MultipartForm != nil && e.Request.MultipartForm.File != nil {
 			if galleryFiles, ok := e.Request.MultipartForm.File["gallery"]; ok && len(galleryFiles) > 0 {
-				var galleryFilenames []string
-				// Preserve existing gallery files
-				if len(schem.Gallery) > 0 {
-					galleryFilenames = append(galleryFilenames, schem.Gallery...)
-				}
-
 				for _, fh := range galleryFiles {
 					if fh.Size > 5<<20 { // 5 MB per image
 						continue // skip oversized files
@@ -286,9 +326,11 @@ func SchematicUpdateHandler(
 					galleryFilenames = append(galleryFilenames, filename)
 					newImageFilenames = append(newImageFilenames, filename)
 				}
-				schem.Gallery = galleryFilenames
 			}
 		}
+
+		// Update gallery if anything changed (removals or additions)
+		schem.Gallery = galleryFilenames
 
 		// --- Update modified timestamp ---
 		now := time.Now()

@@ -1,0 +1,21 @@
+{{define "admin_nav.html"}}
+<div class="mb-3">
+  <ul class="nav nav-tabs">
+    <li class="nav-item">
+      <a class="nav-link{{ if eq .AdminSection "dashboard" }} active{{ end }}" href="/admin">Dashboard</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link{{ if eq .AdminSection "schematics" }} active{{ end }}" href="/admin/schematics">Schematics</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link{{ if eq .AdminSection "reports" }} active{{ end }}" href="/admin/reports">Reports</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link{{ if eq .AdminSection "tags" }} active{{ end }}" href="/admin/tags">Tags & Categories</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link{{ if eq .AdminSection "mods" }} active{{ end }}" href="/admin/mods">Mods</a>
+    </li>
+  </ul>
+</div>
+{{end}}
