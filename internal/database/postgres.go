@@ -788,6 +788,22 @@ func (ps *PostgresStore) UpdateDetectedLanguage(ctx context.Context, id, lang st
 	})
 }
 
+func (ps *PostgresStore) ListByAuthorAll(ctx context.Context, authorID string, limit, offset int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListSchematicsByAuthorAll(ctx, db.ListSchematicsByAuthorAllParams{
+		AuthorID: &authorID,
+		Limit:    int32(limit),
+		Offset:   int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) CountByAuthorAll(ctx context.Context, authorID string) (int64, error) {
+	return ps.q.CountSchematicsByAuthorAll(ctx, &authorID)
+}
+
 func (ps *PostgresStore) ListByNamePattern(ctx context.Context, pattern string, limit int) ([]store.Schematic, error) {
 	rows, err := ps.q.ListSchematicsByNamePattern(ctx, db.ListSchematicsByNamePatternParams{
 		Name:  pattern,
@@ -2559,6 +2575,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		SchematicFiles:  &SchematicFileStoreImpl{q: q},
 		Webhooks:            &WebhookStoreImpl{q: q},
 		SchematicVariations: &SchematicVariationStoreImpl{q: q},
+		ModerationChats:     &ModerationChatStoreImpl{q: q},
 	}
 }
 
@@ -2581,10 +2598,100 @@ func ptrStrNonEmpty(s string) *string {
 	return &s
 }
 
+// --------------------------------------------------------------------------
+// ModerationChatStoreImpl
+// --------------------------------------------------------------------------
+
+type ModerationChatStoreImpl struct{ q *db.Queries }
+
+func (s *ModerationChatStoreImpl) GetThreadByContent(ctx context.Context, contentType, contentID string) (*store.ModerationThread, error) {
+	row, err := s.q.GetModerationThreadByContent(ctx, db.GetModerationThreadByContentParams{
+		ContentType: contentType,
+		ContentID:   contentID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.ModerationThread{
+		ID:          row.ID,
+		ContentType: row.ContentType,
+		ContentID:   row.ContentID,
+		Status:      row.Status,
+		Created:     row.Created,
+		Updated:     row.Updated,
+	}, nil
+}
+
+func (s *ModerationChatStoreImpl) CreateThread(ctx context.Context, contentType, contentID string) (*store.ModerationThread, error) {
+	row, err := s.q.CreateModerationThread(ctx, db.CreateModerationThreadParams{
+		ContentType: contentType,
+		ContentID:   contentID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.ModerationThread{
+		ID:          row.ID,
+		ContentType: row.ContentType,
+		ContentID:   row.ContentID,
+		Status:      row.Status,
+		Created:     row.Created,
+		Updated:     row.Updated,
+	}, nil
+}
+
+func (s *ModerationChatStoreImpl) ListMessages(ctx context.Context, threadID string) ([]store.ModerationMessage, error) {
+	rows, err := s.q.ListModerationMessagesByThread(ctx, threadID)
+	if err != nil {
+		return nil, err
+	}
+	msgs := make([]store.ModerationMessage, len(rows))
+	for i, r := range rows {
+		msgs[i] = store.ModerationMessage{
+			ID:          r.ID,
+			ThreadID:    r.ThreadID,
+			AuthorID:    r.AuthorID,
+			IsModerator: r.IsModerator,
+			Body:        r.Body,
+			Created:     r.Created,
+		}
+	}
+	return msgs, nil
+}
+
+func (s *ModerationChatStoreImpl) CreateMessage(ctx context.Context, threadID, authorID string, isModerator bool, body string) (*store.ModerationMessage, error) {
+	row, err := s.q.CreateModerationMessage(ctx, db.CreateModerationMessageParams{
+		ThreadID:    threadID,
+		AuthorID:    authorID,
+		IsModerator: isModerator,
+		Body:        body,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.ModerationMessage{
+		ID:          row.ID,
+		ThreadID:    row.ThreadID,
+		AuthorID:    row.AuthorID,
+		IsModerator: row.IsModerator,
+		Body:        row.Body,
+		Created:     row.Created,
+	}, nil
+}
+
+func (s *ModerationChatStoreImpl) CountUserMessagesSinceLastModerator(ctx context.Context, threadID string) (int, error) {
+	count, err := s.q.CountUserMessagesSinceLastModerator(ctx, threadID)
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
 // Ensure compile-time interface satisfaction for the types on PostgresStore.
 var (
-	_ store.SessionStore   = (*PostgresStore)(nil)
-	_ store.SchematicStore = (*PostgresStore)(nil)
+	_ store.SessionStore        = (*PostgresStore)(nil)
+	_ store.SchematicStore      = (*PostgresStore)(nil)
+	_ store.ModerationChatStore = (*ModerationChatStoreImpl)(nil)
 )
 
 // Ensure compile-time interface satisfaction for the separate impl types.

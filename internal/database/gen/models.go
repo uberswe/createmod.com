@@ -176,6 +176,24 @@ type ModMetadatum struct {
 	BlocksitemsMatched bool               `json:"blocksitems_matched"`
 }
 
+type ModerationMessage struct {
+	ID          string    `json:"id"`
+	ThreadID    string    `json:"thread_id"`
+	AuthorID    string    `json:"author_id"`
+	IsModerator bool      `json:"is_moderator"`
+	Body        string    `json:"body"`
+	Created     time.Time `json:"created"`
+}
+
+type ModerationThread struct {
+	ID          string    `json:"id"`
+	ContentType string    `json:"content_type"`
+	ContentID   string    `json:"content_id"`
+	Status      string    `json:"status"`
+	Created     time.Time `json:"created"`
+	Updated     time.Time `json:"updated"`
+}
+
 type NbtHash struct {
 	ID          string    `json:"id"`
 	Hash        string    `json:"hash"`

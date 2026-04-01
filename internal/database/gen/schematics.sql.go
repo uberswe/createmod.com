@@ -149,6 +149,19 @@ func (q *Queries) CountSchematicsByAuthor(ctx context.Context, authorID *string)
 	return count, err
 }
 
+const countSchematicsByAuthorAll = `-- name: CountSchematicsByAuthorAll :one
+SELECT COUNT(*) FROM schematics
+WHERE author_id = $1
+  AND moderation_state != 'deleted'
+`
+
+func (q *Queries) CountSchematicsByAuthorAll(ctx context.Context, authorID *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSchematicsByAuthorAll, authorID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countSchematicsForAdmin = `-- name: CountSchematicsForAdmin :one
 SELECT COUNT(*) FROM schematics
 WHERE
@@ -1045,6 +1058,85 @@ type ListSchematicsByAuthorParams struct {
 
 func (q *Queries) ListSchematicsByAuthor(ctx context.Context, arg ListSchematicsByAuthorParams) ([]Schematic, error) {
 	rows, err := q.db.Query(ctx, listSchematicsByAuthor, arg.AuthorID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Schematic{}
+	for rows.Next() {
+		var i Schematic
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Name,
+			&i.Title,
+			&i.Description,
+			&i.Excerpt,
+			&i.Content,
+			&i.Postdate,
+			&i.Modified,
+			&i.DetectedLanguage,
+			&i.FeaturedImage,
+			&i.Gallery,
+			&i.SchematicFile,
+			&i.Video,
+			&i.HasDependencies,
+			&i.Dependencies,
+			&i.CreatemodVersionID,
+			&i.MinecraftVersionID,
+			&i.Views,
+			&i.Downloads,
+			&i.BlockCount,
+			&i.DimX,
+			&i.DimY,
+			&i.DimZ,
+			&i.Materials,
+			&i.Mods,
+			&i.Paid,
+			&i.Featured,
+			&i.AiDescription,
+			&i.ModerationReason,
+			&i.ScheduledAt,
+			&i.Deleted,
+			&i.DeletedAt,
+			&i.OldID,
+			&i.Status,
+			&i.Type,
+			&i.Created,
+			&i.Updated,
+			&i.ExternalUrl,
+			&i.TrendingScore,
+			&i.AvgRating,
+			&i.RatingCount,
+			&i.ModerationState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSchematicsByAuthorAll = `-- name: ListSchematicsByAuthorAll :many
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state FROM schematics
+WHERE author_id = $1
+  AND moderation_state != 'deleted'
+ORDER BY created DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListSchematicsByAuthorAllParams struct {
+	AuthorID *string `json:"author_id"`
+	Limit    int32   `json:"limit"`
+	Offset   int32   `json:"offset"`
+}
+
+// Lists ALL schematics by an author regardless of moderation state (except deleted).
+func (q *Queries) ListSchematicsByAuthorAll(ctx context.Context, arg ListSchematicsByAuthorAllParams) ([]Schematic, error) {
+	rows, err := q.db.Query(ctx, listSchematicsByAuthorAll, arg.AuthorID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

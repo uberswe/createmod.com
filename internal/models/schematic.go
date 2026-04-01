@@ -48,6 +48,17 @@ type Schematic struct {
 	DimZ                 int                `json:"dimZ"`
 	Mods                 []string           `json:"mods"`
 	DetectedLanguage     string             `json:"-"`
+	ModerationState      string             `json:"-"`
+}
+
+// ModerationChatMessage holds a single message in the moderation discussion thread.
+type ModerationChatMessage struct {
+	ID           string
+	AuthorName   string
+	AuthorAvatar string
+	IsModerator  bool
+	Body         string
+	Created      string // human-readable formatted time
 }
 
 type DatabaseSchematic struct {

@@ -83,6 +83,7 @@ func SchematicUpdateHandler(
 		minecraftVersion := strings.TrimSpace(e.Request.FormValue("minecraft_version"))
 		removeImagesRaw := strings.TrimSpace(e.Request.FormValue("remove_images"))
 		removeFeaturedImage := e.Request.FormValue("remove_featured_image") == "true"
+		setFeaturedFromGallery := strings.TrimSpace(e.Request.FormValue("set_featured_from_gallery"))
 
 		// --- Apply text field updates ---
 		if title != "" {
@@ -264,6 +265,34 @@ func SchematicUpdateHandler(
 			}
 			schem.FeaturedImage = filename
 			newImageFilenames = append(newImageFilenames, filename)
+		}
+
+		// --- Promote gallery image to featured ---
+		if setFeaturedFromGallery != "" {
+			// Verify the filename exists in the current gallery
+			found := false
+			for _, fn := range schem.Gallery {
+				if fn == setFeaturedFromGallery {
+					found = true
+					break
+				}
+			}
+			if found {
+				oldFeatured := schem.FeaturedImage
+				schem.FeaturedImage = setFeaturedFromGallery
+				// Remove promoted image from gallery, add old featured to gallery if it existed
+				newGallery := make([]string, 0, len(schem.Gallery))
+				for _, fn := range schem.Gallery {
+					if fn == setFeaturedFromGallery {
+						continue
+					}
+					newGallery = append(newGallery, fn)
+				}
+				if oldFeatured != "" {
+					newGallery = append([]string{oldFeatured}, newGallery...)
+				}
+				schem.Gallery = newGallery
+			}
 		}
 
 		// --- Handle gallery image removal ---

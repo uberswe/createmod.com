@@ -57,6 +57,11 @@
                                 </svg>
                             </a>
                         </div>
+                        {{ if and $.IsAuthenticated (eq .AuthorID $.UserID) }}
+                        <div class="col-auto">
+                            <a href="#" class="link text-danger delete-comment-btn" data-comment-id="{{ .ID }}">Delete</a>
+                        </div>
+                        {{ end }}
                     </div>
                 </div>
             </div>
