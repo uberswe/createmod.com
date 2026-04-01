@@ -9,7 +9,7 @@
         <button class="mobile-search-toggle d-md-none" type="button" aria-label="Search">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
         </button>
-        <form class="top-header-search d-none d-md-block" action="/search" method="post" autocomplete="off" id="search-form" novalidate hx-post="/search" hx-target="body" hx-swap="innerHTML" hx-select="body" hx-push-url="true">
+        <form class="top-header-search d-none d-md-block" action="/search" method="post" autocomplete="off" id="search-form" novalidate>
             <div class="input-group">
                 <input id="search-field" type="text" value="" name="q" class="form-control" placeholder="Search…" aria-label="Search CreateMod.com">
                 <button class="btn btn-primary" type="submit" aria-label="Search">
@@ -17,7 +17,7 @@
                 </button>
             </div>
         </form>
-        <form class="mobile-search-bar d-md-none" action="/search" method="post" autocomplete="off" novalidate hx-post="/search" hx-target="body" hx-swap="innerHTML" hx-select="body" hx-push-url="true">
+        <form class="mobile-search-bar d-md-none" action="/search" method="post" autocomplete="off" novalidate>
             <div class="input-group">
                 <input type="text" name="q" class="form-control" placeholder="Search…" aria-label="Search CreateMod.com" autofocus>
                 <button class="btn btn-primary" type="submit" aria-label="Search">

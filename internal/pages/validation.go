@@ -37,14 +37,10 @@ func validateDescription(plainText string) error {
 		return fmt.Errorf("Please write a real description of your schematic")
 	}
 
-	// More than half the words are repeated (i.e. appear more than once).
-	repeated := 0
-	for _, count := range freq {
-		if count > 1 {
-			repeated += count
-		}
-	}
-	if repeated > len(words)/2 {
+	// If fewer than 15% of words are unique the text is likely
+	// copy-pasted spam or meaningless repetition.  Normal English prose
+	// typically has 50%+ unique words even in longer passages.
+	if float64(len(freq)) < float64(len(words))*0.15 {
 		return fmt.Errorf("Please write a more detailed description of your schematic")
 	}
 

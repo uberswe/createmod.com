@@ -589,11 +589,7 @@
             freq[lw] = (freq[lw] || 0) + 1;
         }
         if (Object.keys(freq).length === 1) return "Please write a real description of your schematic";
-        var repeated = 0;
-        for (var key in freq) {
-            if (freq[key] > 1) repeated += freq[key];
-        }
-        if (repeated > Math.floor(words.length / 2)) return "Please write a more detailed description of your schematic";
+        if (Object.keys(freq).length < words.length * 0.15) return "Please write a more detailed description of your schematic";
         return null;
     }
 

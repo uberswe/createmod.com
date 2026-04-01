@@ -44,7 +44,7 @@
                             <h5 class="offcanvas-title" id="mobile-filters-label">{{ T .Language "Filters" }}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                         </div>
-                        <div class="offcanvas-body" id="mobile-filters-body">
+                        <div class="offcanvas-body" id="mobile-filters-body" style="padding-bottom: 5rem;">
                         </div>
                     </div>
 
@@ -101,6 +101,22 @@
                             form.removeAttribute('hx-trigger');
                             form.removeAttribute('hx-include');
                             form.id = 'mobile-search-form';
+                            // Add a search input at the top so the query is included
+                            var heroVal = (document.getElementById('search-hero-input') || {}).value || '';
+                            var wrapper = document.createElement('div');
+                            wrapper.className = 'mb-3';
+                            var label = document.createElement('div');
+                            label.className = 'subheader mb-2';
+                            label.textContent = '{{ T .Language "Search" }}';
+                            var input = document.createElement('input');
+                            input.type = 'text';
+                            input.name = 'q';
+                            input.className = 'form-control';
+                            input.placeholder = '{{ T .Language "Search schematics..." }}';
+                            input.value = heroVal;
+                            wrapper.appendChild(label);
+                            wrapper.appendChild(input);
+                            form.insertBefore(wrapper, form.firstChild);
                         }
                         dest.innerHTML = '';
                         dest.appendChild(clone);
