@@ -26,7 +26,7 @@
                                                       placeholder="Describe your schematic and include any details on how to get it running.">
                                                 {{ .Schematic.Content }}
                                             </textarea>
-                                            <small class="form-hint">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
+                                            <small class="form-hint mt-2 d-block text-secondary">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
                                         </div>
                                         <div class="row">
                                             <div class="mb-3 col-md-12 col-lg-6">
@@ -93,51 +93,29 @@
                                                 </div>
                                             </form>
                                         </div>
-                                        {{ if .Schematic.FeaturedImage }}
-                                        <div class="mb-3" id="existing-featured">
-                                            <label class="form-label">Current Featured Image</label>
-                                            <div class="d-flex align-items-start gap-2">
-                                                <img src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=150x150" class="rounded" alt="Featured image" style="max-width:150px;max-height:150px;">
-                                                <button type="button" class="btn btn-sm btn-outline-danger" id="remove-featured-btn" title="Remove featured image">Remove</button>
-                                            </div>
-                                        </div>
-                                        {{ end }}
                                         <div class="mb-3">
-                                            <form class="dropzone" id="dropzone-featured" action="/upload"
-                                                  autocomplete="off" novalidate>
-                                                <div class="fallback">
-                                                    <input name="featured-file" type="file"/>
-                                                </div>
-                                                <div class="dz-message">
-                                                    <h3 class="dropzone-msg-title">Featured Image</h3>
-                                                    <span class="dropzone-msg-desc">Upload a new featured image</span>
-                                                </div>
-                                            </form>
-                                        </div>
-                                        {{ if .Schematic.Gallery }}
-                                        <div class="mb-3" id="existing-gallery">
-                                            <label class="form-label">Current Gallery Images</label>
-                                            <div class="d-flex flex-wrap gap-2">
-                                                {{ range .Schematic.Gallery }}
-                                                <div class="position-relative existing-gallery-item" data-filename="{{ . }}">
-                                                    <img src="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=100x100" class="rounded" alt="Gallery image" style="width:100px;height:100px;object-fit:cover;">
-                                                    <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center remove-gallery-btn" style="width:22px;height:22px;font-size:12px;line-height:1;" title="Remove">&times;</button>
+                                            <label class="form-label">Images</label>
+                                            <small class="form-hint mb-2 d-block text-secondary">Click an image to set it as the featured image. The first image is featured by default.</small>
+                                            <div class="image-upload-grid" id="edit-image-grid">
+                                                {{ if .Schematic.FeaturedImage }}
+                                                <div class="image-upload-item is-featured existing-img" data-filename="{{ .Schematic.FeaturedImage }}" data-type="featured" title="Featured image">
+                                                    <img src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=200x200" alt="Featured image">
+                                                    <span class="featured-badge">Featured</span>
+                                                    <button type="button" class="remove-btn" title="Remove image">&times;</button>
                                                 </div>
                                                 {{ end }}
+                                                {{ range .Schematic.Gallery }}
+                                                <div class="image-upload-item existing-img" data-filename="{{ . }}" data-type="gallery" title="Click to set as featured">
+                                                    <img src="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=200x200" alt="Gallery image">
+                                                    <button type="button" class="remove-btn" title="Remove image">&times;</button>
+                                                </div>
+                                                {{ end }}
+                                                <div class="image-upload-add" id="edit-image-add">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                                                    <span>Add Images</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        {{ end }}
-                                        <div class="mb-3">
-                                            <form class="dropzone" id="dropzone-gallery" action="/upload"
-                                                  autocomplete="off" novalidate>
-                                                <div class="fallback">
-                                                    <input name="gallery-file" type="file"/>
-                                                </div>
-                                                <div class="dz-message">
-                                                    <h3 class="dropzone-msg-title">Gallery Images</h3>
-                                                    <span class="dropzone-msg-desc">Add more gallery images</span>
-                                                </div>
-                                            </form>
+                                            <input type="file" id="edit-image-input" accept="image/*" multiple style="display:none;">
                                         </div>
                                     </div>
                                 </div>
@@ -253,6 +231,90 @@
     body[data-bs-theme=dark] .ts-dropdown .create {
         color: #9ca3af !important;
     }
+    /* Unified image upload area */
+    .image-upload-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.75rem;
+    }
+    .image-upload-item {
+        position: relative;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        aspect-ratio: 1;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: border-color 0.15s;
+    }
+    .image-upload-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .image-upload-item.is-featured {
+        border-color: #bf9045;
+    }
+    .image-upload-item .featured-badge {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        background: #bf9045;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        pointer-events: none;
+    }
+    .image-upload-item .remove-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 14px;
+        line-height: 20px;
+        text-align: center;
+        cursor: pointer;
+        padding: 0;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    .image-upload-item:hover .remove-btn {
+        opacity: 1;
+    }
+    .image-upload-add {
+        aspect-ratio: 1;
+        border: 2px dashed #6b7280;
+        border-radius: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        color: #6b7280;
+        font-size: 0.8rem;
+        min-height: 120px;
+    }
+    .image-upload-add:hover {
+        border-color: #bf9045;
+        background: rgba(191,144,69,0.05);
+    }
+    .image-upload-add svg {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
+    }
+    .image-upload-add.drag-over {
+        border-color: #bf9045;
+        background: rgba(191,144,69,0.1);
+    }
 </style>
 <script>
 // Dynamically load CDN scripts so the edit page works both on full page
@@ -355,7 +417,7 @@
         tinyMCE.init(options);
     }
 
-    // --- Dropzone instances ---
+    // --- Schematic file Dropzone (kept for .nbt uploads) ---
     Dropzone.autoDiscover = false;
     var dropzoneSchematic = new Dropzone("#dropzone-schematic", {
         url: "/files/upload",
@@ -368,49 +430,124 @@
         parallelUploads: 1,
         maxFiles: 1,
     });
-    var dropzoneFeatured = new Dropzone("#dropzone-featured", {
-        acceptedFiles: 'image/*',
-        thumbnailMethod: 'crop',
-        addRemoveLinks: true,
-        autoProcessQueue: false,
-        uploadMultiple: false,
-        parallelUploads: 1,
-        maxFiles: 1,
-    });
-    var dropzoneGallery = new Dropzone("#dropzone-gallery", {
-        acceptedFiles: 'image/*',
-        thumbnailMethod: 'crop',
-        addRemoveLinks: true,
-        autoProcessQueue: false,
-        uploadMultiple: true,
-        parallelUploads: 10,
-        maxFiles: 10,
+
+    // --- Unified image management ---
+    // Images are stored as an ordered list. Each item is either:
+    //   { type: 'existing', filename: '...', url: '...' }
+    //   { type: 'new', file: File, url: '...' (object URL) }
+    var images = [];
+    var featuredIndex = 0;
+    var removedExisting = []; // filenames of removed existing images
+    var originalFeatured = "{{ .Schematic.FeaturedImage }}";
+    var maxImages = 11;
+
+    // Populate from server-rendered DOM
+    var existingItems = document.querySelectorAll('#edit-image-grid .existing-img');
+    existingItems.forEach(function(el) {
+        var fn = el.getAttribute('data-filename');
+        var imgEl = el.querySelector('img');
+        images.push({ type: 'existing', filename: fn, url: imgEl ? imgEl.src : '' });
     });
 
-    // --- Image removal tracking ---
-    var removedGallery = [];
-    var removeFeatured = false;
+    var grid = document.getElementById('edit-image-grid');
+    var addBtn = document.getElementById('edit-image-add');
+    var fileInput = document.getElementById('edit-image-input');
 
-    var removeFeaturedBtn = document.getElementById('remove-featured-btn');
-    if (removeFeaturedBtn) {
-        removeFeaturedBtn.addEventListener('click', function() {
-            removeFeatured = true;
-            var container = document.getElementById('existing-featured');
-            if (container) container.style.display = 'none';
-        });
+    function renderImages() {
+        // Remove all .image-upload-item elements
+        var items = grid.querySelectorAll('.image-upload-item');
+        for (var i = 0; i < items.length; i++) { items[i].remove(); }
+
+        if (images.length > 0 && featuredIndex >= images.length) featuredIndex = 0;
+
+        for (var i = 0; i < images.length; i++) {
+            (function(idx) {
+                var img = images[idx];
+                var item = document.createElement('div');
+                item.className = 'image-upload-item' + (idx === featuredIndex ? ' is-featured' : '');
+                item.title = idx === featuredIndex ? 'Featured image' : 'Click to set as featured';
+
+                var imgEl = document.createElement('img');
+                imgEl.src = img.url;
+                imgEl.alt = 'Image ' + (idx + 1);
+                item.appendChild(imgEl);
+
+                if (idx === featuredIndex) {
+                    var badge = document.createElement('span');
+                    badge.className = 'featured-badge';
+                    badge.textContent = 'Featured';
+                    item.appendChild(badge);
+                }
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '\u00D7';
+                removeBtn.title = 'Remove image';
+                removeBtn.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    if (img.type === 'existing') {
+                        removedExisting.push(img.filename);
+                    } else {
+                        URL.revokeObjectURL(img.url);
+                    }
+                    images.splice(idx, 1);
+                    if (featuredIndex >= images.length) featuredIndex = 0;
+                    else if (featuredIndex > idx) featuredIndex--;
+                    else if (featuredIndex === idx) featuredIndex = 0;
+                    renderImages();
+                });
+                item.appendChild(removeBtn);
+
+                item.addEventListener('click', function() {
+                    featuredIndex = idx;
+                    renderImages();
+                });
+
+                grid.insertBefore(item, addBtn);
+            })(i);
+        }
+        addBtn.style.display = images.length >= maxImages ? 'none' : '';
     }
 
-    var galleryRemoveBtns = document.querySelectorAll('.remove-gallery-btn');
-    galleryRemoveBtns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var item = btn.closest('.existing-gallery-item');
-            if (item) {
-                var filename = item.getAttribute('data-filename');
-                if (filename) removedGallery.push(filename);
-                item.style.display = 'none';
+    function addFiles(files) {
+        var validExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+        for (var i = 0; i < files.length; i++) {
+            if (images.length >= maxImages) break;
+            var file = files[i];
+            if (!file.type.startsWith('image/')) continue;
+            var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (validExts.indexOf(ext) === -1) continue;
+            if (file.size > 5 * 1024 * 1024) {
+                if (typeof showToast === 'function') showToast('Image "' + file.name + '" exceeds 5 MB limit.', 'warning');
+                continue;
             }
-        });
+            images.push({ type: 'new', file: file, url: URL.createObjectURL(file) });
+        }
+        renderImages();
+    }
+
+    addBtn.addEventListener('click', function() { fileInput.click(); });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) { addFiles(fileInput.files); fileInput.value = ''; }
     });
+
+    // Drag and drop
+    addBtn.addEventListener('dragover', function(ev) { ev.preventDefault(); addBtn.classList.add('drag-over'); });
+    addBtn.addEventListener('dragleave', function() { addBtn.classList.remove('drag-over'); });
+    addBtn.addEventListener('drop', function(ev) {
+        ev.preventDefault(); addBtn.classList.remove('drag-over');
+        if (ev.dataTransfer && ev.dataTransfer.files.length > 0) addFiles(ev.dataTransfer.files);
+    });
+    grid.addEventListener('dragover', function(ev) { ev.preventDefault(); addBtn.classList.add('drag-over'); });
+    grid.addEventListener('dragleave', function(ev) { if (!grid.contains(ev.relatedTarget)) addBtn.classList.remove('drag-over'); });
+    grid.addEventListener('drop', function(ev) {
+        ev.preventDefault(); addBtn.classList.remove('drag-over');
+        if (ev.dataTransfer && ev.dataTransfer.files.length > 0) addFiles(ev.dataTransfer.files);
+    });
+
+    // Render initial state from DOM data
+    renderImages();
 
     // --- Delete handler ---
     var schematicID = "{{ .Schematic.ID }}";
@@ -466,12 +603,62 @@
         for (var i = 0; i < dropzoneSchematic.files.length; i++) {
             formData.append("schematic_file", dropzoneSchematic.files[i]);
         }
-        for (var i = 0; i < dropzoneFeatured.files.length; i++) {
-            formData.append("featured_image", dropzoneFeatured.files[i]);
+
+        // --- Build image form fields from unified state ---
+        var featuredImg = images.length > 0 ? images[featuredIndex] : null;
+
+        // If the featured image is a new upload, send it as featured_image
+        if (featuredImg && featuredImg.type === 'new') {
+            formData.append("featured_image", featuredImg.file);
         }
-        for (var i = 0; i < dropzoneGallery.files.length; i++) {
-            formData.append("gallery", dropzoneGallery.files[i]);
+        // If the featured image is an existing gallery image (not the original featured),
+        // tell the backend to promote it
+        if (featuredImg && featuredImg.type === 'existing' && featuredImg.filename !== originalFeatured) {
+            formData.append("set_featured_from_gallery", featuredImg.filename);
         }
+        // If the original featured was removed entirely (not in the images list anymore)
+        if (originalFeatured) {
+            var originalStillPresent = false;
+            for (var i = 0; i < images.length; i++) {
+                if (images[i].type === 'existing' && images[i].filename === originalFeatured) {
+                    originalStillPresent = true;
+                    break;
+                }
+            }
+            if (!originalStillPresent) {
+                // Check if it was explicitly removed (in removedExisting) or just not featured anymore
+                var wasRemoved = false;
+                for (var i = 0; i < removedExisting.length; i++) {
+                    if (removedExisting[i] === originalFeatured) { wasRemoved = true; break; }
+                }
+                if (wasRemoved) {
+                    formData.append("remove_featured_image", "true");
+                }
+            }
+        }
+
+        // Gallery: new uploads that are not the featured image
+        for (var j = 0; j < images.length; j++) {
+            if (j === featuredIndex) continue;
+            if (images[j].type === 'new') {
+                formData.append("gallery", images[j].file);
+            }
+        }
+
+        // Removed existing images (gallery + featured)
+        if (removedExisting.length > 0) {
+            // Filter out the original featured from remove_images (handled by remove_featured_image)
+            var galleryRemovals = [];
+            for (var i = 0; i < removedExisting.length; i++) {
+                if (removedExisting[i] !== originalFeatured) {
+                    galleryRemovals.push(removedExisting[i]);
+                }
+            }
+            if (galleryRemovals.length > 0) {
+                formData.append("remove_images", galleryRemovals.join(","));
+            }
+        }
+
         formData.append("title", titleElement.value);
         formData.append("author", "{{ .UserID }}");
         var content = '';
@@ -494,12 +681,6 @@
         formData.append("createmod_version", document.getElementById("create-version").value);
         formData.append("minecraft_version", document.getElementById("minecraft-version").value);
         formData.append("video", document.getElementById("video").value);
-        if (removedGallery.length > 0) {
-            formData.append("remove_images", removedGallery.join(","));
-        }
-        if (removeFeatured) {
-            formData.append("remove_featured_image", "true");
-        }
 
         if (!titleElement.value) {
             titleElement.classList.add("is-invalid");
