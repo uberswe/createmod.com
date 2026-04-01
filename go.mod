@@ -25,7 +25,7 @@ require (
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.31.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
-	github.com/sym01/htmlsanitizer v1.1.0
+	github.com/sym01/htmlsanitizer v1.1.1
 	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.7.17
 	golang.org/x/crypto v0.49.0
