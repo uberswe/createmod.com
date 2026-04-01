@@ -263,3 +263,16 @@ SELECT st.schematic_id, t.id, t.key, t.name
 FROM schematics_tags st
 JOIN schematic_tags t ON t.id = st.tag_id
 WHERE st.schematic_id = ANY($1::text[]);
+
+-- name: ListSchematicsByAuthorAll :many
+-- Lists ALL schematics by an author regardless of moderation state (except deleted).
+SELECT * FROM schematics
+WHERE author_id = $1
+  AND moderation_state != 'deleted'
+ORDER BY created DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountSchematicsByAuthorAll :one
+SELECT COUNT(*) FROM schematics
+WHERE author_id = $1
+  AND moderation_state != 'deleted';

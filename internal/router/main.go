@@ -318,6 +318,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
 	// Comments and ratings API (replaces PB REST endpoints)
 	r.Post("/api/comments", Adapt(pages.CommentCreateHandler(p.AppStore, p.MailService)))
+	r.Post("/api/moderation-chat/{id}", Adapt(pages.ModerationChatCreateHandler(p.AppStore)))
 	r.Delete("/api/comments/{id}", Adapt(pages.CommentDeleteHandler(p.AppStore)))
 	r.Post("/api/ratings", Adapt(pages.RatingUpsertHandler(p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
@@ -446,6 +447,7 @@ func Register(p RegisterParams) chi.Router {
 	// Language setter
 	r.Get("/lang", Adapt(pages.SetLanguageHandler()))
 	// Schematics
+	r.Get("/my-schematics", Adapt(pages.MySchematicsHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, p.StorageService, webhookSecret)))
 	// Schematic RSS feed (comments)

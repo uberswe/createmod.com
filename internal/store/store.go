@@ -369,6 +369,35 @@ type SessionStore interface {
 	CleanupExpired(ctx context.Context) error
 }
 
+// ModerationThread represents a moderation discussion thread.
+type ModerationThread struct {
+	ID          string
+	ContentType string
+	ContentID   string
+	Status      string
+	Created     time.Time
+	Updated     time.Time
+}
+
+// ModerationMessage represents a single message in a moderation thread.
+type ModerationMessage struct {
+	ID          string
+	ThreadID    string
+	AuthorID    string
+	IsModerator bool
+	Body        string
+	Created     time.Time
+}
+
+// ModerationChatStore handles moderation discussion threads and messages.
+type ModerationChatStore interface {
+	GetThreadByContent(ctx context.Context, contentType, contentID string) (*ModerationThread, error)
+	CreateThread(ctx context.Context, contentType, contentID string) (*ModerationThread, error)
+	ListMessages(ctx context.Context, threadID string) ([]ModerationMessage, error)
+	CreateMessage(ctx context.Context, threadID, authorID string, isModerator bool, body string) (*ModerationMessage, error)
+	CountUserMessagesSinceLastModerator(ctx context.Context, threadID string) (int, error)
+}
+
 // SchematicStore handles schematic persistence.
 type SchematicStore interface {
 	GetByID(ctx context.Context, id string) (*Schematic, error)
@@ -417,6 +446,10 @@ type SchematicStore interface {
 	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
 	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
 	UpdateDetectedLanguage(ctx context.Context, id, lang string) error
+	// ListByAuthorAll returns all schematics by an author regardless of moderation state (except deleted).
+	ListByAuthorAll(ctx context.Context, authorID string, limit, offset int) ([]Schematic, error)
+	// CountByAuthorAll counts all schematics by an author regardless of moderation state (except deleted).
+	CountByAuthorAll(ctx context.Context, authorID string) (int64, error)
 }
 
 // CategoryStore handles categories.
@@ -813,4 +846,5 @@ type Store struct {
 	SchematicFiles      SchematicFileStore
 	Webhooks            WebhookStore
 	SchematicVariations SchematicVariationStore
+	ModerationChats     ModerationChatStore
 }

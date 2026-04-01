@@ -63,6 +63,8 @@ type SchematicData struct {
 	BloxelizerURL   string
 	Mods            []string
 	ModInfoList     []ModInfo
+	// IsAdmin is true when the viewer is an administrator.
+	IsAdmin bool
 	// Additional files (variations)
 	AdditionalFiles []store.SchematicFile
 	// ModerationBanner is set to the moderation state ("auto_review", "flagged", "rejected") when the viewer is the author.
@@ -74,6 +76,10 @@ type SchematicData struct {
 	// Translation fields
 	IsTranslated     bool
 	OriginalLanguage string
+	// Moderation chat fields
+	ModerationChatEnabled bool
+	ModerationMessages    []models.ModerationChatMessage
+	CanPostMessage        bool
 }
 
 // ModInfo holds display info for a mod in the Required Mods section.
@@ -141,14 +147,59 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		translateSchematicTitles(d.Similar, translationService, cacheService, d.Language)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
-		// Non-owners cannot view non-public schematics
-		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor {
+		// Check if the viewer is an admin
+		if d.UserID != "" {
+			if viewerUser, uErr := appStore.Users.GetUserByID(ctx, d.UserID); uErr == nil && viewerUser != nil {
+				d.IsAdmin = viewerUser.IsAdmin
+			}
+		}
+		// Non-owners (and non-admins) cannot view non-public schematics
+		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
 			return e.NotFoundError("Schematic not found", nil)
 		}
 		// Show moderation banner to the author for non-public states
 		if d.IsAuthor && !store.IsPublicState(s.ModerationState) {
 			d.ModerationBanner = s.ModerationState
 			d.ModerationReason = s.ModerationReason
+		}
+		// Load moderation chat for owner or admin when schematic is non-public
+		if (d.IsAuthor || d.IsAdmin) && !store.IsPublicState(s.ModerationState) {
+			d.ModerationChatEnabled = true
+			thread, threadErr := appStore.ModerationChats.GetThreadByContent(ctx, "schematic", s.ID)
+			if threadErr == nil && thread != nil {
+				msgs, msgsErr := appStore.ModerationChats.ListMessages(ctx, thread.ID)
+				if msgsErr == nil {
+					chatMsgs := make([]models.ModerationChatMessage, 0, len(msgs))
+					for _, m := range msgs {
+						author := findUserFromStore(appStore, m.AuthorID)
+						authorName := "Unknown"
+						authorAvatar := ""
+						if author != nil {
+							authorName = author.Username
+							authorAvatar = string(author.Avatar)
+						}
+						chatMsgs = append(chatMsgs, models.ModerationChatMessage{
+							ID:           m.ID,
+							AuthorName:   authorName,
+							AuthorAvatar: authorAvatar,
+							IsModerator:  m.IsModerator,
+							Body:         m.Body,
+							Created:      timediff.TimeDiff(m.Created),
+						})
+					}
+					d.ModerationMessages = chatMsgs
+				}
+				// Check spam limit
+				count, countErr := appStore.ModerationChats.CountUserMessagesSinceLastModerator(ctx, thread.ID)
+				if countErr == nil && count < 5 {
+					d.CanPostMessage = true
+				} else if countErr != nil {
+					d.CanPostMessage = true // allow on error
+				}
+			} else {
+				// No thread yet, user can post
+				d.CanPostMessage = true
+			}
 		}
 		// Prevent search engine indexing of non-public schematics
 		if !store.IsPublicState(s.ModerationState) {
@@ -489,6 +540,7 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		DimZ:                 s.DimZ,
 		Mods:                 mods,
 		DetectedLanguage:     s.DetectedLanguage,
+		ModerationState:      s.ModerationState,
 	}
 
 	return result
@@ -717,6 +769,7 @@ func mapSchematicFromBatch(
 		DimZ:                 s.DimZ,
 		Mods:                 mods,
 		DetectedLanguage:     s.DetectedLanguage,
+		ModerationState:      s.ModerationState,
 	}
 }
 

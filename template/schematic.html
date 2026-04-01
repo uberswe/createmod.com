@@ -64,6 +64,64 @@
                     </div>
                 </div>
                 {{ end }}
+                {{ if .ModerationChatEnabled }}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1" /></svg>
+                            {{ T .Language "Moderation Discussion" }}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {{ if .ModerationMessages }}
+                        <div class="divide-y" id="moderation-chat-messages">
+                            {{ range .ModerationMessages }}
+                            <div class="row py-2">
+                                <div class="col-auto">
+                                    {{ if .AuthorAvatar }}
+                                    <img class="avatar avatar-sm" src="{{ .AuthorAvatar }}" alt="{{ .AuthorName }}">
+                                    {{ else }}
+                                    <img class="avatar avatar-sm" src="https://mc-heads.net/avatar/Steve" alt="{{ .AuthorName }}">
+                                    {{ end }}
+                                </div>
+                                <div class="col">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <strong>{{ .AuthorName }}</strong>
+                                        {{ if .IsModerator }}
+                                        <span class="badge bg-blue-lt">Moderator</span>
+                                        {{ end }}
+                                        <span class="text-secondary small">{{ .Created }}</span>
+                                    </div>
+                                    <div class="text-secondary" style="white-space: pre-wrap;">{{ .Body }}</div>
+                                </div>
+                            </div>
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <p class="text-secondary mb-0">{{ T .Language "No messages yet. Start a conversation about this schematic's moderation status." }}</p>
+                        {{ end }}
+                    </div>
+                    {{ if .CanPostMessage }}
+                    <div class="card-footer">
+                        <form hx-post="/api/moderation-chat/{{ .Schematic.ID }}" hx-swap="none" method="post">
+                            <div class="mb-2">
+                                <textarea name="body" class="form-control" rows="2" placeholder="{{ T .Language "Type your message..." }}" maxlength="2000" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 14l11 -11" /><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" /></svg>
+                                {{ T .Language "Send" }}
+                            </button>
+                        </form>
+                    </div>
+                    {{ else }}
+                    {{ if .ModerationMessages }}
+                    <div class="card-footer">
+                        <p class="text-secondary mb-0 small">{{ T .Language "You have reached the message limit. Please wait for a moderator to respond." }}</p>
+                    </div>
+                    {{ end }}
+                    {{ end }}
+                </div>
+                {{ end }}
                 <div class="d-flex gap-3">
                 <div class="flex-grow-1 min-width-0">
                 <div class="row g-3">
