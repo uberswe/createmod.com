@@ -17,10 +17,89 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"createmod/internal/server"
 )
+
+// maxUploadImages is the maximum number of images allowed per temp upload.
+const maxUploadImages = 10
+
+// maxImageSize is the maximum allowed size per image (5 MB).
+const maxImageSize = 5 << 20
+
+// allowedImageExts lists accepted image file extensions.
+var allowedImageExts = map[string]bool{
+	".jpg":  true,
+	".jpeg": true,
+	".png":  true,
+	".webp": true,
+	".gif":  true,
+}
+
+// processUploadImages reads image files from the multipart form field "images",
+// converts them to WebP, uploads to S3, and creates TempUploadImage records.
+// Returns the list of image response entries for the JSON API response.
+func processUploadImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
+	if r.MultipartForm == nil || r.MultipartForm.File == nil {
+		return nil
+	}
+	imageHeaders, ok := r.MultipartForm.File["images"]
+	if !ok || len(imageHeaders) == 0 {
+		return nil
+	}
+
+	var images []uploadImageResponse
+	for i, fh := range imageHeaders {
+		if i >= maxUploadImages {
+			break
+		}
+		if fh.Size > maxImageSize {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(fh.Filename))
+		if !allowedImageExts[ext] {
+			continue
+		}
+		f, openErr := fh.Open()
+		if openErr != nil {
+			continue
+		}
+		data, readErr := io.ReadAll(f)
+		_ = f.Close()
+		if readErr != nil {
+			continue
+		}
+
+		data, filename, contentType := convertToWebP(data, sanitizeFilename(fh.Filename))
+		s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
+		if storageSvc != nil {
+			if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, data, contentType); uploadErr != nil {
+				slog.Error("api upload: failed to upload image to S3", "error", uploadErr, "token", token, "filename", filename)
+				continue
+			}
+		}
+
+		img := &store.TempUploadImage{
+			Token:     token,
+			Filename:  filename,
+			Size:      int64(len(data)),
+			S3Key:     s3Key,
+			SortOrder: i,
+		}
+		if err := appStore.TempUploadImages.Create(ctx, img); err != nil {
+			slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token)
+			continue
+		}
+
+		images = append(images, uploadImageResponse{
+			Filename: filename,
+			URL:      "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(filename),
+		})
+	}
+	return images
+}
 
 // APIUploadHandler serves POST /api/schematics/upload as a JSON API for uploading schematics.
 // Accepts either API key or HMAC authentication. When authenticated via HMAC,
@@ -194,6 +273,9 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
+		// Process optional image uploads
+		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
+
 		// Build response
 		resp := uploadNBTResponse{
 			Token:      token,
@@ -204,6 +286,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 			BlockCount: blockCount,
 			Materials:  parsedMaterials,
 			Mods:       mods,
+			Images:     uploadedImages,
 		}
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
@@ -367,6 +450,9 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
+		// Process optional image uploads
+		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
+
 		// Build response
 		resp := uploadNBTResponse{
 			Token:      token,
@@ -377,6 +463,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			BlockCount: blockCount,
 			Materials:  parsedMaterials,
 			Mods:       mods,
+			Images:     uploadedImages,
 		}
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY

@@ -478,6 +478,16 @@ type TempUploadFile struct {
 	Created     time.Time `json:"created"`
 }
 
+type TempUploadImage struct {
+	ID        string    `json:"id"`
+	Token     string    `json:"token"`
+	Filename  string    `json:"filename"`
+	Size      int64     `json:"size"`
+	S3Key     string    `json:"s3_key"`
+	SortOrder int32     `json:"sort_order"`
+	Created   time.Time `json:"created"`
+}
+
 type User struct {
 	ID           string             `json:"id"`
 	Email        string             `json:"email"`
