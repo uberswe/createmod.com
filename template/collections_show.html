@@ -145,7 +145,10 @@ function copyShareLink() {
 <script>
 window['nitroAds'].createAd('collshow-adrail-lg', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["160", "600"]
@@ -156,11 +159,16 @@ window['nitroAds'].createAd('collshow-adrail-lg', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,collection",
+  "targeting": { "pageType": "collection" },
   "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
 });
 window['nitroAds'].createAd('collshow-adrail', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["300", "600"],
@@ -172,9 +180,15 @@ window['nitroAds'].createAd('collshow-adrail', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,collection",
+  "targeting": { "pageType": "collection" },
   "mediaQuery": "(min-width: 1200px)"
 });
 window['nitroAds'].createAd('collshow-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "sizes": [
     ["320", "100"],
     ["320", "50"],
@@ -186,6 +200,8 @@ window['nitroAds'].createAd('collshow-mobile', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,collection",
+  "targeting": { "pageType": "collection" },
   "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
 });
 </script>

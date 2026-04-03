@@ -102,7 +102,10 @@
 <script>
 window['nitroAds'].createAd('guideshow-adrail', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["300", "600"],
@@ -114,9 +117,15 @@ window['nitroAds'].createAd('guideshow-adrail', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,guide,tutorial",
+  "targeting": { "pageType": "guide" },
   "mediaQuery": "(min-width: 1200px)"
 });
 window['nitroAds'].createAd('guideshow-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "sizes": [
     ["320", "100"],
     ["320", "50"],
@@ -128,6 +137,8 @@ window['nitroAds'].createAd('guideshow-mobile', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,guide,tutorial",
+  "targeting": { "pageType": "guide" },
   "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
 });
 </script>

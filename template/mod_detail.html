@@ -79,7 +79,10 @@
 <script>
 window['nitroAds'].createAd('moddetail-adrail', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["300", "600"],
@@ -91,9 +94,15 @@ window['nitroAds'].createAd('moddetail-adrail', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,mod,addon",
+  "targeting": { "pageType": "mod" },
   "mediaQuery": "(min-width: 1200px)"
 });
 window['nitroAds'].createAd('moddetail-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "sizes": [
     ["320", "100"],
     ["320", "50"],
@@ -105,6 +114,8 @@ window['nitroAds'].createAd('moddetail-mobile', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,mod,addon",
+  "targeting": { "pageType": "mod" },
   "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
 });
 </script>
