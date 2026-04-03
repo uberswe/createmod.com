@@ -542,7 +542,9 @@
     addBtn.addEventListener('dragover', function(ev) { ev.preventDefault(); addBtn.classList.add('drag-over'); });
     addBtn.addEventListener('dragleave', function() { addBtn.classList.remove('drag-over'); });
     addBtn.addEventListener('drop', function(ev) {
-        ev.preventDefault(); addBtn.classList.remove('drag-over');
+        ev.preventDefault();
+        ev.stopPropagation();
+        addBtn.classList.remove('drag-over');
         if (ev.dataTransfer && ev.dataTransfer.files.length > 0) addFiles(ev.dataTransfer.files);
     });
     grid.addEventListener('dragover', function(ev) { ev.preventDefault(); addBtn.classList.add('drag-over'); });
