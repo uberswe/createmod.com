@@ -124,12 +124,20 @@
                 });
             }
             // Mobile top banner
+            var searchKw = 'minecraft,create-mod,search,schematics';
+            var searchTarget = { "pageType": "search" };
             window['nitroAds'].createAd('search-top-mobile', {
+                "refreshTime": 60,
+                "refreshVisibleOnly": true,
+                "renderVisibleOnly": true,
+                "visibleMargin": 300,
                 "sizes": [
                     ["320", "100"],
                     ["320", "50"],
                     ["300", "250"]
                 ],
+                "keywords": searchKw,
+                "targeting": searchTarget,
                 "report": {
                     "enabled": true,
                     "icon": true,
@@ -141,6 +149,7 @@
             // Left sidebar sticky ads
             window['nitroAds'].createAd('search-under', {
                 "refreshTime": 30,
+                "refreshVisibleOnly": true,
                 "format": "sticky-stack",
                 "stickyStackLimit": 15,
                 "stickyStackSpace": 2.5,
@@ -149,6 +158,8 @@
                     ["300", "250"],
                     ["300", "600"]
                 ],
+                "keywords": searchKw,
+                "targeting": searchTarget,
                 "report": {
                     "enabled": true,
                     "icon": true,
@@ -157,8 +168,13 @@
                 }
             });
             window['nitroAds'].createAd('search-adrail-top', {
-                "refreshTime": 30,
+                "refreshTime": 45,
+                "refreshVisibleOnly": true,
+                "renderVisibleOnly": true,
+                "visibleMargin": 300,
                 "sizes": [["300", "250"]],
+                "keywords": searchKw,
+                "targeting": searchTarget,
                 "report": {
                     "enabled": true,
                     "icon": true,
@@ -167,8 +183,13 @@
                 }
             });
             window['nitroAds'].createAd('search-adrail-bottom', {
-                "refreshTime": 30,
+                "refreshTime": 45,
+                "refreshVisibleOnly": true,
+                "renderVisibleOnly": true,
+                "visibleMargin": 300,
                 "sizes": [["300", "600"]],
+                "keywords": searchKw,
+                "targeting": searchTarget,
                 "report": {
                     "enabled": true,
                     "icon": true,

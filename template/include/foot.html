@@ -160,22 +160,29 @@ if (!window._htmxErrorInit) {
 })();
 </script>
 {{ if not .HideOutstream }}
-<!-- Floating outstream video player (bottom-right) — no container div needed;
-     NitroPay creates its own fixed-position wrapper for the floating format.
-     A placeholder div would inherit the sidebar's stacking context (z-index 1040)
-     and render behind it. -->
+<!-- Dedicated video player (bottom-right corner) — higher CPMs ($5-20) vs
+     outstream:auto (~$0.28). NitroPay creates its own fixed-position wrapper.
+     Guarded to prevent re-creation on HTMX navigation. -->
 <script>
-window['nitroAds'].createAd('outstream-player', {
-  "format": "floating",
-  "floating": { "position": "right" },
-  "outstream": "auto",
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-left"
-  }
-});
+if (!window._nitroVideoInit) {
+  window._nitroVideoInit = true;
+  window['nitroAds'].createAd('nitro-video-player', {
+    "format": "video",
+    "video": {
+      "float": "auto",
+      "mobile": "full"
+    },
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-left"
+    },
+    "keywords": "minecraft,create-mod",
+    "targeting": { "pageType": "global" },
+    "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"]
+  });
+}
 </script>
 <!-- Blocker detection prompt (guarded against HTMX re-init) -->
 <script type="text/javascript">
@@ -184,24 +191,29 @@ if(!window._npAbpInit){window._npAbpInit=true;
 }
 </script>
 {{ end }}
-<!-- Mobile anchor ad (all pages) -->
+<!-- Mobile/tablet anchor ad (all pages) — guarded to prevent re-creation on HTMX navigation -->
 <div id="anchor-bottom"></div>
 <script>
-window['nitroAds'].createAd('anchor-bottom', {
-  "format": "anchor-v2",
-  "anchor": "bottom",
-  "anchorBgColor": "rgb(0 0 0 / 80%)",
-  "anchorClose": true,
-  "anchorPersistClose": true,
-  "anchorStickyOffset": 0,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
-});
+if (!window._nitroAnchorInit) {
+  window._nitroAnchorInit = true;
+  window['nitroAds'].createAd('anchor-bottom', {
+    "format": "anchor-v2",
+    "anchor": "bottom",
+    "anchorBgColor": "rgb(0 0 0 / 80%)",
+    "anchorClose": true,
+    "anchorPersistClose": false,
+    "anchorStickyOffset": 0,
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "keywords": "minecraft,create-mod",
+    "targeting": { "pageType": "global" },
+    "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
+  });
+}
 </script>
 </body>
 </html>

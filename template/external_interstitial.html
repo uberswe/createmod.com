@@ -85,6 +85,7 @@ if (window['nitroAds']) {
     window['nitroAds'].createAd(id, {
       "refreshLimit": 10,
       "refreshTime": 30,
+      "refreshVisibleOnly": true,
       "format": "display",
       "sizes": [
         ["300", "600"],
@@ -96,10 +97,14 @@ if (window['nitroAds']) {
         "wording": "Report Ad",
         "position": "top-right"
       },
+      "keywords": "minecraft,create-mod,external",
+      "targeting": { "pageType": "external-interstitial" },
+      "frequencyCap": 300,
       "mediaQuery": "(min-width: 1200px)"
     });
   });
   window['nitroAds'].createAd('extinterstitial-mobile', {
+    "refreshVisibleOnly": true,
     "sizes": [
       ["320", "100"],
       ["320", "50"],
@@ -111,6 +116,9 @@ if (window['nitroAds']) {
       "wording": "Report Ad",
       "position": "top-right"
     },
+    "keywords": "minecraft,create-mod,external",
+    "targeting": { "pageType": "external-interstitial" },
+    "frequencyCap": 300,
     "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
   });
 }

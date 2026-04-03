@@ -261,6 +261,9 @@
                             {{ .Promotion }}
                         </div>
 
+                        <!-- In-content video ad (tablet+) -->
+                        <div id="schematic-video-nc" class="mb-4 d-none d-md-block"></div>
+
                         <!-- Info Datagrid -->
                         <div class="card mb-4">
                             <div class="card-body">
@@ -1186,54 +1189,95 @@ document.addEventListener('htmx:afterRequest', function(evt) {
 
 <!-- Ad Scripts -->
 <script>
-// Narrow ad rail (lg only: 992-1199px)
-window['nitroAds'].createAd('schematic-adrail-lg', {
-  "refreshLimit": 10,
-  "refreshTime": 30,
-  "format": "display",
-  "sizes": [
-    ["160", "600"]
-  ],
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
-});
-// Wide ad rail (xl+: 1200px+)
-window['nitroAds'].createAd('schematic-adrail', {
-  "refreshLimit": 10,
-  "refreshTime": 30,
-  "format": "display",
-  "sizes": [
-    ["300", "600"],
-    ["300", "250"]
-  ],
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-// Mobile ad (below content on smaller screens)
-window['nitroAds'].createAd('schematic-mobile', {
-  "sizes": [
-    ["320", "100"],
-    ["320", "50"],
-    ["300", "250"]
-  ],
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
-});
+(function() {
+  // Build dynamic keywords from schematic metadata
+  var keywords = ['minecraft','create-mod'];
+  {{ range .Schematic.Categories }}keywords.push('{{ .Key }}');{{ end }}
+  {{ range .Schematic.Tags }}keywords.push('{{ .Key }}');{{ end }}
+  var kwString = keywords.join(',');
+  var targeting = {
+    "pageType": "schematic",
+    "gameVersion": "{{ .Schematic.MinecraftVersion }}",
+    "modVersion": "{{ .Schematic.CreatemodVersion }}"
+  };
+
+  // Narrow ad rail (lg only: 992-1199px)
+  window['nitroAds'].createAd('schematic-adrail-lg', {
+    "refreshLimit": 10,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
+    "format": "display",
+    "sizes": [
+      ["160", "600"]
+    ],
+    "keywords": kwString,
+    "targeting": targeting,
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  // Wide ad rail — sticky-stack for long schematic pages (xl+: 1200px+)
+  window['nitroAds'].createAd('schematic-adrail', {
+    "refreshVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 5,
+    "stickyStackSpace": 1.5,
+    "stickyStackOffset": 70,
+    "sizes": [
+      ["300", "250"],
+      ["300", "600"]
+    ],
+    "keywords": kwString,
+    "targeting": targeting,
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  // In-content video (tablet+)
+  window['nitroAds'].createAd('schematic-video-nc', {
+    "format": "video-nc",
+    "keywords": kwString,
+    "targeting": targeting,
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 768px)"
+  });
+  // Mobile ad (below content on smaller screens)
+  window['nitroAds'].createAd('schematic-mobile', {
+    "refreshTime": 60,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
+    "sizes": [
+      ["320", "100"],
+      ["320", "50"],
+      ["300", "250"]
+    ],
+    "keywords": kwString,
+    "targeting": targeting,
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+  });
+})();
 </script>
 
 <!-- Report Modal -->

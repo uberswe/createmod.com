@@ -22,7 +22,7 @@
                 <a id="manual-link-ext" class="btn btn-primary" hx-boost="false" href="{{ SignedOutURL .ExternalURL "download" .Name }}" aria-label="Continue to seller">{{ T .Language "Continue to seller" }}</a>
                 {{else}}
                 <h1 class="card-title">{{ T .Language "Preparing your download..." }}</h1>
-                <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">5</span> {{ T .Language "seconds." }}</p>
+                <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
                 <p id="download-hint">{{ T .Language "If it doesn't, click the button below:" }}</p>
                 <a id="manual-link" class="btn btn-primary" hx-boost="false" href="#" style="display:none" aria-label="Download now">{{ T .Language "Download now" }}</a>
                 <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
@@ -45,7 +45,7 @@
 <script>
 (function(){
   var paid = {{if .Paid}}true{{else}}false{{end}};
-  var seconds = paid ? 10 : 5;
+  var seconds = 10;
   var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
   var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
   var timerId = null;
@@ -116,6 +116,7 @@ if (window['nitroAds']) {
     window['nitroAds'].createAd(id, {
       "refreshLimit": 10,
       "refreshTime": 30,
+      "refreshVisibleOnly": true,
       "format": "display",
       "sizes": [
         ["300", "600"],
@@ -127,10 +128,14 @@ if (window['nitroAds']) {
         "wording": "Report Ad",
         "position": "top-right"
       },
+      "keywords": "minecraft,create-mod,download",
+      "targeting": { "pageType": "download-interstitial" },
+      "frequencyCap": 300,
       "mediaQuery": "(min-width: 1200px)"
     });
   });
   window['nitroAds'].createAd('dlinterstitial-mobile', {
+    "refreshVisibleOnly": true,
     "sizes": [
       ["320", "100"],
       ["320", "50"],
@@ -142,6 +147,9 @@ if (window['nitroAds']) {
       "wording": "Report Ad",
       "position": "top-right"
     },
+    "keywords": "minecraft,create-mod,download",
+    "targeting": { "pageType": "download-interstitial" },
+    "frequencyCap": 300,
     "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
   });
 }
