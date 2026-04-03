@@ -97,8 +97,9 @@ type UploadPublishData struct {
 	MinecraftVersions []models.MinecraftVersion
 	CreatemodVersions []models.CreatemodVersion
 	Tags              []models.SchematicTag
-	AdditionalFiles   []tempUploadFile // extra NBT files (variations/sets)
-	TrustedUser       bool             // true if user has previously approved schematics
+	AdditionalFiles   []tempUploadFile    // extra NBT files (variations/sets)
+	PreUploadedImages []store.TempUploadImage // images uploaded via API
+	TrustedUser       bool                // true if user has previously approved schematics
 }
 
 type UploadPreviewData struct {
@@ -382,21 +383,47 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		// --- Handle featured image ---
 		var featuredFilename string
-		if file, header, fileErr := e.Request.FormFile("featured_image"); fileErr == nil && header != nil {
-			defer func() { _ = file.Close() }()
 
-			if header.Size <= 5<<20 {
-				ext := strings.ToLower(filepath.Ext(header.Filename))
-				allowedImageExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true}
-				if allowedImageExts[ext] {
-					data, readErr := io.ReadAll(file)
+		// Check if featured image is a preloaded temp upload image
+		if preloadedFeatured := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloadedFeatured != "" {
+			// Copy from temp uploads S3 to schematics S3
+			srcKey := s3CollectionTempUploads + "/" + token + "/" + preloadedFeatured
+			if storageSvc != nil {
+				reader, dlErr := storageSvc.DownloadRaw(ctx, srcKey)
+				if dlErr == nil {
+					imgData, readErr := io.ReadAll(reader)
+					_ = reader.Close()
 					if readErr == nil {
-						data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
-						if storageSvc != nil {
-							if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
-								slog.Error("make-public: failed to upload featured image", "error", uploadErr)
-							} else {
-								featuredFilename = filename
+						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, preloadedFeatured, imgData, "image/webp"); uploadErr != nil {
+							slog.Error("make-public: failed to copy preloaded featured image", "error", uploadErr)
+						} else {
+							featuredFilename = preloadedFeatured
+						}
+					}
+				} else {
+					slog.Error("make-public: failed to download preloaded featured image", "error", dlErr, "key", srcKey)
+				}
+			}
+		}
+
+		// Fall back to uploaded file if no preloaded featured image
+		if featuredFilename == "" {
+			if file, header, fileErr := e.Request.FormFile("featured_image"); fileErr == nil && header != nil {
+				defer func() { _ = file.Close() }()
+
+				if header.Size <= 5<<20 {
+					ext := strings.ToLower(filepath.Ext(header.Filename))
+					allowedImageExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true}
+					if allowedImageExts[ext] {
+						data, readErr := io.ReadAll(file)
+						if readErr == nil {
+							data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
+							if storageSvc != nil {
+								if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
+									slog.Error("make-public: failed to upload featured image", "error", uploadErr)
+								} else {
+									featuredFilename = filename
+								}
 							}
 						}
 					}
@@ -406,6 +433,36 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		// --- Handle gallery images ---
 		galleryFilenames := []string{}
+
+		// Copy preloaded gallery images from temp uploads S3
+		if preloadedGallery := e.Request.Form["preloaded_images"]; len(preloadedGallery) > 0 {
+			for _, filename := range preloadedGallery {
+				filename = strings.TrimSpace(filename)
+				if filename == "" {
+					continue
+				}
+				srcKey := s3CollectionTempUploads + "/" + token + "/" + filename
+				if storageSvc != nil {
+					reader, dlErr := storageSvc.DownloadRaw(ctx, srcKey)
+					if dlErr != nil {
+						slog.Error("make-public: failed to download preloaded gallery image", "error", dlErr, "key", srcKey)
+						continue
+					}
+					imgData, readErr := io.ReadAll(reader)
+					_ = reader.Close()
+					if readErr != nil {
+						continue
+					}
+					if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, imgData, "image/webp"); uploadErr != nil {
+						slog.Error("make-public: failed to copy preloaded gallery image", "error", uploadErr)
+						continue
+					}
+					galleryFilenames = append(galleryFilenames, filename)
+				}
+			}
+		}
+
+		// Handle new file uploads for gallery
 		if e.Request.MultipartForm != nil && e.Request.MultipartForm.File != nil {
 			if galleryFiles, ok := e.Request.MultipartForm.File["gallery"]; ok && len(galleryFiles) > 0 {
 				for _, fh := range galleryFiles {
@@ -660,6 +717,15 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if entry.NbtS3Key != "" && storageSvc != nil {
 			_ = storageSvc.DeleteRaw(ctx, entry.NbtS3Key)
 		}
+		// Delete temp upload images from S3 and DB
+		if tempImages, imgErr := appStore.TempUploadImages.ListByToken(ctx, token); imgErr == nil {
+			for _, img := range tempImages {
+				if img.S3Key != "" && storageSvc != nil {
+					_ = storageSvc.DeleteRaw(ctx, img.S3Key)
+				}
+			}
+		}
+		_ = appStore.TempUploadImages.DeleteByToken(ctx, token)
 		// Delete temp upload file records
 		_ = appStore.TempUploadFiles.DeleteByToken(ctx, token)
 		// Delete temp upload record
@@ -803,6 +869,12 @@ func UploadDownloadHandler(appStore *store.Store, storageSvc *storage.Service) f
 	}
 }
 
+// uploadImageResponse describes a single image in the upload API response.
+type uploadImageResponse struct {
+	Filename string `json:"filename"`
+	URL      string `json:"url"`
+}
+
 // uploadNBTResponse is the JSON response for a successful NBT upload.
 type uploadNBTResponse struct {
 	Token    string `json:"token"`
@@ -819,6 +891,7 @@ type uploadNBTResponse struct {
 	BlockCount int                  `json:"block_count"`
 	Materials  []nbtparser.Material `json:"materials"`
 	Mods       []string             `json:"mods"`
+	Images     []uploadImageResponse `json:"images,omitempty"`
 }
 
 // UploadNBTHandler validates an uploaded .nbt file, parses stats, persists to

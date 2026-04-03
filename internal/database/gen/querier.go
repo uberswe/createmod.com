@@ -35,6 +35,7 @@ type Querier interface {
 	CountSchematicsByAuthorAll(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountSoftDeletedByAuthor(ctx context.Context, authorID *string) (int64, error)
+	CountTempUploadImagesByToken(ctx context.Context, token string) (int32, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)
@@ -62,6 +63,7 @@ type Querier interface {
 	CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error)
 	CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (CreateTempUploadRow, error)
 	CreateTempUploadFile(ctx context.Context, arg CreateTempUploadFileParams) (TempUploadFile, error)
+	CreateTempUploadImage(ctx context.Context, arg CreateTempUploadImageParams) (TempUploadImage, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) error
 	CreateUserWebhook(ctx context.Context, arg CreateUserWebhookParams) (UserWebhook, error)
@@ -82,6 +84,8 @@ type Querier interface {
 	DeleteTempUpload(ctx context.Context, token string) error
 	DeleteTempUploadFile(ctx context.Context, id string) error
 	DeleteTempUploadFilesByToken(ctx context.Context, token string) error
+	DeleteTempUploadImage(ctx context.Context, id string) error
+	DeleteTempUploadImagesByToken(ctx context.Context, token string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
 	DeleteUserWebhook(ctx context.Context, userID string) error
 	FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatingCountBySchematicRow, error)
@@ -202,6 +206,7 @@ type Querier interface {
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)
 	ListTempUploadFilesByToken(ctx context.Context, token string) ([]TempUploadFile, error)
+	ListTempUploadImagesByToken(ctx context.Context, token string) ([]TempUploadImage, error)
 	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
 	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)

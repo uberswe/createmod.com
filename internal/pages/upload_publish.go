@@ -38,6 +38,9 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 		storeFiles, _ := appStore.TempUploadFiles.ListByToken(e.Request.Context(), token)
 		additionalFiles := mapStoreTempUploadFiles(storeFiles)
 
+		// Load pre-uploaded images from store
+		preUploadedImages, _ := appStore.TempUploadImages.ListByToken(e.Request.Context(), token)
+
 		d := UploadPublishData{}
 		d.Populate(e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Publish"))
@@ -58,6 +61,7 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 		d.MinecraftVersions = allMinecraftVersionsFromStore(appStore)
 		d.CreatemodVersions = allCreatemodVersionsFromStore(appStore)
 		d.AdditionalFiles = additionalFiles
+		d.PreUploadedImages = preUploadedImages
 
 		// Check if user qualifies as trusted: at least 3 previously
 		// approved schematics and zero soft-deleted schematics.
