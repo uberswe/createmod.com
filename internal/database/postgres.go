@@ -2568,8 +2568,9 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		OutgoingClicks: &OutgoingClickStoreImpl{q: q},
 		Contact:        &ContactStoreImpl{q: q},
 		Stats:           &StatsStoreImpl{q: q},
-		TempUploads:     &TempUploadStoreImpl{q: q},
-		TempUploadFiles: &TempUploadFileStoreImpl{q: q},
+		TempUploads:      &TempUploadStoreImpl{q: q},
+		TempUploadFiles:  &TempUploadFileStoreImpl{q: q},
+		TempUploadImages: &TempUploadImageStoreImpl{q: q},
 		NBTHashes:       &NBTHashStoreImpl{q: q},
 		DownloadTokens:  &DownloadTokenStoreImpl{q: q},
 		SchematicFiles:  &SchematicFileStoreImpl{q: q},
@@ -2715,8 +2716,9 @@ var (
 	_ store.OutgoingClickStore = (*OutgoingClickStoreImpl)(nil)
 	_ store.ContactStore       = (*ContactStoreImpl)(nil)
 	_ store.StatsStore          = (*StatsStoreImpl)(nil)
-	_ store.TempUploadStore     = (*TempUploadStoreImpl)(nil)
-	_ store.TempUploadFileStore = (*TempUploadFileStoreImpl)(nil)
+	_ store.TempUploadStore      = (*TempUploadStoreImpl)(nil)
+	_ store.TempUploadFileStore  = (*TempUploadFileStoreImpl)(nil)
+	_ store.TempUploadImageStore = (*TempUploadImageStoreImpl)(nil)
 	_ store.DownloadTokenStore  = (*DownloadTokenStoreImpl)(nil)
 	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
 	_ store.WebhookStore             = (*WebhookStoreImpl)(nil)
@@ -3006,6 +3008,61 @@ func (s *TempUploadFileStoreImpl) Delete(ctx context.Context, id string) error {
 
 func (s *TempUploadFileStoreImpl) DeleteByToken(ctx context.Context, token string) error {
 	return s.q.DeleteTempUploadFilesByToken(ctx, token)
+}
+
+// --------------------------------------------------------------------------
+// TempUploadImage Store Implementation
+// --------------------------------------------------------------------------
+
+type TempUploadImageStoreImpl struct{ q *db.Queries }
+
+func (s *TempUploadImageStoreImpl) Create(ctx context.Context, img *store.TempUploadImage) error {
+	row, err := s.q.CreateTempUploadImage(ctx, db.CreateTempUploadImageParams{
+		Token:     img.Token,
+		Filename:  img.Filename,
+		Size:      img.Size,
+		S3Key:     img.S3Key,
+		SortOrder: int32(img.SortOrder),
+	})
+	if err != nil {
+		return err
+	}
+	img.ID = row.ID
+	img.Created = row.Created
+	return nil
+}
+
+func (s *TempUploadImageStoreImpl) ListByToken(ctx context.Context, token string) ([]store.TempUploadImage, error) {
+	rows, err := s.q.ListTempUploadImagesByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TempUploadImage, len(rows))
+	for i, r := range rows {
+		result[i] = store.TempUploadImage{
+			ID:        r.ID,
+			Token:     r.Token,
+			Filename:  r.Filename,
+			Size:      r.Size,
+			S3Key:     r.S3Key,
+			SortOrder: int(r.SortOrder),
+			Created:   r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (s *TempUploadImageStoreImpl) Delete(ctx context.Context, id string) error {
+	return s.q.DeleteTempUploadImage(ctx, id)
+}
+
+func (s *TempUploadImageStoreImpl) DeleteByToken(ctx context.Context, token string) error {
+	return s.q.DeleteTempUploadImagesByToken(ctx, token)
+}
+
+func (s *TempUploadImageStoreImpl) CountByToken(ctx context.Context, token string) (int, error) {
+	count, err := s.q.CountTempUploadImagesByToken(ctx, token)
+	return int(count), err
 }
 
 // --------------------------------------------------------------------------

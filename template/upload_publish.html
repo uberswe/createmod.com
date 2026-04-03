@@ -406,12 +406,32 @@ document.addEventListener("DOMContentLoaded", function () {
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     // --- Image upload state ---
-    var uploadedImages = []; // {file: File, url: string (object URL)}
+    // Each entry: {file: File|null, url: string, preloaded: bool, filename: string}
+    var uploadedImages = [];
     var featuredIndex = 0;
     var grid = document.getElementById('image-upload-grid');
     var addBtn = document.getElementById('image-upload-add');
     var fileInput = document.getElementById('image-file-input');
     var maxImages = 11; // 1 featured + 10 gallery
+
+    // Seed with pre-uploaded images from the API (if any)
+    {{ if .PreUploadedImages }}
+    (function() {
+        var preloaded = [
+            {{ range .PreUploadedImages }}
+            { filename: "{{ .Filename }}", url: "/api/files/pbc_temp_uploads/{{ $.Token }}/{{ .Filename }}" },
+            {{ end }}
+        ];
+        for (var i = 0; i < preloaded.length; i++) {
+            uploadedImages.push({
+                file: null,
+                url: preloaded[i].url,
+                preloaded: true,
+                filename: preloaded[i].filename
+            });
+        }
+    })();
+    {{ end }}
 
     function renderImages() {
         // Remove all image items (keep the add button)
@@ -449,7 +469,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 removeBtn.title = 'Remove image';
                 removeBtn.addEventListener('click', function(ev) {
                     ev.stopPropagation();
-                    URL.revokeObjectURL(uploadedImages[idx].url);
+                    if (!uploadedImages[idx].preloaded) {
+                        URL.revokeObjectURL(uploadedImages[idx].url);
+                    }
                     uploadedImages.splice(idx, 1);
                     if (featuredIndex >= uploadedImages.length) featuredIndex = 0;
                     else if (featuredIndex > idx) featuredIndex--;
@@ -482,7 +504,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (typeof showToast === 'function') showToast('Image "' + file.name + '" exceeds 5 MB limit.', 'warning');
                 continue;
             }
-            uploadedImages.push({ file: file, url: URL.createObjectURL(file) });
+            uploadedImages.push({ file: file, url: URL.createObjectURL(file), preloaded: false, filename: '' });
         }
         renderImages();
     }
@@ -500,6 +522,7 @@ document.addEventListener("DOMContentLoaded", function() {
     addBtn.addEventListener('dragleave', function() { addBtn.classList.remove('drag-over'); });
     addBtn.addEventListener('drop', function(ev) {
         ev.preventDefault();
+        ev.stopPropagation();
         addBtn.classList.remove('drag-over');
         if (ev.dataTransfer && ev.dataTransfer.files.length > 0) {
             addFiles(ev.dataTransfer.files);
@@ -518,6 +541,11 @@ document.addEventListener("DOMContentLoaded", function() {
             addFiles(ev.dataTransfer.files);
         }
     });
+
+    // Render pre-loaded images (if any were seeded above)
+    if (uploadedImages.length > 0) {
+        renderImages();
+    }
 
     // Schedule toggle
     document.getElementById('schedule-toggle').addEventListener('change', function() {
@@ -562,14 +590,24 @@ document.addEventListener("DOMContentLoaded", function() {
         var token = document.getElementById('publish-token').value;
         formData.append("upload_token", token);
 
-        // Append featured image (the one at featuredIndex)
+        // Append featured image
         if (uploadedImages.length > 0) {
-            formData.append("featured_image", uploadedImages[featuredIndex].file);
+            var feat = uploadedImages[featuredIndex];
+            if (feat.preloaded) {
+                formData.append("featured_image_preloaded", feat.filename);
+            } else {
+                formData.append("featured_image", feat.file);
+            }
         }
         // Append gallery images (all others)
         for (var j = 0; j < uploadedImages.length; j++) {
             if (j !== featuredIndex) {
-                formData.append("gallery", uploadedImages[j].file);
+                var img = uploadedImages[j];
+                if (img.preloaded) {
+                    formData.append("preloaded_images", img.filename);
+                } else {
+                    formData.append("gallery", img.file);
+                }
             }
         }
 

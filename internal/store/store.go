@@ -793,6 +793,26 @@ type TempUploadFileStore interface {
 	DeleteByToken(ctx context.Context, token string) error
 }
 
+// TempUploadImage represents an image file attached to a temp upload.
+type TempUploadImage struct {
+	ID        string
+	Token     string
+	Filename  string
+	Size      int64
+	S3Key     string
+	SortOrder int
+	Created   time.Time
+}
+
+// TempUploadImageStore manages images attached to temp uploads.
+type TempUploadImageStore interface {
+	Create(ctx context.Context, img *TempUploadImage) error
+	ListByToken(ctx context.Context, token string) ([]TempUploadImage, error)
+	Delete(ctx context.Context, id string) error
+	DeleteByToken(ctx context.Context, token string) error
+	CountByToken(ctx context.Context, token string) (int, error)
+}
+
 // SchematicVariation represents a saved block replacement configuration for a schematic.
 type SchematicVariation struct {
 	ID           string
@@ -841,6 +861,7 @@ type Store struct {
 	Stats               StatsStore
 	TempUploads         TempUploadStore
 	TempUploadFiles     TempUploadFileStore
+	TempUploadImages    TempUploadImageStore
 	NBTHashes           NBTHashStore
 	DownloadTokens      DownloadTokenStore
 	SchematicFiles      SchematicFileStore

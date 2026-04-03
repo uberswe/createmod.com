@@ -41,7 +41,7 @@ func (w *TempUploadCleanupWorker) Work(ctx context.Context, job *river.Job[TempU
 			break
 		}
 
-		// Delete S3 files and associated temp_upload_files for each upload
+		// Delete S3 files and associated temp_upload_files/images for each upload
 		for _, u := range uploads {
 			// Delete associated temp upload files from S3
 			if w.deps.Storage != nil {
@@ -54,6 +54,18 @@ func (w *TempUploadCleanupWorker) Work(ctx context.Context, job *river.Job[TempU
 			}
 			// Delete temp_upload_files DB records
 			_ = w.deps.Store.TempUploadFiles.DeleteByToken(ctx, u.Token)
+
+			// Delete associated temp upload images from S3
+			if w.deps.Storage != nil {
+				images, _ := w.deps.Store.TempUploadImages.ListByToken(ctx, u.Token)
+				for _, img := range images {
+					if img.S3Key != "" {
+						_ = w.deps.Storage.DeleteRaw(ctx, img.S3Key)
+					}
+				}
+			}
+			// Delete temp_upload_images DB records
+			_ = w.deps.Store.TempUploadImages.DeleteByToken(ctx, u.Token)
 
 			// Delete the main upload's S3 files
 			if w.deps.Storage != nil {
