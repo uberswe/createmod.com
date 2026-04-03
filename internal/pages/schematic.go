@@ -324,6 +324,10 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			}
 		}
 
+		// Re-derive the OG description from the (possibly translated) content
+		// so that meta tags match the language of the page.
+		d.Description = strip.StripTags(d.Schematic.Content)
+
 		// If the schematic has no featured image but has a YouTube video,
 		// attempt to recover the thumbnail in the background.
 		if s.FeaturedImage == "" && s.Video != "" && storageSvc != nil {
