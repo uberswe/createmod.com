@@ -633,7 +633,10 @@
 // Narrow ad rail (lg only: 992-1199px)
 window['nitroAds'].createAd('modify-adrail-lg', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["160", "600"]
@@ -644,12 +647,17 @@ window['nitroAds'].createAd('modify-adrail-lg', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,modify,blocks",
+  "targeting": { "pageType": "modify" },
   "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
 });
 // Wide ad rail (xl+: 1200px+)
 window['nitroAds'].createAd('modify-adrail', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["300", "600"],
@@ -661,10 +669,16 @@ window['nitroAds'].createAd('modify-adrail', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,modify,blocks",
+  "targeting": { "pageType": "modify" },
   "mediaQuery": "(min-width: 1200px)"
 });
 // Mobile ad (below content on smaller screens)
 window['nitroAds'].createAd('modify-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "sizes": [
     ["320", "100"],
     ["320", "50"],
@@ -676,6 +690,8 @@ window['nitroAds'].createAd('modify-mobile', {
     "wording": "Report Ad",
     "position": "top-right"
   },
+  "keywords": "minecraft,create-mod,modify,blocks",
+  "targeting": { "pageType": "modify" },
   "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
 });
 </script>

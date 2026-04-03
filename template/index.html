@@ -96,12 +96,17 @@
 <script>
 window['nitroAds'].createAd('index-adrail', {
   "refreshLimit": 10,
-  "refreshTime": 30,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "format": "display",
   "sizes": [
     ["300", "600"],
     ["300", "250"]
   ],
+  "keywords": "minecraft,create-mod,schematics,builds",
+  "targeting": { "pageType": "home" },
   "report": {
     "enabled": true,
     "icon": true,
@@ -111,11 +116,17 @@ window['nitroAds'].createAd('index-adrail', {
   "mediaQuery": "(min-width: 1200px)"
 });
 window['nitroAds'].createAd('index-mobile-mid', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
   "sizes": [
     ["320", "100"],
     ["320", "50"],
     ["300", "250"]
   ],
+  "keywords": "minecraft,create-mod,schematics,builds",
+  "targeting": { "pageType": "home" },
   "report": {
     "enabled": true,
     "icon": true,
