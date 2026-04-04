@@ -567,16 +567,18 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!text) return "A schematic must have a description";
         var words = text.split(/\s+/).filter(function(w) { return w.length > 0; });
         if (words.length < 5) return "Please write at least 5 words describing your schematic";
-        for (var i = 0; i < words.length; i++) {
-            if (words[i].length > 30) return "Your description contains invalid text. Please write a real description.";
+        if (text.length <= 200) {
+            for (var i = 0; i < words.length; i++) {
+                if (words[i].length > 30) return "Your description contains invalid text. Please write a real description.";
+            }
+            var freq = {};
+            for (var i = 0; i < words.length; i++) {
+                var lw = words[i].toLowerCase();
+                freq[lw] = (freq[lw] || 0) + 1;
+            }
+            if (Object.keys(freq).length === 1) return "Please write a real description of your schematic";
+            if (Object.keys(freq).length < words.length * 0.15) return "Please write a more detailed description of your schematic";
         }
-        var freq = {};
-        for (var i = 0; i < words.length; i++) {
-            var lw = words[i].toLowerCase();
-            freq[lw] = (freq[lw] || 0) + 1;
-        }
-        if (Object.keys(freq).length === 1) return "Please write a real description of your schematic";
-        if (Object.keys(freq).length < words.length * 0.15) return "Please write a more detailed description of your schematic";
         return null;
     }
 
