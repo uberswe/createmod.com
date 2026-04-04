@@ -29,5 +29,8 @@ func New() *Service {
 }
 
 func (s *Service) RandomPromotion() template.HTML {
+	if len(s.promotions) == 0 {
+		return ""
+	}
 	return s.promotions[rand.Intn(len(s.promotions))]
 }
