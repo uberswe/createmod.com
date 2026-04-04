@@ -72,6 +72,11 @@ func Test_validateDescription(t *testing.T) {
 			input:   "A schematic that produces all the dyes Since I couldnt find a schematic that processed all the dyes in one schematic i decided to upload my own Items process all in one chunk",
 			wantErr: false,
 		},
+		{
+			name:    "long description skips gibberish checks",
+			input:   "This is a very long and detailed description of my schematic that goes well over the two hundred character limit so the gibberish detector should not run and this should pass even with a superlongwordthatexceedsthirtychars inside it somewhere",
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
