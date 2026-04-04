@@ -257,9 +257,11 @@
                         </div>
 
                         <!-- Promotion -->
+                        {{ if .Promotion }}
                         <div class="card mb-4">
                             {{ .Promotion }}
                         </div>
+                        {{ end }}
 
                         <!-- In-content video ad (tablet+) -->
                         <div id="schematic-video-nc" class="mb-4 d-none d-md-block"></div>
