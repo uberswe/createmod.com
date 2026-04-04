@@ -376,10 +376,8 @@ func SchematicUpdateHandler(
 				slog.Warn("schematic update: failed to set categories", "error", err, "id", schematicID)
 			}
 		}
-		if len(tags) > 0 {
-			if err := appStore.Schematics.SetTags(ctx, schematicID, tags); err != nil {
-				slog.Warn("schematic update: failed to set tags", "error", err, "id", schematicID)
-			}
+		if err := appStore.Schematics.SetTags(ctx, schematicID, tags); err != nil {
+			slog.Warn("schematic update: failed to set tags", "error", err, "id", schematicID)
 		}
 
 		// --- Async image moderation for any newly uploaded images ---

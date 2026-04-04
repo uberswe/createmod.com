@@ -73,7 +73,10 @@ func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry
 			d.MinecraftVersionId = *storeSchematic.MinecraftVersionID
 		}
 
+		// Build tag list with selected state. Start from all public tags.
+		publicKeySet := make(map[string]bool, len(d.Tags))
 		for _, t := range d.Tags {
+			publicKeySet[t.Key] = true
 			selected := false
 			for _, t2 := range d.Schematic.Tags {
 				if t.Key == t2.Key {
@@ -84,6 +87,15 @@ func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry
 				SchematicTag: t,
 				Selected:     selected,
 			})
+		}
+		// Include any schematic tags not already in the public list (e.g. pending tags).
+		for _, t := range d.Schematic.Tags {
+			if !publicKeySet[t.Key] {
+				d.TagsWithSelected = append(d.TagsWithSelected, SchematicTagWithSelected{
+					SchematicTag: t,
+					Selected:     true,
+				})
+			}
 		}
 		html, err := registry.LoadFiles(editSchematicTemplates...).Render(d)
 		if err != nil {
