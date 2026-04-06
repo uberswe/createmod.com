@@ -32,7 +32,6 @@ func UserSettingsHandler(registry *server.Registry, cacheService *cache.Service,
 
 		d := UserSettingsData{}
 		d.Populate(e)
-		d.HideOutstream = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"))
 		d.Title = i18n.T(d.Language, "Settings")
 		d.Description = i18n.T(d.Language, "page.usersettings.description")

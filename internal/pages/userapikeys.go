@@ -28,7 +28,6 @@ func UserAPIKeysHandler(registry *server.Registry, cacheService *cache.Service, 
 
 		d := UserAPIKeysData{}
 		d.Populate(e)
-		d.HideOutstream = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "API Keys"))
 		d.Title = i18n.T(d.Language, "API Keys")
 		d.Description = i18n.T(d.Language, "page.userapikeys.description")

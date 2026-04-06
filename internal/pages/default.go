@@ -51,7 +51,6 @@ type DefaultData struct {
 	NextPageURL     string
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
-	HideOutstream      bool
 	AdminSection       string
 }
 

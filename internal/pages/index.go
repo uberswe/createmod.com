@@ -205,7 +205,6 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		for i := range d.CategorySections {
 			translateSchematicTitles(d.CategorySections[i].Items, translationService, cacheService, d.Language)
 		}
-		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.index.title")
 		d.Description = i18n.T(d.Language, "page.index.description")
 		d.Slug = "/"

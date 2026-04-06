@@ -55,7 +55,6 @@ func UserPointsHandler(registry *server.Registry, cacheService *cache.Service, a
 
 		d := UserPointsData{}
 		d.Populate(e)
-		d.HideOutstream = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Points"))
 		d.Title = i18n.T(d.Language, "Points")
 		d.Description = i18n.T(d.Language, "page.usergamification.description")

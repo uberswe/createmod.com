@@ -21,7 +21,6 @@ func LoginHandler(registry *server.Registry, appStore *store.Store) func(e *serv
 	return func(e *server.RequestEvent) error {
 		d := LoginData{}
 		d.Populate(e)
-		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "Login")
 		d.Description = i18n.T(d.Language, "page.login.description")
 		d.Slug = "/login"

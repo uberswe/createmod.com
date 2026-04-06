@@ -34,7 +34,6 @@ func RegisterHandler(registry *server.Registry, appStore *store.Store) func(e *s
 	return func(e *server.RequestEvent) error {
 		d := registerData{}
 		d.Populate(e)
-		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.register.title")
 		d.Description = i18n.T(d.Language, "page.register.description")
 		d.Slug = "/register"

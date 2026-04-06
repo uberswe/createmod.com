@@ -35,7 +35,6 @@ func BlacklistRequestHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 		d := BlacklistRequestData{}
 		d.Populate(e)
-		d.HideOutstream = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Blacklist Schematics"))
 		d.Title = i18n.T(d.Language, "Blacklist Schematics")
 		d.Description = i18n.T(d.Language, "page.blacklist.description")
