@@ -159,6 +159,7 @@ if (!window._htmxErrorInit) {
   }
 })();
 </script>
+{{ if not .HideOutstream }}
 <!-- Video player (bottom-right corner, floats on scroll).
      Guarded to prevent re-creation on HTMX navigation. -->
 <div id="nitro-video-player"></div>
@@ -183,6 +184,7 @@ if (!window._nitroVideoInit) {
   });
 }
 </script>
+{{ end }}
 <!-- Blocker detection prompt (guarded against HTMX re-init) -->
 <script type="text/javascript">
 if(!window._npAbpInit){window._npAbpInit=true;

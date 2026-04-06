@@ -50,6 +50,7 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 		d.Slug = "/u/" + token + "/publish"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.HideOutstream = true
 		d.Token = token
 		d.Filename = entry.Filename
 		d.Size = entry.Size

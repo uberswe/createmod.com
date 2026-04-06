@@ -524,6 +524,7 @@ func UploadModifyHandler(registry *server.Registry, cacheService *cache.Service,
 		}
 		d.Populate(e)
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "modify_blocks") + " - " + entry.Filename
 		d.Description = i18n.T(d.Language, "modify_blocks_description")
 		d.Breadcrumbs = NewBreadcrumbs(d.Language,
