@@ -830,7 +830,7 @@ var cspHeader = strings.Join([]string{
 	"frame-src https:",
 	"media-src 'self' https:",
 	"object-src 'none'",
-	"base-uri 'self'",
+	"base-uri 'self' https:",
 	"form-action 'self'",
 	"frame-ancestors 'self'",
 }, "; ")

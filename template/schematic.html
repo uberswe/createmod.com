@@ -263,8 +263,8 @@
                         </div>
                         {{ end }}
 
-                        <!-- In-content video ad (tablet+) -->
-                        <div id="schematic-video-nc" class="mb-4 d-none d-md-block"></div>
+                        <!-- In-content display ad (tablet+) -->
+                        <div id="schematic-incontent" class="mb-4 d-none d-md-block"></div>
 
                         <!-- Info Datagrid -->
                         <div class="card mb-4">
@@ -1245,9 +1245,16 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 1200px)"
   });
-  // In-content video (tablet+)
-  window['nitroAds'].createAd('schematic-video-nc', {
-    "format": "video-nc",
+  // In-content display ad (tablet+)
+  window['nitroAds'].createAd('schematic-incontent', {
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
+    "format": "display",
+    "sizes": [
+      ["300", "250"],
+      ["728", "90"]
+    ],
     "keywords": kwString,
     "targeting": targeting,
     "report": {
