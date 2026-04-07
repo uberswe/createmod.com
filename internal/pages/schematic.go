@@ -155,7 +155,14 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 		// Non-owners (and non-admins) cannot view non-public schematics
 		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
-			return e.NotFoundError("Schematic not found", nil)
+			nd := DefaultData{}
+			nd.Populate(e)
+			nd.Title = i18n.T(nd.Language, "Page Not Found")
+			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
+			if err != nil {
+				return err
+			}
+			return e.HTML(http.StatusNotFound, html)
 		}
 		// Show moderation banner to the author for non-public states
 		if d.IsAuthor && !store.IsPublicState(s.ModerationState) {
