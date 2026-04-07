@@ -11,7 +11,7 @@ import (
 	"createmod/internal/moderation"
 	"createmod/internal/outurl"
 	"createmod/internal/pages"
-	"createmod/internal/promotion"
+
 	"createmod/internal/ratelimit"
 	"createmod/internal/search"
 	"createmod/internal/server"
@@ -103,7 +103,6 @@ type RegisterParams struct {
 }
 
 func Register(p RegisterParams) chi.Router {
-	promotionService := promotion.New()
 	registry := server.NewRegistry()
 
 	assetVer := computeAssetVersion()
@@ -462,7 +461,7 @@ func Register(p RegisterParams) chi.Router {
 	// Schematics
 	r.Get("/my-schematics", Adapt(pages.MySchematicsHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/schematics", Adapt(pages.SchematicsHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
-	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, promotionService, p.DiscordService, p.TranslationService, p.AppStore, p.StorageService, webhookSecret)))
+	r.Get("/schematics/{name}", Adapt(pages.SchematicHandler(p.SearchEngine, p.CacheService, registry, p.DiscordService, p.TranslationService, p.AppStore, p.StorageService, webhookSecret)))
 	// Schematic RSS feed (comments)
 	r.Get("/schematics/{name}/feed", Adapt(pages.SchematicFeedHandler(p.AppStore, p.CacheService)))
 	// Redirect legacy /schematics/{name}/page/N to the schematic itself

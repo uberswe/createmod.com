@@ -7,7 +7,7 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/models"
 	"createmod/internal/nbtparser"
-	"createmod/internal/promotion"
+
 	"createmod/internal/search"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -55,7 +55,7 @@ type SchematicData struct {
 	IsAuthor        bool
 	FromAuthor      []models.Schematic
 	Similar         []models.Schematic
-	Promotion       template.HTML
+
 	Versions        []models.SchematicVersion
 	HasVersions     bool
 	UserCollections []CollectionOption
@@ -91,7 +91,7 @@ type ModInfo struct {
 	IconURL   string
 }
 
-func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, promotionService *promotion.Service, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, storageSvc *storage.Service, webhookSecret string) func(e *server.RequestEvent) error {
+func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, storageSvc *storage.Service, webhookSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
@@ -219,7 +219,6 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		if isScheduled && d.IsAuthor {
 			d.ScheduledFor = s.ScheduledAt
 		}
-		d.Promotion = promotionService.RandomPromotion()
 
 		// Parse materials from stored JSON
 		if s.Materials != nil {
