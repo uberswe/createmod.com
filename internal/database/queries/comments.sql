@@ -25,5 +25,8 @@ UPDATE comments SET approved = true WHERE id = $1;
 -- name: DeleteComment :exec
 DELETE FROM comments WHERE id = $1;
 
+-- name: DisapproveComment :exec
+UPDATE comments SET approved = false WHERE id = $1;
+
 -- name: CountUserComments :one
 SELECT COUNT(*) FROM comments WHERE author_id = $1 AND approved = true;

@@ -1278,6 +1278,10 @@ func (cs *CommentStoreImpl) Approve(ctx context.Context, id string) error {
 	return cs.q.ApproveComment(ctx, id)
 }
 
+func (cs *CommentStoreImpl) Disapprove(ctx context.Context, id string) error {
+	return cs.q.DisapproveComment(ctx, id)
+}
+
 func (cs *CommentStoreImpl) Delete(ctx context.Context, id string) error {
 	return cs.q.DeleteComment(ctx, id)
 }
@@ -1777,6 +1781,64 @@ func (ts *TranslationStoreImpl) UpsertCollectionTranslation(ctx context.Context,
 	return err
 }
 
+func (ts *TranslationStoreImpl) GetCommentTranslation(ctx context.Context, commentID, lang string) (*store.CommentTranslation, error) {
+	row, err := ts.q.GetCommentTranslation(ctx, db.GetCommentTranslationParams{
+		CommentID: commentID,
+		Language:  lang,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.CommentTranslation{
+		ID:        row.ID,
+		CommentID: row.CommentID,
+		Language:  row.Language,
+		Content:   row.Content,
+		Created:   row.Created,
+		Updated:   row.Updated,
+	}, nil
+}
+
+func (ts *TranslationStoreImpl) UpsertCommentTranslation(ctx context.Context, commentID string, t *store.CommentTranslation) error {
+	if t.ID == "" {
+		t.ID = generateID()
+	}
+	_, err := ts.q.UpsertCommentTranslation(ctx, db.UpsertCommentTranslationParams{
+		ID:        t.ID,
+		CommentID: commentID,
+		Language:  t.Language,
+		Content:   t.Content,
+	})
+	return err
+}
+
+func (ts *TranslationStoreImpl) ListCommentsWithoutTranslation(ctx context.Context, lang string, limit int) ([]store.Comment, error) {
+	rows, err := ts.q.ListCommentsWithoutTranslation(ctx, db.ListCommentsWithoutTranslationParams{
+		Language: lang,
+		Limit:    int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Comment, len(rows))
+	for i, r := range rows {
+		result[i] = store.Comment{
+			ID:          r.ID,
+			AuthorID:    r.AuthorID,
+			SchematicID: r.SchematicID,
+			ParentID:    r.ParentID,
+			Content:     r.Content,
+			Published:   fromPgTimestamptz(r.Published),
+			Approved:    r.Approved,
+			Type:        r.Type,
+			Karma:       int(r.Karma),
+			Created:     r.Created,
+			Updated:     r.Updated,
+		}
+	}
+	return result, nil
+}
+
 // ViewRatingStoreImpl implements store.ViewRatingStore.
 type ViewRatingStoreImpl struct{ q *db.Queries }
 
@@ -2153,6 +2215,10 @@ func (rs *ReportStoreImpl) DeleteByTarget(ctx context.Context, targetType, targe
 		TargetType: targetType,
 		TargetID:   targetID,
 	})
+}
+
+func (rs *ReportStoreImpl) CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID string) (int64, error) {
+	return rs.q.CountUnresolvedCommentReportsByAuthor(ctx, &authorID)
 }
 
 // ModMetadataStoreImpl implements store.ModMetadataStore.

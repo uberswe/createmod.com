@@ -88,6 +88,15 @@ type Comment struct {
 	Updated     time.Time          `json:"updated"`
 }
 
+type CommentTranslation struct {
+	ID        string    `json:"id"`
+	CommentID string    `json:"comment_id"`
+	Language  string    `json:"language"`
+	Content   string    `json:"content"`
+	Created   time.Time `json:"created"`
+	Updated   time.Time `json:"updated"`
+}
+
 type ContactFormSubmission struct {
 	ID       string             `json:"id"`
 	AuthorID *string            `json:"author_id"`

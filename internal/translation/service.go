@@ -317,9 +317,150 @@ func (s *Service) BackfillMissingTranslations() {
 
 	slog.Info("BackfillMissingTranslations completed", "processed", processed)
 
-	// Also backfill guides and collections
+	// Also backfill guides, collections, and comments
 	s.BackfillGuideTranslations()
 	s.BackfillCollectionTranslations()
+	s.BackfillCommentTranslations()
+}
+
+// ---------- Comment translations ----------
+
+// CommentTranslation holds a translated comment record.
+type CommentTranslation struct {
+	ID        string
+	CommentID string
+	Language  string
+	Content   string
+}
+
+// GetCommentTranslation fetches a translation for a given comment and language.
+func (s *Service) GetCommentTranslation(cacheService *cache.Service, commentID, lang string) *CommentTranslation {
+	ck := cache.CommentTranslationKey(commentID, lang)
+	if v, found := cacheService.Get(ck); found {
+		if t, ok := v.(*CommentTranslation); ok {
+			return t
+		}
+	}
+
+	ctx := context.Background()
+	st, err := s.appStore.Translations.GetCommentTranslation(ctx, commentID, lang)
+	if err != nil || st == nil {
+		return nil
+	}
+
+	t := &CommentTranslation{
+		ID:        st.ID,
+		CommentID: commentID,
+		Language:  st.Language,
+		Content:   st.Content,
+	}
+	cacheService.SetWithTTL(ck, t, 60*time.Minute)
+	return t
+}
+
+// TranslateAndSaveComment translates a comment's content to a target language and saves it.
+func (s *Service) TranslateAndSaveComment(commentID, targetLang, content string) error {
+	if s.openaiClient == nil || !s.openaiClient.HasApiKey() {
+		return nil
+	}
+
+	ctx := context.Background()
+
+	existing, err := s.appStore.Translations.GetCommentTranslation(ctx, commentID, targetLang)
+	if err == nil && existing != nil {
+		return nil
+	}
+
+	langName := langNames[targetLang]
+	if langName == "" {
+		langName = targetLang
+	}
+
+	fields, err := s.openaiClient.TranslateFields("", "", content, langName)
+	if err != nil {
+		slog.Debug("comment translation failed", "lang", targetLang, "error", err)
+		return nil
+	}
+
+	if fields.Content == "" {
+		return nil
+	}
+
+	return s.appStore.Translations.UpsertCommentTranslation(ctx, commentID, &store.CommentTranslation{
+		Language: targetLang,
+		Content:  fields.Content,
+	})
+}
+
+// TranslateComment generates all missing language translations for a single comment.
+func (s *Service) TranslateComment(commentID string) {
+	if s.openaiClient == nil || !s.openaiClient.HasApiKey() {
+		return
+	}
+
+	ctx := context.Background()
+	c, err := s.appStore.Comments.GetByID(ctx, commentID)
+	if err != nil || c == nil {
+		return
+	}
+
+	content := c.Content
+
+	for _, lang := range SupportedLanguages {
+		if lang == "en" {
+			continue
+		}
+		err := s.TranslateAndSaveComment(commentID, lang, content)
+		if err != nil {
+			slog.Debug("TranslateComment: failed to save translation", "id", commentID, "lang", lang, "error", err)
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+// BackfillCommentTranslations finds approved comments missing translations and translates them.
+func (s *Service) BackfillCommentTranslations() {
+	if s.openaiClient == nil || !s.openaiClient.HasApiKey() {
+		return
+	}
+	slog.Info("BackfillCommentTranslations started")
+
+	const maxComments = 5
+	ctx := context.Background()
+	processed := 0
+	seen := make(map[string]bool)
+
+	for _, lang := range SupportedLanguages {
+		if lang == "en" {
+			continue
+		}
+		if processed >= maxComments {
+			break
+		}
+
+		comments, err := s.appStore.Translations.ListCommentsWithoutTranslation(ctx, lang, maxComments+len(seen))
+		if err != nil {
+			slog.Error("BackfillCommentTranslations query failed", "lang", lang, "error", err)
+			continue
+		}
+
+		for _, comment := range comments {
+			if processed >= maxComments {
+				break
+			}
+			if seen[comment.ID] {
+				continue
+			}
+			seen[comment.ID] = true
+
+			slog.Info("BackfillCommentTranslations: translating comment", "id", comment.ID, "lang", lang)
+			s.TranslateComment(comment.ID)
+			processed++
+			time.Sleep(time.Second)
+		}
+	}
+
+	slog.Info("BackfillCommentTranslations completed", "processed", processed)
 }
 
 // ---------- Guide translations ----------

@@ -18,6 +18,7 @@ type Comment struct {
 	Content         template.HTML
 	Approved        bool
 	ParentID        string
+	IsTranslated    bool
 }
 
 type DatabaseComment struct {

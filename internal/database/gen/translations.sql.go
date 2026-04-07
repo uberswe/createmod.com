@@ -7,6 +7,9 @@ package db
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getCollectionTranslation = `-- name: GetCollectionTranslation :one
@@ -28,6 +31,30 @@ func (q *Queries) GetCollectionTranslation(ctx context.Context, arg GetCollectio
 		&i.Language,
 		&i.Title,
 		&i.Description,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
+const getCommentTranslation = `-- name: GetCommentTranslation :one
+SELECT id, comment_id, language, content, created, updated FROM comment_translations
+WHERE comment_id = $1 AND language = $2
+`
+
+type GetCommentTranslationParams struct {
+	CommentID string `json:"comment_id"`
+	Language  string `json:"language"`
+}
+
+func (q *Queries) GetCommentTranslation(ctx context.Context, arg GetCommentTranslationParams) (CommentTranslation, error) {
+	row := q.db.QueryRow(ctx, getCommentTranslation, arg.CommentID, arg.Language)
+	var i CommentTranslation
+	err := row.Scan(
+		&i.ID,
+		&i.CommentID,
+		&i.Language,
+		&i.Content,
 		&i.Created,
 		&i.Updated,
 	)
@@ -84,6 +111,70 @@ func (q *Queries) GetSchematicTranslation(ctx context.Context, arg GetSchematicT
 		&i.Updated,
 	)
 	return i, err
+}
+
+const listCommentsWithoutTranslation = `-- name: ListCommentsWithoutTranslation :many
+SELECT c.id, c.author_id, c.schematic_id, c.parent_id, c.content,
+       c.published, c.approved, c.type, c.karma, c.created, c.updated
+FROM comments c
+WHERE c.approved = true
+  AND NOT EXISTS (
+      SELECT 1 FROM comment_translations ct
+      WHERE ct.comment_id = c.id AND ct.language = $1
+  )
+ORDER BY c.created DESC
+LIMIT $2
+`
+
+type ListCommentsWithoutTranslationParams struct {
+	Language string `json:"language"`
+	Limit    int32  `json:"limit"`
+}
+
+type ListCommentsWithoutTranslationRow struct {
+	ID          string             `json:"id"`
+	AuthorID    *string            `json:"author_id"`
+	SchematicID *string            `json:"schematic_id"`
+	ParentID    *string            `json:"parent_id"`
+	Content     string             `json:"content"`
+	Published   pgtype.Timestamptz `json:"published"`
+	Approved    bool               `json:"approved"`
+	Type        string             `json:"type"`
+	Karma       int32              `json:"karma"`
+	Created     time.Time          `json:"created"`
+	Updated     time.Time          `json:"updated"`
+}
+
+func (q *Queries) ListCommentsWithoutTranslation(ctx context.Context, arg ListCommentsWithoutTranslationParams) ([]ListCommentsWithoutTranslationRow, error) {
+	rows, err := q.db.Query(ctx, listCommentsWithoutTranslation, arg.Language, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCommentsWithoutTranslationRow{}
+	for rows.Next() {
+		var i ListCommentsWithoutTranslationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.SchematicID,
+			&i.ParentID,
+			&i.Content,
+			&i.Published,
+			&i.Approved,
+			&i.Type,
+			&i.Karma,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listGuideTranslations = `-- name: ListGuideTranslations :many
@@ -236,6 +327,41 @@ func (q *Queries) UpsertCollectionTranslation(ctx context.Context, arg UpsertCol
 		&i.Language,
 		&i.Title,
 		&i.Description,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
+const upsertCommentTranslation = `-- name: UpsertCommentTranslation :one
+INSERT INTO comment_translations (id, comment_id, language, content)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (comment_id, language) DO UPDATE SET
+    content = EXCLUDED.content,
+    updated = NOW()
+RETURNING id, comment_id, language, content, created, updated
+`
+
+type UpsertCommentTranslationParams struct {
+	ID        string `json:"id"`
+	CommentID string `json:"comment_id"`
+	Language  string `json:"language"`
+	Content   string `json:"content"`
+}
+
+func (q *Queries) UpsertCommentTranslation(ctx context.Context, arg UpsertCommentTranslationParams) (CommentTranslation, error) {
+	row := q.db.QueryRow(ctx, upsertCommentTranslation,
+		arg.ID,
+		arg.CommentID,
+		arg.Language,
+		arg.Content,
+	)
+	var i CommentTranslation
+	err := row.Scan(
+		&i.ID,
+		&i.CommentID,
+		&i.Language,
+		&i.Content,
 		&i.Created,
 		&i.Updated,
 	)

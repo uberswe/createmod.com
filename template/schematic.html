@@ -222,6 +222,10 @@
                                         <em>{{ T .Language "Auto translated" }}</em> &mdash;
                                         <a href="?lang=original" class="text-muted" hx-boost="false">{{ T .Language "show original" }}</a>
                                     </div>
+                                    {{ else if .ShowingOriginal }}
+                                    <div class="text-muted small mt-2">
+                                        <a href="?" class="text-muted" hx-boost="false">{{ T .Language "show translation" }}</a>
+                                    </div>
                                     {{ end }}
                                 </div>
 

@@ -142,6 +142,10 @@ func CollectionTranslationKey(collectionId, lang string) string {
 	return fmt.Sprintf("collection_translation:%s:%s", collectionId, lang)
 }
 
+func CommentTranslationKey(commentId, lang string) string {
+	return fmt.Sprintf("comment_translation:%s:%s", commentId, lang)
+}
+
 func MinecraftVersionKey(id string) string {
 	return fmt.Sprintf("mcversion:%s", id)
 }

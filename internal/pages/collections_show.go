@@ -38,6 +38,7 @@ type CollectionsShowData struct {
 	CollectionID    string
 	AuthorName      string
 	IsTranslated    bool
+	ShowingOriginal bool
 	ModInfoList     []ModInfo
 	SchematicCount  int
 }
@@ -154,6 +155,7 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 
 			// Translation: show translated content if user's language is not English
 			showOriginal := e.Request.URL.Query().Get("lang") == "original"
+			d.ShowingOriginal = showOriginal
 			if !showOriginal && translationService != nil && d.Language != "" && d.Language != "en" {
 				t := translationService.GetCollectionTranslationCached(cacheService, coll.ID, d.Language)
 				if t != nil && t.Title != "" {

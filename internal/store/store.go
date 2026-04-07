@@ -196,6 +196,16 @@ type Translation struct {
 	Content     string
 }
 
+// CommentTranslation represents translated comment content.
+type CommentTranslation struct {
+	ID        string
+	CommentID string
+	Language  string
+	Content   string
+	Created   time.Time
+	Updated   time.Time
+}
+
 // Report represents a content moderation report.
 type Report struct {
 	ID         string
@@ -486,6 +496,7 @@ type CommentStore interface {
 	CountBySchematic(ctx context.Context, schematicID string) (int64, error)
 	Create(ctx context.Context, c *Comment) error
 	Approve(ctx context.Context, id string) error
+	Disapprove(ctx context.Context, id string) error
 	Delete(ctx context.Context, id string) error
 	CountByUser(ctx context.Context, userID string) (int64, error)
 }
@@ -546,6 +557,9 @@ type TranslationStore interface {
 	UpsertGuideTranslation(ctx context.Context, guideID string, t *Translation) error
 	GetCollectionTranslation(ctx context.Context, collectionID, lang string) (*Translation, error)
 	UpsertCollectionTranslation(ctx context.Context, collectionID string, t *Translation) error
+	GetCommentTranslation(ctx context.Context, commentID, lang string) (*CommentTranslation, error)
+	UpsertCommentTranslation(ctx context.Context, commentID string, t *CommentTranslation) error
+	ListCommentsWithoutTranslation(ctx context.Context, lang string, limit int) ([]Comment, error)
 }
 
 // ViewRatingStore handles view counts, downloads, and ratings.
@@ -596,6 +610,7 @@ type ReportStore interface {
 	List(ctx context.Context, limit, offset int) ([]Report, error)
 	Delete(ctx context.Context, id string) error
 	DeleteByTarget(ctx context.Context, targetType, targetID string) (int64, error)
+	CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID string) (int64, error)
 }
 
 // ModMetadataStore handles mod metadata from Modrinth/CurseForge.

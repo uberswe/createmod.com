@@ -141,6 +141,11 @@ LIMIT $1;
 -- brief exclusive lock has no user-facing impact.
 REFRESH MATERIALIZED VIEW search_query_counts;
 
+-- name: CountUnresolvedCommentReportsByAuthor :one
+SELECT COUNT(*) FROM reports r
+JOIN comments c ON c.id = r.target_id
+WHERE r.target_type = 'comment' AND c.author_id = $1;
+
 -- name: PruneOldSearches :execrows
 WITH single_use AS (
   SELECT LEFT(query, 500) AS q

@@ -14,9 +14,12 @@ import (
 	"github.com/sym01/htmlsanitizer"
 )
 
+// CommentModerationEnqueuer is a callback that enqueues a comment moderation job.
+type CommentModerationEnqueuer func(ctx context.Context, commentID, content, authorID, schematicID string) error
+
 // CommentCreateHandler handles POST /api/comments to create a new comment.
 // Replaces PB's POST /api/collections/comments/records endpoint.
-func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
+func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service, enqueueModeration CommentModerationEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
@@ -42,6 +45,12 @@ func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) fu
 		}
 
 		ctx := context.Background()
+
+		// Check if user has too many unresolved reported comments
+		reportCount, _ := appStore.Reports.CountUnresolvedCommentReportsByAuthor(ctx, userID)
+		if reportCount >= 3 {
+			return e.ForbiddenError("Your account has pending comment reports. Please wait for them to be resolved before posting new comments.", nil)
+		}
 
 		// Validate schematic exists
 		schem, err := appStore.Schematics.GetByID(ctx, schematicID)
@@ -162,6 +171,16 @@ func CommentCreateHandler(appStore *store.Store, mailService *mailer.Service) fu
 				slog.Error("failed to send comment notification", "error", err)
 			}
 		}()
+
+		// Enqueue comment moderation + translation job
+		if enqueueModeration != nil {
+			go func() {
+				bgCtx := context.Background()
+				if err := enqueueModeration(bgCtx, comment.ID, sanitizedContent, userID, schematicID); err != nil {
+					slog.Error("failed to enqueue comment moderation", "error", err)
+				}
+			}()
+		}
 
 		// Return 204 for HTMX
 		if e.Request.Header.Get("HX-Request") != "" {
