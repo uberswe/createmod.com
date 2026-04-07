@@ -362,6 +362,9 @@
                             </div>
                         </div>
 
+                        <!-- Mobile ad (in-content on smaller screens) -->
+                        <div id="schematic-mobile" class="d-lg-none mt-3 mb-4 text-center"></div>
+
                         <!-- Similar Schematics -->
                         {{ if .Similar }}
                         <div class="mb-4">
@@ -755,8 +758,6 @@
                         <div id="schematic-adrail" class="mb-3"></div>
                     </div>
                 </div><!-- /d-flex -->
-                <!-- Mobile ad (below content on smaller screens) -->
-                <div id="schematic-mobile" class="d-lg-none mt-3 text-center"></div>
 
             </div>
         </main>
@@ -1247,6 +1248,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   });
   // In-content display ad (tablet+)
   window['nitroAds'].createAd('schematic-incontent', {
+    "refreshTime": 60,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
@@ -1265,7 +1267,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 768px)"
   });
-  // Mobile ad (below content on smaller screens)
+  // Mobile ad (in-content on smaller screens)
   window['nitroAds'].createAd('schematic-mobile', {
     "refreshTime": 60,
     "refreshVisibleOnly": true,
