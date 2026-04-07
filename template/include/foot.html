@@ -160,29 +160,23 @@ if (!window._htmxErrorInit) {
 })();
 </script>
 {{ if not .HideOutstream }}
-<!-- Video player (bottom-right corner, floats on scroll).
-     Guarded to prevent re-creation on HTMX navigation. -->
-<div id="nitro-video-player"></div>
+<!-- Floating outstream video player (bottom-right) — no container div needed;
+     NitroPay creates its own fixed-position wrapper for the floating format. -->
 <script>
-if (!window._nitroVideoInit) {
-  window._nitroVideoInit = true;
-  window['nitroAds'].createAd('nitro-video-player', {
-    "format": "video",
-    "video": {
-      "float": "auto",
-      "mobile": "full"
-    },
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-left"
-    },
-    "keywords": "minecraft,create-mod",
-    "targeting": { "pageType": "global" },
-    "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"]
-  });
-}
+window['nitroAds'].createAd('outstream-player', {
+  "format": "floating",
+  "floating": { "position": "right" },
+  "outstream": "auto",
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-left"
+  },
+  "keywords": "minecraft,create-mod",
+  "targeting": { "pageType": "global" },
+  "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"]
+});
 </script>
 <!-- Blocker detection prompt (guarded against HTMX re-init) -->
 <script type="text/javascript">
