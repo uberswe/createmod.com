@@ -160,16 +160,17 @@ if (!window._htmxErrorInit) {
 })();
 </script>
 {{ if not .HideOutstream }}
-<!-- Floating outstream video player (bottom-right corner).
+<!-- Video player (bottom-right corner, floats on scroll).
      Guarded to prevent re-creation on HTMX navigation. -->
 <div id="nitro-video-player"></div>
 <script>
 if (!window._nitroVideoInit) {
   window._nitroVideoInit = true;
   window['nitroAds'].createAd('nitro-video-player', {
-    "format": "floating",
-    "floating": {
-      "position": "right"
+    "format": "video",
+    "video": {
+      "float": "auto",
+      "mobile": "full"
     },
     "report": {
       "enabled": true,

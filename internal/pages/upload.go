@@ -133,6 +133,7 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		d.Slug = "/upload"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.HideOutstream = true
 
 		// Load private schematics for authenticated users
 		if isAuthenticated(e) {
@@ -240,6 +241,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 		d.Slug = "/upload/pending"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.HideOutstream = true
 
 		// Read schematic name, ID, and auto-approved status from query params
 		if name := e.Request.URL.Query().Get("name"); name != "" {
@@ -790,6 +792,7 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		d.Description = i18n.T(d.Language, "page.upload_review.description")
 		d.Slug = "/u/" + token
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.HideOutstream = true
 		d.UploadStep = 2
 		d.Token = token
 		d.Filename = entry.Filename
