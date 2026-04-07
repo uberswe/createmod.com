@@ -214,6 +214,9 @@
                                     </div>
                                 </div>
 
+                                <!-- In-content display ad (tablet+) -->
+                                <div id="schematic-incontent" class="mt-3 d-none d-md-block" style="max-height:90px;overflow:hidden;"></div>
+
                                 <!-- Description -->
                                 <div class="mt-3">
                                     <div>{{ .Schematic.HTMLContent }}</div>
@@ -259,16 +262,6 @@
                                 {{ end }}
                             </div>
                         </div>
-
-                        <!-- Promotion -->
-                        {{ if .Promotion }}
-                        <div class="card mb-4">
-                            {{ .Promotion }}
-                        </div>
-                        {{ end }}
-
-                        <!-- In-content display ad (tablet+) -->
-                        <div id="schematic-incontent" class="mb-4 d-none d-md-block"></div>
 
                         <!-- Info Datagrid -->
                         <div class="card mb-4">
@@ -1258,7 +1251,6 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "visibleMargin": 300,
     "format": "display",
     "sizes": [
-      ["300", "250"],
       ["728", "90"]
     ],
     "keywords": kwString,
