@@ -36,6 +36,7 @@ type Querier interface {
 	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountSoftDeletedByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountTempUploadImagesByToken(ctx context.Context, token string) (int32, error)
+	CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)
@@ -88,6 +89,7 @@ type Querier interface {
 	DeleteTempUploadImagesByToken(ctx context.Context, token string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
 	DeleteUserWebhook(ctx context.Context, userID string) error
+	DisapproveComment(ctx context.Context, id string) error
 	FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatingCountBySchematicRow, error)
 	FetchRatingSumBySchematic(ctx context.Context) ([]FetchRatingSumBySchematicRow, error)
 	FetchRecentDownloadsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentDownloadsBySchematicRow, error)
@@ -105,6 +107,7 @@ type Querier interface {
 	GetCollectionSchematicIDs(ctx context.Context, collectionID string) ([]string, error)
 	GetCollectionTranslation(ctx context.Context, arg GetCollectionTranslationParams) (CollectionTranslation, error)
 	GetCommentByID(ctx context.Context, id string) (Comment, error)
+	GetCommentTranslation(ctx context.Context, arg GetCommentTranslationParams) (CommentTranslation, error)
 	GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error)
 	GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
@@ -169,6 +172,7 @@ type Querier interface {
 	ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error)
 	ListCollectionsForSitemap(ctx context.Context) ([]ListCollectionsForSitemapRow, error)
 	ListCommentsBySchematic(ctx context.Context, schematicID *string) ([]ListCommentsBySchematicRow, error)
+	ListCommentsWithoutTranslation(ctx context.Context, arg ListCommentsWithoutTranslationParams) ([]ListCommentsWithoutTranslationRow, error)
 	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	ListFeaturedCollections(ctx context.Context, limit int32) ([]Collection, error)
@@ -254,6 +258,7 @@ type Querier interface {
 	UpdateUserPoints(ctx context.Context, arg UpdateUserPointsParams) error
 	UpdateUserWebhookURL(ctx context.Context, arg UpdateUserWebhookURLParams) error
 	UpsertCollectionTranslation(ctx context.Context, arg UpsertCollectionTranslationParams) (CollectionTranslation, error)
+	UpsertCommentTranslation(ctx context.Context, arg UpsertCommentTranslationParams) (CommentTranslation, error)
 	UpsertGuideTranslation(ctx context.Context, arg UpsertGuideTranslationParams) (GuideTranslation, error)
 	UpsertModMetadata(ctx context.Context, arg UpsertModMetadataParams) (ModMetadatum, error)
 	UpsertSchematicRating(ctx context.Context, arg UpsertSchematicRatingParams) error

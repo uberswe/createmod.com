@@ -400,7 +400,8 @@ var LangZhHans = map[string]string{
 
 	// ── Translation ──
 	"Auto translated": "自动翻译",
-	"show original":   "显示原文",
+	"show original":    "显示原文",
+	"show translation": "显示翻译",
 
 	// ── Settings (shared sidebar) ──
 	"Account settings":   "账户设置",

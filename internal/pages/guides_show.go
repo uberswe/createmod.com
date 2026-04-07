@@ -32,7 +32,8 @@ type GuideShowData struct {
 	IsOwner      bool
 	GuideID      string
 	NotFound     bool
-	IsTranslated bool
+	IsTranslated    bool
+	ShowingOriginal bool
 }
 
 // GuidesShowHandler renders an individual guide page by record ID.
@@ -113,6 +114,7 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 
 		// Translation: show translated content if user's language is not English
 		showOriginal := e.Request.URL.Query().Get("lang") == "original"
+		d.ShowingOriginal = showOriginal
 		if !showOriginal && translationService != nil && d.Language != "" && d.Language != "en" {
 			t := translationService.GetGuideTranslationCached(cacheService, guide.ID, d.Language)
 			if t != nil && t.Title != "" {

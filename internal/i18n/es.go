@@ -400,7 +400,8 @@ var LangES = map[string]string{
 
 	// -- Translation --
 	"Auto translated": "Traducido automáticamente",
-	"show original":   "mostrar original",
+	"show original":    "mostrar original",
+	"show translation": "mostrar traducción",
 
 	// -- Settings (shared sidebar) --
 	"Account settings":   "Configuración de la cuenta",

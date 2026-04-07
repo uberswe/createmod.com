@@ -23,6 +23,19 @@ func (q *Queries) CheckHashIsBlacklisted(ctx context.Context, hash string) (bool
 	return is_blacklisted, err
 }
 
+const countUnresolvedCommentReportsByAuthor = `-- name: CountUnresolvedCommentReportsByAuthor :one
+SELECT COUNT(*) FROM reports r
+JOIN comments c ON c.id = r.target_id
+WHERE r.target_type = 'comment' AND c.author_id = $1
+`
+
+func (q *Queries) CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnresolvedCommentReportsByAuthor, authorID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createContactFormSubmission = `-- name: CreateContactFormSubmission :one
 INSERT INTO contact_form_submissions (id, author_id, title, content, name, postdate, status, type)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

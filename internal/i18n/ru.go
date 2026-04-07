@@ -400,7 +400,8 @@ var LangRU = map[string]string{
 
 	// ── Translation ──
 	"Auto translated": "Автоматический перевод",
-	"show original":   "показать оригинал",
+	"show original":    "показать оригинал",
+	"show translation": "показать перевод",
 
 	// ── Settings (shared sidebar) ──
 	"Account settings":   "Настройки аккаунта",

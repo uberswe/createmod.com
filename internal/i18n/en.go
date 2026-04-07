@@ -400,7 +400,8 @@ var LangEN = map[string]string{
 
 	// ── Translation ──
 	"Auto translated": "Auto translated",
-	"show original":   "show original",
+	"show original":    "show original",
+	"show translation": "show translation",
 
 	// ── Settings (shared sidebar) ──
 	"Account settings":   "Account settings",

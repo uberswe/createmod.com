@@ -101,6 +101,15 @@ func (q *Queries) DeleteComment(ctx context.Context, id string) error {
 	return err
 }
 
+const disapproveComment = `-- name: DisapproveComment :exec
+UPDATE comments SET approved = false WHERE id = $1
+`
+
+func (q *Queries) DisapproveComment(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, disapproveComment, id)
+	return err
+}
+
 const getCommentByID = `-- name: GetCommentByID :one
 SELECT id, author_id, schematic_id, parent_id, content, published, approved, type, karma, postdate, status, name, created, updated FROM comments WHERE id = $1
 `

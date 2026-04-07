@@ -400,7 +400,8 @@ var LangFR = map[string]string{
 
 	// ── Translation ──
 	"Auto translated": "Traduction automatique",
-	"show original":   "afficher l'original",
+	"show original":    "afficher l'original",
+	"show translation": "afficher la traduction",
 
 	// ── Settings (shared sidebar) ──
 	"Account settings":   "Paramètres du compte",

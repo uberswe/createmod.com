@@ -44,6 +44,30 @@ ON CONFLICT (guide_id, language) DO UPDATE SET
     content = EXCLUDED.content
 RETURNING *;
 
+-- name: GetCommentTranslation :one
+SELECT * FROM comment_translations
+WHERE comment_id = $1 AND language = $2;
+
+-- name: UpsertCommentTranslation :one
+INSERT INTO comment_translations (id, comment_id, language, content)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (comment_id, language) DO UPDATE SET
+    content = EXCLUDED.content,
+    updated = NOW()
+RETURNING *;
+
+-- name: ListCommentsWithoutTranslation :many
+SELECT c.id, c.author_id, c.schematic_id, c.parent_id, c.content,
+       c.published, c.approved, c.type, c.karma, c.created, c.updated
+FROM comments c
+WHERE c.approved = true
+  AND NOT EXISTS (
+      SELECT 1 FROM comment_translations ct
+      WHERE ct.comment_id = c.id AND ct.language = $1
+  )
+ORDER BY c.created DESC
+LIMIT $2;
+
 -- name: GetCollectionTranslation :one
 SELECT * FROM collection_translations
 WHERE collection_id = $1 AND language = $2;

@@ -5,6 +5,16 @@
             <div class="card-body">
                 <div class="text-secondary">
                     {{ .Content }}
+                    {{ if .IsTranslated }}
+                    <div class="text-muted small mt-1">
+                        {{ T $.Language "Auto translated" }} &mdash;
+                        <a href="?comments=original#{{ .ID }}" class="link-muted">{{ T $.Language "show original" }}</a>
+                    </div>
+                    {{ else if $.ShowingOriginalComments }}
+                    <div class="text-muted small mt-1">
+                        <a href="?#{{ .ID }}" class="link-muted">{{ T $.Language "show translation" }}</a>
+                    </div>
+                    {{ end }}
                 </div>
                 <div class="mt-4">
                     <div class="row">

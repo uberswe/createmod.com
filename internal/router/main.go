@@ -317,7 +317,20 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/contact", Adapt(pages.ContactHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
 	// Comments and ratings API (replaces PB REST endpoints)
-	r.Post("/api/comments", Adapt(pages.CommentCreateHandler(p.AppStore, p.MailService)))
+	// Build comment moderation enqueuer
+	var enqueueCommentModeration pages.CommentModerationEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueCommentModeration = func(ctx context.Context, commentID, content, authorID, schematicID string) error {
+			return jw.Insert(ctx, jobs.CommentModerationArgs{
+				CommentID:   commentID,
+				Content:     content,
+				AuthorID:    authorID,
+				SchematicID: schematicID,
+			}, &river.InsertOpts{Queue: "ai"})
+		}
+	}
+	r.Post("/api/comments", Adapt(pages.CommentCreateHandler(p.AppStore, p.MailService, enqueueCommentModeration)))
 	r.Post("/api/moderation-chat/{id}", Adapt(pages.ModerationChatCreateHandler(p.AppStore)))
 	r.Delete("/api/comments/{id}", Adapt(pages.CommentDeleteHandler(p.AppStore)))
 	r.Post("/api/ratings", Adapt(pages.RatingUpsertHandler(p.AppStore)))
@@ -458,7 +471,7 @@ func Register(p RegisterParams) chi.Router {
 		http.Redirect(w, req, "/schematics/"+name, http.StatusMovedPermanently)
 	})
 	// Partial comments endpoint for HTMX refresh
-	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.CacheService, registry, p.DiscordService, p.AppStore)))
+	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.CacheService, registry, p.DiscordService, p.AppStore, p.TranslationService)))
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately

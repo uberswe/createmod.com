@@ -400,7 +400,8 @@ var LangPtBR = map[string]string{
 
 	// ── Translation ──
 	"Auto translated": "Traduzido automaticamente",
-	"show original":   "mostrar original",
+	"show original":    "mostrar original",
+	"show translation": "mostrar tradução",
 
 	// ── Settings (shared sidebar) ──
 	"Account settings":   "Configurações da conta",

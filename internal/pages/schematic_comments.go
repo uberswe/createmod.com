@@ -5,9 +5,10 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/i18n"
-	"createmod/internal/store"
-	"fmt"
 	"createmod/internal/server"
+	"createmod/internal/store"
+	"createmod/internal/translation"
+	"fmt"
 	"net/http"
 )
 
@@ -17,7 +18,7 @@ var schematicCommentsTemplates = []string{
 
 // SchematicCommentsHandler returns only the comments list for a schematic.
 // Useful for HTMX partial refresh of comments.
-func SchematicCommentsHandler(cacheService *cache.Service, registry *server.Registry, _ *discord.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func SchematicCommentsHandler(cacheService *cache.Service, registry *server.Registry, _ *discord.Service, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		storeSchematic, err := appStore.Schematics.GetByName(context.Background(), name)
@@ -36,7 +37,8 @@ func SchematicCommentsHandler(cacheService *cache.Service, registry *server.Regi
 			Schematic: MapStoreSchematicToModel(appStore, *storeSchematic, cacheService),
 		}
 		d.Populate(e)
-		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID)
+		commentShowOriginal := e.Request.URL.Query().Get("comments") == "original"
+		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID, translationService, cacheService, d.Language, commentShowOriginal)
 		d.Title = fmt.Sprintf("Comments for %s", d.Schematic.Title)
 
 		html, err := registry.LoadFiles(schematicCommentsTemplates...).Render(d)
