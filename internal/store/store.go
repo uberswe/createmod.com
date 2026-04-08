@@ -412,6 +412,7 @@ type ModerationChatStore interface {
 type SchematicStore interface {
 	GetByID(ctx context.Context, id string) (*Schematic, error)
 	GetByName(ctx context.Context, name string) (*Schematic, error)
+	NameExists(ctx context.Context, name string) (bool, error)
 	ListApproved(ctx context.Context, limit, offset int) ([]Schematic, error)
 	CountApproved(ctx context.Context) (int64, error)
 	ListByAuthor(ctx context.Context, authorID string, limit, offset int) ([]Schematic, error)

@@ -207,6 +207,11 @@ WHERE nh.hash = $1
   AND s.deleted IS NULL
 LIMIT 1;
 
+-- name: SchematicNameExists :one
+SELECT EXISTS(
+    SELECT 1 FROM schematics WHERE name = $1 AND moderation_state != 'deleted'
+) AS exists;
+
 -- name: UpdateSchematicName :exec
 UPDATE schematics SET name = $2 WHERE id = $1;
 

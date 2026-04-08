@@ -1637,6 +1637,19 @@ func (q *Queries) RefreshSchematicRatingAggregates(ctx context.Context, id strin
 	return err
 }
 
+const schematicNameExists = `-- name: SchematicNameExists :one
+SELECT EXISTS(
+    SELECT 1 FROM schematics WHERE name = $1 AND moderation_state != 'deleted'
+) AS exists
+`
+
+func (q *Queries) SchematicNameExists(ctx context.Context, name string) (bool, error) {
+	row := q.db.QueryRow(ctx, schematicNameExists, name)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const setModerationState = `-- name: SetModerationState :exec
 UPDATE schematics SET moderation_state = $2, moderation_reason = $3, updated = NOW() WHERE id = $1
 `

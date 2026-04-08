@@ -486,6 +486,10 @@ func (ps *PostgresStore) GetByName(ctx context.Context, name string) (*store.Sch
 	return &s, nil
 }
 
+func (ps *PostgresStore) NameExists(ctx context.Context, name string) (bool, error) {
+	return ps.q.SchematicNameExists(ctx, name)
+}
+
 func (ps *PostgresStore) ListApproved(ctx context.Context, limit, offset int) ([]store.Schematic, error) {
 	rows, err := ps.q.ListApprovedSchematics(ctx, db.ListApprovedSchematicsParams{
 		Limit:  int32(limit),

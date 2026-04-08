@@ -382,6 +382,10 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if nameSlug == "" {
 			nameSlug = schematicID
 		}
+		// Ensure the slug is unique among non-deleted schematics.
+		if taken, _ := appStore.Schematics.NameExists(ctx, nameSlug); taken {
+			nameSlug = makeUniqueSlug(ctx, appStore, nameSlug)
+		}
 
 		// --- Handle featured image ---
 		var featuredFilename string
@@ -1159,4 +1163,29 @@ func allMinecraftVersionsFromStore(appStore *store.Store) []models.MinecraftVers
 		}
 	}
 	return result
+}
+
+// makeUniqueSlug appends random characters to baseSlug until a unique name is
+// found among non-deleted schematics. It tries up to 30 times, starting with a
+// single random character and growing the suffix length on each attempt.
+func makeUniqueSlug(ctx context.Context, appStore *store.Store, baseSlug string) string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+	for i := 0; i < 30; i++ {
+		// Generate a random suffix: length grows as attempts increase.
+		suffixLen := i/len(chars) + 1
+		suffix := make([]byte, suffixLen)
+		for j := range suffix {
+			b := make([]byte, 1)
+			_, _ = rand.Read(b)
+			suffix[j] = chars[int(b[0])%len(chars)]
+		}
+		candidate := baseSlug + "-" + string(suffix)
+		if taken, _ := appStore.Schematics.NameExists(ctx, candidate); !taken {
+			return candidate
+		}
+	}
+	// Final fallback: append a full random hex string.
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return baseSlug + "-" + hex.EncodeToString(b)
 }
