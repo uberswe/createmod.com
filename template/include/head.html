@@ -79,6 +79,37 @@ window.setTheme=function(theme){
     <script data-cfasync="false">window.nitroAds=window.nitroAds||{createAd:function(){return new Promise(e=>{window.nitroAds.queue.push(["createAd",arguments,e])})},addUserToken:function(){window.nitroAds.queue.push(["addUserToken",arguments])},queue:[]};</script>
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js"></script>
     <script>
+    // Reload once after the user accepts the NCMP cookie consent so that
+    // NitroAds can render ads that were blocked before consent was given.
+    (function(){
+      if (window._ncmpConsentListenerAdded) return;
+      window._ncmpConsentListenerAdded = true;
+      var waiting = false;
+      function onApi() {
+        try {
+          __tcfapi('addEventListener', 2, function(tcData, success) {
+            if (!success) return;
+            if (tcData.eventStatus === 'useractioncomplete') {
+              // Consent was just given or updated by the user — reload to
+              // let NitroAds pick up the new consent state and render ads.
+              if (!waiting) {
+                waiting = true;
+                window.location.reload();
+              }
+            }
+          });
+        } catch(e) {}
+      }
+      // __tcfapi may not exist yet (NCMP loads async), so poll briefly.
+      var attempts = 0;
+      var poll = setInterval(function() {
+        attempts++;
+        if (typeof __tcfapi === 'function') { clearInterval(poll); onApi(); }
+        else if (attempts > 50) { clearInterval(poll); }
+      }, 200);
+    })();
+    </script>
+    <script>
     // Track NitroPay ad instances and clear them on HTMX navigation so
     // new page ad scripts can call createAd() on fresh DOM containers.
     (function(){
