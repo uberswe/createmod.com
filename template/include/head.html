@@ -81,21 +81,20 @@ window.setTheme=function(theme){
     <script>
     // Reload once after the user accepts the NCMP cookie consent so that
     // NitroAds can render ads that were blocked before consent was given.
+    // Uses sessionStorage to ensure we only reload once per browser session.
     (function(){
       if (window._ncmpConsentListenerAdded) return;
       window._ncmpConsentListenerAdded = true;
-      var waiting = false;
       function onApi() {
         try {
           __tcfapi('addEventListener', 2, function(tcData, success) {
             if (!success) return;
             if (tcData.eventStatus === 'useractioncomplete') {
-              // Consent was just given or updated by the user — reload to
-              // let NitroAds pick up the new consent state and render ads.
-              if (!waiting) {
-                waiting = true;
-                window.location.reload();
-              }
+              try {
+                if (sessionStorage.getItem('ncmp_reloaded')) return;
+                sessionStorage.setItem('ncmp_reloaded', '1');
+              } catch(e) { return; }
+              window.location.reload();
             }
           });
         } catch(e) {}
