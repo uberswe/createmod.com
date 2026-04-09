@@ -73,9 +73,8 @@
                     </div>
 
                     <!-- Right: Ad rail (desktop only) -->
-                    <div class="search-ad-rail d-none d-xl-block">
+                    <div class="search-ad-rail d-none d-lg-block">
                         <div id="search-sticky-adrail-top" class="mb-3"></div>
-                        <div id="search-sticky-adrail-bottom"></div>
                     </div>
                 </div>
             </div>
@@ -178,27 +177,7 @@
                     "wording": "Report Ad",
                     "position": "top-right"
                 },
-                "mediaQuery": "(min-width: 1200px)"
-            });
-            window['nitroAds'].createAd('search-sticky-adrail-bottom', {
-                "refreshTime": 45,
-                "refreshVisibleOnly": true,
-                "renderVisibleOnly": true,
-                "visibleMargin": 300,
-                "format": "sticky-stack",
-                "stickyStackLimit": 15,
-                "stickyStackSpace": 2.5,
-                "stickyStackOffset": 110,
-                "stickyStackResizable": false,
-                "keywords": searchKw,
-                "targeting": searchTarget,
-                "report": {
-                    "enabled": true,
-                    "icon": true,
-                    "wording": "Report Ad",
-                    "position": "top-right"
-                },
-                "mediaQuery": "(min-width: 1200px)"
+                "mediaQuery": "(min-width: 992px)"
             });
 
             // Search click tracking
