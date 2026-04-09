@@ -230,7 +230,7 @@
 
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
-                        <div id="upload-preview-adrail" class="mb-3"></div>
+                        <div id="upload-preview-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div>
             </div>
@@ -592,13 +592,13 @@ function deleteAdditionalFile(token, fileId, btn) {
 {{ end }}
 {{template "foot.html" .}}
 <script>
-window['nitroAds'].createAd('upload-preview-adrail', {
+window['nitroAds'].createAd('upload-preview-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["300", "600"],
     ["300", "250"]

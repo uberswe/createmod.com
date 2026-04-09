@@ -57,7 +57,7 @@
         <!-- Ad Rail (desktop only) -->
         {{if not .IsContributor}}
         <div class="ad-rail d-none d-xl-block">
-            <div id="guides-adrail" class="mb-3" style="min-height:250px;"></div>
+            <div id="guides-sticky-adrail" class="mb-3" style="min-height:250px;"></div>
         </div>
         {{end}}
         </div><!-- /d-flex -->
@@ -73,13 +73,13 @@
 {{template "foot.html" .}}
 {{if not .IsContributor}}
 <script>
-window['nitroAds'].createAd('guides-adrail', {
+window['nitroAds'].createAd('guides-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["300", "600"],
     ["300", "250"]

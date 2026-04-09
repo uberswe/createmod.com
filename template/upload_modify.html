@@ -114,11 +114,11 @@
                     <!-- Ad Rails -->
                     <!-- Narrow 160px rail for lg (992-1199px) -->
                     <div class="ad-rail-sm d-none d-lg-block d-xl-none">
-                        <div id="upload-modify-adrail-lg" class="mb-3"></div>
+                        <div id="upload-modify-sticky-adrail-lg" class="mb-3"></div>
                     </div>
                     <!-- Wide 300px rail for xl+ (1200px+) -->
                     <div class="ad-rail d-none d-xl-block">
-                        <div id="upload-modify-adrail" class="mb-3"></div>
+                        <div id="upload-modify-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div><!-- /d-flex -->
                 <!-- Mobile ad (below content on smaller screens) -->
@@ -475,13 +475,13 @@
 <!-- Ad Scripts -->
 <script>
 // Narrow ad rail (lg only: 992-1199px)
-window['nitroAds'].createAd('upload-modify-adrail-lg', {
+window['nitroAds'].createAd('upload-modify-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["160", "600"]
   ],
@@ -496,13 +496,13 @@ window['nitroAds'].createAd('upload-modify-adrail-lg', {
   "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
 });
 // Wide ad rail (xl+: 1200px+)
-window['nitroAds'].createAd('upload-modify-adrail', {
+window['nitroAds'].createAd('upload-modify-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["300", "600"],
     ["300", "250"]

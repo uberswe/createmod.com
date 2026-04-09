@@ -92,7 +92,7 @@
 
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
-                        <div id="profile-adrail" class="mb-3"></div>
+                        <div id="profile-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div>
             </div>
@@ -102,13 +102,13 @@
 </div>
 {{template "foot.html" .}}
 <script>
-window['nitroAds'].createAd('profile-adrail', {
+window['nitroAds'].createAd('profile-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["300", "600"],
     ["300", "250"]
