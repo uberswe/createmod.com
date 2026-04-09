@@ -1209,9 +1209,10 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "renderVisibleOnly": true,
     "visibleMargin": 300,
     "format": "sticky-stack",
-    "sizes": [
-      ["160", "600"]
-    ],
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 25,
+    "stickyStackResizable": false,
     "keywords": kwString,
     "targeting": targeting,
     "report": {
@@ -1226,13 +1227,10 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   window['nitroAds'].createAd('schematic-sticky-adrail', {
     "refreshVisibleOnly": true,
     "format": "sticky-stack",
-    "stickyStackLimit": 5,
-    "stickyStackSpace": 1.5,
-    "stickyStackOffset": 70,
-    "sizes": [
-      ["300", "250"],
-      ["300", "600"]
-    ],
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 25,
+    "stickyStackResizable": false,
     "keywords": kwString,
     "targeting": targeting,
     "report": {
@@ -1250,9 +1248,6 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "renderVisibleOnly": true,
     "visibleMargin": 300,
     "format": "display",
-    "sizes": [
-      ["468", "60"]
-    ],
     "keywords": kwString,
     "targeting": targeting,
     "report": {
@@ -1269,11 +1264,6 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
-    "sizes": [
-      ["320", "100"],
-      ["320", "50"],
-      ["300", "250"]
-    ],
     "keywords": kwString,
     "targeting": targeting,
     "report": {

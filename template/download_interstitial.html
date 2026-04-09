@@ -118,10 +118,10 @@ if (window['nitroAds']) {
       "refreshTime": 30,
       "refreshVisibleOnly": true,
       "format": "sticky-stack",
-      "sizes": [
-        ["300", "600"],
-        ["300", "250"]
-      ],
+      "stickyStackLimit": 15,
+      "stickyStackSpace": 2.5,
+      "stickyStackOffset": 25,
+      "stickyStackResizable": false,
       "report": {
         "enabled": true,
         "icon": true,
@@ -136,11 +136,6 @@ if (window['nitroAds']) {
   });
   window['nitroAds'].createAd('dlinterstitial-mobile', {
     "refreshVisibleOnly": true,
-    "sizes": [
-      ["320", "100"],
-      ["320", "50"],
-      ["300", "250"]
-    ],
     "report": {
       "enabled": true,
       "icon": true,
