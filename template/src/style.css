@@ -802,72 +802,34 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     text-decoration: none !important;
 }
 
-/* ===== Ad slot CLS prevention =====
-   Reserve explicit dimensions so the page layout is stable before ads load.
-   Making desktop ad rails sticky keeps them visible during scroll. */
+/* ===== Ad slot layout =====
+   NitroPay sticky-stack handles its own sticky positioning internally.
+   We only set width, flex-shrink, and align-self so the rail column
+   stretches to the full height of the adjacent content — required for
+   sticky-stack to calculate how many placements to create. */
 
-/* Desktop XL ad rail (300px wide, 300x600 / 300x250 ads) */
+/* Desktop XL ad rail (300px wide) */
 .ad-rail {
     width: 300px;
     min-width: 300px;
     flex-shrink: 0;
-    min-height: 600px;
+    align-self: stretch;
 }
 
-@media (min-width: 1200px) {
-    .ad-rail {
-        position: sticky;
-        top: 20px;
-        align-self: flex-start;
-        z-index: 10;
-    }
-}
-
-/* Desktop LG ad rail (160px wide, 160x600 ads — schematic page only) */
+/* Desktop LG ad rail (160px wide — narrower screens) */
 .ad-rail-sm {
     width: 160px;
     min-width: 160px;
     flex-shrink: 0;
-    min-height: 600px;
+    align-self: stretch;
 }
 
-@media (min-width: 992px) and (max-width: 1199.98px) {
-    .ad-rail-sm {
-        position: sticky;
-        top: 20px;
-        align-self: flex-start;
-        z-index: 10;
-    }
-}
-
-/* Search page ad rail (300px, two stacked ads: 300x250 + 300x600) */
+/* Search page ad rail (300px) */
 .search-ad-rail {
     width: 300px;
     min-width: 300px;
     flex-shrink: 0;
-    min-height: 600px;
-}
-
-@media (min-width: 1200px) {
-    .search-ad-rail {
-        position: sticky;
-        top: 20px;
-        align-self: flex-start;
-        z-index: 10;
-    }
-}
-
-/* Search page left sidebar ad container - sticky only on desktop */
-.search-under-container {
-    position: relative;
-}
-
-@media (min-width: 992px) {
-    .search-under-container {
-        position: sticky;
-        top: 20px;
-        z-index: 10;
-    }
+    align-self: stretch;
 }
 
 /* Mobile/tablet inline ad slots — reserve space for largest common size (300x250) */
