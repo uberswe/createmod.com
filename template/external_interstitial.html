@@ -8,7 +8,7 @@
         <div class="d-flex gap-3 justify-content-center">
           <!-- Left Ad Rail (desktop only) -->
           <div class="ad-rail d-none d-xl-block">
-            <div id="extinterstitial-adrail-left" class="mb-3" style="min-height:250px;"></div>
+            <div id="extinterstitial-sticky-adrail-left" class="mb-3" style="min-height:250px;"></div>
           </div>
           <div style="max-width:540px; width:100%; padding:2rem 0;">
             <!-- Mobile ad (above card on smaller screens) -->
@@ -26,7 +26,7 @@
           </div>
           <!-- Right Ad Rail (desktop only) -->
           <div class="ad-rail d-none d-xl-block">
-            <div id="extinterstitial-adrail-right" class="mb-3" style="min-height:250px;"></div>
+            <div id="extinterstitial-sticky-adrail-right" class="mb-3" style="min-height:250px;"></div>
           </div>
         </div>
       </div>
@@ -81,12 +81,12 @@
 </script>
 <script>
 if (window['nitroAds']) {
-  ['extinterstitial-adrail-left', 'extinterstitial-adrail-right'].forEach(function(id) {
+  ['extinterstitial-sticky-adrail-left', 'extinterstitial-sticky-adrail-right'].forEach(function(id) {
     window['nitroAds'].createAd(id, {
       "refreshLimit": 10,
       "refreshTime": 30,
       "refreshVisibleOnly": true,
-      "format": "display",
+      "format": "interstitial",
       "sizes": [
         ["300", "600"],
         ["300", "250"]

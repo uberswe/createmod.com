@@ -26,8 +26,8 @@
                     <!-- Left: Filter sidebar -->
                     <div class="search-sidebar d-none d-lg-block">
                         {{template "search_filters.html" .}}
-                        <div class="mt-4 search-under-container">
-                            <div id="search-under" style="min-height: 550px; display: block; margin-bottom: 2rem;"></div>
+                        <div class="mt-4 search-sticky-under-container">
+                            <div id="search-sticky-under" style="min-height: 550px; display: block; margin-bottom: 2rem;"></div>
                         </div>
                     </div>
 
@@ -74,8 +74,8 @@
 
                     <!-- Right: Ad rail (desktop only) -->
                     <div class="search-ad-rail d-none d-xl-block">
-                        <div id="search-adrail-top" class="mb-3"></div>
-                        <div id="search-adrail-bottom"></div>
+                        <div id="search-sticky-adrail-top" class="mb-3"></div>
+                        <div id="search-sticky-adrail-bottom"></div>
                     </div>
                 </div>
             </div>
@@ -147,7 +147,7 @@
                 "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
             });
             // Left sidebar sticky ads
-            window['nitroAds'].createAd('search-under', {
+            window['nitroAds'].createAd('search-sticky-under', {
                 "refreshTime": 30,
                 "refreshVisibleOnly": true,
                 "format": "sticky-stack",
@@ -168,11 +168,12 @@
                 },
                 "mediaQuery": "(min-width: 992px)"
             });
-            window['nitroAds'].createAd('search-adrail-top', {
+            window['nitroAds'].createAd('search-sticky-adrail-top', {
                 "refreshTime": 45,
                 "refreshVisibleOnly": true,
                 "renderVisibleOnly": true,
                 "visibleMargin": 300,
+                "format": "sticky-stack",
                 "sizes": [["300", "250"]],
                 "keywords": searchKw,
                 "targeting": searchTarget,
@@ -184,11 +185,12 @@
                 },
                 "mediaQuery": "(min-width: 1200px)"
             });
-            window['nitroAds'].createAd('search-adrail-bottom', {
+            window['nitroAds'].createAd('search-sticky-adrail-bottom', {
                 "refreshTime": 45,
                 "refreshVisibleOnly": true,
                 "renderVisibleOnly": true,
                 "visibleMargin": 300,
+                "format": "sticky-stack",
                 "sizes": [["300", "600"]],
                 "keywords": searchKw,
                 "targeting": searchTarget,

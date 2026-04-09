@@ -84,10 +84,10 @@
           </div>
           <!-- Ad Rails -->
           <div class="ad-rail-sm d-none d-lg-block d-xl-none">
-            <div id="collections-adrail-lg" class="mb-3"></div>
+            <div id="collections-sticky-adrail-lg" class="mb-3"></div>
           </div>
           <div class="ad-rail d-none d-xl-block">
-            <div id="collections-adrail" class="mb-3"></div>
+            <div id="collections-sticky-adrail" class="mb-3"></div>
           </div>
         </div>
       </div>
@@ -99,13 +99,13 @@
 
 <!-- Ad Scripts -->
 <script>
-window['nitroAds'].createAd('collections-adrail-lg', {
+window['nitroAds'].createAd('collections-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["160", "600"]
   ],
@@ -119,13 +119,13 @@ window['nitroAds'].createAd('collections-adrail-lg', {
   "targeting": { "pageType": "collections" },
   "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
 });
-window['nitroAds'].createAd('collections-adrail', {
+window['nitroAds'].createAd('collections-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
-  "format": "display",
+  "format": "sticky-stack",
   "sizes": [
     ["300", "600"],
     ["300", "250"]

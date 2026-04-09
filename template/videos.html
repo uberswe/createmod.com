@@ -51,7 +51,7 @@
 
         <!-- Ad Rail (desktop only) -->
         <div class="ad-rail d-none d-xl-block">
-            <div id="videos-adrail" class="mb-3" style="min-height:250px;"></div>
+            <div id="videos-sticky-adrail" class="mb-3" style="min-height:250px;"></div>
         </div>
         </div><!-- /d-flex -->
         <!-- Mobile ad (below content on smaller screens) -->
@@ -63,13 +63,13 @@
 </div>
 <script>
 if (window['nitroAds']) {
-  window['nitroAds'].createAd('videos-adrail', {
+  window['nitroAds'].createAd('videos-sticky-adrail', {
     "refreshLimit": 10,
     "refreshTime": 45,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
-    "format": "display",
+    "format": "sticky-stack",
     "sizes": [
       ["300", "600"],
       ["300", "250"]
