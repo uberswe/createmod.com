@@ -1,9 +1,17 @@
 .env
 .idea
+.DS_Store
+.claude/
+.impeccable.md
+node_modules/
 pb_data
+pb_data_local_backup/
 migration_data
 main
 dbdata
 data.db
 data.db-shm
 data.db-wal
+recover-thumbnail
+test-results/
+testdata/
