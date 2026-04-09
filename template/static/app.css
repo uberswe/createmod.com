@@ -197,6 +197,10 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
+.ad-rail > div {
+  position: sticky;
+  top: 110px;
+}
 
 /***************
   Featured cards
@@ -259,6 +263,10 @@ a:hover {
   min-width: 160px;
   flex-shrink: 0;
   align-self: stretch;
+}
+.ad-rail-sm > div {
+  position: sticky;
+  top: 110px;
 }
 
 /***************
@@ -737,7 +745,12 @@ body.sidebar-open::after {
 
 .search-ad-rail {
   min-width: 300px;
+  flex-shrink: 0;
   align-self: stretch;
+}
+.search-ad-rail > div {
+  position: sticky;
+  top: 110px;
 }
 
 .search-hero {

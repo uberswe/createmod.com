@@ -803,10 +803,9 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
 }
 
 /* ===== Ad slot layout =====
-   NitroPay sticky-stack handles its own sticky positioning internally.
-   We only set width, flex-shrink, and align-self so the rail column
-   stretches to the full height of the adjacent content — required for
-   sticky-stack to calculate how many placements to create. */
+   Outer ad-rail stretches to the full height of its flex parent so NitroPay
+   sticky-stack can calculate how many ads fit. The inner child div is made
+   sticky so ads remain visible during scroll. */
 
 /* Desktop XL ad rail (300px wide) */
 .ad-rail {
@@ -816,12 +815,22 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     align-self: stretch;
 }
 
-/* Desktop LG ad rail (160px wide — narrower screens) */
+.ad-rail > div {
+    position: sticky;
+    top: 110px;
+}
+
+/* Desktop LG ad rail (160px wide — schematic page only) */
 .ad-rail-sm {
     width: 160px;
     min-width: 160px;
     flex-shrink: 0;
     align-self: stretch;
+}
+
+.ad-rail-sm > div {
+    position: sticky;
+    top: 110px;
 }
 
 /* Search page ad rail (300px) */
@@ -830,6 +839,17 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     min-width: 300px;
     flex-shrink: 0;
     align-self: stretch;
+}
+
+.search-ad-rail > div {
+    position: sticky;
+    top: 110px;
+}
+
+/* Search page left sidebar ad container */
+.search-under-container > div {
+    position: sticky;
+    top: 110px;
 }
 
 /* Mobile/tablet inline ad slots — reserve space for largest common size (300x250) */
