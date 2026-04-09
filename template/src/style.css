@@ -833,10 +833,9 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     top: 110px;
 }
 
-/* Search page ad rail (300px) */
+/* Search page ad rail */
 .search-ad-rail {
-    width: 300px;
-    min-width: 300px;
+    min-width: 160px;
     flex-shrink: 0;
     align-self: stretch;
 }
