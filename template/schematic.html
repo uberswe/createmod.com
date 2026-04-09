@@ -1241,13 +1241,21 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 1200px)"
   });
-  // In-content display ad (tablet+)
+  // In-content display ad (tablet+) — banner sizes that fit within 60px height
   window['nitroAds'].createAd('schematic-incontent', {
     "refreshTime": 60,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
     "format": "display",
+    "sizes": [
+      ["728", "50"],
+      ["468", "60"],
+      ["468", "50"],
+      ["320", "50"],
+      ["234", "60"],
+      ["120", "60"]
+    ],
     "keywords": kwString,
     "targeting": targeting,
     "report": {

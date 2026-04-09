@@ -832,6 +832,10 @@ var corsAllowedOrigins = map[string]bool{
 //
 // Third-party scripts dynamically load resources from many domains, so
 // style-src, img-src, font-src, frame-src, and connect-src use https: broadly.
+//
+// worker-src needs blob: because ad scripts (NitroPay/score.min.js) create
+// Web Workers from blob: URLs. Without this directive worker-src falls back
+// to script-src which does not include blob:.
 var cspHeader = strings.Join([]string{
 	"default-src 'self'",
 	"script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
@@ -841,6 +845,7 @@ var cspHeader = strings.Join([]string{
 	"connect-src 'self' https:",
 	"frame-src https:",
 	"media-src 'self' https:",
+	"worker-src 'self' blob:",
 	"object-src 'none'",
 	"base-uri 'self' https:",
 	"form-action 'self'",
