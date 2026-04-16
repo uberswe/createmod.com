@@ -302,8 +302,9 @@ var trendingEpoch = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 // trendingTimescale controls how quickly newer content displaces older content.
 // Every timescale period, an item needs 10x more engagement to hold its ranking.
-// 365 days in seconds — gives older high-quality content longer shelf life.
-const trendingTimescale = 365 * 24 * 3600.0
+// 75 days in seconds — tuned to rotate ~2-3 new items into the top-8 trending list
+// each week given current upload volume (~30-50/week) and engagement levels.
+const trendingTimescale = 75 * 24 * 3600.0
 
 // trendingScore computes a Reddit-style hot score.
 //
