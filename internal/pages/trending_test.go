@@ -88,19 +88,19 @@ func Test_TrendingScore_Finite(t *testing.T) {
 	}
 }
 
-func Test_TrendingScore_365DayTimescale(t *testing.T) {
-	// An item from 365 days ago needs ~10x engagement to match a new item
+func Test_TrendingScore_75DayTimescale(t *testing.T) {
+	// An item from 75 days ago needs ~10x engagement to match a new item
 	now := time.Date(2025, 10, 13, 0, 0, 0, 0, time.UTC)
-	yearAgo := now.Add(-365 * 24 * time.Hour)
+	timescaleAgo := now.Add(-75 * 24 * time.Hour)
 
 	// New item with 10 engagement units: log10(10) = 1
 	sNew := trendingScore(now, 10, 0, 0, 0, 0, 0)
 	// Old item: needs ~100 engagement to get log10(100) = 2, compensating for 1 timescale period
-	sOld := trendingScore(yearAgo, 100, 0, 0, 0, 0, 0)
+	sOld := trendingScore(timescaleAgo, 100, 0, 0, 0, 0, 0)
 
 	// They should be approximately equal (within 0.15)
 	diff := math.Abs(sNew - sOld)
 	if diff > 0.15 {
-		t.Fatalf("365-day-old item with 10x engagement should roughly match new item: new=%f old=%f diff=%f", sNew, sOld, diff)
+		t.Fatalf("75-day-old item with 10x engagement should roughly match new item: new=%f old=%f diff=%f", sNew, sOld, diff)
 	}
 }
