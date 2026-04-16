@@ -17,21 +17,21 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/meilisearch/meilisearch-go v0.36.2
 	github.com/mergestat/timediff v0.0.4
-	github.com/minio/minio-go/v7 v7.0.99
+	github.com/minio/minio-go/v7 v7.0.100
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.18.0
-	github.com/riverqueue/river v0.33.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.33.0
+	github.com/riverqueue/river v0.34.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.34.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.1
 	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.8.2
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 	golang.org/x/image v0.38.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/text v0.35.0
+	golang.org/x/text v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -67,9 +67,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.33.0 // indirect
-	github.com/riverqueue/river/rivershared v0.33.0 // indirect
-	github.com/riverqueue/river/rivertype v0.33.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.34.0 // indirect
+	github.com/riverqueue/river/rivershared v0.34.0 // indirect
+	github.com/riverqueue/river/rivertype v0.34.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
@@ -84,9 +84,9 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
