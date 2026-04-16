@@ -15,7 +15,7 @@ require (
 	github.com/gtuk/discordwebhook v1.2.0
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/joho/godotenv v1.5.1
-	github.com/meilisearch/meilisearch-go v0.36.1
+	github.com/meilisearch/meilisearch-go v0.36.2
 	github.com/mergestat/timediff v0.0.4
 	github.com/minio/minio-go/v7 v7.0.99
 	github.com/patrickmn/go-cache v2.1.0+incompatible
