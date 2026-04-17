@@ -87,6 +87,7 @@
             <div id="collections-sticky-adrail-lg" class="mb-3"></div>
           </div>
           <div class="ad-rail d-none d-xl-block">
+            <div id="collections-video-nc-top-right" class="mb-3"></div>
             <div id="collections-sticky-adrail" class="mb-3"></div>
           </div>
         </div>
@@ -99,6 +100,18 @@
 
 <!-- Ad Scripts -->
 <script>
+window['nitroAds'].createAd('collections-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,collections",
+  "targeting": { "pageType": "collections" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 window['nitroAds'].createAd('collections-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,

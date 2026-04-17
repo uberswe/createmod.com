@@ -173,8 +173,17 @@ window.setTheme=function(theme){
     try {
       // Restore sidebar state from localStorage before first paint.
       // Default is expanded (pinned) on desktop; only collapse if explicitly set to '0'.
-      if (window.innerWidth >= 992 && localStorage.getItem('sidebar-expanded') !== '0') {
-        document.body.classList.add('sidebar-pinned');
+      if (window.innerWidth >= 992) {
+        var sidebarCollapsed = localStorage.getItem('sidebar-expanded') === '0';
+        if (!sidebarCollapsed) {
+          document.body.classList.add('sidebar-pinned');
+        } else {
+          // Sidebar HTML defaults to expanded; remove the class when user previously collapsed.
+          var sb = document.getElementById('sidebar-menu');
+          if (sb) sb.classList.remove('sidebar-expanded');
+          var lbl = document.getElementById('sidebar-toggle-label');
+          if (lbl) lbl.textContent = 'Expand';
+        }
       }
 
       // Enable sidebar transition only after initial layout is stable.

@@ -24,9 +24,6 @@
                             {{ end }}
                         </div>
 
-                        <!-- Mobile ad between sections -->
-                        <div id="index-mobile-mid" class="d-xl-none mb-3 mt-4 text-center"></div>
-
                         <!-- Latest -->
                         <h2 class="mb-3 mt-4"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} &rarr;</a></h2>
                         <div id="tab-panel-latest" class="tab-panel">
@@ -82,10 +79,6 @@
                         {{ end }}
                     </div>
 
-                    <!-- Ad Rail (desktop only) -->
-                    <div class="ad-rail d-none d-xl-block">
-                        <div id="index-sticky-adrail" class="mb-3"></div>
-                    </div>
                 </div>
             </div>
         </main>
@@ -93,44 +86,6 @@
     </div>
 </div>
 {{template "foot.html" .}}
-<script>
-window['nitroAds'].createAd('index-sticky-adrail', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 110,
-  "stickyStackResizable": false,
-  "keywords": "minecraft,create-mod,schematics,builds",
-  "targeting": { "pageType": "home" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-window['nitroAds'].createAd('index-mobile-mid', {
-  "refreshTime": 60,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 200,
-  "keywords": "minecraft,create-mod,schematics,builds",
-  "targeting": { "pageType": "home" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
-});
-</script>
 <script>
 (function() {
   document.querySelectorAll('[data-trending-section] a[href*="/schematics/"]').forEach(function(link, i) {

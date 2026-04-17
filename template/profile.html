@@ -92,6 +92,7 @@
 
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
+                        <div id="profile-video-nc-top-right" class="mb-3"></div>
                         <div id="profile-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div>
@@ -102,6 +103,18 @@
 </div>
 {{template "foot.html" .}}
 <script>
+window['nitroAds'].createAd('profile-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,profile,builder",
+  "targeting": { "pageType": "profile" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 window['nitroAds'].createAd('profile-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
