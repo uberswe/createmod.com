@@ -51,6 +51,7 @@
 
         <!-- Ad Rail (desktop only) -->
         <div class="ad-rail d-none d-xl-block">
+            <div id="videos-video-nc-top-right" class="mb-3"></div>
             <div id="videos-sticky-adrail" class="mb-3"></div>
         </div>
         </div><!-- /d-flex -->
@@ -63,6 +64,18 @@
 </div>
 <script>
 if (window['nitroAds']) {
+  window['nitroAds'].createAd('videos-video-nc-top-right', {
+    "format": "video-nc",
+    "keywords": "minecraft,create-mod,videos",
+    "targeting": { "pageType": "videos" },
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 1200px)"
+  });
   window['nitroAds'].createAd('videos-sticky-adrail', {
     "refreshLimit": 10,
     "refreshTime": 45,

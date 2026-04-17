@@ -124,6 +124,7 @@
             <div id="collshow-sticky-adrail-lg" class="mb-3"></div>
           </div>
           <div class="ad-rail d-none d-xl-block">
+            <div id="collshow-video-nc-top-right" class="mb-3"></div>
             <div id="collshow-sticky-adrail" class="mb-3"></div>
           </div>
         </div><!-- /d-flex -->
@@ -147,6 +148,18 @@ function copyShareLink() {
 
 <!-- Ad Scripts -->
 <script>
+window['nitroAds'].createAd('collshow-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,collection",
+  "targeting": { "pageType": "collection" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 window['nitroAds'].createAd('collshow-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,

@@ -174,6 +174,7 @@
                     </div>
                     <!-- Wide 300px rail for xl+ (1200px+) -->
                     <div class="ad-rail d-none d-xl-block">
+                        <div id="modify-video-nc-top-right" class="mb-3"></div>
                         <div id="modify-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div><!-- /d-flex -->
@@ -631,6 +632,19 @@
 
 <!-- Ad Scripts -->
 <script>
+// Video NC ad (desktop only)
+window['nitroAds'].createAd('modify-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,modify,blocks",
+  "targeting": { "pageType": "modify" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 // Narrow ad rail (lg only: 992-1199px)
 window['nitroAds'].createAd('modify-sticky-adrail-lg', {
   "refreshLimit": 10,

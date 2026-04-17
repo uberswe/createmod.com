@@ -74,6 +74,7 @@
 
                     <!-- Right: Ad rail (desktop only) -->
                     <div class="search-ad-rail d-none d-lg-block">
+                        <div id="search-video-nc-top-right" class="mb-3"></div>
                         <div id="search-sticky-adrail-top" class="mb-3"></div>
                     </div>
                 </div>
@@ -139,6 +140,19 @@
                     "position": "top-right"
                 },
                 "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+            });
+            // Video NC ad (desktop only)
+            window['nitroAds'].createAd('search-video-nc-top-right', {
+                "format": "video-nc",
+                "keywords": searchKw,
+                "targeting": searchTarget,
+                "report": {
+                    "enabled": true,
+                    "icon": true,
+                    "wording": "Report Ad",
+                    "position": "top-right"
+                },
+                "mediaQuery": "(min-width: 992px)"
             });
             // Left sidebar sticky ads
             window['nitroAds'].createAd('search-sticky-under', {

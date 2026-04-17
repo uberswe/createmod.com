@@ -175,7 +175,8 @@ window['nitroAds'].createAd('outstream-player', {
   },
   "keywords": "minecraft,create-mod,schematics,builds",
   "targeting": { "pageType": "global" },
-  "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"]
+  "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"],
+  "mediaQuery": "(max-width: 1199px)"
 });
 </script>
 <!-- Blocker detection prompt (guarded against HTMX re-init) -->
@@ -185,29 +186,5 @@ if(!window._npAbpInit){window._npAbpInit=true;
 }
 </script>
 {{ end }}
-<!-- Mobile/tablet anchor ad (all pages) — guarded to prevent re-creation on HTMX navigation -->
-<div id="anchor-bottom"></div>
-<script>
-if (!window._nitroAnchorInit) {
-  window._nitroAnchorInit = true;
-  window['nitroAds'].createAd('anchor-bottom', {
-    "format": "anchor-v2",
-    "anchor": "bottom",
-    "anchorBgColor": "rgb(0 0 0 / 80%)",
-    "anchorClose": true,
-    "anchorPersistClose": false,
-    "anchorStickyOffset": 0,
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-right"
-    },
-    "keywords": "minecraft,create-mod,schematics,builds",
-    "targeting": { "pageType": "global" },
-    "mediaQuery": "(min-width: 768px) and (max-width: 1024px), (min-width: 320px) and (max-width: 767px)"
-  });
-}
-</script>
 </body>
 </html>

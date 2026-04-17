@@ -136,58 +136,82 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			trendingSchematics = trendingSchematics[:indexPageSize]
 		}
 
-		// Determine hasNext flags from cache (default false if not cached)
+		// Determine hasNext flags from cache.
 		latestHasNext := false
 		trendingHasNext := false
 		highestHasNext := false
+		latestHasNextCached := false
+		trendingHasNextCached := false
+		highestHasNextCached := false
 		if v, ok := cacheService.Get(cache.LatestHasNextKey); ok {
 			if b, ok := v.(bool); ok {
 				latestHasNext = b
+				latestHasNextCached = true
 			}
 		}
 		if v, ok := cacheService.Get(trendingHasNextKey); ok {
 			if b, ok := v.(bool); ok {
 				trendingHasNext = b
+				trendingHasNextCached = true
 			}
 		}
 		if v, ok := cacheService.Get(cache.HighestRatedHasNextKey); ok {
 			if b, ok := v.(bool); ok {
 				highestHasNext = b
+				highestHasNextCached = true
 			}
 		}
 
-		// Fallback: if cache is cold (first request before warm completes), query directly
-		if !latestCached {
+		// Fallback: if any cache is cold (first request before warm
+		// completes, or race between schematics and hasNext cache sets),
+		// query the DB directly for the missing sections.
+		if !latestCached || !latestHasNextCached {
 			latestStoreResults, lhn := fetchLatestPageFromStore(appStore, 1)
 			latestSchematics = MapStoreSchematics(appStore, latestStoreResults, cacheService)
 			latestHasNext = lhn
+		}
+		if !trendingHasNextCached {
 			trendingSchematics, trendingHasNext = getTrendingSchematicsPageForWindow(appStore, cacheService, 1, windowDays)
+		}
+		if !highestHasNextCached {
 			highestRated, highestHasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
 		}
 
 		// Build category sections
 		categories := allCategoriesFromStoreOnly(appStore, cacheService)
 		categorySections := make([]CategorySection, 0, len(categories))
+		caser := cases.Title(language.English)
 		for _, cat := range categories {
 			cacheKey := cache.CategorySectionKeyForWindow(cat.Key, windowDays)
 			cacheHasNextKey := cache.CategorySectionHasNextKeyForWindow(cat.Key, windowDays)
 			items, cached := cacheService.GetSchematics(cacheKey)
 			catHasNext := false
+			catHasNextCached := false
 			if cached {
 				if v, ok := cacheService.Get(cacheHasNextKey); ok {
 					if b, ok := v.(bool); ok {
 						catHasNext = b
+						catHasNextCached = true
 					}
 				}
-			} else {
+			}
+			if !cached || !catHasNextCached {
 				items, catHasNext = getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, windowDays)
 			}
+			cat.Name = caser.String(cat.Name)
 			categorySections = append(categorySections, CategorySection{
 				Category: cat,
 				Items:    items,
 				HasNext:  catHasNext,
 			})
 		}
+		// Sort category sections: full sections (>= indexPageSize items) first,
+		// smaller sections last, preserving relative order within each group.
+		sort.SliceStable(categorySections, func(i, j int) bool {
+			iFull := len(categorySections[i].Items) >= indexPageSize
+			jFull := len(categorySections[j].Items) >= indexPageSize
+			return iFull && !jFull
+		})
 
 		d := IndexData{
 			Schematics:       latestSchematics,
@@ -565,9 +589,11 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 	}
 
 	// 1. Latest schematics (page 1)
+	// Set hasNext before schematics so that a concurrent request that sees
+	// cached schematics will also find the hasNext flag.
 	latestResults, latestHasNext := fetchLatestPageFromStore(appStore, 1)
-	cacheService.SetSchematics(cache.LatestSchematicsKey, MapStoreSchematics(appStore, latestResults, cacheService))
 	cacheService.Set(cache.LatestHasNextKey, latestHasNext)
+	cacheService.SetSchematics(cache.LatestSchematicsKey, MapStoreSchematics(appStore, latestResults, cacheService))
 
 	// 2. Trending schematics — warm all requested windows
 	for _, wd := range windowDays {
@@ -581,13 +607,13 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 	// Backward compat: also populate default (non-windowed) keys with 30-day data
 	cacheService.Delete(cache.TrendingSchematicsKey)
 	defaultTrending := getAllTrendingSchematicsForWindow(appStore, cacheService, 30)
-	cacheService.SetSchematics(cache.TrendingSchematicsKey, defaultTrending)
 	cacheService.Set(cache.TrendingHasNextKey, len(defaultTrending) > indexPageSize)
+	cacheService.SetSchematics(cache.TrendingSchematicsKey, defaultTrending)
 
 	// 3. Highest rated schematics (page 1)
 	highestRated, highestHasNext := getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
-	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
 	cacheService.Set(cache.HighestRatedHasNextKey, highestHasNext)
+	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
 
 	// 4. Categories
 	allCategoriesFromStoreOnly(appStore, cacheService)
@@ -597,13 +623,13 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 	for _, cat := range categories {
 		for _, wd := range windowDays {
 			items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, wd)
-			cacheService.SetSchematics(cache.CategorySectionKeyForWindow(cat.Key, wd), items)
 			cacheService.Set(cache.CategorySectionHasNextKeyForWindow(cat.Key, wd), catHasNext)
+			cacheService.SetSchematics(cache.CategorySectionKeyForWindow(cat.Key, wd), items)
 		}
 		// Backward compat: default keys with 30-day data
 		items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, 30)
-		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
 		cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
+		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
 	}
 
 	logger.Debug("Index page cache warmed (store)")

@@ -87,6 +87,7 @@
         <!-- Ad Rail (desktop only) -->
         {{if not .IsContributor}}
         <div class="ad-rail d-none d-xl-block">
+            <div id="guideshow-video-nc-top-right" class="mb-3"></div>
             <div id="guideshow-sticky-adrail" class="mb-3"></div>
         </div>
         {{end}}
@@ -104,6 +105,18 @@
 {{template "foot.html" .}}
 {{if not .IsContributor}}
 <script>
+window['nitroAds'].createAd('guideshow-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,guide,tutorial",
+  "targeting": { "pageType": "guide" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 window['nitroAds'].createAd('guideshow-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,

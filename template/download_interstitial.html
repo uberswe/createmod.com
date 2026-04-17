@@ -8,6 +8,7 @@
         <div class="d-flex gap-3 justify-content-center">
           <!-- Left Ad Rail (desktop only) -->
           <div class="ad-rail d-none d-xl-block">
+            <div id="dlinterstitial-video-nc-top-left" class="mb-3"></div>
             <div id="dlinterstitial-sticky-adrail-left" class="mb-3"></div>
           </div>
           <div style="max-width:540px; width:100%; padding:2rem 0;">
@@ -33,6 +34,7 @@
           </div>
           <!-- Right Ad Rail (desktop only) -->
           <div class="ad-rail d-none d-xl-block">
+            <div id="dlinterstitial-video-nc-top-right" class="mb-3"></div>
             <div id="dlinterstitial-sticky-adrail-right" class="mb-3"></div>
           </div>
         </div>
@@ -112,6 +114,20 @@
 </script>
 <script>
 if (window['nitroAds']) {
+  ['dlinterstitial-video-nc-top-left', 'dlinterstitial-video-nc-top-right'].forEach(function(id) {
+    window['nitroAds'].createAd(id, {
+      "format": "video-nc",
+      "keywords": "minecraft,create-mod,download",
+      "targeting": { "pageType": "download-interstitial" },
+      "report": {
+        "enabled": true,
+        "icon": true,
+        "wording": "Report Ad",
+        "position": "top-right"
+      },
+      "mediaQuery": "(min-width: 1200px)"
+    });
+  });
   ['dlinterstitial-sticky-adrail-left', 'dlinterstitial-sticky-adrail-right'].forEach(function(id) {
     window['nitroAds'].createAd(id, {
       "refreshLimit": 10,

@@ -230,6 +230,7 @@
 
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
+                        <div id="upload-preview-video-nc-top-right" class="mb-3"></div>
                         <div id="upload-preview-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div>
@@ -592,6 +593,18 @@ function deleteAdditionalFile(token, fileId, btn) {
 {{ end }}
 {{template "foot.html" .}}
 <script>
+window['nitroAds'].createAd('upload-preview-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,upload,preview",
+  "targeting": { "pageType": "upload-preview" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
 window['nitroAds'].createAd('upload-preview-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,
