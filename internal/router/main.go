@@ -842,7 +842,7 @@ var cspHeader = strings.Join([]string{
 	"style-src 'self' 'unsafe-inline' https:",
 	"img-src 'self' data: blob: https:",
 	"font-src 'self' https:",
-	"connect-src 'self' https:",
+	"connect-src 'self' https: data:",
 	"frame-src https:",
 	"media-src 'self' https:",
 	"worker-src 'self' blob:",
