@@ -3,12 +3,14 @@ import { test, expect } from '@playwright/test';
 // Test that the ad rail inner div is sticky when scrolling on desktop.
 // The outer .ad-rail uses align-self:stretch for full height (NitroPay needs it),
 // while the inner > div uses position:sticky to stay visible during scroll.
+// Uses /explore because it always renders .ad-rail (the homepage does not have one).
 
 test.describe('Ad rail stickiness', () => {
   test.use({ viewport: { width: 1400, height: 900 } });
 
-  test('ad rail inner div stays visible after scrolling on homepage', async ({ page }) => {
-    await page.goto('https://createmod.com/', { waitUntil: 'domcontentloaded' });
+  test('ad rail inner div stays visible after scrolling on explore page', async ({ page, baseURL }) => {
+    const url = baseURL ?? 'http://localhost:8080';
+    await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
     const adRail = page.locator('.ad-rail').first();
     await expect(adRail).toBeVisible({ timeout: 10000 });
@@ -43,8 +45,9 @@ test.describe('Ad rail stickiness', () => {
     expect(afterScrollBox!.y).toBeLessThan(900);
   });
 
-  test('ad rail outer container fills parent height', async ({ page }) => {
-    await page.goto('https://createmod.com/', { waitUntil: 'domcontentloaded' });
+  test('ad rail outer container fills parent height', async ({ page, baseURL }) => {
+    const url = baseURL ?? 'http://localhost:8080';
+    await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
     const adRail = page.locator('.ad-rail').first();
     await expect(adRail).toBeVisible({ timeout: 10000 });
