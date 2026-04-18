@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
 )
 
 // PostgresStore implements all store interfaces using sqlc-generated queries.
@@ -1933,64 +1934,93 @@ func (vs *ViewRatingStoreImpl) FetchTrendingData(ctx context.Context, recentDays
 		createdMap[s.ID] = s.Created
 	}
 
-	// Fetch recent views
-	recentViewRows, err := vs.q.FetchRecentViewsBySchematic(ctx, cutoff)
-	if err != nil {
-		return nil, fmt.Errorf("fetch recent views: %w", err)
-	}
-	recentViews := make(map[string]float64, len(recentViewRows))
-	for _, r := range recentViewRows {
-		recentViews[r.ID] = float64(r.V)
-	}
+	// Fetch all engagement signals concurrently — these are independent
+	// GROUP BY aggregations that previously ran sequentially (~150-300ms).
+	var (
+		recentViews     map[string]float64
+		totalViews      map[string]float64
+		ratingSum       map[string]float64
+		ratingCount     map[string]float64
+		recentDownloads map[string]float64
+		totalDownloads  map[string]float64
+	)
 
-	// Fetch total views
-	totalViewRows, err := vs.q.FetchTotalViewsBySchematic(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetch total views: %w", err)
-	}
-	totalViews := make(map[string]float64, len(totalViewRows))
-	for _, r := range totalViewRows {
-		totalViews[r.ID] = float64(r.V)
-	}
+	g, gCtx := errgroup.WithContext(ctx)
 
-	// Fetch rating sums
-	ratingSumRows, err := vs.q.FetchRatingSumBySchematic(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetch rating sums: %w", err)
-	}
-	ratingSum := make(map[string]float64, len(ratingSumRows))
-	for _, r := range ratingSumRows {
-		ratingSum[r.ID] = float64(r.V)
-	}
+	g.Go(func() error {
+		rows, err := vs.q.FetchRecentViewsBySchematic(gCtx, cutoff)
+		if err != nil {
+			return fmt.Errorf("fetch recent views: %w", err)
+		}
+		recentViews = make(map[string]float64, len(rows))
+		for _, r := range rows {
+			recentViews[r.ID] = float64(r.V)
+		}
+		return nil
+	})
 
-	// Fetch rating counts
-	ratingCountRows, err := vs.q.FetchRatingCountBySchematic(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetch rating counts: %w", err)
-	}
-	ratingCount := make(map[string]float64, len(ratingCountRows))
-	for _, r := range ratingCountRows {
-		ratingCount[r.ID] = float64(r.V)
-	}
+	g.Go(func() error {
+		rows, err := vs.q.FetchTotalViewsBySchematic(gCtx)
+		if err != nil {
+			return fmt.Errorf("fetch total views: %w", err)
+		}
+		totalViews = make(map[string]float64, len(rows))
+		for _, r := range rows {
+			totalViews[r.ID] = float64(r.V)
+		}
+		return nil
+	})
 
-	// Fetch recent downloads
-	recentDownloadRows, err := vs.q.FetchRecentDownloadsBySchematic(ctx, cutoff)
-	if err != nil {
-		return nil, fmt.Errorf("fetch recent downloads: %w", err)
-	}
-	recentDownloads := make(map[string]float64, len(recentDownloadRows))
-	for _, r := range recentDownloadRows {
-		recentDownloads[r.ID] = float64(r.V)
-	}
+	g.Go(func() error {
+		rows, err := vs.q.FetchRatingSumBySchematic(gCtx)
+		if err != nil {
+			return fmt.Errorf("fetch rating sums: %w", err)
+		}
+		ratingSum = make(map[string]float64, len(rows))
+		for _, r := range rows {
+			ratingSum[r.ID] = float64(r.V)
+		}
+		return nil
+	})
 
-	// Fetch total downloads
-	totalDownloadRows, err := vs.q.FetchTotalDownloadsBySchematic(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetch total downloads: %w", err)
-	}
-	totalDownloads := make(map[string]float64, len(totalDownloadRows))
-	for _, r := range totalDownloadRows {
-		totalDownloads[r.ID] = float64(r.V)
+	g.Go(func() error {
+		rows, err := vs.q.FetchRatingCountBySchematic(gCtx)
+		if err != nil {
+			return fmt.Errorf("fetch rating counts: %w", err)
+		}
+		ratingCount = make(map[string]float64, len(rows))
+		for _, r := range rows {
+			ratingCount[r.ID] = float64(r.V)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		rows, err := vs.q.FetchRecentDownloadsBySchematic(gCtx, cutoff)
+		if err != nil {
+			return fmt.Errorf("fetch recent downloads: %w", err)
+		}
+		recentDownloads = make(map[string]float64, len(rows))
+		for _, r := range rows {
+			recentDownloads[r.ID] = float64(r.V)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		rows, err := vs.q.FetchTotalDownloadsBySchematic(gCtx)
+		if err != nil {
+			return fmt.Errorf("fetch total downloads: %w", err)
+		}
+		totalDownloads = make(map[string]float64, len(rows))
+		for _, r := range rows {
+			totalDownloads[r.ID] = float64(r.V)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	return &store.TrendingData{
