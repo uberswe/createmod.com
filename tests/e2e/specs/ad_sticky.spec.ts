@@ -1,86 +1,64 @@
 import { test, expect } from '@playwright/test';
 
-// Test that the ad rail inner div is sticky when scrolling on desktop.
-// The outer .ad-rail uses align-self:stretch for full height (NitroPay needs it),
+// Test that the ad rail CSS is correctly applied so NitroPay sticky-stack works.
+// The outer .ad-rail uses align-self:stretch for full height,
 // while the inner > div uses position:sticky to stay visible during scroll.
 // Uses /explore because it always renders .ad-rail (the homepage does not have one).
+// In CI no ad scripts load, so we verify computed styles rather than visible content.
 
 test.describe('Ad rail stickiness', () => {
   test.use({ viewport: { width: 1400, height: 900 } });
 
-  test('ad rail inner div stays visible after scrolling on explore page', async ({ page, baseURL }) => {
+  test('ad rail inner divs have sticky positioning', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
+    // The .ad-rail is hidden below xl breakpoint via d-none/d-xl-block.
+    // At 1400px wide it should be present in the DOM.
     const adRail = page.locator('.ad-rail').first();
-    await expect(adRail).toBeVisible({ timeout: 10000 });
+    await expect(adRail).toBeAttached({ timeout: 10000 });
 
-    // The inner div is the direct child of .ad-rail
-    const innerDiv = adRail.locator('> div').first();
-    await expect(innerDiv).toBeVisible();
-
-    // Get initial position of the inner div
-    const initialBox = await innerDiv.boundingBox();
-    expect(initialBox).toBeTruthy();
-
-    // Scroll down significantly
-    await page.evaluate(() => window.scrollBy(0, 1500));
-    await page.waitForTimeout(500);
-
-    // Check the inner div's computed position style
-    const position = await innerDiv.evaluate((el) => {
-      return window.getComputedStyle(el).position;
+    // Verify the inner child divs have position: sticky applied via CSS
+    const innerStyles = await adRail.evaluate((el) => {
+      const children = el.querySelectorAll(':scope > div');
+      return Array.from(children).map((child) => {
+        const style = window.getComputedStyle(child);
+        return { position: style.position, top: style.top };
+      });
     });
-    console.log(`Inner div computed position: ${position}`);
-    expect(position).toBe('sticky');
 
-    // Get position after scroll - sticky element should remain in viewport
-    const afterScrollBox = await innerDiv.boundingBox();
-    expect(afterScrollBox).toBeTruthy();
-
-    console.log(`Before scroll - top: ${initialBox!.y}, After scroll - top: ${afterScrollBox!.y}`);
-
-    // A sticky element should stay in the viewport (positive y, within viewport height)
-    expect(afterScrollBox!.y).toBeGreaterThanOrEqual(0);
-    expect(afterScrollBox!.y).toBeLessThan(900);
+    expect(innerStyles.length).toBeGreaterThan(0);
+    for (const style of innerStyles) {
+      expect(style.position).toBe('sticky');
+      expect(style.top).toBe('110px');
+    }
   });
 
-  test('ad rail outer container fills parent height', async ({ page, baseURL }) => {
+  test('ad rail outer container has correct layout styles', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
     const adRail = page.locator('.ad-rail').first();
-    await expect(adRail).toBeVisible({ timeout: 10000 });
+    await expect(adRail).toBeAttached({ timeout: 10000 });
 
-    // Check outer ad-rail uses align-self: stretch
-    const alignSelf = await adRail.evaluate((el) => {
-      return window.getComputedStyle(el).alignSelf;
-    });
-    console.log(`Ad rail align-self: ${alignSelf}`);
-
-    // Get the ad rail height vs its parent flex container height
-    const heights = await adRail.evaluate((el) => {
-      const parent = el.closest('.d-flex') as HTMLElement;
+    // Verify the outer .ad-rail has the correct CSS for stretch layout
+    const outerStyles = await adRail.evaluate((el) => {
+      const style = window.getComputedStyle(el);
       return {
-        adRailHeight: el.getBoundingClientRect().height,
-        parentHeight: parent ? parent.getBoundingClientRect().height : 0,
+        alignSelf: style.alignSelf,
+        width: style.width,
+        flexShrink: style.flexShrink,
+        position: style.position,
       };
     });
-    console.log(`Ad rail height: ${heights.adRailHeight}, Parent height: ${heights.parentHeight}`);
 
-    // The ad rail should be close to the parent height (stretch behavior)
-    if (heights.parentHeight > 0) {
-      const ratio = heights.adRailHeight / heights.parentHeight;
-      console.log(`Height ratio (ad/parent): ${ratio}`);
-      expect(ratio).toBeGreaterThan(0.8);
-    }
-
-    // The outer container should NOT be sticky itself
-    const outerPosition = await adRail.evaluate((el) => {
-      return window.getComputedStyle(el).position;
-    });
-    console.log(`Outer ad-rail position: ${outerPosition}`);
-    // Should be static (not sticky) — the inner child handles stickiness
-    expect(outerPosition).not.toBe('sticky');
+    // align-self: stretch ensures the rail fills its flex parent height
+    expect(outerStyles.alignSelf).toBe('stretch');
+    // width should be 300px
+    expect(outerStyles.width).toBe('300px');
+    // flex-shrink: 0 prevents the rail from collapsing
+    expect(outerStyles.flexShrink).toBe('0');
+    // The outer container should NOT be sticky itself — the inner child handles stickiness
+    expect(outerStyles.position).not.toBe('sticky');
   });
 });
