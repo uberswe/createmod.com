@@ -28,6 +28,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/text/cases"
@@ -587,12 +588,24 @@ func MapStoreSchematics(appStore *store.Store, schematics []store.Schematic, cac
 		return result
 	}
 
-	// Batch-fetch enrichment data for all uncached schematics
-	viewCounts, _ := appStore.ViewRatings.BatchGetViewCounts(ctx, uncachedIDs)
-	downloadCounts, _ := appStore.ViewRatings.BatchGetDownloadCounts(ctx, uncachedIDs)
-	ratings, _ := appStore.ViewRatings.BatchGetRatings(ctx, uncachedIDs)
-	batchCategories, _ := appStore.Schematics.BatchGetCategoriesForSchematics(ctx, uncachedIDs)
-	batchTags, _ := appStore.Schematics.BatchGetTagsForSchematics(ctx, uncachedIDs)
+	// Batch-fetch enrichment data for all uncached schematics concurrently.
+	var (
+		viewCounts      map[string]int
+		downloadCounts  map[string]int
+		ratings         map[string]*store.SchematicRating
+		batchCategories map[string][]store.SchematicCategoryInfo
+		batchTags       map[string][]store.SchematicTagInfo
+	)
+	{
+		var wg sync.WaitGroup
+		wg.Add(5)
+		go func() { defer wg.Done(); viewCounts, _ = appStore.ViewRatings.BatchGetViewCounts(ctx, uncachedIDs) }()
+		go func() { defer wg.Done(); downloadCounts, _ = appStore.ViewRatings.BatchGetDownloadCounts(ctx, uncachedIDs) }()
+		go func() { defer wg.Done(); ratings, _ = appStore.ViewRatings.BatchGetRatings(ctx, uncachedIDs) }()
+		go func() { defer wg.Done(); batchCategories, _ = appStore.Schematics.BatchGetCategoriesForSchematics(ctx, uncachedIDs) }()
+		go func() { defer wg.Done(); batchTags, _ = appStore.Schematics.BatchGetTagsForSchematics(ctx, uncachedIDs) }()
+		wg.Wait()
+	}
 
 	// Build each uncached schematic using batch data
 	for i := range schematics {

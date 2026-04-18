@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"math"
 	"sort"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/drexedam/gravatar"
 	"createmod/internal/server"
+	"golang.org/x/sync/singleflight"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -41,6 +43,11 @@ var indexTabTemplates = append([]string{
 
 const indexPageSize = 8
 const indexHTMLCacheTTL = 5 * time.Minute
+
+// trendingFlight deduplicates concurrent calls to getAllTrendingSchematicsForWindow
+// so that when multiple requests hit a cold cache (e.g. pod startup), only one
+// goroutine computes the trending list while others wait for its result.
+var trendingFlight singleflight.Group
 
 // CategorySection holds one category's schematics for the index page.
 type CategorySection struct {
@@ -164,17 +171,36 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 
 		// Fallback: if any cache is cold (first request before warm
 		// completes, or race between schematics and hasNext cache sets),
-		// query the DB directly for the missing sections.
-		if !latestCached || !latestHasNextCached {
-			latestStoreResults, lhn := fetchLatestPageFromStore(appStore, 1)
-			latestSchematics = MapStoreSchematics(appStore, latestStoreResults, cacheService)
-			latestHasNext = lhn
-		}
-		if !trendingHasNextCached {
-			trendingSchematics, trendingHasNext = getTrendingSchematicsPageForWindow(appStore, cacheService, 1, windowDays)
-		}
-		if !highestHasNextCached {
-			highestRated, highestHasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
+		// query the DB directly for the missing sections concurrently.
+		needLatest := !latestCached || !latestHasNextCached
+		needTrending := !trendingHasNextCached
+		needHighest := !highestHasNextCached
+		if needLatest || needTrending || needHighest {
+			var wg sync.WaitGroup
+			if needLatest {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					latestStoreResults, lhn := fetchLatestPageFromStore(appStore, 1)
+					latestSchematics = MapStoreSchematics(appStore, latestStoreResults, cacheService)
+					latestHasNext = lhn
+				}()
+			}
+			if needTrending {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					trendingSchematics, trendingHasNext = getTrendingSchematicsPageForWindow(appStore, cacheService, 1, windowDays)
+				}()
+			}
+			if needHighest {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					highestRated, highestHasNext = getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
+				}()
+			}
+			wg.Wait()
 		}
 
 		// Build category sections
@@ -235,7 +261,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		d.Slug = "/"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.SubCategory = "Home"
-		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.Categories = categories
 
 		html, err := registry.LoadFiles(indexTemplates...).Render(d)
 		if err != nil {
@@ -452,6 +478,8 @@ func getAllTrendingSchematicsFromStore(appStore *store.Store, cacheService *cach
 }
 
 // getAllTrendingSchematicsForWindow returns the full sorted trending list for a specific time window.
+// Uses singleflight to deduplicate concurrent calls with the same recentDays value,
+// preventing cache stampedes when multiple requests hit a cold cache simultaneously.
 func getAllTrendingSchematicsForWindow(appStore *store.Store, cacheService *cache.Service, recentDays int) []models.Schematic {
 	cacheKey := cache.TrendingKeyForWindow(recentDays)
 	cached, found := cacheService.GetSchematics(cacheKey)
@@ -459,48 +487,63 @@ func getAllTrendingSchematicsForWindow(appStore *store.Store, cacheService *cach
 		return cached
 	}
 
-	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), recentDays)
-	if err != nil || td == nil || len(td.SchematicIDs) == 0 {
-		return nil
-	}
-
-	// Compute scores
-	type scored struct {
-		id    string
-		score float64
-	}
-	scoredList := make([]scored, 0, len(td.SchematicIDs))
-	for _, id := range td.SchematicIDs {
-		created := td.SchematicCreated[id]
-		s := trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
-		scoredList = append(scoredList, scored{id: id, score: s})
-	}
-	sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
-
-	// Fetch full schematics in sorted order
-	ids := make([]string, len(scoredList))
-	for i, s := range scoredList {
-		ids[i] = s.id
-	}
-	storeSchematics, err := appStore.Schematics.ListByIDs(context.Background(), ids)
-	if err != nil {
-		return nil
-	}
-	// ListByIDs does not preserve order; re-sort
-	schematicMap := make(map[string]store.Schematic, len(storeSchematics))
-	for _, s := range storeSchematics {
-		schematicMap[s.ID] = s
-	}
-	ordered := make([]store.Schematic, 0, len(ids))
-	for _, id := range ids {
-		if s, ok := schematicMap[id]; ok {
-			ordered = append(ordered, s)
+	// Use singleflight to ensure only one goroutine computes trending data
+	// for a given window — others wait and share the result.
+	v, _, _ := trendingFlight.Do(cacheKey, func() (interface{}, error) {
+		// Double-check cache inside singleflight in case another goroutine
+		// populated it between our first check and acquiring the flight.
+		if cached, found := cacheService.GetSchematics(cacheKey); found {
+			return cached, nil
 		}
-	}
 
-	all := MapStoreSchematics(appStore, ordered, cacheService)
-	cacheService.SetSchematics(cacheKey, all)
-	return all
+		td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), recentDays)
+		if err != nil || td == nil || len(td.SchematicIDs) == 0 {
+			return []models.Schematic(nil), nil
+		}
+
+		// Compute scores
+		type scored struct {
+			id    string
+			score float64
+		}
+		scoredList := make([]scored, 0, len(td.SchematicIDs))
+		for _, id := range td.SchematicIDs {
+			created := td.SchematicCreated[id]
+			s := trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
+			scoredList = append(scoredList, scored{id: id, score: s})
+		}
+		sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
+
+		// Fetch full schematics in sorted order
+		ids := make([]string, len(scoredList))
+		for i, s := range scoredList {
+			ids[i] = s.id
+		}
+		storeSchematics, err := appStore.Schematics.ListByIDs(context.Background(), ids)
+		if err != nil {
+			return []models.Schematic(nil), nil
+		}
+		// ListByIDs does not preserve order; re-sort
+		schematicMap := make(map[string]store.Schematic, len(storeSchematics))
+		for _, s := range storeSchematics {
+			schematicMap[s.ID] = s
+		}
+		ordered := make([]store.Schematic, 0, len(ids))
+		for _, id := range ids {
+			if s, ok := schematicMap[id]; ok {
+				ordered = append(ordered, s)
+			}
+		}
+
+		all := MapStoreSchematics(appStore, ordered, cacheService)
+		cacheService.SetSchematics(cacheKey, all)
+		return all, nil
+	})
+
+	if v == nil {
+		return nil
+	}
+	return v.([]models.Schematic)
 }
 
 // getTrendingSchematicsPageFromStore returns a page of trending schematics from the PostgreSQL store (default 30-day window).
