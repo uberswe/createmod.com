@@ -5,10 +5,11 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/store"
 	"fmt"
 	strip "github.com/grokify/html-strip-tags-go"
-	"createmod/internal/server"
 	"net/http"
 	"net/url"
 )
@@ -36,19 +37,12 @@ type SchematicTagWithSelected struct {
 	Selected bool
 }
 
-func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+func EditSchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		storeSchematic, err := appStore.Schematics.GetByName(context.Background(), name)
 		if err != nil || storeSchematic == nil {
-			nd := DefaultData{}
-			nd.Populate(e)
-			nd.Title = i18n.T(nd.Language, "Page Not Found")
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
-			if err != nil {
-				return err
-			}
-			return e.HTML(http.StatusNotFound, html)
+			return RenderNotFound(registry, searchEngine, cacheService, appStore, e)
 		}
 
 		d := EditSchematicData{

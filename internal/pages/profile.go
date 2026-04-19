@@ -4,11 +4,12 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/session"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"github.com/drexedam/gravatar"
-	"createmod/internal/server"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	tmpl "html/template"
@@ -46,7 +47,7 @@ type ProfileData struct {
 	DefaultData
 }
 
-func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
+func ProfileHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		username := e.Request.PathValue("username")
 		if username == "" {
@@ -56,11 +57,11 @@ func ProfileHandler(cacheService *cache.Service, registry *server.Registry, appS
 			}
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
 		}
-		return showProfile(e, appStore, cacheService, registry, translationService, username)
+		return showProfile(e, searchEngine, appStore, cacheService, registry, translationService, username)
 	}
 }
 
-func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *cache.Service, registry *server.Registry, translationService *translation.Service, username string) error {
+func showProfile(e *server.RequestEvent, searchEngine search.SearchEngine, appStore *store.Store, cacheService *cache.Service, registry *server.Registry, translationService *translation.Service, username string) error {
 	d := ProfileData{}
 	d.Populate(e)
 	caser := cases.Title(language.English)
@@ -74,7 +75,7 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 	ctx := e.Request.Context()
 	user, err := appStore.Users.GetUserByUsername(ctx, username)
 	if err != nil || user == nil || user.Deleted != nil {
-		return e.HTML(http.StatusNotFound, "User not found")
+		return RenderNotFound(registry, searchEngine, cacheService, appStore, e)
 	}
 
 	d.Schematics = findAuthorSchematicsFromStore(appStore, cacheService, "", user.ID, 1000)

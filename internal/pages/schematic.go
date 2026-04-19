@@ -102,14 +102,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			if newName, found := tryFixEncodedSchematicNameStore(appStore, name); found {
 				return e.Redirect(http.StatusMovedPermanently, LangRedirectURL(e, "/schematics/"+newName))
 			}
-			nd := DefaultData{}
-			nd.Populate(e)
-			nd.Title = i18n.T(nd.Language, "Page Not Found")
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
-			if err != nil {
-				return err
-			}
-			return e.HTML(http.StatusNotFound, html)
+			return RenderNotFound(registry, searchEngine, cacheService, appStore, e)
 		}
 		// Check scheduled_at — allow the author to view their own scheduled schematic
 		isScheduled := s.ScheduledAt != nil && s.ScheduledAt.After(time.Now())
@@ -117,12 +110,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			nd := DefaultData{}
 			nd.Populate(e)
 			if nd.UserID != s.AuthorID {
-				nd.Title = i18n.T(nd.Language, "Page Not Found")
-				html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
-				if err != nil {
-					return err
-				}
-				return e.HTML(http.StatusNotFound, html)
+				return RenderNotFound(registry, searchEngine, cacheService, appStore, e)
 			}
 		}
 
@@ -160,14 +148,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 		// Non-owners (and non-admins) cannot view non-public schematics
 		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
-			nd := DefaultData{}
-			nd.Populate(e)
-			nd.Title = i18n.T(nd.Language, "Page Not Found")
-			html, err := registry.LoadFiles(fourOhFourTemplates...).Render(nd)
-			if err != nil {
-				return err
-			}
-			return e.HTML(http.StatusNotFound, html)
+			return RenderNotFound(registry, searchEngine, cacheService, appStore, e)
 		}
 		// Show moderation banner to the author for non-public states
 		if d.IsAuthor && !store.IsPublicState(s.ModerationState) {

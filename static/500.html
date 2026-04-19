@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreateMod — Server Error</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:#1f2121;color:#dce1e7;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;text-align:center;padding:2rem;
+  }
+  .container{max-width:520px}
+  .logo{margin-bottom:2rem}
+  .logo svg{width:64px;height:64px}
+  h1{font-size:2rem;margin-bottom:0.75rem;color:#fff}
+  p{font-size:1.1rem;line-height:1.6;color:#b0b0c0;margin-bottom:0.5rem}
+  .btn{
+    display:inline-block;margin-top:1.5rem;padding:0.6rem 1.5rem;
+    background:#bf9045;color:#fff;text-decoration:none;
+    border-radius:6px;font-weight:600;font-size:1rem;
+    transition:background 0.2s;
+  }
+  .btn:hover{background:#a87c3a}
+  .gear{
+    font-size:4rem;margin-bottom:1.5rem;
+    display:inline-block;
+    animation:spin 4s linear infinite;
+  }
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  .status{font-size:0.85rem;color:#888;margin-top:2rem}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+      <rect width="64" height="64" rx="12" fill="#bf9045"/>
+      <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-weight="700" font-size="28">C</text>
+    </svg>
+  </div>
+  <div class="gear">&#9881;</div>
+  <h1>Uh oh!</h1>
+  <p>We are experiencing some server issues currently but are working on fixing them as soon as possible.</p>
+  <a href="/" class="btn">Go Home</a>
+  <p class="status" id="status">Checking again in 30s&hellip;</p>
+</div>
+<script>
+(function(){
+  var seconds = 30;
+  var el = document.getElementById("status");
+  setInterval(function(){
+    seconds--;
+    if(seconds > 0){
+      el.textContent = "Checking again in " + seconds + "s\u2026";
+      return;
+    }
+    seconds = 30;
+    el.textContent = "Checking\u2026";
+    fetch("/api/health").then(function(r){
+      if(r.ok) location.reload();
+      else el.textContent = "Still down. Checking again in 30s\u2026";
+    }).catch(function(){
+      el.textContent = "Still down. Checking again in 30s\u2026";
+    });
+  }, 1000);
+})();
+</script>
+</body>
+</html>

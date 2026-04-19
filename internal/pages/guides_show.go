@@ -4,10 +4,11 @@ import (
 	"context"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"fmt"
-	"createmod/internal/server"
 	"github.com/sym01/htmlsanitizer"
 	"html/template"
 	"net/http"
@@ -37,7 +38,7 @@ type GuideShowData struct {
 }
 
 // GuidesShowHandler renders an individual guide page by record ID.
-func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func GuidesShowHandler(registry *server.Registry, searchEngine search.SearchEngine, cacheService *cache.Service, translationService *translation.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		id := e.Request.PathValue("id")
 		ctx := context.Background()
@@ -55,14 +56,7 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 		}
 
 		if guide == nil {
-			d.NotFound = true
-			d.Title = i18n.T(d.Language, "Guide not found")
-			d.Description = i18n.T(d.Language, "We couldn't find this guide.")
-			html, err := registry.LoadFiles(guidesShowTemplates...).Render(d)
-			if err != nil {
-				return err
-			}
-			return e.HTML(http.StatusNotFound, html)
+			return RenderNotFound(registry, searchEngine, cacheService, appStore, e)
 		}
 
 		d.GuideID = guide.ID

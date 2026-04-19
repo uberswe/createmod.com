@@ -47,25 +47,30 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		e := server.NewRequestEvent(w, r)
 		if err := h(e); err != nil {
-			if apiErr, ok := err.(*server.APIError); ok {
-				if apiErr.Status >= 500 {
-					slog.Error("handler error",
-						"method", r.Method,
-						"path", r.URL.Path,
-						"status", apiErr.Status,
-						"error", apiErr.Message,
-					)
+			apiErr, ok := err.(*server.APIError)
+			status := http.StatusInternalServerError
+			if ok {
+				status = apiErr.Status
+			}
+
+			if status >= 500 || !ok {
+				msg := err.Error()
+				if ok {
+					msg = apiErr.Message
 				}
-				http.Error(w, apiErr.Message, apiErr.Status)
+				slog.Error("handler error",
+					"method", r.Method,
+					"path", r.URL.Path,
+					"status", status,
+					"error", msg,
+				)
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(status)
+				w.Write([]byte(internalErrorPage))
 				return
 			}
-			slog.Error("handler error",
-				"method", r.Method,
-				"path", r.URL.Path,
-				"status", 500,
-				"error", err.Error(),
-			)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			http.Error(w, apiErr.Message, apiErr.Status)
 		}
 	}
 }
@@ -443,7 +448,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/guides", Adapt(pages.GuidesHandler(registry, p.CacheService, outSecret, p.AppStore)))
 	r.Get("/guides/new", Adapt(pages.GuidesNewHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/guides", Adapt(pages.GuidesCreateHandler(p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
-	r.Get("/guides/{id}", Adapt(pages.GuidesShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore)))
+	r.Get("/guides/{id}", Adapt(pages.GuidesShowHandler(registry, p.SearchEngine, p.CacheService, p.TranslationService, p.AppStore)))
 	r.Get("/guides/{id}/edit", Adapt(pages.GuidesEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/guides/{id}", Adapt(pages.GuidesUpdateHandler(p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Post("/guides/{id}/delete", Adapt(pages.GuidesDeleteHandler(p.AppStore)))
@@ -478,7 +483,7 @@ func Register(p RegisterParams) chi.Router {
 		http.Redirect(w, req, "/schematics/"+name, http.StatusMovedPermanently)
 	})
 	// Partial comments endpoint for HTMX refresh
-	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.CacheService, registry, p.DiscordService, p.AppStore, p.TranslationService)))
+	r.Get("/schematics/{name}/comments", Adapt(pages.SchematicCommentsHandler(p.SearchEngine, p.CacheService, registry, p.DiscordService, p.AppStore, p.TranslationService)))
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
@@ -500,7 +505,7 @@ func Register(p RegisterParams) chi.Router {
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
-	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.SearchEngine, p.CacheService, registry, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
 	// Click tracking
@@ -515,10 +520,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// User
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
-	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
-	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/profile", Adapt(pages.ProfileHandler(p.SearchEngine, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	// Fallback
-	r.Get("/*", Adapt(pages.FourOhFourHandler(registry, p.AppStore)))
+	r.Get("/*", Adapt(pages.FourOhFourHandler(registry, p.SearchEngine, p.CacheService, p.AppStore)))
 
 	return r
 }
@@ -754,6 +759,40 @@ const maintenancePage = `<!DOCTYPE html>
   }, 1000);
 })();
 </script>
+</body>
+</html>`
+
+const internalErrorPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreateMod — Something went wrong</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" crossorigin="anonymous" integrity="sha384-G7E9WIqG43QQ/+R056iUb+Na8tVpIeC6KNiX+8swjM+jOfEgrhPQ/eJjcLo/ftq/">
+<style>
+  body{background:#1f2121;color:#dce1e7}
+  .btn-gold{background:#bf9045;border-color:#bf9045;color:#fff}
+  .btn-gold:hover{background:#a87c3a;border-color:#a87c3a;color:#fff}
+</style>
+</head>
+<body class="border-top-wide border-primary d-flex flex-column" data-bs-theme="dark">
+<main class="page page-center">
+  <div class="container-tight py-4">
+    <div class="empty">
+      <div class="empty-header">500</div>
+      <p class="empty-title">Something went wrong</p>
+      <p class="empty-subtitle text-secondary">
+        We encountered an unexpected error. Please try again in a moment.
+      </p>
+      <div class="empty-action">
+        <a href="/" class="btn btn-gold">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+          Take me home
+        </a>
+      </div>
+    </div>
+  </div>
+</main>
 </body>
 </html>`
 
