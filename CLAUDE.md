@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CreateMod.com is a Go web application that serves as a community platform for Minecraft Create mod schematics. It uses server-side rendered Go templates with HTMX for progressive enhancement, PostgreSQL (via pgx + sqlc) for data, chi for HTTP routing, Bleve for full-text search, and Minio/S3 for file storage.
+CreateMod.com is a Go web application that serves as a community platform for Minecraft Create mod schematics. It uses server-side rendered Go templates with HTMX for progressive enhancement, PostgreSQL (via pgx + sqlc) for data, chi for HTTP routing, Meilisearch for full-text search, and Minio/S3 for file storage.
 
 ## Development Commands
 
@@ -46,9 +46,9 @@ Connects to PostgreSQL, runs database migrations (`database.RunMigrations`), run
 
 ### Server Initialization (`server/start.go`)
 
-`Server` struct holds all services: `search.Service` (Bleve), `cache.Service` (go-cache), `discord.Service`, `moderation.Service` (OpenAI), `translation.Service` (OpenAI), `session.Store` (PostgreSQL sessions), `storage.Service` (S3/Minio). Services are created in `New()` and passed to handlers via the router's `RegisterParams`.
+`Server` struct holds all services: `search.Service` (in-memory metadata index), `cache.Service` (go-cache), `discord.Service`, `moderation.Service` (OpenAI), `translation.Service` (OpenAI), `session.Store` (PostgreSQL sessions), `storage.Service` (S3/Minio). Services are created in `New()` and passed to handlers via the router's `RegisterParams`.
 
-On boot: builds per-pod search index from the store, warms caches in background goroutines, starts River job worker for periodic tasks (search rebuild, sitemap generation, trending scores, temp upload cleanup).
+On boot: builds per-pod in-memory index from the store, syncs to Meilisearch, warms caches in background goroutines, starts River job worker for periodic tasks (search rebuild, sitemap generation, trending scores, temp upload cleanup).
 
 ### Custom Server Framework (`internal/server/`)
 
@@ -107,7 +107,7 @@ River queue with PostgreSQL backing. Handles periodic tasks: search index rebuil
 
 ### Services
 
-- **Search** (`internal/search/`): Bleve full-text indexing. Per-pod in-memory index built on startup; periodically rebuilt via River job.
+- **Search** (`internal/search/`): Meilisearch handles all full-text search queries. A per-pod in-memory index (`search.Service`) provides autocomplete suggestions, search page filter slider bounds (`MaxStats`), trending score storage, and acts as the data bridge for syncing to Meilisearch. The in-memory index is built on startup from the DB (with an optional S3 cache for faster warm-up) and rebuilt every 10 minutes via River job. It is **not** a search engine — removing it would require migrating autocomplete, slider bounds, trending scores, and the Meilisearch sync pipeline to other backends.
 - **Cache** (`internal/cache/`): go-cache (per-pod in-memory, 60min default TTL). Used for categories, trending calculations, rendered content.
 - **Storage** (`internal/storage/`): Minio/S3 SDK for file storage. Use `StorageService.DownloadRaw(ctx, path)` to read files. Optional — if S3 not configured, file features are unavailable.
 - **i18n** (`internal/i18n/`): Translation via `T(lang, key)` template function. Language detected from URL prefix or `Accept-Language` header. Supports: en, pt-BR, pt-PT, es, de, pl, ru, zh-Hans, fr.
@@ -154,9 +154,9 @@ Image is set in `k8s/createmod/prod/deployment.yaml`. HPA config in `k8s/createm
 
 ### Multi-pod implications
 
-Caching (`go-cache`) and search (Bleve) are per-pod in-memory. With 2–6 replicas:
+Caching (`go-cache`) and the in-memory search metadata index are per-pod. With 2–6 replicas:
 - Cache mutations (e.g., new schematic) only invalidate on the pod handling the request; other pods serve stale data for up to 60 minutes.
-- Each pod rebuilds its own Bleve index on startup and carries a full copy in memory.
+- Each pod rebuilds its own in-memory index on startup and carries a full copy in memory. This index feeds autocomplete, slider bounds, and trending scores — actual search queries go to the shared Meilisearch instance.
 - River job deduplication (`UniqueOpts`) ensures periodic jobs (search rebuild, trending) run on only one pod, but cache warming runs on all pods independently.
 - Redis is used for rate limiting but not yet for caching or search.
 

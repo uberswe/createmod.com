@@ -205,9 +205,16 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 
 		// Build category sections
 		categories := allCategoriesFromStoreOnly(appStore, cacheService)
-		categorySections := make([]CategorySection, 0, len(categories))
+		categorySections := make([]CategorySection, len(categories))
 		caser := cases.Title(language.English)
-		for _, cat := range categories {
+
+		// Identify which categories need a DB fetch (cold cache).
+		type coldCat struct {
+			idx int
+			cat models.SchematicCategory
+		}
+		var cold []coldCat
+		for i, cat := range categories {
 			cacheKey := cache.CategorySectionKeyForWindow(cat.Key, windowDays)
 			cacheHasNextKey := cache.CategorySectionHasNextKeyForWindow(cat.Key, windowDays)
 			items, cached := cacheService.GetSchematics(cacheKey)
@@ -221,15 +228,34 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 					}
 				}
 			}
-			if !cached || !catHasNextCached {
-				items, catHasNext = getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, windowDays)
-			}
 			cat.Name = caser.String(cat.Name)
-			categorySections = append(categorySections, CategorySection{
-				Category: cat,
-				Items:    items,
-				HasNext:  catHasNext,
-			})
+			if !cached || !catHasNextCached {
+				cold = append(cold, coldCat{idx: i, cat: cat})
+			} else {
+				categorySections[i] = CategorySection{
+					Category: cat,
+					Items:    items,
+					HasNext:  catHasNext,
+				}
+			}
+		}
+
+		// Fetch cold categories concurrently.
+		if len(cold) > 0 {
+			var catWg sync.WaitGroup
+			for _, cc := range cold {
+				catWg.Add(1)
+				go func(idx int, cat models.SchematicCategory) {
+					defer catWg.Done()
+					items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, windowDays)
+					categorySections[idx] = CategorySection{
+						Category: cat,
+						Items:    items,
+						HasNext:  catHasNext,
+					}
+				}(cc.idx, cc.cat)
+			}
+			catWg.Wait()
 		}
 		// Sort category sections: full sections (>= indexPageSize items) first,
 		// smaller sections last, preserving relative order within each group.
@@ -661,19 +687,29 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 	// 4. Categories
 	allCategoriesFromStoreOnly(appStore, cacheService)
 
-	// 5. Category sections — warm for all requested windows
+	// 5. Category sections — warm for all requested windows concurrently.
+	// Limit concurrency to avoid overwhelming the DB connection pool.
 	categories := allCategoriesFromStoreOnly(appStore, cacheService)
+	sem := make(chan struct{}, 4)
+	var warmWg sync.WaitGroup
 	for _, cat := range categories {
-		for _, wd := range windowDays {
-			items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, wd)
-			cacheService.Set(cache.CategorySectionHasNextKeyForWindow(cat.Key, wd), catHasNext)
-			cacheService.SetSchematics(cache.CategorySectionKeyForWindow(cat.Key, wd), items)
-		}
-		// Backward compat: default keys with 30-day data
-		items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, 30)
-		cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
-		cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
+		warmWg.Add(1)
+		go func(cat models.SchematicCategory) {
+			defer warmWg.Done()
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
+			for _, wd := range windowDays {
+				items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, wd)
+				cacheService.Set(cache.CategorySectionHasNextKeyForWindow(cat.Key, wd), catHasNext)
+				cacheService.SetSchematics(cache.CategorySectionKeyForWindow(cat.Key, wd), items)
+			}
+			// Backward compat: default keys with 30-day data
+			items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, 30)
+			cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
+			cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
+		}(cat)
 	}
+	warmWg.Wait()
 
 	logger.Debug("Index page cache warmed (store)")
 }

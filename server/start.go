@@ -306,6 +306,7 @@ func (s *Server) Start() {
 		MailService:        s.mailService,
 		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,
+		DBPool:             s.pool,
 	})
 
 	// Wrap the chi router with the language prefix stripper

@@ -35,6 +35,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gosimple/slug"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
 )
@@ -100,6 +101,7 @@ type RegisterParams struct {
 	MailService        *mailer.Service
 	JobWorker          *jobs.Worker
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
+	DBPool             *pgxpool.Pool // used by readiness probe to verify DB connectivity
 }
 
 func Register(p RegisterParams) chi.Router {
@@ -199,17 +201,23 @@ func Register(p RegisterParams) chi.Router {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	// Readiness probe — returns 200 only when the search index is populated.
-	// Excluded from maintenance mode so Kubernetes can still probe.
-	r.Get("/api/ready", func(w http.ResponseWriter, _ *http.Request) {
+	// Readiness probe — returns 200 when the database is reachable.
+	// Decoupled from the in-memory search index build so new pods accept
+	// traffic sooner. Search uses Meilisearch; the in-memory index only
+	// provides autocomplete, slider bounds, and trending scores.
+	r.Get("/api/ready", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if p.SearchService != nil && p.SearchService.Ready() {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ready"}`))
-		} else {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte(`{"status":"not_ready"}`))
+		if p.DBPool != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+			if err := p.DBPool.Ping(ctx); err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte(`{"status":"not_ready","reason":"db_unreachable"}`))
+				return
+			}
 		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ready"}`))
 	})
 
 	// Prometheus metrics endpoint
