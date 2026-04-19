@@ -20,13 +20,13 @@ spec:
           averageUtilization: 70
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: 300
+      stabilizationWindowSeconds: 600
       policies:
         - type: Pods
           value: 1
-          periodSeconds: 120
+          periodSeconds: 300
     scaleUp:
-      stabilizationWindowSeconds: 30
+      stabilizationWindowSeconds: 60
       policies:
         - type: Pods
           value: 1
