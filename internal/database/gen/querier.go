@@ -96,6 +96,7 @@ type Querier interface {
 	FetchRecentViewsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentViewsBySchematicRow, error)
 	FetchTotalDownloadsBySchematic(ctx context.Context) ([]FetchTotalDownloadsBySchematicRow, error)
 	FetchTotalViewsBySchematic(ctx context.Context) ([]FetchTotalViewsBySchematicRow, error)
+	FetchTotalViewsPreAggregated(ctx context.Context) ([]FetchTotalViewsPreAggregatedRow, error)
 	GetAPIKeyByLast8(ctx context.Context, last8 string) (ApiKey, error)
 	GetAchievementByKey(ctx context.Context, key string) (Achievement, error)
 	GetCategoriesByIDs(ctx context.Context, dollar_1 []string) ([]SchematicCategory, error)
@@ -226,10 +227,8 @@ type Querier interface {
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RefreshSchematicRatingAggregates(ctx context.Context, id string) error
-	// Non-concurrent refresh: replaces the MV contents in one shot without the
-	// expensive diff against the old rows.  The only reader (ListTopSearches) is
-	// called from the same sitemap job immediately after this refresh, so the
-	// brief exclusive lock has no user-facing impact.
+	// Concurrent refresh: allows reads during the refresh. Requires a unique index
+	// on the matview (idx_search_query_counts_query), which already exists.
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error

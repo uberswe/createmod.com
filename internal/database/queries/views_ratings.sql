@@ -77,6 +77,11 @@ SELECT schematic_id AS id, COUNT(*)::REAL AS v
 FROM schematic_downloads
 GROUP BY schematic_id;
 
+-- name: FetchTotalViewsPreAggregated :many
+SELECT schematic_id AS id, COALESCE(count, 0)::REAL AS v
+FROM schematic_views
+WHERE type = '4' AND period = 'total';
+
 -- name: BatchGetViewCounts :many
 SELECT schematic_id, COALESCE(count, 0)::INTEGER AS view_count
 FROM schematic_views

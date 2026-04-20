@@ -121,11 +121,26 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 
 		if isVanilla {
 			storeSchematics, totalCount, err = appStore.Schematics.ListVanilla(ctx, limit, offset)
+			if err != nil {
+				return err
+			}
 		} else {
-			storeSchematics, totalCount, err = appStore.Schematics.ListByMod(ctx, slug, limit, offset)
-		}
-		if err != nil {
-			return err
+			// Check cache for total count (avoids expensive JSONB LATERAL COUNT on every request)
+			countCacheKey := fmt.Sprintf("mod_count:%s", slug)
+			if cached, ok := cacheService.Get(countCacheKey); ok {
+				totalCount = cached.(int)
+			} else {
+				totalCount, err = appStore.Schematics.CountByMod(ctx, slug)
+				if err != nil {
+					return err
+				}
+				cacheService.SetWithTTL(countCacheKey, totalCount, 30*time.Minute)
+			}
+			// Fetch paginated schematics (the ID query is fast)
+			storeSchematics, err = appStore.Schematics.ListByModPaginated(ctx, slug, limit, offset)
+			if err != nil {
+				return err
+			}
 		}
 
 		hasNext := len(storeSchematics) > pageSize

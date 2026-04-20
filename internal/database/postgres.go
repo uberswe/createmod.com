@@ -835,6 +835,42 @@ func (ps *PostgresStore) UpdateRatingAggregates(ctx context.Context, id string, 
 	})
 }
 
+func (ps *PostgresStore) BatchUpdateTrendingScores(ctx context.Context, ids []string, scores []float64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	f32scores := make([]float32, len(scores))
+	for i, s := range scores {
+		f32scores[i] = float32(s)
+	}
+	_, err := ps.pool.Exec(ctx, `
+		UPDATE schematics SET trending_score = bulk.score
+		FROM unnest($1::text[], $2::real[]) AS bulk(id, score)
+		WHERE schematics.id = bulk.id
+	`, ids, f32scores)
+	return err
+}
+
+func (ps *PostgresStore) BatchUpdateRatingAggregates(ctx context.Context, ids []string, avgRatings []float64, ratingCounts []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	f32avgs := make([]float32, len(avgRatings))
+	for i, a := range avgRatings {
+		f32avgs[i] = float32(a)
+	}
+	i32counts := make([]int32, len(ratingCounts))
+	for i, c := range ratingCounts {
+		i32counts[i] = int32(c)
+	}
+	_, err := ps.pool.Exec(ctx, `
+		UPDATE schematics SET avg_rating = bulk.avg, rating_count = bulk.cnt
+		FROM unnest($1::text[], $2::real[], $3::int[]) AS bulk(id, avg, cnt)
+		WHERE schematics.id = bulk.id
+	`, ids, f32avgs, i32counts)
+	return err
+}
+
 func (ps *PostgresStore) RefreshRatingAggregates(ctx context.Context, id string) error {
 	return ps.q.RefreshSchematicRatingAggregates(ctx, id)
 }
@@ -967,6 +1003,57 @@ func (ps *PostgresStore) ListByMod(ctx context.Context, mod string, limit, offse
 		return nil, 0, err
 	}
 	return schematics, totalCount, nil
+}
+
+func (ps *PostgresStore) CountByMod(ctx context.Context, mod string) (int, error) {
+	var count int
+	err := ps.pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT s.id)::int
+		FROM schematics s,
+		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
+		WHERE j.mod_name = $1
+		  AND s.deleted IS NULL
+		  AND s.moderation_state = 'published'
+		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+	`, mod).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("counting mod schematics: %w", err)
+	}
+	return count, nil
+}
+
+func (ps *PostgresStore) ListByModPaginated(ctx context.Context, mod string, limit, offset int) ([]store.Schematic, error) {
+	idRows, err := ps.pool.Query(ctx, `
+		SELECT DISTINCT s.id
+		FROM schematics s,
+		     LATERAL jsonb_array_elements_text(s.mods) AS j(mod_name)
+		WHERE j.mod_name = $1
+		  AND s.deleted IS NULL
+		  AND s.moderation_state = 'published'
+		  AND (s.scheduled_at IS NULL OR s.scheduled_at <= NOW())
+		ORDER BY s.id
+		LIMIT $2 OFFSET $3
+	`, mod, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("querying mod schematics: %w", err)
+	}
+	defer idRows.Close()
+
+	var ids []string
+	for idRows.Next() {
+		var id string
+		if err := idRows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := idRows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return ps.ListByIDs(ctx, ids)
 }
 
 func (ps *PostgresStore) ListVanilla(ctx context.Context, limit, offset int) ([]store.Schematic, int, error) {
@@ -1960,7 +2047,7 @@ func (vs *ViewRatingStoreImpl) FetchTrendingData(ctx context.Context, recentDays
 	})
 
 	g.Go(func() error {
-		rows, err := vs.q.FetchTotalViewsBySchematic(gCtx)
+		rows, err := vs.q.FetchTotalViewsPreAggregated(gCtx)
 		if err != nil {
 			return fmt.Errorf("fetch total views: %w", err)
 		}
