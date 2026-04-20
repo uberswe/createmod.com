@@ -236,45 +236,23 @@ func (s *Server) Start() {
 			pages.WarmVideosCache(s.cacheService, s.store)
 		}()
 
-		// Build search index per-pod. The index is in-memory so each pod
-		// needs its own copy; River's deduplication means only one pod
-		// would run the periodic job, leaving other pods with empty indexes.
+		// Load in-memory search index from S3 cache for fast startup.
+		// The full DB rebuild and Meilisearch sync are handled by the
+		// SearchIndexWorker River job (RunOnStart: true, every 10 min),
+		// which runs on one pod and saves the result to S3. All pods
+		// periodically reload from S3 to stay current without each
+		// doing the expensive DB rebuild themselves.
 		go func() {
-			slog.Info("per-pod search index build starting")
 			s.searchService.WarmFromStorage()
-			storeSchematics, err := s.store.Schematics.ListAllForIndex(context.Background())
-			if err != nil {
-				slog.Error("per-pod search index build failed", "error", err)
-				return
-			}
-			// Load mod metadata for display names.
-			modDisplayNames := make(map[string]string)
-			if allMeta, err := s.store.ModMetadata.ListAll(context.Background()); err == nil {
-				for _, m := range allMeta {
-					if m.DisplayName != "" {
-						modDisplayNames[m.Namespace] = m.DisplayName
-					}
-				}
-			}
 
-			mapped := pages.MapStoreSchematics(s.store, storeSchematics, s.cacheService)
-			s.searchService.BuildIndex(mapped, modDisplayNames)
-			if scores := pages.ComputeTrendingScoresFromStore(s.store); scores != nil {
-				s.searchService.SetTrendingScores(scores)
-			}
-			slog.Info("per-pod search index build complete", "count", len(mapped))
-
-			// Sync to Meilisearch.
-			if s.meiliClient != nil {
-				filterIndex := s.searchService.GetIndex()
-				if len(filterIndex) > 0 {
-					docs := search.MapToMeiliDocuments(filterIndex)
-					if err := search.SyncMeiliIndex(s.meiliClient, search.MeiliIndex, docs); err != nil {
-						slog.Error("per-pod meili sync failed", "index", search.MeiliIndex, "error", err)
-					} else {
-						slog.Info("per-pod meili sync complete", "index", search.MeiliIndex, "docs", len(docs))
-					}
-				}
+			// Periodically reload the in-memory index from S3 so this
+			// pod picks up rebuilds done by whichever pod ran the River
+			// job. This is cheap (~1s for ~4k docs) compared to a full
+			// DB rebuild (~12s).
+			ticker := time.NewTicker(10 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				s.searchService.WarmFromStorage()
 			}
 		}()
 
