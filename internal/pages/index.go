@@ -448,20 +448,29 @@ func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
 		scores[id] = trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
 	}
 
-	// Persist trending scores and rating aggregates to the schematics table
-	for _, id := range td.SchematicIDs {
-		if err := appStore.Schematics.UpdateTrendingScore(ctx, id, scores[id]); err != nil {
-			slog.Error("failed to persist trending score", "schematicID", id, "error", err)
-		}
+	// Persist trending scores and rating aggregates to the schematics table in batch
+	allIDs := td.SchematicIDs
+	allScores := make([]float64, len(allIDs))
+	for i, id := range allIDs {
+		allScores[i] = scores[id]
+	}
+	if err := appStore.Schematics.BatchUpdateTrendingScores(ctx, allIDs, allScores); err != nil {
+		slog.Error("failed to batch persist trending scores", "error", err)
+	}
 
-		rSum := td.RatingSum[id]
+	var ratingIDs []string
+	var avgRatings []float64
+	var ratingCounts []int
+	for _, id := range allIDs {
 		rCount := td.RatingCount[id]
 		if rCount > 0 {
-			avgRating := rSum / rCount
-			if err := appStore.Schematics.UpdateRatingAggregates(ctx, id, avgRating, int(rCount)); err != nil {
-				slog.Error("failed to persist rating aggregates", "schematicID", id, "error", err)
-			}
+			ratingIDs = append(ratingIDs, id)
+			avgRatings = append(avgRatings, td.RatingSum[id]/rCount)
+			ratingCounts = append(ratingCounts, int(rCount))
 		}
+	}
+	if err := appStore.Schematics.BatchUpdateRatingAggregates(ctx, ratingIDs, avgRatings, ratingCounts); err != nil {
+		slog.Error("failed to batch persist rating aggregates", "error", err)
 	}
 
 	return scores

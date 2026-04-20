@@ -295,6 +295,37 @@ func (q *Queries) FetchTotalViewsBySchematic(ctx context.Context) ([]FetchTotalV
 	return items, nil
 }
 
+const fetchTotalViewsPreAggregated = `-- name: FetchTotalViewsPreAggregated :many
+SELECT schematic_id AS id, COALESCE(count, 0)::REAL AS v
+FROM schematic_views
+WHERE type = '4' AND period = 'total'
+`
+
+type FetchTotalViewsPreAggregatedRow struct {
+	ID string  `json:"id"`
+	V  float32 `json:"v"`
+}
+
+func (q *Queries) FetchTotalViewsPreAggregated(ctx context.Context) ([]FetchTotalViewsPreAggregatedRow, error) {
+	rows, err := q.db.Query(ctx, fetchTotalViewsPreAggregated)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FetchTotalViewsPreAggregatedRow{}
+	for rows.Next() {
+		var i FetchTotalViewsPreAggregatedRow
+		if err := rows.Scan(&i.ID, &i.V); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSchematicDownloadCount = `-- name: GetSchematicDownloadCount :one
 SELECT COUNT(*)::INTEGER AS download_count
 FROM schematic_downloads

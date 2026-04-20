@@ -9,6 +9,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,9 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
+
+// validModSlug matches mod namespace slugs: lowercase alphanumeric, underscores, hyphens, up to 128 chars.
+var validModSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,127}$`)
 
 var modsTemplates = append([]string{
 	"./template/mods.html",
@@ -102,6 +106,9 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 		if slug == "" {
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/mods"))
 		}
+		if !validModSlug.MatchString(slug) {
+			return e.NotFoundError("", nil)
+		}
 
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -121,11 +128,26 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 
 		if isVanilla {
 			storeSchematics, totalCount, err = appStore.Schematics.ListVanilla(ctx, limit, offset)
+			if err != nil {
+				return err
+			}
 		} else {
-			storeSchematics, totalCount, err = appStore.Schematics.ListByMod(ctx, slug, limit, offset)
-		}
-		if err != nil {
-			return err
+			// Check cache for total count (avoids expensive JSONB LATERAL COUNT on every request)
+			countCacheKey := fmt.Sprintf("mod_count:%s", slug)
+			if cached, ok := cacheService.Get(countCacheKey); ok {
+				totalCount = cached.(int)
+			} else {
+				totalCount, err = appStore.Schematics.CountByMod(ctx, slug)
+				if err != nil {
+					return err
+				}
+				cacheService.SetWithTTL(countCacheKey, totalCount, 30*time.Minute)
+			}
+			// Fetch paginated schematics (the ID query is fast)
+			storeSchematics, err = appStore.Schematics.ListByModPaginated(ctx, slug, limit, offset)
+			if err != nil {
+				return err
+			}
 		}
 
 		hasNext := len(storeSchematics) > pageSize

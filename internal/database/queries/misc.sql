@@ -135,11 +135,9 @@ ORDER BY search_count DESC
 LIMIT $1;
 
 -- name: RefreshSearchQueryCounts :exec
--- Non-concurrent refresh: replaces the MV contents in one shot without the
--- expensive diff against the old rows.  The only reader (ListTopSearches) is
--- called from the same sitemap job immediately after this refresh, so the
--- brief exclusive lock has no user-facing impact.
-REFRESH MATERIALIZED VIEW search_query_counts;
+-- Concurrent refresh: allows reads during the refresh. Requires a unique index
+-- on the matview (idx_search_query_counts_query), which already exists.
+REFRESH MATERIALIZED VIEW CONCURRENTLY search_query_counts;
 
 -- name: CountUnresolvedCommentReportsByAuthor :one
 SELECT COUNT(*) FROM reports r

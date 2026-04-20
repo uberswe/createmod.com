@@ -447,6 +447,8 @@ type SchematicStore interface {
 	// Pre-computed aggregates
 	UpdateTrendingScore(ctx context.Context, id string, score float64) error
 	UpdateRatingAggregates(ctx context.Context, id string, avgRating float64, ratingCount int) error
+	BatchUpdateTrendingScores(ctx context.Context, ids []string, scores []float64) error
+	BatchUpdateRatingAggregates(ctx context.Context, ids []string, avgRatings []float64, ratingCounts []int) error
 	RefreshRatingAggregates(ctx context.Context, id string) error
 	// Batch enrichment
 	BatchGetCategoriesForSchematics(ctx context.Context, ids []string) (map[string][]SchematicCategoryInfo, error)
@@ -455,6 +457,8 @@ type SchematicStore interface {
 	ListModCounts(ctx context.Context) ([]ModCount, error)
 	CountVanilla(ctx context.Context) (int, error)
 	ListByMod(ctx context.Context, mod string, limit, offset int) ([]Schematic, int, error)
+	CountByMod(ctx context.Context, mod string) (int, error)
+	ListByModPaginated(ctx context.Context, mod string, limit, offset int) ([]Schematic, error)
 	ListVanilla(ctx context.Context, limit, offset int) ([]Schematic, int, error)
 	UpdateDetectedLanguage(ctx context.Context, id, lang string) error
 	// ListByAuthorAll returns all schematics by an author regardless of moderation state (except deleted).
