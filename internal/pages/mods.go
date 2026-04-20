@@ -9,6 +9,7 @@ import (
 	"createmod/internal/translation"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,9 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
+
+// validModSlug matches mod namespace slugs: lowercase alphanumeric, underscores, hyphens, up to 128 chars.
+var validModSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,127}$`)
 
 var modsTemplates = append([]string{
 	"./template/mods.html",
@@ -101,6 +105,9 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 		slug := e.Request.PathValue("slug")
 		if slug == "" {
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/mods"))
+		}
+		if !validModSlug.MatchString(slug) {
+			return e.NotFoundError("", nil)
 		}
 
 		page := 1
