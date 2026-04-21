@@ -107,6 +107,17 @@ type RegisterParams struct {
 func Register(p RegisterParams) chi.Router {
 	registry := server.NewRegistry()
 
+	// Record which OAuth providers are configured so templates can hide
+	// the matching login / link buttons when they aren't. Missing env vars
+	// are the top reason OAuth buttons appear dead on production.
+	pages.SetOAuthEnabled(p.DiscordOAuth != nil, p.GithubOAuth != nil)
+	if p.DiscordOAuth == nil {
+		slog.Info("oauth: Discord provider disabled (DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set)")
+	}
+	if p.GithubOAuth == nil {
+		slog.Info("oauth: GitHub provider disabled (GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET not set)")
+	}
+
 	assetVer := computeAssetVersion()
 
 	// Derive a stable HMAC key for signing outgoing redirect URLs.

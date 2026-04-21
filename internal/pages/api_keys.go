@@ -54,10 +54,10 @@ func APIKeyCreateHandler(cacheService *cache.Service, appStore *store.Store) fun
 			return e.String(http.StatusInternalServerError, "failed to save api key")
 		}
 
-		// Cache plaintext for one-time display on /settings
+		// Cache plaintext for one-time display on /settings/api-keys
 		cacheService.SetWithTTL("apikey:new:"+authenticatedUserID(e), plaintext, 2*time.Minute)
 
-		dest := "/settings?api_key=created"
+		dest := "/settings/api-keys?api_key=created"
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")
@@ -116,7 +116,7 @@ func APIKeyRevokeHandler(appStore *store.Store) func(e *server.RequestEvent) err
 		if err := appStore.APIKeys.Delete(ctx, id, authenticatedUserID(e)); err != nil {
 			return e.String(http.StatusInternalServerError, "failed to revoke api key")
 		}
-		dest := "/settings?api_key=revoked"
+		dest := "/settings/api-keys?api_key=revoked"
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")

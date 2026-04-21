@@ -82,7 +82,9 @@
                                             });
                                           })();
                                         </script>
+                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled }}
                                         <h3 class="card-title mt-4">{{ T .Language "Alternate Login Options" }}</h3>
+                                        {{ if .DiscordOAuthEnabled }}
                                         <div class="row g-3 mb-2">
                                             <div class="col-md">
                                                 <a href="/auth/discord" hx-boost="false" class="btn w-100">
@@ -91,6 +93,8 @@
                                                 </a>
                                             </div>
                                         </div>
+                                        {{ end }}
+                                        {{ if .GithubOAuthEnabled }}
                                         <div class="row g-3">
                                             <div class="col-md">
                                                 <a href="/auth/github" hx-boost="false" class="btn w-100">
@@ -99,6 +103,8 @@
                                                 </a>
                                             </div>
                                         </div>
+                                        {{ end }}
+                                        {{ end }}
                                         <h3 class="card-title mt-4">{{ T .Language "Password" }}</h3>
                                         <p class="card-subtitle">{{ T .Language "If you need to change your password you can do so here." }}</p>
                                         <div>
