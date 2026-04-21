@@ -1,0 +1,156 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <main class="page-body">
+      <div class="container-wide">
+        {{template "admin_nav.html" .}}
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">{{ T .Language "Admin: Users" }}</h2>
+              <div class="text-secondary">{{ .Total }} {{ T .Language "users matching filter" }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "active" }} active{{ end }}" href="/admin/users?filter=active{{ if .Search }}&q={{.Search}}{{ end }}">{{ T .Language "Active" }}</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "admin" }} active{{ end }}" href="/admin/users?filter=admin{{ if .Search }}&q={{.Search}}{{ end }}">{{ T .Language "Admins" }}</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "deleted" }} active{{ end }}" href="/admin/users?filter=deleted{{ if .Search }}&q={{.Search}}{{ end }}">{{ T .Language "Deleted" }}</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "all" }} active{{ end }}" href="/admin/users?filter=all{{ if .Search }}&q={{.Search}}{{ end }}">{{ T .Language "All" }}</a>
+              </li>
+            </ul>
+          </div>
+          <div class="card-body border-bottom py-2">
+            <form method="get" action="/admin/users" class="row g-2 align-items-center" hx-boost="false">
+              <input type="hidden" name="filter" value="{{.Filter}}">
+              <div class="col">
+                <input type="search" class="form-control" name="q" value="{{.Search}}" placeholder="{{ T .Language "Search by username or email" }}">
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-primary">{{ T .Language "Search" }}</button>
+                {{if .Search}}
+                <a href="/admin/users?filter={{.Filter}}" class="btn btn-link">{{ T .Language "Clear" }}</a>
+                {{end}}
+              </div>
+            </form>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>{{ T .Language "Username" }}</th>
+                  <th>{{ T .Language "Email" }}</th>
+                  <th>{{ T .Language "Roles" }}</th>
+                  <th>{{ T .Language "Schematics" }}</th>
+                  <th>{{ T .Language "Points" }}</th>
+                  <th>{{ T .Language "Status" }}</th>
+                  <th>{{ T .Language "Joined" }}</th>
+                  <th class="text-end">{{ T .Language "Actions" }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .Users}}
+                <tr>
+                  <td class="text-nowrap">
+                    <a href="/user/{{.Username}}" target="_blank">{{.Username}}</a>
+                  </td>
+                  <td class="text-nowrap">{{.Email}}</td>
+                  <td class="text-nowrap">
+                    {{if .IsAdmin}}<span class="badge bg-purple-lt">{{ T $.Language "Admin" }}</span>{{end}}
+                    {{if .Verified}}<span class="badge bg-blue-lt">{{ T $.Language "Verified" }}</span>{{end}}
+                  </td>
+                  <td>{{.SchematicsCount}}</td>
+                  <td>{{.Points}}</td>
+                  <td class="text-nowrap">
+                    {{if .Deleted}}
+                      <span class="badge bg-red-lt">{{ T $.Language "Deleted" }}</span>
+                    {{else}}
+                      <span class="badge bg-green-lt">{{ T $.Language "Active" }}</span>
+                    {{end}}
+                  </td>
+                  <td class="text-nowrap">{{HumanDate .Created}}</td>
+                  <td class="text-end text-nowrap">
+                    {{if .Deleted}}
+                      <form method="post" action="/admin/users/{{.ID}}/restore" class="d-inline" hx-boost="false">
+                        <input type="hidden" name="return" value="/admin/users?{{$.QueryStr}}&page={{$.Page}}">
+                        <button type="submit" class="btn btn-sm btn-success">{{ T $.Language "Restore" }}</button>
+                      </form>
+                    {{else}}
+                      <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#user-delete-modal-{{.ID}}">{{ T $.Language "Delete" }}</button>
+                    {{end}}
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="8" class="text-center text-secondary">{{ T .Language "No users match this filter." }}</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {{if gt .TotalPages 1}}
+        <div class="d-flex justify-content-center">
+          <ul class="pagination">
+            {{if gt .Page 1}}
+            <li class="page-item">
+              <a class="page-link" href="/admin/users?{{.QueryStr}}&page={{.PrevPage}}">{{ T .Language "Previous" }}</a>
+            </li>
+            {{else}}
+            <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
+            {{end}}
+            <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{.Page}} / {{.TotalPages}}</span></li>
+            {{if lt .Page .TotalPages}}
+            <li class="page-item">
+              <a class="page-link" href="/admin/users?{{.QueryStr}}&page={{.NextPage}}">{{ T .Language "Next" }}</a>
+            </li>
+            {{else}}
+            <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>
+            {{end}}
+          </ul>
+        </div>
+        {{end}}
+
+        {{range .Users}}
+        {{if not .Deleted}}
+        <div class="modal modal-blur fade" id="user-delete-modal-{{.ID}}" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+            <div class="modal-content">
+              <div class="modal-body">
+                <div class="modal-title">{{ T $.Language "Delete user?" }}</div>
+                <div class="text-secondary mt-2">
+                  {{ T $.Language "The account for" }} <strong>{{.Username}}</strong> {{ T $.Language "will be soft-deleted. Their sign-in will be disabled but their content is preserved and the action can be reversed." }}
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
+                <form method="post" action="/admin/users/{{.ID}}/delete" hx-boost="false">
+                  <input type="hidden" name="return" value="/admin/users?{{$.QueryStr}}&page={{$.Page}}">
+                  <button type="submit" class="btn btn-danger">{{ T $.Language "Yes, delete" }}</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {{end}}
+        {{end}}
+
+      </div>
+    </main>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

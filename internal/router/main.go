@@ -107,6 +107,18 @@ type RegisterParams struct {
 func Register(p RegisterParams) chi.Router {
 	registry := server.NewRegistry()
 
+	// Record which OAuth providers are configured so templates can hide
+	// the matching login / link buttons when they aren't. Missing env vars
+	// are the top reason OAuth buttons appear dead on production.
+	pages.SetOAuthEnabled(p.DiscordOAuth != nil, p.GithubOAuth != nil)
+	pages.SetOAuthSigningSecret(deriveOAuthSigningSecret())
+	if p.DiscordOAuth == nil {
+		slog.Info("oauth: Discord provider disabled (DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set)")
+	}
+	if p.GithubOAuth == nil {
+		slog.Info("oauth: GitHub provider disabled (GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET not set)")
+	}
+
 	assetVer := computeAssetVersion()
 
 	// Derive a stable HMAC key for signing outgoing redirect URLs.
@@ -401,6 +413,13 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))
+	r.Get("/admin/comments", Adapt(pages.AdminCommentsHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/comments/{id}/delete", Adapt(pages.AdminCommentDeleteHandler(p.AppStore)))
+	r.Post("/admin/comments/{id}/restore", Adapt(pages.AdminCommentRestoreHandler(p.AppStore)))
+	r.Post("/admin/comments/{id}/approve", Adapt(pages.AdminCommentApproveHandler(p.AppStore)))
+	r.Get("/admin/users", Adapt(pages.AdminUsersHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/users/{id}/delete", Adapt(pages.AdminUserDeleteHandler(p.AppStore)))
+	r.Post("/admin/users/{id}/restore", Adapt(pages.AdminUserRestoreHandler(p.AppStore)))
 	// Auth — rate-limited to 10 POST requests per IP per minute
 	authRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
 	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))
@@ -416,6 +435,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore)))
 	r.Get("/auth/github", Adapt(pages.OAuthRedirectHandler(p.GithubOAuth)))
 	r.Get("/auth/github/callback", Adapt(pages.OAuthCallbackHandler(p.GithubOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/oauth/complete", Adapt(pages.OAuthCompleteHandler(registry, p.AppStore)))
+	r.With(authRateLimit).Post("/auth/oauth/complete", Adapt(pages.OAuthCompletePostHandler(registry, p.AppStore, p.SessionStore)))
 	r.Get("/logout", func(w http.ResponseWriter, req *http.Request) {
 		secure := req.TLS != nil || strings.EqualFold(req.Header.Get("X-Forwarded-Proto"), "https")
 
@@ -949,5 +970,18 @@ func deriveOutSecret() string {
 	}
 	slog.Warn("OUT_SECRET environment variable is not set; using insecure default — set OUT_SECRET in production")
 	h := sha256.Sum256([]byte("createmod-out-url-sign:default"))
+	return hex.EncodeToString(h[:])
+}
+
+// deriveOAuthSigningSecret returns a stable HMAC key for signing the
+// pending-OAuth cookie used by /auth/oauth/complete. Falls back to a
+// deterministic default in dev so the cookie survives restarts on laptops
+// without OAUTH_SIGN_SECRET configured.
+func deriveOAuthSigningSecret() string {
+	if s := os.Getenv("OAUTH_SIGN_SECRET"); s != "" {
+		return s
+	}
+	slog.Warn("OAUTH_SIGN_SECRET environment variable is not set; using insecure default — set OAUTH_SIGN_SECRET in production")
+	h := sha256.Sum256([]byte("createmod-oauth-sign:default"))
 	return hex.EncodeToString(h[:])
 }

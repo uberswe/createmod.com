@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"createmod/internal/auth"
@@ -17,11 +18,38 @@ import (
 	"createmod/internal/server"
 )
 
+// OAuth enablement flags — set at startup via SetOAuthEnabled so templates
+// can conditionally render the Discord / GitHub login buttons.
+var (
+	discordOAuthEnabled bool
+	githubOAuthEnabled  bool
+)
+
+// SetOAuthEnabled records whether each OAuth provider is configured.
+// Called once from router.Register at startup.
+func SetOAuthEnabled(discord, github bool) {
+	discordOAuthEnabled = discord
+	githubOAuthEnabled = github
+}
+
+// DiscordOAuthEnabled returns true if the Discord OAuth provider is configured.
+func DiscordOAuthEnabled() bool { return discordOAuthEnabled }
+
+// GithubOAuthEnabled returns true if the GitHub OAuth provider is configured.
+func GithubOAuthEnabled() bool { return githubOAuthEnabled }
+
+// oauthLoginErrorRedirect sends the user back to /login with an error code so
+// the login page can surface a helpful message instead of failing silently.
+func oauthLoginErrorRedirect(e *server.RequestEvent, reason string) error {
+	dest := "/login?oauth_error=" + url.QueryEscape(reason)
+	return e.Redirect(http.StatusFound, dest)
+}
+
 // OAuthRedirectHandler initiates the OAuth flow by redirecting to the provider.
 func OAuthRedirectHandler(provider *auth.OAuthProvider) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if provider == nil {
-			return e.String(http.StatusNotFound, "OAuth provider not configured")
+			return oauthLoginErrorRedirect(e, "not_configured")
 		}
 
 		// Generate random state
@@ -50,18 +78,18 @@ func OAuthRedirectHandler(provider *auth.OAuthProvider) func(e *server.RequestEv
 func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if provider == nil {
-			return e.String(http.StatusNotFound, "OAuth provider not configured")
+			return oauthLoginErrorRedirect(e, "not_configured")
 		}
 
 		// Validate state
 		stateCookie, err := e.Request.Cookie("oauth-state")
 		if err != nil || stateCookie.Value == "" {
-			return e.Redirect(http.StatusFound, "/login")
+			return oauthLoginErrorRedirect(e, "state_missing")
 		}
 
 		queryState := e.Request.URL.Query().Get("state")
 		if queryState == "" || queryState != stateCookie.Value {
-			return e.Redirect(http.StatusFound, "/login")
+			return oauthLoginErrorRedirect(e, "state_mismatch")
 		}
 
 		// Clear state cookie
@@ -76,26 +104,26 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 		// Check for error from provider
 		if errCode := e.Request.URL.Query().Get("error"); errCode != "" {
 			slog.Warn("OAuth error from provider", "provider", provider.Name, "error", errCode)
-			return e.Redirect(http.StatusFound, "/login")
+			return oauthLoginErrorRedirect(e, "provider_error")
 		}
 
 		// Exchange code for token
 		code := e.Request.URL.Query().Get("code")
 		if code == "" {
-			return e.Redirect(http.StatusFound, "/login")
+			return oauthLoginErrorRedirect(e, "missing_code")
 		}
 
 		token, err := provider.Exchange(e.Request.Context(), code)
 		if err != nil {
 			slog.Error("OAuth token exchange failed", "provider", provider.Name, "error", err)
-			return e.Redirect(http.StatusFound, "/login")
+			return oauthLoginErrorRedirect(e, "token_exchange")
 		}
 
 		// Fetch user info from provider
 		oauthUser, err := provider.FetchUser(e.Request.Context(), token)
 		if err != nil {
 			slog.Error("OAuth user fetch failed", "provider", provider.Name, "error", err)
-			return e.Redirect(http.StatusFound, "/login")
+			return oauthLoginErrorRedirect(e, "user_fetch")
 		}
 
 		ctx := e.Request.Context()
@@ -107,9 +135,16 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 			return oauthCreateSession(e, appStore, sessStore, extAuth.UserID)
 		}
 
-		// No existing link -- check if user with same email exists
+		// If the current request is already authenticated, link the OAuth
+		// identity to the logged-in account rather than creating a new one.
+		// This is what "Link GitHub account" on /settings should do.
 		var userID string
-		if oauthUser.Email != "" {
+		if current := session.UserFromContext(e.Request.Context()); current != nil {
+			userID = current.ID
+		}
+
+		// No existing link -- check if user with same email exists
+		if userID == "" && oauthUser.Email != "" {
 			existingUser, _ := appStore.Users.GetUserByEmail(ctx, oauthUser.Email)
 			if existingUser != nil && existingUser.Deleted == nil {
 				userID = existingUser.ID
@@ -117,7 +152,23 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 		}
 
 		if userID == "" {
-			// Create new user
+			// If the provider didn't return an email (e.g. a GitHub user with
+			// a private primary email and no verified address in /user/emails),
+			// send them to an intermediate form to collect one rather than
+			// creating a broken account or silently failing.
+			if oauthUser.Email == "" {
+				if err := setOAuthPendingCookie(e, oauthPending{
+					Provider:   provider.Name,
+					ProviderID: oauthUser.ID,
+					Username:   oauthUser.Username,
+					Avatar:     oauthUser.Avatar,
+				}); err != nil {
+					slog.Error("oauth: failed to set pending cookie", "error", err)
+					return oauthLoginErrorRedirect(e, "no_email")
+				}
+				return e.Redirect(http.StatusFound, "/auth/oauth/complete")
+			}
+
 			username := sanitizeUsername(oauthUser.Username)
 			if username == "" {
 				username = fmt.Sprintf("%s_%s", provider.Name, oauthUser.ID)
@@ -127,7 +178,7 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 			username = ensureUniqueUsername(ctx, appStore, username)
 
 			avatarURL := oauthUser.Avatar
-			if avatarURL == "" && oauthUser.Email != "" {
+			if avatarURL == "" {
 				avatarURL = gravatar.New(oauthUser.Email).
 					Size(200).
 					Default(gravatar.MysteryMan).
@@ -139,11 +190,11 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 				Email:    oauthUser.Email,
 				Username: username,
 				Avatar:   avatarURL,
-				Verified: oauthUser.Email != "",
+				Verified: true,
 			}
 			if err := appStore.Users.CreateUser(ctx, newUser); err != nil {
 				slog.Error("OAuth user creation failed", "error", err)
-				return e.Redirect(http.StatusFound, "/login")
+				return oauthLoginErrorRedirect(e, "user_create")
 			}
 			userID = newUser.ID
 		}
@@ -169,7 +220,7 @@ func oauthCreateSession(e *server.RequestEvent, appStore *store.Store, sessStore
 	// Verify user still exists and isn't deleted
 	user, err := appStore.Users.GetUserByID(ctx, userID)
 	if err != nil || user == nil || user.Deleted != nil {
-		return e.Redirect(http.StatusFound, "/login")
+		return oauthLoginErrorRedirect(e, "user_missing")
 	}
 
 	token, err := sessStore.Create(ctx, userID)

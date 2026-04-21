@@ -64,6 +64,45 @@ func NewGitHubProvider(clientID, clientSecret, redirectURL string) *OAuthProvide
 	}
 }
 
+// fetchGitHubPrimaryEmail calls GitHub's /user/emails endpoint and returns the
+// user's verified primary email. Requires the `user:email` scope (which we
+// already request). The endpoint returns an array of {email, primary,
+// verified, visibility}.
+func fetchGitHubPrimaryEmail(ctx context.Context, client *http.Client) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user/emails", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetching github emails: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("fetching github emails: status %d", resp.StatusCode)
+	}
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
+		return "", fmt.Errorf("parsing github emails: %w", err)
+	}
+	// Prefer the primary verified address; fall back to any verified address.
+	for _, em := range emails {
+		if em.Primary && em.Verified && em.Email != "" {
+			return em.Email, nil
+		}
+	}
+	for _, em := range emails {
+		if em.Verified && em.Email != "" {
+			return em.Email, nil
+		}
+	}
+	return "", fmt.Errorf("no verified github email found")
+}
+
 // AuthURL returns the OAuth2 authorization URL with the given state parameter.
 func (p *OAuthProvider) AuthURL(state string) string {
 	return p.Config.AuthCodeURL(state)
@@ -119,6 +158,14 @@ func (p *OAuthProvider) FetchUser(ctx context.Context, token *oauth2.Token) (*OA
 		}
 		if avatar, ok := data["avatar_url"].(string); ok {
 			user.Avatar = avatar
+		}
+		// GitHub returns email: null when the user's primary email is set to
+		// private. Fall back to the /user/emails endpoint to fetch the
+		// verified primary email so we can create an account.
+		if user.Email == "" {
+			if email, err := fetchGitHubPrimaryEmail(ctx, client); err == nil {
+				user.Email = email
+			}
 		}
 	default:
 		user.ID = fmt.Sprintf("%v", data[p.IDField])

@@ -30,6 +30,7 @@ type Querier interface {
 	ConsumeDownloadToken(ctx context.Context, token string) (DownloadToken, error)
 	CountApprovedSchematics(ctx context.Context) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
+	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsByAuthorAll(ctx context.Context, authorID *string) (int64, error)
@@ -42,6 +43,7 @@ type Querier interface {
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)
 	CountUserMessagesSinceLastModerator(ctx context.Context, threadID string) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CountUsersForAdmin(ctx context.Context, arg CountUsersForAdminParams) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (SchematicCategory, error)
 	CreateCollection(ctx context.Context, arg CreateCollectionParams) (Collection, error)
@@ -144,10 +146,12 @@ type Querier interface {
 	GetTotalViewCount(ctx context.Context, schematicID string) (int32, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
+	GetUserByIDIncludingDeleted(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, lower string) (User, error)
 	GetUserIsContributor(ctx context.Context, authorID *string) (bool, error)
 	GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserMetum, error)
 	GetUserWebhookByUserID(ctx context.Context, userID string) (UserWebhook, error)
+	HardDeleteComment(ctx context.Context, id string) error
 	HasAchievement(ctx context.Context, arg HasAchievementParams) (bool, error)
 	HourlyCommentStats(ctx context.Context, created time.Time) ([]HourlyCommentStatsRow, error)
 	HourlyDownloadStats(ctx context.Context, created time.Time) ([]HourlyDownloadStatsRow, error)
@@ -173,6 +177,7 @@ type Querier interface {
 	ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error)
 	ListCollectionsForSitemap(ctx context.Context) ([]ListCollectionsForSitemapRow, error)
 	ListCommentsBySchematic(ctx context.Context, schematicID *string) ([]ListCommentsBySchematicRow, error)
+	ListCommentsForAdmin(ctx context.Context, arg ListCommentsForAdminParams) ([]ListCommentsForAdminRow, error)
 	ListCommentsWithoutTranslation(ctx context.Context, arg ListCommentsWithoutTranslationParams) ([]ListCommentsWithoutTranslationRow, error)
 	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
@@ -216,6 +221,7 @@ type Querier interface {
 	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminParams) ([]User, error)
 	ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error)
 	ListVersions(ctx context.Context) ([]CreatemodVersion, error)
 	LogAPIKeyUsage(ctx context.Context, arg LogAPIKeyUsageParams) error
@@ -232,6 +238,8 @@ type Querier interface {
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
+	RestoreComment(ctx context.Context, id string) error
+	RestoreUser(ctx context.Context, id string) error
 	SchematicNameExists(ctx context.Context, name string) (bool, error)
 	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error

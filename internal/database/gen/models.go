@@ -86,6 +86,7 @@ type Comment struct {
 	Name        string             `json:"name"`
 	Created     time.Time          `json:"created"`
 	Updated     time.Time          `json:"updated"`
+	Deleted     pgtype.Timestamptz `json:"deleted"`
 }
 
 type CommentTranslation struct {
