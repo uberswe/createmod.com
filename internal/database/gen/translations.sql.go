@@ -117,7 +117,7 @@ const listCommentsWithoutTranslation = `-- name: ListCommentsWithoutTranslation 
 SELECT c.id, c.author_id, c.schematic_id, c.parent_id, c.content,
        c.published, c.approved, c.type, c.karma, c.created, c.updated
 FROM comments c
-WHERE c.approved = true
+WHERE c.approved = true AND c.deleted IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM comment_translations ct
       WHERE ct.comment_id = c.id AND ct.language = $1
