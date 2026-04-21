@@ -401,6 +401,13 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))
+	r.Get("/admin/comments", Adapt(pages.AdminCommentsHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/comments/{id}/delete", Adapt(pages.AdminCommentDeleteHandler(p.AppStore)))
+	r.Post("/admin/comments/{id}/restore", Adapt(pages.AdminCommentRestoreHandler(p.AppStore)))
+	r.Post("/admin/comments/{id}/approve", Adapt(pages.AdminCommentApproveHandler(p.AppStore)))
+	r.Get("/admin/users", Adapt(pages.AdminUsersHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/admin/users/{id}/delete", Adapt(pages.AdminUserDeleteHandler(p.AppStore)))
+	r.Post("/admin/users/{id}/restore", Adapt(pages.AdminUserRestoreHandler(p.AppStore)))
 	// Auth — rate-limited to 10 POST requests per IP per minute
 	authRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
 	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))

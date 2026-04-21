@@ -23,7 +23,7 @@ func (q *Queries) ApproveComment(ctx context.Context, id string) error {
 
 const countCommentsBySchematic = `-- name: CountCommentsBySchematic :one
 SELECT COUNT(*) FROM comments
-WHERE schematic_id = $1 AND approved = true
+WHERE schematic_id = $1 AND approved = true AND deleted IS NULL
 `
 
 func (q *Queries) CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error) {
@@ -33,8 +33,34 @@ func (q *Queries) CountCommentsBySchematic(ctx context.Context, schematicID *str
 	return count, err
 }
 
+const countCommentsForAdmin = `-- name: CountCommentsForAdmin :one
+SELECT COUNT(*)
+FROM comments c
+LEFT JOIN users u ON u.id = c.author_id
+WHERE
+  ($1::text = 'all'
+     OR ($1::text = 'active' AND c.deleted IS NULL)
+     OR ($1::text = 'deleted' AND c.deleted IS NOT NULL)
+     OR ($1::text = 'unapproved' AND c.approved = false AND c.deleted IS NULL))
+  AND ($2::text = ''
+     OR c.content ILIKE '%' || $2::text || '%'
+     OR u.username ILIKE '%' || $2::text || '%')
+`
+
+type CountCommentsForAdminParams struct {
+	Filter string `json:"filter"`
+	Search string `json:"search"`
+}
+
+func (q *Queries) CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCommentsForAdmin, arg.Filter, arg.Search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUserComments = `-- name: CountUserComments :one
-SELECT COUNT(*) FROM comments WHERE author_id = $1 AND approved = true
+SELECT COUNT(*) FROM comments WHERE author_id = $1 AND approved = true AND deleted IS NULL
 `
 
 func (q *Queries) CountUserComments(ctx context.Context, authorID *string) (int64, error) {
@@ -47,7 +73,7 @@ func (q *Queries) CountUserComments(ctx context.Context, authorID *string) (int6
 const createComment = `-- name: CreateComment :one
 INSERT INTO comments (id, author_id, schematic_id, parent_id, content, published, approved, type)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, author_id, schematic_id, parent_id, content, published, approved, type, karma, postdate, status, name, created, updated
+RETURNING id, author_id, schematic_id, parent_id, content, published, approved, type, karma, postdate, status, name, created, updated, deleted
 `
 
 type CreateCommentParams struct {
@@ -88,12 +114,13 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Deleted,
 	)
 	return i, err
 }
 
 const deleteComment = `-- name: DeleteComment :exec
-DELETE FROM comments WHERE id = $1
+UPDATE comments SET deleted = NOW() WHERE id = $1
 `
 
 func (q *Queries) DeleteComment(ctx context.Context, id string) error {
@@ -111,7 +138,7 @@ func (q *Queries) DisapproveComment(ctx context.Context, id string) error {
 }
 
 const getCommentByID = `-- name: GetCommentByID :one
-SELECT id, author_id, schematic_id, parent_id, content, published, approved, type, karma, postdate, status, name, created, updated FROM comments WHERE id = $1
+SELECT id, author_id, schematic_id, parent_id, content, published, approved, type, karma, postdate, status, name, created, updated, deleted FROM comments WHERE id = $1
 `
 
 func (q *Queries) GetCommentByID(ctx context.Context, id string) (Comment, error) {
@@ -132,17 +159,27 @@ func (q *Queries) GetCommentByID(ctx context.Context, id string) (Comment, error
 		&i.Name,
 		&i.Created,
 		&i.Updated,
+		&i.Deleted,
 	)
 	return i, err
 }
 
+const hardDeleteComment = `-- name: HardDeleteComment :exec
+DELETE FROM comments WHERE id = $1
+`
+
+func (q *Queries) HardDeleteComment(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, hardDeleteComment, id)
+	return err
+}
+
 const listCommentsBySchematic = `-- name: ListCommentsBySchematic :many
-SELECT c.id, c.author_id, c.schematic_id, c.parent_id, c.content, c.published, c.approved, c.type, c.karma, c.postdate, c.status, c.name, c.created, c.updated,
+SELECT c.id, c.author_id, c.schematic_id, c.parent_id, c.content, c.published, c.approved, c.type, c.karma, c.postdate, c.status, c.name, c.created, c.updated, c.deleted,
        u.username AS author_username,
        u.avatar AS author_avatar
 FROM comments c
 LEFT JOIN users u ON u.id = c.author_id
-WHERE c.schematic_id = $1 AND c.approved = true
+WHERE c.schematic_id = $1 AND c.approved = true AND c.deleted IS NULL
 ORDER BY c.created ASC
 `
 
@@ -161,6 +198,7 @@ type ListCommentsBySchematicRow struct {
 	Name           string             `json:"name"`
 	Created        time.Time          `json:"created"`
 	Updated        time.Time          `json:"updated"`
+	Deleted        pgtype.Timestamptz `json:"deleted"`
 	AuthorUsername *string            `json:"author_username"`
 	AuthorAvatar   *string            `json:"author_avatar"`
 }
@@ -189,6 +227,7 @@ func (q *Queries) ListCommentsBySchematic(ctx context.Context, schematicID *stri
 			&i.Name,
 			&i.Created,
 			&i.Updated,
+			&i.Deleted,
 			&i.AuthorUsername,
 			&i.AuthorAvatar,
 		); err != nil {
@@ -200,4 +239,108 @@ func (q *Queries) ListCommentsBySchematic(ctx context.Context, schematicID *stri
 		return nil, err
 	}
 	return items, nil
+}
+
+const listCommentsForAdmin = `-- name: ListCommentsForAdmin :many
+SELECT c.id, c.author_id, c.schematic_id, c.parent_id, c.content, c.published, c.approved, c.type, c.karma, c.postdate, c.status, c.name, c.created, c.updated, c.deleted,
+       u.username AS author_username,
+       u.avatar AS author_avatar,
+       s.name AS schematic_name,
+       s.title AS schematic_title
+FROM comments c
+LEFT JOIN users u ON u.id = c.author_id
+LEFT JOIN schematics s ON s.id = c.schematic_id
+WHERE
+  ($3::text = 'all'
+     OR ($3::text = 'active' AND c.deleted IS NULL)
+     OR ($3::text = 'deleted' AND c.deleted IS NOT NULL)
+     OR ($3::text = 'unapproved' AND c.approved = false AND c.deleted IS NULL))
+  AND ($4::text = ''
+     OR c.content ILIKE '%' || $4::text || '%'
+     OR u.username ILIKE '%' || $4::text || '%')
+ORDER BY c.created DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListCommentsForAdminParams struct {
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Filter string `json:"filter"`
+	Search string `json:"search"`
+}
+
+type ListCommentsForAdminRow struct {
+	ID             string             `json:"id"`
+	AuthorID       *string            `json:"author_id"`
+	SchematicID    *string            `json:"schematic_id"`
+	ParentID       *string            `json:"parent_id"`
+	Content        string             `json:"content"`
+	Published      pgtype.Timestamptz `json:"published"`
+	Approved       bool               `json:"approved"`
+	Type           string             `json:"type"`
+	Karma          int32              `json:"karma"`
+	Postdate       pgtype.Timestamptz `json:"postdate"`
+	Status         string             `json:"status"`
+	Name           string             `json:"name"`
+	Created        time.Time          `json:"created"`
+	Updated        time.Time          `json:"updated"`
+	Deleted        pgtype.Timestamptz `json:"deleted"`
+	AuthorUsername *string            `json:"author_username"`
+	AuthorAvatar   *string            `json:"author_avatar"`
+	SchematicName  *string            `json:"schematic_name"`
+	SchematicTitle *string            `json:"schematic_title"`
+}
+
+func (q *Queries) ListCommentsForAdmin(ctx context.Context, arg ListCommentsForAdminParams) ([]ListCommentsForAdminRow, error) {
+	rows, err := q.db.Query(ctx, listCommentsForAdmin,
+		arg.Limit,
+		arg.Offset,
+		arg.Filter,
+		arg.Search,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCommentsForAdminRow{}
+	for rows.Next() {
+		var i ListCommentsForAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.SchematicID,
+			&i.ParentID,
+			&i.Content,
+			&i.Published,
+			&i.Approved,
+			&i.Type,
+			&i.Karma,
+			&i.Postdate,
+			&i.Status,
+			&i.Name,
+			&i.Created,
+			&i.Updated,
+			&i.Deleted,
+			&i.AuthorUsername,
+			&i.AuthorAvatar,
+			&i.SchematicName,
+			&i.SchematicTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const restoreComment = `-- name: RestoreComment :exec
+UPDATE comments SET deleted = NULL WHERE id = $1
+`
+
+func (q *Queries) RestoreComment(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, restoreComment, id)
+	return err
 }
