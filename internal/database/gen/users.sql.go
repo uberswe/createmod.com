@@ -21,6 +21,31 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countUsersForAdmin = `-- name: CountUsersForAdmin :one
+SELECT COUNT(*)
+FROM users
+WHERE
+  ($1::text = 'all'
+     OR ($1::text = 'active' AND deleted IS NULL)
+     OR ($1::text = 'deleted' AND deleted IS NOT NULL)
+     OR ($1::text = 'admin' AND is_admin = true AND deleted IS NULL))
+  AND ($2::text = ''
+     OR username ILIKE '%' || $2::text || '%'
+     OR email ILIKE '%' || $2::text || '%')
+`
+
+type CountUsersForAdminParams struct {
+	Filter string `json:"filter"`
+	Search string `json:"search"`
+}
+
+func (q *Queries) CountUsersForAdmin(ctx context.Context, arg CountUsersForAdminParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersForAdmin, arg.Filter, arg.Search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, username, password_hash, old_password, avatar, verified)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -95,6 +120,30 @@ SELECT id, email, username, password_hash, old_password, avatar, points, verifie
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.OldPassword,
+		&i.Avatar,
+		&i.Points,
+		&i.Verified,
+		&i.IsAdmin,
+		&i.Deleted,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
+const getUserByIDIncludingDeleted = `-- name: GetUserByIDIncludingDeleted :one
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserByIDIncludingDeleted(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByIDIncludingDeleted, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -221,6 +270,66 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 	return items, nil
 }
 
+const listUsersForAdmin = `-- name: ListUsersForAdmin :many
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated
+FROM users
+WHERE
+  ($3::text = 'all'
+     OR ($3::text = 'active' AND deleted IS NULL)
+     OR ($3::text = 'deleted' AND deleted IS NOT NULL)
+     OR ($3::text = 'admin' AND is_admin = true AND deleted IS NULL))
+  AND ($4::text = ''
+     OR username ILIKE '%' || $4::text || '%'
+     OR email ILIKE '%' || $4::text || '%')
+ORDER BY created DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListUsersForAdminParams struct {
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Filter string `json:"filter"`
+	Search string `json:"search"`
+}
+
+func (q *Queries) ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsersForAdmin,
+		arg.Limit,
+		arg.Offset,
+		arg.Filter,
+		arg.Search,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Username,
+			&i.PasswordHash,
+			&i.OldPassword,
+			&i.Avatar,
+			&i.Points,
+			&i.Verified,
+			&i.IsAdmin,
+			&i.Deleted,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersForSitemap = `-- name: ListUsersForSitemap :many
 SELECT id, username, updated FROM users
 WHERE deleted IS NULL
@@ -251,6 +360,15 @@ func (q *Queries) ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitema
 		return nil, err
 	}
 	return items, nil
+}
+
+const restoreUser = `-- name: RestoreUser :exec
+UPDATE users SET deleted = NULL WHERE id = $1
+`
+
+func (q *Queries) RestoreUser(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, restoreUser, id)
+	return err
 }
 
 const softDeleteUser = `-- name: SoftDeleteUser :exec

@@ -151,6 +151,7 @@ func commentFromDB(c db.Comment, authorUsername, authorAvatar string) store.Comm
 		Karma:          int(c.Karma),
 		AuthorUsername: authorUsername,
 		AuthorAvatar:   authorAvatar,
+		Deleted:        fromPgTimestamptz(c.Deleted),
 		Created:        c.Created,
 		Updated:        c.Updated,
 	}
@@ -366,6 +367,42 @@ func (us *UserStoreImpl) UpdateUserAvatar(ctx context.Context, id string, avatar
 
 func (us *UserStoreImpl) SoftDeleteUser(ctx context.Context, id string) error {
 	return us.q.SoftDeleteUser(ctx, id)
+}
+
+func (us *UserStoreImpl) RestoreUser(ctx context.Context, id string) error {
+	return us.q.RestoreUser(ctx, id)
+}
+
+func (us *UserStoreImpl) GetByIDIncludingDeleted(ctx context.Context, id string) (*store.User, error) {
+	u, err := us.q.GetUserByIDIncludingDeleted(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return userFromDB(u), nil
+}
+
+func (us *UserStoreImpl) ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]store.User, error) {
+	rows, err := us.q.ListUsersForAdmin(ctx, db.ListUsersForAdminParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+		Filter: filter,
+		Search: search,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.User, len(rows))
+	for i, r := range rows {
+		result[i] = *userFromDB(r)
+	}
+	return result, nil
+}
+
+func (us *UserStoreImpl) CountForAdmin(ctx context.Context, filter, search string) (int64, error) {
+	return us.q.CountUsersForAdmin(ctx, db.CountUsersForAdminParams{
+		Filter: filter,
+		Search: search,
+	})
 }
 
 func (us *UserStoreImpl) IsContributor(ctx context.Context, userID string) (bool, error) {
@@ -1338,6 +1375,7 @@ func (cs *CommentStoreImpl) ListBySchematic(ctx context.Context, schematicID str
 			Karma:          int(r.Karma),
 			AuthorUsername: derefStr(r.AuthorUsername),
 			AuthorAvatar:   derefStr(r.AuthorAvatar),
+			Deleted:        fromPgTimestamptz(r.Deleted),
 			Created:        r.Created,
 			Updated:        r.Updated,
 		}
@@ -1378,8 +1416,53 @@ func (cs *CommentStoreImpl) Delete(ctx context.Context, id string) error {
 	return cs.q.DeleteComment(ctx, id)
 }
 
+func (cs *CommentStoreImpl) Restore(ctx context.Context, id string) error {
+	return cs.q.RestoreComment(ctx, id)
+}
+
 func (cs *CommentStoreImpl) CountByUser(ctx context.Context, userID string) (int64, error) {
 	return cs.q.CountUserComments(ctx, &userID)
+}
+
+func (cs *CommentStoreImpl) ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]store.Comment, error) {
+	rows, err := cs.q.ListCommentsForAdmin(ctx, db.ListCommentsForAdminParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+		Filter: filter,
+		Search: search,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Comment, len(rows))
+	for i, r := range rows {
+		result[i] = store.Comment{
+			ID:             r.ID,
+			AuthorID:       r.AuthorID,
+			SchematicID:    r.SchematicID,
+			ParentID:       r.ParentID,
+			Content:        r.Content,
+			Published:      fromPgTimestamptz(r.Published),
+			Approved:       r.Approved,
+			Type:           r.Type,
+			Karma:          int(r.Karma),
+			AuthorUsername: derefStr(r.AuthorUsername),
+			AuthorAvatar:   derefStr(r.AuthorAvatar),
+			Deleted:        fromPgTimestamptz(r.Deleted),
+			SchematicName:  derefStr(r.SchematicName),
+			SchematicTitle: derefStr(r.SchematicTitle),
+			Created:        r.Created,
+			Updated:        r.Updated,
+		}
+	}
+	return result, nil
+}
+
+func (cs *CommentStoreImpl) CountForAdmin(ctx context.Context, filter, search string) (int64, error) {
+	return cs.q.CountCommentsForAdmin(ctx, db.CountCommentsForAdminParams{
+		Filter: filter,
+		Search: search,
+	})
 }
 
 // GuideStoreImpl implements store.GuideStore.

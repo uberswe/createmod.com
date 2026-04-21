@@ -60,3 +60,35 @@ ORDER BY updated DESC;
 
 -- name: ListAdminEmails :many
 SELECT email FROM users WHERE is_admin = true AND deleted IS NULL;
+
+-- name: GetUserByIDIncludingDeleted :one
+SELECT * FROM users WHERE id = $1;
+
+-- name: RestoreUser :exec
+UPDATE users SET deleted = NULL WHERE id = $1;
+
+-- name: ListUsersForAdmin :many
+SELECT *
+FROM users
+WHERE
+  (sqlc.arg('filter')::text = 'all'
+     OR (sqlc.arg('filter')::text = 'active' AND deleted IS NULL)
+     OR (sqlc.arg('filter')::text = 'deleted' AND deleted IS NOT NULL)
+     OR (sqlc.arg('filter')::text = 'admin' AND is_admin = true AND deleted IS NULL))
+  AND (sqlc.arg('search')::text = ''
+     OR username ILIKE '%' || sqlc.arg('search')::text || '%'
+     OR email ILIKE '%' || sqlc.arg('search')::text || '%')
+ORDER BY created DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountUsersForAdmin :one
+SELECT COUNT(*)
+FROM users
+WHERE
+  (sqlc.arg('filter')::text = 'all'
+     OR (sqlc.arg('filter')::text = 'active' AND deleted IS NULL)
+     OR (sqlc.arg('filter')::text = 'deleted' AND deleted IS NOT NULL)
+     OR (sqlc.arg('filter')::text = 'admin' AND is_admin = true AND deleted IS NULL))
+  AND (sqlc.arg('search')::text = ''
+     OR username ILIKE '%' || sqlc.arg('search')::text || '%'
+     OR email ILIKE '%' || sqlc.arg('search')::text || '%');

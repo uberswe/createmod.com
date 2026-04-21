@@ -128,6 +128,9 @@ type Comment struct {
 	Karma          int
 	AuthorUsername string
 	AuthorAvatar   string
+	Deleted        *time.Time
+	SchematicName  string
+	SchematicTitle string
 	Created        time.Time
 	Updated        time.Time
 }
@@ -363,11 +366,16 @@ type UserStore interface {
 	UpdateUserPassword(ctx context.Context, id string, hash string) error
 	UpdateUserAvatar(ctx context.Context, id string, avatar string) error
 	SoftDeleteUser(ctx context.Context, id string) error
+	RestoreUser(ctx context.Context, id string) error
 	IsContributor(ctx context.Context, userID string) (bool, error)
 	ListUsers(ctx context.Context, limit, offset int) ([]User, error)
 	CountUsers(ctx context.Context) (int64, error)
 	ListForSitemap(ctx context.Context) ([]SitemapUser, error)
 	ListAdminEmails(ctx context.Context) ([]string, error)
+	// Admin queries
+	GetByIDIncludingDeleted(ctx context.Context, id string) (*User, error)
+	ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]User, error)
+	CountForAdmin(ctx context.Context, filter, search string) (int64, error)
 }
 
 // SessionStore handles session persistence.
@@ -503,7 +511,11 @@ type CommentStore interface {
 	Approve(ctx context.Context, id string) error
 	Disapprove(ctx context.Context, id string) error
 	Delete(ctx context.Context, id string) error
+	Restore(ctx context.Context, id string) error
 	CountByUser(ctx context.Context, userID string) (int64, error)
+	// Admin queries
+	ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]Comment, error)
+	CountForAdmin(ctx context.Context, filter, search string) (int64, error)
 }
 
 // GuideStore handles guides.
