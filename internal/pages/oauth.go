@@ -152,13 +152,21 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 		}
 
 		if userID == "" {
-			// Create new user. We require an email to avoid colliding with
-			// other users whose email is "" (the users table has a UNIQUE
-			// index on email). Surface a clear error if the provider did
-			// not return one.
+			// If the provider didn't return an email (e.g. a GitHub user with
+			// a private primary email and no verified address in /user/emails),
+			// send them to an intermediate form to collect one rather than
+			// creating a broken account or silently failing.
 			if oauthUser.Email == "" {
-				slog.Warn("OAuth user has no email; cannot create account", "provider", provider.Name, "provider_id", oauthUser.ID)
-				return oauthLoginErrorRedirect(e, "no_email")
+				if err := setOAuthPendingCookie(e, oauthPending{
+					Provider:   provider.Name,
+					ProviderID: oauthUser.ID,
+					Username:   oauthUser.Username,
+					Avatar:     oauthUser.Avatar,
+				}); err != nil {
+					slog.Error("oauth: failed to set pending cookie", "error", err)
+					return oauthLoginErrorRedirect(e, "no_email")
+				}
+				return e.Redirect(http.StatusFound, "/auth/oauth/complete")
 			}
 
 			username := sanitizeUsername(oauthUser.Username)

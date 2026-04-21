@@ -45,7 +45,7 @@ func oauthErrorMessage(lang, code string) string {
 	case "not_configured":
 		return i18n.T(lang, "Login with this provider is not available right now.")
 	case "no_email":
-		return i18n.T(lang, "We could not read a verified email from the provider. Make your email public on the provider and try again.")
+		return i18n.T(lang, "We couldn't read an email from that provider. Please try again.")
 	case "state_missing", "state_mismatch":
 		return i18n.T(lang, "Your sign-in session expired. Please try again.")
 	case "provider_error", "token_exchange", "user_fetch", "missing_code":
