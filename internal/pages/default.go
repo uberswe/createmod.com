@@ -53,6 +53,9 @@ type DefaultData struct {
 	Breadcrumbs     []BreadcrumbItem
 	HideOutstream      bool
 	AdminSection       string
+	DiscordOAuthEnabled bool
+	GithubOAuthEnabled  bool
+	OAuthError          string
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
@@ -130,6 +133,10 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 		d.Language = preferredLanguageFromRequest(e.Request)
 	}
 	d.LangPrefix = LangToPrefix[d.Language]
+
+	// OAuth provider availability (used by login / settings templates).
+	d.DiscordOAuthEnabled = DiscordOAuthEnabled()
+	d.GithubOAuthEnabled = GithubOAuthEnabled()
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {

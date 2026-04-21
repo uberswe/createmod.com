@@ -107,6 +107,18 @@ type RegisterParams struct {
 func Register(p RegisterParams) chi.Router {
 	registry := server.NewRegistry()
 
+	// Record which OAuth providers are configured so templates can hide
+	// the matching login / link buttons when they aren't. Missing env vars
+	// are the top reason OAuth buttons appear dead on production.
+	pages.SetOAuthEnabled(p.DiscordOAuth != nil, p.GithubOAuth != nil)
+	pages.SetOAuthSigningSecret(deriveOAuthSigningSecret())
+	if p.DiscordOAuth == nil {
+		slog.Info("oauth: Discord provider disabled (DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set)")
+	}
+	if p.GithubOAuth == nil {
+		slog.Info("oauth: GitHub provider disabled (GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET not set)")
+	}
+
 	assetVer := computeAssetVersion()
 
 	// Derive a stable HMAC key for signing outgoing redirect URLs.
@@ -423,6 +435,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore)))
 	r.Get("/auth/github", Adapt(pages.OAuthRedirectHandler(p.GithubOAuth)))
 	r.Get("/auth/github/callback", Adapt(pages.OAuthCallbackHandler(p.GithubOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/oauth/complete", Adapt(pages.OAuthCompleteHandler(registry, p.AppStore)))
+	r.With(authRateLimit).Post("/auth/oauth/complete", Adapt(pages.OAuthCompletePostHandler(registry, p.AppStore, p.SessionStore)))
 	r.Get("/logout", func(w http.ResponseWriter, req *http.Request) {
 		secure := req.TLS != nil || strings.EqualFold(req.Header.Get("X-Forwarded-Proto"), "https")
 
@@ -956,5 +970,18 @@ func deriveOutSecret() string {
 	}
 	slog.Warn("OUT_SECRET environment variable is not set; using insecure default — set OUT_SECRET in production")
 	h := sha256.Sum256([]byte("createmod-out-url-sign:default"))
+	return hex.EncodeToString(h[:])
+}
+
+// deriveOAuthSigningSecret returns a stable HMAC key for signing the
+// pending-OAuth cookie used by /auth/oauth/complete. Falls back to a
+// deterministic default in dev so the cookie survives restarts on laptops
+// without OAUTH_SIGN_SECRET configured.
+func deriveOAuthSigningSecret() string {
+	if s := os.Getenv("OAUTH_SIGN_SECRET"); s != "" {
+		return s
+	}
+	slog.Warn("OAUTH_SIGN_SECRET environment variable is not set; using insecure default — set OAUTH_SIGN_SECRET in production")
+	h := sha256.Sum256([]byte("createmod-oauth-sign:default"))
 	return hex.EncodeToString(h[:])
 }

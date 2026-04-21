@@ -1,0 +1,44 @@
+{{ template "head.html" . }}
+<main class="page page-center">
+    <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+            <a href="/" class="navbar-brand navbar-brand-autodark">
+                <img src="/assets/x/logo.png" alt="CreateMod.com">
+            </a>
+        </div>
+        <form class="card card-md" method="post" action="/auth/oauth/complete" autocomplete="off" novalidate hx-boost="false">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-3">{{ T .Language "One more step" }}</h2>
+                <p class="text-secondary mb-4">
+                    {{ if .Provider }}
+                      {{ printf (T .Language "We couldn't read an email from %s. Enter an email address to finish creating your account.") .Provider }}
+                    {{ else }}
+                      {{ T .Language "Enter an email address to finish creating your account." }}
+                    {{ end }}
+                </p>
+                {{ if .Error }}
+                <div class="alert alert-danger">{{ .Error }}</div>
+                {{ end }}
+                {{ if .SuggestedUser }}
+                <div class="mb-3">
+                    <label class="form-label">{{ T .Language "Username" }}</label>
+                    <input type="text" class="form-control" value="{{ .SuggestedUser }}" disabled>
+                    <small class="form-hint">{{ T .Language "We'll use this from your provider. You can change it later in settings." }}</small>
+                </div>
+                {{ end }}
+                <div class="mb-3">
+                    <label class="form-label" for="oauth-email">{{ T .Language "Email address" }}</label>
+                    <input id="oauth-email" name="email" type="email" class="form-control" placeholder="your@email.com" value="{{ .EmailPrefill }}" required autofocus>
+                </div>
+                <div class="form-footer">
+                    <button type="submit" class="btn btn-primary w-100">{{ T .Language "Finish sign up" }}</button>
+                </div>
+            </div>
+        </form>
+        <div class="text-center text-secondary mt-3">
+            <a href="/login">{{ T .Language "Back to sign in" }}</a>
+        </div>
+    </div>
+</main>
+{{template "footer.html" .}}
+{{template "foot.html" .}}
