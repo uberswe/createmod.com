@@ -815,7 +815,10 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     align-self: stretch;
 }
 
-.ad-rail > div {
+/* Only the last child in the rail is sticky. Preceding slots (e.g. the
+   video-nc ad) scroll with the page so they don't stack on top of the
+   sticky-stack adrail at the same top offset. */
+.ad-rail > div:last-child {
     position: sticky;
     top: 110px;
 }
@@ -828,7 +831,7 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     align-self: stretch;
 }
 
-.ad-rail-sm > div {
+.ad-rail-sm > div:last-child {
     position: sticky;
     top: 110px;
 }
@@ -840,13 +843,13 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     align-self: stretch;
 }
 
-.search-ad-rail > div {
+.search-ad-rail > div:last-child {
     position: sticky;
     top: 110px;
 }
 
 /* Search page left sidebar ad container */
-.search-under-container > div {
+.search-under-container > div:last-child {
     position: sticky;
     top: 110px;
 }
