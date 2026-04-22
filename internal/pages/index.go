@@ -438,7 +438,9 @@ func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store, windo
 // rating aggregates to the schematics table for pre-computed query support.
 func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
 	ctx := context.Background()
-	td, err := appStore.ViewRatings.FetchTrendingData(ctx, 30)
+	// 7-day window matches the index page (windowDays := 7) so that search
+	// trending (sort=8) ranks schematics identically to the homepage.
+	td, err := appStore.ViewRatings.FetchTrendingData(ctx, 7)
 	if err != nil || td == nil {
 		return nil
 	}
