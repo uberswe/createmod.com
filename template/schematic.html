@@ -1237,13 +1237,30 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
+  // Keep the sticky-stack container offset in sync with the video-nc's actual
+  // rendered height so both pin below each other without overlapping.
+  var videoNcEl = document.getElementById('schematic-video-nc-top-right');
+  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
+  var videoNcGap = 16; // matches the mb-3 margin + 1rem in the CSS calc()
+  var stickyStackTop = 110 + 200 + videoNcGap; // fallback matches CSS default
+  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
+    var updateOffset = function () {
+      var h = videoNcEl.getBoundingClientRect().height;
+      if (h > 0) {
+        adRailEl.style.setProperty('--video-nc-height', h + 'px');
+      }
+    };
+    new ResizeObserver(updateOffset).observe(videoNcEl);
+    updateOffset();
+  }
+
   // Wide ad rail — sticky-stack for long schematic pages (xl+: 1200px+)
   window['nitroAds'].createAd('schematic-sticky-adrail', {
     "refreshVisibleOnly": true,
     "format": "sticky-stack",
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
-    "stickyStackOffset": 110,
+    "stickyStackOffset": stickyStackTop,
     "stickyStackResizable": false,
     "keywords": kwString,
     "targeting": targeting,
