@@ -106,6 +106,14 @@ UPDATE schematics SET moderation_state = $2, moderation_reason = $3, updated = N
 -- name: SoftDeleteSchematic :exec
 UPDATE schematics SET deleted = NOW(), deleted_at = NOW(), moderation_state = 'deleted' WHERE id = $1;
 
+-- name: SoftDeleteSchematicsByAuthor :exec
+UPDATE schematics SET deleted = NOW(), deleted_at = NOW(), moderation_state = 'deleted'
+WHERE author_id = $1 AND deleted IS NULL;
+
+-- name: RestoreSchematicsByAuthor :exec
+UPDATE schematics SET deleted = NULL, deleted_at = NULL, moderation_state = 'approved'
+WHERE author_id = $1 AND deleted IS NOT NULL;
+
 -- name: UpdateSchematicViews :exec
 UPDATE schematics SET views = $2 WHERE id = $1;
 

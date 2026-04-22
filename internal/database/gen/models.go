@@ -137,17 +137,18 @@ type ExternalAuth struct {
 }
 
 type Guide struct {
-	ID          string    `json:"id"`
-	AuthorID    *string   `json:"author_id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Content     string    `json:"content"`
-	Slug        string    `json:"slug"`
-	UploadLink  string    `json:"upload_link"`
-	Created     time.Time `json:"created"`
-	Updated     time.Time `json:"updated"`
-	Views       int32     `json:"views"`
-	BannerUrl   string    `json:"banner_url"`
+	ID          string             `json:"id"`
+	AuthorID    *string            `json:"author_id"`
+	Title       string             `json:"title"`
+	Description string             `json:"description"`
+	Content     string             `json:"content"`
+	Slug        string             `json:"slug"`
+	UploadLink  string             `json:"upload_link"`
+	Created     time.Time          `json:"created"`
+	Updated     time.Time          `json:"updated"`
+	Views       int32              `json:"views"`
+	BannerUrl   string             `json:"banner_url"`
+	Deleted     pgtype.Timestamptz `json:"deleted"`
 }
 
 type GuideTranslation struct {
@@ -355,13 +356,14 @@ type SchematicFile struct {
 }
 
 type SchematicRating struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	SchematicID string    `json:"schematic_id"`
-	Rating      float32   `json:"rating"`
-	RatedAt     time.Time `json:"rated_at"`
-	Created     time.Time `json:"created"`
-	Updated     time.Time `json:"updated"`
+	ID          string             `json:"id"`
+	UserID      string             `json:"user_id"`
+	SchematicID string             `json:"schematic_id"`
+	Rating      float32            `json:"rating"`
+	RatedAt     time.Time          `json:"rated_at"`
+	Created     time.Time          `json:"created"`
+	Updated     time.Time          `json:"updated"`
+	Deleted     pgtype.Timestamptz `json:"deleted"`
 }
 
 type SchematicTag struct {

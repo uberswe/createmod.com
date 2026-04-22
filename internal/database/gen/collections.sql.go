@@ -406,12 +406,30 @@ func (q *Queries) RemoveSchematicFromCollection(ctx context.Context, arg RemoveS
 	return err
 }
 
+const restoreCollectionsByAuthor = `-- name: RestoreCollectionsByAuthor :exec
+UPDATE collections SET deleted = '' WHERE author_id = $1 AND deleted = 'deleted'
+`
+
+func (q *Queries) RestoreCollectionsByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, restoreCollectionsByAuthor, authorID)
+	return err
+}
+
 const softDeleteCollection = `-- name: SoftDeleteCollection :exec
 UPDATE collections SET deleted = 'deleted' WHERE id = $1
 `
 
 func (q *Queries) SoftDeleteCollection(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, softDeleteCollection, id)
+	return err
+}
+
+const softDeleteCollectionsByAuthor = `-- name: SoftDeleteCollectionsByAuthor :exec
+UPDATE collections SET deleted = 'deleted' WHERE author_id = $1 AND deleted = ''
+`
+
+func (q *Queries) SoftDeleteCollectionsByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, softDeleteCollectionsByAuthor, authorID)
 	return err
 }
 

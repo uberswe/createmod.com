@@ -11,7 +11,7 @@ import (
 )
 
 const countUserGuides = `-- name: CountUserGuides :one
-SELECT COUNT(*) FROM guides WHERE author_id = $1
+SELECT COUNT(*) FROM guides WHERE author_id = $1 AND deleted IS NULL
 `
 
 func (q *Queries) CountUserGuides(ctx context.Context, authorID *string) (int64, error) {
@@ -24,7 +24,7 @@ func (q *Queries) CountUserGuides(ctx context.Context, authorID *string) (int64,
 const createGuide = `-- name: CreateGuide :one
 INSERT INTO guides (id, author_id, title, description, content, slug, upload_link, banner_url)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url
+RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted
 `
 
 type CreateGuideParams struct {
@@ -62,6 +62,7 @@ func (q *Queries) CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide
 		&i.Updated,
 		&i.Views,
 		&i.BannerUrl,
+		&i.Deleted,
 	)
 	return i, err
 }
@@ -76,7 +77,7 @@ func (q *Queries) DeleteGuide(ctx context.Context, id string) error {
 }
 
 const getGuideByID = `-- name: GetGuideByID :one
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url FROM guides WHERE id = $1
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides WHERE id = $1 AND deleted IS NULL
 `
 
 func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
@@ -94,12 +95,13 @@ func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
 		&i.Updated,
 		&i.Views,
 		&i.BannerUrl,
+		&i.Deleted,
 	)
 	return i, err
 }
 
 const getGuideBySlug = `-- name: GetGuideBySlug :one
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url FROM guides WHERE slug = $1
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides WHERE slug = $1 AND deleted IS NULL
 `
 
 func (q *Queries) GetGuideBySlug(ctx context.Context, slug string) (Guide, error) {
@@ -117,6 +119,7 @@ func (q *Queries) GetGuideBySlug(ctx context.Context, slug string) (Guide, error
 		&i.Updated,
 		&i.Views,
 		&i.BannerUrl,
+		&i.Deleted,
 	)
 	return i, err
 }
@@ -131,7 +134,7 @@ func (q *Queries) IncrementGuideViews(ctx context.Context, id string) error {
 }
 
 const listGuides = `-- name: ListGuides :many
-SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url FROM guides ORDER BY created DESC LIMIT $1 OFFSET $2
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides WHERE deleted IS NULL ORDER BY created DESC LIMIT $1 OFFSET $2
 `
 
 type ListGuidesParams struct {
@@ -160,6 +163,7 @@ func (q *Queries) ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide
 			&i.Updated,
 			&i.Views,
 			&i.BannerUrl,
+			&i.Deleted,
 		); err != nil {
 			return nil, err
 		}
@@ -172,7 +176,7 @@ func (q *Queries) ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide
 }
 
 const listGuidesForSitemap = `-- name: ListGuidesForSitemap :many
-SELECT id, slug, updated FROM guides ORDER BY updated DESC
+SELECT id, slug, updated FROM guides WHERE deleted IS NULL ORDER BY updated DESC
 `
 
 type ListGuidesForSitemapRow struct {
@@ -201,6 +205,33 @@ func (q *Queries) ListGuidesForSitemap(ctx context.Context) ([]ListGuidesForSite
 	return items, nil
 }
 
+const restoreGuidesByAuthor = `-- name: RestoreGuidesByAuthor :exec
+UPDATE guides SET deleted = NULL WHERE author_id = $1 AND deleted IS NOT NULL
+`
+
+func (q *Queries) RestoreGuidesByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, restoreGuidesByAuthor, authorID)
+	return err
+}
+
+const softDeleteGuide = `-- name: SoftDeleteGuide :exec
+UPDATE guides SET deleted = NOW() WHERE id = $1
+`
+
+func (q *Queries) SoftDeleteGuide(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, softDeleteGuide, id)
+	return err
+}
+
+const softDeleteGuidesByAuthor = `-- name: SoftDeleteGuidesByAuthor :exec
+UPDATE guides SET deleted = NOW() WHERE author_id = $1 AND deleted IS NULL
+`
+
+func (q *Queries) SoftDeleteGuidesByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, softDeleteGuidesByAuthor, authorID)
+	return err
+}
+
 const updateGuide = `-- name: UpdateGuide :one
 UPDATE guides SET
     title = COALESCE($2, title),
@@ -209,7 +240,7 @@ UPDATE guides SET
     upload_link = COALESCE($5, upload_link),
     banner_url = COALESCE($6, banner_url)
 WHERE id = $1
-RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url
+RETURNING id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted
 `
 
 type UpdateGuideParams struct {
@@ -243,6 +274,7 @@ func (q *Queries) UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide
 		&i.Updated,
 		&i.Views,
 		&i.BannerUrl,
+		&i.Deleted,
 	)
 	return i, err
 }

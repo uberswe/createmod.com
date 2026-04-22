@@ -158,7 +158,7 @@ func AdminUserDeleteHandler(appStore *store.Store) func(e *server.RequestEvent) 
 		if current := session.UserFromContext(e.Request.Context()); current != nil && current.ID == id {
 			return e.String(http.StatusBadRequest, "cannot delete your own account from this panel")
 		}
-		if err := appStore.Users.SoftDeleteUser(context.Background(), id); err != nil {
+		if err := appStore.Users.CascadeSoftDelete(context.Background(), id); err != nil {
 			slog.Error("admin users: delete failed", "error", err, "id", id)
 			return e.String(http.StatusInternalServerError, "failed to delete user")
 		}
@@ -179,7 +179,7 @@ func AdminUserRestoreHandler(appStore *store.Store) func(e *server.RequestEvent)
 		if id == "" {
 			return e.String(http.StatusBadRequest, "missing id")
 		}
-		if err := appStore.Users.RestoreUser(context.Background(), id); err != nil {
+		if err := appStore.Users.CascadeRestore(context.Background(), id); err != nil {
 			slog.Error("admin users: restore failed", "error", err, "id", id)
 			return e.String(http.StatusInternalServerError, "failed to restore user")
 		}
