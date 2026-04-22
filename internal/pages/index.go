@@ -401,35 +401,60 @@ func trendingScore(created time.Time, recentViews float64, totalViews float64, r
 // so that no user request ever hits the database for page-1 data.
 // Called at boot and periodically by a background ticker.
 func WarmIndexCache(cacheService *cache.Service, appStore *store.Store, windowDays []int) {
-	// Delegate to the store-based implementation
 	WarmIndexCacheFromStore(appStore, cacheService, slog.Default(), windowDays)
 }
 
-// RefreshIndexCache asynchronously clears and re-warms the index page cache.
-// Call this after a schematic is created, updated, or deleted so the homepage
-// reflects the change without waiting for the next periodic job.
+// indexRefreshDebouncer collapses rapid RefreshIndexCache calls into a single
+// re-warm. The first call starts a short timer; subsequent calls within the
+// debounce window reset it. When the timer fires, one warm cycle runs. If a
+// warm is already in progress when the timer fires, the pending flag ensures
+// another warm runs after it completes.
+var indexRefreshDebouncer = struct {
+	mu       sync.Mutex
+	timer    *time.Timer
+	pending  bool
+	running  bool
+}{}
+
+const refreshDebounceDelay = 2 * time.Second
+
+// RefreshIndexCache schedules an asynchronous re-warm of the index page cache.
+// Uses swap-on-write (no cache keys are deleted — WarmIndexCacheFromStore
+// overwrites them) so user requests always hit warm cache. Calls are debounced:
+// rapid successive calls collapse into a single re-warm after a short delay.
 func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store, windowDays []int) {
-	go func() {
-		cacheService.Delete(cache.LatestSchematicsKey)
-		cacheService.Delete(cache.LatestHasNextKey)
-		cacheService.Delete(cache.TrendingSchematicsKey)
-		cacheService.Delete(cache.TrendingHasNextKey)
-		cacheService.Delete(cache.HighestRatedSchematicsKey)
-		cacheService.Delete(cache.HighestRatedHasNextKey)
-		// Clear window-specific keys
-		for _, wd := range windowDays {
-			cacheService.Delete(cache.TrendingKeyForWindow(wd))
-			cacheService.Delete(cache.TrendingHasNextKeyForWindow(wd))
+	d := &indexRefreshDebouncer
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.timer != nil {
+		d.timer.Stop()
+	}
+
+	d.timer = time.AfterFunc(refreshDebounceDelay, func() {
+		d.mu.Lock()
+		if d.running {
+			d.pending = true
+			d.mu.Unlock()
+			return
 		}
-		// Invalidate rendered HTML caches for all languages and windows
-		for lang := range supportedLanguages {
-			cacheService.Delete(indexHTMLCacheKey(lang))
-			for _, wd := range windowDays {
-				cacheService.Delete(indexHTMLCacheKeyWithWindow(lang, wd))
+		d.running = true
+		d.mu.Unlock()
+
+		for {
+			WarmIndexCacheFromStore(appStore, cacheService, slog.Default(), windowDays)
+
+			d.mu.Lock()
+			if d.pending {
+				d.pending = false
+				d.mu.Unlock()
+				continue
 			}
+			d.running = false
+			d.mu.Unlock()
+			return
 		}
-		WarmIndexCacheFromStore(appStore, cacheService, slog.Default(), windowDays)
-	}()
+	})
 }
 
 
@@ -514,6 +539,48 @@ func getAllTrendingSchematicsFromStore(appStore *store.Store, cacheService *cach
 	return getAllTrendingSchematicsForWindow(appStore, cacheService, 30)
 }
 
+// computeTrendingForWindow fetches trending data from the DB and computes the
+// full sorted trending list. It always does the computation (no cache check).
+func computeTrendingForWindow(appStore *store.Store, cacheService *cache.Service, recentDays int) []models.Schematic {
+	td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), recentDays)
+	if err != nil || td == nil || len(td.SchematicIDs) == 0 {
+		return nil
+	}
+
+	type scored struct {
+		id    string
+		score float64
+	}
+	scoredList := make([]scored, 0, len(td.SchematicIDs))
+	for _, id := range td.SchematicIDs {
+		created := td.SchematicCreated[id]
+		s := trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
+		scoredList = append(scoredList, scored{id: id, score: s})
+	}
+	sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
+
+	ids := make([]string, len(scoredList))
+	for i, s := range scoredList {
+		ids[i] = s.id
+	}
+	storeSchematics, err := appStore.Schematics.ListByIDs(context.Background(), ids)
+	if err != nil {
+		return nil
+	}
+	schematicMap := make(map[string]store.Schematic, len(storeSchematics))
+	for _, s := range storeSchematics {
+		schematicMap[s.ID] = s
+	}
+	ordered := make([]store.Schematic, 0, len(ids))
+	for _, id := range ids {
+		if s, ok := schematicMap[id]; ok {
+			ordered = append(ordered, s)
+		}
+	}
+
+	return MapStoreSchematics(appStore, ordered, cacheService)
+}
+
 // getAllTrendingSchematicsForWindow returns the full sorted trending list for a specific time window.
 // Uses singleflight to deduplicate concurrent calls with the same recentDays value,
 // preventing cache stampedes when multiple requests hit a cold cache simultaneously.
@@ -524,55 +591,15 @@ func getAllTrendingSchematicsForWindow(appStore *store.Store, cacheService *cach
 		return cached
 	}
 
-	// Use singleflight to ensure only one goroutine computes trending data
-	// for a given window — others wait and share the result.
 	v, _, _ := trendingFlight.Do(cacheKey, func() (interface{}, error) {
-		// Double-check cache inside singleflight in case another goroutine
-		// populated it between our first check and acquiring the flight.
 		if cached, found := cacheService.GetSchematics(cacheKey); found {
 			return cached, nil
 		}
 
-		td, err := appStore.ViewRatings.FetchTrendingData(context.Background(), recentDays)
-		if err != nil || td == nil || len(td.SchematicIDs) == 0 {
+		all := computeTrendingForWindow(appStore, cacheService, recentDays)
+		if all == nil {
 			return []models.Schematic(nil), nil
 		}
-
-		// Compute scores
-		type scored struct {
-			id    string
-			score float64
-		}
-		scoredList := make([]scored, 0, len(td.SchematicIDs))
-		for _, id := range td.SchematicIDs {
-			created := td.SchematicCreated[id]
-			s := trendingScore(created, td.RecentViews[id], td.TotalViews[id], td.RatingCount[id], td.RatingSum[id], td.RecentDownloads[id], td.TotalDownloads[id])
-			scoredList = append(scoredList, scored{id: id, score: s})
-		}
-		sort.Slice(scoredList, func(i, j int) bool { return scoredList[i].score > scoredList[j].score })
-
-		// Fetch full schematics in sorted order
-		ids := make([]string, len(scoredList))
-		for i, s := range scoredList {
-			ids[i] = s.id
-		}
-		storeSchematics, err := appStore.Schematics.ListByIDs(context.Background(), ids)
-		if err != nil {
-			return []models.Schematic(nil), nil
-		}
-		// ListByIDs does not preserve order; re-sort
-		schematicMap := make(map[string]store.Schematic, len(storeSchematics))
-		for _, s := range storeSchematics {
-			schematicMap[s.ID] = s
-		}
-		ordered := make([]store.Schematic, 0, len(ids))
-		for _, id := range ids {
-			if s, ok := schematicMap[id]; ok {
-				ordered = append(ordered, s)
-			}
-		}
-
-		all := MapStoreSchematics(appStore, ordered, cacheService)
 		cacheService.SetSchematics(cacheKey, all)
 		return all, nil
 	})
@@ -658,8 +685,9 @@ func findUserFromStore(appStore *store.Store, userID string) *models.User {
 	}
 }
 
-// WarmIndexCacheFromStore pre-computes and caches all data needed for the index page
-// using only the PostgreSQL store (no PocketBase dependency).
+// WarmIndexCacheFromStore pre-computes and caches all data needed for the index page.
+// Uses swap-on-write: computes new data first, then overwrites cache keys atomically.
+// This eliminates cold-cache windows where user requests would fall through to DB queries.
 // windowDays specifies which trending time windows to warm; if nil/empty, defaults to [30].
 func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service, logger interface{ Debug(string, ...any) }, windowDays []int) {
 	logger.Debug("Warming index page cache (store)")
@@ -668,27 +696,23 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 		windowDays = []int{30}
 	}
 
-	// 1. Latest schematics (page 1)
-	// Set hasNext before schematics so that a concurrent request that sees
-	// cached schematics will also find the hasNext flag.
+	// 1. Latest schematics (page 1) — compute then overwrite
 	latestResults, latestHasNext := fetchLatestPageFromStore(appStore, 1)
+	latestMapped := MapStoreSchematics(appStore, latestResults, cacheService)
 	cacheService.Set(cache.LatestHasNextKey, latestHasNext)
-	cacheService.SetSchematics(cache.LatestSchematicsKey, MapStoreSchematics(appStore, latestResults, cacheService))
+	cacheService.SetSchematics(cache.LatestSchematicsKey, latestMapped)
 
-	// 2. Trending schematics — warm all requested windows
+	// 2. Trending schematics — compute fresh (bypassing cache) then overwrite
 	for _, wd := range windowDays {
-		ck := cache.TrendingKeyForWindow(wd)
-		cacheService.Delete(ck)
-		allTrending := getAllTrendingSchematicsForWindow(appStore, cacheService, wd)
-		trendingHasNext := len(allTrending) > indexPageSize
-		cacheService.Set(cache.TrendingHasNextKeyForWindow(wd), trendingHasNext)
+		allTrending := computeTrendingForWindow(appStore, cacheService, wd)
+		cacheService.SetSchematics(cache.TrendingKeyForWindow(wd), allTrending)
+		cacheService.Set(cache.TrendingHasNextKeyForWindow(wd), len(allTrending) > indexPageSize)
 	}
 
 	// Backward compat: also populate default (non-windowed) keys with 30-day data
-	cacheService.Delete(cache.TrendingSchematicsKey)
-	defaultTrending := getAllTrendingSchematicsForWindow(appStore, cacheService, 30)
-	cacheService.Set(cache.TrendingHasNextKey, len(defaultTrending) > indexPageSize)
+	defaultTrending := computeTrendingForWindow(appStore, cacheService, 30)
 	cacheService.SetSchematics(cache.TrendingSchematicsKey, defaultTrending)
+	cacheService.Set(cache.TrendingHasNextKey, len(defaultTrending) > indexPageSize)
 
 	// 3. Highest rated schematics (page 1)
 	highestRated, highestHasNext := getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
@@ -696,31 +720,36 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 	cacheService.SetSchematics(cache.HighestRatedSchematicsKey, highestRated)
 
 	// 4. Categories
-	allCategoriesFromStoreOnly(appStore, cacheService)
-
-	// 5. Category sections — warm for all requested windows concurrently.
-	// Limit concurrency to avoid overwhelming the DB connection pool.
 	categories := allCategoriesFromStoreOnly(appStore, cacheService)
+
+	// 5. Category sections — warm concurrently, then overwrite
 	sem := make(chan struct{}, 4)
 	var warmWg sync.WaitGroup
 	for _, cat := range categories {
 		warmWg.Add(1)
 		go func(cat models.SchematicCategory) {
 			defer warmWg.Done()
-			sem <- struct{}{}        // acquire
-			defer func() { <-sem }() // release
+			sem <- struct{}{}
+			defer func() { <-sem }()
 			for _, wd := range windowDays {
 				items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, wd)
 				cacheService.Set(cache.CategorySectionHasNextKeyForWindow(cat.Key, wd), catHasNext)
 				cacheService.SetSchematics(cache.CategorySectionKeyForWindow(cat.Key, wd), items)
 			}
-			// Backward compat: default keys with 30-day data
 			items, catHasNext := getCategoryTrendingPageForWindow(appStore, cacheService, cat.ID, 1, 30)
 			cacheService.Set(fmt.Sprintf("CategorySectionHasNext:%s", cat.Key), catHasNext)
 			cacheService.SetSchematics(fmt.Sprintf("CategorySection:%s", cat.Key), items)
 		}(cat)
 	}
 	warmWg.Wait()
+
+	// 6. Invalidate rendered HTML caches so the next request picks up fresh data
+	for lang := range supportedLanguages {
+		cacheService.Delete(indexHTMLCacheKey(lang))
+		for _, wd := range windowDays {
+			cacheService.Delete(indexHTMLCacheKeyWithWindow(lang, wd))
+		}
+	}
 
 	logger.Debug("Index page cache warmed (store)")
 }
