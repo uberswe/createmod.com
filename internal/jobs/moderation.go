@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"createmod/internal/mailer"
+	"createmod/internal/pages"
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
@@ -153,6 +154,10 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 	// Run language detection and translation (regardless of moderation outcome)
 	if w.deps.Translation != nil {
 		w.deps.Translation.DetectAndTranslate(args.SchematicID)
+	}
+
+	if schem.ModerationState == store.ModerationPublished && w.deps.Cache != nil {
+		pages.RefreshIndexCache(w.deps.Cache, w.deps.Store, []int{7})
 	}
 
 	slog.Info("async moderation complete", "schematic_id", args.SchematicID, "moderation_state", schem.ModerationState)
