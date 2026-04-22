@@ -367,6 +367,8 @@ type UserStore interface {
 	UpdateUserAvatar(ctx context.Context, id string, avatar string) error
 	SoftDeleteUser(ctx context.Context, id string) error
 	RestoreUser(ctx context.Context, id string) error
+	CascadeSoftDelete(ctx context.Context, id string) error
+	CascadeRestore(ctx context.Context, id string) error
 	IsContributor(ctx context.Context, userID string) (bool, error)
 	ListUsers(ctx context.Context, limit, offset int) ([]User, error)
 	CountUsers(ctx context.Context) (int64, error)

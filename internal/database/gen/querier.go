@@ -238,14 +238,25 @@ type Querier interface {
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
+	RestoreCollectionsByAuthor(ctx context.Context, authorID *string) error
 	RestoreComment(ctx context.Context, id string) error
+	RestoreCommentsByAuthor(ctx context.Context, authorID *string) error
+	RestoreGuidesByAuthor(ctx context.Context, authorID *string) error
+	RestoreRatingsByUser(ctx context.Context, userID string) error
+	RestoreSchematicsByAuthor(ctx context.Context, authorID *string) error
 	RestoreUser(ctx context.Context, id string) error
 	SchematicNameExists(ctx context.Context, name string) (bool, error)
 	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
 	SetSchematicTags(ctx context.Context, schematicID string) error
 	SoftDeleteCollection(ctx context.Context, id string) error
+	SoftDeleteCollectionsByAuthor(ctx context.Context, authorID *string) error
+	SoftDeleteCommentsByAuthor(ctx context.Context, authorID *string) error
+	SoftDeleteGuide(ctx context.Context, id string) error
+	SoftDeleteGuidesByAuthor(ctx context.Context, authorID *string) error
+	SoftDeleteRatingsByUser(ctx context.Context, userID string) error
 	SoftDeleteSchematic(ctx context.Context, id string) error
+	SoftDeleteSchematicsByAuthor(ctx context.Context, authorID *string) error
 	SoftDeleteUser(ctx context.Context, id string) error
 	SumUserPoints(ctx context.Context, userID string) (int32, error)
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)

@@ -84,23 +84,22 @@ func UserDeleteHandler(appStore *store.Store, cacheService *cache.Service, sessS
 
 		ctx := context.Background()
 
-		// Soft-delete all schematics belonging to this user
+		// Invalidate schematic caches before cascade delete
 		schematics, err := appStore.Schematics.ListByAuthor(ctx, userID, -1, 0)
 		if err != nil {
-			slog.Error("failed to list user schematics for deletion", "error", err)
+			slog.Error("failed to list user schematics for cache invalidation", "error", err)
 		} else {
 			for _, schem := range schematics {
 				cacheService.DeleteSchematic(cache.SchematicKey(schem.ID))
-				_ = appStore.Schematics.SoftDelete(ctx, schem.ID)
 			}
 			if len(schematics) > 0 {
 				RefreshIndexCache(cacheService, appStore, nil)
 			}
 		}
 
-		// Soft-delete the user
-		if err := appStore.Users.SoftDeleteUser(ctx, userID); err != nil {
-			slog.Error("failed to soft-delete user", "error", err)
+		// Cascade soft-delete: user + schematics, collections, comments, ratings, guides
+		if err := appStore.Users.CascadeSoftDelete(ctx, userID); err != nil {
+			slog.Error("failed to cascade soft-delete user", "error", err)
 			return e.InternalServerError("could not delete account", nil)
 		}
 
