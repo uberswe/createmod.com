@@ -332,7 +332,7 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 
 		// Clear cache
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
-		RefreshIndexCache(cacheService, appStore, nil)
+		RefreshIndexCache(cacheService, appStore, []int{7})
 
 		// If moderation just changed from non-public to public, notify the author
 		if !wasPublic && store.IsPublicState(schem.ModerationState) && mailService != nil && schem.AuthorID != "" {
@@ -396,7 +396,7 @@ func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.St
 		}
 
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
-		RefreshIndexCache(cacheService, appStore, nil)
+		RefreshIndexCache(cacheService, appStore, []int{7})
 
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", "/admin/schematics")
