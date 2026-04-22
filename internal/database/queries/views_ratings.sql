@@ -23,14 +23,21 @@ SELECT
     COALESCE(AVG(rating), 0)::REAL AS avg_rating,
     COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
-WHERE schematic_id = $1;
+WHERE schematic_id = $1 AND deleted IS NULL;
+
+-- name: SoftDeleteRatingsByUser :exec
+UPDATE schematic_ratings SET deleted = NOW() WHERE user_id = $1 AND deleted IS NULL;
+
+-- name: RestoreRatingsByUser :exec
+UPDATE schematic_ratings SET deleted = NULL WHERE user_id = $1 AND deleted IS NOT NULL;
 
 -- name: UpsertSchematicRating :exec
 INSERT INTO schematic_ratings (id, user_id, schematic_id, rating, rated_at)
 VALUES ($1, $2, $3, $4, NOW())
 ON CONFLICT (user_id, schematic_id) DO UPDATE SET
     rating = EXCLUDED.rating,
-    rated_at = NOW();
+    rated_at = NOW(),
+    deleted = NULL;
 
 -- name: UpsertSchematicViewCount :exec
 INSERT INTO schematic_views (id, schematic_id, type, period, count)
@@ -59,11 +66,13 @@ GROUP BY schematic_id;
 -- name: FetchRatingSumBySchematic :many
 SELECT schematic_id AS id, SUM(rating)::REAL AS v
 FROM schematic_ratings
+WHERE deleted IS NULL
 GROUP BY schematic_id;
 
 -- name: FetchRatingCountBySchematic :many
 SELECT schematic_id AS id, COUNT(rating)::REAL AS v
 FROM schematic_ratings
+WHERE deleted IS NULL
 GROUP BY schematic_id;
 
 -- name: FetchRecentDownloadsBySchematic :many
@@ -96,5 +105,5 @@ GROUP BY schematic_id;
 -- name: BatchGetRatings :many
 SELECT schematic_id, COALESCE(AVG(rating), 0)::REAL AS avg_rating, COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
-WHERE schematic_id = ANY($1::text[])
+WHERE schematic_id = ANY($1::text[]) AND deleted IS NULL
 GROUP BY schematic_id;

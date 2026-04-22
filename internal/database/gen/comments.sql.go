@@ -344,3 +344,21 @@ func (q *Queries) RestoreComment(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, restoreComment, id)
 	return err
 }
+
+const restoreCommentsByAuthor = `-- name: RestoreCommentsByAuthor :exec
+UPDATE comments SET deleted = NULL WHERE author_id = $1 AND deleted IS NOT NULL
+`
+
+func (q *Queries) RestoreCommentsByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, restoreCommentsByAuthor, authorID)
+	return err
+}
+
+const softDeleteCommentsByAuthor = `-- name: SoftDeleteCommentsByAuthor :exec
+UPDATE comments SET deleted = NOW() WHERE author_id = $1 AND deleted IS NULL
+`
+
+func (q *Queries) SoftDeleteCommentsByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, softDeleteCommentsByAuthor, authorID)
+	return err
+}

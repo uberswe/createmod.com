@@ -25,6 +25,12 @@ UPDATE comments SET approved = true WHERE id = $1;
 -- name: DeleteComment :exec
 UPDATE comments SET deleted = NOW() WHERE id = $1;
 
+-- name: SoftDeleteCommentsByAuthor :exec
+UPDATE comments SET deleted = NOW() WHERE author_id = $1 AND deleted IS NULL;
+
+-- name: RestoreCommentsByAuthor :exec
+UPDATE comments SET deleted = NULL WHERE author_id = $1 AND deleted IS NOT NULL;
+
 -- name: RestoreComment :exec
 UPDATE comments SET deleted = NULL WHERE id = $1;
 

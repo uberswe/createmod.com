@@ -373,6 +373,44 @@ func (us *UserStoreImpl) RestoreUser(ctx context.Context, id string) error {
 	return us.q.RestoreUser(ctx, id)
 }
 
+func (us *UserStoreImpl) CascadeSoftDelete(ctx context.Context, id string) error {
+	if err := us.q.SoftDeleteUser(ctx, id); err != nil {
+		return err
+	}
+	if err := us.q.SoftDeleteSchematicsByAuthor(ctx, &id); err != nil {
+		return err
+	}
+	if err := us.q.SoftDeleteCollectionsByAuthor(ctx, &id); err != nil {
+		return err
+	}
+	if err := us.q.SoftDeleteCommentsByAuthor(ctx, &id); err != nil {
+		return err
+	}
+	if err := us.q.SoftDeleteRatingsByUser(ctx, id); err != nil {
+		return err
+	}
+	return us.q.SoftDeleteGuidesByAuthor(ctx, &id)
+}
+
+func (us *UserStoreImpl) CascadeRestore(ctx context.Context, id string) error {
+	if err := us.q.RestoreUser(ctx, id); err != nil {
+		return err
+	}
+	if err := us.q.RestoreSchematicsByAuthor(ctx, &id); err != nil {
+		return err
+	}
+	if err := us.q.RestoreCollectionsByAuthor(ctx, &id); err != nil {
+		return err
+	}
+	if err := us.q.RestoreCommentsByAuthor(ctx, &id); err != nil {
+		return err
+	}
+	if err := us.q.RestoreRatingsByUser(ctx, id); err != nil {
+		return err
+	}
+	return us.q.RestoreGuidesByAuthor(ctx, &id)
+}
+
 func (us *UserStoreImpl) GetByIDIncludingDeleted(ctx context.Context, id string) (*store.User, error) {
 	u, err := us.q.GetUserByIDIncludingDeleted(ctx, id)
 	if err != nil {

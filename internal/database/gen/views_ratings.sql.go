@@ -45,7 +45,7 @@ func (q *Queries) BatchGetDownloadCounts(ctx context.Context, dollar_1 []string)
 const batchGetRatings = `-- name: BatchGetRatings :many
 SELECT schematic_id, COALESCE(AVG(rating), 0)::REAL AS avg_rating, COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
-WHERE schematic_id = ANY($1::text[])
+WHERE schematic_id = ANY($1::text[]) AND deleted IS NULL
 GROUP BY schematic_id
 `
 
@@ -109,6 +109,7 @@ func (q *Queries) BatchGetViewCounts(ctx context.Context, dollar_1 []string) ([]
 const fetchRatingCountBySchematic = `-- name: FetchRatingCountBySchematic :many
 SELECT schematic_id AS id, COUNT(rating)::REAL AS v
 FROM schematic_ratings
+WHERE deleted IS NULL
 GROUP BY schematic_id
 `
 
@@ -140,6 +141,7 @@ func (q *Queries) FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatin
 const fetchRatingSumBySchematic = `-- name: FetchRatingSumBySchematic :many
 SELECT schematic_id AS id, SUM(rating)::REAL AS v
 FROM schematic_ratings
+WHERE deleted IS NULL
 GROUP BY schematic_id
 `
 
@@ -344,7 +346,7 @@ SELECT
     COALESCE(AVG(rating), 0)::REAL AS avg_rating,
     COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
-WHERE schematic_id = $1
+WHERE schematic_id = $1 AND deleted IS NULL
 `
 
 type GetSchematicRatingRow struct {
@@ -403,12 +405,31 @@ func (q *Queries) RecordSchematicDownload(ctx context.Context, arg RecordSchemat
 	return err
 }
 
+const restoreRatingsByUser = `-- name: RestoreRatingsByUser :exec
+UPDATE schematic_ratings SET deleted = NULL WHERE user_id = $1 AND deleted IS NOT NULL
+`
+
+func (q *Queries) RestoreRatingsByUser(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, restoreRatingsByUser, userID)
+	return err
+}
+
+const softDeleteRatingsByUser = `-- name: SoftDeleteRatingsByUser :exec
+UPDATE schematic_ratings SET deleted = NOW() WHERE user_id = $1 AND deleted IS NULL
+`
+
+func (q *Queries) SoftDeleteRatingsByUser(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, softDeleteRatingsByUser, userID)
+	return err
+}
+
 const upsertSchematicRating = `-- name: UpsertSchematicRating :exec
 INSERT INTO schematic_ratings (id, user_id, schematic_id, rating, rated_at)
 VALUES ($1, $2, $3, $4, NOW())
 ON CONFLICT (user_id, schematic_id) DO UPDATE SET
     rating = EXCLUDED.rating,
-    rated_at = NOW()
+    rated_at = NOW(),
+    deleted = NULL
 `
 
 type UpsertSchematicRatingParams struct {

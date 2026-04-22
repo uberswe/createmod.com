@@ -40,6 +40,12 @@ RETURNING *;
 -- name: SoftDeleteCollection :exec
 UPDATE collections SET deleted = 'deleted' WHERE id = $1;
 
+-- name: SoftDeleteCollectionsByAuthor :exec
+UPDATE collections SET deleted = 'deleted' WHERE author_id = $1 AND deleted = '';
+
+-- name: RestoreCollectionsByAuthor :exec
+UPDATE collections SET deleted = '' WHERE author_id = $1 AND deleted = 'deleted';
+
 -- name: GetCollectionSchematicIDs :many
 SELECT schematic_id FROM collections_schematics
 WHERE collection_id = $1

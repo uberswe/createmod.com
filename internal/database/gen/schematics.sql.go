@@ -1637,6 +1637,16 @@ func (q *Queries) RefreshSchematicRatingAggregates(ctx context.Context, id strin
 	return err
 }
 
+const restoreSchematicsByAuthor = `-- name: RestoreSchematicsByAuthor :exec
+UPDATE schematics SET deleted = NULL, deleted_at = NULL, moderation_state = 'approved'
+WHERE author_id = $1 AND deleted IS NOT NULL
+`
+
+func (q *Queries) RestoreSchematicsByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, restoreSchematicsByAuthor, authorID)
+	return err
+}
+
 const schematicNameExists = `-- name: SchematicNameExists :one
 SELECT EXISTS(
     SELECT 1 FROM schematics WHERE name = $1 AND moderation_state != 'deleted'
@@ -1689,6 +1699,16 @@ UPDATE schematics SET deleted = NOW(), deleted_at = NOW(), moderation_state = 'd
 
 func (q *Queries) SoftDeleteSchematic(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, softDeleteSchematic, id)
+	return err
+}
+
+const softDeleteSchematicsByAuthor = `-- name: SoftDeleteSchematicsByAuthor :exec
+UPDATE schematics SET deleted = NOW(), deleted_at = NOW(), moderation_state = 'deleted'
+WHERE author_id = $1 AND deleted IS NULL
+`
+
+func (q *Queries) SoftDeleteSchematicsByAuthor(ctx context.Context, authorID *string) error {
+	_, err := q.db.Exec(ctx, softDeleteSchematicsByAuthor, authorID)
 	return err
 }
 
