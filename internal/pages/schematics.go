@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 var schematicsTemplates = append([]string{
@@ -31,6 +32,8 @@ type SchematicsData struct {
 	NextURL    string
 }
 
+const schematicsListHTMLCacheTTL = 30 * time.Second
+
 func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		// Pagination params
@@ -40,6 +43,16 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 				page = v
 			}
 		}
+
+		isAuth := authenticatedUserID(e) != ""
+		if !isAuth {
+			setPublicCacheControl(e, 30)
+			lang := detectLanguageFromRequest(e.Request)
+			if cached, ok := cacheService.GetString(cache.SchematicsListHTMLKey(page, lang)); ok {
+				return e.HTML(http.StatusOK, cached)
+			}
+		}
+
 		pageSize := 24
 		limit := pageSize + 1 // fetch one extra to detect next page
 		offset := (page - 1) * pageSize
@@ -83,6 +96,11 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 		if err != nil {
 			return err
 		}
+
+		if !isAuth {
+			cacheService.SetWithTTL(cache.SchematicsListHTMLKey(page, d.Language), html, schematicsListHTMLCacheTTL)
+		}
+
 		return e.HTML(http.StatusOK, html)
 	}
 }

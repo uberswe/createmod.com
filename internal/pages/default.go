@@ -174,6 +174,13 @@ func (d *DefaultData) populateFromSession(e *server.RequestEvent, user *session.
 	// TODO: This will be set by handlers with store access
 }
 
+// setPublicCacheControl overrides the default "no-cache, private" header for
+// anonymous page responses that are safe to cache in browsers and CDNs.
+func setPublicCacheControl(e *server.RequestEvent, maxAge int) {
+	e.Response.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d, stale-while-revalidate=%d", maxAge, maxAge*2))
+	e.Response.Header().Set("Vary", "Cookie, Accept-Language")
+}
+
 // isAuthenticated returns true if the request is authenticated via the PostgreSQL session store.
 func isAuthenticated(e *server.RequestEvent) bool {
 	return session.UserFromContext(e.Request.Context()) != nil
