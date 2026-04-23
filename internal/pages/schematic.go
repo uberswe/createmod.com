@@ -92,10 +92,22 @@ type ModInfo struct {
 	IconURL   string
 }
 
+const schematicHTMLCacheTTL = 30 * time.Second
+
 func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, storageSvc *storage.Service, webhookSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
+
+		isAuth := authenticatedUserID(e) != ""
+		if !isAuth {
+			setPublicCacheControl(e, 30)
+			lang := detectLanguageFromRequest(e.Request)
+			if cached, ok := cacheService.GetString(cache.SchematicHTMLKey(name, lang)); ok {
+				return e.HTML(http.StatusOK, cached)
+			}
+		}
+
 		s, err := appStore.Schematics.GetByName(ctx, name)
 		if err != nil || s == nil || s.ModerationState == store.ModerationDeleted {
 			// Try to find and fix a schematic with percent-encoded characters in its name
@@ -353,6 +365,11 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		if err != nil {
 			return err
 		}
+
+		if !isAuth && store.IsPublicState(s.ModerationState) {
+			cacheService.SetWithTTL(cache.SchematicHTMLKey(name, d.Language), html, schematicHTMLCacheTTL)
+		}
+
 		return e.HTML(http.StatusOK, html)
 	}
 }

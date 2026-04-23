@@ -91,8 +91,10 @@ func UserDeleteHandler(appStore *store.Store, cacheService *cache.Service, sessS
 		} else {
 			for _, schem := range schematics {
 				cacheService.DeleteSchematic(cache.SchematicKey(schem.ID))
+				cacheService.DeleteSchematicHTML(schem.Name)
 			}
 			if len(schematics) > 0 {
+				cacheService.DeleteSchematicsListHTML()
 				RefreshIndexCache(cacheService, appStore, []int{7})
 			}
 		}

@@ -122,6 +122,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		// Authenticated pages contain user-specific data so are always rendered fresh.
 		isAuth := authenticatedUserID(e) != ""
 		if !isAuth {
+			setPublicCacheControl(e, 30)
 			lang := detectLanguageFromRequest(e.Request)
 			htmlCacheKey := indexHTMLCacheKeyWithWindow(lang, windowDays)
 			if cached, ok := cacheService.GetString(htmlCacheKey); ok {

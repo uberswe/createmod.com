@@ -158,6 +158,14 @@ func ModMetadataKey(namespace string) string {
 	return fmt.Sprintf("modmeta:%s", namespace)
 }
 
+func SchematicHTMLKey(name, lang string) string {
+	return fmt.Sprintf("html:schematic:%s:%s", name, lang)
+}
+
+func SchematicsListHTMLKey(page int, lang string) string {
+	return fmt.Sprintf("html:schematics:%d:%s", page, lang)
+}
+
 // --- Generic Set/Get (in-memory only for complex types) ---
 
 func (s *Service) Set(key string, value interface{}) {
@@ -249,6 +257,22 @@ func (s *Service) GetString(key string) (string, bool) {
 func (s *Service) SetSchematic(key string, value models.Schematic) {
 	s.c.Set(key, value, gocache.DefaultExpiration)
 	s.redisSet(key, "schematic", value)
+}
+
+var htmlCacheLanguages = []string{"en", "fr", "pt-BR", "pt-PT", "es", "de", "pl", "ru", "zh-Hans"}
+
+func (s *Service) DeleteSchematicHTML(name string) {
+	for _, lang := range htmlCacheLanguages {
+		s.c.Delete(SchematicHTMLKey(name, lang))
+	}
+}
+
+func (s *Service) DeleteSchematicsListHTML() {
+	for page := 1; page <= 20; page++ {
+		for _, lang := range htmlCacheLanguages {
+			s.c.Delete(SchematicsListHTMLKey(page, lang))
+		}
+	}
 }
 
 func (s *Service) DeleteSchematic(key string) {
