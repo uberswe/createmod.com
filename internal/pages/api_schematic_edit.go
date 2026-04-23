@@ -388,6 +388,8 @@ func SchematicUpdateHandler(
 
 		// --- Clear cache ---
 		cacheService.DeleteSchematic(cache.SchematicKey(schematicID))
+		cacheService.DeleteSchematicHTML(schem.Name)
+		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
 
 		// --- Respond ---
@@ -447,6 +449,8 @@ func SchematicDeleteHandler(
 
 		// Clear cache
 		cacheService.DeleteSchematic(cache.SchematicKey(schematicID))
+		cacheService.DeleteSchematicHTML(schem.Name)
+		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
 
 		// Respond

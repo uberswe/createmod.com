@@ -332,6 +332,8 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 
 		// Clear cache
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
+		cacheService.DeleteSchematicHTML(schem.Name)
+		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
 
 		// If moderation just changed from non-public to public, notify the author
@@ -390,12 +392,18 @@ func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.St
 			return e.String(http.StatusBadRequest, "missing id")
 		}
 
+		schem, _ := appStore.Schematics.GetByIDAdmin(context.Background(), id)
+
 		if err := appStore.Schematics.SoftDelete(context.Background(), id); err != nil {
 			slog.Error("admin schematic delete: failed to soft-delete", "error", err, "id", id)
 			return e.String(http.StatusInternalServerError, "failed to delete schematic")
 		}
 
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
+		if schem != nil {
+			cacheService.DeleteSchematicHTML(schem.Name)
+		}
+		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
 
 		if e.Request.Header.Get("HX-Request") != "" {
