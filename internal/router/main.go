@@ -534,6 +534,18 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
+	// Generators
+	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/generators/balloon", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/generators/hull", Adapt(pages.GeneratorHullHandler(registry, p.CacheService, p.AppStore)))
+	generatorRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
+	r.With(generatorRateLimit).Post("/api/generators/propeller", Adapt(pages.GeneratorPropellerAPIHandler()))
+	r.With(generatorRateLimit).Post("/api/generators/balloon", Adapt(pages.GeneratorBalloonAPIHandler()))
+	r.With(generatorRateLimit).Post("/api/generators/hull", Adapt(pages.GeneratorHullAPIHandler()))
+	downloadRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
+	r.With(downloadRateLimit).Post("/api/generators/propeller/download", Adapt(pages.GeneratorDownloadHandler("propeller")))
+	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))
+	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
 	// User
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))

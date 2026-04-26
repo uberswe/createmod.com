@@ -1,0 +1,207 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body" style="padding:0;">
+            <div style="position:relative;min-height:calc(100vh - 60px);">
+                <div id="generator-viewport" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>
+                <div class="generator-overlay">
+                    <div class="generator-overlay-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                        <h3 class="mb-0">Propeller Generator</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon generator-overlay-chevron" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+                    </div>
+                    <div class="generator-overlay-body">
+                        <div class="mb-2">
+                            <div class="d-flex flex-wrap gap-1">
+                                <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="basic">Basic</button>
+                                <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="speed">Speed</button>
+                                <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="cargo">Cargo</button>
+                                <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="scimitar">Scimitar</button>
+                                <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="giant">Giant</button>
+                                <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="colossal">Colossal</button>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Blades: <span id="val-blades">4</span></label>
+                            <input type="range" class="form-range gen-param" id="param-blades" min="2" max="12" value="4" step="1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Length: <span id="val-length">10</span></label>
+                            <input type="range" class="form-range gen-param" id="param-length" min="3" max="200" value="10" step="1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Root Chord: <span id="val-rootChord">3</span></label>
+                            <input type="range" class="form-range gen-param" id="param-rootChord" min="1" max="40" value="3" step="1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Tip Chord: <span id="val-tipChord">1</span></label>
+                            <input type="range" class="form-range gen-param" id="param-tipChord" min="0" max="40" value="1" step="1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-check form-switch mb-0">
+                                <input class="form-check-input gen-param" type="checkbox" id="param-swept" checked>
+                                <span class="form-check-label">Swept</span>
+                            </label>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Sweep Degrees: <span id="val-sweepDegrees">25</span></label>
+                            <input type="range" class="form-range gen-param" id="param-sweepDegrees" min="0" max="90" value="25" step="1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Airfoil Shape</label>
+                            <select class="form-select form-select-sm gen-param" id="param-airfoilShape">
+                                <option value="linear">Linear</option>
+                                <option value="curved" selected>Curved</option>
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span id="gen-block-count" class="text-secondary">0 blocks</span>
+                            <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                Download .nbt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="generator-ad-rail-sm d-none d-lg-block d-xl-none">
+                    <div id="gen-sticky-adrail-lg" class="mb-3"></div>
+                </div>
+                <div class="generator-ad-rail d-none d-xl-block">
+                    <div id="gen-video-nc" class="mb-3"></div>
+                    <div id="gen-sticky-adrail" class="mb-3"></div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
+<script hx-disable>
+(function(){
+  var PRESETS = {
+    basic:    { blades:4, length:10, rootChord:3, tipChord:1, sweepDegrees:25, swept:true,  airfoilShape:'curved' },
+    speed:    { blades:2, length:15, rootChord:2, tipChord:1, sweepDegrees:35, swept:true,  airfoilShape:'curved' },
+    cargo:    { blades:4, length:12, rootChord:5, tipChord:3, sweepDegrees:15, swept:true,  airfoilShape:'curved' },
+    scimitar: { blades:5, length:20, rootChord:3, tipChord:1, sweepDegrees:50, swept:true,  airfoilShape:'curved' },
+    giant:    { blades:3, length:80, rootChord:6, tipChord:2, sweepDegrees:30, swept:true,  airfoilShape:'curved' },
+    colossal: { blades:4, length:160, rootChord:8, tipChord:3, sweepDegrees:30, swept:true,  airfoilShape:'curved' }
+  };
+
+  function getParams() {
+    return {
+      blades:       parseInt(document.getElementById('param-blades').value),
+      length:       parseInt(document.getElementById('param-length').value),
+      rootChord:    parseInt(document.getElementById('param-rootChord').value),
+      tipChord:     parseInt(document.getElementById('param-tipChord').value),
+      sweepDegrees: parseFloat(document.getElementById('param-sweepDegrees').value),
+      swept:        document.getElementById('param-swept').checked,
+      airfoilShape: document.getElementById('param-airfoilShape').value
+    };
+  }
+
+  function setParams(p) {
+    document.getElementById('param-blades').value = p.blades;
+    document.getElementById('val-blades').textContent = p.blades;
+    document.getElementById('param-length').value = p.length;
+    document.getElementById('val-length').textContent = p.length;
+    document.getElementById('param-rootChord').value = p.rootChord;
+    document.getElementById('val-rootChord').textContent = p.rootChord;
+    document.getElementById('param-tipChord').value = p.tipChord;
+    document.getElementById('val-tipChord').textContent = p.tipChord;
+    document.getElementById('param-sweepDegrees').value = p.sweepDegrees;
+    document.getElementById('val-sweepDegrees').textContent = p.sweepDegrees;
+    document.getElementById('param-swept').checked = p.swept;
+    document.getElementById('param-airfoilShape').value = p.airfoilShape;
+  }
+
+  function updateLabels() {
+    document.getElementById('val-blades').textContent = document.getElementById('param-blades').value;
+    document.getElementById('val-length').textContent = document.getElementById('param-length').value;
+    document.getElementById('val-rootChord').textContent = document.getElementById('param-rootChord').value;
+    document.getElementById('val-tipChord').textContent = document.getElementById('param-tipChord').value;
+    document.getElementById('val-sweepDegrees').textContent = document.getElementById('param-sweepDegrees').value;
+  }
+
+  function refresh() {
+    updateLabels();
+    GeneratorApp.generate('/api/generators/propeller', getParams());
+  }
+
+  function init() {
+    if (!GeneratorApp.initScene('generator-viewport')) {
+      setTimeout(init, 100);
+      return;
+    }
+
+    document.querySelectorAll('.gen-param').forEach(function(el) {
+      el.addEventListener('input', refresh);
+    });
+
+    document.querySelectorAll('.gen-preset').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var p = PRESETS[this.getAttribute('data-preset')];
+        if (p) { setParams(p); refresh(); }
+      });
+    });
+
+    document.getElementById('gen-download-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      GeneratorApp.downloadNBT('/api/generators/propeller/download', getParams());
+    });
+
+    refresh();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Ads
+  window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
+  window['nitroAds'].createAd('gen-video-nc', {
+    "format": "video-nc",
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  window['nitroAds'].createAd('gen-sticky-adrail-lg', {
+    "refreshLimit": 10,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  var videoNcEl = document.getElementById('gen-video-nc');
+  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
+  var stickyStackTop = 110 + 200 + 16;
+  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
+    var updateOffset = function () {
+      var h = videoNcEl.getBoundingClientRect().height;
+      if (h > 0) adRailEl.style.setProperty('--video-nc-height', h + 'px');
+    };
+    new ResizeObserver(updateOffset).observe(videoNcEl);
+    updateOffset();
+  }
+  window['nitroAds'].createAd('gen-sticky-adrail', {
+    "refreshVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": stickyStackTop,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+})();
+</script>
+{{template "foot.html" .}}

@@ -1,0 +1,257 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body" style="padding:0;">
+            <div style="position:relative;min-height:calc(100vh - 60px);">
+                <div id="generator-viewport" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>
+                <div class="generator-overlay">
+                        <div class="generator-overlay-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            <h3 class="mb-0">Airship Balloon Generator</h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon generator-overlay-chevron" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+                        </div>
+                        <div class="generator-overlay-body">
+                            <div class="mb-2">
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="blimp">Blimp</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="sphere">Sphere</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="zeppelin">Zeppelin</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="hotair">Hot Air</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="torpedo">Torpedo</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="cargo">Cargo</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="roundBlimp">Round Blimp</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="skyWhale">Sky Whale</button>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Length (X): <span id="val-lengthX">30</span></label>
+                                <input type="range" class="form-range gen-param" id="param-lengthX" min="6" max="120" value="30" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Width (Z): <span id="val-widthZ">16</span></label>
+                                <input type="range" class="form-range gen-param" id="param-widthZ" min="4" max="60" value="16" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Height (Y): <span id="val-heightY">16</span></label>
+                                <input type="range" class="form-range gen-param" id="param-heightY" min="4" max="60" value="16" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Cylinder Middle: <span id="val-cylinderMid">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-cylinderMid" min="0" max="0.85" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Front Taper: <span id="val-frontTaper">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-frontTaper" min="0" max="1" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Rear Taper: <span id="val-rearTaper">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-rearTaper" min="0" max="1" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Top Flatten: <span id="val-topFlatten">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-topFlatten" min="0" max="0.5" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bottom Flatten: <span id="val-bottomFlatten">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bottomFlatten" min="0" max="0.5" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-hollow" checked>
+                                    <span class="form-check-label">Hollow</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Shell Thickness: <span id="val-shell">1</span></label>
+                                <input type="range" class="form-range gen-param" id="param-shell" min="1" max="5" value="1" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-ribEnabled">
+                                    <span class="form-check-label">Ribs</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Rib Spacing: <span id="val-ribSpacing">4</span></label>
+                                <input type="range" class="form-range gen-param" id="param-ribSpacing" min="2" max="12" value="4" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-keelEnabled">
+                                    <span class="form-check-label">Keel</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Keel Depth: <span id="val-keelDepth">3</span></label>
+                                <input type="range" class="form-range gen-param" id="param-keelDepth" min="0" max="10" value="3" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-finEnabled">
+                                    <span class="form-check-label">Tail Fins</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Fin Height: <span id="val-finHeight">5</span></label>
+                                <input type="range" class="form-range gen-param" id="param-finHeight" min="2" max="15" value="5" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Fin Length: <span id="val-finLength">8</span></label>
+                                <input type="range" class="form-range gen-param" id="param-finLength" min="3" max="20" value="8" step="1">
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span id="gen-block-count" class="text-secondary">0 blocks</span>
+                                <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                    Download .nbt
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <div class="generator-ad-rail-sm d-none d-lg-block d-xl-none">
+                    <div id="gen-sticky-adrail-lg" class="mb-3"></div>
+                </div>
+                <div class="generator-ad-rail d-none d-xl-block">
+                    <div id="gen-video-nc" class="mb-3"></div>
+                    <div id="gen-sticky-adrail" class="mb-3"></div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
+<script hx-disable>
+(function(){
+  var PRESETS = {
+    blimp:      { lengthX:30, widthZ:16, heightY:16, cylinderMid:0,    frontTaper:0,   rearTaper:0,   topFlatten:0,    bottomFlatten:0,   hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:3, finEnabled:false, finHeight:5, finLength:8 },
+    sphere:     { lengthX:20, widthZ:20, heightY:20, cylinderMid:0,    frontTaper:0,   rearTaper:0,   topFlatten:0,    bottomFlatten:0,   hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:3, finEnabled:false, finHeight:5, finLength:8 },
+    zeppelin:   { lengthX:60, widthZ:16, heightY:18, cylinderMid:0.4,  frontTaper:0.3, rearTaper:0.5, topFlatten:0,    bottomFlatten:0.1, hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:true,  keelDepth:3, finEnabled:true,  finHeight:5, finLength:8 },
+    hotair:     { lengthX:20, widthZ:20, heightY:28, cylinderMid:0,    frontTaper:0,   rearTaper:0,   topFlatten:0.2,  bottomFlatten:0,   hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:3, finEnabled:false, finHeight:5, finLength:8 },
+    torpedo:    { lengthX:50, widthZ:12, heightY:12, cylinderMid:0.3,  frontTaper:0.6, rearTaper:0.8, topFlatten:0,    bottomFlatten:0,   hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:false, keelDepth:3, finEnabled:true,  finHeight:5, finLength:8 },
+    cargo:      { lengthX:80, widthZ:24, heightY:20, cylinderMid:0.5,  frontTaper:0.2, rearTaper:0.3, topFlatten:0.1,  bottomFlatten:0.1, hollow:true, shell:2, ribEnabled:true,  ribSpacing:8, keelEnabled:true,  keelDepth:4, finEnabled:false, finHeight:5, finLength:8 },
+    roundBlimp: { lengthX:24, widthZ:20, heightY:20, cylinderMid:0,    frontTaper:0,   rearTaper:0,   topFlatten:0,    bottomFlatten:0,   hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:3, finEnabled:false, finHeight:5, finLength:8 },
+    skyWhale:   { lengthX:80, widthZ:30, heightY:35, cylinderMid:0.3,  frontTaper:0.2, rearTaper:0.4, topFlatten:0.15, bottomFlatten:0.05,hollow:true, shell:2, ribEnabled:true,  ribSpacing:6, keelEnabled:true,  keelDepth:4, finEnabled:true,  finHeight:8, finLength:12 }
+  };
+
+  var PARAMS = ['lengthX','widthZ','heightY','cylinderMid','frontTaper','rearTaper','topFlatten','bottomFlatten','shell','ribSpacing','keelDepth','finHeight','finLength'];
+  var CHECKS = ['hollow','ribEnabled','keelEnabled','finEnabled'];
+
+  function getParams() {
+    var p = {};
+    PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      p[k] = el.step && el.step.indexOf('.') >= 0 ? parseFloat(el.value) : parseInt(el.value);
+    });
+    CHECKS.forEach(function(k) {
+      p[k] = document.getElementById('param-' + k).checked;
+    });
+    return p;
+  }
+
+  function setParams(p) {
+    PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) {
+        el.value = p[k];
+        var lbl = document.getElementById('val-' + k);
+        if (lbl) lbl.textContent = p[k];
+      }
+    });
+    CHECKS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) el.checked = p[k];
+    });
+  }
+
+  function updateLabels() {
+    PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      var lbl = document.getElementById('val-' + k);
+      if (el && lbl) lbl.textContent = el.value;
+    });
+  }
+
+  function refresh() {
+    updateLabels();
+    GeneratorApp.generate('/api/generators/balloon', getParams());
+  }
+
+  function init() {
+    if (!GeneratorApp.initScene('generator-viewport')) {
+      setTimeout(init, 100);
+      return;
+    }
+
+    document.querySelectorAll('.gen-param').forEach(function(el) {
+      el.addEventListener('input', refresh);
+    });
+
+    document.querySelectorAll('.gen-preset').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var p = PRESETS[this.getAttribute('data-preset')];
+        if (p) { setParams(p); refresh(); }
+      });
+    });
+
+    document.getElementById('gen-download-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      GeneratorApp.downloadNBT('/api/generators/balloon/download', getParams());
+    });
+
+    refresh();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Ads
+  window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
+  window['nitroAds'].createAd('gen-video-nc', {
+    "format": "video-nc",
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  window['nitroAds'].createAd('gen-sticky-adrail-lg', {
+    "refreshLimit": 10,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  var videoNcEl = document.getElementById('gen-video-nc');
+  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
+  var stickyStackTop = 110 + 200 + 16;
+  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
+    var updateOffset = function () {
+      var h = videoNcEl.getBoundingClientRect().height;
+      if (h > 0) adRailEl.style.setProperty('--video-nc-height', h + 'px');
+    };
+    new ResizeObserver(updateOffset).observe(videoNcEl);
+    updateOffset();
+  }
+  window['nitroAds'].createAd('gen-sticky-adrail', {
+    "refreshVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": stickyStackTop,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+})();
+</script>
+{{template "foot.html" .}}

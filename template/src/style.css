@@ -875,6 +875,101 @@ body.theme-dark .img-light, body[data-bs-theme=dark] .img-light {
     }
 }
 
+/* ===== Generator overlay panel ===== */
+.generator-overlay {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    width: 300px;
+    max-height: calc(100vh - 160px);
+    background: rgba(var(--tblr-body-bg-rgb, 30, 30, 46), 0.92);
+    backdrop-filter: blur(8px);
+    border-radius: var(--tblr-border-radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--tblr-body-color);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.generator-overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.generator-overlay-header h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.generator-overlay-chevron {
+    transition: transform 0.2s;
+}
+
+.generator-overlay.collapsed .generator-overlay-chevron {
+    transform: rotate(-90deg);
+}
+
+.generator-overlay-body {
+    padding: 12px 16px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.generator-overlay.collapsed .generator-overlay-body {
+    display: none;
+}
+
+.generator-overlay .form-label {
+    font-size: 0.8rem;
+}
+
+.generator-overlay .form-range {
+    height: 1rem;
+}
+
+@media (max-width: 767.98px) {
+    .generator-overlay {
+        width: calc(100% - 32px);
+        max-height: 50%;
+    }
+}
+
+.generator-ad-rail {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    width: 300px;
+}
+
+.generator-ad-rail > div:last-child {
+    position: sticky;
+    top: 110px;
+}
+
+.generator-ad-rail-sm {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    width: 160px;
+}
+
+.generator-ad-rail-sm > div:last-child {
+    position: sticky;
+    top: 110px;
+}
+
 /* ===== Brand buttons ===== */
 .btn-curseforge {
     color: #fff;
