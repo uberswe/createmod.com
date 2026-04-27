@@ -159,6 +159,31 @@ if (!window._htmxErrorInit) {
   }
 })();
 </script>
+<script>
+(function(){
+  function initPasswordToggles(root) {
+    (root || document).querySelectorAll('.input-group-flat').forEach(function(group) {
+      var input = group.querySelector('input[type="password"], input[data-toggle-pw]');
+      var link = group.querySelector('.input-group-text a');
+      if (!input || !link || link._pwToggle) return;
+      link._pwToggle = true;
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        var showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        if (!showing) input.setAttribute('data-toggle-pw', '');
+        else input.removeAttribute('data-toggle-pw');
+      });
+    });
+  }
+  if (!window._pwToggleInit) {
+    window._pwToggleInit = true;
+    document.addEventListener('DOMContentLoaded', function(){ initPasswordToggles(); });
+    document.addEventListener('htmx:afterSettle', function(evt){ initPasswordToggles(evt.detail.elt); });
+  }
+  initPasswordToggles();
+})();
+</script>
 {{ if not .HideOutstream }}
 <!-- Floating outstream video player (bottom-right) — no container div needed;
      NitroPay creates its own fixed-position wrapper for the floating format. -->
