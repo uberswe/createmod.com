@@ -697,6 +697,7 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		Mods:               s.Mods,
 		Paid:               ptrBool(s.Paid),
 		ExternalUrl:        ptrStr(s.ExternalURL),
+		SchematicFile:      ptrStr(s.SchematicFile),
 	})
 	return err
 }
