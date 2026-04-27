@@ -40,7 +40,8 @@ LIMIT $3;
 -- name: ListSchematicsByIDs :many
 SELECT * FROM schematics
 WHERE id = ANY($1::text[])
-  AND moderation_state != 'deleted';
+  AND moderation_state IN ('published', 'approved')
+  AND (scheduled_at IS NULL OR scheduled_at <= NOW());
 
 -- name: ListFeaturedSchematics :many
 SELECT * FROM schematics
