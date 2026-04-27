@@ -536,8 +536,12 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// Generators
 	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/generators/propeller/{hash}", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/balloon", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/generators/balloon/{hash}", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/hull", Adapt(pages.GeneratorHullHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/generators/hull/{hash}", Adapt(pages.GeneratorHullHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/generators/{type}/{hash}/guide", Adapt(pages.GeneratorGuideHandler(registry, p.CacheService, p.AppStore)))
 	generatorRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
 	r.With(generatorRateLimit).Post("/api/generators/propeller", Adapt(pages.GeneratorPropellerAPIHandler()))
 	r.With(generatorRateLimit).Post("/api/generators/balloon", Adapt(pages.GeneratorBalloonAPIHandler()))

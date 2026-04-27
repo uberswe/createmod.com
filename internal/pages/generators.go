@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var generatorPropellerTemplates = append([]string{
@@ -23,14 +25,21 @@ var generatorHullTemplates = append([]string{
 	"./template/generator-hull.html",
 }, commonTemplates...)
 
+var generatorGuideTemplates = append([]string{
+	"./template/generator-guide.html",
+}, commonTemplates...)
+
 type GeneratorData struct {
 	DefaultData
+	InitHash      string
+	GeneratorType string
 }
 
 func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
 		d.Populate(e)
+		d.InitHash = chi.URLParam(e.Request, "hash")
 		d.Title = i18n.T(d.Language, "Propeller Generator")
 		d.Description = "Generate custom propeller schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/propeller"
@@ -48,6 +57,7 @@ func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Serv
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
 		d.Populate(e)
+		d.InitHash = chi.URLParam(e.Request, "hash")
 		d.Title = i18n.T(d.Language, "Airship Balloon Generator")
 		d.Description = "Generate custom airship balloon and envelope schematics for Minecraft Create mod."
 		d.Slug = "/generators/balloon"
@@ -65,12 +75,43 @@ func GeneratorHullHandler(registry *server.Registry, cacheService *cache.Service
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
 		d.Populate(e)
+		d.InitHash = chi.URLParam(e.Request, "hash")
 		d.Title = i18n.T(d.Language, "Ship Hull Generator")
 		d.Description = "Generate custom ship hull schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/hull"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators/hull", i18n.T(d.Language, "Ship Hull"))
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorHullTemplates...).Render(d)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}
+
+var generatorGuideNames = map[string]string{
+	"propeller": "Propeller",
+	"balloon":   "Balloon",
+	"hull":      "Ship Hull",
+}
+
+func GeneratorGuideHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		genType := chi.URLParam(e.Request, "type")
+		name, ok := generatorGuideNames[genType]
+		if !ok {
+			return e.NotFoundError("generator not found", nil)
+		}
+		d := GeneratorData{}
+		d.Populate(e)
+		d.InitHash = chi.URLParam(e.Request, "hash")
+		d.GeneratorType = genType
+		d.Title = i18n.T(d.Language, name+" Building Guide")
+		d.Description = fmt.Sprintf("Step by step building guide for the %s generator.", name)
+		d.Slug = "/generators/" + genType
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators/"+genType, i18n.T(d.Language, name), "Guide")
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		html, err := registry.LoadFiles(generatorGuideTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

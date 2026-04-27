@@ -6,16 +6,22 @@ import (
 )
 
 type PropellerParams struct {
-	Blades       int     `json:"blades"`
-	Length       int     `json:"length"`
-	RootChord    int     `json:"rootChord"`
-	TipChord     int     `json:"tipChord"`
-	SweepDegrees float64 `json:"sweepDegrees"`
-	Swept        bool    `json:"swept"`
-	AirfoilShape string  `json:"airfoilShape"`
+	Version       int     `json:"version"`
+	Blades        int     `json:"blades"`
+	Length        int     `json:"length"`
+	RootChord     int     `json:"rootChord"`
+	TipChord      int     `json:"tipChord"`
+	SweepDegrees  float64 `json:"sweepDegrees"`
+	Swept         bool    `json:"swept"`
+	AirfoilShape  string  `json:"airfoilShape"`
+	BladeMaterial string  `json:"bladeMaterial"`
+	BladeColor    string  `json:"bladeColor"`
 }
 
 func (p *PropellerParams) Validate() error {
+	if p.Version == 0 {
+		p.Version = CurrentVersion
+	}
 	if p.Blades < 2 || p.Blades > 12 {
 		return fmt.Errorf("blades must be between 2 and 12")
 	}
@@ -33,6 +39,12 @@ func (p *PropellerParams) Validate() error {
 	}
 	if p.AirfoilShape != "linear" && p.AirfoilShape != "curved" {
 		p.AirfoilShape = "linear"
+	}
+	if p.BladeMaterial != "wool" && p.BladeMaterial != "sail" {
+		p.BladeMaterial = "wool"
+	}
+	if !isValidWoolColor(p.BladeColor) {
+		p.BladeColor = "white"
 	}
 	return nil
 }
@@ -65,6 +77,11 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 		return nil, err
 	}
 
+	bladeType := BlockWool
+	if p.BladeMaterial == "sail" {
+		bladeType = BlockSail
+	}
+
 	seen := make(map[[3]int]bool)
 	var blocks []Block
 
@@ -72,7 +89,7 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 		key := [3]int{x, y, z}
 		if !seen[key] {
 			seen[key] = true
-			blocks = append(blocks, Block{X: x, Y: y, Z: z, Type: BlockWool})
+			blocks = append(blocks, Block{X: x, Y: y, Z: z, Type: bladeType})
 		}
 	}
 
@@ -113,6 +130,10 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 			chord := float64(p.RootChord) + (float64(p.TipChord)-float64(p.RootChord))*t
 			if p.AirfoilShape == "curved" {
 				chord += math.Sin(t*math.Pi) * 1.3
+			}
+
+			if chord < 0.5 {
+				continue
 			}
 
 			localAngle := angle
@@ -160,5 +181,9 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 		SizeX:  maxX - minX + 1,
 		SizeY:  1,
 		SizeZ:  maxZ - minZ + 1,
+		Materials: MaterialConfig{
+			BladeMaterial: p.BladeMaterial,
+			BladeColor:    p.BladeColor,
+		},
 	}, nil
 }

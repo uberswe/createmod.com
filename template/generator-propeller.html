@@ -6,6 +6,11 @@
         <main class="page-body" style="padding:0;">
             <div style="position:relative;min-height:calc(100vh - 60px);">
                 <div id="generator-viewport" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>
+                <nav class="gen-nav">
+                    <a href="/generators/propeller" class="gen-nav-btn active">Propeller</a>
+                    <a href="/generators/balloon" class="gen-nav-btn">Balloon</a>
+                    <a href="/generators/hull" class="gen-nav-btn">Ship Hull</a>
+                </nav>
                 <div class="generator-overlay">
                     <div class="generator-overlay-header" onclick="this.parentElement.classList.toggle('collapsed')">
                         <h3 class="mb-0">Propeller Generator</h3>
@@ -55,13 +60,66 @@
                                 <option value="curved" selected>Curved</option>
                             </select>
                         </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Blade Material</label>
+                            <select class="form-select form-select-sm gen-param" id="param-bladeMaterial">
+                                <option value="wool" selected>Wool</option>
+                                <option value="sail">Create Sail</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label mb-0">Blade Color</label>
+                            <select class="form-select form-select-sm gen-param" id="param-bladeColor">
+                                <option value="white" selected>White</option>
+                                <option value="orange">Orange</option>
+                                <option value="magenta">Magenta</option>
+                                <option value="light_blue">Light Blue</option>
+                                <option value="yellow">Yellow</option>
+                                <option value="lime">Lime</option>
+                                <option value="pink">Pink</option>
+                                <option value="gray">Gray</option>
+                                <option value="light_gray">Light Gray</option>
+                                <option value="cyan">Cyan</option>
+                                <option value="purple">Purple</option>
+                                <option value="blue">Blue</option>
+                                <option value="brown">Brown</option>
+                                <option value="green">Green</option>
+                                <option value="red">Red</option>
+                                <option value="black">Black</option>
+                            </select>
+                        </div>
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <span id="gen-block-count" class="text-secondary">0 blocks</span>
+                        </div>
+                        <div class="gen-action-buttons">
+                            <a class="btn btn-sm btn-outline-secondary" id="gen-guide-btn" hx-boost="false" title="Step by step building guide" href="/generators/propeller">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></svg>
+                                Guide
+                            </a>
                             <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
                                 Download .nbt
                             </button>
                         </div>
+                    </div>
+                </div>
+                <div class="gen-share-bar">
+                    <div class="gen-share-group">
+                        <span class="gen-share-label">3D view</span>
+                        <input type="text" id="gen-share-3d" readonly>
+                        <button class="gen-share-copy" data-target="gen-share-3d">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div class="gen-share-divider"></div>
+                    <div class="gen-share-group">
+                        <span class="gen-share-label">Guide</span>
+                        <input type="text" id="gen-share-guide" readonly>
+                        <button class="gen-share-copy" data-target="gen-share-guide">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                            Copy
+                        </button>
                     </div>
                 </div>
                 <div class="generator-ad-rail-sm d-none d-lg-block d-xl-none">
@@ -76,28 +134,32 @@
         {{template "footer.html" .}}
     </div>
 </div>
+<div id="gen-init-data" data-hash="{{ .InitHash }}" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
 <script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
 <script hx-disable>
 (function(){
   var PRESETS = {
-    basic:    { blades:4, length:10, rootChord:3, tipChord:1, sweepDegrees:25, swept:true,  airfoilShape:'curved' },
-    speed:    { blades:2, length:15, rootChord:2, tipChord:1, sweepDegrees:35, swept:true,  airfoilShape:'curved' },
-    cargo:    { blades:4, length:12, rootChord:5, tipChord:3, sweepDegrees:15, swept:true,  airfoilShape:'curved' },
-    scimitar: { blades:5, length:20, rootChord:3, tipChord:1, sweepDegrees:50, swept:true,  airfoilShape:'curved' },
-    giant:    { blades:3, length:80, rootChord:6, tipChord:2, sweepDegrees:30, swept:true,  airfoilShape:'curved' },
-    colossal: { blades:4, length:160, rootChord:8, tipChord:3, sweepDegrees:30, swept:true,  airfoilShape:'curved' }
+    basic:    { blades:4, length:10, rootChord:3, tipChord:1, sweepDegrees:25, swept:true,  airfoilShape:'curved', bladeMaterial:'wool', bladeColor:'white' },
+    speed:    { blades:2, length:15, rootChord:2, tipChord:1, sweepDegrees:35, swept:true,  airfoilShape:'curved', bladeMaterial:'wool', bladeColor:'white' },
+    cargo:    { blades:4, length:12, rootChord:5, tipChord:3, sweepDegrees:15, swept:true,  airfoilShape:'curved', bladeMaterial:'wool', bladeColor:'white' },
+    scimitar: { blades:5, length:20, rootChord:3, tipChord:1, sweepDegrees:50, swept:true,  airfoilShape:'curved', bladeMaterial:'sail', bladeColor:'white' },
+    giant:    { blades:3, length:80, rootChord:6, tipChord:2, sweepDegrees:30, swept:true,  airfoilShape:'curved', bladeMaterial:'sail', bladeColor:'white' },
+    colossal: { blades:4, length:160, rootChord:8, tipChord:3, sweepDegrees:30, swept:true,  airfoilShape:'curved', bladeMaterial:'sail', bladeColor:'white' }
   };
 
   function getParams() {
     return {
-      blades:       parseInt(document.getElementById('param-blades').value),
-      length:       parseInt(document.getElementById('param-length').value),
-      rootChord:    parseInt(document.getElementById('param-rootChord').value),
-      tipChord:     parseInt(document.getElementById('param-tipChord').value),
-      sweepDegrees: parseFloat(document.getElementById('param-sweepDegrees').value),
-      swept:        document.getElementById('param-swept').checked,
-      airfoilShape: document.getElementById('param-airfoilShape').value
+      blades:        parseInt(document.getElementById('param-blades').value),
+      length:        parseInt(document.getElementById('param-length').value),
+      rootChord:     parseInt(document.getElementById('param-rootChord').value),
+      tipChord:      parseInt(document.getElementById('param-tipChord').value),
+      sweepDegrees:  parseFloat(document.getElementById('param-sweepDegrees').value),
+      swept:         document.getElementById('param-swept').checked,
+      airfoilShape:  document.getElementById('param-airfoilShape').value,
+      bladeMaterial: document.getElementById('param-bladeMaterial').value,
+      bladeColor:    document.getElementById('param-bladeColor').value
     };
   }
 
@@ -114,6 +176,8 @@
     document.getElementById('val-sweepDegrees').textContent = p.sweepDegrees;
     document.getElementById('param-swept').checked = p.swept;
     document.getElementById('param-airfoilShape').value = p.airfoilShape;
+    if (p.bladeMaterial) document.getElementById('param-bladeMaterial').value = p.bladeMaterial;
+    if (p.bladeColor) document.getElementById('param-bladeColor').value = p.bladeColor;
   }
 
   function updateLabels() {
@@ -124,8 +188,21 @@
     document.getElementById('val-sweepDegrees').textContent = document.getElementById('param-sweepDegrees').value;
   }
 
+  function updateShareURLs() {
+    var p = getParams();
+    GeneratorApp.updateHash('p', p);
+    var el3d = document.getElementById('gen-share-3d');
+    var elGuide = document.getElementById('gen-share-guide');
+    var guideBtn = document.getElementById('gen-guide-btn');
+    var guideUrl = GeneratorApp.getShareURL('p', p, 'guide');
+    if (el3d) el3d.value = GeneratorApp.getShareURL('p', p);
+    if (elGuide) elGuide.value = guideUrl;
+    if (guideBtn) guideBtn.href = guideUrl;
+  }
+
   function refresh() {
     updateLabels();
+    updateShareURLs();
     GeneratorApp.generate('/api/generators/propeller', getParams());
   }
 
@@ -134,6 +211,9 @@
       setTimeout(init, 100);
       return;
     }
+
+    var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'propeller');
 
     document.querySelectorAll('.gen-param').forEach(function(el) {
       el.addEventListener('input', refresh);
@@ -150,6 +230,21 @@
     document.getElementById('gen-download-btn').addEventListener('click', function(e) {
       e.preventDefault();
       GeneratorApp.downloadNBT('/api/generators/propeller/download', getParams());
+    });
+
+    document.querySelectorAll('.gen-share-copy').forEach(function(btn) {
+      var textNode = btn.lastChild;
+      var originalText = textNode.textContent;
+      btn.addEventListener('click', function() {
+        var target = document.getElementById(this.getAttribute('data-target'));
+        if (!target) return;
+        target.select();
+        navigator.clipboard.writeText(target.value).then(function() {
+          textNode.textContent = ' Copied!';
+          btn.classList.add('copied');
+          setTimeout(function() { textNode.textContent = originalText; btn.classList.remove('copied'); }, 2000);
+        });
+      });
     });
 
     refresh();

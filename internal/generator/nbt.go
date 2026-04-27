@@ -3,6 +3,7 @@ package generator
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"sort"
 
 	"github.com/Tnze/go-mc/nbt"
@@ -31,18 +32,129 @@ type paletteKey struct {
 	Props string
 }
 
-func blockToPalette(b Block) (string, map[string]string) {
+func woodPrefix(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	if w == "crimson" || w == "warped" {
+		return "minecraft:" + w
+	}
+	return "minecraft:" + w
+}
+
+func woodPlanks(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	if w == "crimson" || w == "warped" {
+		return fmt.Sprintf("minecraft:%s_planks", w)
+	}
+	return fmt.Sprintf("minecraft:%s_planks", w)
+}
+
+func woodLog(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	switch w {
+	case "crimson":
+		return "minecraft:crimson_stem"
+	case "warped":
+		return "minecraft:warped_stem"
+	default:
+		return fmt.Sprintf("minecraft:%s_log", w)
+	}
+}
+
+func woodSlab(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	return fmt.Sprintf("minecraft:%s_slab", w)
+}
+
+func woodStairs(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	return fmt.Sprintf("minecraft:%s_stairs", w)
+}
+
+func woodFence(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	return fmt.Sprintf("minecraft:%s_fence", w)
+}
+
+func woodTrapdoor(mat MaterialConfig) string {
+	w := mat.WoodType
+	if w == "" || !isValidWoodType(w) {
+		w = "spruce"
+	}
+	return fmt.Sprintf("minecraft:%s_trapdoor", w)
+}
+
+func woolBlock(color string) string {
+	if color == "" || !isValidWoolColor(color) {
+		color = "white"
+	}
+	return fmt.Sprintf("minecraft:%s_wool", color)
+}
+
+func envelopeBlock(color string) string {
+	if color == "" || !isValidWoolColor(color) {
+		color = "white"
+	}
+	return fmt.Sprintf("aeronautics:%s_envelope", color)
+}
+
+func sailBlock(color string) string {
+	if color == "" || !isValidWoolColor(color) {
+		color = "white"
+	}
+	return fmt.Sprintf("create:%s_sail", color)
+}
+
+func blockToPalette(b Block, mat MaterialConfig) (string, map[string]string) {
 	switch b.Type {
 	case BlockWool:
-		return "minecraft:white_wool", nil
+		if mat.EnvelopeMaterial == "envelope" {
+			return envelopeBlock(mat.EnvelopeColor), nil
+		}
+		color := mat.EnvelopeColor
+		if color == "" {
+			color = mat.BladeColor
+		}
+		return woolBlock(color), nil
+
+	case BlockSail:
+		if mat.BladeMaterial == "sail" {
+			return sailBlock(mat.BladeColor), nil
+		}
+		return woolBlock(mat.BladeColor), nil
+
 	case BlockPlank:
-		return "minecraft:spruce_planks", nil
+		return woodPlanks(mat), nil
+
 	case BlockLog:
-		return "minecraft:spruce_log", map[string]string{"axis": "x"}
+		if mat.FrameMaterial == "andesite_casing" {
+			return "create:andesite_casing", nil
+		}
+		return woodLog(mat), map[string]string{"axis": "x"}
+
 	case BlockSlabBot:
-		return "minecraft:spruce_slab", map[string]string{"type": "bottom", "waterlogged": "false"}
+		return woodSlab(mat), map[string]string{"type": "bottom", "waterlogged": "false"}
+
 	case BlockSlabTop:
-		return "minecraft:spruce_slab", map[string]string{"type": "top", "waterlogged": "false"}
+		return woodSlab(mat), map[string]string{"type": "top", "waterlogged": "false"}
+
 	case BlockStair:
 		props := map[string]string{
 			"facing":      "north",
@@ -55,15 +167,17 @@ func blockToPalette(b Block) (string, map[string]string) {
 				props[k] = v
 			}
 		}
-		return "minecraft:spruce_stairs", props
+		return woodStairs(mat), props
+
 	case BlockFence:
-		return "minecraft:spruce_fence", map[string]string{
+		return woodFence(mat), map[string]string{
 			"east":        "false",
 			"north":       "false",
 			"south":       "false",
 			"waterlogged": "false",
 			"west":        "false",
 		}
+
 	case BlockTrapdoor:
 		props := map[string]string{
 			"facing":      "north",
@@ -77,7 +191,8 @@ func blockToPalette(b Block) (string, map[string]string) {
 				props[k] = v
 			}
 		}
-		return "minecraft:spruce_trapdoor", props
+		return woodTrapdoor(mat), props
+
 	default:
 		return "minecraft:air", nil
 	}
@@ -105,6 +220,8 @@ func propsKey(props map[string]string) string {
 }
 
 func ExportNBT(result *GenerateResult) ([]byte, error) {
+	mat := result.Materials
+
 	paletteMap := make(map[paletteKey]int32)
 	var palette []nbtPaletteEntry
 
@@ -121,7 +238,7 @@ func ExportNBT(result *GenerateResult) ([]byte, error) {
 
 	var nbtBlocks []nbtBlock
 	for _, b := range result.Blocks {
-		name, props := blockToPalette(b)
+		name, props := blockToPalette(b, mat)
 		if name == "minecraft:air" {
 			continue
 		}

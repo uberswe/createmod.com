@@ -3,9 +3,12 @@ package generator
 import (
 	"fmt"
 	"math"
+	"sort"
 )
 
 type HullParams struct {
+	Version        int     `json:"version"`
+	WoodType       string  `json:"woodType"`
 	Length         int     `json:"length"`
 	Beam           int     `json:"beam"`
 	Depth          int     `json:"depth"`
@@ -18,20 +21,31 @@ type HullParams struct {
 	SheerCurveExp  float64 `json:"sheerCurveExp"`
 	BowLength      int     `json:"bowLength"`
 	BowSharpness   float64 `json:"bowSharpness"`
+	BowKeelRise    float64 `json:"bowKeelRise"`
+	BowKeelLength  int     `json:"bowKeelLength"`
 	SternStyle     string  `json:"sternStyle"`
 	SternLength    int     `json:"sternLength"`
 	SternSharpness float64 `json:"sternSharpness"`
+	SternKeelRise  float64 `json:"sternKeelRise"`
+	SternKeelLength int    `json:"sternKeelLength"`
+	KeelCurve      float64 `json:"keelCurve"`
+	CastleBlend    int     `json:"castleBlend"`
 	HasRailings      bool    `json:"hasRailings"`
 	HasTrim          bool    `json:"hasTrim"`
+	HasWindows       bool    `json:"hasWindows"`
 	CastleHeight     int     `json:"castleHeight"`
 	CastleLength     int     `json:"castleLength"`
 	ForecastleHeight int     `json:"forecastleHeight"`
 	ForecastleLength int     `json:"forecastleLength"`
 	HasGunPorts      bool    `json:"hasGunPorts"`
+	GunPortRow       int     `json:"gunPortRow"`
 	GunPortSpacing   int     `json:"gunPortSpacing"`
 }
 
 func (p *HullParams) Validate() error {
+	if p.Version == 0 {
+		p.Version = CurrentVersion
+	}
 	clampInt := func(v *int, lo, hi int) {
 		if *v < lo {
 			*v = lo
@@ -61,8 +75,14 @@ func (p *HullParams) Validate() error {
 	clampFloat(&p.SheerCurveExp, 1.0, 4.0)
 	clampInt(&p.BowLength, 2, 40)
 	clampFloat(&p.BowSharpness, 0.4, 2.5)
+	clampFloat(&p.BowKeelRise, 0, 1.5)
+	clampInt(&p.BowKeelLength, 0, 40)
 	clampInt(&p.SternLength, 2, 30)
 	clampFloat(&p.SternSharpness, 0.2, 2.0)
+	clampFloat(&p.SternKeelRise, 0, 1.5)
+	clampInt(&p.SternKeelLength, 0, 30)
+	clampFloat(&p.KeelCurve, 0.7, 3.5)
+	clampInt(&p.CastleBlend, 2, 12)
 
 	clampInt(&p.CastleHeight, 0, 6)
 	clampInt(&p.CastleLength, 0, 30)
@@ -74,8 +94,12 @@ func (p *HullParams) Validate() error {
 	if p.ForecastleLength > p.Length*50/100 {
 		p.ForecastleLength = p.Length * 50 / 100
 	}
+	clampInt(&p.GunPortRow, 1, 6)
 	clampInt(&p.GunPortSpacing, 2, 8)
 
+	if !isValidWoodType(p.WoodType) {
+		p.WoodType = "spruce"
+	}
 	if p.SternStyle != "square" && p.SternStyle != "round" && p.SternStyle != "pointed" {
 		p.SternStyle = "round"
 	}
@@ -88,7 +112,30 @@ func (p *HullParams) Validate() error {
 	if p.Length < 20 {
 		return fmt.Errorf("length must be at least 20")
 	}
+
+	// Apply defaults for zero-value fields that need non-zero defaults
+	if p.KeelCurve == 0 {
+		p.KeelCurve = 1.7
+	}
+	if p.CastleBlend == 0 {
+		p.CastleBlend = 4
+	}
+	if p.GunPortRow == 0 {
+		p.GunPortRow = 2
+	}
+
 	return nil
+}
+
+func smoothstep(t float64) float64 {
+	x := t
+	if x < 0 {
+		x = 0
+	}
+	if x > 1 {
+		x = 1
+	}
+	return x * x * (3 - 2*x)
 }
 
 func GenerateHull(p HullParams) (*GenerateResult, error) {
@@ -96,33 +143,43 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 		return nil, err
 	}
 
-	halfBeam := float64(p.Beam) / 2
-	depth := float64(p.Depth)
-	length := float64(p.Length)
+	L := p.Length
+	D := p.Depth
+	depth := float64(D)
+	length := float64(L)
 
-	bowStart := length - float64(p.BowLength)
-	sternEnd := float64(p.SternLength)
-
+	// Cross-section width factor at normalized Y. yNorm can exceed 1 for castle
+	// sections above main deck; the function extrapolates with a steep taper.
 	crossSectionFactor := func(yNorm float64) float64 {
-		if yNorm < 0 {
-			yNorm = 0
+		yc := yNorm
+		if yc > 1 {
+			yc = 1
 		}
-		if yNorm > 1 {
-			yNorm = 1
+		if yc < 0 {
+			yc = 0
 		}
-		base := p.BottomPinch + (1-p.BottomPinch)*math.Pow(yNorm, 0.6)
-		flare := p.HullFlare * math.Pow(yNorm, p.FlareCurve)
-		tumble := p.Tumblehome * math.Pow(yNorm, p.TumbleCurve)
-		result := base + flare - tumble
+		base := p.BottomPinch + (1-p.BottomPinch)*math.Pow(yc, 0.6)
+		flare := p.HullFlare * math.Pow(yc, p.FlareCurve)
+		tumble := p.Tumblehome * math.Pow(yc, p.TumbleCurve)
+		// Above-deck taper: castle sections taper inward with height
+		above := yNorm - 1
+		if above < 0 {
+			above = 0
+		}
+		castleTaper := above*0.32 + above*above*0.18
+		result := base + flare - tumble - castleTaper
 		if result < 0.12 {
 			result = 0.12
 		}
 		return result
 	}
 
-	longitudinalFactor := func(z float64) float64 {
-		if z < sternEnd {
-			t := z / sternEnd
+	longitudinalFactor := func(zNorm float64) float64 {
+		bowStart := 1.0 - float64(p.BowLength)/length
+		sternEnd := float64(p.SternLength) / length
+
+		if zNorm <= sternEnd {
+			t := zNorm / math.Max(sternEnd, 0.001)
 			if t < 0 {
 				t = 0
 			}
@@ -134,218 +191,671 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 				}
 				return f
 			case "round":
-				return math.Pow(t, p.SternSharpness*0.55)
-			case "pointed":
+				return math.Pow(math.Max(t, 0), p.SternSharpness*0.55)
+			default: // pointed
 				return math.Pow(t, p.SternSharpness)
 			}
 		}
-		if z > bowStart {
-			t := (z - bowStart) / float64(p.BowLength)
-			if t < 0 {
-				t = 0
-			}
-			if t > 1 {
-				t = 1
-			}
-			return math.Pow(1-t, p.BowSharpness)
+		if zNorm >= bowStart {
+			t := (1 - zNorm) / math.Max(1-bowStart, 0.001)
+			return math.Pow(math.Max(t, 0), p.BowSharpness)
 		}
 		return 1
 	}
 
-	deckYAt := func(z float64) float64 {
-		base := depth
+	halfWidthAt := func(y, z int) float64 {
+		yNorm := float64(y) / math.Max(depth, 1) // no clamp -- allow castle extrapolation
+		zNorm := float64(z) / math.Max(length-1, 1)
+		return crossSectionFactor(yNorm) * longitudinalFactor(zNorm) * (float64(p.Beam) / 2)
+	}
+
+	// Keel rise at a given Z position
+	keelYAt := func(z int) int {
+		zNorm := float64(z) / math.Max(length-1, 1)
+		curve := p.KeelCurve
+		rise := 0.0
+
+		if p.BowKeelRise > 0 && p.BowKeelLength > 0 {
+			start := 1.0 - float64(p.BowKeelLength)/length
+			if zNorm > start {
+				t := (zNorm - start) / math.Max(1-start, 0.001)
+				r := math.Pow(t, curve) * p.BowKeelRise
+				if r > rise {
+					rise = r
+				}
+			}
+		}
+		if p.SternKeelRise > 0 && p.SternKeelLength > 0 {
+			end := float64(p.SternKeelLength) / length
+			if zNorm < end {
+				t := (end - zNorm) / math.Max(end, 0.001)
+				r := math.Pow(t, curve) * p.SternKeelRise
+				if r > rise {
+					rise = r
+				}
+			}
+		}
+		return int(math.Round(rise * depth))
+	}
+
+	// Deck Y at a given Z, including sheer curve + castle/forecastle
+	deckYAt := func(z int) int {
+		y := depth
+
 		// Sheer curve
-		mid := length / 2
-		distFromMid := math.Abs(z - mid)
-		normalizedDist := distFromMid / mid
-		sheer := p.SheerCurve * math.Pow(normalizedDist, p.SheerCurveExp) * depth * 0.5
-		deckY := base + sheer
+		if p.SheerCurve > 0 {
+			zNorm := float64(z) / math.Max(length-1, 1)
+			t := math.Abs(zNorm-0.5) * 2 // 0 at mid, 1 at ends
+			y += p.SheerCurve * depth * math.Pow(t, p.SheerCurveExp)
+		}
 
-		// Aft castle plateau
+		// Aftcastle plateau (stern region)
 		if p.CastleHeight > 0 && p.CastleLength > 0 {
-			castleStart := length - float64(p.CastleLength) - float64(p.SternLength)
-			if z >= castleStart {
-				deckY += float64(p.CastleHeight)
+			cL := p.CastleLength
+			maxCL := int(math.Floor(length * 0.55))
+			if cL > maxCL {
+				cL = maxCL
+			}
+			blend := int(math.Floor(float64(cL) * 0.55))
+			if blend > p.CastleBlend {
+				blend = p.CastleBlend
+			}
+			if blend < 2 {
+				blend = 2
+			}
+			if z < cL-blend {
+				y += float64(p.CastleHeight)
+			} else if z < cL {
+				t := float64(z-(cL-blend)) / float64(blend)
+				y += float64(p.CastleHeight) * (1 - smoothstep(t))
 			}
 		}
 
-		// Forecastle plateau
+		// Forecastle plateau (bow region)
 		if p.ForecastleHeight > 0 && p.ForecastleLength > 0 {
-			foreEnd := float64(p.BowLength) + float64(p.ForecastleLength)
-			if z < foreEnd && z >= float64(p.BowLength) {
-				deckY += float64(p.ForecastleHeight)
+			fL := p.ForecastleLength
+			maxFL := int(math.Floor(length * 0.5))
+			if fL > maxFL {
+				fL = maxFL
+			}
+			blend := int(math.Floor(float64(fL) * 0.55))
+			if blend > p.CastleBlend {
+				blend = p.CastleBlend
+			}
+			if blend < 2 {
+				blend = 2
+			}
+			zFromBow := L - 1 - z
+			if zFromBow < fL-blend {
+				y += float64(p.ForecastleHeight)
+			} else if zFromBow < fL {
+				t := float64(zFromBow-(fL-blend)) / float64(blend)
+				y += float64(p.ForecastleHeight) * (1 - smoothstep(t))
 			}
 		}
 
-		return deckY
+		return int(math.Round(y))
 	}
 
-	halfWidthAt := func(y int, z int) float64 {
-		yNorm := float64(y) / depth
-		return crossSectionFactor(yNorm) * longitudinalFactor(float64(z)) * halfBeam
-	}
+	// --- Pass 1: build hull volume mask
+	type coord [3]int
+	key := func(x, y, z int) coord { return coord{x, y, z} }
 
-	sizeX := p.Beam + 2
-	castleExtra := p.CastleHeight
-	if p.ForecastleHeight > castleExtra {
-		castleExtra = p.ForecastleHeight
-	}
-	sizeY := p.Depth + int(math.Ceil(p.SheerCurve*depth*0.5)) + castleExtra + 2
-	sizeZ := p.Length + 1
+	inHull := make(map[coord]bool)
+	keelYArr := make([]int, L)
+	deckYArr := make([]int, L)
+	maxDeckY := D
 
-	centerX := sizeX / 2
-
-	type voxel struct {
-		blockType int
-		props     map[string]string
-	}
-	grid := make(map[[3]int]*voxel)
-
-	set := func(x, y, z, bt int) {
-		if x >= 0 && x < sizeX && y >= 0 && y < sizeY && z >= 0 && z < sizeZ {
-			grid[[3]int{x, y, z}] = &voxel{blockType: bt}
+	for z := 0; z < L; z++ {
+		deckYArr[z] = deckYAt(z)
+		if deckYArr[z] > maxDeckY {
+			maxDeckY = deckYArr[z]
 		}
 	}
 
-	get := func(x, y, z int) *voxel {
-		return grid[[3]int{x, y, z}]
+	// hwArr[y][z] = half-width int
+	hwArr := make([][]int, maxDeckY+1)
+	for y := 0; y <= maxDeckY; y++ {
+		hwArr[y] = make([]int, L)
+		for z := 0; z < L; z++ {
+			hwArr[y][z] = -1
+		}
 	}
 
-	// Pass 1: fill hull interior
-	for z := 0; z < sizeZ; z++ {
-		deckH := deckYAt(float64(z))
-		for y := 0; y < sizeY; y++ {
-			if float64(y) > deckH {
+	for z := 0; z < L; z++ {
+		keelYArr[z] = keelYAt(z)
+		topY := deckYArr[z]
+		for y := keelYArr[z]; y <= topY; y++ {
+			hw := halfWidthAt(y, z)
+			if hw < 0.15 {
 				continue
 			}
-			hw := halfWidthAt(y, z)
-			for x := 0; x < sizeX; x++ {
-				dx := math.Abs(float64(x) - float64(centerX))
-				if dx <= hw {
-					set(x, y, z, BlockPlank)
+			maxX := int(math.Max(0, math.Round(hw-0.0001)))
+			if y <= maxDeckY {
+				hwArr[y][z] = maxX
+			}
+			for x := -maxX; x <= maxX; x++ {
+				inHull[key(x, y, z)] = true
+			}
+		}
+	}
+
+	has := func(x, y, z int) bool {
+		return inHull[key(x, y, z)]
+	}
+
+	// --- Pass 2: shell (planks only on exterior surface + solid deck)
+	type blockEntry struct {
+		x, y, z int
+		name    string
+		props   map[string]string
+	}
+	blocks := make(map[coord]*blockEntry)
+
+	set := func(x, y, z int, name string, props map[string]string) {
+		blocks[key(x, y, z)] = &blockEntry{x: x, y: y, z: z, name: name, props: props}
+	}
+	get := func(x, y, z int) *blockEntry {
+		return blocks[key(x, y, z)]
+	}
+
+	for k := range inHull {
+		x, y, z := k[0], k[1], k[2]
+		exposed := !has(x-1, y, z) || !has(x+1, y, z) ||
+			!has(x, y-1, z) || !has(x, y+1, z) ||
+			!has(x, y, z-1) || !has(x, y, z+1)
+		isDeck := y == deckYArr[z]
+		if exposed || isDeck {
+			set(x, y, z, "minecraft:spruce_planks", nil)
+		}
+	}
+
+	// --- Pass 3: lateral flare stairs (hull widens going up)
+	for z := 0; z < L; z++ {
+		for y := keelYArr[z]; y < deckYArr[z]; y++ {
+			hwHere := -1
+			if y <= maxDeckY && y >= 0 {
+				hwHere = hwArr[y][z]
+			}
+			hwUp := -1
+			if y+1 <= maxDeckY && y+1 >= 0 {
+				hwUp = hwArr[y+1][z]
+			}
+			if hwUp <= hwHere {
+				continue
+			}
+			for xNew := hwHere + 1; xNew <= hwUp; xNew++ {
+				if has(xNew, y, z) {
+					continue
+				}
+				if !has(xNew, y+1, z) {
+					continue
+				}
+				if existing := get(xNew, y, z); existing != nil && existing.name == "minecraft:spruce_planks" {
+					continue
+				}
+				set(xNew, y, z, "minecraft:spruce_stairs", map[string]string{
+					"facing": "east", "half": "top", "shape": "straight", "waterlogged": "false",
+				})
+				set(-xNew, y, z, "minecraft:spruce_stairs", map[string]string{
+					"facing": "west", "half": "top", "shape": "straight", "waterlogged": "false",
+				})
+			}
+		}
+	}
+
+	// --- Pass 4: longitudinal taper stairs (hull narrows along length)
+	placeLongStair := func(x, y, z int, facing string) {
+		if has(x, y, z) {
+			return
+		}
+		existing := get(x, y, z)
+		if existing != nil && existing.name == "minecraft:spruce_planks" {
+			return
+		}
+		if existing != nil && existing.name == "minecraft:spruce_stairs" {
+			return
+		}
+		set(x, y, z, "minecraft:spruce_stairs", map[string]string{
+			"facing": facing, "half": "top", "shape": "straight", "waterlogged": "false",
+		})
+	}
+
+	for y := 0; y <= maxDeckY; y++ {
+		for z := 0; z < L; z++ {
+			hwThis := -1
+			if y <= maxDeckY && y >= 0 {
+				hwThis = hwArr[y][z]
+			}
+			if hwThis < 0 {
+				continue
+			}
+			// Forward (toward bow / +Z)
+			hwForward := -1
+			if z+1 < L {
+				hwForward = hwArr[y][z+1]
+			}
+			if hwForward >= 0 && hwForward < hwThis {
+				for x := hwForward + 1; x <= hwThis; x++ {
+					placeLongStair(x, y, z+1, "south")
+					if x != 0 {
+						placeLongStair(-x, y, z+1, "south")
+					}
+				}
+			}
+			// Backward (toward stern / -Z)
+			hwBack := -1
+			if z > 0 {
+				hwBack = hwArr[y][z-1]
+			}
+			if hwBack >= 0 && hwBack < hwThis && z > 0 {
+				for x := hwBack + 1; x <= hwThis; x++ {
+					placeLongStair(x, y, z-1, "north")
+					if x != 0 {
+						placeLongStair(-x, y, z-1, "north")
+					}
 				}
 			}
 		}
 	}
 
-	// Pass 2: shell — keep only outer surface + deck
-	dirs := [][3]int{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}
-	surface := make(map[[3]int]bool)
-	for pos := range grid {
-		for _, d := range dirs {
-			nb := [3]int{pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]}
-			if get(nb[0], nb[1], nb[2]) == nil {
-				surface[pos] = true
-				break
-			}
+	// --- Pass 5: keel-rise stairs
+	for z := 0; z < L-1; z++ {
+		k0 := keelYArr[z]
+		k1 := keelYArr[z+1]
+		if k1 == k0 {
+			continue
 		}
-	}
-	for pos := range grid {
-		if !surface[pos] {
-			delete(grid, pos)
+		var dir string
+		var yFill, zFill, refZ int
+		if k1 > k0 {
+			dir = "bow"
+			yFill = k1 - 1
+			zFill = z + 1
+			refZ = z + 1
+		} else {
+			dir = "stern"
+			yFill = k0 - 1
+			zFill = z
+			refZ = z
+		}
+		hw := -1
+		if yFill+1 <= maxDeckY && yFill+1 >= 0 && refZ >= 0 && refZ < L {
+			hw = hwArr[yFill+1][refZ]
+		}
+		if hw < 0 {
+			continue
+		}
+		for x := -hw; x <= hw; x++ {
+			if has(x, yFill, zFill) {
+				continue
+			}
+			if get(x, yFill, zFill) != nil {
+				continue
+			}
+			facing := "south"
+			if dir == "stern" {
+				facing = "north"
+			}
+			set(x, yFill, zFill, "minecraft:spruce_stairs", map[string]string{
+				"facing": facing, "half": "top", "shape": "straight", "waterlogged": "false",
+			})
 		}
 	}
 
-	// Also add full deck (top surface)
-	for z := 0; z < sizeZ; z++ {
-		deckH := int(math.Round(deckYAt(float64(z))))
-		for x := 0; x < sizeX; x++ {
-			hw := halfWidthAt(deckH, z)
-			dx := math.Abs(float64(x) - float64(centerX))
-			if dx <= hw {
-				set(x, deckH, z, BlockPlank)
+	// --- Pass 5.5: no stair stacking -- replace stair above stair with plank
+	{
+		type stairEntry struct {
+			x, y, z int
+		}
+		var stairList []stairEntry
+		for k, b := range blocks {
+			if b.name == "minecraft:spruce_stairs" {
+				stairList = append(stairList, stairEntry{k[0], k[1], k[2]})
+			}
+		}
+		// Sort top-down
+		sort.Slice(stairList, func(i, j int) bool {
+			return stairList[i].y > stairList[j].y
+		})
+		for _, s := range stairList {
+			below := get(s.x, s.y-1, s.z)
+			if below != nil && below.name == "minecraft:spruce_stairs" {
+				set(s.x, s.y, s.z, "minecraft:spruce_planks", nil)
 			}
 		}
 	}
 
-	// Pass 8: gunwale trim (slabs at deck edge)
-	if p.HasTrim {
-		for z := 0; z < sizeZ; z++ {
-			deckH := int(math.Round(deckYAt(float64(z))))
-			hw := halfWidthAt(deckH, z)
+	// --- Pass 6: stern windows
+	if p.HasWindows && p.CastleHeight >= 2 && p.CastleLength > 0 {
+		z := 0
+		wy := D + 1 // main-deck level + 1
+		if deckYArr[z] > D {
+			hwBack := -1
+			if wy <= maxDeckY && wy >= 0 {
+				hwBack = hwArr[wy][z]
+			}
+			if hwBack >= 1 {
+				for x := -hwBack + 1; x <= hwBack-1; x += 2 {
+					if existing := get(x, wy, z); existing != nil && existing.name == "minecraft:spruce_planks" {
+						set(x, wy, z, "minecraft:spruce_trapdoor", map[string]string{
+							"facing": "north", "half": "bottom", "open": "true",
+							"powered": "false", "waterlogged": "false",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// --- Pass 8/9 combined: gunwale trim (slabs) + fence railings
+	{
+		for z := 0; z < L; z++ {
+			deckY := deckYArr[z]
+			hw := -1
+			if deckY <= maxDeckY && deckY >= 0 {
+				hw = hwArr[deckY][z]
+			}
 			if hw < 1 {
 				continue
 			}
-			leftX := centerX - int(math.Round(hw))
-			rightX := centerX + int(math.Round(hw))
-			if get(leftX, deckH, z) != nil {
-				set(leftX, deckH+1, z, BlockSlabBot)
-			}
-			if get(rightX, deckH, z) != nil {
-				set(rightX, deckH+1, z, BlockSlabBot)
+			y := deckY + 1
+
+			wantTrim := p.HasTrim
+			wantRail := p.HasRailings
+			canInset := hw >= 2
+
+			if wantTrim && wantRail && canInset {
+				if get(hw, y, z) == nil && !has(hw, y, z) {
+					set(hw, y, z, "minecraft:spruce_slab", map[string]string{
+						"type": "bottom", "waterlogged": "false",
+					})
+				}
+				if get(-hw, y, z) == nil && !has(-hw, y, z) {
+					set(-hw, y, z, "minecraft:spruce_slab", map[string]string{
+						"type": "bottom", "waterlogged": "false",
+					})
+				}
+				set(hw-1, y, z, "minecraft:spruce_fence", map[string]string{
+					"north": "false", "south": "false", "east": "false", "west": "false", "waterlogged": "false",
+				})
+				if hw-1 > 0 {
+					set(-(hw-1), y, z, "minecraft:spruce_fence", map[string]string{
+						"north": "false", "south": "false", "east": "false", "west": "false", "waterlogged": "false",
+					})
+				}
+			} else if wantTrim && !wantRail {
+				if get(hw, y, z) == nil && !has(hw, y, z) {
+					set(hw, y, z, "minecraft:spruce_slab", map[string]string{
+						"type": "bottom", "waterlogged": "false",
+					})
+				}
+				if hw > 0 && get(-hw, y, z) == nil && !has(-hw, y, z) {
+					set(-hw, y, z, "minecraft:spruce_slab", map[string]string{
+						"type": "bottom", "waterlogged": "false",
+					})
+				}
+			} else if wantRail {
+				set(hw, y, z, "minecraft:spruce_fence", map[string]string{
+					"north": "false", "south": "false", "east": "false", "west": "false", "waterlogged": "false",
+				})
+				if hw > 0 {
+					set(-hw, y, z, "minecraft:spruce_fence", map[string]string{
+						"north": "false", "south": "false", "east": "false", "west": "false", "waterlogged": "false",
+					})
+				}
 			}
 		}
 	}
 
-	// Pass 9: railings
-	if p.HasRailings {
-		for z := 0; z < sizeZ; z++ {
-			deckH := int(math.Round(deckYAt(float64(z))))
-			hw := halfWidthAt(deckH, z)
+	// --- Defensive pass: never allow a fence directly over a slab
+	for _, b := range blocks {
+		if b.name != "minecraft:spruce_fence" {
+			continue
+		}
+		below := get(b.x, b.y-1, b.z)
+		if below != nil && below.name == "minecraft:spruce_slab" {
+			delete(blocks, key(b.x, b.y-1, b.z))
+		}
+	}
+
+	// --- Pass 10: gun ports
+	if p.HasGunPorts && p.GunPortRow > 0 {
+		midKeelY := keelYAt(L / 2)
+		yPort := D - p.GunPortRow
+		if midKeelY+1 > yPort {
+			yPort = midKeelY + 1
+		}
+		for z := 3; z < L-3; z += p.GunPortSpacing {
+			hw := -1
+			if yPort >= 0 && yPort <= maxDeckY {
+				hw = hwArr[yPort][z]
+			}
 			if hw < 1 {
 				continue
 			}
-			railY := deckH + 1
-			if p.HasTrim {
-				railY = deckH + 2
-			}
-			leftX := centerX - int(math.Round(hw))
-			rightX := centerX + int(math.Round(hw))
-			if get(leftX, deckH, z) != nil || get(leftX, deckH+1, z) != nil {
-				set(leftX, railY, z, BlockFence)
-			}
-			if get(rightX, deckH, z) != nil || get(rightX, deckH+1, z) != nil {
-				set(rightX, railY, z, BlockFence)
+			set(hw, yPort, z, "minecraft:spruce_trapdoor", map[string]string{
+				"facing": "east", "half": "bottom", "open": "true",
+				"powered": "false", "waterlogged": "false",
+			})
+			if hw > 0 {
+				set(-hw, yPort, z, "minecraft:spruce_trapdoor", map[string]string{
+					"facing": "west", "half": "bottom", "open": "true",
+					"powered": "false", "waterlogged": "false",
+				})
 			}
 		}
 	}
 
-	// Pass 10: gun ports
-	if p.HasGunPorts && p.GunPortSpacing > 0 {
-		for z := 0; z < sizeZ; z++ {
-			if z%p.GunPortSpacing != 0 {
-				continue
+	// --- Pass 10.5: fence bridging for sheer/castle/taper transitions
+	{
+		isSupport := func(b *blockEntry) bool {
+			if b == nil {
+				return false
 			}
-			deckH := int(math.Round(deckYAt(float64(z))))
-			gunY := deckH - 1
-			if gunY < 1 {
-				continue
+			return b.name == "minecraft:spruce_planks" ||
+				b.name == "minecraft:spruce_fence" ||
+				b.name == "minecraft:spruce_stairs" ||
+				b.name == "minecraft:spruce_slab"
+		}
+		addBridge := func(x, y, z int) bool {
+			if blocks[key(x, y, z)] != nil {
+				return false
 			}
-			hw := halfWidthAt(gunY, z)
-			if hw < 1 {
-				continue
+			if !isSupport(get(x, y-1, z)) {
+				return false
 			}
-			leftX := centerX - int(math.Round(hw))
-			rightX := centerX + int(math.Round(hw))
-			if get(leftX, gunY, z) != nil {
-				set(leftX, gunY, z, BlockTrapdoor)
+			set(x, y, z, "minecraft:spruce_fence", map[string]string{
+				"north": "false", "south": "false", "east": "false", "west": "false", "waterlogged": "false",
+			})
+			return true
+		}
+
+		// Collect current fences
+		var fences []*blockEntry
+		for _, b := range blocks {
+			if b.name == "minecraft:spruce_fence" {
+				fences = append(fences, b)
 			}
-			if get(rightX, gunY, z) != nil {
-				set(rightX, gunY, z, BlockTrapdoor)
+		}
+
+		for _, f := range fences {
+			for _, dz := range []int{-1, 1} {
+				direct := get(f.x, f.y, f.z+dz)
+				if direct != nil && direct.name == "minecraft:spruce_fence" {
+					continue
+				}
+				for _, dy := range []int{-2, -1, 0, 1, 2} {
+					for _, dx := range []int{-1, 0, 1} {
+						if dx == 0 && dy == 0 {
+							continue
+						}
+						n := get(f.x+dx, f.y+dy, f.z+dz)
+						if n == nil || n.name != "minecraft:spruce_fence" {
+							continue
+						}
+						commonY := f.y
+						if n.y > commonY {
+							commonY = n.y
+						}
+						if dx != 0 {
+							addBridge(f.x+dx, commonY, f.z)
+						}
+						if dy != 0 {
+							for yStack := n.y + 1; yStack <= commonY; yStack++ {
+								addBridge(n.x, yStack, n.z)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
-	// Build result
-	var blocks []Block
-	actualMaxX, actualMaxY, actualMaxZ := 0, 0, 0
-	for pos, v := range grid {
-		blocks = append(blocks, Block{X: pos[0], Y: pos[1], Z: pos[2], Type: v.blockType})
-		if pos[0] > actualMaxX {
-			actualMaxX = pos[0]
+	// --- Pass 11: compute fence connection states
+	{
+		checkDir := func(bx, by, bz, dx, dz int) string {
+			n := get(bx+dx, by, bz+dz)
+			if n == nil {
+				return "false"
+			}
+			if n.name == "minecraft:spruce_fence" ||
+				n.name == "minecraft:spruce_planks" ||
+				n.name == "minecraft:spruce_slab" ||
+				n.name == "minecraft:spruce_stairs" {
+				return "true"
+			}
+			return "false"
 		}
-		if pos[1] > actualMaxY {
-			actualMaxY = pos[1]
+
+		for _, b := range blocks {
+			if b.name != "minecraft:spruce_fence" {
+				continue
+			}
+			props := b.props
+			if props == nil {
+				props = map[string]string{}
+			}
+			b.props = map[string]string{
+				"east":        checkDir(b.x, b.y, b.z, 1, 0),
+				"west":        checkDir(b.x, b.y, b.z, -1, 0),
+				"south":       checkDir(b.x, b.y, b.z, 0, 1),
+				"north":       checkDir(b.x, b.y, b.z, 0, -1),
+				"waterlogged": "false",
+			}
 		}
-		if pos[2] > actualMaxZ {
-			actualMaxZ = pos[2]
+	}
+
+	// --- Pass 12: compute stair shapes (inner/outer corners)
+	{
+		type vec2 struct{ x, z int }
+		facingVec := map[string]vec2{
+			"south": {0, 1}, "north": {0, -1},
+			"east": {1, 0}, "west": {-1, 0},
 		}
+		facingLeftOf := map[string]string{
+			"south": "east", "north": "west", "east": "north", "west": "south",
+		}
+		facingRightOf := map[string]string{
+			"south": "west", "north": "east", "east": "south", "west": "north",
+		}
+
+		for _, b := range blocks {
+			if b.name != "minecraft:spruce_stairs" {
+				continue
+			}
+			facing := b.props["facing"]
+			fwd := facingVec[facing]
+
+			front := get(b.x+fwd.x, b.y, b.z+fwd.z)
+			back := get(b.x-fwd.x, b.y, b.z-fwd.z)
+
+			// Inner corner
+			if back != nil && back.name == "minecraft:spruce_stairs" && back.props["half"] == b.props["half"] {
+				bf := back.props["facing"]
+				if bf == facingLeftOf[facing] {
+					b.props["shape"] = "inner_left"
+					continue
+				}
+				if bf == facingRightOf[facing] {
+					b.props["shape"] = "inner_right"
+					continue
+				}
+			}
+			// Outer corner
+			if front != nil && front.name == "minecraft:spruce_stairs" && front.props["half"] == b.props["half"] {
+				ff := front.props["facing"]
+				if ff == facingLeftOf[facing] {
+					b.props["shape"] = "outer_left"
+					continue
+				}
+				if ff == facingRightOf[facing] {
+					b.props["shape"] = "outer_right"
+					continue
+				}
+			}
+		}
+	}
+
+	// --- Normalize: shift so min = 0
+	minX, minY, minZ := math.MaxInt32, math.MaxInt32, math.MaxInt32
+	maxX, maxY, maxZ := math.MinInt32, math.MinInt32, math.MinInt32
+	for _, b := range blocks {
+		if b.x < minX {
+			minX = b.x
+		}
+		if b.y < minY {
+			minY = b.y
+		}
+		if b.z < minZ {
+			minZ = b.z
+		}
+		if b.x > maxX {
+			maxX = b.x
+		}
+		if b.y > maxY {
+			maxY = b.y
+		}
+		if b.z > maxZ {
+			maxZ = b.z
+		}
+	}
+	if len(blocks) == 0 {
+		minX, minY, minZ = 0, 0, 0
+		maxX, maxY, maxZ = 0, 0, 0
+	}
+
+	// Map block names to block types
+	nameToType := map[string]int{
+		"minecraft:spruce_planks":   BlockPlank,
+		"minecraft:spruce_slab":     BlockSlabBot,
+		"minecraft:spruce_stairs":   BlockStair,
+		"minecraft:spruce_fence":    BlockFence,
+		"minecraft:spruce_trapdoor": BlockTrapdoor,
+	}
+
+	var result []Block
+	for _, b := range blocks {
+		bt, ok := nameToType[b.name]
+		if !ok {
+			bt = BlockPlank
+		}
+		result = append(result, Block{
+			X:     b.x - minX,
+			Y:     b.y - minY,
+			Z:     b.z - minZ,
+			Type:  bt,
+			Props: b.props,
+		})
 	}
 
 	return &GenerateResult{
-		Blocks: blocks,
-		SizeX:  actualMaxX + 1,
-		SizeY:  actualMaxY + 1,
-		SizeZ:  actualMaxZ + 1,
+		Blocks: result,
+		SizeX:  maxX - minX + 1,
+		SizeY:  maxY - minY + 1,
+		SizeZ:  maxZ - minZ + 1,
+		Materials: MaterialConfig{
+			WoodType: p.WoodType,
+		},
 	}, nil
 }
