@@ -155,6 +155,8 @@ github.com/prometheus/procfs v0.16.1 h1:hZ15bTNuirocR6u0JZ6BAHHmwS1p8B4P6MRqxtzM
 github.com/prometheus/procfs v0.16.1/go.mod h1:teAbpZRB1iIAJYREa1LsoWUXykVXA1KlTmWl8x/U+Is=
 github.com/redis/go-redis/v9 v9.18.0 h1:pMkxYPkEbMPwRdenAzUNyFNrDgHx9U+DrBabWNfSRQs=
 github.com/redis/go-redis/v9 v9.18.0/go.mod h1:k3ufPphLU5YXwNTUcCRXGxUoF1fqxnhFQmscfkCoDA0=
+github.com/redis/go-redis/v9 v9.19.0 h1:XPVaaPSnG6RhYf7p+rmSa9zZfeVAnWsH5h3lxthOm/k=
+github.com/redis/go-redis/v9 v9.19.0/go.mod h1:v/M13XI1PVCDcm01VtPFOADfZtHf8YW3baQf57KlIkA=
 github.com/riverqueue/river v0.33.0 h1:dVB1p91HKAFrOOPIndvsNtCiq5smW6Ii/XYCqZupmvM=
 github.com/riverqueue/river v0.33.0/go.mod h1:OMDbi/nfD2uQ9v5kQo53LIypbJbR/bEqx2KyuXeHpdU=
 github.com/riverqueue/river v0.34.0 h1:TG4S2V1CfGvB828rrq18oGtGnRFzW7wlkwewLbcD3OI=
