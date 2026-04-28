@@ -25,8 +25,8 @@ func (p *PropellerParams) Validate() error {
 	if p.Blades < 2 || p.Blades > 12 {
 		return fmt.Errorf("blades must be between 2 and 12")
 	}
-	if p.Length < 3 || p.Length > 200 {
-		return fmt.Errorf("length must be between 3 and 200")
+	if p.Length < 3 || p.Length > 50 {
+		return fmt.Errorf("length must be between 3 and 50")
 	}
 	if p.RootChord < 1 || p.RootChord > 40 {
 		return fmt.Errorf("rootChord must be between 1 and 40")
@@ -47,14 +47,6 @@ func (p *PropellerParams) Validate() error {
 		p.BladeColor = "white"
 	}
 	return nil
-}
-
-func hubRadius(length int) int {
-	r := int(math.Ceil(float64(length) / 30))
-	if r < 2 {
-		return 2
-	}
-	return r
 }
 
 func symRound(v float64) int {
@@ -93,33 +85,13 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 		}
 	}
 
-	hr := hubRadius(p.Length)
-	bladeStart := float64(hr)
-
-	// Hub
-	if p.RootChord >= 2 {
-		for ix := -(hr - 1); ix <= hr-1; ix++ {
-			for iz := -(hr - 1); iz <= hr-1; iz++ {
-				addBlock(ix, 0, iz)
-			}
-		}
-	} else {
-		for ix := -(hr - 1); ix <= hr-1; ix++ {
-			for iz := -(hr - 1); iz <= hr-1; iz++ {
-				if float64(ix*ix+iz*iz) <= float64((hr-1)*(hr-1))+0.25 {
-					addBlock(ix, 0, iz)
-				}
-			}
-		}
-	}
-
 	sweepRad := p.SweepDegrees * math.Pi / 180
 
 	for b := 0; b < p.Blades; b++ {
 		angle := float64(b) / float64(p.Blades) * 2 * math.Pi
 
-		for _, r := range sampleRange(bladeStart, float64(p.Length), 0.35) {
-			t := (r - bladeStart) / (float64(p.Length) - bladeStart)
+		for _, r := range sampleRange(0, float64(p.Length), 0.35) {
+			t := r / float64(p.Length)
 			if t < 0 {
 				t = 0
 			}
@@ -129,7 +101,7 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 
 			chord := float64(p.RootChord) + (float64(p.TipChord)-float64(p.RootChord))*t
 			if p.AirfoilShape == "curved" {
-				chord += math.Sin(t*math.Pi) * 1.3
+				chord += math.Sin(t*math.Pi) * math.Min(1.3, float64(p.RootChord)*0.4)
 			}
 
 			if chord < 0.5 {
@@ -141,7 +113,7 @@ func GeneratePropeller(p PropellerParams) (*GenerateResult, error) {
 				localAngle += sweepRad * t
 			}
 
-			halfC := chord / 2
+			halfC := math.Max(0, (chord-1)/2)
 			cosA := math.Cos(localAngle)
 			sinA := math.Sin(localAngle)
 

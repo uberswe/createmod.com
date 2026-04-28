@@ -20,6 +20,11 @@ var WOOL_COLORS = {
   brown: '#835432', green: '#5d7c15', red: '#b02e26', black: '#1d1c21'
 };
 
+var BG_COLOR = '#2a5a78';
+var GRID_COLOR = 'rgba(140,196,232,0.15)';
+var GRID_MAJOR_COLOR = 'rgba(157,208,238,0.22)';
+var GRID_MAJOR_INTERVAL = 5;
+
 function getBlockColor(type, materials) {
   if (!materials) materials = {};
   if (type === 7) {
@@ -116,6 +121,185 @@ function el(tag, cls, text) {
   return e;
 }
 
+function addDragToScroll(scrollContainer, canvas) {
+  var dragging = false;
+  var startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+
+  canvas.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    if (scrollContainer.scrollWidth <= scrollContainer.clientWidth &&
+        scrollContainer.scrollHeight <= scrollContainer.clientHeight) return;
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    scrollLeft = scrollContainer.scrollLeft;
+    scrollTop = scrollContainer.scrollTop;
+    canvas.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    scrollContainer.scrollLeft = scrollLeft - (e.clientX - startX);
+    scrollContainer.scrollTop = scrollTop - (e.clientY - startY);
+  });
+
+  window.addEventListener('mouseup', function() {
+    if (!dragging) return;
+    dragging = false;
+    canvas.style.cursor = '';
+  });
+
+  return function isDragging() { return dragging; };
+}
+
+function drawGrid(ctx, gridW, gridH, cellSize, canvasW, canvasH) {
+  for (var gx = 0; gx <= gridW; gx++) {
+    var isMajorX = gx % GRID_MAJOR_INTERVAL === 0;
+    ctx.strokeStyle = isMajorX ? GRID_MAJOR_COLOR : GRID_COLOR;
+    ctx.lineWidth = isMajorX ? 1 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(gx * cellSize, 0);
+    ctx.lineTo(gx * cellSize, canvasH);
+    ctx.stroke();
+  }
+  for (var gz = 0; gz <= gridH; gz++) {
+    var isMajorZ = gz % GRID_MAJOR_INTERVAL === 0;
+    ctx.strokeStyle = isMajorZ ? GRID_MAJOR_COLOR : GRID_COLOR;
+    ctx.lineWidth = isMajorZ ? 1 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, gz * cellSize);
+    ctx.lineTo(canvasW, gz * cellSize);
+    ctx.stroke();
+  }
+}
+
+function drawBlocks(ctx, blocks, minX, minZ, cellSize, materials, gridLookup) {
+  var typeCounts = {};
+  for (var j = 0; j < blocks.length; j++) {
+    var b = blocks[j];
+    var px = (b.x - minX) * cellSize;
+    var py = (b.z - minZ) * cellSize;
+    var color = getBlockColor(b.type, materials);
+
+    if (gridLookup) gridLookup[(b.x - minX) + ',' + (b.z - minZ)] = b;
+
+    ctx.fillStyle = color;
+    var inset = Math.max(0.5, cellSize * 0.04);
+    ctx.fillRect(px + inset, py + inset, cellSize - inset * 2, cellSize - inset * 2);
+
+    if (cellSize >= 10) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(px + inset, py + inset, cellSize - inset * 2, cellSize - inset * 2);
+    }
+
+    if (b.type === 4 && cellSize >= 12 && b.props) {
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      var facing = b.props.facing;
+      var cx2 = px + cellSize / 2;
+      var cy2 = py + cellSize / 2;
+      var arrowSize = cellSize * 0.25;
+      ctx.beginPath();
+      if (facing === 'north') { ctx.moveTo(cx2, cy2 - arrowSize); ctx.lineTo(cx2 - arrowSize, cy2 + arrowSize); ctx.lineTo(cx2 + arrowSize, cy2 + arrowSize); }
+      else if (facing === 'south') { ctx.moveTo(cx2, cy2 + arrowSize); ctx.lineTo(cx2 - arrowSize, cy2 - arrowSize); ctx.lineTo(cx2 + arrowSize, cy2 - arrowSize); }
+      else if (facing === 'east') { ctx.moveTo(cx2 + arrowSize, cy2); ctx.lineTo(cx2 - arrowSize, cy2 - arrowSize); ctx.lineTo(cx2 - arrowSize, cy2 + arrowSize); }
+      else if (facing === 'west') { ctx.moveTo(cx2 - arrowSize, cy2); ctx.lineTo(cx2 + arrowSize, cy2 - arrowSize); ctx.lineTo(cx2 + arrowSize, cy2 + arrowSize); }
+      ctx.closePath(); ctx.fill();
+      if (b.props.half === 'top') {
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.arc(cx2, cy2, cellSize * 0.08, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    if (b.type === 5 && cellSize >= 12) {
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath(); ctx.arc(px + cellSize/2, py + cellSize/2, cellSize * 0.15, 0, Math.PI * 2); ctx.fill();
+    }
+
+    if ((b.type === 2 || b.type === 3) && cellSize >= 14) {
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(px + inset, py + cellSize * 0.45, cellSize - inset * 2, cellSize * 0.1);
+    }
+
+    if (!typeCounts[b.type]) typeCounts[b.type] = 0;
+    typeCounts[b.type]++;
+  }
+  return typeCounts;
+}
+
+function drawCoordLabels(ctx, gridW, gridH, cellSize, minX, minZ, canvasH) {
+  if (cellSize < 8) return;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = (Math.max(8, cellSize * 0.35)) + 'px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  for (var lx = 0; lx < gridW; lx += Math.max(1, Math.floor(gridW / 10))) {
+    ctx.fillText(String(lx + minX), (lx + 0.5) * cellSize, canvasH - 2);
+  }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  for (var lz = 0; lz < gridH; lz += Math.max(1, Math.floor(gridH / 10))) {
+    ctx.fillText(String(lz + minZ), 3, (lz + 0.5) * cellSize);
+  }
+}
+
+function buildLegend(container, typeCounts, materials) {
+  while (container.firstChild) container.removeChild(container.firstChild);
+  var legendGrid = el('div', 'guide-legend-grid');
+  var types = Object.keys(typeCounts).map(Number).sort(function(a,b){return a-b;});
+  for (var ti = 0; ti < types.length; ti++) {
+    var t = types[ti];
+    var c = getBlockColor(t, materials);
+    var label = getBlockLabel(t, materials);
+    var item = el('div', 'guide-legend-item');
+    var swatchCanvas = document.createElement('canvas');
+    var swatchSize = 28;
+    var swatchDpr = window.devicePixelRatio || 1;
+    swatchCanvas.width = swatchSize * swatchDpr;
+    swatchCanvas.height = swatchSize * swatchDpr;
+    swatchCanvas.style.width = swatchSize + 'px';
+    swatchCanvas.style.height = swatchSize + 'px';
+    swatchCanvas.style.borderRadius = '4px';
+    swatchCanvas.style.border = '1px solid rgba(255,255,255,0.15)';
+    swatchCanvas.style.flexShrink = '0';
+    swatchCanvas.style.imageRendering = 'pixelated';
+    var sc = swatchCanvas.getContext('2d');
+    sc.setTransform(swatchDpr, 0, 0, swatchDpr, 0, 0);
+    sc.fillStyle = BG_COLOR;
+    sc.fillRect(0, 0, swatchSize, swatchSize);
+    sc.fillStyle = c;
+    sc.fillRect(2, 2, swatchSize - 4, swatchSize - 4);
+    sc.strokeStyle = 'rgba(0,0,0,0.3)';
+    sc.lineWidth = 0.5;
+    sc.strokeRect(2, 2, swatchSize - 4, swatchSize - 4);
+    if (t === 4) {
+      sc.fillStyle = 'rgba(0,0,0,0.4)';
+      sc.beginPath();
+      sc.moveTo(swatchSize/2, swatchSize*0.3);
+      sc.lineTo(swatchSize*0.3, swatchSize*0.7);
+      sc.lineTo(swatchSize*0.7, swatchSize*0.7);
+      sc.closePath(); sc.fill();
+    }
+    if (t === 5) {
+      sc.fillStyle = 'rgba(255,255,255,0.25)';
+      sc.beginPath(); sc.arc(swatchSize/2, swatchSize/2, swatchSize*0.15, 0, Math.PI*2); sc.fill();
+    }
+    if (t === 2 || t === 3) {
+      sc.fillStyle = 'rgba(0,0,0,0.25)';
+      sc.fillRect(2, swatchSize*0.45, swatchSize-4, swatchSize*0.1);
+    }
+    item.appendChild(swatchCanvas);
+    var labelWrap = el('div', 'guide-legend-label-wrap');
+    labelWrap.appendChild(el('span', 'guide-legend-name', label));
+    var countBadge = el('span', 'guide-legend-count', '×' + typeCounts[t]);
+    labelWrap.appendChild(countBadge);
+    item.appendChild(labelWrap);
+    legendGrid.appendChild(item);
+  }
+  container.appendChild(legendGrid);
+}
+
 function createModal() {
   var existing = document.getElementById('guide-modal');
   if (existing) existing.remove();
@@ -142,11 +326,24 @@ function createModal() {
   prevBtn.textContent = '← Previous';
   prevBtn.disabled = true;
   var infoSpan = el('span', 'guide-step-info', 'Layer 1 of 1');
+  var navRight = el('div', '');
+  navRight.style.cssText = 'display:flex;align-items:center;gap:12px;';
+  var zoomControls = el('div', 'guide-zoom-controls');
+  var zoomOutBtn = el('button', '', '−');
+  zoomOutBtn.title = 'Zoom out';
+  var zoomLevelSpan = el('span', 'guide-zoom-level', '100%');
+  var zoomInBtn = el('button', '', '+');
+  zoomInBtn.title = 'Zoom in';
+  zoomControls.appendChild(zoomOutBtn);
+  zoomControls.appendChild(zoomLevelSpan);
+  zoomControls.appendChild(zoomInBtn);
   var nextBtn = el('button', 'btn btn-sm btn-outline-secondary guide-next');
   nextBtn.textContent = 'Next →';
+  navRight.appendChild(zoomControls);
+  navRight.appendChild(nextBtn);
   nav.appendChild(prevBtn);
   nav.appendChild(infoSpan);
-  nav.appendChild(nextBtn);
+  nav.appendChild(navRight);
   content.appendChild(nav);
 
   var sliderWrap = el('div', 'guide-modal-slider');
@@ -161,8 +358,15 @@ function createModal() {
   content.appendChild(sliderWrap);
 
   var body = el('div', 'guide-modal-body');
+  body.style.position = 'relative';
+  body.style.overflow = 'auto';
+  body.style.maxHeight = '60vh';
+  body.style.background = BG_COLOR;
+  body.style.boxShadow = 'inset 0 0 60px 30px rgba(12,30,55,0.55)';
   var canvas = document.createElement('canvas');
   canvas.className = 'guide-canvas';
+  canvas.style.display = 'block';
+  canvas.style.margin = '0 auto';
   body.appendChild(canvas);
   content.appendChild(body);
 
@@ -188,7 +392,10 @@ function createModal() {
     slider: sliderInput,
     canvas: canvas,
     legend: legendEl,
-    blockCount: countSpan
+    blockCount: countSpan,
+    zoomInBtn: zoomInBtn,
+    zoomOutBtn: zoomOutBtn,
+    zoomLevelSpan: zoomLevelSpan
   };
 }
 
@@ -216,6 +423,7 @@ function openGuide(data, mode) {
 
   var ui = createModal();
   var currentStep = 0;
+  var zoomLevel = 1.0;
 
   if (mode === 'radial') {
     ui.title.textContent = 'Center to Tip Guide';
@@ -233,8 +441,13 @@ function openGuide(data, mode) {
 
   var modalTooltip = document.createElement('div');
   modalTooltip.style.cssText = 'position:absolute;display:none;padding:4px 8px;background:rgba(0,0,0,0.85);color:#e8e8e8;font-size:12px;border-radius:4px;pointer-events:none;white-space:nowrap;z-index:10;border:1px solid rgba(191,144,69,0.4);';
-  ui.canvas.parentElement.style.position = 'relative';
   ui.canvas.parentElement.appendChild(modalTooltip);
+
+  var isModalDragging = addDragToScroll(ui.canvas.parentElement, ui.canvas);
+
+  function updateZoomLabel() {
+    ui.zoomLevelSpan.textContent = Math.round(zoomLevel * 100) + '%';
+  }
 
   function renderStep() {
     var step = steps[currentStep];
@@ -255,15 +468,14 @@ function openGuide(data, mode) {
     ui.slider.value = String(currentStep);
 
     var minX = globalMinX, maxX = globalMaxX, minZ = globalMinZ, maxZ = globalMaxZ;
-
     var gridW = maxX - minX + 1;
     var gridH = maxZ - minZ + 1;
 
     var containerEl = ui.canvas.parentElement;
     var availW = containerEl.clientWidth - 32;
     var availH = containerEl.clientHeight || 500;
-    var cellSize = Math.max(4, Math.min(40, Math.floor(Math.min(availW / gridW, availH / gridH))));
-    if (cellSize < 1) cellSize = 1;
+    var baseCellSize = Math.max(4, Math.min(40, Math.floor(Math.min(availW / gridW, availH / gridH))));
+    var cellSize = Math.max(2, Math.round(baseCellSize * zoomLevel));
 
     modalMinX = minX;
     modalMinZ = minZ;
@@ -279,23 +491,10 @@ function openGuide(data, mode) {
     ui.canvas.style.height = canvasH + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.fillStyle = '#1a1a2e';
+    ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 0.5;
-    for (var gx = 0; gx <= gridW; gx++) {
-      ctx.beginPath();
-      ctx.moveTo(gx * cellSize, 0);
-      ctx.lineTo(gx * cellSize, canvasH);
-      ctx.stroke();
-    }
-    for (var gz = 0; gz <= gridH; gz++) {
-      ctx.beginPath();
-      ctx.moveTo(0, gz * cellSize);
-      ctx.lineTo(canvasW, gz * cellSize);
-      ctx.stroke();
-    }
+    drawGrid(ctx, gridW, gridH, cellSize, canvasW, canvasH);
 
     if (prevBlocks.length > 0) {
       ctx.globalAlpha = 0.18;
@@ -305,97 +504,16 @@ function openGuide(data, mode) {
         var ppy = (pb.z - minZ) * cellSize;
         var pcolor = getBlockColor(pb.type, materials);
         ctx.fillStyle = pcolor;
-        var pinset = Math.max(0.5, cellSize * 0.05);
+        var pinset = Math.max(0.5, cellSize * 0.04);
         ctx.fillRect(ppx + pinset, ppy + pinset, cellSize - pinset * 2, cellSize - pinset * 2);
       }
       ctx.globalAlpha = 1.0;
     }
 
     modalGridLookup = {};
-    var typeCounts = {};
-    for (var j = 0; j < blocks.length; j++) {
-      var b = blocks[j];
-      var px = (b.x - minX) * cellSize;
-      var py = (b.z - minZ) * cellSize;
-      var color = getBlockColor(b.type, materials);
+    var typeCounts = drawBlocks(ctx, blocks, minX, minZ, cellSize, materials, modalGridLookup);
 
-      modalGridLookup[(b.x - minX) + ',' + (b.z - minZ)] = b;
-
-      ctx.fillStyle = color;
-      var inset = Math.max(0.5, cellSize * 0.05);
-      ctx.fillRect(px + inset, py + inset, cellSize - inset * 2, cellSize - inset * 2);
-
-      if (cellSize >= 10) {
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(px + inset, py + inset, cellSize - inset * 2, cellSize - inset * 2);
-      }
-
-      if (b.type === 4 && cellSize >= 12 && b.props) {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        var facing = b.props.facing;
-        var cx2 = px + cellSize / 2;
-        var cy2 = py + cellSize / 2;
-        var arrowSize = cellSize * 0.25;
-        ctx.beginPath();
-        if (facing === 'north') {
-          ctx.moveTo(cx2, cy2 - arrowSize);
-          ctx.lineTo(cx2 - arrowSize, cy2 + arrowSize);
-          ctx.lineTo(cx2 + arrowSize, cy2 + arrowSize);
-        } else if (facing === 'south') {
-          ctx.moveTo(cx2, cy2 + arrowSize);
-          ctx.lineTo(cx2 - arrowSize, cy2 - arrowSize);
-          ctx.lineTo(cx2 + arrowSize, cy2 - arrowSize);
-        } else if (facing === 'east') {
-          ctx.moveTo(cx2 + arrowSize, cy2);
-          ctx.lineTo(cx2 - arrowSize, cy2 - arrowSize);
-          ctx.lineTo(cx2 - arrowSize, cy2 + arrowSize);
-        } else if (facing === 'west') {
-          ctx.moveTo(cx2 - arrowSize, cy2);
-          ctx.lineTo(cx2 + arrowSize, cy2 - arrowSize);
-          ctx.lineTo(cx2 + arrowSize, cy2 + arrowSize);
-        }
-        ctx.closePath();
-        ctx.fill();
-
-        if (b.props.half === 'top') {
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
-          ctx.beginPath();
-          ctx.arc(cx2, cy2, cellSize * 0.08, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      if (b.type === 5 && cellSize >= 12) {
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.beginPath();
-        ctx.arc(px + cellSize/2, py + cellSize/2, cellSize * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      if ((b.type === 2 || b.type === 3) && cellSize >= 14) {
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(px + inset, py + cellSize * 0.45, cellSize - inset * 2, cellSize * 0.1);
-      }
-
-      if (!typeCounts[b.type]) typeCounts[b.type] = 0;
-      typeCounts[b.type]++;
-    }
-
-    if (cellSize >= 8) {
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.font = (Math.max(8, cellSize * 0.35)) + 'px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      for (var lx = 0; lx < gridW; lx += Math.max(1, Math.floor(gridW / 10))) {
-        ctx.fillText(String(lx + minX), (lx + 0.5) * cellSize, canvasH - 2);
-      }
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      for (var lz = 0; lz < gridH; lz += Math.max(1, Math.floor(gridH / 10))) {
-        ctx.fillText(String(lz + minZ), 3, (lz + 0.5) * cellSize);
-      }
-    }
+    drawCoordLabels(ctx, gridW, gridH, cellSize, minX, minZ, canvasH);
 
     while (ui.legend.firstChild) ui.legend.removeChild(ui.legend.firstChild);
     var legendGrid = el('div', 'guide-legend-grid');
@@ -421,7 +539,23 @@ function openGuide(data, mode) {
     renderStep();
   }
 
+  function setZoom(newZoom) {
+    zoomLevel = Math.max(0.25, Math.min(5, newZoom));
+    updateZoomLabel();
+    renderStep();
+  }
+
+  ui.zoomInBtn.addEventListener('click', function() { setZoom(zoomLevel * 1.25); });
+  ui.zoomOutBtn.addEventListener('click', function() { setZoom(zoomLevel / 1.25); });
+
+  ui.canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? 0.8 : 1.25;
+    setZoom(zoomLevel * delta);
+  }, { passive: false });
+
   ui.canvas.addEventListener('mousemove', function(e) {
+    if (isModalDragging()) { modalTooltip.style.display = 'none'; return; }
     var rect = ui.canvas.getBoundingClientRect();
     var mx = (e.clientX - rect.left);
     var my = (e.clientY - rect.top);
@@ -436,13 +570,14 @@ function openGuide(data, mode) {
       ui.canvas.style.cursor = 'crosshair';
     } else {
       modalTooltip.style.display = 'none';
-      ui.canvas.style.cursor = 'default';
+      var sc = ui.canvas.parentElement;
+      ui.canvas.style.cursor = (sc.scrollWidth > sc.clientWidth || sc.scrollHeight > sc.clientHeight) ? 'grab' : 'default';
     }
   });
 
   ui.canvas.addEventListener('mouseleave', function() {
     modalTooltip.style.display = 'none';
-    ui.canvas.style.cursor = 'default';
+    ui.canvas.style.cursor = '';
   });
 
   ui.prevBtn.addEventListener('click', function() { goTo(currentStep - 1); });
@@ -462,6 +597,7 @@ function openGuide(data, mode) {
     if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); goTo(currentStep + 1); }
   });
 
+  updateZoomLabel();
   requestAnimationFrame(function() {
     ui.modal.classList.add('open');
     renderStep();
@@ -499,8 +635,25 @@ function renderPage(data, mode) {
   var canvas = document.getElementById('guide-canvas');
   var legendEl = document.getElementById('guide-legend');
   var blockCountEl = document.getElementById('guide-block-count');
+  var canvasWrap = document.getElementById('guide-canvas-wrap');
 
   if (!canvas) return;
+
+  // Add zoom controls to nav
+  var navEl = document.getElementById('guide-nav');
+  var zoomLevel = 1.0;
+  var zoomControls = el('div', 'guide-zoom-controls');
+  var zoomOutBtn = el('button', '', '−');
+  zoomOutBtn.title = 'Zoom out';
+  var zoomLevelSpan = el('span', 'guide-zoom-level', '100%');
+  var zoomInBtn = el('button', '', '+');
+  zoomInBtn.title = 'Zoom in';
+  zoomControls.appendChild(zoomOutBtn);
+  zoomControls.appendChild(zoomLevelSpan);
+  zoomControls.appendChild(zoomInBtn);
+  if (navEl) {
+    navEl.insertBefore(zoomControls, nextBtn);
+  }
 
   if (mode === 'radial') {
     titleEl.textContent = 'Center to Tip Guide';
@@ -522,8 +675,13 @@ function renderPage(data, mode) {
   var tooltip = document.createElement('div');
   tooltip.className = 'guide-tooltip';
   tooltip.style.cssText = 'position:absolute;display:none;padding:4px 8px;background:rgba(0,0,0,0.85);color:#e8e8e8;font-size:12px;border-radius:4px;pointer-events:none;white-space:nowrap;z-index:10;border:1px solid rgba(191,144,69,0.4);';
-  canvas.parentElement.style.position = 'relative';
   canvas.parentElement.appendChild(tooltip);
+
+  var isPageDragging = addDragToScroll(canvasWrap, canvas);
+
+  function updateZoomLabel() {
+    zoomLevelSpan.textContent = Math.round(zoomLevel * 100) + '%';
+  }
 
   function renderStep() {
     var step = steps[currentStep];
@@ -544,15 +702,14 @@ function renderPage(data, mode) {
     slider.value = String(currentStep);
 
     var minX = globalMinX, maxX = globalMaxX, minZ = globalMinZ, maxZ = globalMaxZ;
-
     var gridW = maxX - minX + 1;
     var gridH = maxZ - minZ + 1;
 
     var containerEl = canvas.parentElement;
     var availW = containerEl.clientWidth - 32;
     var availH = Math.min(600, window.innerHeight * 0.55);
-    var cellSize = Math.max(4, Math.min(40, Math.floor(Math.min(availW / gridW, availH / gridH))));
-    if (cellSize < 1) cellSize = 1;
+    var baseCellSize = Math.max(4, Math.min(40, Math.floor(Math.min(availW / gridW, availH / gridH))));
+    var cellSize = Math.max(2, Math.round(baseCellSize * zoomLevel));
 
     renderMinX = minX;
     renderMinZ = minZ;
@@ -568,17 +725,10 @@ function renderPage(data, mode) {
     canvas.style.height = canvasH + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.fillStyle = '#14142a';
+    ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 0.5;
-    for (var gx = 0; gx <= gridW; gx++) {
-      ctx.beginPath(); ctx.moveTo(gx * cellSize, 0); ctx.lineTo(gx * cellSize, canvasH); ctx.stroke();
-    }
-    for (var gz = 0; gz <= gridH; gz++) {
-      ctx.beginPath(); ctx.moveTo(0, gz * cellSize); ctx.lineTo(canvasW, gz * cellSize); ctx.stroke();
-    }
+    drawGrid(ctx, gridW, gridH, cellSize, canvasW, canvasH);
 
     if (prevBlocks.length > 0) {
       ctx.globalAlpha = 0.18;
@@ -588,132 +738,18 @@ function renderPage(data, mode) {
         var ppy = (pb.z - minZ) * cellSize;
         var pcolor = getBlockColor(pb.type, materials);
         ctx.fillStyle = pcolor;
-        var pinset = Math.max(0.5, cellSize * 0.05);
+        var pinset = Math.max(0.5, cellSize * 0.04);
         ctx.fillRect(ppx + pinset, ppy + pinset, cellSize - pinset * 2, cellSize - pinset * 2);
       }
       ctx.globalAlpha = 1.0;
     }
 
     gridLookup = {};
-    var typeCounts = {};
-    for (var j = 0; j < blocks.length; j++) {
-      var b = blocks[j];
-      var px = (b.x - minX) * cellSize;
-      var py = (b.z - minZ) * cellSize;
-      var color = getBlockColor(b.type, materials);
+    var typeCounts = drawBlocks(ctx, blocks, minX, minZ, cellSize, materials, gridLookup);
 
-      gridLookup[(b.x - minX) + ',' + (b.z - minZ)] = b;
+    drawCoordLabels(ctx, gridW, gridH, cellSize, minX, minZ, canvasH);
 
-      ctx.fillStyle = color;
-      var inset = Math.max(0.5, cellSize * 0.05);
-      ctx.fillRect(px + inset, py + inset, cellSize - inset * 2, cellSize - inset * 2);
-
-      if (cellSize >= 10) {
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(px + inset, py + inset, cellSize - inset * 2, cellSize - inset * 2);
-      }
-
-      if (b.type === 4 && cellSize >= 12 && b.props) {
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        var facing = b.props.facing;
-        var cx2 = px + cellSize / 2;
-        var cy2 = py + cellSize / 2;
-        var arrowSize = cellSize * 0.25;
-        ctx.beginPath();
-        if (facing === 'north') { ctx.moveTo(cx2, cy2 - arrowSize); ctx.lineTo(cx2 - arrowSize, cy2 + arrowSize); ctx.lineTo(cx2 + arrowSize, cy2 + arrowSize); }
-        else if (facing === 'south') { ctx.moveTo(cx2, cy2 + arrowSize); ctx.lineTo(cx2 - arrowSize, cy2 - arrowSize); ctx.lineTo(cx2 + arrowSize, cy2 - arrowSize); }
-        else if (facing === 'east') { ctx.moveTo(cx2 + arrowSize, cy2); ctx.lineTo(cx2 - arrowSize, cy2 - arrowSize); ctx.lineTo(cx2 - arrowSize, cy2 + arrowSize); }
-        else if (facing === 'west') { ctx.moveTo(cx2 - arrowSize, cy2); ctx.lineTo(cx2 + arrowSize, cy2 - arrowSize); ctx.lineTo(cx2 + arrowSize, cy2 + arrowSize); }
-        ctx.closePath(); ctx.fill();
-        if (b.props.half === 'top') {
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
-          ctx.beginPath(); ctx.arc(cx2, cy2, cellSize * 0.08, 0, Math.PI * 2); ctx.fill();
-        }
-      }
-
-      if (b.type === 5 && cellSize >= 12) {
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.beginPath(); ctx.arc(px + cellSize/2, py + cellSize/2, cellSize * 0.15, 0, Math.PI * 2); ctx.fill();
-      }
-
-      if ((b.type === 2 || b.type === 3) && cellSize >= 14) {
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(px + inset, py + cellSize * 0.45, cellSize - inset * 2, cellSize * 0.1);
-      }
-
-      if (!typeCounts[b.type]) typeCounts[b.type] = 0;
-      typeCounts[b.type]++;
-    }
-
-    if (cellSize >= 8) {
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.font = (Math.max(8, cellSize * 0.35)) + 'px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      for (var lx = 0; lx < gridW; lx += Math.max(1, Math.floor(gridW / 10))) {
-        ctx.fillText(String(lx + minX), (lx + 0.5) * cellSize, canvasH - 2);
-      }
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      for (var lz = 0; lz < gridH; lz += Math.max(1, Math.floor(gridH / 10))) {
-        ctx.fillText(String(lz + minZ), 3, (lz + 0.5) * cellSize);
-      }
-    }
-
-    while (legendEl.firstChild) legendEl.removeChild(legendEl.firstChild);
-    var legendGrid = el('div', 'guide-legend-grid');
-    var types = Object.keys(typeCounts).map(Number).sort(function(a,b){return a-b;});
-    for (var ti = 0; ti < types.length; ti++) {
-      var t = types[ti];
-      var c = getBlockColor(t, materials);
-      var label = getBlockLabel(t, materials);
-      var item = el('div', 'guide-legend-item');
-      var swatchCanvas = document.createElement('canvas');
-      var swatchSize = 28;
-      var swatchDpr = window.devicePixelRatio || 1;
-      swatchCanvas.width = swatchSize * swatchDpr;
-      swatchCanvas.height = swatchSize * swatchDpr;
-      swatchCanvas.style.width = swatchSize + 'px';
-      swatchCanvas.style.height = swatchSize + 'px';
-      swatchCanvas.style.borderRadius = '4px';
-      swatchCanvas.style.border = '1px solid rgba(255,255,255,0.15)';
-      swatchCanvas.style.flexShrink = '0';
-      swatchCanvas.style.imageRendering = 'pixelated';
-      var sc = swatchCanvas.getContext('2d');
-      sc.setTransform(swatchDpr, 0, 0, swatchDpr, 0, 0);
-      sc.fillStyle = '#14142a';
-      sc.fillRect(0, 0, swatchSize, swatchSize);
-      sc.fillStyle = c;
-      sc.fillRect(2, 2, swatchSize - 4, swatchSize - 4);
-      sc.strokeStyle = 'rgba(0,0,0,0.3)';
-      sc.lineWidth = 0.5;
-      sc.strokeRect(2, 2, swatchSize - 4, swatchSize - 4);
-      if (t === 4) {
-        sc.fillStyle = 'rgba(0,0,0,0.4)';
-        sc.beginPath();
-        sc.moveTo(swatchSize/2, swatchSize*0.3);
-        sc.lineTo(swatchSize*0.3, swatchSize*0.7);
-        sc.lineTo(swatchSize*0.7, swatchSize*0.7);
-        sc.closePath(); sc.fill();
-      }
-      if (t === 5) {
-        sc.fillStyle = 'rgba(255,255,255,0.25)';
-        sc.beginPath(); sc.arc(swatchSize/2, swatchSize/2, swatchSize*0.15, 0, Math.PI*2); sc.fill();
-      }
-      if (t === 2 || t === 3) {
-        sc.fillStyle = 'rgba(0,0,0,0.25)';
-        sc.fillRect(2, swatchSize*0.45, swatchSize-4, swatchSize*0.1);
-      }
-      item.appendChild(swatchCanvas);
-      var labelWrap = el('div', 'guide-legend-label-wrap');
-      labelWrap.appendChild(el('span', 'guide-legend-name', label));
-      var countBadge = el('span', 'guide-legend-count', '×' + typeCounts[t]);
-      labelWrap.appendChild(countBadge);
-      item.appendChild(labelWrap);
-      legendGrid.appendChild(item);
-    }
-    legendEl.appendChild(legendGrid);
+    buildLegend(legendEl, typeCounts, materials);
 
     blockCountEl.textContent = blocks.length + ' blocks in this ' + (mode === 'radial' ? 'ring' : 'layer');
   }
@@ -723,9 +759,24 @@ function renderPage(data, mode) {
     renderStep();
   }
 
+  function setZoom(newZoom) {
+    zoomLevel = Math.max(0.25, Math.min(5, newZoom));
+    updateZoomLabel();
+    renderStep();
+  }
+
+  zoomInBtn.addEventListener('click', function() { setZoom(zoomLevel * 1.25); });
+  zoomOutBtn.addEventListener('click', function() { setZoom(zoomLevel / 1.25); });
+
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var delta = e.deltaY > 0 ? 0.8 : 1.25;
+    setZoom(zoomLevel * delta);
+  }, { passive: false });
+
   canvas.addEventListener('mousemove', function(e) {
+    if (isPageDragging()) { tooltip.style.display = 'none'; return; }
     var rect = canvas.getBoundingClientRect();
-    var scaleX = canvas.width / (canvas.clientWidth * (window.devicePixelRatio || 1));
     var mx = (e.clientX - rect.left);
     var my = (e.clientY - rect.top);
     var gx = Math.floor(mx / renderCellSize);
@@ -741,13 +792,13 @@ function renderPage(data, mode) {
       canvas.style.cursor = 'crosshair';
     } else {
       tooltip.style.display = 'none';
-      canvas.style.cursor = 'default';
+      canvas.style.cursor = (canvasWrap.scrollWidth > canvasWrap.clientWidth || canvasWrap.scrollHeight > canvasWrap.clientHeight) ? 'grab' : 'default';
     }
   });
 
   canvas.addEventListener('mouseleave', function() {
     tooltip.style.display = 'none';
-    canvas.style.cursor = 'default';
+    canvas.style.cursor = '';
   });
 
   prevBtn.addEventListener('click', function() { goTo(currentStep - 1); });
@@ -759,6 +810,7 @@ function renderPage(data, mode) {
     if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); goTo(currentStep + 1); }
   });
 
+  updateZoomLabel();
   renderStep();
 }
 

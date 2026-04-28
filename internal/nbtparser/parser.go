@@ -215,6 +215,30 @@ type Material struct {
 	Count   int    `json:"count"`
 }
 
+// isNonBuildableBlock returns true for blocks that don't count as real
+// building blocks — air variants, structural glue, structure voids, etc.
+func isNonBuildableBlock(blockID string) bool {
+	switch blockID {
+	case "minecraft:air", "minecraft:cave_air", "minecraft:void_air",
+		"minecraft:structure_void", "minecraft:barrier",
+		"create:superglue", "create:super_glue":
+		return true
+	}
+	return false
+}
+
+// CountBuildableBlocks returns the total number of blocks from a materials
+// list that are actual building blocks (excludes air, glue, structure voids).
+func CountBuildableBlocks(mats []Material) int {
+	total := 0
+	for _, m := range mats {
+		if !isNonBuildableBlock(m.BlockID) {
+			total += m.Count
+		}
+	}
+	return total
+}
+
 // SanitizeMaterials filters a materials list, removing entries with
 // invalid block IDs. This should be called before storing or displaying
 // materials extracted from untrusted NBT data.

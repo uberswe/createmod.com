@@ -170,13 +170,19 @@ func blockToPalette(b Block, mat MaterialConfig) (string, map[string]string) {
 		return woodStairs(mat), props
 
 	case BlockFence:
-		return woodFence(mat), map[string]string{
+		props := map[string]string{
 			"east":        "false",
 			"north":       "false",
 			"south":       "false",
 			"waterlogged": "false",
 			"west":        "false",
 		}
+		if b.Props != nil {
+			for k, v := range b.Props {
+				props[k] = v
+			}
+		}
+		return woodFence(mat), props
 
 	case BlockTrapdoor:
 		props := map[string]string{

@@ -721,7 +721,6 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 			}
 			if n.name == "minecraft:spruce_fence" ||
 				n.name == "minecraft:spruce_planks" ||
-				n.name == "minecraft:spruce_slab" ||
 				n.name == "minecraft:spruce_stairs" {
 				return "true"
 			}

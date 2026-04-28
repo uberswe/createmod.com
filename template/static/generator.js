@@ -63,9 +63,6 @@ function getBlockColor(blockType, materials) {
     var sailColor = mat.bladeColor || 'white';
     return WOOL_COLORS[sailColor] || WOOL_COLORS.white;
   }
-  if (mat.envelopeMaterial && (blockType === 2 || blockType === 3 || blockType === 4)) {
-    return WOOL_COLORS[mat.envelopeColor || 'white'] || WOOL_COLORS.white;
-  }
   if (blockType === 8 && mat.frameMaterial === 'andesite_casing') {
     return ANDESITE_CASING_COLOR;
   }
@@ -79,8 +76,9 @@ function initScene(containerId) {
   THREE = window.THREE;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0f1628);
-  scene.fog = new THREE.FogExp2(0x0f1628, 0.003);
+  scene.background = new THREE.Color(0x3a7098);
+
+  scene.fog = new THREE.FogExp2(0x356888, 0.002);
 
   camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 2000);
   camera.position.set(30, 20, 30);
@@ -88,29 +86,47 @@ function initScene(containerId) {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
   while (container.firstChild) container.removeChild(container.firstChild);
   container.appendChild(renderer.domElement);
 
-  var ambient = new THREE.AmbientLight(0xffeedd, 0.7);
+  // Create mod schematic-style vignette overlay (dark edges, light center)
+  var vignette = document.createElement('div');
+  vignette.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%, transparent 20%, rgba(20,50,80,0.35) 70%, rgba(12,30,55,0.7) 100%);';
+  container.style.position = 'relative';
+  container.appendChild(vignette);
+
+  var ambient = new THREE.AmbientLight(0xffffff, 1.8);
   scene.add(ambient);
-  var key = new THREE.DirectionalLight(0xfff5e0, 1.2);
+  var key = new THREE.DirectionalLight(0xffffff, 2.0);
   key.position.set(50, 80, 40);
   scene.add(key);
-  var fill = new THREE.DirectionalLight(0x88aaff, 0.6);
+  var fill = new THREE.DirectionalLight(0xddeeff, 1.2);
   fill.position.set(-30, 20, -30);
   scene.add(fill);
-  var rim = new THREE.DirectionalLight(0xffaa88, 0.4);
+  var rim = new THREE.DirectionalLight(0xffffff, 0.8);
   rim.position.set(-20, 40, 60);
   scene.add(rim);
+  var bottom = new THREE.DirectionalLight(0x88aacc, 0.6);
+  bottom.position.set(0, -50, 0);
+  scene.add(bottom);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.target.set(0, 0, 0);
 
-  var grid = new THREE.GridHelper(200, 100, 0x1d3456, 0x14253f);
+  var grid = new THREE.GridHelper(200, 100, 0x8cc4e8, 0x6aaad0);
+  grid.material.opacity = 0.25;
+  grid.material.transparent = true;
   grid.position.y = -0.5;
   scene.add(grid);
+  var gridMajor = new THREE.GridHelper(200, 20, 0x9dd0ee, 0x9dd0ee);
+  gridMajor.material.opacity = 0.3;
+  gridMajor.material.transparent = true;
+  gridMajor.position.y = -0.49;
+  scene.add(gridMajor);
 
   animate();
 
@@ -182,18 +198,18 @@ function renderBlocks(data) {
   var cy = 0;
   var cz = data.sizeZ / 2;
 
-  var boxGeo = new THREE.BoxGeometry(0.95, 0.95, 0.95);
-  var slabGeo = new THREE.BoxGeometry(0.95, 0.47, 0.95);
-  var trapdoorGeo = new THREE.BoxGeometry(0.9, 0.18, 0.9);
-  var sailGeo = new THREE.BoxGeometry(0.95, 0.32, 0.95);
+  var boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  var slabGeo = new THREE.BoxGeometry(1, 0.5, 1);
+  var trapdoorGeo = new THREE.BoxGeometry(0.95, 0.18, 0.95);
+  var sailGeo = new THREE.BoxGeometry(1, 0.35, 1);
 
   var dummy = new THREE.Object3D();
 
   function makeStairGeo() {
-    var bottom = new THREE.BoxGeometry(0.95, 0.47, 0.95);
-    bottom.translate(0, -0.24, 0);
-    var top = new THREE.BoxGeometry(0.95, 0.47, 0.475);
-    top.translate(0, 0.24, -0.2375);
+    var bottom = new THREE.BoxGeometry(1, 0.5, 1);
+    bottom.translate(0, -0.25, 0);
+    var top = new THREE.BoxGeometry(1, 0.5, 0.5);
+    top.translate(0, 0.25, -0.25);
     var merged = new THREE.BufferGeometry();
     var posA = bottom.getAttribute('position').array;
     var posB = top.getAttribute('position').array;
@@ -218,7 +234,7 @@ function renderBlocks(data) {
 
   var FACING_ROT = { south: 0, west: -Math.PI / 2, north: Math.PI, east: Math.PI / 2 };
 
-  var fencePostGeo = new THREE.BoxGeometry(0.25, 0.95, 0.25);
+  var fencePostGeo = new THREE.BoxGeometry(0.25, 1, 0.25);
   var fenceBarGeo = new THREE.BoxGeometry(0.125, 0.19, 0.35);
 
   function buildFenceMesh(block, mat, cx, cy, cz) {
@@ -271,6 +287,12 @@ function renderBlocks(data) {
     });
 
     if (t === 4) {
+      var stairMat = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: roughness,
+        metalness: metalness,
+        side: THREE.DoubleSide
+      });
       var stairGroups = {};
       for (var si = 0; si < arr.length; si++) {
         var sb = arr[si];
@@ -286,7 +308,7 @@ function renderBlocks(data) {
         var sFacing = parts[0];
         var sHalf = parts[1];
         var sGeo = makeStairGeo();
-        var sMesh = new THREE.InstancedMesh(sGeo, mat, sArr.length);
+        var sMesh = new THREE.InstancedMesh(sGeo, stairMat, sArr.length);
         for (var sj = 0; sj < sArr.length; sj++) {
           dummy.position.set(sArr[sj].x - cx, (sArr[sj].y - cy), sArr[sj].z - cz);
           dummy.rotation.set(0, 0, 0);
@@ -328,8 +350,8 @@ function renderBlocks(data) {
     var mesh = new THREE.InstancedMesh(geo, mat, arr.length);
     for (var j = 0; j < arr.length; j++) {
       var yOff = 0;
-      if (t === 2) yOff = -0.24;
-      if (t === 3) yOff = 0.24;
+      if (t === 2) yOff = -0.25;
+      if (t === 3) yOff = 0.25;
       dummy.position.set(arr[j].x - cx, (arr[j].y - cy) + yOff, arr[j].z - cz);
       dummy.updateMatrix();
       mesh.setMatrixAt(j, dummy.matrix);
@@ -337,13 +359,39 @@ function renderBlocks(data) {
     mesh.instanceMatrix.needsUpdate = true;
     scene.add(mesh);
     blockMeshes.push(mesh);
+
+    // Block edge outlines — merge all edges into one LineSegments
+    if (arr.length <= 5000) {
+      var edgeTemplate = new THREE.EdgesGeometry(geo);
+      var ePosAttr = edgeTemplate.getAttribute('position');
+      var eCount = ePosAttr.count;
+      var allEdgePos = new Float32Array(arr.length * eCount * 3);
+      for (var ei = 0; ei < arr.length; ei++) {
+        var eyOff = 0;
+        if (t === 2) eyOff = -0.25;
+        if (t === 3) eyOff = 0.25;
+        var ox = arr[ei].x - cx, oy = (arr[ei].y - cy) + eyOff, oz = arr[ei].z - cz;
+        for (var ev = 0; ev < eCount; ev++) {
+          allEdgePos[(ei * eCount + ev) * 3]     = ePosAttr.getX(ev) + ox;
+          allEdgePos[(ei * eCount + ev) * 3 + 1] = ePosAttr.getY(ev) + oy;
+          allEdgePos[(ei * eCount + ev) * 3 + 2] = ePosAttr.getZ(ev) + oz;
+        }
+      }
+      var mergedEdgeGeo = new THREE.BufferGeometry();
+      mergedEdgeGeo.setAttribute('position', new THREE.BufferAttribute(allEdgePos, 3));
+      var edgeMat = new THREE.LineBasicMaterial({ color: 0x222222, opacity: 0.12, transparent: true });
+      var edgeLines = new THREE.LineSegments(mergedEdgeGeo, edgeMat);
+      scene.add(edgeLines);
+      blockMeshes.push(edgeLines);
+      edgeTemplate.dispose();
+    }
   }
 
   if (!cameraUserInteracted) {
     var maxDim = Math.max(data.sizeX, data.sizeY, data.sizeZ);
     var dist = maxDim * 1.2;
     var centerY = data.sizeY / 2;
-    camera.position.set(dist * 0.7, centerY + dist * 0.4, dist * 0.7);
+    camera.position.set(dist * 0.7, centerY + dist * 0.25, dist * 0.7);
     controls.target.set(0, centerY, 0);
     controls.update();
   }
@@ -643,7 +691,7 @@ function encodeCompact(prefix, params) {
     switch (s.t) {
       case 'b': vals.push(v ? '1' : '0'); break;
       case 'i': vals.push(String(Math.round(Number(v)))); break;
-      case 'f': vals.push(String(Number(v))); break;
+      case 'f': vals.push(String(Math.round(Number(v) * 10000) / 10000)); break;
       case 'e':
         var map = ENUM_MAPS[s.m];
         vals.push(map && map[v] ? map[v] : String(v).slice(0, 3));

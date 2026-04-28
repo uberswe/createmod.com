@@ -604,6 +604,17 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusInternalServerError, "failed to create schematic")
 		}
 
+		if appStore.ModerationLog != nil {
+			_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+				SchematicID: schem.ID,
+				ActorID:     userID,
+				ActorType:   "user",
+				Action:      "upload",
+				NewState:    store.ModerationAutoReview,
+				Reason:      "schematic uploaded",
+			})
+		}
+
 		// --- Set categories and tags ---
 		if len(catIDs) > 0 {
 			if err := appStore.Schematics.SetCategories(ctx, schem.ID, catIDs); err != nil {
@@ -636,6 +647,16 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				slog.Error("make-public: failed to auto-approve trusted user schematic", "error", updateErr, "id", schem.ID)
 			} else {
 				autoApproved = true
+				if appStore.ModerationLog != nil {
+					_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+						SchematicID: schem.ID,
+						ActorType:   "system",
+						Action:      "state_change",
+						OldState:    store.ModerationAutoReview,
+						NewState:    store.ModerationPublished,
+						Reason:      "trusted user auto-approval",
+					})
+				}
 			}
 		}
 
@@ -989,6 +1010,13 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 		// Extract enriched materials
 		parsedMaterials, _ := nbtparser.ExtractMaterials(data)
+
+		// Reject schematics with no buildable blocks
+		if nbtparser.CountBuildableBlocks(parsedMaterials) == 0 {
+			return e.JSON(http.StatusBadRequest, map[string]string{
+				"error": "This schematic is invalid and contains 0 blocks. Make sure your build is disassembled before creating your schematic and try uploading it again.",
+			})
+		}
 
 		// Extract dimensions
 		dimX, dimY, dimZ, _ := nbtparser.ExtractDimensions(data)

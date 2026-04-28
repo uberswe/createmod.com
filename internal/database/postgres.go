@@ -2885,6 +2885,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		Webhooks:            &WebhookStoreImpl{q: q},
 		SchematicVariations: &SchematicVariationStoreImpl{q: q},
 		ModerationChats:     &ModerationChatStoreImpl{q: q},
+		ModerationLog:       &ModerationLogStoreImpl{q: q},
 	}
 }
 
@@ -3031,7 +3032,50 @@ var (
 	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
 	_ store.WebhookStore             = (*WebhookStoreImpl)(nil)
 	_ store.SchematicVariationStore  = (*SchematicVariationStoreImpl)(nil)
+	_ store.ModerationLogStore       = (*ModerationLogStoreImpl)(nil)
 )
+
+// --------------------------------------------------------------------------
+// ModerationLogStoreImpl
+// --------------------------------------------------------------------------
+
+type ModerationLogStoreImpl struct{ q *db.Queries }
+
+func (s *ModerationLogStoreImpl) Create(ctx context.Context, entry *store.ModerationLogEntry) error {
+	_, err := s.q.CreateModerationLog(ctx, db.CreateModerationLogParams{
+		SchematicID: entry.SchematicID,
+		ActorID:     entry.ActorID,
+		ActorType:   entry.ActorType,
+		Action:      entry.Action,
+		OldState:    entry.OldState,
+		NewState:    entry.NewState,
+		Reason:      entry.Reason,
+	})
+	return err
+}
+
+func (s *ModerationLogStoreImpl) ListBySchematic(ctx context.Context, schematicID string) ([]store.ModerationLogEntry, error) {
+	rows, err := s.q.ListModerationLogBySchematic(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]store.ModerationLogEntry, len(rows))
+	for i, r := range rows {
+		entries[i] = store.ModerationLogEntry{
+			ID:            r.ID,
+			SchematicID:   r.SchematicID,
+			ActorID:       r.ActorID,
+			ActorType:     r.ActorType,
+			ActorUsername: r.ActorUsername,
+			Action:        r.Action,
+			OldState:      r.OldState,
+			NewState:      r.NewState,
+			Reason:        r.Reason,
+			CreatedAt:     r.CreatedAt,
+		}
+	}
+	return entries, nil
+}
 
 // Ensure unused import is satisfied.
 var _ = fmt.Sprintf
