@@ -73,10 +73,19 @@
     </div>
 </div>
 <div id="gen-init-data" data-hash="{{ .InitHash }}" data-type="{{ .GeneratorType }}" hidden></div>
-<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
-<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
-<script hx-disable>
+<script src="/assets/x/generator.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}"></script>
+<script>
 (function(){
+  function tryInit() {
+    if (!window.GeneratorApp || !window.GeneratorGuide) {
+      setTimeout(tryInit, 100);
+      return;
+    }
+    run();
+  }
+
+  function run() {
   var initEl = document.getElementById('gen-init-data');
   var hash = initEl ? initEl.dataset.hash : '';
   var genType = initEl ? initEl.dataset.type : '';
@@ -137,6 +146,13 @@
         setTimeout(function() { textNode.textContent = originalText; copyBtn.classList.remove('copied'); }, 2000);
       });
     });
+  }
+  } // end run()
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInit);
+  } else {
+    tryInit();
   }
 
   window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };

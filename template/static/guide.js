@@ -831,8 +831,9 @@ function renderPage(data, mode) {
     if (block) {
       tooltip.textContent = getBlockLabel(block.type, materials);
       tooltip.style.display = 'block';
-      var tx = e.clientX - rect.left + 12;
-      var ty = e.clientY - rect.top - 28;
+      var parentRect = canvas.parentElement.getBoundingClientRect();
+      var tx = e.clientX - parentRect.left + canvas.parentElement.scrollLeft + 12;
+      var ty = e.clientY - parentRect.top + canvas.parentElement.scrollTop - 28;
       tooltip.style.left = tx + 'px';
       tooltip.style.top = ty + 'px';
       canvas.style.cursor = 'crosshair';

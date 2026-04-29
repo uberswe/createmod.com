@@ -135,10 +135,10 @@
     </div>
 </div>
 <div id="gen-init-data" data-hash="{{ .InitHash }}" hidden></div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
-<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
-<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
-<script hx-disable>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}"></script>
+<script>
 (function(){
   var PRESETS = {
     basic:    { blades:4, length:10, rootChord:3, tipChord:1, sweepDegrees:25, swept:true,  airfoilShape:'curved', bladeMaterial:'wool', bladeColor:'white' },
@@ -207,7 +207,7 @@
   }
 
   function init() {
-    if (!GeneratorApp.initScene('generator-viewport')) {
+    if (!window.GeneratorApp || !GeneratorApp.initScene('generator-viewport')) {
       setTimeout(init, 100);
       return;
     }

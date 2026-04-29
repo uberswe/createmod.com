@@ -1,8 +1,9 @@
 (function(){
 'use strict';
 
-if (window._generatorInit) return;
-window._generatorInit = true;
+if (window.GeneratorApp && window.GeneratorApp._cleanup) {
+  window.GeneratorApp._cleanup();
+}
 
 var THREE;
 var scene, camera, renderer, controls;
@@ -11,6 +12,7 @@ var container;
 var animId;
 var currentData = null;
 var cameraUserInteracted = false;
+var resizeHandler = null;
 
 var WOOD_COLORS = {
   oak:      { plank: 0xb8945f, log: 0x6b5839 },
@@ -151,15 +153,15 @@ function initScene(containerId) {
 
   animate();
 
-  window.addEventListener('resize', onResize);
+  resizeHandler = onResize;
+  window.addEventListener('resize', resizeHandler);
 
   if (!window._genCleanupInit) {
     window._genCleanupInit = true;
     document.addEventListener('htmx:beforeSwap', function() {
-      if (animId) { cancelAnimationFrame(animId); animId = null; }
-      clearBlocks();
-      if (renderer) { renderer.dispose(); renderer = null; }
-      scene = null; camera = null; controls = null; container = null;
+      if (window.GeneratorApp && window.GeneratorApp._cleanup) {
+        window.GeneratorApp._cleanup();
+      }
     });
   }
 
@@ -865,7 +867,14 @@ function encodeCompact(prefix, params) {
       case 'f': vals.push(String(Math.round(Number(v) * 100))); break;
       case 'e':
         var map = ENUM_MAPS[s.m];
-        vals.push(map && map[v] ? map[v] : String(v).slice(0, 3));
+        if (map && map[v]) {
+          vals.push(map[v]);
+        } else if (map) {
+          var firstKey = Object.keys(map)[0];
+          vals.push(map[firstKey]);
+        } else {
+          vals.push('');
+        }
         break;
     }
   }
@@ -902,7 +911,12 @@ function decodeCompact(hash) {
         break;
       case 'e':
         var rev = ENUM_REVERSE[s.m];
-        params[s.k] = rev && rev[raw] ? rev[raw] : raw;
+        if (rev && rev[raw]) {
+          params[s.k] = rev[raw];
+        } else {
+          var fwd = ENUM_MAPS[s.m];
+          if (fwd) params[s.k] = Object.keys(fwd)[0];
+        }
         break;
     }
   }
@@ -983,6 +997,15 @@ function applyHashParams(setParamsFn, initHash, generatorType) {
   return { params: {} };
 }
 
+function cleanup() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  clearBlocks();
+  if (resizeHandler) { window.removeEventListener('resize', resizeHandler); resizeHandler = null; }
+  if (renderer) { renderer.dispose(); renderer = null; }
+  scene = null; camera = null; controls = null; container = null;
+  currentData = null; cameraUserInteracted = false;
+}
+
 window.GeneratorApp = {
   initScene: initScene,
   renderBlocks: renderBlocks,
@@ -994,7 +1017,8 @@ window.GeneratorApp = {
   decodeCompact: decodeCompact,
   encodeCompact: encodeCompact,
   toBase64Url: toBase64Url,
-  fromBase64Url: fromBase64Url
+  fromBase64Url: fromBase64Url,
+  _cleanup: cleanup
 };
 
 })();
