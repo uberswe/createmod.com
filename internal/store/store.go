@@ -871,6 +871,26 @@ type SchematicVariationStore interface {
 	GetOldestBySchematicAndUser(ctx context.Context, schematicID, userID string) (*SchematicVariation, error)
 }
 
+// ModerationLogEntry represents a single moderation action on a schematic.
+type ModerationLogEntry struct {
+	ID            string
+	SchematicID   string
+	ActorID       string
+	ActorType     string // "admin", "system", "user"
+	ActorUsername string
+	Action        string // "state_change", "upload", "soft_delete"
+	OldState      string
+	NewState      string
+	Reason        string
+	CreatedAt     time.Time
+}
+
+// ModerationLogStore handles moderation audit log persistence.
+type ModerationLogStore interface {
+	Create(ctx context.Context, entry *ModerationLogEntry) error
+	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationLogEntry, error)
+}
+
 type Store struct {
 	Users               UserStore
 	Sessions            SessionStore
@@ -902,4 +922,5 @@ type Store struct {
 	Webhooks            WebhookStore
 	SchematicVariations SchematicVariationStore
 	ModerationChats     ModerationChatStore
+	ModerationLog       ModerationLogStore
 }

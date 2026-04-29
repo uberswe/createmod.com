@@ -52,6 +52,7 @@ type Querier interface {
 	CreateDownloadToken(ctx context.Context, arg CreateDownloadTokenParams) (DownloadToken, error)
 	CreateExternalAuth(ctx context.Context, arg CreateExternalAuthParams) (ExternalAuth, error)
 	CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error)
+	CreateModerationLog(ctx context.Context, arg CreateModerationLogParams) (ModerationLog, error)
 	CreateModerationMessage(ctx context.Context, arg CreateModerationMessageParams) (ModerationMessage, error)
 	CreateModerationThread(ctx context.Context, arg CreateModerationThreadParams) (ModerationThread, error)
 	CreateNBTHash(ctx context.Context, arg CreateNBTHashParams) error
@@ -190,6 +191,7 @@ type Querier interface {
 	ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error)
 	ListModMetadataAll(ctx context.Context) ([]ModMetadatum, error)
 	ListModMetadataStale(ctx context.Context, limit int32) ([]ModMetadatum, error)
+	ListModerationLogBySchematic(ctx context.Context, schematicID string) ([]ListModerationLogBySchematicRow, error)
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
 	ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error)
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)

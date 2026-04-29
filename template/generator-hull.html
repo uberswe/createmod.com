@@ -1,0 +1,438 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body" style="padding:0;">
+            <div style="position:relative;min-height:calc(100vh - 60px);">
+                <div id="generator-viewport" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>
+                <nav class="gen-nav">
+                    <a href="/generators/propeller" class="gen-nav-btn">Propeller</a>
+                    <a href="/generators/balloon" class="gen-nav-btn">Balloon</a>
+                    <a href="/generators/hull" class="gen-nav-btn active">Ship Hull</a>
+                </nav>
+                <div class="generator-overlay">
+                        <div class="generator-overlay-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            <h3 class="mb-0">Ship Hull Generator</h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon generator-overlay-chevron" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+                        </div>
+                        <div class="generator-overlay-body">
+                            <div class="mb-2">
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="sloop">Sloop</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="schooner">Schooner</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="frigate">Frigate</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="galleon">Galleon</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="carrack">Carrack</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="longship">Longship</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="clipper">Clipper</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="shipOfTheLine">Ship of the Line</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="cog">Cog</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="pinnace">Pinnace</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="dhow">Dhow</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="junk">Junk</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="warGalley">War Galley</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="flyingShip">Flying Ship</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="dragonShip">Dragon Ship</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="ark">Ark</button>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Wood Type</label>
+                                <select class="form-select form-select-sm gen-param" id="param-woodType">
+                                    <option value="oak">Oak</option>
+                                    <option value="spruce" selected>Spruce</option>
+                                    <option value="birch">Birch</option>
+                                    <option value="dark_oak">Dark Oak</option>
+                                    <option value="jungle">Jungle</option>
+                                    <option value="acacia">Acacia</option>
+                                    <option value="cherry">Cherry</option>
+                                    <option value="crimson">Crimson</option>
+                                    <option value="warped">Warped</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Length: <span id="val-length">40</span></label>
+                                <input type="range" class="form-range gen-param" id="param-length" min="20" max="200" value="40" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Beam: <span id="val-beam">10</span></label>
+                                <input type="range" class="form-range gen-param" id="param-beam" min="4" max="40" value="10" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Depth: <span id="val-depth">6</span></label>
+                                <input type="range" class="form-range gen-param" id="param-depth" min="3" max="20" value="6" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bottom Pinch: <span id="val-bottomPinch">0.25</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bottomPinch" min="0.1" max="0.7" value="0.25" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Hull Flare: <span id="val-hullFlare">0.2</span></label>
+                                <input type="range" class="form-range gen-param" id="param-hullFlare" min="0" max="0.6" value="0.2" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Flare Curve: <span id="val-flareCurve">2.6</span></label>
+                                <input type="range" class="form-range gen-param" id="param-flareCurve" min="1.2" max="4" value="2.6" step="0.1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Tumblehome: <span id="val-tumblehome">0.15</span></label>
+                                <input type="range" class="form-range gen-param" id="param-tumblehome" min="0" max="0.4" value="0.15" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Tumble Curve: <span id="val-tumbleCurve">3</span></label>
+                                <input type="range" class="form-range gen-param" id="param-tumbleCurve" min="1.5" max="5" value="3" step="0.1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Sheer Curve: <span id="val-sheerCurve">0.12</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sheerCurve" min="0" max="0.75" value="0.12" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Sheer Curve Exp: <span id="val-sheerCurveExp">2</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sheerCurveExp" min="1" max="4" value="2" step="0.1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bow Length: <span id="val-bowLength">10</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bowLength" min="2" max="40" value="10" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bow Sharpness: <span id="val-bowSharpness">1.2</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bowSharpness" min="0.4" max="2.5" value="1.2" step="0.1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bow Keel Rise: <span id="val-bowKeelRise">0.5</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bowKeelRise" min="0" max="1.5" value="0.5" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bow Keel Length: <span id="val-bowKeelLength">10</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bowKeelLength" min="0" max="40" value="10" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bow Curve: <span id="val-bowCurve">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bowCurve" min="-1" max="1" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Stern Style</label>
+                                <select class="form-select form-select-sm gen-param" id="param-sternStyle">
+                                    <option value="round" selected>Round</option>
+                                    <option value="square">Square</option>
+                                    <option value="pointed">Pointed</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Stern Length: <span id="val-sternLength">6</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sternLength" min="2" max="30" value="6" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Stern Sharpness: <span id="val-sternSharpness">0.8</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sternSharpness" min="0.2" max="2" value="0.8" step="0.1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Stern Keel Rise: <span id="val-sternKeelRise">0.2</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sternKeelRise" min="0" max="1.5" value="0.2" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Stern Keel Length: <span id="val-sternKeelLength">6</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sternKeelLength" min="0" max="30" value="6" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Stern Overhang: <span id="val-sternOverhang">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-sternOverhang" min="0" max="1" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Keel Curve: <span id="val-keelCurve">1.7</span></label>
+                                <input type="range" class="form-range gen-param" id="param-keelCurve" min="0.7" max="3.5" value="1.7" step="0.1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Mid-Width Bias: <span id="val-midWidthBias">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-midWidthBias" min="0" max="1" value="0" step="0.05">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Castle Blend: <span id="val-castleBlend">4</span></label>
+                                <input type="range" class="form-range gen-param" id="param-castleBlend" min="2" max="12" value="4" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-hasRailings" checked>
+                                    <span class="form-check-label">Railings</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-hasTrim" checked>
+                                    <span class="form-check-label">Gunwale Trim</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-hasWindows" checked>
+                                    <span class="form-check-label">Stern Windows</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Castle Height: <span id="val-castleHeight">2</span></label>
+                                <input type="range" class="form-range gen-param" id="param-castleHeight" min="0" max="6" value="2" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Castle Length: <span id="val-castleLength">8</span></label>
+                                <input type="range" class="form-range gen-param" id="param-castleLength" min="0" max="30" value="8" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Forecastle Height: <span id="val-forecastleHeight">1</span></label>
+                                <input type="range" class="form-range gen-param" id="param-forecastleHeight" min="0" max="3" value="1" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Forecastle Length: <span id="val-forecastleLength">5</span></label>
+                                <input type="range" class="form-range gen-param" id="param-forecastleLength" min="0" max="20" value="5" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-hasGunPorts">
+                                    <span class="form-check-label">Gun Ports</span>
+                                </label>
+                            </div>
+                            <div class="mb-2" id="gunPortRowGroup" style="display:none;">
+                                <label class="form-label mb-0">Gun Port Row: <span id="val-gunPortRow">2</span></label>
+                                <input type="range" class="form-range gen-param" id="param-gunPortRow" min="1" max="6" value="2" step="1">
+                            </div>
+                            <div class="mb-2" id="gunPortSpacingGroup" style="display:none;">
+                                <label class="form-label mb-0">Gun Port Spacing: <span id="val-gunPortSpacing">4</span></label>
+                                <input type="range" class="form-range gen-param" id="param-gunPortSpacing" min="2" max="8" value="4" step="1">
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span id="gen-block-count" class="text-secondary">0 blocks</span>
+                            </div>
+                            <div class="gen-action-buttons">
+                                <a class="btn btn-sm btn-outline-secondary" id="gen-guide-btn" hx-boost="false" title="Step by step building guide" href="/generators/hull">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></svg>
+                                    Guide
+                                </a>
+                                <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                    Download .nbt
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <div class="gen-share-bar">
+                    <div class="gen-share-group">
+                        <span class="gen-share-label">3D view</span>
+                        <input type="text" id="gen-share-3d" readonly>
+                        <button class="gen-share-copy" data-target="gen-share-3d">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div class="gen-share-divider"></div>
+                    <div class="gen-share-group">
+                        <span class="gen-share-label">Guide</span>
+                        <input type="text" id="gen-share-guide" readonly>
+                        <button class="gen-share-copy" data-target="gen-share-guide">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="generator-ad-rail-sm d-none d-lg-block d-xl-none">
+                    <div id="gen-sticky-adrail-lg" class="mb-3"></div>
+                </div>
+                <div class="generator-ad-rail d-none d-xl-block">
+                    <div id="gen-video-nc" class="mb-3"></div>
+                    <div id="gen-sticky-adrail" class="mb-3"></div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<div id="gen-init-data" data-hash="{{ .InitHash }}" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
+<script hx-disable>
+(function(){
+  var PRESETS = {
+    sloop:    { woodType:'spruce', length:26, beam:8, depth:5, bottomPinch:0.3, hullFlare:0.15, flareCurve:2.6, tumblehome:0.12, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2, bowLength:7, bowSharpness:1.4, bowKeelRise:0.4, bowKeelLength:6, bowCurve:0, sternStyle:'round', sternLength:4, sternSharpness:0.7, sternKeelRise:0.15, sternKeelLength:5, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:5, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    schooner: { woodType:'spruce', length:38, beam:9, depth:6, bottomPinch:0.25, hullFlare:0.18, flareCurve:2.6, tumblehome:0.14, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:9, bowSharpness:1.3, bowKeelRise:0.5, bowKeelLength:9, bowCurve:0, sternStyle:'round', sternLength:5, sternSharpness:0.8, sternKeelRise:0.2, sternKeelLength:5, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:8, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    frigate:  { woodType:'dark_oak', length:56, beam:12, depth:7, bottomPinch:0.22, hullFlare:0.22, flareCurve:2.6, tumblehome:0.22, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:12, bowSharpness:1.3, bowKeelRise:0.6, bowKeelLength:12, bowCurve:0, sternStyle:'square', sternLength:7, sternSharpness:0.5, sternKeelRise:0.25, sternKeelLength:7, sternOverhang:0.2, keelCurve:1.7, midWidthBias:0, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:11, forecastleHeight:1, forecastleLength:6, hasGunPorts:true, gunPortRow:2, gunPortSpacing:4 },
+    galleon:  { woodType:'dark_oak', length:54, beam:16, depth:9, bottomPinch:0.3, hullFlare:0.35, flareCurve:2.6, tumblehome:0.28, tumbleCurve:3, sheerCurve:0.2, sheerCurveExp:2, bowLength:10, bowSharpness:1.1, bowKeelRise:0.6, bowKeelLength:11, bowCurve:0.3, sternStyle:'square', sternLength:6, sternSharpness:0.4, sternKeelRise:0.35, sternKeelLength:7, sternOverhang:0.4, keelCurve:1.7, midWidthBias:0.2, castleBlend:6, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:4, castleLength:14, forecastleHeight:2, forecastleLength:7, hasGunPorts:true, gunPortRow:3, gunPortSpacing:5 },
+    carrack:  { woodType:'oak', length:42, beam:14, depth:8, bottomPinch:0.3, hullFlare:0.25, flareCurve:2.6, tumblehome:0.18, tumbleCurve:3, sheerCurve:0.25, sheerCurveExp:2, bowLength:8, bowSharpness:1.0, bowKeelRise:0.9, bowKeelLength:10, bowCurve:0.2, sternStyle:'square', sternLength:7, sternSharpness:0.4, sternKeelRise:0.55, sternKeelLength:8, sternOverhang:0.3, keelCurve:1.7, midWidthBias:0.15, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:5, castleLength:12, forecastleHeight:3, forecastleLength:7, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    longship: { woodType:'oak', length:62, beam:10, depth:5, bottomPinch:0.35, hullFlare:0.08, flareCurve:2.6, tumblehome:0.08, tumbleCurve:3, sheerCurve:0.22, sheerCurveExp:2, bowLength:13, bowSharpness:1.5, bowKeelRise:1.0, bowKeelLength:14, bowCurve:-0.3, sternStyle:'pointed', sternLength:13, sternSharpness:1.5, sternKeelRise:1.0, sternKeelLength:14, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    clipper:  { woodType:'spruce', length:96, beam:12, depth:8, bottomPinch:0.2, hullFlare:0.2, flareCurve:2.6, tumblehome:0.24, tumbleCurve:3, sheerCurve:0.1, sheerCurveExp:2, bowLength:24, bowSharpness:1.6, bowKeelRise:0.4, bowKeelLength:20, bowCurve:-0.6, sternStyle:'round', sternLength:12, sternSharpness:1.0, sternKeelRise:0.2, sternKeelLength:11, sternOverhang:0, keelCurve:1.7, midWidthBias:0.3, castleBlend:6, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:14, forecastleHeight:1, forecastleLength:8, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    shipOfTheLine: { woodType:'dark_oak', length:82, beam:18, depth:11, bottomPinch:0.22, hullFlare:0.22, flareCurve:2.6, tumblehome:0.28, tumbleCurve:3, sheerCurve:0.12, sheerCurveExp:2, bowLength:14, bowSharpness:1.2, bowKeelRise:0.6, bowKeelLength:14, bowCurve:0, sternStyle:'square', sternLength:8, sternSharpness:0.4, sternKeelRise:0.3, sternKeelLength:9, sternOverhang:0.3, keelCurve:1.7, midWidthBias:0, castleBlend:6, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:3, castleLength:18, forecastleHeight:1, forecastleLength:10, hasGunPorts:true, gunPortRow:3, gunPortSpacing:4 },
+    cog:      { woodType:'oak', length:24, beam:12, depth:6, bottomPinch:0.4, hullFlare:0.25, flareCurve:2.6, tumblehome:0.12, tumbleCurve:3, sheerCurve:0.28, sheerCurveExp:2, bowLength:5, bowSharpness:0.9, bowKeelRise:0.75, bowKeelLength:6, bowCurve:0.4, sternStyle:'square', sternLength:5, sternSharpness:0.5, sternKeelRise:0.65, sternKeelLength:6, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:3, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:3, castleLength:7, forecastleHeight:2, forecastleLength:5, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    pinnace:  { woodType:'birch', length:20, beam:6, depth:4, bottomPinch:0.35, hullFlare:0.15, flareCurve:2.6, tumblehome:0.15, tumbleCurve:3, sheerCurve:0.12, sheerCurveExp:2, bowLength:5, bowSharpness:1.3, bowKeelRise:0.5, bowKeelLength:5, bowCurve:0, sternStyle:'square', sternLength:3, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:3, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    dhow:     { woodType:'acacia', length:34, beam:9, depth:5, bottomPinch:0.3, hullFlare:0.1, flareCurve:2.6, tumblehome:0.05, tumbleCurve:3, sheerCurve:0.18, sheerCurveExp:2, bowLength:10, bowSharpness:1.6, bowKeelRise:0.8, bowKeelLength:10, bowCurve:-0.4, sternStyle:'pointed', sternLength:6, sternSharpness:1.2, sternKeelRise:0.4, sternKeelLength:6, sternOverhang:0, keelCurve:1.7, midWidthBias:0.3, castleBlend:4, hasRailings:false, hasTrim:true, hasWindows:false, castleHeight:1, castleLength:6, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    junk:     { woodType:'jungle', length:36, beam:11, depth:5, bottomPinch:0.45, hullFlare:0.4, flareCurve:2.0, tumblehome:0.05, tumbleCurve:3, sheerCurve:0.2, sheerCurveExp:2, bowLength:6, bowSharpness:0.8, bowKeelRise:0.3, bowKeelLength:5, bowCurve:0.5, sternStyle:'square', sternLength:4, sternSharpness:0.4, sternKeelRise:0.2, sternKeelLength:4, sternOverhang:0.5, keelCurve:1.7, midWidthBias:0, castleBlend:3, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:10, forecastleHeight:1, forecastleLength:5, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    warGalley:{ woodType:'dark_oak', length:72, beam:10, depth:5, bottomPinch:0.25, hullFlare:0.1, flareCurve:2.6, tumblehome:0.1, tumbleCurve:3, sheerCurve:0.08, sheerCurveExp:2, bowLength:16, bowSharpness:1.8, bowKeelRise:0.3, bowKeelLength:14, bowCurve:-0.5, sternStyle:'round', sternLength:8, sternSharpness:1.0, sternKeelRise:0.3, sternKeelLength:8, sternOverhang:0, keelCurve:1.7, midWidthBias:0.2, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:1, castleLength:10, forecastleHeight:1, forecastleLength:6, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    flyingShip:{ woodType:'cherry', length:40, beam:14, depth:7, bottomPinch:0.45, hullFlare:0.35, flareCurve:2.2, tumblehome:0.3, tumbleCurve:2.5, sheerCurve:0.3, sheerCurveExp:2.5, bowLength:10, bowSharpness:1.0, bowKeelRise:1.2, bowKeelLength:12, bowCurve:0.6, sternStyle:'round', sternLength:8, sternSharpness:0.6, sternKeelRise:1.0, sternKeelLength:10, sternOverhang:0.6, keelCurve:2.0, midWidthBias:0, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:3, castleLength:12, forecastleHeight:2, forecastleLength:6, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    dragonShip:{ woodType:'crimson', length:50, beam:8, depth:6, bottomPinch:0.35, hullFlare:0.05, flareCurve:2.6, tumblehome:0.15, tumbleCurve:3, sheerCurve:0.35, sheerCurveExp:1.8, bowLength:14, bowSharpness:1.8, bowKeelRise:1.3, bowKeelLength:16, bowCurve:-0.7, sternStyle:'pointed', sternLength:12, sternSharpness:1.6, sternKeelRise:1.2, sternKeelLength:14, sternOverhang:0, keelCurve:2.2, midWidthBias:0, castleBlend:4, hasRailings:false, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
+    ark:      { woodType:'oak', length:70, beam:20, depth:10, bottomPinch:0.5, hullFlare:0.15, flareCurve:2.6, tumblehome:0.08, tumbleCurve:3, sheerCurve:0.05, sheerCurveExp:2, bowLength:8, bowSharpness:0.7, bowKeelRise:0.2, bowKeelLength:6, bowCurve:0.8, sternStyle:'square', sternLength:6, sternSharpness:0.4, sternKeelRise:0.2, sternKeelLength:5, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:16, forecastleHeight:1, forecastleLength:8, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 }
+  };
+
+  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing'];
+  var CHECK_PARAMS = ['hasRailings','hasTrim','hasWindows','hasGunPorts'];
+  var SELECT_PARAMS = ['sternStyle','woodType'];
+
+  function updateGunPortVisibility() {
+    var checked = document.getElementById('param-hasGunPorts').checked;
+    document.getElementById('gunPortRowGroup').style.display = checked ? '' : 'none';
+    document.getElementById('gunPortSpacingGroup').style.display = checked ? '' : 'none';
+  }
+
+  function getParams() {
+    var p = {};
+    RANGE_PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      p[k] = el.step && el.step.indexOf('.') >= 0 ? parseFloat(el.value) : parseInt(el.value);
+    });
+    CHECK_PARAMS.forEach(function(k) {
+      p[k] = document.getElementById('param-' + k).checked;
+    });
+    SELECT_PARAMS.forEach(function(k) {
+      p[k] = document.getElementById('param-' + k).value;
+    });
+    return p;
+  }
+
+  function setParams(p) {
+    RANGE_PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) {
+        el.value = p[k];
+        var lbl = document.getElementById('val-' + k);
+        if (lbl) lbl.textContent = p[k];
+      }
+    });
+    CHECK_PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) el.checked = p[k];
+    });
+    SELECT_PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) el.value = p[k];
+    });
+    updateGunPortVisibility();
+  }
+
+  function updateLabels() {
+    RANGE_PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      var lbl = document.getElementById('val-' + k);
+      if (el && lbl) lbl.textContent = el.value;
+    });
+  }
+
+  function updateShareURLs() {
+    var p = getParams();
+    GeneratorApp.updateHash('h', p);
+    var el3d = document.getElementById('gen-share-3d');
+    var elGuide = document.getElementById('gen-share-guide');
+    var guideBtn = document.getElementById('gen-guide-btn');
+    var guideUrl = GeneratorApp.getShareURL('h', p, 'guide');
+    if (el3d) el3d.value = GeneratorApp.getShareURL('h', p);
+    if (elGuide) elGuide.value = guideUrl;
+    if (guideBtn) guideBtn.href = guideUrl;
+  }
+
+  function refresh() {
+    updateLabels();
+    updateGunPortVisibility();
+    updateShareURLs();
+    GeneratorApp.generate('/api/generators/hull', getParams());
+  }
+
+  function init() {
+    if (!GeneratorApp.initScene('generator-viewport')) {
+      setTimeout(init, 100);
+      return;
+    }
+
+    var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'hull');
+
+    document.querySelectorAll('.gen-param').forEach(function(el) {
+      el.addEventListener('input', refresh);
+    });
+
+    document.querySelectorAll('.gen-preset').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var p = PRESETS[this.getAttribute('data-preset')];
+        if (p) { setParams(p); refresh(); }
+      });
+    });
+
+    document.getElementById('gen-download-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      GeneratorApp.downloadNBT('/api/generators/hull/download', getParams());
+    });
+
+    document.querySelectorAll('.gen-share-copy').forEach(function(btn) {
+      var textNode = btn.lastChild;
+      var originalText = textNode.textContent;
+      btn.addEventListener('click', function() {
+        var target = document.getElementById(this.getAttribute('data-target'));
+        if (!target) return;
+        target.select();
+        navigator.clipboard.writeText(target.value).then(function() {
+          textNode.textContent = ' Copied!';
+          btn.classList.add('copied');
+          setTimeout(function() { textNode.textContent = originalText; btn.classList.remove('copied'); }, 2000);
+        });
+      });
+    });
+
+    refresh();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Ads
+  window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
+  window['nitroAds'].createAd('gen-video-nc', {
+    "format": "video-nc",
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  window['nitroAds'].createAd('gen-sticky-adrail-lg', {
+    "refreshLimit": 10,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  var videoNcEl = document.getElementById('gen-video-nc');
+  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
+  var stickyStackTop = 110 + 200 + 16;
+  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
+    var updateOffset = function () {
+      var h = videoNcEl.getBoundingClientRect().height;
+      if (h > 0) adRailEl.style.setProperty('--video-nc-height', h + 'px');
+    };
+    new ResizeObserver(updateOffset).observe(videoNcEl);
+    updateOffset();
+  }
+  window['nitroAds'].createAd('gen-sticky-adrail', {
+    "refreshVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": stickyStackTop,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+})();
+</script>
+{{template "foot.html" .}}

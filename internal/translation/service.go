@@ -393,6 +393,7 @@ func (s *Service) TranslateAndSaveComment(commentID, targetLang, content string)
 }
 
 // TranslateComment generates all missing language translations for a single comment.
+// It detects the source language and translates to all other languages (including English).
 func (s *Service) TranslateComment(commentID string) {
 	if s.openaiClient == nil || !s.openaiClient.HasApiKey() {
 		return
@@ -406,8 +407,13 @@ func (s *Service) TranslateComment(commentID string) {
 
 	content := c.Content
 
+	detectedLang, err := s.openaiClient.DetectLanguage(content)
+	if err != nil {
+		detectedLang = "en"
+	}
+
 	for _, lang := range SupportedLanguages {
-		if lang == "en" {
+		if lang == detectedLang {
 			continue
 		}
 		err := s.TranslateAndSaveComment(commentID, lang, content)
@@ -431,9 +437,6 @@ func (s *Service) BackfillCommentTranslations() {
 	seen := make(map[string]bool)
 
 	for _, lang := range SupportedLanguages {
-		if lang == "en" {
-			continue
-		}
 		if processed >= maxComments {
 			break
 		}

@@ -198,6 +198,55 @@
                   </div>
                 </div>
               </div>
+              {{if .ModerationLog}}
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">{{ T .Language "Moderation Log" }}</h3></div>
+                <div class="table-responsive">
+                  <table class="table table-vcenter card-table table-sm">
+                    <thead>
+                      <tr>
+                        <th>{{ T .Language "Time" }}</th>
+                        <th>{{ T .Language "Actor" }}</th>
+                        <th>{{ T .Language "Action" }}</th>
+                        <th>{{ T .Language "State Change" }}</th>
+                        <th>{{ T .Language "Reason" }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{range .ModerationLog}}
+                      <tr>
+                        <td class="text-nowrap" style="font-size:0.8rem;">{{ HumanDate .CreatedAt }}</td>
+                        <td>
+                          {{if eq .ActorType "system"}}
+                            <span class="badge bg-cyan-lt">system</span>
+                          {{else if eq .ActorType "admin"}}
+                            <span class="badge bg-purple-lt">admin</span>
+                            {{if .ActorUsername}}<span class="text-secondary ms-1" style="font-size:0.8rem;">{{.ActorUsername}}</span>{{end}}
+                          {{else}}
+                            <span class="badge bg-blue-lt">user</span>
+                            {{if .ActorUsername}}<span class="text-secondary ms-1" style="font-size:0.8rem;">{{.ActorUsername}}</span>{{end}}
+                          {{end}}
+                        </td>
+                        <td>
+                          {{if eq .Action "upload"}}
+                            <span class="badge bg-green-lt">upload</span>
+                          {{else if eq .Action "soft_delete"}}
+                            <span class="badge bg-red-lt">delete</span>
+                          {{else}}
+                            <span class="badge bg-yellow-lt">state change</span>
+                          {{end}}
+                        </td>
+                        <td style="font-size:0.8rem;">
+                          {{if .OldState}}<code>{{.OldState}}</code> &rarr; {{end}}<code>{{.NewState}}</code>
+                        </td>
+                        <td style="font-size:0.8rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{.Reason}}">{{.Reason}}</td>
+                      </tr>
+                      {{end}}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {{end}}
               <div class="card mb-3 border-danger">
                 <div class="card-header bg-danger-lt"><h3 class="card-title">{{ T .Language "Danger Zone" }}</h3></div>
                 <div class="card-body">

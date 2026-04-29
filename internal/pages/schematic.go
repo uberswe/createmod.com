@@ -914,7 +914,7 @@ func findSchematicCommentsFromStore(appStore *store.Store, schematicID string, t
 	}
 
 	// Apply translations if viewer's language differs from English and not showing original
-	if translationSvc != nil && cacheService != nil && targetLang != "" && targetLang != "en" && !showOriginal {
+	if translationSvc != nil && cacheService != nil && targetLang != "" && !showOriginal {
 		transSanitizer := htmlsanitizer.NewHTMLSanitizer()
 		for i := range comments {
 			ct := translationSvc.GetCommentTranslation(cacheService, comments[i].ID, targetLang)

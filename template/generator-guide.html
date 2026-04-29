@@ -1,0 +1,184 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-xl">
+                <nav class="gen-nav gen-nav-inline">
+                    <a href="/generators/propeller" class="gen-nav-btn{{ if eq .GeneratorType "propeller" }} active{{ end }}">Propeller</a>
+                    <a href="/generators/balloon" class="gen-nav-btn{{ if eq .GeneratorType "balloon" }} active{{ end }}">Balloon</a>
+                    <a href="/generators/hull" class="gen-nav-btn{{ if eq .GeneratorType "hull" }} active{{ end }}">Ship Hull</a>
+                </nav>
+                <div class="guide-page-layout">
+                    <div class="guide-page-main">
+                        <div class="guide-page">
+                            <div class="guide-page-header">
+                                <div>
+                                    <h2 class="guide-page-title" id="guide-title">Building Guide</h2>
+                                    <p class="guide-page-subtitle text-secondary" id="guide-subtitle">Loading...</p>
+                                </div>
+                                <a id="guide-back-link" class="btn btn-outline-secondary" href="/generators/{{ .GeneratorType }}{{ if .InitHash }}/{{ .InitHash }}{{ end }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19 12h-14"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+                                    Back to 3D view
+                                </a>
+                            </div>
+                            <div class="guide-page-nav" id="guide-nav">
+                                <button class="btn btn-outline-secondary" id="guide-prev" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg>
+                                    Previous
+                                </button>
+                                <span class="guide-step-info" id="guide-step-info">Layer 1 of 1</span>
+                                <button class="btn btn-outline-secondary" id="guide-next">
+                                    Next
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>
+                                </button>
+                            </div>
+                            <div class="guide-page-slider" id="guide-slider-wrap">
+                                <input type="range" class="form-range" id="guide-slider" min="0" max="0" value="0" step="1">
+                            </div>
+                            <div class="guide-page-canvas-wrap" id="guide-canvas-wrap">
+                                <canvas id="guide-canvas" class="guide-canvas"></canvas>
+                            </div>
+                            <div class="guide-materials-widget" id="guide-materials-widget">
+                                <div class="guide-materials-header">
+                                    <h4 class="guide-materials-title">Materials</h4>
+                                    <span class="guide-materials-count" id="guide-block-count"></span>
+                                </div>
+                                <div class="guide-page-legend" id="guide-legend"></div>
+                            </div>
+                        </div>
+                        <div class="guide-share-bar" id="guide-share-bar">
+                            <div class="gen-share-group">
+                                <span class="gen-share-label">Share this guide</span>
+                                <input type="text" id="guide-share-url" readonly>
+                                <button class="gen-share-copy" id="guide-copy-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="guide-ad-rail d-none d-xl-block">
+                        <div id="guide-video-nc" class="mb-3"></div>
+                        <div id="guide-sticky-adrail" class="mb-3"></div>
+                    </div>
+                    <div class="guide-ad-rail-sm d-none d-lg-block d-xl-none">
+                        <div id="guide-sticky-adrail-lg" class="mb-3"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<div id="gen-init-data" data-hash="{{ .InitHash }}" data-type="{{ .GeneratorType }}" hidden></div>
+<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
+<script hx-disable>
+(function(){
+  var initEl = document.getElementById('gen-init-data');
+  var hash = initEl ? initEl.dataset.hash : '';
+  var genType = initEl ? initEl.dataset.type : '';
+
+  var apiUrl = '/api/generators/' + genType;
+  var guideMode = genType === 'propeller' ? 'radial' : 'layer';
+
+  var compact = '';
+  if (hash) {
+    try { compact = GeneratorApp.fromBase64Url(hash); } catch(e) {}
+  }
+  var decoded = GeneratorApp.decodeCompact(compact);
+  var params = decoded.params;
+
+  if (!params || Object.keys(params).length === 0) {
+    document.getElementById('guide-subtitle').textContent = 'No parameters specified. Use a generator to create a design, then open the guide.';
+    return;
+  }
+
+  document.getElementById('guide-subtitle').textContent = 'Generating...';
+
+  fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  })
+  .then(function(r) {
+    if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+    return r.json();
+  })
+  .then(function(data) {
+    if (!data || !data.blocks || data.blocks.length === 0) {
+      document.getElementById('guide-subtitle').textContent = 'No blocks generated.';
+      return;
+    }
+    GeneratorGuide.renderPage(data, guideMode);
+  })
+  .catch(function(err) {
+    console.error('Guide generation error:', err);
+    document.getElementById('guide-subtitle').textContent = 'Failed to generate. Please go back and try again.';
+  });
+
+  var shareInput = document.getElementById('guide-share-url');
+  if (shareInput) {
+    shareInput.value = window.location.href;
+  }
+  var copyBtn = document.getElementById('guide-copy-btn');
+  if (copyBtn) {
+    var textNode = copyBtn.lastChild;
+    var originalText = textNode.textContent;
+    copyBtn.addEventListener('click', function() {
+      var target = document.getElementById('guide-share-url');
+      if (!target) return;
+      target.select();
+      navigator.clipboard.writeText(target.value).then(function() {
+        textNode.textContent = ' Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(function() { textNode.textContent = originalText; copyBtn.classList.remove('copied'); }, 2000);
+      });
+    });
+  }
+
+  window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
+  window['nitroAds'].createAd('guide-video-nc', {
+    "format": "video-nc",
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  window['nitroAds'].createAd('guide-sticky-adrail-lg', {
+    "refreshLimit": 10,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  var guideVideoEl = document.getElementById('guide-video-nc');
+  var guideAdRail = guideVideoEl && guideVideoEl.closest('.guide-ad-rail');
+  var guideStickyTop = 110 + 200 + 16;
+  if (guideVideoEl && guideAdRail && typeof ResizeObserver !== 'undefined') {
+    var updateGuideOffset = function () {
+      var h = guideVideoEl.getBoundingClientRect().height;
+      if (h > 0) guideAdRail.style.setProperty('--video-nc-height', h + 'px');
+    };
+    new ResizeObserver(updateGuideOffset).observe(guideVideoEl);
+    updateGuideOffset();
+  }
+  window['nitroAds'].createAd('guide-sticky-adrail', {
+    "refreshVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": guideStickyTop,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+})();
+</script>
+{{template "foot.html" .}}

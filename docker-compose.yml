@@ -1,8 +1,8 @@
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: createmod
       POSTGRES_USER: createmod
