@@ -1,0 +1,416 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body" style="padding:0;">
+            <div style="position:relative;min-height:calc(100vh - 60px);">
+                <div id="generator-viewport" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>
+                <nav class="gen-nav">
+                    <a href="/generators/propeller" class="gen-nav-btn">Propeller</a>
+                    <a href="/generators/balloon" class="gen-nav-btn active">Balloon</a>
+                    <a href="/generators/hull" class="gen-nav-btn">Ship Hull</a>
+                </nav>
+                <div class="generator-overlay">
+                        <div class="generator-overlay-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            <h3 class="mb-0">Airship Balloon Generator</h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon generator-overlay-chevron" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+                        </div>
+                        <div class="generator-overlay-body">
+                            <div class="mb-2">
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="roundBlimp">Round Blimp</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="fatBalloon">Fat Balloon</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="sphere">Sphere</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="hotAirBalloon">Hot Air</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="tube">Tube</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="zeppelin">Zeppelin</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="warZeppelin">War Zeppelin</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="torpedo">Torpedo</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="skyWhale">Sky Whale</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="fantasy">Sky Galleon</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="dirigible">Dirigible</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="flyingFish">Flying Fish</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="egg">Egg</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="cigar">Cigar</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="teardrop">Teardrop</button>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Length (X): <span id="val-lengthX">36</span></label>
+                                <input type="range" class="form-range gen-param" id="param-lengthX" min="6" max="120" value="36" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Width (Z): <span id="val-widthZ">18</span></label>
+                                <input type="range" class="form-range gen-param" id="param-widthZ" min="4" max="60" value="18" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Height (Y): <span id="val-heightY">16</span></label>
+                                <input type="range" class="form-range gen-param" id="param-heightY" min="4" max="60" value="16" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Cylinder Middle: <span id="val-cylinderMid">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-cylinderMid" min="0" max="0.85" value="0" step="0.01">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Front Taper: <span id="val-frontTaper">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-frontTaper" min="0" max="1" value="0" step="0.01">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Rear Taper: <span id="val-rearTaper">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-rearTaper" min="0" max="1" value="0" step="0.01">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Top Flatten: <span id="val-topFlatten">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-topFlatten" min="0" max="0.5" value="0" step="0.01">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Bottom Flatten: <span id="val-bottomFlatten">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-bottomFlatten" min="0" max="0.5" value="0" step="0.01">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-hollow" checked>
+                                    <span class="form-check-label">Hollow</span>
+                                </label>
+                            </div>
+                            <div class="mb-2" id="shell-group">
+                                <label class="form-label mb-0">Shell Thickness: <span id="val-shell">1</span></label>
+                                <input type="range" class="form-range gen-param" id="param-shell" min="1" max="5" value="1" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-ribEnabled">
+                                    <span class="form-check-label">Ribs</span>
+                                </label>
+                            </div>
+                            <div class="mb-2" id="ribSpacing-group">
+                                <label class="form-label mb-0">Rib Spacing: <span id="val-ribSpacing">4</span></label>
+                                <input type="range" class="form-range gen-param" id="param-ribSpacing" min="2" max="12" value="4" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-keelEnabled">
+                                    <span class="form-check-label">Keel</span>
+                                </label>
+                            </div>
+                            <div class="mb-2" id="keelDepth-group">
+                                <label class="form-label mb-0">Keel Depth: <span id="val-keelDepth">1</span></label>
+                                <input type="range" class="form-range gen-param" id="param-keelDepth" min="1" max="5" value="1" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-finEnabled">
+                                    <span class="form-check-label">Tail Fins</span>
+                                </label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input gen-param" type="checkbox" id="param-sideFinEnabled">
+                                    <span class="form-check-label">Side Fins</span>
+                                </label>
+                            </div>
+                            <div class="mb-2" id="finHeight-group">
+                                <label class="form-label mb-0">Fin Height: <span id="val-finHeight">4</span></label>
+                                <input type="range" class="form-range gen-param" id="param-finHeight" min="2" max="15" value="4" step="1">
+                            </div>
+                            <div class="mb-2" id="finLength-group">
+                                <label class="form-label mb-0">Fin Length: <span id="val-finLength">5</span></label>
+                                <input type="range" class="form-range gen-param" id="param-finLength" min="3" max="20" value="5" step="1">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Envelope Material</label>
+                                <select class="form-select form-select-sm gen-param" id="param-envelopeMaterial">
+                                    <option value="wool" selected>Wool</option>
+                                    <option value="envelope">Aeronautics Envelope</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Envelope Color</label>
+                                <select class="form-select form-select-sm gen-param" id="param-envelopeColor">
+                                    <option value="white" selected>White</option>
+                                    <option value="orange">Orange</option>
+                                    <option value="magenta">Magenta</option>
+                                    <option value="light_blue">Light Blue</option>
+                                    <option value="yellow">Yellow</option>
+                                    <option value="lime">Lime</option>
+                                    <option value="pink">Pink</option>
+                                    <option value="gray">Gray</option>
+                                    <option value="light_gray">Light Gray</option>
+                                    <option value="cyan">Cyan</option>
+                                    <option value="purple">Purple</option>
+                                    <option value="blue">Blue</option>
+                                    <option value="brown">Brown</option>
+                                    <option value="green">Green</option>
+                                    <option value="red">Red</option>
+                                    <option value="black">Black</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Frame Material</label>
+                                <select class="form-select form-select-sm gen-param" id="param-frameMaterial">
+                                    <option value="wood" selected>Wood</option>
+                                    <option value="andesite_casing">Andesite Casing</option>
+                                </select>
+                            </div>
+                            <div class="mb-2" id="frameWoodType-group">
+                                <label class="form-label mb-0">Frame Wood Type</label>
+                                <select class="form-select form-select-sm gen-param" id="param-frameWoodType">
+                                    <option value="oak">Oak</option>
+                                    <option value="spruce" selected>Spruce</option>
+                                    <option value="birch">Birch</option>
+                                    <option value="dark_oak">Dark Oak</option>
+                                    <option value="jungle">Jungle</option>
+                                    <option value="acacia">Acacia</option>
+                                    <option value="cherry">Cherry</option>
+                                    <option value="crimson">Crimson</option>
+                                    <option value="warped">Warped</option>
+                                </select>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span id="gen-block-count" class="text-secondary">0 blocks</span>
+                            </div>
+                            <div class="gen-action-buttons">
+                                <a class="btn btn-sm btn-outline-secondary" id="gen-guide-btn" hx-boost="false" title="Step by step building guide" href="/generators/balloon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></svg>
+                                    Guide
+                                </a>
+                                <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                    Download .nbt
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <div class="gen-share-bar">
+                    <div class="gen-share-group">
+                        <span class="gen-share-label">3D view</span>
+                        <input type="text" id="gen-share-3d" readonly>
+                        <button class="gen-share-copy" data-target="gen-share-3d">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div class="gen-share-divider"></div>
+                    <div class="gen-share-group">
+                        <span class="gen-share-label">Guide</span>
+                        <input type="text" id="gen-share-guide" readonly>
+                        <button class="gen-share-copy" data-target="gen-share-guide">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="generator-ad-rail-sm d-none d-lg-block d-xl-none">
+                    <div id="gen-sticky-adrail-lg" class="mb-3"></div>
+                </div>
+                <div class="generator-ad-rail d-none d-xl-block">
+                    <div id="gen-video-nc" class="mb-3"></div>
+                    <div id="gen-sticky-adrail" class="mb-3"></div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<div id="gen-init-data" data-hash="{{ .InitHash }}" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
+<script hx-disable>
+(function(){
+  var PRESETS = {
+    roundBlimp:     { lengthX:36, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    fatBalloon:     { lengthX:22, widthZ:22, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.08, bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    sphere:         { lengthX:18, widthZ:18, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    hotAirBalloon:  { lengthX:16, widthZ:16, heightY:24, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.15, bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'red', frameMaterial:'wood', frameWoodType:'dark_oak' },
+    tube:           { lengthX:50, widthZ:14, heightY:14, cylinderMid:0.6,  frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:6, envelopeMaterial:'envelope', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    zeppelin:       { lengthX:60, widthZ:14, heightY:14, cylinderMid:0,    frontTaper:0.4,  rearTaper:0.6,  topFlatten:0.05, bottomFlatten:0.1,  hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:5, finLength:8, envelopeMaterial:'envelope', envelopeColor:'light_gray', frameMaterial:'wood', frameWoodType:'spruce' },
+    warZeppelin:    { lengthX:80, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0.5,  rearTaper:0.7,  topFlatten:0.08, bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:true,  keelDepth:2, finEnabled:true, sideFinEnabled:false, finHeight:7, finLength:12, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    torpedo:        { lengthX:50, widthZ:10, heightY:10, cylinderMid:0,    frontTaper:0.7,  rearTaper:0.8,  topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    skyWhale:       { lengthX:50, widthZ:20, heightY:18, cylinderMid:0.2,  frontTaper:0.4,  rearTaper:0.2,  topFlatten:0.1,  bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:6, finLength:10, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'dark_oak' },
+    fantasy:        { lengthX:35, widthZ:18, heightY:22, cylinderMid:0,    frontTaper:0.1,  rearTaper:0.1,  topFlatten:0.2,  bottomFlatten:0.05, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'purple', frameMaterial:'wood', frameWoodType:'dark_oak' },
+    dirigible:      { lengthX:90, widthZ:16, heightY:18, cylinderMid:0.5,  frontTaper:0.3,  rearTaper:0.5,  topFlatten:0.05, bottomFlatten:0.08, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:true,  keelDepth:2, finEnabled:true, sideFinEnabled:true, finHeight:6, finLength:10, envelopeMaterial:'envelope', envelopeColor:'light_gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    flyingFish:     { lengthX:40, widthZ:12, heightY:10, cylinderMid:0.1,  frontTaper:0.6,  rearTaper:0.3,  topFlatten:0.15, bottomFlatten:0.3,  hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:true, finHeight:5, finLength:8, envelopeMaterial:'wool', envelopeColor:'light_blue', frameMaterial:'wood', frameWoodType:'birch' },
+    egg:            { lengthX:14, widthZ:12, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.1,  bottomFlatten:0.05, hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'birch' },
+    cigar:          { lengthX:70, widthZ:10, heightY:10, cylinderMid:0.65, frontTaper:0.2,  rearTaper:0.2,  topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:6, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    teardrop:       { lengthX:30, widthZ:16, heightY:20, cylinderMid:0,    frontTaper:0,    rearTaper:0.8,  topFlatten:0,    bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, keelEnabled:true,  keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'red', frameMaterial:'wood', frameWoodType:'dark_oak' }
+  };
+
+  var PARAMS = ['lengthX','widthZ','heightY','cylinderMid','frontTaper','rearTaper','topFlatten','bottomFlatten','shell','ribSpacing','keelDepth','finHeight','finLength'];
+  var CHECKS = ['hollow','ribEnabled','keelEnabled','finEnabled','sideFinEnabled'];
+  var SELECTS = ['envelopeMaterial','envelopeColor','frameMaterial','frameWoodType'];
+
+  function getParams() {
+    var p = {};
+    PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      p[k] = el.step && el.step.indexOf('.') >= 0 ? parseFloat(el.value) : parseInt(el.value);
+    });
+    CHECKS.forEach(function(k) {
+      p[k] = document.getElementById('param-' + k).checked;
+    });
+    SELECTS.forEach(function(k) {
+      p[k] = document.getElementById('param-' + k).value;
+    });
+    return p;
+  }
+
+  function setParams(p) {
+    PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) {
+        el.value = p[k];
+        var lbl = document.getElementById('val-' + k);
+        if (lbl) lbl.textContent = p[k];
+      }
+    });
+    CHECKS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) el.checked = p[k];
+    });
+    SELECTS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      if (el && p[k] !== undefined) el.value = p[k];
+    });
+    updateVisibility();
+  }
+
+  function updateLabels() {
+    PARAMS.forEach(function(k) {
+      var el = document.getElementById('param-' + k);
+      var lbl = document.getElementById('val-' + k);
+      if (el && lbl) lbl.textContent = el.value;
+    });
+  }
+
+  function updateVisibility() {
+    var hollow = document.getElementById('param-hollow').checked;
+    var ribs = document.getElementById('param-ribEnabled').checked;
+    var keel = document.getElementById('param-keelEnabled').checked;
+    var fins = document.getElementById('param-finEnabled').checked;
+    var sideFins = document.getElementById('param-sideFinEnabled').checked;
+    var anyFins = fins || sideFins;
+    var frameMat = document.getElementById('param-frameMaterial').value;
+    document.getElementById('shell-group').style.display = hollow ? '' : 'none';
+    document.getElementById('ribSpacing-group').style.display = ribs ? '' : 'none';
+    document.getElementById('keelDepth-group').style.display = keel ? '' : 'none';
+    document.getElementById('finHeight-group').style.display = anyFins ? '' : 'none';
+    document.getElementById('finLength-group').style.display = anyFins ? '' : 'none';
+    document.getElementById('frameWoodType-group').style.display = frameMat === 'wood' ? '' : 'none';
+  }
+
+  function updateShareURLs() {
+    var p = getParams();
+    GeneratorApp.updateHash('b', p);
+    var el3d = document.getElementById('gen-share-3d');
+    var elGuide = document.getElementById('gen-share-guide');
+    var guideBtn = document.getElementById('gen-guide-btn');
+    var guideUrl = GeneratorApp.getShareURL('b', p, 'guide');
+    if (el3d) el3d.value = GeneratorApp.getShareURL('b', p);
+    if (elGuide) elGuide.value = guideUrl;
+    if (guideBtn) guideBtn.href = guideUrl;
+  }
+
+  function refresh() {
+    updateLabels();
+    updateVisibility();
+    updateShareURLs();
+    GeneratorApp.generate('/api/generators/balloon', getParams());
+  }
+
+  function init() {
+    if (!GeneratorApp.initScene('generator-viewport')) {
+      setTimeout(init, 100);
+      return;
+    }
+
+    var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'balloon');
+
+    document.querySelectorAll('.gen-param').forEach(function(el) {
+      el.addEventListener('input', refresh);
+    });
+
+    document.querySelectorAll('.gen-preset').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var p = PRESETS[this.getAttribute('data-preset')];
+        if (p) { setParams(p); refresh(); }
+      });
+    });
+
+    document.getElementById('gen-download-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      GeneratorApp.downloadNBT('/api/generators/balloon/download', getParams());
+    });
+
+    document.querySelectorAll('.gen-share-copy').forEach(function(btn) {
+      var textNode = btn.lastChild;
+      var originalText = textNode.textContent;
+      btn.addEventListener('click', function() {
+        var target = document.getElementById(this.getAttribute('data-target'));
+        if (!target) return;
+        target.select();
+        navigator.clipboard.writeText(target.value).then(function() {
+          textNode.textContent = ' Copied!';
+          btn.classList.add('copied');
+          setTimeout(function() { textNode.textContent = originalText; btn.classList.remove('copied'); }, 2000);
+        });
+      });
+    });
+
+    updateVisibility();
+    refresh();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Ads
+  window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
+  window['nitroAds'].createAd('gen-video-nc', {
+    "format": "video-nc",
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  window['nitroAds'].createAd('gen-sticky-adrail-lg', {
+    "refreshLimit": 10,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  var videoNcEl = document.getElementById('gen-video-nc');
+  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
+  var stickyStackTop = 110 + 200 + 16;
+  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
+    var updateOffset = function () {
+      var h = videoNcEl.getBoundingClientRect().height;
+      if (h > 0) adRailEl.style.setProperty('--video-nc-height', h + 'px');
+    };
+    new ResizeObserver(updateOffset).observe(videoNcEl);
+    updateOffset();
+  }
+  window['nitroAds'].createAd('gen-sticky-adrail', {
+    "refreshVisibleOnly": true,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": stickyStackTop,
+    "stickyStackResizable": false,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+})();
+</script>
+{{template "foot.html" .}}

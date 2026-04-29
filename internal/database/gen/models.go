@@ -187,6 +187,18 @@ type ModMetadatum struct {
 	BlocksitemsMatched bool               `json:"blocksitems_matched"`
 }
 
+type ModerationLog struct {
+	ID          string    `json:"id"`
+	SchematicID string    `json:"schematic_id"`
+	ActorID     string    `json:"actor_id"`
+	ActorType   string    `json:"actor_type"`
+	Action      string    `json:"action"`
+	OldState    string    `json:"old_state"`
+	NewState    string    `json:"new_state"`
+	Reason      string    `json:"reason"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type ModerationMessage struct {
 	ID          string    `json:"id"`
 	ThreadID    string    `json:"thread_id"`

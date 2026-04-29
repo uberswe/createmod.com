@@ -11,6 +11,27 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.9.1",
-    "@playwright/test": "^1.48.0"
-  }
+    "@playwright/test": "^1.59.1"
+  },
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "axe-core": "^4.11.1",
+    "playwright": "^1.59.1",
+    "playwright-core": "^1.59.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uberswe/createmod.com.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/uberswe/createmod.com/issues"
+  },
+  "homepage": "https://github.com/uberswe/createmod.com#readme"
 }
