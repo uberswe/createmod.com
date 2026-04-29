@@ -129,6 +129,20 @@ function el(tag, cls, text) {
   return e;
 }
 
+function createLoader(parent) {
+  var overlay = el('div', 'guide-loader');
+  var spinner = el('div', 'guide-loader-spinner');
+  var text = el('div', 'guide-loader-text', 'Preparing layers...');
+  overlay.appendChild(spinner);
+  overlay.appendChild(text);
+  parent.appendChild(overlay);
+  return {
+    show: function(msg) { if (msg) text.textContent = msg; overlay.style.display = ''; },
+    hide: function() { overlay.style.display = 'none'; },
+    remove: function() { if (overlay.parentElement) overlay.parentElement.removeChild(overlay); }
+  };
+}
+
 function addDragToScroll(scrollContainer, canvas) {
   var dragging = false;
   var startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
@@ -345,8 +359,12 @@ function createModal() {
   zoomControls.appendChild(zoomOutBtn);
   zoomControls.appendChild(zoomLevelSpan);
   zoomControls.appendChild(zoomInBtn);
+  var ghostBtn = el('button', 'btn btn-sm btn-outline-secondary guide-ghost-toggle active');
+  ghostBtn.textContent = 'Ghost';
+  ghostBtn.title = 'Toggle previous layers';
   var nextBtn = el('button', 'btn btn-sm btn-outline-secondary guide-next');
   nextBtn.textContent = 'Next →';
+  navRight.appendChild(ghostBtn);
   navRight.appendChild(zoomControls);
   navRight.appendChild(nextBtn);
   nav.appendChild(prevBtn);
@@ -396,6 +414,7 @@ function createModal() {
     closeBtn: closeBtn,
     prevBtn: prevBtn,
     nextBtn: nextBtn,
+    ghostBtn: ghostBtn,
     info: infoSpan,
     slider: sliderInput,
     canvas: canvas,
@@ -449,8 +468,11 @@ function openGuide(data, mode) {
   }
 
   var ui = createModal();
+  var modalLoader = createLoader(ui.canvas.parentElement);
+  modalLoader.show('Preparing ' + data.blocks.length.toLocaleString() + ' blocks...');
   var currentStep = 0;
   var zoomLevel = 1.0;
+  var showGhost = true;
 
   if (mode === 'radial') {
     ui.title.textContent = 'Center to Tip Guide';
@@ -480,8 +502,10 @@ function openGuide(data, mode) {
     var step = steps[currentStep];
     var blocks = step.blocks;
     var prevBlocks = [];
-    for (var si = 0; si < currentStep; si++) {
-      prevBlocks = prevBlocks.concat(steps[si].blocks);
+    if (showGhost) {
+      for (var si = 0; si < currentStep; si++) {
+        prevBlocks = prevBlocks.concat(steps[si].blocks);
+      }
     }
 
     if (mode === 'radial') {
@@ -574,6 +598,11 @@ function openGuide(data, mode) {
 
   ui.zoomInBtn.addEventListener('click', function() { setZoom(zoomLevel * 1.25); });
   ui.zoomOutBtn.addEventListener('click', function() { setZoom(zoomLevel / 1.25); });
+  ui.ghostBtn.addEventListener('click', function() {
+    showGhost = !showGhost;
+    ui.ghostBtn.classList.toggle('active', showGhost);
+    renderStep();
+  });
 
   ui.canvas.addEventListener('wheel', function(e) {
     e.preventDefault();
@@ -628,16 +657,24 @@ function openGuide(data, mode) {
   requestAnimationFrame(function() {
     ui.modal.classList.add('open');
     renderStep();
+    modalLoader.remove();
   });
 }
 
 function renderPage(data, mode) {
   if (!data || !data.blocks || data.blocks.length === 0) return;
 
+  var canvasWrapEl = document.getElementById('guide-canvas-wrap');
+  var loader = canvasWrapEl ? createLoader(canvasWrapEl) : null;
+  if (loader) loader.show('Preparing ' + data.blocks.length.toLocaleString() + ' blocks...');
+
+  setTimeout(function() { renderPageInner(data, mode, loader); }, 0);
+}
+
+function renderPageInner(data, mode, loader) {
   _colorMap = data.colorMap || null;
   var materials = data.materials || {};
 
-  // Determine if we should swap X and Z so longest axis is vertical
   var extX = data.sizeX || 0, extZ = data.sizeZ || 0;
   var swapAxes = extX > extZ;
   if (swapAxes) {
@@ -661,7 +698,7 @@ function renderPage(data, mode) {
     steps = buildLayers(data);
   }
 
-  if (steps.length === 0) return;
+  if (steps.length === 0) { if (loader) loader.remove(); return; }
 
   var globalMinX = Infinity, globalMaxX = -Infinity, globalMinZ = Infinity, globalMaxZ = -Infinity;
   for (var gi = 0; gi < data.blocks.length; gi++) {
@@ -685,9 +722,13 @@ function renderPage(data, mode) {
 
   if (!canvas) return;
 
-  // Add zoom controls to nav
+  // Add zoom controls and ghost toggle to nav
   var navEl = document.getElementById('guide-nav');
   var zoomLevel = 1.0;
+  var showGhost = true;
+  var ghostBtn = el('button', 'btn btn-sm btn-outline-secondary guide-ghost-toggle active');
+  ghostBtn.textContent = 'Ghost';
+  ghostBtn.title = 'Toggle previous layers';
   var zoomControls = el('div', 'guide-zoom-controls');
   var zoomOutBtn = el('button', '', '−');
   zoomOutBtn.title = 'Zoom out';
@@ -698,6 +739,7 @@ function renderPage(data, mode) {
   zoomControls.appendChild(zoomLevelSpan);
   zoomControls.appendChild(zoomInBtn);
   if (navEl) {
+    navEl.insertBefore(ghostBtn, nextBtn);
     navEl.insertBefore(zoomControls, nextBtn);
   }
 
@@ -733,8 +775,10 @@ function renderPage(data, mode) {
     var step = steps[currentStep];
     var blocks = step.blocks;
     var prevBlocks = [];
-    for (var si = 0; si < currentStep; si++) {
-      prevBlocks = prevBlocks.concat(steps[si].blocks);
+    if (showGhost) {
+      for (var si = 0; si < currentStep; si++) {
+        prevBlocks = prevBlocks.concat(steps[si].blocks);
+      }
     }
 
     if (mode === 'radial') {
@@ -813,6 +857,11 @@ function renderPage(data, mode) {
 
   zoomInBtn.addEventListener('click', function() { setZoom(zoomLevel * 1.25); });
   zoomOutBtn.addEventListener('click', function() { setZoom(zoomLevel / 1.25); });
+  ghostBtn.addEventListener('click', function() {
+    showGhost = !showGhost;
+    ghostBtn.classList.toggle('active', showGhost);
+    renderStep();
+  });
 
   canvas.addEventListener('wheel', function(e) {
     e.preventDefault();
@@ -859,6 +908,7 @@ function renderPage(data, mode) {
 
   updateZoomLabel();
   renderStep();
+  if (loader) loader.remove();
 }
 
 window.GeneratorGuide = {

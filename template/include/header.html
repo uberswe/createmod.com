@@ -94,7 +94,7 @@
     </div>
 </header>
 {{ if .Breadcrumbs }}
-<div class="container-wide mt-2">
+<div class="container-wide mt-2{{ if .BreadcrumbOverlay }} breadcrumb-overlay{{ end }}">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             {{ range .Breadcrumbs }}

@@ -1,9 +1,7 @@
 (function(){
 'use strict';
 
-if (window.GeneratorApp && window.GeneratorApp._cleanup) {
-  window.GeneratorApp._cleanup();
-}
+if (window.GeneratorApp) return;
 
 var THREE;
 var scene, camera, renderer, controls;
@@ -73,8 +71,10 @@ function getBlockColor(blockType, materials) {
 }
 
 function initScene(containerId) {
-  container = document.getElementById(containerId);
-  if (!container || !window.THREE) return false;
+  var newContainer = document.getElementById(containerId);
+  if (!newContainer || !window.THREE) return false;
+  cleanup();
+  container = newContainer;
   THREE = window.THREE;
 
   scene = new THREE.Scene();
