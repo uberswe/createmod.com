@@ -246,10 +246,10 @@
     </div>
 </div>
 <div id="gen-init-data" data-hash="{{ .InitHash }}" hidden></div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
-<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
-<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
-<script hx-disable>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}"></script>
+<script>
 (function(){
   var PRESETS = {
     sloop:    { woodType:'spruce', length:26, beam:8, depth:5, bottomPinch:0.3, hullFlare:0.15, flareCurve:2.6, tumblehome:0.12, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2, bowLength:7, bowSharpness:1.4, bowKeelRise:0.4, bowKeelLength:6, bowCurve:0, sternStyle:'round', sternLength:4, sternSharpness:0.7, sternKeelRise:0.15, sternKeelLength:5, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:5, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4 },
@@ -343,7 +343,7 @@
   }
 
   function init() {
-    if (!GeneratorApp.initScene('generator-viewport')) {
+    if (!window.GeneratorApp || !GeneratorApp.initScene('generator-viewport')) {
       setTimeout(init, 100);
       return;
     }
