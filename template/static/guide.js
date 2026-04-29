@@ -129,6 +129,20 @@ function el(tag, cls, text) {
   return e;
 }
 
+function createLoader(parent) {
+  var overlay = el('div', 'guide-loader');
+  var spinner = el('div', 'guide-loader-spinner');
+  var text = el('div', 'guide-loader-text', 'Preparing layers...');
+  overlay.appendChild(spinner);
+  overlay.appendChild(text);
+  parent.appendChild(overlay);
+  return {
+    show: function(msg) { if (msg) text.textContent = msg; overlay.style.display = ''; },
+    hide: function() { overlay.style.display = 'none'; },
+    remove: function() { if (overlay.parentElement) overlay.parentElement.removeChild(overlay); }
+  };
+}
+
 function addDragToScroll(scrollContainer, canvas) {
   var dragging = false;
   var startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
@@ -454,6 +468,8 @@ function openGuide(data, mode) {
   }
 
   var ui = createModal();
+  var modalLoader = createLoader(ui.canvas.parentElement);
+  modalLoader.show('Preparing ' + data.blocks.length.toLocaleString() + ' blocks...');
   var currentStep = 0;
   var zoomLevel = 1.0;
   var showGhost = true;
@@ -641,16 +657,24 @@ function openGuide(data, mode) {
   requestAnimationFrame(function() {
     ui.modal.classList.add('open');
     renderStep();
+    modalLoader.remove();
   });
 }
 
 function renderPage(data, mode) {
   if (!data || !data.blocks || data.blocks.length === 0) return;
 
+  var canvasWrapEl = document.getElementById('guide-canvas-wrap');
+  var loader = canvasWrapEl ? createLoader(canvasWrapEl) : null;
+  if (loader) loader.show('Preparing ' + data.blocks.length.toLocaleString() + ' blocks...');
+
+  setTimeout(function() { renderPageInner(data, mode, loader); }, 0);
+}
+
+function renderPageInner(data, mode, loader) {
   _colorMap = data.colorMap || null;
   var materials = data.materials || {};
 
-  // Determine if we should swap X and Z so longest axis is vertical
   var extX = data.sizeX || 0, extZ = data.sizeZ || 0;
   var swapAxes = extX > extZ;
   if (swapAxes) {
@@ -674,7 +698,7 @@ function renderPage(data, mode) {
     steps = buildLayers(data);
   }
 
-  if (steps.length === 0) return;
+  if (steps.length === 0) { if (loader) loader.remove(); return; }
 
   var globalMinX = Infinity, globalMaxX = -Infinity, globalMinZ = Infinity, globalMaxZ = -Infinity;
   for (var gi = 0; gi < data.blocks.length; gi++) {
@@ -884,6 +908,7 @@ function renderPage(data, mode) {
 
   updateZoomLabel();
   renderStep();
+  if (loader) loader.remove();
 }
 
 window.GeneratorGuide = {

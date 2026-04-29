@@ -65,6 +65,7 @@ func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Se
 		d.Description = "Generate custom propeller schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/propeller"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Propeller"))
+		d.BreadcrumbOverlay = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorPropellerTemplates...).Render(d)
 		if err != nil {
@@ -83,6 +84,7 @@ func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Serv
 		d.Description = "Generate custom airship balloon and envelope schematics for Minecraft Create mod."
 		d.Slug = "/generators/balloon"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Balloon"))
+		d.BreadcrumbOverlay = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorBalloonTemplates...).Render(d)
 		if err != nil {
@@ -101,6 +103,7 @@ func GeneratorHullHandler(registry *server.Registry, cacheService *cache.Service
 		d.Description = "Generate custom ship hull schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/hull"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Ship Hull"))
+		d.BreadcrumbOverlay = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorHullTemplates...).Render(d)
 		if err != nil {
