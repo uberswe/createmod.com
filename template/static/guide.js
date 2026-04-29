@@ -345,8 +345,12 @@ function createModal() {
   zoomControls.appendChild(zoomOutBtn);
   zoomControls.appendChild(zoomLevelSpan);
   zoomControls.appendChild(zoomInBtn);
+  var ghostBtn = el('button', 'btn btn-sm btn-outline-secondary guide-ghost-toggle active');
+  ghostBtn.textContent = 'Ghost';
+  ghostBtn.title = 'Toggle previous layers';
   var nextBtn = el('button', 'btn btn-sm btn-outline-secondary guide-next');
   nextBtn.textContent = 'Next →';
+  navRight.appendChild(ghostBtn);
   navRight.appendChild(zoomControls);
   navRight.appendChild(nextBtn);
   nav.appendChild(prevBtn);
@@ -396,6 +400,7 @@ function createModal() {
     closeBtn: closeBtn,
     prevBtn: prevBtn,
     nextBtn: nextBtn,
+    ghostBtn: ghostBtn,
     info: infoSpan,
     slider: sliderInput,
     canvas: canvas,
@@ -451,6 +456,7 @@ function openGuide(data, mode) {
   var ui = createModal();
   var currentStep = 0;
   var zoomLevel = 1.0;
+  var showGhost = true;
 
   if (mode === 'radial') {
     ui.title.textContent = 'Center to Tip Guide';
@@ -480,8 +486,10 @@ function openGuide(data, mode) {
     var step = steps[currentStep];
     var blocks = step.blocks;
     var prevBlocks = [];
-    for (var si = 0; si < currentStep; si++) {
-      prevBlocks = prevBlocks.concat(steps[si].blocks);
+    if (showGhost) {
+      for (var si = 0; si < currentStep; si++) {
+        prevBlocks = prevBlocks.concat(steps[si].blocks);
+      }
     }
 
     if (mode === 'radial') {
@@ -574,6 +582,11 @@ function openGuide(data, mode) {
 
   ui.zoomInBtn.addEventListener('click', function() { setZoom(zoomLevel * 1.25); });
   ui.zoomOutBtn.addEventListener('click', function() { setZoom(zoomLevel / 1.25); });
+  ui.ghostBtn.addEventListener('click', function() {
+    showGhost = !showGhost;
+    ui.ghostBtn.classList.toggle('active', showGhost);
+    renderStep();
+  });
 
   ui.canvas.addEventListener('wheel', function(e) {
     e.preventDefault();
@@ -685,9 +698,13 @@ function renderPage(data, mode) {
 
   if (!canvas) return;
 
-  // Add zoom controls to nav
+  // Add zoom controls and ghost toggle to nav
   var navEl = document.getElementById('guide-nav');
   var zoomLevel = 1.0;
+  var showGhost = true;
+  var ghostBtn = el('button', 'btn btn-sm btn-outline-secondary guide-ghost-toggle active');
+  ghostBtn.textContent = 'Ghost';
+  ghostBtn.title = 'Toggle previous layers';
   var zoomControls = el('div', 'guide-zoom-controls');
   var zoomOutBtn = el('button', '', '−');
   zoomOutBtn.title = 'Zoom out';
@@ -698,6 +715,7 @@ function renderPage(data, mode) {
   zoomControls.appendChild(zoomLevelSpan);
   zoomControls.appendChild(zoomInBtn);
   if (navEl) {
+    navEl.insertBefore(ghostBtn, nextBtn);
     navEl.insertBefore(zoomControls, nextBtn);
   }
 
@@ -733,8 +751,10 @@ function renderPage(data, mode) {
     var step = steps[currentStep];
     var blocks = step.blocks;
     var prevBlocks = [];
-    for (var si = 0; si < currentStep; si++) {
-      prevBlocks = prevBlocks.concat(steps[si].blocks);
+    if (showGhost) {
+      for (var si = 0; si < currentStep; si++) {
+        prevBlocks = prevBlocks.concat(steps[si].blocks);
+      }
     }
 
     if (mode === 'radial') {
@@ -813,6 +833,11 @@ function renderPage(data, mode) {
 
   zoomInBtn.addEventListener('click', function() { setZoom(zoomLevel * 1.25); });
   zoomOutBtn.addEventListener('click', function() { setZoom(zoomLevel / 1.25); });
+  ghostBtn.addEventListener('click', function() {
+    showGhost = !showGhost;
+    ghostBtn.classList.toggle('active', showGhost);
+    renderStep();
+  });
 
   canvas.addEventListener('wheel', function(e) {
     e.preventDefault();
