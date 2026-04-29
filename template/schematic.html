@@ -199,7 +199,15 @@
                                         {{ end }}
                                     </div>
                                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                                        <div style="position:relative;display:inline-block;">
+                                        <a href="#" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal">
+                                            {{ T .Language "Report" }}
+                                        </a>
+                                        {{ if .IsAuthor }}
+                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary btn-sm" id="edit-btn">
+                                            {{ T .Language "Edit" }}
+                                        </a>
+                                        {{ end }}
+                                        <div class="ms-auto d-flex align-items-center" style="position:relative;">
                                             <label for="rating-default" class="visually-hidden">Rate this schematic</label>
                                             <select id="rating-default">
                                                 <option value="">{{ T .Language "Select a rating" }}</option>
@@ -210,16 +218,6 @@
                                                 <option value="1">{{ T .Language "Terrible" }}</option>
                                             </select>
                                             <span id="rating-feedback" style="display:none;position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:6px;white-space:nowrap;padding:4px 10px;border-radius:4px;font-size:.75rem;font-weight:500;background:var(--tblr-success);color:#fff;pointer-events:none;z-index:10;"></span>
-                                        </div>
-                                        <div class="ms-auto d-flex align-items-center gap-2">
-                                            {{ if .IsAuthor }}
-                                            <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary" id="edit-btn">
-                                                {{ T .Language "Edit" }}
-                                            </a>
-                                            {{ end }}
-                                            <a href="#" class="btn btn-ghost-secondary btn-sm text-muted" data-bs-toggle="modal" data-bs-target="#reportModal">
-                                                {{ T .Language "Report" }}
-                                            </a>
                                         </div>
                                     </div>
                                 </div>
