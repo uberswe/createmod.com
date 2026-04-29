@@ -693,6 +693,7 @@ body.sidebar-ready .sidebar-rail {
   Page layout offset
 ***************/
 .page-wrapper {
+  position: relative;
   margin-left: 56px;
   margin-top: 100px;
   display: flex;
@@ -1266,9 +1267,10 @@ a.card-link:hover {
 .generator-ad-rail-sm > div:last-child { position: sticky; top: 110px; }
 
 /* ===== Generator navigation bar ===== */
-.breadcrumb-overlay { position: relative; z-index: 15; margin-top: 0; margin-bottom: -32px; padding-top: 6px; padding-bottom: 6px; pointer-events: none; }
+.breadcrumb-overlay { position: absolute; z-index: 15; left: 0; right: 0; margin-top: 0; padding: 6px 1rem; pointer-events: none; }
 .breadcrumb-overlay * { pointer-events: auto; }
 .breadcrumb-overlay .breadcrumb { margin-bottom: 0; }
+.page-body-flush { margin-top: 0 !important; }
 .gen-nav {
     position: absolute;
     top: 16px;

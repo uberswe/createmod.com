@@ -360,7 +360,7 @@ function createModal() {
   zoomControls.appendChild(zoomLevelSpan);
   zoomControls.appendChild(zoomInBtn);
   var ghostBtn = el('button', 'btn btn-sm btn-outline-secondary guide-ghost-toggle active');
-  ghostBtn.textContent = 'Ghost';
+  ghostBtn.textContent = 'Ghost Blocks';
   ghostBtn.title = 'Toggle previous layers';
   var nextBtn = el('button', 'btn btn-sm btn-outline-secondary guide-next');
   nextBtn.textContent = 'Next →';
@@ -727,7 +727,7 @@ function renderPageInner(data, mode, loader) {
   var zoomLevel = 1.0;
   var showGhost = true;
   var ghostBtn = el('button', 'btn btn-sm btn-outline-secondary guide-ghost-toggle active');
-  ghostBtn.textContent = 'Ghost';
+  ghostBtn.textContent = 'Ghost Blocks';
   ghostBtn.title = 'Toggle previous layers';
   var zoomControls = el('div', 'guide-zoom-controls');
   var zoomOutBtn = el('button', '', '−');
