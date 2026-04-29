@@ -43,7 +43,7 @@ var WOOL_COLORS = {
   black:      0x1d1c21
 };
 
-var ANDESITE_CASING_COLOR = 0x8a8a8a;
+var ANDESITE_CASING_COLOR = 0x7a5c3a;
 
 function getWoodColor(woodType, blockType) {
   var w = WOOD_COLORS[woodType] || WOOD_COLORS.spruce;
@@ -117,16 +117,37 @@ function initScene(containerId) {
   controls.dampingFactor = 0.08;
   controls.target.set(0, 0, 0);
 
-  var grid = new THREE.GridHelper(200, 100, 0x8cc4e8, 0x6aaad0);
-  grid.material.opacity = 0.25;
-  grid.material.transparent = true;
-  grid.position.y = -0.5;
-  scene.add(grid);
-  var gridMajor = new THREE.GridHelper(200, 20, 0x9dd0ee, 0x9dd0ee);
-  gridMajor.material.opacity = 0.3;
-  gridMajor.material.transparent = true;
-  gridMajor.position.y = -0.49;
-  scene.add(gridMajor);
+  var gridCanvas = document.createElement('canvas');
+  gridCanvas.width = 2048;
+  gridCanvas.height = 2048;
+  var gctx = gridCanvas.getContext('2d');
+  var cellPx = gridCanvas.width / 100;
+  var majorEvery = 5;
+  gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+  for (var gi = 0; gi <= 100; gi++) {
+    var isMajor = gi % majorEvery === 0;
+    gctx.strokeStyle = isMajor ? 'rgba(157,208,238,0.55)' : 'rgba(106,170,208,0.35)';
+    gctx.lineWidth = isMajor ? 3 : 1.5;
+    gctx.beginPath();
+    gctx.moveTo(gi * cellPx, 0);
+    gctx.lineTo(gi * cellPx, gridCanvas.height);
+    gctx.stroke();
+    gctx.beginPath();
+    gctx.moveTo(0, gi * cellPx);
+    gctx.lineTo(gridCanvas.width, gi * cellPx);
+    gctx.stroke();
+  }
+  var gridTex = new THREE.CanvasTexture(gridCanvas);
+  gridTex.wrapS = THREE.RepeatWrapping;
+  gridTex.wrapT = THREE.RepeatWrapping;
+  gridTex.repeat.set(2, 2);
+  var gridMat = new THREE.MeshBasicMaterial({
+    map: gridTex, transparent: true, depthWrite: false, side: THREE.DoubleSide
+  });
+  var gridPlane = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), gridMat);
+  gridPlane.rotation.x = -Math.PI / 2;
+  gridPlane.position.y = -0.5;
+  scene.add(gridPlane);
 
   animate();
 
@@ -205,31 +226,71 @@ function renderBlocks(data) {
 
   var dummy = new THREE.Object3D();
 
-  function makeStairGeo() {
-    var bottom = new THREE.BoxGeometry(1, 0.5, 1);
-    bottom.translate(0, -0.25, 0);
-    var top = new THREE.BoxGeometry(1, 0.5, 0.5);
-    top.translate(0, 0.25, -0.25);
-    var merged = new THREE.BufferGeometry();
-    var posA = bottom.getAttribute('position').array;
-    var posB = top.getAttribute('position').array;
-    var norA = bottom.getAttribute('normal').array;
-    var norB = top.getAttribute('normal').array;
-    var idxA = bottom.index.array;
-    var idxB = top.index.array;
-    var vCount = posA.length / 3;
-    var pos = new Float32Array(posA.length + posB.length);
-    var nor = new Float32Array(norA.length + norB.length);
-    pos.set(posA); pos.set(posB, posA.length);
-    nor.set(norA); nor.set(norB, norA.length);
-    var idx = new Uint16Array(idxA.length + idxB.length);
-    idx.set(idxA);
-    for (var si = 0; si < idxB.length; si++) idx[idxA.length + si] = idxB[si] + vCount;
-    merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    merged.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-    merged.setIndex(new THREE.BufferAttribute(idx, 1));
-    bottom.dispose(); top.dispose();
-    return merged;
+  function makeStairGeo(flipped) {
+    // L-shaped stair: bottom half (1×0.5×1) + back-half step (1×0.5×0.5)
+    // No internal faces — 8 outer faces only
+    // flipped=true creates upside-down version with correct winding (no scale.y=-1 needed)
+    var sy = flipped ? -1 : 1;
+    var p = new Float32Array([
+      // Face 1: bottom
+      -0.5,-0.5*sy,-0.5, 0.5,-0.5*sy,-0.5, 0.5,-0.5*sy,0.5, -0.5,-0.5*sy,0.5,
+      // Face 2: front (z=0.5)
+      -0.5,-0.5*sy,0.5, 0.5,-0.5*sy,0.5, 0.5,0*sy,0.5, -0.5,0*sy,0.5,
+      // Face 3: back (z=-0.5)
+      0.5,-0.5*sy,-0.5, -0.5,-0.5*sy,-0.5, -0.5,0.5*sy,-0.5, 0.5,0.5*sy,-0.5,
+      // Face 4: left (x=-0.5) — L-shape
+      -0.5,-0.5*sy,-0.5, -0.5,-0.5*sy,0.5, -0.5,0*sy,0.5, -0.5,0*sy,0, -0.5,0.5*sy,0, -0.5,0.5*sy,-0.5,
+      // Face 5: right (x=0.5) — L-shape
+      0.5,-0.5*sy,0.5, 0.5,-0.5*sy,-0.5, 0.5,0*sy,0.5, 0.5,0*sy,0, 0.5,0.5*sy,0, 0.5,0.5*sy,-0.5,
+      // Face 6: lower step top (z=0 to 0.5)
+      -0.5,0*sy,0.5, 0.5,0*sy,0.5, 0.5,0*sy,0, -0.5,0*sy,0,
+      // Face 7: step front (z=0)
+      -0.5,0*sy,0, 0.5,0*sy,0, 0.5,0.5*sy,0, -0.5,0.5*sy,0,
+      // Face 8: upper step top (z=-0.5 to 0)
+      -0.5,0.5*sy,0, 0.5,0.5*sy,0, 0.5,0.5*sy,-0.5, -0.5,0.5*sy,-0.5
+    ]);
+    var ny = flipped ? 1 : -1;  // bottom normal flips
+    var uy = flipped ? -1 : 1;  // top normals flip
+    var n = new Float32Array([
+      0,ny,0, 0,ny,0, 0,ny,0, 0,ny,0,
+      0,0,1, 0,0,1, 0,0,1, 0,0,1,
+      0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
+      -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0,
+      1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0,
+      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0,
+      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0,
+      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0
+    ]);
+    // Flipped: reverse winding by swapping v1/v2 in each triangle
+    var idx;
+    if (flipped) {
+      idx = new Uint16Array([
+        0,2,1, 0,3,2,
+        4,6,5, 4,7,6,
+        8,10,9, 8,11,10,
+        12,14,13, 12,15,14, 12,17,15, 15,17,16,
+        18,20,19, 19,20,21, 19,21,23, 23,21,22,
+        24,26,25, 24,27,26,
+        28,30,29, 28,31,30,
+        32,34,33, 32,35,34
+      ]);
+    } else {
+      idx = new Uint16Array([
+        0,1,2, 0,2,3,
+        4,5,6, 4,6,7,
+        8,9,10, 8,10,11,
+        12,13,14, 12,14,15, 12,15,17, 15,16,17,
+        18,19,20, 19,21,20, 19,23,21, 23,22,21,
+        24,25,26, 24,26,27,
+        28,29,30, 28,30,31,
+        32,33,34, 32,34,35
+      ]);
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(n, 3));
+    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    return geo;
   }
 
   var FACING_ROT = { south: 0, west: -Math.PI / 2, north: Math.PI, east: Math.PI / 2 };
@@ -278,7 +339,7 @@ function renderBlocks(data) {
     else if (t === 8) { roughness = 0.8; metalness = 0.05; }
     else if (t === 9) { roughness = 0.95; metalness = 0.0; }
     if (t === 8 && materials.frameMaterial === 'andesite_casing') {
-      roughness = 0.6; metalness = 0.3;
+      roughness = 0.75; metalness = 0.05;
     }
     var mat = new THREE.MeshStandardMaterial({
       color: color,
@@ -290,8 +351,7 @@ function renderBlocks(data) {
       var stairMat = new THREE.MeshStandardMaterial({
         color: color,
         roughness: roughness,
-        metalness: metalness,
-        side: THREE.DoubleSide
+        metalness: metalness
       });
       var stairGroups = {};
       for (var si = 0; si < arr.length; si++) {
@@ -307,20 +367,46 @@ function renderBlocks(data) {
         var parts = sk.split('_');
         var sFacing = parts[0];
         var sHalf = parts[1];
-        var sGeo = makeStairGeo();
+        var sGeo = makeStairGeo(sHalf === 'top');
         var sMesh = new THREE.InstancedMesh(sGeo, stairMat, sArr.length);
         for (var sj = 0; sj < sArr.length; sj++) {
           dummy.position.set(sArr[sj].x - cx, (sArr[sj].y - cy), sArr[sj].z - cz);
           dummy.rotation.set(0, 0, 0);
           dummy.scale.set(1, 1, 1);
           dummy.rotation.y = FACING_ROT[sFacing] || 0;
-          if (sHalf === 'top') dummy.scale.y = -1;
           dummy.updateMatrix();
           sMesh.setMatrixAt(sj, dummy.matrix);
         }
         sMesh.instanceMatrix.needsUpdate = true;
         scene.add(sMesh);
         blockMeshes.push(sMesh);
+        if (sArr.length <= 5000) {
+          var stairEdgeGeo = new THREE.EdgesGeometry(sGeo);
+          var stairEPosAttr = stairEdgeGeo.getAttribute('position');
+          var stairECount = stairEPosAttr.count;
+          var stairEdgePos = new Float32Array(sArr.length * stairECount * 3);
+          for (var sei = 0; sei < sArr.length; sei++) {
+            dummy.position.set(sArr[sei].x - cx, (sArr[sei].y - cy), sArr[sei].z - cz);
+            dummy.rotation.set(0, 0, 0);
+            dummy.scale.set(1, 1, 1);
+            dummy.rotation.y = FACING_ROT[sFacing] || 0;
+            dummy.updateMatrix();
+            for (var sev = 0; sev < stairECount; sev++) {
+              var sv = new THREE.Vector3(stairEPosAttr.getX(sev), stairEPosAttr.getY(sev), stairEPosAttr.getZ(sev));
+              sv.applyMatrix4(dummy.matrix);
+              stairEdgePos[(sei * stairECount + sev) * 3]     = sv.x;
+              stairEdgePos[(sei * stairECount + sev) * 3 + 1] = sv.y;
+              stairEdgePos[(sei * stairECount + sev) * 3 + 2] = sv.z;
+            }
+          }
+          var stairMergedGeo = new THREE.BufferGeometry();
+          stairMergedGeo.setAttribute('position', new THREE.BufferAttribute(stairEdgePos, 3));
+          var stairEdgeMat = new THREE.LineBasicMaterial({ color: 0x222222, opacity: 0.12, transparent: true });
+          var stairEdgeLines = new THREE.LineSegments(stairMergedGeo, stairEdgeMat);
+          scene.add(stairEdgeLines);
+          blockMeshes.push(stairEdgeLines);
+          stairEdgeGeo.dispose();
+        }
       }
       dummy.rotation.set(0, 0, 0);
       dummy.scale.set(1, 1, 1);
@@ -333,14 +419,92 @@ function renderBlocks(data) {
         scene.add(fMesh);
         blockMeshes.push(fMesh);
       }
+      if (arr.length <= 5000) {
+        var fenceEdgeGeo = new THREE.EdgesGeometry(fencePostGeo);
+        var fenceEPosAttr = fenceEdgeGeo.getAttribute('position');
+        var fenceECount = fenceEPosAttr.count;
+        var fenceEdgePos = new Float32Array(arr.length * fenceECount * 3);
+        for (var fei = 0; fei < arr.length; fei++) {
+          var fox = arr[fei].x - cx, foy = arr[fei].y - cy, foz = arr[fei].z - cz;
+          for (var fev = 0; fev < fenceECount; fev++) {
+            fenceEdgePos[(fei * fenceECount + fev) * 3]     = fenceEPosAttr.getX(fev) + fox;
+            fenceEdgePos[(fei * fenceECount + fev) * 3 + 1] = fenceEPosAttr.getY(fev) + foy;
+            fenceEdgePos[(fei * fenceECount + fev) * 3 + 2] = fenceEPosAttr.getZ(fev) + foz;
+          }
+        }
+        var fenceMergedGeo = new THREE.BufferGeometry();
+        fenceMergedGeo.setAttribute('position', new THREE.BufferAttribute(fenceEdgePos, 3));
+        var fenceEdgeMat = new THREE.LineBasicMaterial({ color: 0x222222, opacity: 0.12, transparent: true });
+        var fenceEdgeLines = new THREE.LineSegments(fenceMergedGeo, fenceEdgeMat);
+        scene.add(fenceEdgeLines);
+        blockMeshes.push(fenceEdgeLines);
+        fenceEdgeGeo.dispose();
+      }
+      continue;
+    }
+
+    if (t === 6) {
+      // Trapdoors: group by facing/half/open for proper orientation
+      var tdGroups = {};
+      for (var tdi = 0; tdi < arr.length; tdi++) {
+        var tdb = arr[tdi];
+        var tdFacing = (tdb.props && tdb.props.facing) || 'north';
+        var tdHalf = (tdb.props && tdb.props.half) || 'bottom';
+        var tdOpen = (tdb.props && tdb.props.open) || 'false';
+        var tdKey = tdFacing + '_' + tdHalf + '_' + tdOpen;
+        if (!tdGroups[tdKey]) tdGroups[tdKey] = [];
+        tdGroups[tdKey].push(tdb);
+      }
+      for (var tdk in tdGroups) {
+        var tdArr = tdGroups[tdk];
+        var tdParts = tdk.split('_');
+        var tdF = tdParts[0], tdH = tdParts[1], tdO = tdParts[2];
+        var tdMesh = new THREE.InstancedMesh(trapdoorGeo, mat, tdArr.length);
+        for (var tdj = 0; tdj < tdArr.length; tdj++) {
+          dummy.position.set(tdArr[tdj].x - cx, tdArr[tdj].y - cy, tdArr[tdj].z - cz);
+          dummy.rotation.set(0, 0, 0);
+          if (tdO === 'true') {
+            // Open trapdoor: vertical panel flush against the face it's attached to
+            if (tdF === 'north') {
+              dummy.rotation.x = Math.PI / 2;
+              dummy.position.z -= 0.41;
+            } else if (tdF === 'south') {
+              dummy.rotation.x = -Math.PI / 2;
+              dummy.position.z += 0.41;
+            } else if (tdF === 'east') {
+              dummy.rotation.z = Math.PI / 2;
+              dummy.position.x += 0.41;
+            } else if (tdF === 'west') {
+              dummy.rotation.z = -Math.PI / 2;
+              dummy.position.x -= 0.41;
+            }
+            if (tdH === 'top') {
+              dummy.position.y += 0.25;
+            } else {
+              dummy.position.y -= 0.25;
+            }
+          } else {
+            // Closed trapdoor: flat, offset to top or bottom
+            if (tdH === 'top') {
+              dummy.position.y += 0.41;
+            } else {
+              dummy.position.y -= 0.41;
+            }
+          }
+          dummy.updateMatrix();
+          tdMesh.setMatrixAt(tdj, dummy.matrix);
+        }
+        tdMesh.instanceMatrix.needsUpdate = true;
+        scene.add(tdMesh);
+        blockMeshes.push(tdMesh);
+      }
+      dummy.rotation.set(0, 0, 0);
       continue;
     }
 
     var geo;
     if (t === 2 || t === 3) {
       geo = slabGeo;
-    } else if (t === 6) {
-      geo = trapdoorGeo;
     } else if (t === 9) {
       geo = sailGeo;
     } else {
@@ -379,7 +543,13 @@ function renderBlocks(data) {
       }
       var mergedEdgeGeo = new THREE.BufferGeometry();
       mergedEdgeGeo.setAttribute('position', new THREE.BufferAttribute(allEdgePos, 3));
-      var edgeMat = new THREE.LineBasicMaterial({ color: 0x222222, opacity: 0.12, transparent: true });
+      var edgeColor = 0x222222;
+      var edgeOpacity = 0.12;
+      if (t === 8 && materials.frameMaterial === 'andesite_casing') {
+        edgeColor = 0x8a8a8a;
+        edgeOpacity = 0.5;
+      }
+      var edgeMat = new THREE.LineBasicMaterial({ color: edgeColor, opacity: edgeOpacity, transparent: true });
       var edgeLines = new THREE.LineSegments(mergedEdgeGeo, edgeMat);
       scene.add(edgeLines);
       blockMeshes.push(edgeLines);
@@ -673,16 +843,17 @@ var SCHEMAS = {
     { k:'hasRailings', t:'b' }, { k:'hasTrim', t:'b' }, { k:'hasWindows', t:'b' },
     { k:'castleHeight', t:'i' }, { k:'castleLength', t:'i' },
     { k:'forecastleHeight', t:'i' }, { k:'forecastleLength', t:'i' },
-    { k:'hasGunPorts', t:'b' }, { k:'gunPortRow', t:'i' }, { k:'gunPortSpacing', t:'i' }
+    { k:'hasGunPorts', t:'b' }, { k:'gunPortRow', t:'i' }, { k:'gunPortSpacing', t:'i' },
+    { k:'bowCurve', t:'f' }, { k:'sternOverhang', t:'f' }, { k:'midWidthBias', t:'f' }
   ]
 };
 
-var CURRENT_VERSION = 1;
+var CURRENT_VERSION = 2;
 
 function encodeCompact(prefix, params) {
   var schema = SCHEMAS[prefix];
   if (!schema) return '';
-  var ver = params.version || CURRENT_VERSION;
+  var ver = CURRENT_VERSION;
   var vals = [prefix + ver];
   for (var i = 0; i < schema.length; i++) {
     var s = schema[i];
@@ -691,7 +862,7 @@ function encodeCompact(prefix, params) {
     switch (s.t) {
       case 'b': vals.push(v ? '1' : '0'); break;
       case 'i': vals.push(String(Math.round(Number(v)))); break;
-      case 'f': vals.push(String(Math.round(Number(v) * 10000) / 10000)); break;
+      case 'f': vals.push(String(Math.round(Number(v) * 100))); break;
       case 'e':
         var map = ENUM_MAPS[s.m];
         vals.push(map && map[v] ? map[v] : String(v).slice(0, 3));
@@ -724,7 +895,11 @@ function decodeCompact(hash) {
     switch (s.t) {
       case 'b': params[s.k] = raw === '1'; break;
       case 'i': params[s.k] = parseInt(raw, 10); break;
-      case 'f': params[s.k] = parseFloat(raw); break;
+      case 'f':
+        var n = parseFloat(raw);
+        if (version >= 2) n = n / 100;
+        params[s.k] = n;
+        break;
       case 'e':
         var rev = ENUM_REVERSE[s.m];
         params[s.k] = rev && rev[raw] ? rev[raw] : raw;

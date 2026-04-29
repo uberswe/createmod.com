@@ -392,6 +392,7 @@ func Register(p RegisterParams) chi.Router {
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	// Reports
@@ -521,6 +522,7 @@ func Register(p RegisterParams) chi.Router {
 	r.With(modifyRateLimit).Post("/api/schematics/{id}/variations", Adapt(pages.CreateVariationHandler(p.AppStore)))
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
+	r.Get("/schematics/{name}/guide", Adapt(pages.SchematicGuideHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.CacheService, registry, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
@@ -535,6 +537,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	// Generators
+	r.Get("/generators", Adapt(pages.GeneratorsLandingHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/propeller/{hash}", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/balloon", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore)))
@@ -542,10 +545,9 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/generators/hull", Adapt(pages.GeneratorHullHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/hull/{hash}", Adapt(pages.GeneratorHullHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/generators/{type}/{hash}/guide", Adapt(pages.GeneratorGuideHandler(registry, p.CacheService, p.AppStore)))
-	generatorRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
-	r.With(generatorRateLimit).Post("/api/generators/propeller", Adapt(pages.GeneratorPropellerAPIHandler()))
-	r.With(generatorRateLimit).Post("/api/generators/balloon", Adapt(pages.GeneratorBalloonAPIHandler()))
-	r.With(generatorRateLimit).Post("/api/generators/hull", Adapt(pages.GeneratorHullAPIHandler()))
+	r.Post("/api/generators/propeller", Adapt(pages.GeneratorPropellerAPIHandler()))
+	r.Post("/api/generators/balloon", Adapt(pages.GeneratorBalloonAPIHandler()))
+	r.Post("/api/generators/hull", Adapt(pages.GeneratorHullAPIHandler()))
 	downloadRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
 	r.With(downloadRateLimit).Post("/api/generators/propeller/download", Adapt(pages.GeneratorDownloadHandler("propeller")))
 	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))

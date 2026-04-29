@@ -23,11 +23,13 @@ type HullParams struct {
 	BowSharpness   float64 `json:"bowSharpness"`
 	BowKeelRise    float64 `json:"bowKeelRise"`
 	BowKeelLength  int     `json:"bowKeelLength"`
+	BowCurve       float64 `json:"bowCurve"`
 	SternStyle     string  `json:"sternStyle"`
 	SternLength    int     `json:"sternLength"`
 	SternSharpness float64 `json:"sternSharpness"`
 	SternKeelRise  float64 `json:"sternKeelRise"`
 	SternKeelLength int    `json:"sternKeelLength"`
+	SternOverhang  float64 `json:"sternOverhang"`
 	KeelCurve      float64 `json:"keelCurve"`
 	CastleBlend    int     `json:"castleBlend"`
 	HasRailings      bool    `json:"hasRailings"`
@@ -40,6 +42,7 @@ type HullParams struct {
 	HasGunPorts      bool    `json:"hasGunPorts"`
 	GunPortRow       int     `json:"gunPortRow"`
 	GunPortSpacing   int     `json:"gunPortSpacing"`
+	MidWidthBias     float64 `json:"midWidthBias"`
 }
 
 func (p *HullParams) Validate() error {
@@ -77,10 +80,12 @@ func (p *HullParams) Validate() error {
 	clampFloat(&p.BowSharpness, 0.4, 2.5)
 	clampFloat(&p.BowKeelRise, 0, 1.5)
 	clampInt(&p.BowKeelLength, 0, 40)
+	clampFloat(&p.BowCurve, -1.0, 1.0)
 	clampInt(&p.SternLength, 2, 30)
 	clampFloat(&p.SternSharpness, 0.2, 2.0)
 	clampFloat(&p.SternKeelRise, 0, 1.5)
 	clampInt(&p.SternKeelLength, 0, 30)
+	clampFloat(&p.SternOverhang, 0, 1.0)
 	clampFloat(&p.KeelCurve, 0.7, 3.5)
 	clampInt(&p.CastleBlend, 2, 12)
 
@@ -96,6 +101,7 @@ func (p *HullParams) Validate() error {
 	}
 	clampInt(&p.GunPortRow, 1, 6)
 	clampInt(&p.GunPortSpacing, 2, 8)
+	clampFloat(&p.MidWidthBias, 0, 1.0)
 
 	if !isValidWoodType(p.WoodType) {
 		p.WoodType = "spruce"
@@ -198,7 +204,26 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 		}
 		if zNorm >= bowStart {
 			t := (1 - zNorm) / math.Max(1-bowStart, 0.001)
-			return math.Pow(math.Max(t, 0), p.BowSharpness)
+			base := math.Pow(math.Max(t, 0), p.BowSharpness)
+			// BowCurve: negative = concave (clipper), positive = convex (bluff)
+			if p.BowCurve != 0 {
+				if p.BowCurve > 0 {
+					convex := math.Sqrt(math.Max(t, 0))
+					base = base*(1-p.BowCurve) + convex*p.BowCurve
+				} else {
+					concave := t * t * t
+					base = base*(1+p.BowCurve) + concave*(-p.BowCurve)
+				}
+			}
+			return base
+		}
+		// MidWidthBias: shift widest point aft (0=centered, 1=fully aft)
+		if p.MidWidthBias > 0 {
+			midNorm := sternEnd + (bowStart-sternEnd)*(0.5-p.MidWidthBias*0.35)
+			if zNorm < midNorm {
+				t := (zNorm - sternEnd) / math.Max(midNorm-sternEnd, 0.001)
+				return 0.85 + 0.15*math.Pow(t, 0.6)
+			}
 		}
 		return 1
 	}
@@ -206,7 +231,13 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 	halfWidthAt := func(y, z int) float64 {
 		yNorm := float64(y) / math.Max(depth, 1) // no clamp -- allow castle extrapolation
 		zNorm := float64(z) / math.Max(length-1, 1)
-		return crossSectionFactor(yNorm) * longitudinalFactor(zNorm) * (float64(p.Beam) / 2)
+		base := crossSectionFactor(yNorm) * longitudinalFactor(zNorm) * (float64(p.Beam) / 2)
+		// SternOverhang: widen above-deck stern region outward
+		if p.SternOverhang > 0 && yNorm > 1.0 && zNorm < float64(p.SternLength)/length {
+			overhangBoost := p.SternOverhang * 0.3 * (yNorm - 1.0)
+			base += overhangBoost * (float64(p.Beam) / 2)
+		}
+		return base
 	}
 
 	// Keel rise at a given Z position

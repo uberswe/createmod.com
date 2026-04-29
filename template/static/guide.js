@@ -25,7 +25,12 @@ var GRID_COLOR = 'rgba(140,196,232,0.15)';
 var GRID_MAJOR_COLOR = 'rgba(157,208,238,0.22)';
 var GRID_MAJOR_INTERVAL = 5;
 
+var _colorMap = null;
+
 function getBlockColor(type, materials) {
+  if (_colorMap && _colorMap[type]) {
+    return _colorMap[type].color;
+  }
   if (!materials) materials = {};
   if (type === 7) {
     return WOOL_COLORS[materials.envelopeColor || materials.bladeColor || 'white'] || WOOL_COLORS.white;
@@ -52,6 +57,9 @@ function getBlockColor(type, materials) {
 }
 
 function getBlockLabel(type, materials) {
+  if (_colorMap && _colorMap[type]) {
+    return _colorMap[type].label;
+  }
   if (!materials) materials = {};
   if (type === 7) {
     var envMat = materials.envelopeMaterial || 'wool';
@@ -402,7 +410,26 @@ function createModal() {
 function openGuide(data, mode) {
   if (!data || !data.blocks || data.blocks.length === 0) return;
 
+  _colorMap = data.colorMap || null;
   var materials = data.materials || {};
+
+  // Determine if we should swap X and Z so longest axis is vertical
+  var extX = data.sizeX || 0, extZ = data.sizeZ || 0;
+  var swapAxes = extX > extZ;
+  if (swapAxes) {
+    var FACING_SWAP = { north:'west', south:'east', east:'north', west:'south' };
+    data = JSON.parse(JSON.stringify(data));
+    var tmpSize = data.sizeX; data.sizeX = data.sizeZ; data.sizeZ = tmpSize;
+    for (var si2 = 0; si2 < data.blocks.length; si2++) {
+      var tmp = data.blocks[si2].x;
+      data.blocks[si2].x = data.blocks[si2].z;
+      data.blocks[si2].z = tmp;
+      if (data.blocks[si2].props && data.blocks[si2].props.facing) {
+        data.blocks[si2].props.facing = FACING_SWAP[data.blocks[si2].props.facing] || data.blocks[si2].props.facing;
+      }
+    }
+  }
+
   var steps;
   if (mode === 'radial') {
     steps = buildRadialBands(data);
@@ -607,7 +634,26 @@ function openGuide(data, mode) {
 function renderPage(data, mode) {
   if (!data || !data.blocks || data.blocks.length === 0) return;
 
+  _colorMap = data.colorMap || null;
   var materials = data.materials || {};
+
+  // Determine if we should swap X and Z so longest axis is vertical
+  var extX = data.sizeX || 0, extZ = data.sizeZ || 0;
+  var swapAxes = extX > extZ;
+  if (swapAxes) {
+    var FACING_SWAP2 = { north:'west', south:'east', east:'north', west:'south' };
+    data = JSON.parse(JSON.stringify(data));
+    var tmpSize2 = data.sizeX; data.sizeX = data.sizeZ; data.sizeZ = tmpSize2;
+    for (var si2 = 0; si2 < data.blocks.length; si2++) {
+      var tmp = data.blocks[si2].x;
+      data.blocks[si2].x = data.blocks[si2].z;
+      data.blocks[si2].z = tmp;
+      if (data.blocks[si2].props && data.blocks[si2].props.facing) {
+        data.blocks[si2].props.facing = FACING_SWAP2[data.blocks[si2].props.facing] || data.blocks[si2].props.facing;
+      }
+    }
+  }
+
   var steps;
   if (mode === 'radial') {
     steps = buildRadialBands(data);

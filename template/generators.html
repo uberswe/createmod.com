@@ -1,0 +1,71 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-xl">
+                <div class="page-header d-print-none">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">{{ T .Language "Generators" }}</h2>
+                            <p class="text-secondary mt-1">{{ T .Language "Generate custom schematics for your Create mod builds. Adjust parameters, preview in 3D, and download ready-to-use NBT files." }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row row-cards">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card">
+                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="#bf9045" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 12l-3 -2"/><path d="M12 12l3 -2"/><path d="M12 3v4"/></svg>
+                                    </span>
+                                    <div>
+                                        <h3 class="card-title mb-0">{{ T .Language "Propeller" }}</h3>
+                                    </div>
+                                </div>
+                                <p class="text-secondary">{{ T .Language "Generate propellers for your Create mod airships. Configure blade count, length, chord width, twist, and sweep angle." }}</p>
+                                <a href="/generators/propeller" class="btn w-100" style="background: #bf9045; color: #fff; border: none;">{{ T .Language "Open Generator" }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card">
+                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="#bf9045" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M5 12c0 -3.5 2.5 -7 7 -7s7 3.5 7 7"/></svg>
+                                    </span>
+                                    <div>
+                                        <h3 class="card-title mb-0">{{ T .Language "Balloon" }}</h3>
+                                    </div>
+                                </div>
+                                <p class="text-secondary">{{ T .Language "Generate airship balloons and envelopes. Customize the shape, size, and proportions of your balloon structure." }}</p>
+                                <a href="/generators/balloon" class="btn w-100" style="background: #bf9045; color: #fff; border: none;">{{ T .Language "Open Generator" }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card">
+                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="#bf9045" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1"/><path d="M4 18l-1 -5h18l-1 5"/><path d="M5 13v-6h14v6"/><path d="M7 7l5 -4l5 4"/></svg>
+                                    </span>
+                                    <div>
+                                        <h3 class="card-title mb-0">{{ T .Language "Ship Hull" }}</h3>
+                                    </div>
+                                </div>
+                                <p class="text-secondary">{{ T .Language "Generate ship hulls with customizable length, beam, depth, and bow shape for your Create mod vessels." }}</p>
+                                <a href="/generators/hull" class="btn w-100" style="background: #bf9045; color: #fff; border: none;">{{ T .Language "Open Generator" }}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}

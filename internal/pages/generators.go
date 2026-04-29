@@ -13,6 +13,10 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+var generatorsLandingTemplates = append([]string{
+	"./template/generators.html",
+}, commonTemplates...)
+
 var generatorPropellerTemplates = append([]string{
 	"./template/generator-propeller.html",
 }, commonTemplates...)
@@ -35,6 +39,23 @@ type GeneratorData struct {
 	GeneratorType string
 }
 
+func GeneratorsLandingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		d := GeneratorData{}
+		d.Populate(e)
+		d.Title = i18n.T(d.Language, "Generators")
+		d.Description = "Generate custom schematics for your Minecraft Create mod builds."
+		d.Slug = "/generators"
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators")
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		html, err := registry.LoadFiles(generatorsLandingTemplates...).Render(d)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}
+
 func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
@@ -43,7 +64,7 @@ func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Se
 		d.Title = i18n.T(d.Language, "Propeller Generator")
 		d.Description = "Generate custom propeller schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/propeller"
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators/propeller", i18n.T(d.Language, "Propeller"))
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Propeller"))
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorPropellerTemplates...).Render(d)
 		if err != nil {
@@ -61,7 +82,7 @@ func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Serv
 		d.Title = i18n.T(d.Language, "Airship Balloon Generator")
 		d.Description = "Generate custom airship balloon and envelope schematics for Minecraft Create mod."
 		d.Slug = "/generators/balloon"
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators/balloon", i18n.T(d.Language, "Balloon"))
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Balloon"))
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorBalloonTemplates...).Render(d)
 		if err != nil {
@@ -79,7 +100,7 @@ func GeneratorHullHandler(registry *server.Registry, cacheService *cache.Service
 		d.Title = i18n.T(d.Language, "Ship Hull Generator")
 		d.Description = "Generate custom ship hull schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/hull"
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators/hull", i18n.T(d.Language, "Ship Hull"))
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Ship Hull"))
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorHullTemplates...).Render(d)
 		if err != nil {
@@ -109,7 +130,7 @@ func GeneratorGuideHandler(registry *server.Registry, cacheService *cache.Servic
 		d.Title = i18n.T(d.Language, name+" Building Guide")
 		d.Description = fmt.Sprintf("Step by step building guide for the %s generator.", name)
 		d.Slug = "/generators/" + genType
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators/"+genType, i18n.T(d.Language, name), "Guide")
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, name), "/generators/"+genType, "Guide")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorGuideTemplates...).Render(d)
 		if err != nil {
