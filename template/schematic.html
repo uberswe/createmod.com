@@ -199,12 +199,16 @@
                                         {{ end }}
                                     </div>
                                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                                        <a href="#" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal">
+                                        <a href="#" class="btn btn-outline-secondary" style="padding:.4rem .75rem;" data-bs-toggle="modal" data-bs-target="#reportModal">
                                             {{ T .Language "Report" }}
                                         </a>
                                         {{ if .IsAuthor }}
-                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary btn-sm" id="edit-btn">
+                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary" style="padding:.4rem .75rem;" id="edit-btn">
                                             {{ T .Language "Edit" }}
+                                        </a>
+                                        <a href="/schematics/{{ .Schematic.Name }}/stats" class="btn btn-outline-info" style="padding:.4rem .75rem;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>
+                                            {{ T .Language "Stats" }}
                                         </a>
                                         {{ end }}
                                         <div class="ms-auto d-flex align-items-center" style="position:relative;">
@@ -759,134 +763,6 @@
                     </div>
 
                 </div><!-- /row -->
-
-                {{ if .ShowAnalytics }}
-                <!-- Analytics Card (author only) -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h3 class="card-title">{{ T .Language "Analytics" }}</h3>
-                    </div>
-                    <div class="card-body">
-                        {{ if .AnalyticsNewBanner }}
-                        <div class="alert alert-info mb-3">
-                            <div class="d-flex align-items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>
-                                <div>{{ T .Language "Analytics is a new feature! Data collection started recently, so older schematics may have limited data." }}</div>
-                            </div>
-                        </div>
-                        {{ end }}
-                        <div class="row row-deck row-cards mb-3">
-                            <div class="col-sm-6 col-lg-3">
-                                <div class="card card-sm">
-                                    <div class="card-body">
-                                        <div class="subheader">{{ T .Language "Views (30d)" }}</div>
-                                        <div class="h1 mb-0">{{ .AnalyticsTotalViews }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6 col-lg-3">
-                                <div class="card card-sm">
-                                    <div class="card-body">
-                                        <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
-                                        <div class="h1 mb-0">{{ .AnalyticsTotalDL }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6 col-lg-3">
-                                <div class="card card-sm">
-                                    <div class="card-body">
-                                        <div class="subheader">{{ T .Language "Comments" }}</div>
-                                        <div class="h1 mb-0">{{ .AnalyticsComments }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6 col-lg-3">
-                                <div class="card card-sm">
-                                    <div class="card-body">
-                                        <div class="subheader">{{ T .Language "Download/View Ratio" }}</div>
-                                        <div class="h1 mb-0">
-                                            <span class="{{ if .AnalyticsVDBetter }}text-green{{ else }}text-red{{ end }}">{{ .AnalyticsVDPercent }}</span>
-                                            <small class="text-secondary ms-1" style="font-size: 0.5em;">{{ T .Language "avg" }}: {{ .AnalyticsAvgVDPercent }}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row row-deck row-cards">
-                            <div class="col-lg-6">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Views per Hour" }}</h3></div>
-                                    <div class="card-body"><div id="chart-sa-views" style="min-height:200px;"></div></div>
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Downloads per Hour" }}</h3></div>
-                                    <div class="card-body"><div id="chart-sa-downloads" style="min-height:200px;"></div></div>
-                                </div>
-                            </div>
-                            {{ if .AnalyticsHasVideo }}
-                            <div class="col-lg-6">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Video Plays per Hour" }}</h3></div>
-                                    <div class="card-body"><div id="chart-sa-video-plays" style="min-height:200px;"></div></div>
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title">{{ T .Language "YouTube Clicks per Hour" }}</h3></div>
-                                    <div class="card-body"><div id="chart-sa-yt-clicks" style="min-height:200px;"></div></div>
-                                </div>
-                            </div>
-                            {{ end }}
-                            <div class="col-lg-6">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Avg. Time on Page (seconds)" }}</h3></div>
-                                    <div class="card-body"><div id="chart-sa-time-on-page" style="min-height:200px;"></div></div>
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Layer Viewer Usage" }}</h3></div>
-                                    <div class="card-body"><div id="chart-sa-layer-views" style="min-height:200px;"></div></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-                <script>
-                (function() {
-                  var isDark = document.body.classList.contains('theme-dark') ||
-                               window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var fg = isDark ? '#c8d6e5' : '#354052';
-                  var grid = isDark ? '#2b3648' : '#e0e5ec';
-                  function makeChart(elId, data, name, color) {
-                    var el = document.getElementById(elId);
-                    if (!el) return;
-                    new ApexCharts(el, {
-                      chart: { type: 'area', height: 200, sparkline: { enabled: false }, toolbar: { show: false }, foreColor: fg },
-                      series: [{ name: name, data: data }],
-                      xaxis: { type: 'category', labels: { show: false } },
-                      yaxis: { min: 0 },
-                      stroke: { curve: 'smooth', width: 2 },
-                      colors: [color],
-                      fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
-                      grid: { borderColor: grid },
-                      tooltip: { theme: isDark ? 'dark' : 'light' }
-                    }).render();
-                  }
-                  makeChart('chart-sa-views', {{ .AnalyticsViewsJSON }}, 'Views', '#4299e1');
-                  makeChart('chart-sa-downloads', {{ .AnalyticsDLJSON }}, 'Downloads', '#48bb78');
-                  {{ if .AnalyticsHasVideo }}
-                  makeChart('chart-sa-video-plays', {{ .AnalyticsVideoJSON }}, 'Video Plays', '#ed8936');
-                  makeChart('chart-sa-yt-clicks', {{ .AnalyticsYTJSON }}, 'YouTube Clicks', '#e53e3e');
-                  {{ end }}
-                  makeChart('chart-sa-time-on-page', {{ .AnalyticsTimeJSON }}, 'Avg Seconds', '#9f7aea');
-                  makeChart('chart-sa-layer-views', {{ .AnalyticsLayerJSON }}, 'Layer Views', '#38b2ac');
-                })();
-                </script>
-                {{ end }}
 
                 </div><!-- /flex-grow-1 -->
 
