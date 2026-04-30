@@ -137,10 +137,21 @@ func New(conf Config) *Server {
 			log.Fatalf("Failed to parse Redis URL: %v", err)
 		}
 		redisClient = redis.NewClient(opts)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := redisClient.Ping(ctx).Err(); err != nil {
-			log.Fatalf("Failed to connect to Redis: %v", err)
+		var redisConnected bool
+		for attempt := 1; attempt <= 10; attempt++ {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			if err := redisClient.Ping(ctx).Err(); err != nil {
+				log.Printf("Redis connection attempt %d/10 failed: %v", attempt, err)
+				cancel()
+				time.Sleep(time.Duration(attempt) * time.Second)
+				continue
+			}
+			cancel()
+			redisConnected = true
+			break
+		}
+		if !redisConnected {
+			log.Fatalf("Failed to connect to Redis after 10 attempts")
 		}
 		redisClient.AddHook(&slowlog.RedisHook{})
 		rl = ratelimit.NewRedisFromClient(redisClient)
@@ -301,11 +312,11 @@ func (s *Server) Start() {
 	}
 
 	httpServer := &http.Server{
-		Addr:         addr,
-		Handler:      handler,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Graceful shutdown — ordered: HTTP → jobs → cache → rate limiter → Redis → PostgreSQL

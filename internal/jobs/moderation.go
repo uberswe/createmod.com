@@ -57,6 +57,19 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		imageFullURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, args.SchematicID, url.PathEscape(args.ImageURL))
 	}
 
+	logStateChange := func(oldState, newState, reason string) {
+		if w.deps.Store.ModerationLog != nil {
+			_ = w.deps.Store.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+				SchematicID: args.SchematicID,
+				ActorType:   "system",
+				Action:      "state_change",
+				OldState:    oldState,
+				NewState:    newState,
+				Reason:      reason,
+			})
+		}
+	}
+
 	// Run moderation if still in auto_review
 	if schem.ModerationState == store.ModerationAutoReview && w.deps.Moderation != nil {
 		var emailSubject, emailBodyText string
@@ -68,10 +81,13 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
 			emailBodyText = fmt.Sprintf("The schematic \"%s\" could not be auto-moderated (moderation unavailable). It requires manual review.", args.Title)
 		} else if !policyResult.Approved {
+			oldState := schem.ModerationState
 			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = policyResult.Reason
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
+			} else {
+				logStateChange(oldState, schem.ModerationState, "policy check failed: "+policyResult.Reason)
 			}
 			emailSubject = fmt.Sprintf("Schematic Blocked: %s", args.Title)
 			emailBodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", args.Title, policyResult.Reason)
@@ -83,18 +99,24 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
 				emailBodyText = fmt.Sprintf("The schematic \"%s\" could not be auto-moderated (quality check unavailable). It requires manual review.", args.Title)
 			} else if !qualityResult.Approved {
+				oldState := schem.ModerationState
 				schem.ModerationState = store.ModerationFlagged
 				schem.ModerationReason = qualityResult.Reason
 				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 					slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
+				} else {
+					logStateChange(oldState, schem.ModerationState, "quality check failed: "+qualityResult.Reason)
 				}
 				emailSubject = fmt.Sprintf("Schematic Blocked: %s", args.Title)
 				emailBodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", args.Title, qualityResult.Reason)
 			} else {
 				// Both checks passed
+				oldState := schem.ModerationState
 				schem.ModerationState = store.ModerationPublished
 				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 					slog.Error("moderation job: failed to approve schematic", "error", updateErr, "schematic_id", args.SchematicID)
+				} else {
+					logStateChange(oldState, schem.ModerationState, "auto-approved: policy and quality checks passed")
 				}
 				emailSubject = fmt.Sprintf("Schematic Auto-Approved: %s", args.Title)
 				emailBodyText = fmt.Sprintf("The schematic \"%s\" has been auto-approved and is now live on the site.", args.Title)
@@ -125,10 +147,13 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		} else if !imgResult.Approved {
 			slog.Warn("moderation job: featured image flagged, holding for review",
 				"schematic_id", args.SchematicID, "reason", imgResult.Reason)
+			oldState := schem.ModerationState
 			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = fmt.Sprintf("Featured image flagged by automated moderation: %s", imgResult.Reason)
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
+			} else {
+				logStateChange(oldState, schem.ModerationState, "image safety check failed: "+imgResult.Reason)
 			}
 		}
 	}
@@ -143,10 +168,13 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		} else if !qualResult.Approved {
 			slog.Warn("moderation job: featured image not a Minecraft build, holding for review",
 				"schematic_id", args.SchematicID, "reason", qualResult.Reason)
+			oldState := schem.ModerationState
 			schem.ModerationState = store.ModerationFlagged
 			schem.ModerationReason = fmt.Sprintf("Featured image is not a Minecraft build: %s", qualResult.Reason)
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
+			} else {
+				logStateChange(oldState, schem.ModerationState, "image quality check failed: "+qualResult.Reason)
 			}
 		}
 	}
