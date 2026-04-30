@@ -83,6 +83,22 @@ type SchematicData struct {
 	ModerationChatEnabled bool
 	ModerationMessages    []models.ModerationChatMessage
 	CanPostMessage        bool
+	// Analytics fields (author only)
+	ShowAnalytics        bool
+	AnalyticsNewBanner   bool
+	AnalyticsTotalViews  int
+	AnalyticsTotalDL     int
+	AnalyticsComments    int64
+	AnalyticsVDPercent   string
+	AnalyticsAvgVDPercent string
+	AnalyticsVDBetter    bool
+	AnalyticsHasVideo    bool
+	AnalyticsViewsJSON   string
+	AnalyticsDLJSON      string
+	AnalyticsVideoJSON   string
+	AnalyticsYTJSON      string
+	AnalyticsTimeJSON    string
+	AnalyticsLayerJSON   string
 }
 
 // ModInfo holds display info for a mod in the Required Mods section.
@@ -164,6 +180,52 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		translateSchematicTitles(d.Similar, translationService, cacheService, d.Language)
 		d.AuthorHasMore = len(d.FromAuthor) > 0
 		d.IsAuthor = authorID == d.UserID
+		if d.IsAuthor {
+			d.ShowAnalytics = true
+			since := time.Now().UTC().AddDate(0, 0, -30)
+			aViews, _ := appStore.Stats.HourlySchematicViews(ctx, s.ID, since)
+			aDL, _ := appStore.Stats.HourlySchematicDownloads(ctx, s.ID, since)
+			d.AnalyticsHasVideo = s.Video != ""
+			var aVideoPlays, aYTClicks []store.HourlyStat
+			if d.AnalyticsHasVideo {
+				aVideoPlays, _ = appStore.Stats.HourlySchematicEvents(ctx, s.ID, store.EventVideoPlay, since)
+				aYTClicks, _ = appStore.Stats.HourlySchematicEvents(ctx, s.ID, store.EventYouTubeClick, since)
+			}
+			aTimeOnPage, _ := appStore.Stats.HourlySchematicEvents(ctx, s.ID, store.EventTimeOnPage, since)
+			aLayerViews, _ := appStore.Stats.HourlySchematicEvents(ctx, s.ID, store.EventLayerViewer, since)
+			d.AnalyticsComments, _ = appStore.Comments.CountBySchematic(ctx, s.ID)
+			var tv, td int
+			for _, v := range aViews {
+				tv += int(v.Count)
+			}
+			for _, dl := range aDL {
+				td += int(dl.Count)
+			}
+			d.AnalyticsTotalViews = tv
+			d.AnalyticsTotalDL = td
+			var vdRatio float64
+			if tv > 0 {
+				vdRatio = float64(td) / float64(tv)
+			}
+			var siteAvg float64
+			if cached, ok := cacheService.GetFloat("site_avg_vd_ratio"); ok {
+				siteAvg = cached
+			} else {
+				siteAvg, _ = appStore.Stats.GetSiteAvgVDRatio(ctx)
+				cacheService.SetFloat("site_avg_vd_ratio", siteAvg)
+			}
+			d.AnalyticsVDPercent = fmt.Sprintf("%.2f%%", vdRatio*100)
+			d.AnalyticsAvgVDPercent = fmt.Sprintf("%.2f%%", siteAvg*100)
+			d.AnalyticsVDBetter = vdRatio >= siteAvg
+			cutoff := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+			d.AnalyticsNewBanner = s.Created.Before(cutoff)
+			d.AnalyticsViewsJSON = hourlyStatsJSON(aViews)
+			d.AnalyticsDLJSON = hourlyStatsJSON(aDL)
+			d.AnalyticsVideoJSON = hourlyStatsJSON(aVideoPlays)
+			d.AnalyticsYTJSON = hourlyStatsJSON(aYTClicks)
+			d.AnalyticsTimeJSON = hourlyStatsJSON(aTimeOnPage)
+			d.AnalyticsLayerJSON = hourlyStatsJSON(aLayerViews)
+		}
 		// Check if the viewer is an admin
 		if d.UserID != "" {
 			if viewerUser, uErr := appStore.Users.GetUserByID(ctx, d.UserID); uErr == nil && viewerUser != nil {
