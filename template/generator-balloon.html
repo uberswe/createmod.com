@@ -3,7 +3,7 @@
     {{ template "sidebar.html" . }}
     <div class="page-wrapper">
         {{template "header.html" .}}
-        <main class="page-body" style="padding:0;">
+        <main class="page-body page-body-flush" style="padding:0;">
             <div style="position:relative;min-height:calc(100vh - 60px);">
                 <div id="generator-viewport" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>
                 <nav class="gen-nav">
@@ -214,10 +214,11 @@
     </div>
 </div>
 <div id="gen-init-data" data-hash="{{ .InitHash }}" hidden></div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
-<script src="/assets/x/generator.js?v={{ AssetVer }}" hx-disable></script>
-<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
-<script hx-disable>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
+<script src="/assets/x/generators.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/guide.js?v={{ AssetVer }}"></script>
+<script>
 (function(){
   var PRESETS = {
     roundBlimp:     { lengthX:36, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
@@ -320,7 +321,7 @@
   }
 
   function init() {
-    if (!GeneratorApp.initScene('generator-viewport')) {
+    if (!window.GeneratorApp || !GeneratorApp.initScene('generator-viewport')) {
       setTimeout(init, 100);
       return;
     }

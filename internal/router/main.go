@@ -353,6 +353,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/moderation-chat/{id}", Adapt(pages.ModerationChatCreateHandler(p.AppStore)))
 	r.Delete("/api/comments/{id}", Adapt(pages.CommentDeleteHandler(p.AppStore)))
 	r.Post("/api/ratings", Adapt(pages.RatingUpsertHandler(p.AppStore)))
+	analyticsRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
+	r.With(analyticsRateLimit).Post("/api/analytics", Adapt(pages.AnalyticsEventHandler(p.CacheService, p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
@@ -389,12 +391,15 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/settings/blacklist/{id}", Adapt(pages.BlacklistDeleteHandler(p.AppStore)))
 	// API Docs
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/api/openapi.json", Adapt(pages.OpenAPIHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
+	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Reports
 	reportRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Hour)
 	r.With(reportRateLimit).Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
@@ -524,6 +529,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/guide", Adapt(pages.SchematicGuideHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/schematics/{name}/stats", Adapt(pages.SchematicStatsHandler(registry, p.CacheService, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
 	// Click tracking

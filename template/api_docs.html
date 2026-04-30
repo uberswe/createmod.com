@@ -11,6 +11,9 @@
           <h1 class="mb-2">{{ T .Language "API Documentation" }}</h1>
           <p class="text-secondary mb-2">{{ T .Language "Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically." }}</p>
           <code class="api-base-url">{{ T .Language "Base URL" }}: https://createmod.com</code>
+          <div class="mt-2">
+            <a href="/api/openapi.json" class="btn btn-sm btn-outline-secondary" target="_blank" hx-boost="false">OpenAPI Spec (JSON)</a>
+          </div>
         </div>
 
         <div class="api-usage-notice mb-4">
@@ -31,6 +34,9 @@
               <li class="nav-item"><a class="nav-link" href="#list-schematics"><span class="api-method-badge api-method-get">GET</span> /api/schematics</a></li>
               <li class="nav-item"><a class="nav-link" href="#get-schematic"><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}</a></li>
               <li class="nav-item"><a class="nav-link" href="#upload-schematic"><span class="api-method-badge api-method-post">POST</span> /api/schematics/upload</a></li>
+              <li class="nav-item api-nav-divider"></li>
+              <li class="nav-item"><a class="nav-link" href="#schematic-stats"><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}/stats</a></li>
+              <li class="nav-item"><a class="nav-link" href="#user-stats"><span class="api-method-badge api-method-get">GET</span> /api/user/stats</a></li>
             </ul>
           </nav>
 
@@ -395,6 +401,135 @@ resp, _ := http.DefaultClient.Do(req)
               </div>
             </section>
 
+            <!-- GET /api/schematics/{name}/stats -->
+            <section id="schematic-stats" class="api-section api-section-with-panel">
+              <div class="api-section-docs">
+                <div class="api-endpoint-header">
+                  <span class="api-method-badge api-method-get">GET</span>
+                  <code class="api-endpoint-url">/api/schematics/{name}/stats</code>
+                </div>
+                <p>{{ T .Language "Get hourly analytics for a schematic over the last 30 days. Only the schematic author can access this endpoint." }}</p>
+
+                <h4>{{ T .Language "Parameters" }}</h4>
+                <div class="table-responsive">
+                  <table class="table api-param-table">
+                    <thead>
+                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>name</code></td><td>string</td><td><strong>{{ T .Language "Required" }}</strong></td><td>{{ T .Language "The URL slug of the schematic (path parameter)" }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>{{ T .Language "Code Samples" }}</h4>
+                <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/schematics/windmill-farm/stats"</code></pre></div>
+
+                <h4>{{ T .Language "Response" }}</h4>
+                <div class="api-code-block"><pre><code>{
+  "name": "windmill-farm",
+  "title": "Windmill Farm",
+  "total_views": 1500,
+  "total_downloads": 320,
+  "comments": 12,
+  "vd_ratio": 0.2133,
+  "site_avg_vd_ratio": 0.15,
+  "has_video": true,
+  "views": [{"hour": "2026-04-01 00", "count": 5}, ...],
+  "downloads": [{"hour": "2026-04-01 00", "count": 1}, ...],
+  "video_plays": [{"hour": "2026-04-01 00", "count": 0}, ...],
+  "yt_clicks": [{"hour": "2026-04-01 00", "count": 0}, ...],
+  "time_on_page": [{"hour": "2026-04-01 00", "count": 45}, ...],
+  "layer_views": [{"hour": "2026-04-01 00", "count": 3}, ...]
+}</code></pre></div>
+                <p class="text-secondary mt-2">{{ T .Language "Each array contains one entry per hour for 30 days (720 entries). Hours with no data have count 0. The time_on_page values are averages in seconds." }}</p>
+              </div>
+              <div class="api-section-panel">
+                <div class="api-try-card" id="try-panel-schematic-stats">
+                  <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}/stats</h6>
+                  <div class="mb-2">
+                    <label class="form-label">name</label>
+                    <input type="text" class="form-control form-control-sm" id="try-schematic-stats-name" placeholder="windmill-farm">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" onclick="trySchematicStats()">{{ T .Language "Send Request" }}</button>
+                  <div class="api-try-response mt-2" id="try-schematic-stats-response" style="display:none;">
+                    <pre class="api-code-block mb-0"><code id="try-schematic-stats-output"></code></pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- GET /api/user/stats -->
+            <section id="user-stats" class="api-section api-section-with-panel">
+              <div class="api-section-docs">
+                <div class="api-endpoint-header">
+                  <span class="api-method-badge api-method-get">GET</span>
+                  <code class="api-endpoint-url">/api/user/stats</code>
+                </div>
+                <p>{{ T .Language "Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals." }}</p>
+
+                <h4>{{ T .Language "Parameters" }}</h4>
+                <div class="table-responsive">
+                  <table class="table api-param-table">
+                    <thead>
+                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><code>page</code></td><td>integer</td><td><span class="text-secondary">{{ T .Language "Optional" }}</span></td><td>{{ T .Language "Page number for the schematic list (default: 1)" }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>{{ T .Language "Code Samples" }}</h4>
+                <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/user/stats?page=1"</code></pre></div>
+
+                <h4>{{ T .Language "Response" }}</h4>
+                <div class="api-code-block"><pre><code>{
+  "total_views": 12500,
+  "total_downloads": 2100,
+  "vd_ratio": 0.168,
+  "site_avg_vd_ratio": 0.15,
+  "views": [{"hour": "2026-04-01 00", "count": 42}, ...],
+  "downloads": [{"hour": "2026-04-01 00", "count": 7}, ...],
+  "video_plays": [...],
+  "yt_clicks": [...],
+  "time_on_page": [...],
+  "layer_views": [...],
+  "schematics": [
+    {
+      "name": "windmill-farm",
+      "title": "Windmill Farm",
+      "featured_image": "/api/files/.../image.webp",
+      "views": 1500,
+      "downloads": 320,
+      "vd_ratio": 0.2133,
+      "created": "2026-03-15T10:30:00Z"
+    }
+  ],
+  "total_schematics": 25,
+  "page": 1,
+  "page_size": 20,
+  "has_next": true,
+  "has_prev": false
+}</code></pre></div>
+              </div>
+              <div class="api-section-panel">
+                <div class="api-try-card" id="try-panel-user-stats">
+                  <h6><span class="api-method-badge api-method-get">GET</span> /api/user/stats</h6>
+                  <div class="mb-2">
+                    <label class="form-label">page</label>
+                    <input type="number" class="form-control form-control-sm" id="try-user-stats-page" value="1" min="1">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" onclick="tryUserStats()">{{ T .Language "Send Request" }}</button>
+                  <div class="api-try-response mt-2" id="try-user-stats-response" style="display:none;">
+                    <pre class="api-code-block mb-0"><code id="try-user-stats-output"></code></pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+
           </div>
         </div>
       </div>
@@ -470,6 +605,23 @@ function tryUploadSchematic() {
   fetch('/api/schematics/upload', { method: 'POST', headers: { 'X-API-Key': key }, body: form })
     .then(function(r) { return r.json().then(function(d) { showResponse('try-upload-output', 'try-upload-response', r.status, d); }); })
     .catch(function(e) { showResponse('try-upload-output', 'try-upload-response', 'ERR', { error: e.message }); });
+}
+
+function trySchematicStats() {
+  var key = getApiKey();
+  var name = document.getElementById('try-schematic-stats-name').value;
+  if (!name) { alert('Enter a schematic name'); return; }
+  fetch('/api/schematics/' + encodeURIComponent(name) + '/stats', { headers: { 'X-API-Key': key } })
+    .then(function(r) { return r.json().then(function(d) { showResponse('try-schematic-stats-output', 'try-schematic-stats-response', r.status, d); }); })
+    .catch(function(e) { showResponse('try-schematic-stats-output', 'try-schematic-stats-response', 'ERR', { error: e.message }); });
+}
+
+function tryUserStats() {
+  var key = getApiKey();
+  var page = document.getElementById('try-user-stats-page').value || '1';
+  fetch('/api/user/stats?page=' + encodeURIComponent(page), { headers: { 'X-API-Key': key } })
+    .then(function(r) { return r.json().then(function(d) { showResponse('try-user-stats-output', 'try-user-stats-response', r.status, d); }); })
+    .catch(function(e) { showResponse('try-user-stats-output', 'try-user-stats-response', 'ERR', { error: e.message }); });
 }
 </script>
 

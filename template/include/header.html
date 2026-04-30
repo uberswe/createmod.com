@@ -82,6 +82,7 @@
                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                     <a href="{{ LangURL .Language "/profile" }}" class="dropdown-item">{{ T .Language "Profile" }}</a>
                     <a href="{{ LangURL .Language "/my-schematics" }}" class="dropdown-item">{{ T .Language "My Schematics" }}</a>
+                    <a href="{{ LangURL .Language "/settings/statistics" }}" class="dropdown-item" hx-boost="false">{{ T .Language "Statistics" }}</a>
                     <div class="dropdown-divider"></div>
                     <a href="{{ LangURL .Language "/settings" }}" class="dropdown-item">{{ T .Language "Settings" }}</a>
                     <a class="dropdown-item" href="{{ LangURL .Language "/logout" }}">{{ T .Language "Logout" }}</a>
@@ -94,7 +95,7 @@
     </div>
 </header>
 {{ if .Breadcrumbs }}
-<div class="container-wide mt-2">
+<div class="container-wide{{ if .BreadcrumbOverlay }} breadcrumb-overlay{{ else }} mt-2{{ end }}">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             {{ range .Breadcrumbs }}

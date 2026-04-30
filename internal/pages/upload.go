@@ -298,7 +298,19 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// produces 502 errors through reverse proxies like Cloudflare.
 		if err := e.Request.ParseMultipartForm(100 << 20); err != nil {
 			slog.Error("make-public: failed to parse multipart form", "error", err)
-			return e.String(http.StatusBadRequest, "failed to parse form")
+			msg := "Failed to parse form. "
+			errStr := err.Error()
+			switch {
+			case strings.Contains(errStr, "too large") || strings.Contains(errStr, "exceeded"):
+				msg += "The upload is too large. Total form size must be under 100 MB."
+			case strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline"):
+				msg += "The connection timed out while uploading. Please try again with a faster connection or smaller images."
+			case strings.Contains(errStr, "unexpected EOF") || strings.Contains(errStr, "connection reset"):
+				msg += "The connection was interrupted during upload. Please try again."
+			default:
+				msg += "Please try again with smaller images or fewer files."
+			}
+			return e.String(http.StatusBadRequest, msg)
 		}
 
 		// --- Parse form fields ---
