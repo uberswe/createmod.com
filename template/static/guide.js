@@ -588,6 +588,7 @@ function openGuide(data, mode) {
   function goTo(idx) {
     currentStep = Math.max(0, Math.min(steps.length - 1, idx));
     renderStep();
+    document.dispatchEvent(new CustomEvent('schematic:layer-viewed'));
   }
 
   function setZoom(newZoom) {
@@ -847,6 +848,7 @@ function renderPageInner(data, mode, loader) {
   function goTo(idx) {
     currentStep = Math.max(0, Math.min(steps.length - 1, idx));
     renderStep();
+    document.dispatchEvent(new CustomEvent('schematic:layer-viewed'));
   }
 
   function setZoom(newZoom) {
