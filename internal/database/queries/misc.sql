@@ -102,6 +102,9 @@ RETURNING *;
 -- name: ListExternalAuthsByUser :many
 SELECT * FROM external_auths WHERE user_id = $1;
 
+-- name: DeleteExternalAuth :exec
+DELETE FROM external_auths WHERE user_id = $1 AND provider = $2;
+
 -- name: CreateUserMeta :exec
 INSERT INTO user_meta (id, user_id, key, value)
 VALUES ($1, $2, $3, $4)

@@ -77,6 +77,7 @@ type Querier interface {
 	DeleteComment(ctx context.Context, id string) error
 	DeleteExpiredTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteExpiredUnclaimedTempUploads(ctx context.Context, created time.Time) (int64, error)
+	DeleteExternalAuth(ctx context.Context, arg DeleteExternalAuthParams) error
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
 	DeleteOldSchematicEvents(ctx context.Context, created time.Time) (int64, error)
