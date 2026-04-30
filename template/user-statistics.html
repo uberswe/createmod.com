@@ -33,10 +33,146 @@
                                 <div class="col-12 col-md-9 d-flex flex-column">
                                     <div class="card-body">
                                         <h2 class="mb-4">{{ T .Language "Statistics" }}</h2>
+
+                                        {{ if .ShowNewFeatureBanner }}
+                                        <div class="alert alert-info mb-3">
+                                            <div class="d-flex align-items-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>
+                                                <div>{{ T .Language "Analytics is a new feature! Data collection started recently, so older schematics may have limited data." }}</div>
+                                            </div>
+                                        </div>
+                                        {{ end }}
+
+                                        <!-- Summary Cards -->
+                                        <div class="row row-deck row-cards mb-4">
+                                            <div class="col-sm-6 col-lg-4">
+                                                <div class="card card-sm">
+                                                    <div class="card-body">
+                                                        <div class="subheader">{{ T .Language "Views (30d)" }}</div>
+                                                        <div class="h1 mb-0">{{ .TotalViews30d }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-6 col-lg-4">
+                                                <div class="card card-sm">
+                                                    <div class="card-body">
+                                                        <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
+                                                        <div class="h1 mb-0">{{ .TotalDownloads30d }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-6 col-lg-4">
+                                                <div class="card card-sm">
+                                                    <div class="card-body">
+                                                        <div class="subheader">{{ T .Language "Download/View Ratio (30d)" }}</div>
+                                                        <div class="h1 mb-0">
+                                                            <span class="{{ if .VDRatioBetter }}text-green{{ else }}text-red{{ end }}">{{ .VDRatioPercent }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Monthly Charts -->
                                         <h3 class="card-title">{{ T .Language "Monthly Views" }}</h3>
-                                        <div id="chart-views" style="min-height: 300px;"></div>
+                                        <div id="chart-monthly-views" style="min-height: 250px;"></div>
                                         <h3 class="card-title mt-4">{{ T .Language "Monthly Downloads" }}</h3>
-                                        <div id="chart-downloads" style="min-height: 300px;"></div>
+                                        <div id="chart-monthly-downloads" style="min-height: 250px;"></div>
+
+                                        <!-- Hourly Charts (30 days) -->
+                                        <h3 class="card-title mt-4">{{ T .Language "Hourly Breakdown (Last 30 Days)" }}</h3>
+                                        <div class="row row-deck row-cards mt-2">
+                                            <div class="col-lg-6">
+                                                <div class="card">
+                                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Views per Hour" }}</h3></div>
+                                                    <div class="card-body"><div id="chart-hourly-views" style="min-height:200px;"></div></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="card">
+                                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Downloads per Hour" }}</h3></div>
+                                                    <div class="card-body"><div id="chart-hourly-downloads" style="min-height:200px;"></div></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="card">
+                                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Video Plays per Hour" }}</h3></div>
+                                                    <div class="card-body"><div id="chart-hourly-video-plays" style="min-height:200px;"></div></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="card">
+                                                    <div class="card-header"><h3 class="card-title">{{ T .Language "YouTube Clicks per Hour" }}</h3></div>
+                                                    <div class="card-body"><div id="chart-hourly-yt-clicks" style="min-height:200px;"></div></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="card">
+                                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Avg. Time on Page (seconds)" }}</h3></div>
+                                                    <div class="card-body"><div id="chart-hourly-time-on-page" style="min-height:200px;"></div></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="card">
+                                                    <div class="card-header"><h3 class="card-title">{{ T .Language "Layer Viewer Usage" }}</h3></div>
+                                                    <div class="card-body"><div id="chart-hourly-layer-views" style="min-height:200px;"></div></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Schematic List -->
+                                        <h3 class="card-title mt-4">{{ T .Language "Your Schematics" }}</h3>
+                                        {{ if .Schematics }}
+                                        <div class="table-responsive">
+                                            <table class="table table-vcenter card-table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th></th>
+                                                        <th>{{ T .Language "Title" }}</th>
+                                                        <th>{{ T .Language "Views" }}</th>
+                                                        <th>{{ T .Language "Downloads" }}</th>
+                                                        <th>{{ T .Language "D/V Ratio" }}</th>
+                                                        <th>{{ T .Language "Posted" }}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {{ range .Schematics }}
+                                                    <tr class="cursor-pointer" onclick="window.location='/schematics/{{ .Name }}'">
+                                                        <td class="w-1">
+                                                            {{ if ne .FeaturedImage "" }}
+                                                            <span class="avatar" style="background-image: url({{ .FeaturedImage }})"></span>
+                                                            {{ else }}
+                                                            <span class="avatar">{{ slice .Title 0 1 }}</span>
+                                                            {{ end }}
+                                                        </td>
+                                                        <td>{{ .Title }}</td>
+                                                        <td>{{ .Views }}</td>
+                                                        <td>{{ .Downloads }}</td>
+                                                        <td>
+                                                            <span class="{{ if .VDRatioBetter }}text-green{{ else }}text-red{{ end }}">{{ .VDRatioPercent }}</span>
+                                                        </td>
+                                                        <td class="text-secondary">{{ .Created.Format "Jan 02, 2006" }}</td>
+                                                    </tr>
+                                                    {{ end }}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {{ if gt .TotalPages 1 }}
+                                        <div class="d-flex justify-content-center mt-3">
+                                            <ul class="pagination">
+                                                {{ if .HasPrevPage }}
+                                                <li class="page-item"><a class="page-link" href="?page={{ .PrevPage }}">{{ T .Language "Previous" }}</a></li>
+                                                {{ end }}
+                                                <li class="page-item disabled"><a class="page-link">{{ .Page }} / {{ .TotalPages }}</a></li>
+                                                {{ if .HasNextPage }}
+                                                <li class="page-item"><a class="page-link" href="?page={{ .NextPage }}">{{ T .Language "Next" }}</a></li>
+                                                {{ end }}
+                                            </ul>
+                                        </div>
+                                        {{ end }}
+                                        {{ else }}
+                                        <p class="text-secondary">{{ T .Language "No schematics uploaded yet." }}</p>
+                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -52,43 +188,66 @@
 <script>
 (function(){
     function initCharts() {
-        var viewLabels = [{{ .ViewLabelsJSON }}];
-        var viewValues = [{{ .ViewValuesJSON }}];
-        var dlLabels = [{{ .DownloadLabelsJSON }}];
-        var dlValues = [{{ .DownloadValuesJSON }}];
-
         var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
         var labelColor = isDark ? '#a0aec0' : '#616876';
         var gridColor = isDark ? '#3a3f4b' : '#e0e0e0';
 
         var commonOpts = {
-            chart: { type: 'area', height: 300, toolbar: { show: false }, zoom: { enabled: false }, foreColor: labelColor },
+            chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: labelColor },
             dataLabels: { enabled: false },
             stroke: { curve: 'smooth', width: 2 },
             grid: { borderColor: gridColor, strokeDashArray: 4 },
             xaxis: { type: 'category', labels: { style: { colors: labelColor } } },
-            yaxis: { labels: { style: { colors: labelColor } } },
+            yaxis: { labels: { style: { colors: labelColor } }, min: 0 },
             tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: function(v){ return v.toLocaleString(); } } }
         };
 
-        var viewEl = document.querySelector('#chart-views');
-        var dlEl = document.querySelector('#chart-downloads');
+        // Monthly charts
+        var viewLabels = [{{ .ViewLabelsJSON }}];
+        var viewValues = [{{ .ViewValuesJSON }}];
+        var dlLabels = [{{ .DownloadLabelsJSON }}];
+        var dlValues = [{{ .DownloadValuesJSON }}];
+
+        var viewEl = document.querySelector('#chart-monthly-views');
         if (viewEl) {
-            while (viewEl.firstChild) viewEl.removeChild(viewEl.firstChild);
             new ApexCharts(viewEl, Object.assign({}, commonOpts, {
                 series: [{ name: 'Views', data: viewValues }],
                 xaxis: { categories: viewLabels, type: 'category', labels: { style: { colors: labelColor } } },
                 colors: ['#206bc4']
             })).render();
         }
+        var dlEl = document.querySelector('#chart-monthly-downloads');
         if (dlEl) {
-            while (dlEl.firstChild) dlEl.removeChild(dlEl.firstChild);
             new ApexCharts(dlEl, Object.assign({}, commonOpts, {
                 series: [{ name: 'Downloads', data: dlValues }],
                 xaxis: { categories: dlLabels, type: 'category', labels: { style: { colors: labelColor } } },
                 colors: ['#2fb344']
             })).render();
         }
+
+        // Hourly charts
+        function makeHourlyChart(elId, data, name, color) {
+            var el = document.getElementById(elId);
+            if (!el) return;
+            new ApexCharts(el, {
+                chart: { type: 'area', height: 200, sparkline: { enabled: false }, toolbar: { show: false }, foreColor: labelColor },
+                series: [{ name: name, data: data }],
+                xaxis: { type: 'category', labels: { show: false } },
+                yaxis: { min: 0 },
+                stroke: { curve: 'smooth', width: 2 },
+                colors: [color],
+                fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+                grid: { borderColor: gridColor },
+                tooltip: { theme: isDark ? 'dark' : 'light' }
+            }).render();
+        }
+
+        makeHourlyChart('chart-hourly-views', {{ .HourlyViewsJSON }}, 'Views', '#4299e1');
+        makeHourlyChart('chart-hourly-downloads', {{ .HourlyDownloadsJSON }}, 'Downloads', '#48bb78');
+        makeHourlyChart('chart-hourly-video-plays', {{ .HourlyVideoPlaysJSON }}, 'Video Plays', '#ed8936');
+        makeHourlyChart('chart-hourly-yt-clicks', {{ .HourlyYTClicksJSON }}, 'YouTube Clicks', '#e53e3e');
+        makeHourlyChart('chart-hourly-time-on-page', {{ .HourlyTimeOnPageJSON }}, 'Avg Seconds', '#9f7aea');
+        makeHourlyChart('chart-hourly-layer-views', {{ .HourlyLayerViewsJSON }}, 'Layer Views', '#38b2ac');
     }
 
     if (typeof ApexCharts !== 'undefined') {

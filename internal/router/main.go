@@ -353,6 +353,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/moderation-chat/{id}", Adapt(pages.ModerationChatCreateHandler(p.AppStore)))
 	r.Delete("/api/comments/{id}", Adapt(pages.CommentDeleteHandler(p.AppStore)))
 	r.Post("/api/ratings", Adapt(pages.RatingUpsertHandler(p.AppStore)))
+	analyticsRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
+	r.With(analyticsRateLimit).Post("/api/analytics", Adapt(pages.AnalyticsEventHandler(p.CacheService, p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
@@ -524,6 +526,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/guide", Adapt(pages.SchematicGuideHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.CacheService, registry, p.AppStore)))
+	r.Get("/schematics/{name}/analytics", Adapt(pages.SchematicAnalyticsHandler(registry, p.CacheService, p.AppStore)))
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
 	// Click tracking
