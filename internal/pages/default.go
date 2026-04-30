@@ -51,6 +51,7 @@ type DefaultData struct {
 	NextPageURL     string
 	NoIndex         bool
 	Breadcrumbs     []BreadcrumbItem
+	BreadcrumbOverlay  bool
 	HideOutstream      bool
 	AdminSection       string
 	DiscordOAuthEnabled bool

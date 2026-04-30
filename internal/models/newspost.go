@@ -12,6 +12,7 @@ type NewsPostListItem struct {
 	Title          string
 	Excerpt        string
 	FirstParagraph template.HTML // rendered HTML of the first paragraph
+	Image          string        // optional image URL
 	URL            string
 	PostDate       time.Time
 }

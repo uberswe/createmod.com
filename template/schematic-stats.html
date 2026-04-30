@@ -1,0 +1,146 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="page-header d-print-none mb-3">
+                    <div class="d-flex align-items-center">
+                        <a href="/schematics/{{ .SchematicName }}" class="btn btn-outline-secondary me-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" /></svg>
+                            {{ T .Language "Back to Schematic" }}
+                        </a>
+                        <div>
+                            <h2 class="page-title mb-0">{{ T .Language "Stats" }}: {{ .SchematicTitle }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                {{ if .ShowNewFeatureBanner }}
+                <div class="alert alert-info mb-3">
+                    <div class="d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>
+                        <div>{{ T .Language "Analytics is a new feature! Data collection started recently, so older schematics may have limited data." }}</div>
+                    </div>
+                </div>
+                {{ end }}
+
+                <div class="row row-deck row-cards mb-3">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Views (30d)" }}</div>
+                                <div class="h1 mb-0">{{ .TotalViews }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
+                                <div class="h1 mb-0">{{ .TotalDownloads }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Comments" }}</div>
+                                <div class="h1 mb-0">{{ .CommentCount }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Download/View Ratio" }}</div>
+                                <div class="h1 mb-0">
+                                    <span class="{{ if .VDRatioBetter }}text-green{{ else }}text-red{{ end }}">{{ .VDRatioPercent }}</span>
+                                    <small class="text-secondary ms-1" style="font-size: 0.5em;">{{ T .Language "avg" }}: {{ .SiteAvgVDRatioPercent }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row row-deck row-cards">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Views per Hour" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-views" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Downloads per Hour" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-downloads" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                    {{ if .HasVideo }}
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Video Plays per Hour" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-video-plays" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "YouTube Clicks per Hour" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-yt-clicks" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                    {{ end }}
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Avg. Time on Page (seconds)" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-time-on-page" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Layer Viewer Usage" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-layer-views" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+<script>
+(function() {
+  var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+  var fg = isDark ? '#a0aec0' : '#616876';
+  var grid = isDark ? '#3a3f4b' : '#e0e0e0';
+
+  function makeChart(elId, data, name, color) {
+    var el = document.getElementById(elId);
+    if (!el) return;
+    new ApexCharts(el, {
+      chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+      series: [{ name: name, data: data }],
+      dataLabels: { enabled: false },
+      xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+      yaxis: { min: 0, labels: { style: { colors: fg } } },
+      stroke: { curve: 'smooth', width: 2 },
+      colors: [color],
+      fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+      grid: { borderColor: grid, strokeDashArray: 4 },
+      tooltip: { theme: isDark ? 'dark' : 'light' }
+    }).render();
+  }
+
+  makeChart('chart-views', {{ .ViewsJSON }}, 'Views', '#4299e1');
+  makeChart('chart-downloads', {{ .DownloadsJSON }}, 'Downloads', '#48bb78');
+  {{ if .HasVideo }}
+  makeChart('chart-video-plays', {{ .VideoPlaysJSON }}, 'Video Plays', '#ed8936');
+  makeChart('chart-yt-clicks', {{ .YTClicksJSON }}, 'YouTube Clicks', '#e53e3e');
+  {{ end }}
+  makeChart('chart-time-on-page', {{ .TimeOnPageJSON }}, 'Avg Seconds', '#9f7aea');
+  makeChart('chart-layer-views', {{ .LayerViewsJSON }}, 'Layer Views', '#38b2ac');
+})();
+</script>
+{{template "foot.html" .}}

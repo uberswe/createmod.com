@@ -693,6 +693,7 @@ body.sidebar-ready .sidebar-rail {
   Page layout offset
 ***************/
 .page-wrapper {
+  position: relative;
   margin-left: 56px;
   margin-top: 100px;
   display: flex;
@@ -1266,6 +1267,10 @@ a.card-link:hover {
 .generator-ad-rail-sm > div:last-child { position: sticky; top: 110px; }
 
 /* ===== Generator navigation bar ===== */
+.breadcrumb-overlay { position: absolute; z-index: 15; left: 0; right: 0; margin-top: 0; padding: 6px 1rem; pointer-events: none; }
+.breadcrumb-overlay * { pointer-events: auto; }
+.breadcrumb-overlay .breadcrumb { margin-bottom: 0; }
+.page-body-flush { margin-top: 0 !important; }
 .gen-nav {
     position: absolute;
     top: 16px;
@@ -1416,6 +1421,13 @@ a.card-link:hover {
 .guide-zoom-controls button { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #4a4e4e; background: #2b3030; color: #a0a6ad; font-size: 16px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
 .guide-zoom-controls button:hover { background: #3d4040; color: #fff; border-color: #bf9045; }
 .guide-zoom-level { font-size: 0.75rem; color: #aaa; min-width: 36px; text-align: center; }
+.guide-ghost-toggle { font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; border: 1px solid #4a4e4e; background: #2b3030; color: #a0a6ad; cursor: pointer; white-space: nowrap; }
+.guide-ghost-toggle:hover { background: #3d4040; color: #fff; border-color: #bf9045; }
+.guide-ghost-toggle.active { background: rgba(191,144,69,0.15); color: #bf9045; border-color: #bf9045; }
+.guide-loader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(42,90,120,0.92); z-index: 20; gap: 16px; }
+.guide-loader-spinner { width: 40px; height: 40px; border: 3px solid rgba(191,144,69,0.25); border-top-color: #bf9045; border-radius: 50%; animation: guide-spin 0.8s linear infinite; }
+.guide-loader-text { color: #ccc; font-size: 0.85rem; }
+@keyframes guide-spin { to { transform: rotate(360deg); } }
 
 .guide-materials-widget { border-top: 1px solid #2b313a; padding: 16px 24px 20px; }
 .guide-materials-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }

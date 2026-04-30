@@ -59,6 +59,7 @@ func NewsHandler(registry *server.Registry, cacheService *cache.Service, appStor
 					Title:          p.Title,
 					Excerpt:        p.Excerpt,
 					FirstParagraph: extractFirstParagraph(p.Body),
+					Image:          p.Image,
 					URL:            p.URL,
 					PostDate:       p.Date,
 				})
