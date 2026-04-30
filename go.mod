@@ -17,12 +17,12 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/meilisearch/meilisearch-go v0.36.2
 	github.com/mergestat/timediff v0.0.4
-	github.com/minio/minio-go/v7 v7.0.100
+	github.com/minio/minio-go/v7 v7.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.23.2
-	github.com/redis/go-redis/v9 v9.18.0
-	github.com/riverqueue/river v0.34.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.34.0
+	github.com/redis/go-redis/v9 v9.19.0
+	github.com/riverqueue/river v0.35.1
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.1
@@ -68,9 +68,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.34.0 // indirect
-	github.com/riverqueue/river/rivershared v0.34.0 // indirect
-	github.com/riverqueue/river/rivertype v0.34.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.35.1 // indirect
+	github.com/riverqueue/river/rivershared v0.35.1 // indirect
+	github.com/riverqueue/river/rivertype v0.35.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
@@ -81,6 +81,7 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
 	github.com/vcaesar/cedar v0.30.0 // indirect
+	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
