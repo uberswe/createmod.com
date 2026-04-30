@@ -158,7 +158,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		if d.Schematic.Author != nil {
 			authorID = d.Schematic.Author.ID
 		}
-		d.FromAuthor = findAuthorSchematicsFromStore(appStore, cacheService, d.Schematic.ID, authorID, 5)
+		d.FromAuthor = findAuthorSchematicsFromStore(appStore, cacheService, d.Schematic.ID, authorID, 6)
 		d.Similar = findSimilarSchematicsFromStore(appStore, cacheService, d.Schematic, d.FromAuthor, searchEngine)
 		translateSchematicTitles(d.FromAuthor, translationService, cacheService, d.Language)
 		translateSchematicTitles(d.Similar, translationService, cacheService, d.Language)
@@ -914,7 +914,7 @@ func findSchematicCommentsFromStore(appStore *store.Store, schematicID string, t
 	}
 
 	// Apply translations if viewer's language differs from English and not showing original
-	if translationSvc != nil && cacheService != nil && targetLang != "" && targetLang != "en" && !showOriginal {
+	if translationSvc != nil && cacheService != nil && targetLang != "" && !showOriginal {
 		transSanitizer := htmlsanitizer.NewHTMLSanitizer()
 		for i := range comments {
 			ct := translationSvc.GetCommentTranslation(cacheService, comments[i].ID, targetLang)
@@ -1202,7 +1202,7 @@ func findSimilarByCategoryFromStore(appStore *store.Store, cacheService *cache.S
 // findSimilarSchematicsFromStore uses the search service's dedicated
 // similarity query to find schematics related to the current one.
 func findSimilarSchematicsFromStore(appStore *store.Store, cacheService *cache.Service, schematic models.Schematic, author []models.Schematic, searchEngine search.SearchEngine) []models.Schematic {
-	const limit = 5
+	const limit = 6
 
 	// Build exclude set: current schematic + author schematics.
 	exclude := make(map[string]struct{}, 1+len(author))

@@ -2107,6 +2107,7 @@ func (vs *ViewRatingStoreImpl) RecordView(ctx context.Context, schematicID strin
 		{"2", now.Format("200601")},                      // monthly: YYYYMM
 		{"3", now.Format("2006")},                        // yearly: YYYY
 		{"4", "total"},                                    // all-time
+		{"5", now.Format("2006010215")},                   // hourly: YYYYMMDDHH
 	}
 
 	for _, p := range periods {
@@ -2801,6 +2802,196 @@ func (ss *StatsStoreImpl) MonthlyUserStats(ctx context.Context, userID string, m
 	return result, nil
 }
 
+func (ss *StatsStoreImpl) RecordEvent(ctx context.Context, schematicID string, eventType int, value int) error {
+	return ss.q.RecordSchematicEvent(ctx, db.RecordSchematicEventParams{
+		SchematicID: schematicID,
+		EventType:   int16(eventType),
+		EventValue:  int32(value),
+	})
+}
+
+func (ss *StatsStoreImpl) HourlySchematicViews(ctx context.Context, schematicID string, since time.Time) ([]store.HourlyStat, error) {
+	rows, err := ss.q.HourlySchematicViewCounts(ctx, db.HourlySchematicViewCountsParams{
+		SchematicID: schematicID,
+		Created:     since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlySchematicDownloads(ctx context.Context, schematicID string, since time.Time) ([]store.HourlyStat, error) {
+	rows, err := ss.q.HourlySchematicDownloadCounts(ctx, db.HourlySchematicDownloadCountsParams{
+		SchematicID: schematicID,
+		Created:     since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlySchematicEvents(ctx context.Context, schematicID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
+	rows, err := ss.q.HourlySchematicEventCounts(ctx, db.HourlySchematicEventCountsParams{
+		SchematicID: schematicID,
+		EventType:   int16(eventType),
+		Created:     since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlySchematicEventAvg(ctx context.Context, schematicID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
+	rows, err := ss.q.HourlySchematicEventAvg(ctx, db.HourlySchematicEventAvgParams{
+		SchematicID: schematicID,
+		EventType:   int16(eventType),
+		Created:     since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlyUserViews(ctx context.Context, userID string, since time.Time) ([]store.HourlyStat, error) {
+	uid := &userID
+	rows, err := ss.q.HourlyUserAggregateViewCounts(ctx, db.HourlyUserAggregateViewCountsParams{
+		AuthorID: uid,
+		Created:  since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlyUserDownloads(ctx context.Context, userID string, since time.Time) ([]store.HourlyStat, error) {
+	uid := &userID
+	rows, err := ss.q.HourlyUserAggregateDownloadCounts(ctx, db.HourlyUserAggregateDownloadCountsParams{
+		AuthorID: uid,
+		Created:  since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlyUserEvents(ctx context.Context, userID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
+	uid := &userID
+	rows, err := ss.q.HourlyUserAggregateEventCounts(ctx, db.HourlyUserAggregateEventCountsParams{
+		AuthorID:  uid,
+		EventType: int16(eventType),
+		Created:   since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlyUserEventAvg(ctx context.Context, userID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
+	uid := &userID
+	rows, err := ss.q.HourlyUserAggregateEventAvg(ctx, db.HourlyUserAggregateEventAvgParams{
+		AuthorID:  uid,
+		EventType: int16(eventType),
+		Created:   since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) ListSchematicStats(ctx context.Context, userID string, limit, offset int) ([]store.SchematicStatsSummary, error) {
+	uid := &userID
+	rows, err := ss.q.ListSchematicStatsForUser(ctx, db.ListSchematicStatsForUserParams{
+		AuthorID: uid,
+		Limit:    int32(limit),
+		Offset:   int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SchematicStatsSummary, len(rows))
+	for i, r := range rows {
+		result[i] = store.SchematicStatsSummary{
+			ID:            r.ID,
+			Name:          r.Name,
+			Title:         r.Title,
+			FeaturedImage: r.FeaturedImage,
+			Views:         int(r.Views),
+			Downloads:     int(r.Downloads),
+			Created:       r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) CountUserSchematics(ctx context.Context, userID string) (int, error) {
+	uid := &userID
+	count, err := ss.q.CountUserSchematics(ctx, uid)
+	return int(count), err
+}
+
+func (ss *StatsStoreImpl) GetSiteAvgVDRatio(ctx context.Context) (float64, error) {
+	ratio, err := ss.q.GetSiteAvgVDRatio(ctx)
+	if err != nil {
+		return 0, err
+	}
+	switch v := ratio.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	default:
+		return 0, nil
+	}
+}
+
+func (ss *StatsStoreImpl) DeleteOldEvents(ctx context.Context, before time.Time) (int64, error) {
+	return ss.q.DeleteOldSchematicEvents(ctx, before)
+}
+
 // --------------------------------------------------------------------------
 // NBTHashStoreImpl
 // --------------------------------------------------------------------------
@@ -2886,6 +3077,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		Webhooks:            &WebhookStoreImpl{q: q},
 		SchematicVariations: &SchematicVariationStoreImpl{q: q},
 		ModerationChats:     &ModerationChatStoreImpl{q: q},
+		ModerationLog:       &ModerationLogStoreImpl{q: q},
 	}
 }
 
@@ -3032,7 +3224,50 @@ var (
 	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
 	_ store.WebhookStore             = (*WebhookStoreImpl)(nil)
 	_ store.SchematicVariationStore  = (*SchematicVariationStoreImpl)(nil)
+	_ store.ModerationLogStore       = (*ModerationLogStoreImpl)(nil)
 )
+
+// --------------------------------------------------------------------------
+// ModerationLogStoreImpl
+// --------------------------------------------------------------------------
+
+type ModerationLogStoreImpl struct{ q *db.Queries }
+
+func (s *ModerationLogStoreImpl) Create(ctx context.Context, entry *store.ModerationLogEntry) error {
+	_, err := s.q.CreateModerationLog(ctx, db.CreateModerationLogParams{
+		SchematicID: entry.SchematicID,
+		ActorID:     entry.ActorID,
+		ActorType:   entry.ActorType,
+		Action:      entry.Action,
+		OldState:    entry.OldState,
+		NewState:    entry.NewState,
+		Reason:      entry.Reason,
+	})
+	return err
+}
+
+func (s *ModerationLogStoreImpl) ListBySchematic(ctx context.Context, schematicID string) ([]store.ModerationLogEntry, error) {
+	rows, err := s.q.ListModerationLogBySchematic(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]store.ModerationLogEntry, len(rows))
+	for i, r := range rows {
+		entries[i] = store.ModerationLogEntry{
+			ID:            r.ID,
+			SchematicID:   r.SchematicID,
+			ActorID:       r.ActorID,
+			ActorType:     r.ActorType,
+			ActorUsername: r.ActorUsername,
+			Action:        r.Action,
+			OldState:      r.OldState,
+			NewState:      r.NewState,
+			Reason:        r.Reason,
+			CreatedAt:     r.CreatedAt,
+		}
+	}
+	return entries, nil
+}
 
 // Ensure unused import is satisfied.
 var _ = fmt.Sprintf

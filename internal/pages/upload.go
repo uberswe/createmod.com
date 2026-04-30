@@ -298,7 +298,19 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// produces 502 errors through reverse proxies like Cloudflare.
 		if err := e.Request.ParseMultipartForm(100 << 20); err != nil {
 			slog.Error("make-public: failed to parse multipart form", "error", err)
-			return e.String(http.StatusBadRequest, "failed to parse form")
+			msg := "Failed to parse form. "
+			errStr := err.Error()
+			switch {
+			case strings.Contains(errStr, "too large") || strings.Contains(errStr, "exceeded"):
+				msg += "The upload is too large. Total form size must be under 100 MB."
+			case strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline"):
+				msg += "The connection timed out while uploading. Please try again with a faster connection or smaller images."
+			case strings.Contains(errStr, "unexpected EOF") || strings.Contains(errStr, "connection reset"):
+				msg += "The connection was interrupted during upload. Please try again."
+			default:
+				msg += "Please try again with smaller images or fewer files."
+			}
+			return e.String(http.StatusBadRequest, msg)
 		}
 
 		// --- Parse form fields ---
@@ -604,6 +616,17 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusInternalServerError, "failed to create schematic")
 		}
 
+		if appStore.ModerationLog != nil {
+			_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+				SchematicID: schem.ID,
+				ActorID:     userID,
+				ActorType:   "user",
+				Action:      "upload",
+				NewState:    store.ModerationAutoReview,
+				Reason:      "schematic uploaded",
+			})
+		}
+
 		// --- Set categories and tags ---
 		if len(catIDs) > 0 {
 			if err := appStore.Schematics.SetCategories(ctx, schem.ID, catIDs); err != nil {
@@ -636,6 +659,16 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				slog.Error("make-public: failed to auto-approve trusted user schematic", "error", updateErr, "id", schem.ID)
 			} else {
 				autoApproved = true
+				if appStore.ModerationLog != nil {
+					_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+						SchematicID: schem.ID,
+						ActorType:   "system",
+						Action:      "state_change",
+						OldState:    store.ModerationAutoReview,
+						NewState:    store.ModerationPublished,
+						Reason:      "trusted user auto-approval",
+					})
+				}
 			}
 		}
 
@@ -989,6 +1022,13 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 		// Extract enriched materials
 		parsedMaterials, _ := nbtparser.ExtractMaterials(data)
+
+		// Reject schematics with no buildable blocks
+		if nbtparser.CountBuildableBlocks(parsedMaterials) == 0 {
+			return e.JSON(http.StatusBadRequest, map[string]string{
+				"error": "This schematic is invalid and contains 0 blocks. Make sure your build is disassembled before creating your schematic and try uploading it again.",
+			})
+		}
 
 		// Extract dimensions
 		dimX, dimY, dimZ, _ := nbtparser.ExtractDimensions(data)

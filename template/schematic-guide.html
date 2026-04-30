@@ -1,0 +1,115 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-xl">
+                <div class="guide-page-layout">
+                    <div class="guide-page-main">
+                        <div class="guide-page">
+                            <div class="guide-page-header">
+                                <div>
+                                    <h2 class="guide-page-title" id="guide-title">Building Guide</h2>
+                                    <p class="guide-page-subtitle text-secondary" id="guide-subtitle">Loading schematic...</p>
+                                </div>
+                                <a class="btn btn-outline-secondary" href="/schematics/{{ .SchematicSlug }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M19 12h-14"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+                                    Back to schematic
+                                </a>
+                            </div>
+                            <div class="guide-page-nav" id="guide-nav">
+                                <button class="btn btn-outline-secondary" id="guide-prev" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg>
+                                    Previous
+                                </button>
+                                <span class="guide-step-info" id="guide-step-info">Layer 1 of 1</span>
+                                <button class="btn btn-outline-secondary" id="guide-next">
+                                    Next
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>
+                                </button>
+                            </div>
+                            <div class="guide-page-slider" id="guide-slider-wrap">
+                                <input type="range" class="form-range" id="guide-slider" min="0" max="0" value="0" step="1">
+                            </div>
+                            <div class="guide-page-canvas-wrap" id="guide-canvas-wrap">
+                                <canvas id="guide-canvas" class="guide-canvas"></canvas>
+                            </div>
+                            <div class="guide-materials-widget" id="guide-materials-widget">
+                                <div class="guide-materials-header">
+                                    <h4 class="guide-materials-title">Materials</h4>
+                                    <span class="guide-materials-count" id="guide-block-count"></span>
+                                </div>
+                                <div class="guide-page-legend" id="guide-legend"></div>
+                            </div>
+                        </div>
+                        <div class="guide-share-bar" id="guide-share-bar">
+                            <div class="gen-share-group">
+                                <span class="gen-share-label">Share this guide</span>
+                                <input type="text" id="guide-share-url" readonly>
+                                <button class="gen-share-copy" id="guide-copy-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></svg>
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="guide-ad-rail d-none d-xl-block">
+                        <div id="guide-video-nc" class="mb-3"></div>
+                        <div id="guide-sticky-adrail" class="mb-3"></div>
+                    </div>
+                    <div class="guide-ad-rail-sm d-none d-lg-block d-xl-none">
+                        <div id="guide-sticky-adrail-lg" class="mb-3"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script src="/assets/x/guide.js?v={{ AssetVer }}" hx-disable></script>
+<script hx-disable>
+(function(){
+  var slug = '{{ .SchematicSlug }}';
+
+  document.getElementById('guide-subtitle').textContent = 'Loading schematic data...';
+
+  fetch('/api/schematics/' + slug + '/guide')
+  .then(function(r) {
+    if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+    return r.json();
+  })
+  .then(function(data) {
+    if (!data || !data.blocks || data.blocks.length === 0) {
+      document.getElementById('guide-subtitle').textContent = 'This schematic has no blocks to display.';
+      return;
+    }
+    GeneratorGuide.renderPage(data, 'layer');
+  })
+  .catch(function(err) {
+    console.error('Schematic guide error:', err);
+    document.getElementById('guide-subtitle').textContent = 'Failed to load schematic data. The file may not be available.';
+  });
+
+  var shareInput = document.getElementById('guide-share-url');
+  if (shareInput) {
+    shareInput.value = window.location.href;
+  }
+  var copyBtn = document.getElementById('guide-copy-btn');
+  if (copyBtn) {
+    var textNode = copyBtn.lastChild;
+    var originalText = textNode.textContent;
+    copyBtn.addEventListener('click', function() {
+      var target = document.getElementById('guide-share-url');
+      if (!target) return;
+      target.select();
+      navigator.clipboard.writeText(target.value).then(function() {
+        textNode.textContent = ' Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(function() { textNode.textContent = originalText; copyBtn.classList.remove('copied'); }, 2000);
+      });
+    });
+  }
+})();
+</script>
+{{template "foot.html" .}}

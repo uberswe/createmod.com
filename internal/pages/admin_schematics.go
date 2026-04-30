@@ -63,6 +63,7 @@ type AdminSchematicEditData struct {
 	CreatemodVersionID  string
 	MinecraftVersionID  string
 	Success             bool
+	ModerationLog       []store.ModerationLogEntry
 }
 
 const adminSchematicsPerPage = 20
@@ -182,6 +183,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 
 		catIDs, _ := appStore.Schematics.GetCategoryIDs(ctx, id)
 		tagIDs, _ := appStore.Schematics.GetTagIDs(ctx, id)
+		moderationLog, _ := appStore.ModerationLog.ListBySchematic(ctx, id)
 
 		cmVersionID := ""
 		if schem.CreatemodVersionID != nil {
@@ -204,6 +206,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 			CreatemodVersionID:  cmVersionID,
 			MinecraftVersionID:  mcVersionID,
 			Success:             e.Request.URL.Query().Get("success") == "1",
+			ModerationLog:       moderationLog,
 		}
 		d.Populate(e)
 		d.AdminSection = "schematics"
@@ -239,6 +242,7 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 
 		// Track whether state changes from non-public to public
 		wasPublic := store.IsPublicState(schem.ModerationState)
+		oldState := schem.ModerationState
 
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form data")
@@ -314,6 +318,21 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 		if err := appStore.Schematics.Update(ctx, schem); err != nil {
 			slog.Error("admin schematic update: failed to update", "error", err, "id", id)
 			return e.String(http.StatusInternalServerError, "failed to update schematic")
+		}
+
+		if oldState != schem.ModerationState {
+			reason := e.Request.FormValue("moderation_reason")
+			if err := appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+				SchematicID: id,
+				ActorID:     authenticatedUserID(e),
+				ActorType:   "admin",
+				Action:      "state_change",
+				OldState:    oldState,
+				NewState:    schem.ModerationState,
+				Reason:      reason,
+			}); err != nil {
+				slog.Warn("admin schematic update: failed to write moderation log", "error", err, "id", id)
+			}
 		}
 
 		// Update categories and tags
@@ -394,9 +413,25 @@ func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.St
 
 		schem, _ := appStore.Schematics.GetByIDAdmin(context.Background(), id)
 
+		oldState := ""
+		if schem != nil {
+			oldState = schem.ModerationState
+		}
+
 		if err := appStore.Schematics.SoftDelete(context.Background(), id); err != nil {
 			slog.Error("admin schematic delete: failed to soft-delete", "error", err, "id", id)
 			return e.String(http.StatusInternalServerError, "failed to delete schematic")
+		}
+
+		if err := appStore.ModerationLog.Create(context.Background(), &store.ModerationLogEntry{
+			SchematicID: id,
+			ActorID:     authenticatedUserID(e),
+			ActorType:   "admin",
+			Action:      "soft_delete",
+			OldState:    oldState,
+			NewState:    store.ModerationDeleted,
+		}); err != nil {
+			slog.Warn("admin schematic delete: failed to write moderation log", "error", err, "id", id)
 		}
 
 		cacheService.DeleteSchematic(cache.SchematicKey(id))
