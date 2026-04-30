@@ -91,6 +91,45 @@ func (q *Queries) HourlySchematicDownloadCounts(ctx context.Context, arg HourlyS
 	return items, nil
 }
 
+const hourlySchematicEventAvg = `-- name: HourlySchematicEventAvg :many
+SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, AVG(event_value)::BIGINT AS total
+FROM schematic_events
+WHERE schematic_id = $1 AND event_type = $2 AND created > $3
+GROUP BY hour
+ORDER BY hour
+`
+
+type HourlySchematicEventAvgParams struct {
+	SchematicID string    `json:"schematic_id"`
+	EventType   int16     `json:"event_type"`
+	Created     time.Time `json:"created"`
+}
+
+type HourlySchematicEventAvgRow struct {
+	Hour  string `json:"hour"`
+	Total int64  `json:"total"`
+}
+
+func (q *Queries) HourlySchematicEventAvg(ctx context.Context, arg HourlySchematicEventAvgParams) ([]HourlySchematicEventAvgRow, error) {
+	rows, err := q.db.Query(ctx, hourlySchematicEventAvg, arg.SchematicID, arg.EventType, arg.Created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HourlySchematicEventAvgRow{}
+	for rows.Next() {
+		var i HourlySchematicEventAvgRow
+		if err := rows.Scan(&i.Hour, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const hourlySchematicEventCounts = `-- name: HourlySchematicEventCounts :many
 SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, SUM(event_value)::BIGINT AS total
 FROM schematic_events
@@ -196,6 +235,46 @@ func (q *Queries) HourlyUserAggregateDownloadCounts(ctx context.Context, arg Hou
 	items := []HourlyUserAggregateDownloadCountsRow{}
 	for rows.Next() {
 		var i HourlyUserAggregateDownloadCountsRow
+		if err := rows.Scan(&i.Hour, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const hourlyUserAggregateEventAvg = `-- name: HourlyUserAggregateEventAvg :many
+SELECT to_char(se.created, 'YYYY-MM-DD HH24') AS hour, AVG(se.event_value)::BIGINT AS total
+FROM schematic_events se
+JOIN schematics s ON s.id = se.schematic_id
+WHERE s.author_id = $1 AND se.event_type = $2 AND se.created > $3 AND s.deleted IS NULL
+GROUP BY hour
+ORDER BY hour
+`
+
+type HourlyUserAggregateEventAvgParams struct {
+	AuthorID  *string   `json:"author_id"`
+	EventType int16     `json:"event_type"`
+	Created   time.Time `json:"created"`
+}
+
+type HourlyUserAggregateEventAvgRow struct {
+	Hour  string `json:"hour"`
+	Total int64  `json:"total"`
+}
+
+func (q *Queries) HourlyUserAggregateEventAvg(ctx context.Context, arg HourlyUserAggregateEventAvgParams) ([]HourlyUserAggregateEventAvgRow, error) {
+	rows, err := q.db.Query(ctx, hourlyUserAggregateEventAvg, arg.AuthorID, arg.EventType, arg.Created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HourlyUserAggregateEventAvgRow{}
+	for rows.Next() {
+		var i HourlyUserAggregateEventAvgRow
 		if err := rows.Scan(&i.Hour, &i.Total); err != nil {
 			return nil, err
 		}

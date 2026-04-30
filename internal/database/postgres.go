@@ -2856,6 +2856,22 @@ func (ss *StatsStoreImpl) HourlySchematicEvents(ctx context.Context, schematicID
 	return result, nil
 }
 
+func (ss *StatsStoreImpl) HourlySchematicEventAvg(ctx context.Context, schematicID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
+	rows, err := ss.q.HourlySchematicEventAvg(ctx, db.HourlySchematicEventAvgParams{
+		SchematicID: schematicID,
+		EventType:   int16(eventType),
+		Created:     since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
 func (ss *StatsStoreImpl) HourlyUserViews(ctx context.Context, userID string, since time.Time) ([]store.HourlyStat, error) {
 	uid := &userID
 	rows, err := ss.q.HourlyUserAggregateViewCounts(ctx, db.HourlyUserAggregateViewCountsParams{
@@ -2891,6 +2907,23 @@ func (ss *StatsStoreImpl) HourlyUserDownloads(ctx context.Context, userID string
 func (ss *StatsStoreImpl) HourlyUserEvents(ctx context.Context, userID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
 	uid := &userID
 	rows, err := ss.q.HourlyUserAggregateEventCounts(ctx, db.HourlyUserAggregateEventCountsParams{
+		AuthorID:  uid,
+		EventType: int16(eventType),
+		Created:   since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.HourlyStat, len(rows))
+	for i, r := range rows {
+		result[i] = store.HourlyStat{Hour: r.Hour, Count: r.Total}
+	}
+	return result, nil
+}
+
+func (ss *StatsStoreImpl) HourlyUserEventAvg(ctx context.Context, userID string, eventType int, since time.Time) ([]store.HourlyStat, error) {
+	uid := &userID
+	rows, err := ss.q.HourlyUserAggregateEventAvg(ctx, db.HourlyUserAggregateEventAvgParams{
 		AuthorID:  uid,
 		EventType: int16(eventType),
 		Created:   since,

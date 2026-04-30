@@ -68,7 +68,7 @@ func SchematicStatsHandler(registry *server.Registry, cacheService *cache.Servic
 			videoPlays, _ = appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventVideoPlay, since)
 			ytClicks, _ = appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventYouTubeClick, since)
 		}
-		timeOnPage, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventTimeOnPage, since)
+		timeOnPage, _ := appStore.Stats.HourlySchematicEventAvg(ctx, schem.ID, store.EventTimeOnPage, since)
 		layerViews, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventLayerViewer, since)
 
 		commentCount, _ := appStore.Comments.CountBySchematic(ctx, schem.ID)
@@ -132,10 +132,22 @@ func hourlyStatsJSON(stats []store.HourlyStat) string {
 		X string `json:"x"`
 		Y int64  `json:"y"`
 	}
-	pts := make([]point, len(stats))
-	for i, s := range stats {
-		pts[i] = point{X: s.Hour, Y: s.Count}
+
+	lookup := make(map[string]int64, len(stats))
+	for _, s := range stats {
+		lookup[s.Hour] = s.Count
 	}
+
+	now := time.Now().UTC().Truncate(time.Hour)
+	start := now.AddDate(0, 0, -30)
+	totalHours := int(now.Sub(start).Hours()) + 1
+
+	pts := make([]point, 0, totalHours)
+	for t := start; !t.After(now); t = t.Add(time.Hour) {
+		key := t.Format("2006-01-02 15")
+		pts = append(pts, point{X: key, Y: lookup[key]})
+	}
+
 	b, _ := json.Marshal(pts)
 	return string(b)
 }
