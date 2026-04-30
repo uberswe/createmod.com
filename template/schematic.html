@@ -240,6 +240,22 @@
                                     {{ end }}
                                 </div>
 
+                                {{ if .IsAuthor }}
+                                <!-- Analytics (author only) -->
+                                <div class="mt-3 pt-3 border-top">
+                                    <a href="#" class="d-inline-flex align-items-center text-secondary text-decoration-none"
+                                       hx-get="/schematics/{{ .Schematic.Name }}/analytics"
+                                       hx-trigger="click once"
+                                       hx-target="#analytics-content"
+                                       hx-swap="innerHTML"
+                                       onclick="document.getElementById('analytics-content').style.display='block'; this.querySelector('.analytics-hint').textContent='Loading...'">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>
+                                        <span class="analytics-hint">{{ T .Language "Click to view analytics" }}</span>
+                                    </a>
+                                    <div id="analytics-content" style="display:none;" class="mt-3"></div>
+                                </div>
+                                {{ end }}
+
                                 {{ if .IsAuthenticated }}
                                 <!-- Add to collection -->
                                 <div class="mt-3 pt-3 border-top">
@@ -563,24 +579,6 @@
                         </div>
 
                     </div>
-
-                    {{ if .IsAuthor }}
-                    <!-- Analytics (author only) -->
-                    <div class="col-12">
-                        <div class="card mb-3">
-                            <div class="card-header cursor-pointer"
-                                 hx-get="/schematics/{{ .Schematic.Name }}/analytics"
-                                 hx-trigger="click once"
-                                 hx-target="#analytics-content"
-                                 hx-swap="innerHTML">
-                                <h3 class="card-title">{{ T .Language "Analytics" }}</h3>
-                            </div>
-                            <div id="analytics-content" class="card-body">
-                                <p class="text-secondary">{{ T .Language "Click to load analytics..." }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    {{ end }}
 
                     <!-- Column 2: Video, Mods & Materials -->
                     <div class="col-xl-5">
