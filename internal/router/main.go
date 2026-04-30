@@ -391,12 +391,15 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/settings/blacklist/{id}", Adapt(pages.BlacklistDeleteHandler(p.AppStore)))
 	// API Docs
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/api/openapi.json", Adapt(pages.OpenAPIHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
+	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Reports
 	reportRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Hour)
 	r.With(reportRateLimit).Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))

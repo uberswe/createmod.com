@@ -20,6 +20,7 @@ type Post struct {
 	Slug    string
 	Date    time.Time
 	Excerpt string
+	Image   string        // optional image URL from frontmatter or first <img> in body
 	Body    template.HTML // rendered HTML from markdown
 	URL     string        // "/news/{slug}"
 }
@@ -30,6 +31,7 @@ type frontMatter struct {
 	Date    string `yaml:"date"`
 	Slug    string `yaml:"slug"`
 	Excerpt string `yaml:"excerpt"`
+	Image   string `yaml:"image"`
 }
 
 // LoadAll reads all *.md files from dir within fsys, parses front matter and
@@ -105,14 +107,41 @@ func parseFile(fsys fs.FS, path string) (*Post, error) {
 		return nil, fmt.Errorf("converting markdown: %w", err)
 	}
 
+	rendered := htmlBuf.String()
+
+	image := meta.Image
+	if image == "" {
+		image = extractFirstImageSrc(rendered)
+	}
+
 	return &Post{
 		Title:   meta.Title,
 		Slug:    meta.Slug,
 		Date:    date,
 		Excerpt: meta.Excerpt,
-		Body:    template.HTML(htmlBuf.String()),
+		Image:   image,
+		Body:    template.HTML(rendered),
 		URL:     "/news/" + meta.Slug,
 	}, nil
+}
+
+// extractFirstImageSrc finds the first <img src="..."> in HTML and returns the src value.
+func extractFirstImageSrc(html string) string {
+	idx := strings.Index(html, "<img")
+	if idx < 0 {
+		return ""
+	}
+	rest := html[idx:]
+	srcIdx := strings.Index(rest, "src=\"")
+	if srcIdx < 0 {
+		return ""
+	}
+	start := srcIdx + 5
+	end := strings.Index(rest[start:], "\"")
+	if end < 0 {
+		return ""
+	}
+	return rest[start : start+end]
 }
 
 // splitFrontMatter splits a markdown file into YAML front matter and body.
