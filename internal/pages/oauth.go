@@ -128,23 +128,42 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 
 		ctx := e.Request.Context()
 
+		// Check if the current user is authenticated (linking flow from /settings).
+		var currentUserID string
+		if current := session.UserFromContext(ctx); current != nil {
+			currentUserID = current.ID
+		}
+
 		// Look up existing external auth link
 		extAuth, err := appStore.Auth.GetByProvider(ctx, provider.Name, oauthUser.ID)
+
+		if currentUserID != "" {
+			// LINKING FLOW — user is logged in and wants to link this provider
+			if err == nil && extAuth != nil {
+				if extAuth.UserID == currentUserID {
+					return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings"))
+				}
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings?oauth_error=already_linked"))
+			}
+			if createErr := appStore.Auth.Create(ctx, &store.ExternalAuth{
+				UserID:     currentUserID,
+				Provider:   provider.Name,
+				ProviderID: oauthUser.ID,
+			}); createErr != nil {
+				slog.Error("OAuth auth link creation failed", "error", createErr)
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings?oauth_error=link_failed"))
+			}
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings"))
+		}
+
+		// LOGIN FLOW — user is not authenticated
 		if err == nil && extAuth != nil {
-			// Existing link found -- log the user in
 			return oauthCreateSession(e, appStore, sessStore, extAuth.UserID)
 		}
 
-		// If the current request is already authenticated, link the OAuth
-		// identity to the logged-in account rather than creating a new one.
-		// This is what "Link GitHub account" on /settings should do.
+		// No existing link — check if user with same email exists
 		var userID string
-		if current := session.UserFromContext(e.Request.Context()); current != nil {
-			userID = current.ID
-		}
-
-		// No existing link -- check if user with same email exists
-		if userID == "" && oauthUser.Email != "" {
+		if oauthUser.Email != "" {
 			existingUser, _ := appStore.Users.GetUserByEmail(ctx, oauthUser.Email)
 			if existingUser != nil && existingUser.Deleted == nil {
 				userID = existingUser.ID

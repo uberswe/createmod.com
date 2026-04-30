@@ -376,6 +376,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/settings", Adapt(pages.UserSettingsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings/password", Adapt(pages.UserPasswordHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/settings/password", Adapt(pages.UserPasswordPostHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/settings/unlink-oauth", Adapt(pages.UnlinkOAuthHandler(p.AppStore)))
 	r.Get("/settings/points", Adapt(pages.UserPointsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings/gamification", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/points"), http.StatusMovedPermanently)

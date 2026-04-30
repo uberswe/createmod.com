@@ -82,25 +82,64 @@
                                             });
                                           })();
                                         </script>
-                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled }}
-                                        <h3 class="card-title mt-4">{{ T .Language "Alternate Login Options" }}</h3>
-                                        {{ if .DiscordOAuthEnabled }}
-                                        <div class="row g-3 mb-2">
-                                            <div class="col-md">
-                                                <a href="/auth/discord" hx-boost="false" class="btn w-100">
-                                                    <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-brand-discord text-discord"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
-                                                    {{ T .Language "Link your Discord account" }}
-                                                </a>
-                                            </div>
+                                        {{ if .OAuthError }}
+                                        <div class="alert alert-danger mt-3">
+                                            {{ if eq .OAuthError "already_linked" }}{{ T .Language "This account is already linked to another user." }}
+                                            {{ else if eq .OAuthError "link_failed" }}{{ T .Language "Failed to link account. Please try again." }}
+                                            {{ else if eq .OAuthError "wrong_password" }}{{ T .Language "Incorrect password." }}
+                                            {{ else if eq .OAuthError "password_required" }}{{ T .Language "Password is required to unlink an account." }}
+                                            {{ else if eq .OAuthError "unlink_failed" }}{{ T .Language "Failed to unlink account. Please try again." }}
+                                            {{ else }}{{ T .Language "Something went wrong. Please try again." }}
+                                            {{ end }}
                                         </div>
                                         {{ end }}
+                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled }}
+                                        <h3 class="card-title mt-4">{{ T .Language "Linked Accounts" }}</h3>
                                         {{ if .GithubOAuthEnabled }}
-                                        <div class="row g-3">
+                                        <div class="row g-3 mb-2">
                                             <div class="col-md">
+                                                {{ if .LinkedGithub }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <div class="d-flex align-items-center">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon text-github me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" /></svg>
+                                                        <span>{{ T .Language "GitHub linked" }}</span>
+                                                    </div>
+                                                    {{ if .HasPassword }}
+                                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#unlink-github-modal">{{ T .Language "Unlink" }}</button>
+                                                    {{ else }}
+                                                    <span class="text-secondary small">{{ T .Language "Set a password to unlink" }}</span>
+                                                    {{ end }}
+                                                </div>
+                                                {{ else }}
                                                 <a href="/auth/github" hx-boost="false" class="btn w-100">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon text-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" /></svg>
                                                     {{ T .Language "Link your Github account" }}
                                                 </a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                        {{ if .DiscordOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedDiscord }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <div class="d-flex align-items-center">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-brand-discord text-discord me-2"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
+                                                        <span>{{ T .Language "Discord linked" }}</span>
+                                                    </div>
+                                                    {{ if .HasPassword }}
+                                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#unlink-discord-modal">{{ T .Language "Unlink" }}</button>
+                                                    {{ else }}
+                                                    <span class="text-secondary small">{{ T .Language "Set a password to unlink" }}</span>
+                                                    {{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/discord" hx-boost="false" class="btn w-100">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-brand-discord text-discord"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M14 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M15.5 17c0 1 1.5 3 2 3c1.5 0 2.833 -1.667 3.5 -3c.667 -1.667 .5 -5.833 -1.5 -11.5c-1.457 -1.015 -3 -1.34 -4.5 -1.5l-.972 1.923a11.913 11.913 0 0 0 -4.053 0l-.975 -1.923c-1.5 .16 -3.043 .485 -4.5 1.5c-2 5.667 -2.167 9.833 -1.5 11.5c.667 1.333 2 3 3.5 3c.5 0 2 -2 2 -3" /><path d="M7 16.5c3.5 1 6.5 1 10 0" /></svg>
+                                                    {{ T .Language "Link your Discord account" }}
+                                                </a>
+                                                {{ end }}
                                             </div>
                                         </div>
                                         {{ end }}
@@ -143,6 +182,46 @@
                 </div>
             </div>
         </div>
+        {{ if .LinkedGithub }}
+        <div class="modal modal-blur fade" id="unlink-github-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <form method="post" action="/settings/unlink-oauth" hx-boost="false">
+                        <div class="modal-body">
+                            <div class="modal-title">{{ T .Language "Unlink GitHub" }}</div>
+                            <div class="mb-3">{{ T .Language "Enter your password to confirm unlinking your GitHub account." }}</div>
+                            <input type="hidden" name="provider" value="github">
+                            <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                            <button type="submit" class="btn btn-danger">{{ T .Language "Unlink" }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{ end }}
+        {{ if .LinkedDiscord }}
+        <div class="modal modal-blur fade" id="unlink-discord-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <form method="post" action="/settings/unlink-oauth" hx-boost="false">
+                        <div class="modal-body">
+                            <div class="modal-title">{{ T .Language "Unlink Discord" }}</div>
+                            <div class="mb-3">{{ T .Language "Enter your password to confirm unlinking your Discord account." }}</div>
+                            <input type="hidden" name="provider" value="discord">
+                            <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                            <button type="submit" class="btn btn-danger">{{ T .Language "Unlink" }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{ end }}
         <script>
             // After successful deletion via HTMX, clear cookie and redirect
             document.addEventListener('htmx:afterRequest', function(evt) {
