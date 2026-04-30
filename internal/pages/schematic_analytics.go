@@ -3,40 +3,43 @@ package pages
 import (
 	"context"
 	"createmod/internal/cache"
+	"createmod/internal/i18n"
 	"createmod/internal/server"
 	"createmod/internal/store"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 )
 
+var schematicStatsTemplates = append([]string{
+	"./template/schematic-stats.html",
+}, commonTemplates...)
+
 type SchematicAnalyticsData struct {
 	DefaultData
-	SchematicName        string
-	CommentCount         int64
-	TotalViews           int
-	TotalDownloads       int
-	VDRatio              float64
-	VDRatioPercent       string
-	SiteAvgVDRatio       float64
+	SchematicName         string
+	SchematicTitle        string
+	CommentCount          int64
+	TotalViews            int
+	TotalDownloads        int
+	VDRatioPercent        string
 	SiteAvgVDRatioPercent string
-	VDRatioBetter        bool
-	ShowNewFeatureBanner bool
-	HasVideo             bool
-	ViewsJSON            string
-	DownloadsJSON        string
-	VideoPlaysJSON       string
-	YTClicksJSON         string
-	TimeOnPageJSON       string
-	LayerViewsJSON       string
+	VDRatioBetter         bool
+	ShowNewFeatureBanner  bool
+	HasVideo              bool
+	ViewsJSON             template.JS
+	DownloadsJSON         template.JS
+	VideoPlaysJSON        template.JS
+	YTClicksJSON          template.JS
+	TimeOnPageJSON        template.JS
+	LayerViewsJSON        template.JS
 }
 
-func SchematicAnalyticsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
-	tmpl := []string{"template/include/schematic-analytics.html"}
-
+func SchematicStatsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		userID := authenticatedUserID(e)
 		if userID == "" {
@@ -56,7 +59,6 @@ func SchematicAnalyticsHandler(registry *server.Registry, cacheService *cache.Se
 		}
 
 		since := time.Now().UTC().AddDate(0, 0, -30)
-
 		hasVideo := schem.Video != ""
 
 		views, _ := appStore.Stats.HourlySchematicViews(ctx, schem.ID, since)
@@ -75,8 +77,8 @@ func SchematicAnalyticsHandler(registry *server.Registry, cacheService *cache.Se
 		for _, v := range views {
 			totalViews += int(v.Count)
 		}
-		for _, d := range downloads {
-			totalDownloads += int(d.Count)
+		for _, dl := range downloads {
+			totalDownloads += int(dl.Count)
 		}
 
 		var vdRatio float64
@@ -95,31 +97,33 @@ func SchematicAnalyticsHandler(registry *server.Registry, cacheService *cache.Se
 		cutoff := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
 
 		d := SchematicAnalyticsData{
-			HasVideo:              hasVideo,
 			SchematicName:         name,
+			SchematicTitle:        schem.Title,
 			CommentCount:          commentCount,
 			TotalViews:            totalViews,
 			TotalDownloads:        totalDownloads,
-			VDRatio:               vdRatio,
 			VDRatioPercent:        fmt.Sprintf("%.2f%%", vdRatio*100),
-			SiteAvgVDRatio:        siteAvg,
 			SiteAvgVDRatioPercent: fmt.Sprintf("%.2f%%", siteAvg*100),
 			VDRatioBetter:         vdRatio >= siteAvg,
-			ShowNewFeatureBanner: schem.Created.Before(cutoff),
-			ViewsJSON:            hourlyStatsJSON(views),
-			DownloadsJSON:        hourlyStatsJSON(downloads),
-			VideoPlaysJSON:       hourlyStatsJSON(videoPlays),
-			YTClicksJSON:        hourlyStatsJSON(ytClicks),
-			TimeOnPageJSON:       hourlyStatsJSON(timeOnPage),
-			LayerViewsJSON:       hourlyStatsJSON(layerViews),
+			ShowNewFeatureBanner:  schem.Created.Before(cutoff),
+			HasVideo:              hasVideo,
+			ViewsJSON:             template.JS(hourlyStatsJSON(views)),
+			DownloadsJSON:         template.JS(hourlyStatsJSON(downloads)),
+			VideoPlaysJSON:        template.JS(hourlyStatsJSON(videoPlays)),
+			YTClicksJSON:          template.JS(hourlyStatsJSON(ytClicks)),
+			TimeOnPageJSON:        template.JS(hourlyStatsJSON(timeOnPage)),
+			LayerViewsJSON:        template.JS(hourlyStatsJSON(layerViews)),
 		}
 		d.Populate(e)
+		d.Title = fmt.Sprintf("%s - %s", i18n.T(d.Language, "Stats"), schem.Title)
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, schem.Title, "/schematics/"+name, i18n.T(d.Language, "Stats"))
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
-		html, err := registry.LoadFiles(tmpl...).Render(d)
+		out, err := registry.LoadFiles(schematicStatsTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
-		return e.HTML(http.StatusOK, html)
+		return e.HTML(http.StatusOK, out)
 	}
 }
 
