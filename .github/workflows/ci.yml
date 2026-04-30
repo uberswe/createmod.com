@@ -211,10 +211,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr list --state open --head "deploy/dev-" --json number --jq '.[].number' | while read pr_number; do
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("deploy/dev-")) | .number' | while read pr_number; do
             if [ -n "$pr_number" ]; then
               echo "Closing stale PR #${pr_number}"
-              gh pr close "$pr_number" --delete-branch || true
+              gh pr close "$pr_number" --repo "$GITHUB_REPOSITORY" --delete-branch || true
             fi
           done
 
@@ -262,10 +263,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr list --state open --head "deploy/prod-" --json number --jq '.[].number' | while read pr_number; do
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("deploy/prod-")) | .number' | while read pr_number; do
             if [ -n "$pr_number" ]; then
               echo "Closing stale PR #${pr_number}"
-              gh pr close "$pr_number" --delete-branch || true
+              gh pr close "$pr_number" --repo "$GITHUB_REPOSITORY" --delete-branch || true
             fi
           done
 

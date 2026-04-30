@@ -4,11 +4,14 @@ on:
   pull_request:
     types: [closed]
     branches: [master]
+  schedule:
+    - cron: '0 6 * * *'
 
 jobs:
   close-stale:
     runs-on: ubuntu-latest
     if: |
+      github.event_name == 'pull_request' &&
       github.event.pull_request.merged == true &&
       startsWith(github.head_ref, 'deploy/')
     permissions:
@@ -46,4 +49,34 @@ jobs:
               echo "Closing stale PR #${pr_number}"
               gh pr close "$pr_number" --repo "$GITHUB_REPOSITORY" --delete-branch || true
             fi
+          done
+
+  close-stale-scheduled:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Close stale dev deploy PRs (keep newest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("deploy/dev-"))] | sort_by(.number) | reverse | .[1:] | .[].number')
+          for pr_number in $prs; do
+            echo "Closing stale dev PR #${pr_number}"
+            gh pr close "$pr_number" --repo "$GITHUB_REPOSITORY" --delete-branch || true
+          done
+
+      - name: Close stale prod deploy PRs (keep newest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("deploy/prod-"))] | sort_by(.number) | reverse | .[1:] | .[].number')
+          for pr_number in $prs; do
+            echo "Closing stale prod PR #${pr_number}"
+            gh pr close "$pr_number" --repo "$GITHUB_REPOSITORY" --delete-branch || true
           done
