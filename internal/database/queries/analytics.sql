@@ -23,6 +23,13 @@ WHERE schematic_id = $1 AND event_type = $2 AND created > $3
 GROUP BY hour
 ORDER BY hour;
 
+-- name: HourlySchematicEventAvg :many
+SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, AVG(event_value)::BIGINT AS total
+FROM schematic_events
+WHERE schematic_id = $1 AND event_type = $2 AND created > $3
+GROUP BY hour
+ORDER BY hour;
+
 -- name: HourlyUserAggregateViewCounts :many
 SELECT to_char(sv.created, 'YYYY-MM-DD HH24') AS hour, SUM(sv.count)::BIGINT AS total
 FROM schematic_views sv
@@ -41,6 +48,14 @@ ORDER BY hour;
 
 -- name: HourlyUserAggregateEventCounts :many
 SELECT to_char(se.created, 'YYYY-MM-DD HH24') AS hour, SUM(se.event_value)::BIGINT AS total
+FROM schematic_events se
+JOIN schematics s ON s.id = se.schematic_id
+WHERE s.author_id = $1 AND se.event_type = $2 AND se.created > $3 AND s.deleted IS NULL
+GROUP BY hour
+ORDER BY hour;
+
+-- name: HourlyUserAggregateEventAvg :many
+SELECT to_char(se.created, 'YYYY-MM-DD HH24') AS hour, AVG(se.event_value)::BIGINT AS total
 FROM schematic_events se
 JOIN schematics s ON s.id = se.schematic_id
 WHERE s.author_id = $1 AND se.event_type = $2 AND se.created > $3 AND s.deleted IS NULL

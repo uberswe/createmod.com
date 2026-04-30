@@ -142,7 +142,7 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 			hDownloads, _ := appStore.Stats.HourlyUserDownloads(ctx, userID, since)
 			hVideoPlays, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventVideoPlay, since)
 			hYTClicks, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventYouTubeClick, since)
-			hTimeOnPage, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventTimeOnPage, since)
+			hTimeOnPage, _ := appStore.Stats.HourlyUserEventAvg(ctx, userID, store.EventTimeOnPage, since)
 			hLayerViews, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventLayerViewer, since)
 
 			var tv, td int

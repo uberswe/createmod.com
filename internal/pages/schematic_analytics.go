@@ -68,7 +68,7 @@ func SchematicStatsHandler(registry *server.Registry, cacheService *cache.Servic
 			videoPlays, _ = appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventVideoPlay, since)
 			ytClicks, _ = appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventYouTubeClick, since)
 		}
-		timeOnPage, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventTimeOnPage, since)
+		timeOnPage, _ := appStore.Stats.HourlySchematicEventAvg(ctx, schem.ID, store.EventTimeOnPage, since)
 		layerViews, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventLayerViewer, since)
 
 		commentCount, _ := appStore.Comments.CountBySchematic(ctx, schem.ID)
