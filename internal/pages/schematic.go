@@ -93,12 +93,12 @@ type SchematicData struct {
 	AnalyticsAvgVDPercent string
 	AnalyticsVDBetter    bool
 	AnalyticsHasVideo    bool
-	AnalyticsViewsJSON   string
-	AnalyticsDLJSON      string
-	AnalyticsVideoJSON   string
-	AnalyticsYTJSON      string
-	AnalyticsTimeJSON    string
-	AnalyticsLayerJSON   string
+	AnalyticsViewsJSON   template.JS
+	AnalyticsDLJSON      template.JS
+	AnalyticsVideoJSON   template.JS
+	AnalyticsYTJSON      template.JS
+	AnalyticsTimeJSON    template.JS
+	AnalyticsLayerJSON   template.JS
 }
 
 // ModInfo holds display info for a mod in the Required Mods section.
@@ -219,12 +219,12 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			d.AnalyticsVDBetter = vdRatio >= siteAvg
 			cutoff := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
 			d.AnalyticsNewBanner = s.Created.Before(cutoff)
-			d.AnalyticsViewsJSON = hourlyStatsJSON(aViews)
-			d.AnalyticsDLJSON = hourlyStatsJSON(aDL)
-			d.AnalyticsVideoJSON = hourlyStatsJSON(aVideoPlays)
-			d.AnalyticsYTJSON = hourlyStatsJSON(aYTClicks)
-			d.AnalyticsTimeJSON = hourlyStatsJSON(aTimeOnPage)
-			d.AnalyticsLayerJSON = hourlyStatsJSON(aLayerViews)
+			d.AnalyticsViewsJSON = template.JS(hourlyStatsJSON(aViews))
+			d.AnalyticsDLJSON = template.JS(hourlyStatsJSON(aDL))
+			d.AnalyticsVideoJSON = template.JS(hourlyStatsJSON(aVideoPlays))
+			d.AnalyticsYTJSON = template.JS(hourlyStatsJSON(aYTClicks))
+			d.AnalyticsTimeJSON = template.JS(hourlyStatsJSON(aTimeOnPage))
+			d.AnalyticsLayerJSON = template.JS(hourlyStatsJSON(aLayerViews))
 		}
 		// Check if the viewer is an admin
 		if d.UserID != "" {
