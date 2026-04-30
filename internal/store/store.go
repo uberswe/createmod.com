@@ -293,6 +293,26 @@ type HourlyStat struct {
 	Count int64
 }
 
+// Event type constants for schematic_events.
+const (
+	EventVideoPlay    = 1
+	EventYouTubeClick = 2
+	EventTimeOnPage   = 3
+	EventBlockModify  = 4
+	EventLayerViewer  = 5
+)
+
+// SchematicStatsSummary holds per-schematic summary stats for the user dashboard.
+type SchematicStatsSummary struct {
+	ID            string
+	Name          string
+	Title         string
+	FeaturedImage string
+	Views         int
+	Downloads     int
+	Created       time.Time
+}
+
 // MonthlyDataPoint holds monthly stats for a user.
 type MonthlyDataPoint struct {
 	Month     string
@@ -670,6 +690,17 @@ type ContactStore interface {
 type StatsStore interface {
 	HourlyStats(ctx context.Context, table string, cutoff time.Time) ([]HourlyStat, error)
 	MonthlyUserStats(ctx context.Context, userID string, months int) ([]MonthlyDataPoint, error)
+	RecordEvent(ctx context.Context, schematicID string, eventType int, value int) error
+	HourlySchematicViews(ctx context.Context, schematicID string, since time.Time) ([]HourlyStat, error)
+	HourlySchematicDownloads(ctx context.Context, schematicID string, since time.Time) ([]HourlyStat, error)
+	HourlySchematicEvents(ctx context.Context, schematicID string, eventType int, since time.Time) ([]HourlyStat, error)
+	HourlyUserViews(ctx context.Context, userID string, since time.Time) ([]HourlyStat, error)
+	HourlyUserDownloads(ctx context.Context, userID string, since time.Time) ([]HourlyStat, error)
+	HourlyUserEvents(ctx context.Context, userID string, eventType int, since time.Time) ([]HourlyStat, error)
+	ListSchematicStats(ctx context.Context, userID string, limit, offset int) ([]SchematicStatsSummary, error)
+	CountUserSchematics(ctx context.Context, userID string) (int, error)
+	GetSiteAvgVDRatio(ctx context.Context) (float64, error)
+	DeleteOldEvents(ctx context.Context, before time.Time) (int64, error)
 }
 
 // NBTHash represents a stored NBT file hash for duplicate/blacklist detection.
