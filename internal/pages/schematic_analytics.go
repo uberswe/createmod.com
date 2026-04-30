@@ -25,6 +25,7 @@ type SchematicAnalyticsData struct {
 	SiteAvgVDRatioPercent string
 	VDRatioBetter        bool
 	ShowNewFeatureBanner bool
+	HasVideo             bool
 	ViewsJSON            string
 	DownloadsJSON        string
 	VideoPlaysJSON       string
@@ -56,10 +57,15 @@ func SchematicAnalyticsHandler(registry *server.Registry, cacheService *cache.Se
 
 		since := time.Now().UTC().AddDate(0, 0, -30)
 
+		hasVideo := schem.Video != ""
+
 		views, _ := appStore.Stats.HourlySchematicViews(ctx, schem.ID, since)
 		downloads, _ := appStore.Stats.HourlySchematicDownloads(ctx, schem.ID, since)
-		videoPlays, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventVideoPlay, since)
-		ytClicks, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventYouTubeClick, since)
+		var videoPlays, ytClicks []store.HourlyStat
+		if hasVideo {
+			videoPlays, _ = appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventVideoPlay, since)
+			ytClicks, _ = appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventYouTubeClick, since)
+		}
 		timeOnPage, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventTimeOnPage, since)
 		layerViews, _ := appStore.Stats.HourlySchematicEvents(ctx, schem.ID, store.EventLayerViewer, since)
 
@@ -89,6 +95,7 @@ func SchematicAnalyticsHandler(registry *server.Registry, cacheService *cache.Se
 		cutoff := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
 
 		d := SchematicAnalyticsData{
+			HasVideo:              hasVideo,
 			SchematicName:         name,
 			CommentCount:          commentCount,
 			TotalViews:            totalViews,

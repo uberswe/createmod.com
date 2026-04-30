@@ -11,9 +11,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="subheader">{{ T .Language "Views (30d)" }}</div>
-                </div>
+                <div class="subheader">{{ T .Language "Views (30d)" }}</div>
                 <div class="h1 mb-0">{{ .TotalViews }}</div>
             </div>
         </div>
@@ -21,9 +19,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
-                </div>
+                <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
                 <div class="h1 mb-0">{{ .TotalDownloads }}</div>
             </div>
         </div>
@@ -31,9 +27,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="subheader">{{ T .Language "Comments" }}</div>
-                </div>
+                <div class="subheader">{{ T .Language "Comments" }}</div>
                 <div class="h1 mb-0">{{ .CommentCount }}</div>
             </div>
         </div>
@@ -41,9 +35,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card card-sm">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="subheader">{{ T .Language "Download/View Ratio" }}</div>
-                </div>
+                <div class="subheader">{{ T .Language "Download/View Ratio" }}</div>
                 <div class="h1 mb-0">
                     <span class="{{ if .VDRatioBetter }}text-green{{ else }}text-red{{ end }}">
                         {{ .VDRatioPercent }}
@@ -68,6 +60,7 @@
             <div class="card-body"><div id="chart-downloads" style="min-height:200px;"></div></div>
         </div>
     </div>
+    {{ if .HasVideo }}
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header"><h3 class="card-title">{{ T .Language "Video Plays per Hour" }}</h3></div>
@@ -80,6 +73,7 @@
             <div class="card-body"><div id="chart-yt-clicks" style="min-height:200px;"></div></div>
         </div>
     </div>
+    {{ end }}
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header"><h3 class="card-title">{{ T .Language "Avg. Time on Page (seconds)" }}</h3></div>
@@ -122,8 +116,10 @@
 
   makeChart('chart-views', {{ .ViewsJSON }}, 'Views', '#4299e1');
   makeChart('chart-downloads', {{ .DownloadsJSON }}, 'Downloads', '#48bb78');
+  {{ if .HasVideo }}
   makeChart('chart-video-plays', {{ .VideoPlaysJSON }}, 'Video Plays', '#ed8936');
   makeChart('chart-yt-clicks', {{ .YTClicksJSON }}, 'YouTube Clicks', '#e53e3e');
+  {{ end }}
   makeChart('chart-time-on-page', {{ .TimeOnPageJSON }}, 'Avg Seconds', '#9f7aea');
   makeChart('chart-layer-views', {{ .LayerViewsJSON }}, 'Layer Views', '#38b2ac');
 })();
