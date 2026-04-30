@@ -164,7 +164,9 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 		if yc < 0 {
 			yc = 0
 		}
-		base := p.BottomPinch + (1-p.BottomPinch)*math.Pow(yc, 0.6)
+		// Smootherstep (quintic Hermite) gives a tighter keel that opens gradually
+		sy := yc * yc * yc * (yc*(yc*6-15) + 10)
+		base := p.BottomPinch + (1-p.BottomPinch)*sy
 		flare := p.HullFlare * math.Pow(yc, p.FlareCurve)
 		tumble := p.Tumblehome * math.Pow(yc, p.TumbleCurve)
 		// Above-deck taper: castle sections taper inward with height
@@ -189,29 +191,33 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 			if t < 0 {
 				t = 0
 			}
+			// Smootherstep the parameter for cleaner taper progression
+			st := t * t * t * (t*(t*6-15) + 10)
 			switch p.SternStyle {
 			case "square":
-				f := math.Pow(t, p.SternSharpness)
+				f := math.Pow(st, p.SternSharpness)
 				if f < 0.72 {
 					f = 0.72
 				}
 				return f
 			case "round":
-				return math.Pow(math.Max(t, 0), p.SternSharpness*0.55)
+				return math.Pow(st, p.SternSharpness*0.55)
 			default: // pointed
-				return math.Pow(t, p.SternSharpness)
+				return math.Pow(st, p.SternSharpness)
 			}
 		}
 		if zNorm >= bowStart {
 			t := (1 - zNorm) / math.Max(1-bowStart, 0.001)
-			base := math.Pow(math.Max(t, 0), p.BowSharpness)
+			// Smootherstep for a more gradual taper into the bow tip
+			st := t * t * t * (t*(t*6-15) + 10)
+			base := math.Pow(math.Max(st, 0), p.BowSharpness)
 			// BowCurve: negative = concave (clipper), positive = convex (bluff)
 			if p.BowCurve != 0 {
 				if p.BowCurve > 0 {
-					convex := math.Sqrt(math.Max(t, 0))
+					convex := math.Sqrt(math.Max(st, 0))
 					base = base*(1-p.BowCurve) + convex*p.BowCurve
 				} else {
-					concave := t * t * t
+					concave := st * st * st
 					base = base*(1+p.BowCurve) + concave*(-p.BowCurve)
 				}
 			}
@@ -353,11 +359,51 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 		}
 	}
 
+	// Compute raw half-widths
+	rawHW := make([][]float64, maxDeckY+1)
+	for y := 0; y <= maxDeckY; y++ {
+		rawHW[y] = make([]float64, L)
+	}
 	for z := 0; z < L; z++ {
 		keelYArr[z] = keelYAt(z)
 		topY := deckYArr[z]
 		for y := keelYArr[z]; y <= topY; y++ {
-			hw := halfWidthAt(y, z)
+			if y <= maxDeckY {
+				rawHW[y][z] = halfWidthAt(y, z)
+			}
+		}
+	}
+
+	// Smooth half-widths along Z to eliminate jagged single-block steps.
+	// Uses a 3-wide weighted average (0.25, 0.5, 0.25) in the bow/stern
+	// taper regions where stairstepping is most visible.
+	bowStart := L - p.BowLength
+	sternEnd := p.SternLength
+	for y := 0; y <= maxDeckY; y++ {
+		smoothed := make([]float64, L)
+		copy(smoothed, rawHW[y])
+		for z := 1; z < L-1; z++ {
+			if z >= sternEnd && z <= bowStart {
+				continue
+			}
+			prev := rawHW[y][z-1]
+			cur := rawHW[y][z]
+			next := rawHW[y][z+1]
+			if prev > 0 || cur > 0 || next > 0 {
+				smoothed[z] = prev*0.25 + cur*0.5 + next*0.25
+			}
+		}
+		rawHW[y] = smoothed
+	}
+
+	// Discretize smoothed half-widths and fill hull volume
+	for z := 0; z < L; z++ {
+		topY := deckYArr[z]
+		for y := keelYArr[z]; y <= topY; y++ {
+			hw := 0.0
+			if y <= maxDeckY {
+				hw = rawHW[y][z]
+			}
 			if hw < 0.15 {
 				continue
 			}

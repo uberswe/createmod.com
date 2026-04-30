@@ -42,6 +42,7 @@ type Querier interface {
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)
 	CountUserMessagesSinceLastModerator(ctx context.Context, threadID string) (int64, error)
+	CountUserSchematics(ctx context.Context, authorID *string) (int32, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CountUsersForAdmin(ctx context.Context, arg CountUsersForAdminParams) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (ApiKey, error)
@@ -78,6 +79,7 @@ type Querier interface {
 	DeleteExpiredUnclaimedTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
+	DeleteOldSchematicEvents(ctx context.Context, created time.Time) (int64, error)
 	DeleteReport(ctx context.Context, id string) error
 	DeleteReportsByTarget(ctx context.Context, arg DeleteReportsByTargetParams) (int64, error)
 	DeleteSchematicFile(ctx context.Context, id string) error
@@ -137,6 +139,7 @@ type Querier interface {
 	GetSchematicVariationByID(ctx context.Context, id string) (SchematicVariation, error)
 	GetSchematicViewCount(ctx context.Context, schematicID string) (int32, error)
 	GetSession(ctx context.Context, id string) (GetSessionRow, error)
+	GetSiteAvgVDRatio(ctx context.Context) (interface{}, error)
 	GetTagByID(ctx context.Context, id string) (SchematicTag, error)
 	GetTagByKey(ctx context.Context, key string) (SchematicTag, error)
 	GetTagByKeyIncludingPending(ctx context.Context, key string) (SchematicTag, error)
@@ -156,7 +159,15 @@ type Querier interface {
 	HasAchievement(ctx context.Context, arg HasAchievementParams) (bool, error)
 	HourlyCommentStats(ctx context.Context, created time.Time) ([]HourlyCommentStatsRow, error)
 	HourlyDownloadStats(ctx context.Context, created time.Time) ([]HourlyDownloadStatsRow, error)
+	HourlySchematicDownloadCounts(ctx context.Context, arg HourlySchematicDownloadCountsParams) ([]HourlySchematicDownloadCountsRow, error)
+	HourlySchematicEventAvg(ctx context.Context, arg HourlySchematicEventAvgParams) ([]HourlySchematicEventAvgRow, error)
+	HourlySchematicEventCounts(ctx context.Context, arg HourlySchematicEventCountsParams) ([]HourlySchematicEventCountsRow, error)
 	HourlySchematicStats(ctx context.Context, created time.Time) ([]HourlySchematicStatsRow, error)
+	HourlySchematicViewCounts(ctx context.Context, arg HourlySchematicViewCountsParams) ([]HourlySchematicViewCountsRow, error)
+	HourlyUserAggregateDownloadCounts(ctx context.Context, arg HourlyUserAggregateDownloadCountsParams) ([]HourlyUserAggregateDownloadCountsRow, error)
+	HourlyUserAggregateEventAvg(ctx context.Context, arg HourlyUserAggregateEventAvgParams) ([]HourlyUserAggregateEventAvgRow, error)
+	HourlyUserAggregateEventCounts(ctx context.Context, arg HourlyUserAggregateEventCountsParams) ([]HourlyUserAggregateEventCountsRow, error)
+	HourlyUserAggregateViewCounts(ctx context.Context, arg HourlyUserAggregateViewCountsParams) ([]HourlyUserAggregateViewCountsRow, error)
 	HourlyUserStats(ctx context.Context, created time.Time) ([]HourlyUserStatsRow, error)
 	HourlyViewStats(ctx context.Context, created time.Time) ([]HourlyViewStatsRow, error)
 	IncrementCollectionViews(ctx context.Context, id string) error
@@ -202,6 +213,7 @@ type Querier interface {
 	ListRandomApprovedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListSchematicFilesBySchematicID(ctx context.Context, schematicID string) ([]SchematicFile, error)
+	ListSchematicStatsForUser(ctx context.Context, arg ListSchematicStatsForUserParams) ([]ListSchematicStatsForUserRow, error)
 	ListSchematicTranslations(ctx context.Context, schematicID string) ([]SchematicTranslation, error)
 	ListSchematicVariationsBySchematicAndUser(ctx context.Context, arg ListSchematicVariationsBySchematicAndUserParams) ([]SchematicVariation, error)
 	ListSchematicVersions(ctx context.Context, schematicID string) ([]SchematicVersion, error)
@@ -234,6 +246,7 @@ type Querier interface {
 	PruneOldSearches(ctx context.Context) (int64, error)
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
+	RecordSchematicEvent(ctx context.Context, arg RecordSchematicEventParams) error
 	RefreshSchematicRatingAggregates(ctx context.Context, id string) error
 	// Concurrent refresh: allows reads during the refresh. Requires a unique index
 	// on the matview (idx_search_query_counts_query), which already exists.
