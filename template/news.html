@@ -15,7 +15,16 @@
                             <div class="card news-card mb-3">
                                 <div class="card-body py-3">
                                     <div class="d-flex align-items-start">
-                                        <div class="flex-fill">
+                                        {{ if $post.Image }}
+                                        <div class="news-thumb me-3 flex-shrink-0">
+                                            <img src="{{ $post.Image }}" alt="" loading="lazy">
+                                        </div>
+                                        {{ else }}
+                                        <div class="news-thumb news-thumb-placeholder me-3 flex-shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17"/><path d="M4 21h16"/><path d="M12 7v4"/><path d="M7.5 11h9"/></svg>
+                                        </div>
+                                        {{ end }}
+                                        <div class="flex-fill min-width-0">
                                             <div class="d-flex align-items-center mb-1">
                                                 <h3 class="mb-0"><a href="{{ $post.URL }}" class="text-reset">{{ $post.Title }}</a></h3>
                                                 {{ if eq $i 0 }}
@@ -29,9 +38,9 @@
                                                     <p class="mb-0">{{ $post.Excerpt }}</p>
                                                 {{ end }}
                                             </div>
-                                        </div>
-                                        <div class="text-secondary text-nowrap ms-3" style="font-size: 0.85rem;">
-                                            {{ DateOnly $post.PostDate }}
+                                            <div class="text-secondary mt-1" style="font-size: 0.8rem;">
+                                                {{ DateOnly $post.PostDate }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -138,6 +147,28 @@
 }
 .news-excerpt p {
     margin-bottom: 0;
+}
+.news-thumb {
+    width: 80px;
+    height: 80px;
+    border-radius: .375rem;
+    overflow: hidden;
+}
+.news-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.news-thumb-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tblr-bg-surface-secondary, #f1f5f9);
+    color: var(--tblr-secondary, #626976);
+}
+.min-width-0 { min-width: 0; }
+@media (max-width: 575.98px) {
+    .news-thumb { width: 60px; height: 60px; }
 }
 .stats-chart { width: 100%; position: relative; }
 .stats-bars {

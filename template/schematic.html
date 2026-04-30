@@ -199,12 +199,16 @@
                                         {{ end }}
                                     </div>
                                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                                        <a href="#" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal">
+                                        <a href="#" class="btn btn-outline-secondary" style="padding:.4rem .75rem;" data-bs-toggle="modal" data-bs-target="#reportModal">
                                             {{ T .Language "Report" }}
                                         </a>
                                         {{ if .IsAuthor }}
-                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary btn-sm" id="edit-btn">
+                                        <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary" style="padding:.4rem .75rem;" id="edit-btn">
                                             {{ T .Language "Edit" }}
+                                        </a>
+                                        <a href="/schematics/{{ .Schematic.Name }}/stats" class="btn btn-outline-info" style="padding:.4rem .75rem;" hx-boost="false">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12h4l3 8l4 -16l3 8h4" /></svg>
+                                            {{ T .Language "Stats" }}
                                         </a>
                                         {{ end }}
                                         <div class="ms-auto d-flex align-items-center" style="position:relative;">
@@ -572,6 +576,14 @@
                         <div class="card mb-3">
                             <div id="player-youtube" data-plyr-provider="youtube"
                                  data-plyr-embed-id="{{ .Schematic.Video }}"></div>
+                            <div class="card-footer text-center">
+                                <a href="https://www.youtube.com/watch?v={{ .Schematic.Video }}"
+                                   target="_blank" rel="noopener"
+                                   class="btn btn-outline-danger btn-sm" id="yt-link">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z" /><path d="M10 9l5 3l-5 3z" /></svg>
+                                    {{ T .Language "View on YouTube" }}
+                                </a>
+                            </div>
                         </div>
                         {{ end }}
 
@@ -751,6 +763,7 @@
                     </div>
 
                 </div><!-- /row -->
+
                 </div><!-- /flex-grow-1 -->
 
                     <!-- Column 3: Ad Rails -->
@@ -1490,5 +1503,89 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     if (!form) return;
     gtag('event', 'add_to_collection', { 'schematic_id': sid });
   });
+})();
+</script>
+<script>
+(function() {
+  var sid = '{{ .Schematic.ID }}';
+  var events = [];
+  var flushed = false;
+
+  function flush() {
+    if (flushed || events.length === 0) return;
+    flushed = true;
+    var payload = JSON.stringify({ schematic_id: sid, events: events });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/analytics', new Blob([payload], { type: 'application/json' }));
+    } else {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/analytics', false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(payload);
+    }
+  }
+
+  function addEvent(type, value) {
+    events.push({ type: type, value: value || 1 });
+    flushed = false;
+  }
+
+  // Time on page
+  var pageStart = Date.now();
+  var hiddenTime = 0;
+  var lastHidden = 0;
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      lastHidden = Date.now();
+    } else if (lastHidden) {
+      hiddenTime += Date.now() - lastHidden;
+      lastHidden = 0;
+    }
+  });
+
+  function getActiveSeconds() {
+    var elapsed = Date.now() - pageStart - hiddenTime;
+    if (document.hidden && lastHidden) elapsed -= (Date.now() - lastHidden);
+    return Math.max(1, Math.round(elapsed / 1000));
+  }
+
+  window.addEventListener('beforeunload', function() {
+    addEvent(3, getActiveSeconds());
+    flush();
+  });
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      addEvent(3, getActiveSeconds());
+      flush();
+    }
+  });
+
+  // Video play tracking
+  var videoTracked = false;
+  function trackVideoPlay() {
+    if (videoTracked) return;
+    videoTracked = true;
+    addEvent(1);
+  }
+  var checkPlyr = setInterval(function() {
+    var el = document.getElementById('player-youtube');
+    if (!el) { clearInterval(checkPlyr); return; }
+    if (el.plyr) {
+      el.plyr.on('play', trackVideoPlay);
+      clearInterval(checkPlyr);
+    }
+  }, 500);
+  setTimeout(function() { clearInterval(checkPlyr); }, 10000);
+
+  // YouTube click tracking
+  var ytLink = document.getElementById('yt-link');
+  if (ytLink) {
+    ytLink.addEventListener('click', function() { addEvent(2); });
+  }
+
+  // Block modify / layer viewer from guide.js custom events
+  document.addEventListener('schematic:block-modified', function() { addEvent(4); });
+  document.addEventListener('schematic:layer-viewed', function() { addEvent(5); });
 })();
 </script>

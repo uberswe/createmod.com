@@ -356,6 +356,14 @@ type SchematicDownload struct {
 	Created     time.Time `json:"created"`
 }
 
+type SchematicEvent struct {
+	ID          string    `json:"id"`
+	SchematicID string    `json:"schematic_id"`
+	EventType   int16     `json:"event_type"`
+	EventValue  int32     `json:"event_value"`
+	Created     time.Time `json:"created"`
+}
+
 type SchematicFile struct {
 	ID           string    `json:"id"`
 	SchematicID  string    `json:"schematic_id"`
