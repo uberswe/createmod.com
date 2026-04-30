@@ -250,6 +250,20 @@ func (q *Queries) CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) 
 	return err
 }
 
+const deleteExternalAuth = `-- name: DeleteExternalAuth :exec
+DELETE FROM external_auths WHERE user_id = $1 AND provider = $2
+`
+
+type DeleteExternalAuthParams struct {
+	UserID   string `json:"user_id"`
+	Provider string `json:"provider"`
+}
+
+func (q *Queries) DeleteExternalAuth(ctx context.Context, arg DeleteExternalAuthParams) error {
+	_, err := q.db.Exec(ctx, deleteExternalAuth, arg.UserID, arg.Provider)
+	return err
+}
+
 const deleteNBTHash = `-- name: DeleteNBTHash :exec
 DELETE FROM nbt_hashes WHERE id = $1 AND uploaded_by = $2
 `

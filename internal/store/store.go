@@ -641,6 +641,7 @@ type AuthStore interface {
 	GetByProvider(ctx context.Context, provider, providerID string) (*ExternalAuth, error)
 	Create(ctx context.Context, ea *ExternalAuth) error
 	ListByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
+	DeleteByProvider(ctx context.Context, userID, provider string) error
 }
 
 // ReportStore handles content reports.

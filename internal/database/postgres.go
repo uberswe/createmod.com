@@ -2418,6 +2418,13 @@ func (as *AuthStoreImpl) ListByUser(ctx context.Context, userID string) ([]store
 	return result, nil
 }
 
+func (as *AuthStoreImpl) DeleteByProvider(ctx context.Context, userID, provider string) error {
+	return as.q.DeleteExternalAuth(ctx, db.DeleteExternalAuthParams{
+		UserID:   userID,
+		Provider: provider,
+	})
+}
+
 // ReportStoreImpl implements store.ReportStore.
 type ReportStoreImpl struct{ q *db.Queries }
 
