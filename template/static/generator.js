@@ -713,10 +713,36 @@ function OrbitControls(cam, domElement) {
 var pendingRequest = null;
 var debounceTimer = null;
 
+var API_TO_ENGINE = {
+  '/api/generators/propeller': 'propeller',
+  '/api/generators/balloon': 'balloon',
+  '/api/generators/hull': 'hull'
+};
+
 function generate(apiUrl, params, onDone) {
   if (!params.version) params.version = CURRENT_VERSION;
   if (debounceTimer) clearTimeout(debounceTimer);
   if (pendingRequest) pendingRequest.abort();
+
+  var engineKey = API_TO_ENGINE[apiUrl];
+  var engineFn = engineKey && window.GeneratorEngine && window.GeneratorEngine[engineKey];
+
+  if (engineFn) {
+    debounceTimer = setTimeout(function() {
+      var blockCount = document.getElementById('gen-block-count');
+      if (blockCount) blockCount.textContent = 'Generating...';
+      try {
+        var data = engineFn(params);
+        renderBlocks(data);
+        if (blockCount) blockCount.textContent = data.blocks.length + ' blocks';
+        if (onDone) onDone(data);
+      } catch(err) {
+        console.error('Generator error:', err);
+        if (blockCount) blockCount.textContent = 'Error';
+      }
+    }, 30);
+    return;
+  }
 
   debounceTimer = setTimeout(function() {
     var ctrl = new AbortController();
