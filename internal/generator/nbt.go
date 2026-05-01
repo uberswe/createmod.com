@@ -3,11 +3,34 @@ package generator
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/Tnze/go-mc/nbt"
 )
+
+// nbtIntList encodes as TAG_List of TAG_Int instead of TAG_Int_Array.
+// Minecraft's structure format requires TAG_List for pos and size fields.
+type nbtIntList []int32
+
+func (l nbtIntList) TagType() byte { return nbt.TagList }
+
+func (l nbtIntList) MarshalNBT(w io.Writer) error {
+	if _, err := w.Write([]byte{nbt.TagInt}); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, int32(len(l))); err != nil {
+		return err
+	}
+	for _, v := range l {
+		if err := binary.Write(w, binary.BigEndian, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 type nbtPaletteEntry struct {
 	Name       string            `nbt:"Name"`
@@ -15,13 +38,13 @@ type nbtPaletteEntry struct {
 }
 
 type nbtBlock struct {
-	Pos   [3]int32 `nbt:"pos"`
-	State int32    `nbt:"state"`
+	Pos   nbtIntList `nbt:"pos"`
+	State int32      `nbt:"state"`
 }
 
 type nbtStructure struct {
 	DataVersion int32             `nbt:"DataVersion"`
-	Size        [3]int32          `nbt:"size"`
+	Size        nbtIntList        `nbt:"size"`
 	Palette     []nbtPaletteEntry `nbt:"palette"`
 	Blocks      []nbtBlock        `nbt:"blocks"`
 	Entities    []interface{}     `nbt:"entities"`
@@ -250,14 +273,14 @@ func ExportNBT(result *GenerateResult) ([]byte, error) {
 		}
 		idx := getPaletteIndex(name, props)
 		nbtBlocks = append(nbtBlocks, nbtBlock{
-			Pos:   [3]int32{int32(b.X), int32(b.Y), int32(b.Z)},
+			Pos:   nbtIntList{int32(b.X), int32(b.Y), int32(b.Z)},
 			State: idx,
 		})
 	}
 
 	structure := nbtStructure{
 		DataVersion: 3955,
-		Size:        [3]int32{int32(result.SizeX), int32(result.SizeY), int32(result.SizeZ)},
+		Size:        nbtIntList{int32(result.SizeX), int32(result.SizeY), int32(result.SizeZ)},
 		Palette:     palette,
 		Blocks:      nbtBlocks,
 		Entities:    []interface{}{},
