@@ -321,7 +321,7 @@
     updateShareURLs();
     GeneratorApp.generate('/api/generators/balloon', getParams(), function() {
       var hash = window.location.pathname.split('/').pop();
-      if (hash) _captureTimer = setTimeout(function() { _captureTimer = null; GeneratorApp.capturePreview(hash); }, 500);
+      if (hash) _captureTimer = setTimeout(function() { _captureTimer = null; GeneratorApp.capturePreview(hash); }, 5000);
     });
   }
 

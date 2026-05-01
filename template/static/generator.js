@@ -1047,12 +1047,8 @@ function applyHashParams(setParamsFn, initHash, generatorType) {
   return { params: {} };
 }
 
-var _previewCaptured = {};
-
 function capturePreview(hash) {
   if (!renderer || !hash || !scene || !camera) return;
-  if (_previewCaptured[hash]) return;
-  _previewCaptured[hash] = true;
   renderer.render(scene, camera);
   renderer.domElement.toBlob(function(blob) {
     if (!blob) return;
