@@ -225,21 +225,16 @@
             })).render();
         }
 
-        // Hourly charts
+        // Hourly charts – reuse the same config as the monthly charts above
         function makeHourlyChart(elId, data, name, color) {
             var el = document.getElementById(elId);
             if (!el) return;
-            new ApexCharts(el, {
-                chart: { type: 'line', height: 200, sparkline: { enabled: false }, toolbar: { show: false }, foreColor: labelColor },
+            new ApexCharts(el, Object.assign({}, commonOpts, {
+                chart: Object.assign({}, commonOpts.chart, { height: 200 }),
                 series: [{ name: name, data: data }],
                 xaxis: { type: 'category', labels: { show: false } },
-                yaxis: { min: 0 },
-                stroke: { curve: 'smooth', width: 2 },
-                colors: [color],
-                fill: { opacity: 0 },
-                grid: { borderColor: gridColor },
-                tooltip: { theme: isDark ? 'dark' : 'light' }
-            }).render();
+                colors: [color]
+            })).render();
         }
 
         makeHourlyChart('chart-hourly-views', {{ .HourlyViewsJSON }}, 'Views', '#4299e1');
