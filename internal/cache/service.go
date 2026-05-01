@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"createmod/internal/metrics"
 	"createmod/internal/models"
 	"encoding/json"
 	"fmt"
@@ -25,7 +26,7 @@ const (
 	TrendingHasNextKey        = "TrendingHasNext"
 
 	keyPrefix    = "cm:"
-	defaultTTL   = 60 * time.Minute
+	defaultTTL   = 30 * time.Minute
 	redisTimeout = 2 * time.Second
 )
 
@@ -78,24 +79,42 @@ func (s *Service) Delete(key string) {
 	}
 }
 
+// ItemCount returns the number of items in the in-memory cache.
+func (s *Service) ItemCount() int {
+	return s.c.ItemCount()
+}
+
+func (s *Service) startMetricsUpdater() {
+	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			metrics.CacheItems.Set(float64(s.c.ItemCount()))
+		}
+	}()
+}
+
 // New creates the CreateMod.com in-memory cache service.
 func New() *Service {
-	c := gocache.New(defaultTTL, 120*time.Minute)
-	return &Service{
+	c := gocache.New(defaultTTL, 45*time.Minute)
+	svc := &Service{
 		c: c,
 	}
+	svc.startMetricsUpdater()
+	return svc
 }
 
 // NewWithRedis creates a cache service backed by both in-memory and Redis.
 // Writes go to both; reads try Redis first, fall back to in-memory.
 // A pub/sub subscription is started for cross-pod invalidation.
 func NewWithRedis(client *redis.Client) *Service {
-	c := gocache.New(defaultTTL, 120*time.Minute)
+	c := gocache.New(defaultTTL, 45*time.Minute)
 	s := &Service{
 		c:      c,
 		redis:  client,
 		stopCh: make(chan struct{}),
 	}
+	s.startMetricsUpdater()
 	s.startSubscription()
 	return s
 }
@@ -285,17 +304,21 @@ func (s *Service) GetSchematic(key string) (models.Schematic, bool) {
 			var schem models.Schematic
 			if err := json.Unmarshal(v, &schem); err == nil {
 				s.c.Set(key, schem, gocache.DefaultExpiration)
+				metrics.CacheHits.Inc()
 				return schem, true
 			}
 		}
 	}
 	v, found := s.c.Get(key)
 	if !found {
+		metrics.CacheMisses.Inc()
 		return models.Schematic{}, false
 	}
 	if schem, ok := v.(models.Schematic); ok {
+		metrics.CacheHits.Inc()
 		return schem, true
 	}
+	metrics.CacheMisses.Inc()
 	return models.Schematic{}, false
 }
 

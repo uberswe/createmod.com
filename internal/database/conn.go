@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"createmod/internal/slowlog"
@@ -56,6 +57,20 @@ func Connect(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 		pool.Close()
 		return nil, fmt.Errorf("pinging database: %w", err)
 	}
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			stat := pool.Stat()
+			slog.Info("pgpool",
+				"acquired", stat.AcquiredConns(),
+				"idle", stat.IdleConns(),
+				"total", stat.TotalConns(),
+				"max", stat.MaxConns(),
+			)
+		}
+	}()
 
 	return pool, nil
 }

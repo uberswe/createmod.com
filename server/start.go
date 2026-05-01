@@ -22,6 +22,8 @@ import (
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"fmt"
+	"runtime"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/meilisearch/meilisearch-go"
 	"github.com/redis/go-redis/v9"
@@ -311,9 +313,26 @@ func (s *Server) Start() {
 		}
 	}
 
+	// Periodic runtime stats for observability.
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			slog.Info("runtime",
+				"heap_alloc_mb", m.HeapAlloc/1024/1024,
+				"heap_sys_mb", m.HeapSys/1024/1024,
+				"goroutines", runtime.NumGoroutine(),
+				"gc_cycles", m.NumGC,
+			)
+		}
+	}()
+
 	httpServer := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
+		ReadTimeout:       30 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       120 * time.Second,

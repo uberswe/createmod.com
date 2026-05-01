@@ -50,7 +50,7 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 		slog.Warn("search index rebuild: failed to load mod metadata", "error", err)
 	}
 
-	mapped := pages.MapStoreSchematics(w.deps.Store, storeSchematics, w.deps.Cache)
+	mapped := pages.MapStoreSchematicsNoCache(w.deps.Store, storeSchematics, w.deps.Cache)
 	w.deps.Search.BuildIndex(mapped, modDisplayNames)
 
 	// Also refresh trending scores so they're available right after index rebuild.

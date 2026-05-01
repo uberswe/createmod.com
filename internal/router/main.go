@@ -8,6 +8,7 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/jobs"
 	"createmod/internal/mailer"
+	"createmod/internal/metrics"
 	"createmod/internal/moderation"
 	"createmod/internal/outurl"
 	"createmod/internal/pages"
@@ -34,6 +35,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -153,6 +155,19 @@ func Register(p RegisterParams) chi.Router {
 		"Hreflangs": func(barePath string) []pages.HreflangEntry {
 			return pages.AllHreflangs()
 		},
+		"YouTubeWatchURL": func(video string) string {
+			if strings.Contains(video, "/embed/") {
+				parts := strings.Split(video, "/embed/")
+				if len(parts) == 2 && parts[1] != "" {
+					id := strings.SplitN(parts[1], "?", 2)[0]
+					return "https://www.youtube.com/watch?v=" + id
+				}
+			}
+			if strings.Contains(video, "watch?v=") {
+				return video
+			}
+			return "https://www.youtube.com/watch?v=" + video
+		},
 		"externalDomain": pages.ExternalDomain,
 		"LangFlag": func(code string) html.HTML {
 			cc := "gb"
@@ -194,6 +209,7 @@ func Register(p RegisterParams) chi.Router {
 	if os.Getenv("MAINTENANCE_MODE") == "true" {
 		maintenanceFlag.Store(true)
 	}
+	r.Use(requestIDMiddleware)
 	r.Use(headMethodSupport)
 	r.Use(cleanDoubleSlashes)
 	r.Use(requestLogger)
@@ -693,15 +709,46 @@ func getContent(url string) (string, error) {
 	return string(data), nil
 }
 
-// responseRecorder wraps http.ResponseWriter to capture the status code.
+type contextKey string
+
+const requestIDKey contextKey = "request_id"
+
+// RequestIDFromContext returns the request ID stored in the context, or empty string.
+func RequestIDFromContext(ctx context.Context) string {
+	if id, ok := ctx.Value(requestIDKey).(string); ok {
+		return id
+	}
+	return ""
+}
+
+func requestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get("X-Request-Id")
+		if id == "" {
+			id = uuid.NewString()
+		}
+		ctx := context.WithValue(r.Context(), requestIDKey, id)
+		w.Header().Set("X-Request-Id", id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// responseRecorder wraps http.ResponseWriter to capture the status code and bytes written.
 type responseRecorder struct {
 	http.ResponseWriter
-	status int
+	status       int
+	bytesWritten int
 }
 
 func (rr *responseRecorder) WriteHeader(code int) {
 	rr.status = code
 	rr.ResponseWriter.WriteHeader(code)
+}
+
+func (rr *responseRecorder) Write(b []byte) (int, error) {
+	n, err := rr.ResponseWriter.Write(b)
+	rr.bytesWritten += n
+	return n, err
 }
 
 // requestLogger logs each HTTP request with method, path, status, and duration.
@@ -724,13 +771,38 @@ func requestLogger(next http.Handler) http.Handler {
 		start := time.Now()
 		rr := &responseRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rr, r)
-		slog.Info("http",
+
+		elapsed := time.Since(start)
+		duration := elapsed.Round(time.Millisecond).String()
+		statusStr := fmt.Sprintf("%d", rr.status)
+
+		metrics.HTTPRequestDuration.WithLabelValues(r.Method, r.URL.Path, statusStr).Observe(elapsed.Seconds())
+		metrics.HTTPRequestsTotal.WithLabelValues(r.Method, statusStr).Inc()
+		metrics.HTTPResponseSize.WithLabelValues(r.Method).Observe(float64(rr.bytesWritten))
+
+		attrs := []any{
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rr.status,
-			"duration", time.Since(start).Round(time.Millisecond).String(),
+			"duration", duration,
 			"ip", r.RemoteAddr,
-		)
+			"resp_bytes", rr.bytesWritten,
+		}
+		if reqID := RequestIDFromContext(r.Context()); reqID != "" {
+			attrs = append(attrs, "request_id", reqID)
+		}
+		if cl := r.Header.Get("Content-Length"); cl != "" {
+			attrs = append(attrs, "req_bytes", cl)
+		}
+
+		switch {
+		case rr.status >= 500:
+			slog.Error("http", attrs...)
+		case rr.status >= 400:
+			slog.Warn("http", attrs...)
+		default:
+			slog.Info("http", attrs...)
+		}
 	})
 }
 

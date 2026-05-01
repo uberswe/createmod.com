@@ -640,6 +640,46 @@ func MapStoreSchematics(appStore *store.Store, schematics []store.Schematic, cac
 	return result
 }
 
+// MapStoreSchematicsNoCache converts schematics without reading from or writing to cache.
+// Used by the index rebuild job to avoid filling the cache with all schematics.
+func MapStoreSchematicsNoCache(appStore *store.Store, schematics []store.Schematic, cacheService *cache.Service) []models.Schematic {
+	if len(schematics) == 0 {
+		return nil
+	}
+	ctx := stdctx.Background()
+	result := make([]models.Schematic, len(schematics))
+
+	ids := make([]string, len(schematics))
+	for i := range schematics {
+		ids[i] = schematics[i].ID
+	}
+
+	var (
+		viewCounts      map[string]int
+		downloadCounts  map[string]int
+		ratings         map[string]*store.SchematicRating
+		batchCategories map[string][]store.SchematicCategoryInfo
+		batchTags       map[string][]store.SchematicTagInfo
+	)
+	{
+		var wg sync.WaitGroup
+		wg.Add(5)
+		go func() { defer wg.Done(); viewCounts, _ = appStore.ViewRatings.BatchGetViewCounts(ctx, ids) }()
+		go func() { defer wg.Done(); downloadCounts, _ = appStore.ViewRatings.BatchGetDownloadCounts(ctx, ids) }()
+		go func() { defer wg.Done(); ratings, _ = appStore.ViewRatings.BatchGetRatings(ctx, ids) }()
+		go func() { defer wg.Done(); batchCategories, _ = appStore.Schematics.BatchGetCategoriesForSchematics(ctx, ids) }()
+		go func() { defer wg.Done(); batchTags, _ = appStore.Schematics.BatchGetTagsForSchematics(ctx, ids) }()
+		wg.Wait()
+	}
+
+	for i := range schematics {
+		result[i] = mapSchematicFromBatch(appStore, schematics[i], cacheService,
+			viewCounts, downloadCounts, ratings, batchCategories, batchTags)
+	}
+
+	return result
+}
+
 // translateSchematicTitles replaces each schematic's title with its cached
 // translation when the viewer's language differs from the schematic's detected language.
 func translateSchematicTitles(schematics []models.Schematic, translationService *translation.Service, cacheService *cache.Service, targetLang string) {
