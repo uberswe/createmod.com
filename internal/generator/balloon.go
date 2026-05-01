@@ -205,22 +205,29 @@ func GenerateBalloon(p BalloonParams) (*GenerateResult, error) {
 		}
 
 		// Pass 1c: Thicken shell inward for shell > 1
-		for layer := 1; layer < p.Shell; layer++ {
-			var newLayer []coord
-			for pos := range insideSet {
-				if shellSet[pos] {
-					continue
-				}
+		// Use frontier-based BFS: only check neighbors of the current shell boundary
+		if p.Shell > 1 {
+			frontier := make(map[coord]bool)
+			for pos := range shellSet {
 				for _, d := range dirs {
 					nb := coordKey(pos[0]+d[0], pos[1]+d[1], pos[2]+d[2])
-					if shellSet[nb] {
-						newLayer = append(newLayer, pos)
-						break
+					if insideSet[nb] && !shellSet[nb] {
+						frontier[nb] = true
 					}
 				}
 			}
-			for _, pos := range newLayer {
-				shellSet[pos] = true
+			for layer := 1; layer < p.Shell; layer++ {
+				nextFrontier := make(map[coord]bool)
+				for pos := range frontier {
+					shellSet[pos] = true
+					for _, d := range dirs {
+						nb := coordKey(pos[0]+d[0], pos[1]+d[1], pos[2]+d[2])
+						if insideSet[nb] && !shellSet[nb] && !frontier[nb] {
+							nextFrontier[nb] = true
+						}
+					}
+				}
+				frontier = nextFrontier
 			}
 		}
 

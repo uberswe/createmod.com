@@ -49,20 +49,17 @@ var ValidWoolColors = []string{
 	"gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black",
 }
 
-func isValidWoodType(s string) bool {
+var validWoodTypes = make(map[string]bool)
+var validWoolColors = make(map[string]bool)
+
+func init() {
 	for _, v := range ValidWoodTypes {
-		if s == v {
-			return true
-		}
+		validWoodTypes[v] = true
 	}
-	return false
+	for _, v := range ValidWoolColors {
+		validWoolColors[v] = true
+	}
 }
 
-func isValidWoolColor(s string) bool {
-	for _, v := range ValidWoolColors {
-		if s == v {
-			return true
-		}
-	}
-	return false
-}
+func isValidWoodType(s string) bool  { return validWoodTypes[s] }
+func isValidWoolColor(s string) bool { return validWoolColors[s] }

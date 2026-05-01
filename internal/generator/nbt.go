@@ -159,7 +159,7 @@ func blockToPalette(b Block, mat MaterialConfig) (string, map[string]string) {
 
 	case BlockSail:
 		if mat.BladeMaterial == "sail" {
-			return sailBlock(mat.BladeColor), nil
+			return sailBlock(mat.BladeColor), map[string]string{"axis": "y"}
 		}
 		return woolBlock(mat.BladeColor), nil
 
@@ -189,6 +189,16 @@ func blockToPalette(b Block, mat MaterialConfig) (string, map[string]string) {
 			for k, v := range b.Props {
 				props[k] = v
 			}
+		}
+		switch props["facing"] {
+		case "north":
+			props["facing"] = "south"
+		case "south":
+			props["facing"] = "north"
+		case "east":
+			props["facing"] = "west"
+		case "west":
+			props["facing"] = "east"
 		}
 		return woodStairs(mat), props
 

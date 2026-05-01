@@ -206,23 +206,29 @@ function generateBalloon(p) {
       }
     }
 
-    // Pass 1c: thicken shell
-    for (var layer = 1; layer < shell; layer++) {
-      var newLayer = [];
-      for (var ik3 in insideKeys) {
-        if (shellKeys[ik3]) continue;
-        var parts2 = ik3.split(',');
-        var px2 = parseInt(parts2[0]), py2 = parseInt(parts2[1]), pz2 = parseInt(parts2[2]);
-        for (var di2 = 0; di2 < 6; di2++) {
-          var nbk2 = coordKey(px2 + dirs[di2][0], py2 + dirs[di2][1], pz2 + dirs[di2][2]);
-          if (shellKeys[nbk2]) {
-            newLayer.push(ik3);
-            break;
-          }
+    // Pass 1c: thicken shell using frontier-based BFS
+    if (shell > 1) {
+      var frontier = {};
+      for (var fk in shellKeys) {
+        var fp = fk.split(',');
+        var fpx = parseInt(fp[0]), fpy = parseInt(fp[1]), fpz = parseInt(fp[2]);
+        for (var fdi = 0; fdi < 6; fdi++) {
+          var fnb = coordKey(fpx + dirs[fdi][0], fpy + dirs[fdi][1], fpz + dirs[fdi][2]);
+          if (insideKeys[fnb] && !shellKeys[fnb]) frontier[fnb] = true;
         }
       }
-      for (var ni = 0; ni < newLayer.length; ni++) {
-        shellKeys[newLayer[ni]] = true;
+      for (var layer = 1; layer < shell; layer++) {
+        var nextFrontier = {};
+        for (var ffk in frontier) {
+          shellKeys[ffk] = true;
+          var ffp = ffk.split(',');
+          var ffpx = parseInt(ffp[0]), ffpy = parseInt(ffp[1]), ffpz = parseInt(ffp[2]);
+          for (var fdi2 = 0; fdi2 < 6; fdi2++) {
+            var fnb2 = coordKey(ffpx + dirs[fdi2][0], ffpy + dirs[fdi2][1], ffpz + dirs[fdi2][2]);
+            if (insideKeys[fnb2] && !shellKeys[fnb2] && !frontier[fnb2]) nextFrontier[fnb2] = true;
+          }
+        }
+        frontier = nextFrontier;
       }
     }
 
