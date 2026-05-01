@@ -263,6 +263,7 @@ func SchematicUpdateHandler(
 			}
 			schem.FeaturedImage = filename
 			newImageFilenames = append(newImageFilenames, filename)
+			go PrewarmThumbnails(storageSvc, schematicID, filename)
 		}
 
 		// --- Promote gallery image to featured ---
@@ -278,6 +279,7 @@ func SchematicUpdateHandler(
 			if found {
 				oldFeatured := schem.FeaturedImage
 				schem.FeaturedImage = setFeaturedFromGallery
+				go PrewarmThumbnails(storageSvc, schematicID, setFeaturedFromGallery)
 				// Remove promoted image from gallery, add old featured to gallery if it existed
 				newGallery := make([]string, 0, len(schem.Gallery))
 				for _, fn := range schem.Gallery {

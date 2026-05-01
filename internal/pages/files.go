@@ -163,6 +163,63 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 	}
 }
 
+// prewarmSizes are the thumbnail dimensions generated eagerly on upload.
+var prewarmSizes = [][2]int{
+	{320, 180},
+	{640, 360},
+}
+
+// PrewarmThumbnails generates and caches thumbnails for a schematic's featured image
+// at the sizes used on listing pages. Call this in a goroutine after upload.
+func PrewarmThumbnails(storageSvc *storage.Service, schematicID, filename string) {
+	if storageSvc == nil || filename == "" || !isImageFile(filename) {
+		return
+	}
+
+	s3Collection := storage.CollectionPrefix("schematics")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	reader, err := storageSvc.Download(ctx, s3Collection, schematicID, filename)
+	if err != nil {
+		return
+	}
+	originalData, err := io.ReadAll(reader)
+	reader.Close()
+	if err != nil {
+		return
+	}
+
+	srcImage, _, err := image.Decode(bytes.NewReader(originalData))
+	if err != nil {
+		return
+	}
+
+	for _, size := range prewarmSizes {
+		w, h := size[0], size[1]
+		thumbKey := fmt.Sprintf("_thumbs/%s/%s/%dx%d_%s.webp", s3Collection, schematicID, w, h, filename)
+
+		if exists, _ := storageSvc.ExistsRaw(ctx, thumbKey); exists {
+			continue
+		}
+
+		resized := resizeImage(srcImage, w, h)
+
+		var buf bytes.Buffer
+		bw := bufio.NewWriter(&buf)
+		if err := imgconv.Write(bw, resized, &imgconv.FormatOption{
+			Format:       imgconv.WEBP,
+			EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
+		}); err != nil {
+			continue
+		}
+		_ = bw.Flush()
+
+		_ = storageSvc.UploadRawBytes(ctx, thumbKey, buf.Bytes(), "image/webp")
+	}
+}
+
 // parseThumbnailDimensions parses "WxH" format. Returns (0,0) for invalid input.
 // Supports "640x360", "400x0" (auto height), "0x150" (auto width).
 func parseThumbnailDimensions(s string) (int, int) {
