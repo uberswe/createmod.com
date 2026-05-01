@@ -1198,6 +1198,12 @@ a.card-link:hover {
 .guide-modal-slider .form-range::-moz-range-track { background: rgba(191, 144, 69, 0.3); }
 .guide-modal-slider .form-range::-webkit-slider-thumb { background: #bf9045; }
 .guide-modal-slider .form-range::-moz-range-thumb { background: #bf9045; }
+body.sidebar-ready .generator-overlay {
+    transition: left 0.2s ease;
+}
+.sidebar-rail:not(.sidebar-expanded):hover ~ .page-wrapper .generator-overlay {
+    left: 180px;
+}
 @media (max-width: 767.98px) {
     .generator-overlay { top: 52px; width: calc(100% - 32px); max-height: 45%; }
 }
