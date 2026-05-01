@@ -159,7 +159,7 @@ func blockToPalette(b Block, mat MaterialConfig) (string, map[string]string) {
 
 	case BlockSail:
 		if mat.BladeMaterial == "sail" {
-			return sailBlock(mat.BladeColor), map[string]string{"axis": "y"}
+			return sailBlock(mat.BladeColor), map[string]string{"facing": "up"}
 		}
 		return woolBlock(mat.BladeColor), nil
 
