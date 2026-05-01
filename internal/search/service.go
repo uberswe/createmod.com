@@ -70,10 +70,6 @@ type schematicIndex struct {
 	DimZ             int
 }
 
-// indexCacheEntry holds filter-index data for one schematic.
-type indexCacheEntry struct {
-	SI schematicIndex `json:"si"`
-}
 
 // Ready returns true when the search index has been populated and is ready
 // to serve queries. Used by the readiness probe to delay traffic until the
@@ -110,7 +106,6 @@ func (s *Service) WarmFromStorage() {
 // so subsequent pod starts can warm from it.
 func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[string]string) {
 	filterIndex := make([]schematicIndex, len(schematics))
-	cacheEntries := make([]indexCacheEntry, len(schematics))
 
 	for i := range schematics {
 		authorName := ""
@@ -159,13 +154,12 @@ func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[
 		si.DimZ = schematics[i].DimZ
 
 		filterIndex[i] = si
-		cacheEntries[i] = indexCacheEntry{SI: si}
 	}
 
 	s.index = filterIndex
 
 	// Persist cache to storage in the background.
-	go s.saveCacheToStorage(cacheEntries)
+	go s.saveCacheToStorage(filterIndex)
 }
 
 // GetIndex returns the in-memory filter index for use by Meilisearch sync.
@@ -361,13 +355,13 @@ func cacheKeyForDate(t time.Time) string {
 // uploads it to S3 using a date-stamped key. After a successful upload it
 // removes the previous day's key and the legacy unversioned key to prevent
 // unbounded version accumulation in versioned S3 buckets.
-func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
+func (s *Service) saveCacheToStorage(index []schematicIndex) {
 	if s.storage == nil {
 		slog.Warn("search: storage service not configured, skipping cache save")
 		return
 	}
 
-	data, err := json.Marshal(entries)
+	data, err := json.Marshal(index)
 	if err != nil {
 		slog.Warn("search: failed to marshal index cache", "error", err)
 		return
@@ -392,7 +386,7 @@ func (s *Service) saveCacheToStorage(entries []indexCacheEntry) {
 		return
 	}
 
-	slog.Info("search: uploaded index cache to storage", "key", todayKey, "entries", len(entries), "bytes", buf.Len())
+	slog.Info("search: uploaded index cache to storage", "key", todayKey, "entries", len(index), "uncompressed_bytes", len(data), "compressed_bytes", buf.Len())
 
 	// Clean up previous day's cache key so old versions don't accumulate.
 	yesterdayKey := cacheKeyForDate(now.AddDate(0, 0, -1))
@@ -449,20 +443,26 @@ func (s *Service) loadCacheFromStorage() error {
 		return err
 	}
 
-	var entries []indexCacheEntry
-	if err := json.Unmarshal(data, &entries); err != nil {
-		return err
+	var index []schematicIndex
+	if err := json.Unmarshal(data, &index); err != nil {
+		// Fall back to legacy format with wrapper struct.
+		type legacyCacheEntry struct {
+			SI schematicIndex `json:"si"`
+		}
+		var legacy []legacyCacheEntry
+		if err2 := json.Unmarshal(data, &legacy); err2 != nil {
+			return err
+		}
+		index = make([]schematicIndex, len(legacy))
+		for i, e := range legacy {
+			index[i] = e.SI
+		}
 	}
 
-	if len(entries) == 0 {
+	if len(index) == 0 {
 		return nil
 	}
 
-	filterIndex := make([]schematicIndex, len(entries))
-	for i, e := range entries {
-		filterIndex[i] = e.SI
-	}
-
-	s.index = filterIndex
+	s.index = index
 	return nil
 }
