@@ -116,21 +116,23 @@
   var fg = isDark ? '#a0aec0' : '#616876';
   var grid = isDark ? '#3a3f4b' : '#e0e0e0';
 
+  var commonOpts = {
+    chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    grid: { borderColor: grid, strokeDashArray: 4 },
+    xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+    yaxis: { min: 0, labels: { style: { colors: fg } } },
+    tooltip: { theme: isDark ? 'dark' : 'light' }
+  };
+
   function makeChart(elId, data, name, color) {
     var el = document.getElementById(elId);
     if (!el) return;
-    new ApexCharts(el, {
-      chart: { type: 'line', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+    new ApexCharts(el, Object.assign({}, commonOpts, {
       series: [{ name: name, data: data }],
-      dataLabels: { enabled: false },
-      xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
-      yaxis: { min: 0, labels: { style: { colors: fg } } },
-      stroke: { curve: 'smooth', width: 2 },
-      colors: [color],
-      fill: { opacity: 0 },
-      grid: { borderColor: grid, strokeDashArray: 4 },
-      tooltip: { theme: isDark ? 'dark' : 'light' }
-    }).render();
+      colors: [color]
+    })).render();
   }
 
   makeChart('chart-views', {{ .ViewsJSON }}, 'Views', '#4299e1');
