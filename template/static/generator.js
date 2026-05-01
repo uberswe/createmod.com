@@ -11,6 +11,7 @@ var animId;
 var currentData = null;
 var cameraUserInteracted = false;
 var resizeHandler = null;
+var resizeObserver = null;
 
 var WOOD_COLORS = {
   oak:      { plank: 0xb8945f, log: 0x6b5839 },
@@ -155,6 +156,11 @@ function initScene(containerId) {
 
   resizeHandler = onResize;
   window.addEventListener('resize', resizeHandler);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(container);
+  }
 
   if (!window._genCleanupInit) {
     window._genCleanupInit = true;
@@ -1061,6 +1067,7 @@ function cleanup() {
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   clearBlocks();
   if (resizeHandler) { window.removeEventListener('resize', resizeHandler); resizeHandler = null; }
+  if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
   if (renderer) { renderer.dispose(); renderer = null; }
   scene = null; camera = null; controls = null; container = null;
   currentData = null; cameraUserInteracted = false;
