@@ -85,11 +85,11 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 		Workers: workers,
 		PeriodicJobs: []*river.PeriodicJob{
 			river.NewPeriodicJob(
-				river.PeriodicInterval(10*time.Minute),
+				river.PeriodicInterval(1*time.Hour),
 				func() (river.JobArgs, *river.InsertOpts) {
 					return SearchIndexArgs{}, &river.InsertOpts{
 						Queue:      "search",
-						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 10 * time.Minute},
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
 					}
 				},
 				&river.PeriodicJobOpts{RunOnStart: true},

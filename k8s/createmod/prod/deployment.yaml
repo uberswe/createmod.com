@@ -35,6 +35,8 @@ spec:
               name: http
               protocol: TCP
           env:
+            - name: GOMEMLIMIT
+              value: "3500MiB"
             - name: MEILI_MASTER_KEY
               valueFrom:
                 secretKeyRef:
@@ -73,7 +75,7 @@ spec:
           resources:
             requests:
               cpu: 300m
-              memory: 768Mi
+              memory: 1536Mi
             limits:
               cpu: 1000m
               memory: 4Gi

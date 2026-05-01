@@ -6,7 +6,9 @@ import (
 	"createmod/internal/storage"
 	"createmod/server"
 	"log"
+	"log/slog"
 	"os"
+	"strings"
 	"sync/atomic"
 
 	"github.com/joho/godotenv"
@@ -61,6 +63,20 @@ func main() {
 			_ = os.Setenv(k, v)
 		}
 	}
+
+	// Configure structured logging with level from environment.
+	var logLevel slog.Level
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "warn", "warning":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})))
 
 	conf := server.Config{
 		Dev:                 getEnv(envFile, DevEnv) == "true",
