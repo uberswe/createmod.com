@@ -5,10 +5,13 @@ import (
 	"createmod/internal/generator"
 	"createmod/internal/i18n"
 	"createmod/internal/server"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"regexp"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -56,7 +59,17 @@ func GeneratorsLandingHandler(registry *server.Registry, cacheService *cache.Ser
 	}
 }
 
-func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func generatorThumbnail(storageSvc *storage.Service, hash string, e *server.RequestEvent) string {
+	if storageSvc != nil && hash != "" {
+		exists, _ := storageSvc.Exists(e.Request.Context(), "generator_previews", hash, "preview.png")
+		if exists {
+			return "https://createmod.com/api/files/generator_previews/" + hash + "/preview.png"
+		}
+	}
+	return "https://createmod.com/assets/x/logo_sq_lg.png"
+}
+
+func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
 		d.Populate(e)
@@ -64,6 +77,7 @@ func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Se
 		d.Title = i18n.T(d.Language, "Propeller Generator")
 		d.Description = "Generate custom propeller schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/propeller"
+		d.Thumbnail = generatorThumbnail(storageSvc, d.InitHash, e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Propeller"))
 		d.BreadcrumbOverlay = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -75,7 +89,7 @@ func GeneratorPropellerHandler(registry *server.Registry, cacheService *cache.Se
 	}
 }
 
-func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
 		d.Populate(e)
@@ -83,6 +97,7 @@ func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Serv
 		d.Title = i18n.T(d.Language, "Airship Balloon Generator")
 		d.Description = "Generate custom airship balloon and envelope schematics for Minecraft Create mod."
 		d.Slug = "/generators/balloon"
+		d.Thumbnail = generatorThumbnail(storageSvc, d.InitHash, e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Balloon"))
 		d.BreadcrumbOverlay = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -94,7 +109,7 @@ func GeneratorBalloonHandler(registry *server.Registry, cacheService *cache.Serv
 	}
 }
 
-func GeneratorHullHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func GeneratorHullHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		d := GeneratorData{}
 		d.Populate(e)
@@ -102,6 +117,7 @@ func GeneratorHullHandler(registry *server.Registry, cacheService *cache.Service
 		d.Title = i18n.T(d.Language, "Ship Hull Generator")
 		d.Description = "Generate custom ship hull schematics for Minecraft Create mod airships."
 		d.Slug = "/generators/hull"
+		d.Thumbnail = generatorThumbnail(storageSvc, d.InitHash, e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators", "/generators", i18n.T(d.Language, "Ship Hull"))
 		d.BreadcrumbOverlay = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -255,5 +271,52 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 		e.Response.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 		_, writeErr := e.Response.Write(data)
 		return writeErr
+	}
+}
+
+const maxPreviewUploadSize = 2 << 20 // 2MB
+
+var validHashPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
+
+func GeneratorPreviewUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if storageSvc == nil {
+			return e.String(http.StatusServiceUnavailable, "file storage not configured")
+		}
+
+		if err := e.Request.ParseMultipartForm(maxPreviewUploadSize); err != nil {
+			return e.BadRequestError("request too large", nil)
+		}
+
+		hash := e.Request.FormValue("hash")
+		if hash == "" || len(hash) > 200 || !validHashPattern.MatchString(hash) {
+			return e.BadRequestError("invalid hash", nil)
+		}
+
+		exists, _ := storageSvc.Exists(e.Request.Context(), "generator_previews", hash, "preview.png")
+		if exists {
+			return e.NoContent(http.StatusNoContent)
+		}
+
+		file, header, err := e.Request.FormFile("file")
+		if err != nil {
+			return e.BadRequestError("missing file", nil)
+		}
+		defer file.Close()
+
+		if header.Size > maxPreviewUploadSize {
+			return e.BadRequestError("file too large", nil)
+		}
+
+		data, err := io.ReadAll(file)
+		if err != nil {
+			return e.InternalServerError("failed to read file", nil)
+		}
+
+		if err := storageSvc.UploadBytes(e.Request.Context(), "generator_previews", hash, "preview.png", data, "image/png"); err != nil {
+			return e.InternalServerError("failed to upload preview", nil)
+		}
+
+		return e.NoContent(http.StatusNoContent)
 	}
 }

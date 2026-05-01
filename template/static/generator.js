@@ -85,7 +85,7 @@ function initScene(containerId) {
   camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 2000);
   camera.position.set(30, 20, 30);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1041,6 +1041,22 @@ function applyHashParams(setParamsFn, initHash, generatorType) {
   return { params: {} };
 }
 
+var _previewCaptured = {};
+
+function capturePreview(hash) {
+  if (!renderer || !hash || !scene || !camera) return;
+  if (_previewCaptured[hash]) return;
+  _previewCaptured[hash] = true;
+  renderer.render(scene, camera);
+  renderer.domElement.toBlob(function(blob) {
+    if (!blob) return;
+    var formData = new FormData();
+    formData.append('file', blob, 'preview.png');
+    formData.append('hash', hash);
+    fetch('/api/generators/preview', { method: 'POST', body: formData });
+  }, 'image/png');
+}
+
 function cleanup() {
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   clearBlocks();
@@ -1062,6 +1078,7 @@ window.GeneratorApp = {
   encodeCompact: encodeCompact,
   toBase64Url: toBase64Url,
   fromBase64Url: fromBase64Url,
+  capturePreview: capturePreview,
   _cleanup: cleanup
 };
 
