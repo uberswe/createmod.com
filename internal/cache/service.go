@@ -324,19 +324,13 @@ func (s *Service) GetSchematic(key string) (models.Schematic, bool) {
 
 func (s *Service) SetSchematics(key string, value []models.Schematic) {
 	s.c.Set(key, value, gocache.DefaultExpiration)
-	s.redisSet(key, "schematics", value)
+	// Schematic lists are large (10-15MB serialized) and cause Redis slowlog
+	// entries of 17-87ms per GET. Each pod warms its own go-cache via the
+	// TrendingWorker, so Redis replication is unnecessary for these keys.
 }
 
 func (s *Service) GetSchematics(key string) ([]models.Schematic, bool) {
-	if s.redis != nil {
-		if v, ok := s.redisGetTyped(key, "schematics"); ok {
-			var schem []models.Schematic
-			if err := json.Unmarshal(v, &schem); err == nil {
-				s.c.Set(key, schem, gocache.DefaultExpiration)
-				return schem, true
-			}
-		}
-	}
+	// Schematic lists are stored in-memory only (too large for Redis).
 	v, found := s.c.Get(key)
 	if !found {
 		return nil, false
