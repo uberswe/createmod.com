@@ -42,7 +42,7 @@ var indexTabTemplates = append([]string{
 }, commonTemplates...)
 
 const indexPageSize = 8
-const indexHTMLCacheTTL = 5 * time.Minute
+const indexHTMLCacheTTL = 30 * time.Minute
 
 // trendingFlight deduplicates concurrent calls to getAllTrendingSchematicsForWindow
 // so that when multiple requests hit a cold cache (e.g. pod startup), only one
