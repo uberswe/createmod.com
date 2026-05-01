@@ -140,7 +140,7 @@
                                                     <tr class="cursor-pointer" onclick="window.location='/schematics/{{ .Name }}'">
                                                         <td class="w-1">
                                                             {{ if ne .FeaturedImage "" }}
-                                                            <span class="avatar" style="background-image: url({{ .FeaturedImage }})"></span>
+                                                            <span class="avatar" style="background-image: url(/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=40x40)"></span>
                                                             {{ else }}
                                                             <span class="avatar">{{ slice .Title 0 1 }}</span>
                                                             {{ end }}
@@ -161,11 +161,11 @@
                                         <div class="d-flex justify-content-center mt-3">
                                             <ul class="pagination">
                                                 {{ if .HasPrevPage }}
-                                                <li class="page-item"><a class="page-link" href="?page={{ .PrevPage }}">{{ T .Language "Previous" }}</a></li>
+                                                <li class="page-item"><a class="page-link" href="?page={{ .PrevPage }}" hx-boost="true" hx-swap="innerHTML show:no-scroll" hx-target="body" hx-push-url="true">{{ T .Language "Previous" }}</a></li>
                                                 {{ end }}
                                                 <li class="page-item disabled"><a class="page-link">{{ .Page }} / {{ .TotalPages }}</a></li>
                                                 {{ if .HasNextPage }}
-                                                <li class="page-item"><a class="page-link" href="?page={{ .NextPage }}">{{ T .Language "Next" }}</a></li>
+                                                <li class="page-item"><a class="page-link" href="?page={{ .NextPage }}" hx-boost="true" hx-swap="innerHTML show:no-scroll" hx-target="body" hx-push-url="true">{{ T .Language "Next" }}</a></li>
                                                 {{ end }}
                                             </ul>
                                         </div>
@@ -230,13 +230,13 @@
             var el = document.getElementById(elId);
             if (!el) return;
             new ApexCharts(el, {
-                chart: { type: 'area', height: 200, sparkline: { enabled: false }, toolbar: { show: false }, foreColor: labelColor },
+                chart: { type: 'line', height: 200, sparkline: { enabled: false }, toolbar: { show: false }, foreColor: labelColor },
                 series: [{ name: name, data: data }],
                 xaxis: { type: 'category', labels: { show: false } },
                 yaxis: { min: 0 },
                 stroke: { curve: 'smooth', width: 2 },
                 colors: [color],
-                fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+                fill: { opacity: 0 },
                 grid: { borderColor: gridColor },
                 tooltip: { theme: isDark ? 'dark' : 'light' }
             }).render();
