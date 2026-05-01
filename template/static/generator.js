@@ -298,38 +298,16 @@ function renderBlocks(data) {
   var FACING_ROT = { south: 0, west: -Math.PI / 2, north: Math.PI, east: Math.PI / 2 };
 
   var fencePostGeo = new THREE.BoxGeometry(0.25, 1, 0.25);
-  var fenceBarGeo = new THREE.BoxGeometry(0.125, 0.19, 0.35);
-
-  function buildFenceMesh(block, mat, cx, cy, cz) {
-    var group = new THREE.Group();
-    var post = new THREE.Mesh(fencePostGeo, mat);
-    group.add(post);
-    var props = block.props || {};
-    var dirs = [
-      { key: 'north', dx: 0, dz: -1 },
-      { key: 'south', dx: 0, dz: 1 },
-      { key: 'east',  dx: 1, dz: 0 },
-      { key: 'west',  dx: -1, dz: 0 }
-    ];
-    for (var di = 0; di < dirs.length; di++) {
-      var d = dirs[di];
-      if (props[d.key] !== 'true') continue;
-      var offX = d.dx * 0.35;
-      var offZ = d.dz * 0.35;
-      var barW = d.dx !== 0 ? 0.35 : 0.125;
-      var barD = d.dz !== 0 ? 0.35 : 0.125;
-      var barGeoH = new THREE.BoxGeometry(barW, 0.125, barD);
-      var barHi = new THREE.Mesh(barGeoH, mat);
-      barHi.position.set(offX, 0.18, offZ);
-      group.add(barHi);
-      var barGeoL = new THREE.BoxGeometry(barW, 0.125, barD);
-      var barLo = new THREE.Mesh(barGeoL, mat);
-      barLo.position.set(offX, -0.18, offZ);
-      group.add(barLo);
-    }
-    group.position.set(block.x - cx, (block.y - cy), block.z - cz);
-    return group;
-  }
+  var fenceBarGeos = {
+    x: new THREE.BoxGeometry(0.35, 0.125, 0.125),
+    z: new THREE.BoxGeometry(0.125, 0.125, 0.35)
+  };
+  var fenceBarDirs = [
+    { key: 'north', dx: 0, dz: -1, axis: 'z' },
+    { key: 'south', dx: 0, dz: 1,  axis: 'z' },
+    { key: 'east',  dx: 1, dz: 0,  axis: 'x' },
+    { key: 'west',  dx: -1, dz: 0, axis: 'x' }
+  ];
 
   for (var type in groups) {
     var arr = groups[type];
@@ -382,11 +360,12 @@ function renderBlocks(data) {
         sMesh.instanceMatrix.needsUpdate = true;
         scene.add(sMesh);
         blockMeshes.push(sMesh);
-        if (sArr.length <= 5000) {
+        if (sArr.length <= 2000) {
           var stairEdgeGeo = new THREE.EdgesGeometry(sGeo);
           var stairEPosAttr = stairEdgeGeo.getAttribute('position');
           var stairECount = stairEPosAttr.count;
           var stairEdgePos = new Float32Array(sArr.length * stairECount * 3);
+          var sv = new THREE.Vector3();
           for (var sei = 0; sei < sArr.length; sei++) {
             dummy.position.set(sArr[sei].x - cx, (sArr[sei].y - cy), sArr[sei].z - cz);
             dummy.rotation.set(0, 0, 0);
@@ -394,7 +373,7 @@ function renderBlocks(data) {
             dummy.rotation.y = FACING_ROT[sFacing] || 0;
             dummy.updateMatrix();
             for (var sev = 0; sev < stairECount; sev++) {
-              var sv = new THREE.Vector3(stairEPosAttr.getX(sev), stairEPosAttr.getY(sev), stairEPosAttr.getZ(sev));
+              sv.set(stairEPosAttr.getX(sev), stairEPosAttr.getY(sev), stairEPosAttr.getZ(sev));
               sv.applyMatrix4(dummy.matrix);
               stairEdgePos[(sei * stairECount + sev) * 3]     = sv.x;
               stairEdgePos[(sei * stairECount + sev) * 3 + 1] = sv.y;
@@ -416,12 +395,51 @@ function renderBlocks(data) {
     }
 
     if (t === 5) {
+      // Instanced fence posts
+      var postMesh = new THREE.InstancedMesh(fencePostGeo, mat, arr.length);
       for (var fi = 0; fi < arr.length; fi++) {
-        var fMesh = buildFenceMesh(arr[fi], mat, cx, cy, cz);
-        scene.add(fMesh);
-        blockMeshes.push(fMesh);
+        dummy.position.set(arr[fi].x - cx, arr[fi].y - cy, arr[fi].z - cz);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        postMesh.setMatrixAt(fi, dummy.matrix);
       }
-      if (arr.length <= 5000) {
+      postMesh.instanceMatrix.needsUpdate = true;
+      scene.add(postMesh);
+      blockMeshes.push(postMesh);
+
+      // Instanced fence bars: collect all bar positions per axis
+      var barPositions = { x: [], z: [] };
+      for (var fbi = 0; fbi < arr.length; fbi++) {
+        var fProps = arr[fbi].props || {};
+        var fbx = arr[fbi].x - cx, fby = arr[fbi].y - cy, fbz = arr[fbi].z - cz;
+        for (var fdi = 0; fdi < fenceBarDirs.length; fdi++) {
+          var fd = fenceBarDirs[fdi];
+          if (fProps[fd.key] !== 'true') continue;
+          var bOffX = fd.dx * 0.35, bOffZ = fd.dz * 0.35;
+          barPositions[fd.axis].push(fbx + bOffX, fby + 0.18, fbz + bOffZ);
+          barPositions[fd.axis].push(fbx + bOffX, fby - 0.18, fbz + bOffZ);
+        }
+      }
+      for (var axis in barPositions) {
+        var bpos = barPositions[axis];
+        var barCount = bpos.length / 3;
+        if (barCount === 0) continue;
+        var barMesh = new THREE.InstancedMesh(fenceBarGeos[axis], mat, barCount);
+        for (var bi = 0; bi < barCount; bi++) {
+          dummy.position.set(bpos[bi * 3], bpos[bi * 3 + 1], bpos[bi * 3 + 2]);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(1, 1, 1);
+          dummy.updateMatrix();
+          barMesh.setMatrixAt(bi, dummy.matrix);
+        }
+        barMesh.instanceMatrix.needsUpdate = true;
+        scene.add(barMesh);
+        blockMeshes.push(barMesh);
+      }
+
+      // Fence post edge outlines
+      if (arr.length <= 2000) {
         var fenceEdgeGeo = new THREE.EdgesGeometry(fencePostGeo);
         var fenceEPosAttr = fenceEdgeGeo.getAttribute('position');
         var fenceECount = fenceEPosAttr.count;
@@ -527,7 +545,7 @@ function renderBlocks(data) {
     blockMeshes.push(mesh);
 
     // Block edge outlines — merge all edges into one LineSegments
-    if (arr.length <= 5000) {
+    if (arr.length <= 2000) {
       var edgeTemplate = new THREE.EdgesGeometry(geo);
       var ePosAttr = edgeTemplate.getAttribute('position');
       var eCount = ePosAttr.count;
