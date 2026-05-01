@@ -3,6 +3,7 @@ package pages
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"createmod/internal/server"
 	"createmod/internal/storage"
@@ -147,9 +149,12 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 
 		thumbData := thumbBuf.Bytes()
 
-		// Upload thumbnail to S3 cache in background
+		// Upload thumbnail to S3 cache in background.
+		// Use context.Background() because the request context is cancelled after the response is sent.
 		go func() {
-			_ = storageSvc.UploadRawBytes(ctx, thumbKey, thumbData, thumbContentType)
+			bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = storageSvc.UploadRawBytes(bgCtx, thumbKey, thumbData, thumbContentType)
 		}()
 
 		// Serve the thumbnail
