@@ -120,14 +120,14 @@
     var el = document.getElementById(elId);
     if (!el) return;
     new ApexCharts(el, {
-      chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+      chart: { type: 'line', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
       series: [{ name: name, data: data }],
       dataLabels: { enabled: false },
       xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
       yaxis: { min: 0, labels: { style: { colors: fg } } },
       stroke: { curve: 'smooth', width: 2 },
       colors: [color],
-      fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+      fill: { opacity: 0 },
       grid: { borderColor: grid, strokeDashArray: 4 },
       tooltip: { theme: isDark ? 'dark' : 'light' }
     }).render();
