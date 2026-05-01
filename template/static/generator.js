@@ -579,7 +579,7 @@ function renderBlocks(data) {
 
   if (!cameraUserInteracted) {
     var maxDim = Math.max(data.sizeX, data.sizeY, data.sizeZ);
-    var dist = maxDim * 1.2;
+    var dist = maxDim * 2.4;
     var centerY = data.sizeY / 2;
     camera.position.set(dist * 0.7, centerY + dist * 0.25, dist * 0.7);
     controls.target.set(0, centerY, 0);
