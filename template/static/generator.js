@@ -1047,16 +1047,8 @@ function applyHashParams(setParamsFn, initHash, generatorType) {
   return { params: {} };
 }
 
-function capturePreview(hash) {
-  if (!renderer || !hash || !scene || !camera) return;
-  renderer.render(scene, camera);
-  renderer.domElement.toBlob(function(blob) {
-    if (!blob) return;
-    var formData = new FormData();
-    formData.append('file', blob, 'preview.png');
-    formData.append('hash', hash);
-    fetch('/api/generators/preview', { method: 'POST', body: formData });
-  }, 'image/png');
+function capturePreview() {
+  // Preview images are now rendered server-side; this is a no-op retained for API compat.
 }
 
 function cleanup() {

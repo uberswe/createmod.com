@@ -572,7 +572,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/generators/balloon", Adapt(pages.GeneratorBalloonAPIHandler()))
 	r.Post("/api/generators/hull", Adapt(pages.GeneratorHullAPIHandler()))
 	downloadRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
-	r.Post("/api/generators/preview", Adapt(pages.GeneratorPreviewUploadHandler(p.StorageService)))
+	r.Get("/api/generators/preview/{hash}", Adapt(pages.GeneratorPreviewHandler(p.StorageService)))
 	r.With(downloadRateLimit).Post("/api/generators/propeller/download", Adapt(pages.GeneratorDownloadHandler("propeller")))
 	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))
 	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
