@@ -336,7 +336,9 @@ func (s *Service) GetSchematics(key string) ([]models.Schematic, bool) {
 		return nil, false
 	}
 	if schem, ok := v.([]models.Schematic); ok {
-		return schem, true
+		cp := make([]models.Schematic, len(schem))
+		copy(cp, schem)
+		return cp, true
 	}
 	return nil, false
 }

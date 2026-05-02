@@ -1,15 +1,18 @@
 package pages
 
 import (
+	"bytes"
+	"context"
 	"createmod/internal/cache"
 	"createmod/internal/generator"
+	"createmod/internal/generator/render"
 	"createmod/internal/i18n"
 	"createmod/internal/server"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"encoding/json"
 	"fmt"
-	"io"
+	"image/png"
 	"net/http"
 	"regexp"
 
@@ -59,12 +62,9 @@ func GeneratorsLandingHandler(registry *server.Registry, cacheService *cache.Ser
 	}
 }
 
-func generatorThumbnail(storageSvc *storage.Service, hash string, e *server.RequestEvent) string {
-	if storageSvc != nil && hash != "" {
-		exists, _ := storageSvc.Exists(e.Request.Context(), "generator_previews", hash, "preview.png")
-		if exists {
-			return "https://createmod.com/api/files/generator_previews/" + hash + "/preview.png"
-		}
+func generatorThumbnail(_ *storage.Service, hash string, _ *server.RequestEvent) string {
+	if hash != "" {
+		return "https://createmod.com/api/generators/preview/" + hash
 	}
 	return "https://createmod.com/assets/x/logo_sq_lg.png"
 }
@@ -274,49 +274,64 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 	}
 }
 
-const maxPreviewUploadSize = 2 << 20 // 2MB
-
 var validHashPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
 
-func GeneratorPreviewUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent) error {
+// GeneratorPreviewHandler serves server-rendered isometric previews for generator hashes.
+// GET /api/generators/preview/{hash}
+func GeneratorPreviewHandler(storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		if storageSvc == nil {
-			return e.String(http.StatusServiceUnavailable, "file storage not configured")
-		}
-
-		if err := e.Request.ParseMultipartForm(maxPreviewUploadSize); err != nil {
-			return e.BadRequestError("request too large", nil)
-		}
-
-		hash := e.Request.FormValue("hash")
-		if hash == "" || len(hash) > 200 || !validHashPattern.MatchString(hash) {
+		hash := chi.URLParam(e.Request, "hash")
+		if hash == "" || len(hash) > 300 || !validHashPattern.MatchString(hash) {
 			return e.BadRequestError("invalid hash", nil)
 		}
 
-		exists, _ := storageSvc.Exists(e.Request.Context(), "generator_previews", hash, "preview.png")
-		if exists {
-			return e.NoContent(http.StatusNoContent)
+		// ETag based on the hash (deterministic rendering)
+		etag := `"gen-` + hash[:min(len(hash), 16)] + `"`
+		e.Response.Header().Set("ETag", etag)
+		if match := e.Request.Header.Get("If-None-Match"); match == etag {
+			e.Response.WriteHeader(http.StatusNotModified)
+			return nil
+		}
+		e.Response.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+
+		// Try S3 cache
+		if storageSvc != nil {
+			if exists, _ := storageSvc.Exists(e.Request.Context(), "generator_previews", hash, "preview.png"); exists {
+				reader, err := storageSvc.Download(e.Request.Context(), "generator_previews", hash, "preview.png")
+				if err == nil {
+					defer reader.Close()
+					e.Response.Header().Set("Content-Type", "image/png")
+					return e.Stream(http.StatusOK, "image/png", reader)
+				}
+			}
 		}
 
-		file, header, err := e.Request.FormFile("file")
+		// Generate on the fly
+		result, _, err := generator.DecodeHash(hash)
 		if err != nil {
-			return e.BadRequestError("missing file", nil)
+			return e.BadRequestError("invalid generator hash", nil)
 		}
-		defer file.Close()
-
-		if header.Size > maxPreviewUploadSize {
-			return e.BadRequestError("file too large", nil)
+		if len(result.Blocks) > maxGeneratedBlocks {
+			return e.BadRequestError("too many blocks", nil)
 		}
 
-		data, err := io.ReadAll(file)
-		if err != nil {
-			return e.InternalServerError("failed to read file", nil)
+		img := render.Isometric(result)
+
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, img); err != nil {
+			return e.InternalServerError("failed to encode image", nil)
 		}
 
-		if err := storageSvc.UploadBytes(e.Request.Context(), "generator_previews", hash, "preview.png", data, "image/png"); err != nil {
-			return e.InternalServerError("failed to upload preview", nil)
+		pngData := buf.Bytes()
+
+		// Cache to S3 in background
+		if storageSvc != nil {
+			go func() {
+				_ = storageSvc.UploadBytes(context.Background(), "generator_previews", hash, "preview.png", pngData, "image/png")
+			}()
 		}
 
-		return e.NoContent(http.StatusNoContent)
+		e.Response.Header().Set("Content-Type", "image/png")
+		return e.Blob(http.StatusOK, "image/png", pngData)
 	}
 }

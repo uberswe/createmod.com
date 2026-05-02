@@ -313,16 +313,11 @@
     if (guideBtn) guideBtn.href = guideUrl;
   }
 
-  var _captureTimer = null;
   function refresh() {
-    if (_captureTimer) { clearTimeout(_captureTimer); _captureTimer = null; }
     updateLabels();
     updateVisibility();
     updateShareURLs();
-    GeneratorApp.generate('/api/generators/balloon', getParams(), function() {
-      var hash = window.location.pathname.split('/').pop();
-      if (hash) _captureTimer = setTimeout(function() { _captureTimer = null; GeneratorApp.capturePreview(hash); }, 5000);
-    });
+    GeneratorApp.generate('/api/generators/balloon', getParams());
   }
 
   function init() {
