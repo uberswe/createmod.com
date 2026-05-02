@@ -23,10 +23,10 @@ spec:
         name: memory
         target:
           type: Utilization
-          averageUtilization: 75
+          averageUtilization: 85
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: 600
+      stabilizationWindowSeconds: 900
       policies:
         - type: Pods
           value: 1
