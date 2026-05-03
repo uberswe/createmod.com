@@ -7,18 +7,18 @@ SELECT * FROM collections WHERE slug = $1 AND deleted = '';
 -- name: ListCollections :many
 SELECT * FROM collections
 WHERE deleted = '' AND published = true
-ORDER BY created DESC
+ORDER BY updated DESC
 LIMIT $1 OFFSET $2;
 
 -- name: ListCollectionsByAuthor :many
 SELECT * FROM collections
 WHERE author_id = $1 AND deleted = ''
-ORDER BY created DESC;
+ORDER BY updated DESC;
 
 -- name: ListFeaturedCollections :many
 SELECT * FROM collections
 WHERE deleted = '' AND published = true AND featured = true
-ORDER BY created DESC
+ORDER BY updated DESC
 LIMIT $1;
 
 -- name: CreateCollection :one
@@ -34,7 +34,8 @@ UPDATE collections SET
     collage_url = COALESCE(sqlc.narg('collage_url'), collage_url),
     featured = COALESCE(sqlc.narg('featured'), featured),
     published = COALESCE(sqlc.narg('published'), published),
-    video = COALESCE(sqlc.narg('video'), video)
+    video = COALESCE(sqlc.narg('video'), video),
+    updated = NOW()
 WHERE id = $1
 RETURNING *;
 
@@ -73,7 +74,7 @@ SELECT COUNT(*) FROM collections WHERE author_id = $1 AND deleted = '';
 -- name: ListPublishedCollections :many
 SELECT * FROM collections
 WHERE deleted = '' AND published = true
-ORDER BY created DESC
+ORDER BY updated DESC
 LIMIT $1 OFFSET $2;
 
 -- name: UpdateCollectionCollageURL :exec

@@ -190,7 +190,7 @@ func (q *Queries) IncrementCollectionViews(ctx context.Context, id string) error
 const listCollections = `-- name: ListCollections :many
 SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
 WHERE deleted = '' AND published = true
-ORDER BY created DESC
+ORDER BY updated DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -238,7 +238,7 @@ func (q *Queries) ListCollections(ctx context.Context, arg ListCollectionsParams
 const listCollectionsByAuthor = `-- name: ListCollectionsByAuthor :many
 SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
 WHERE author_id = $1 AND deleted = ''
-ORDER BY created DESC
+ORDER BY updated DESC
 `
 
 func (q *Queries) ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error) {
@@ -312,7 +312,7 @@ func (q *Queries) ListCollectionsForSitemap(ctx context.Context) ([]ListCollecti
 const listFeaturedCollections = `-- name: ListFeaturedCollections :many
 SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
 WHERE deleted = '' AND published = true AND featured = true
-ORDER BY created DESC
+ORDER BY updated DESC
 LIMIT $1
 `
 
@@ -355,7 +355,7 @@ func (q *Queries) ListFeaturedCollections(ctx context.Context, limit int32) ([]C
 const listPublishedCollections = `-- name: ListPublishedCollections :many
 SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
 WHERE deleted = '' AND published = true
-ORDER BY created DESC
+ORDER BY updated DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -450,7 +450,8 @@ UPDATE collections SET
     collage_url = COALESCE($5, collage_url),
     featured = COALESCE($6, featured),
     published = COALESCE($7, published),
-    video = COALESCE($8, video)
+    video = COALESCE($8, video),
+    updated = NOW()
 WHERE id = $1
 RETURNING id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video
 `
