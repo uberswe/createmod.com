@@ -329,8 +329,9 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			if targetLang == "" {
 				targetLang = "en"
 			}
-			// Show translation when the viewer's language differs from the schematic's language
-			if targetLang != detectedLang {
+			// Show translation when the viewer's language differs from the schematic's language,
+			// or when the detected language is unknown (empty).
+			if s.DetectedLanguage == "" || targetLang != detectedLang {
 				t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, targetLang)
 				if t != nil && t.Title != "" {
 					d.Schematic.Title = t.Title
@@ -688,10 +689,7 @@ func translateSchematicTitles(schematics []models.Schematic, translationService 
 	}
 	for i := range schematics {
 		detectedLang := schematics[i].DetectedLanguage
-		if detectedLang == "" {
-			detectedLang = "en"
-		}
-		if detectedLang == targetLang {
+		if detectedLang != "" && detectedLang == targetLang {
 			continue
 		}
 		t := translationService.GetTranslationCached(cacheService, schematics[i].ID, targetLang)

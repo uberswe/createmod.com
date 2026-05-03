@@ -414,6 +414,15 @@ func (s *Service) TranslateComment(commentID string) {
 
 	for _, lang := range SupportedLanguages {
 		if lang == detectedLang {
+			// Save original content under the detected language so backfill
+			// queries don't keep re-selecting this comment.
+			existing, gErr := s.appStore.Translations.GetCommentTranslation(ctx, commentID, lang)
+			if gErr != nil || existing == nil {
+				_ = s.appStore.Translations.UpsertCommentTranslation(ctx, commentID, &store.CommentTranslation{
+					Language: lang,
+					Content:  content,
+				})
+			}
 			continue
 		}
 		err := s.TranslateAndSaveComment(commentID, lang, content)
@@ -431,7 +440,7 @@ func (s *Service) BackfillCommentTranslations() {
 	}
 	slog.Info("BackfillCommentTranslations started")
 
-	const maxComments = 5
+	const maxComments = 50
 	ctx := context.Background()
 	processed := 0
 	seen := make(map[string]bool)

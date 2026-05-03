@@ -47,7 +47,7 @@ type Schematic struct {
 	DimY                 int                `json:"dimY"`
 	DimZ                 int                `json:"dimZ"`
 	Mods                 []string           `json:"mods"`
-	DetectedLanguage     string             `json:"-"`
+	DetectedLanguage     string             `json:"detectedLanguage,omitempty"`
 	ModerationState      string             `json:"-"`
 }
 
