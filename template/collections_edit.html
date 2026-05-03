@@ -50,6 +50,11 @@
                   <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
                   <small class="form-hint">{{ T .Language "Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP." }}</small>
                 </div>
+                <div class="mb-3">
+                  <label class="form-label" for="video">{{ T .Language "YouTube video (optional)" }}</label>
+                  <input type="text" class="form-control" id="video" name="video" value="{{ .Video }}" placeholder="https://www.youtube.com/watch?v=..." />
+                  <small class="form-hint">{{ T .Language "Paste a YouTube URL or video ID." }}</small>
+                </div>
               </div>
               <div class="card-footer d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">

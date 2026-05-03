@@ -163,6 +163,7 @@ type Collection struct {
 	Description string
 	BannerURL   string
 	CollageURL  string
+	Video       string
 	Featured    bool
 	Views       int
 	Published   bool

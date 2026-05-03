@@ -22,8 +22,8 @@ ORDER BY created DESC
 LIMIT $1;
 
 -- name: CreateCollection :one
-INSERT INTO collections (id, author_id, title, name, slug, description, banner_url, published)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO collections (id, author_id, title, name, slug, description, banner_url, published, video)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdateCollection :one
@@ -33,7 +33,8 @@ UPDATE collections SET
     banner_url = COALESCE(sqlc.narg('banner_url'), banner_url),
     collage_url = COALESCE(sqlc.narg('collage_url'), collage_url),
     featured = COALESCE(sqlc.narg('featured'), featured),
-    published = COALESCE(sqlc.narg('published'), published)
+    published = COALESCE(sqlc.narg('published'), published),
+    video = COALESCE(sqlc.narg('video'), video)
 WHERE id = $1
 RETURNING *;
 

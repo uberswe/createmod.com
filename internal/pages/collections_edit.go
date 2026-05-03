@@ -42,6 +42,7 @@ type CollectionsEditData struct {
 	Description       string
 	DescriptionHTML   template.HTML
 	BannerURL         string
+	Video             string
 	Error             string
 	Published         bool
 	SchematicIDs      []string
@@ -81,6 +82,7 @@ func CollectionsEditHandler(registry *server.Registry, cacheService *cache.Servi
 		}
 		d.Description = coll.Description
 		d.BannerURL = coll.BannerURL
+		d.Video = coll.Video
 		d.Published = coll.Published
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"), "/collections", d.TitleText, "/collections/"+slug, i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit collection")
@@ -181,6 +183,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			coll.Name = title
 		}
 		coll.Description = description
+		coll.Video = strings.TrimSpace(e.Request.FormValue("video"))
 
 		// If a banner file is provided, process it and set banner_url to a WebP data URL
 		if file, header, err := e.Request.FormFile("banner"); err == nil && header != nil {
@@ -247,6 +250,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			}
 			d.DescriptionHTML = template.HTML(errSanitizedDesc)
 			d.BannerURL = coll.BannerURL
+			d.Video = coll.Video
 			d.Published = coll.Published
 			d.Error = errMsg
 			d.Title = i18n.T(d.Language, "Edit collection")
