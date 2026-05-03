@@ -29,6 +29,7 @@ type CollectionsShowData struct {
 	DescriptionText string // raw description from DB (may be empty)
 	DescriptionHTML template.HTML
 	BannerURL       string
+	Video           string
 	Views           int
 	Featured        bool
 	Published       bool
@@ -76,6 +77,7 @@ func CollectionsShowHandler(registry *server.Registry, cacheService *cache.Servi
 			}
 			d.DescriptionHTML = template.HTML(sanitizedDesc)
 			d.BannerURL = coll.BannerURL
+			d.Video = coll.Video
 			d.Featured = coll.Featured
 			if isAuthenticated(e) && coll.AuthorID != nil && *coll.AuthorID == authenticatedUserID(e) {
 				d.IsOwner = true

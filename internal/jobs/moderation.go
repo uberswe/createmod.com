@@ -10,6 +10,7 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/riverqueue/river"
 )
@@ -113,6 +114,9 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				// Both checks passed
 				oldState := schem.ModerationState
 				schem.ModerationState = store.ModerationPublished
+				if schem.ScheduledAt != nil && schem.ScheduledAt.After(time.Now()) {
+					schem.CreatedOverride = schem.ScheduledAt
+				}
 				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 					slog.Error("moderation job: failed to approve schematic", "error", updateErr, "schematic_id", args.SchematicID)
 				} else {

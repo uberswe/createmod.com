@@ -42,6 +42,7 @@ type CollectionsEditData struct {
 	Description       string
 	DescriptionHTML   template.HTML
 	BannerURL         string
+	Video             string
 	Error             string
 	Published         bool
 	SchematicIDs      []string
@@ -81,6 +82,7 @@ func CollectionsEditHandler(registry *server.Registry, cacheService *cache.Servi
 		}
 		d.Description = coll.Description
 		d.BannerURL = coll.BannerURL
+		d.Video = coll.Video
 		d.Published = coll.Published
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Collections"), "/collections", d.TitleText, "/collections/"+slug, i18n.T(d.Language, "Edit"))
 		d.Title = i18n.T(d.Language, "Edit collection")
@@ -181,6 +183,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			coll.Name = title
 		}
 		coll.Description = description
+		coll.Video = strings.TrimSpace(e.Request.FormValue("video"))
 
 		// If a banner file is provided, process it and set banner_url to a WebP data URL
 		if file, header, err := e.Request.FormFile("banner"); err == nil && header != nil {
@@ -247,6 +250,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			}
 			d.DescriptionHTML = template.HTML(errSanitizedDesc)
 			d.BannerURL = coll.BannerURL
+			d.Video = coll.Video
 			d.Published = coll.Published
 			d.Error = errMsg
 			d.Title = i18n.T(d.Language, "Edit collection")
@@ -333,6 +337,50 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 		if action == "publish" || action == "unpublish" {
 			dest = "/collections/" + slug + "/edit"
 		}
+		if e.Request.Header.Get("HX-Request") != "" {
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+	}
+}
+
+// CollectionsRemoveSchematicHandler handles POST removal of a single schematic from a collection.
+func CollectionsRemoveSchematicHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if e.Request.Method != http.MethodPost {
+			return e.String(http.StatusMethodNotAllowed, "method not allowed")
+		}
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		ctx := context.Background()
+		slug := e.Request.PathValue("slug")
+
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
+		if err != nil || coll == nil {
+			coll, err = appStore.Collections.GetByID(ctx, slug)
+		}
+		if coll == nil {
+			return e.String(http.StatusNotFound, "collection not found")
+		}
+		if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
+			return e.String(http.StatusForbidden, "not allowed")
+		}
+
+		_ = e.Request.ParseForm()
+		schematicID := strings.TrimSpace(e.Request.FormValue("schematic_id"))
+		if schematicID == "" {
+			return e.String(http.StatusBadRequest, "missing schematic_id")
+		}
+
+		if err := appStore.Collections.RemoveSchematic(ctx, coll.ID, schematicID); err != nil {
+			return e.String(http.StatusInternalServerError, "failed to remove schematic")
+		}
+
+		go generateCollectionCollage(storageSvc, appStore, coll.ID)
+
+		dest := "/collections/" + slug + "/edit"
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
 			return e.HTML(http.StatusNoContent, "")

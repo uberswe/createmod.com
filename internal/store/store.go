@@ -89,6 +89,7 @@ type Schematic struct {
 	Type               string
 	Created            time.Time
 	Updated            time.Time
+	CreatedOverride    *time.Time // when set, Update overwrites the created timestamp
 }
 
 // Category represents a schematic category.
@@ -163,6 +164,7 @@ type Collection struct {
 	Description string
 	BannerURL   string
 	CollageURL  string
+	Video       string
 	Featured    bool
 	Views       int
 	Published   bool

@@ -517,6 +517,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/collections/{slug}", Adapt(pages.CollectionsUpdateHandler(registry, p.CacheService, p.ModerationService, p.AppStore, p.StorageService, p.MailService)))
 	r.Post("/collections/{slug}/delete", Adapt(pages.CollectionsDeleteHandler(p.AppStore)))
 	r.Post("/collections/{slug}/reorder", Adapt(pages.CollectionsReorderHandler(p.AppStore, p.StorageService)))
+	r.Post("/collections/{slug}/remove-schematic", Adapt(pages.CollectionsRemoveSchematicHandler(p.AppStore, p.StorageService)))
 	// API keys (user settings)
 	r.Post("/settings/api-keys/new", Adapt(pages.APIKeyCreateHandler(p.CacheService, p.AppStore)))
 	r.Post("/settings/api-keys/{id}/revoke", Adapt(pages.APIKeyRevokeHandler(p.AppStore)))

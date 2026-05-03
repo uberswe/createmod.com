@@ -50,6 +50,11 @@
                   <input type="file" class="form-control" id="banner" name="banner" accept="image/png,image/jpeg,image/webp" />
                   <small class="form-hint">{{ T .Language "Recommended 1600x400 (4:1), max 2MB. PNG, JPG or WebP." }}</small>
                 </div>
+                <div class="mb-3">
+                  <label class="form-label" for="video">{{ T .Language "YouTube video (optional)" }}</label>
+                  <input type="text" class="form-control" id="video" name="video" value="{{ .Video }}" placeholder="https://www.youtube.com/watch?v=..." />
+                  <small class="form-hint">{{ T .Language "Paste a YouTube URL or video ID." }}</small>
+                </div>
               </div>
               <div class="card-footer d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
@@ -85,6 +90,13 @@
                          alt="" width="80" height="45" class="rounded"
                          style="object-fit: cover; flex-shrink: 0;" />
                     <span class="flex-fill text-truncate">{{ .Title }}</span>
+                    <button type="button" class="btn btn-ghost-danger btn-icon btn-sm ms-auto remove-schematic-btn"
+                            data-id="{{ .ID }}" title="{{ T $.Language "Remove" }}">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-x" width="18" height="18"
+                           viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12"/><path d="M6 6l12 12"/>
+                      </svg>
+                    </button>
                   </li>
                   {{ end }}
                 </ul>
@@ -125,6 +137,21 @@
               });
               var form = list.closest('form');
               if(form){ form.addEventListener('submit', serialize); }
+              list.addEventListener('click', function(e){
+                var btn = e.target.closest('.remove-schematic-btn');
+                if(!btn) return;
+                var id = btn.getAttribute('data-id');
+                if(!id) return;
+                if(!confirm('Remove this schematic from the collection?')) return;
+                var removeForm = document.createElement('form');
+                removeForm.method = 'post';
+                removeForm.action = form.action.replace('/reorder', '/remove-schematic');
+                var inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = 'schematic_id'; inp.value = id;
+                removeForm.appendChild(inp);
+                document.body.appendChild(removeForm);
+                removeForm.submit();
+              });
             })();
             </script>
           </div>

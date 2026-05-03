@@ -315,6 +315,16 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 		schem.Modified = &now
 		schem.Updated = now
 
+		// When approving a previously non-public schematic, reset created date
+		// so it appears at the top of the latest listings.
+		if !wasPublic && store.IsPublicState(schem.ModerationState) {
+			if schem.ScheduledAt != nil && schem.ScheduledAt.After(now) {
+				schem.CreatedOverride = schem.ScheduledAt
+			} else {
+				schem.CreatedOverride = &now
+			}
+		}
+
 		if err := appStore.Schematics.Update(ctx, schem); err != nil {
 			slog.Error("admin schematic update: failed to update", "error", err, "id", id)
 			return e.String(http.StatusInternalServerError, "failed to update schematic")

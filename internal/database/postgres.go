@@ -183,6 +183,7 @@ func collectionFromDB(c db.Collection) store.Collection {
 		Description: c.Description,
 		BannerURL:   c.BannerUrl,
 		CollageURL:  c.CollageUrl,
+		Video:       c.Video,
 		Featured:    c.Featured,
 		Views:       int(c.Views),
 		Published:   c.Published,
@@ -698,6 +699,7 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		Paid:               ptrBool(s.Paid),
 		ExternalUrl:        ptrStr(s.ExternalURL),
 		SchematicFile:      ptrStr(s.SchematicFile),
+		Created:            toPgTimestamptz(s.CreatedOverride),
 	})
 	return err
 }
@@ -1685,6 +1687,7 @@ func (cs *CollectionStoreImpl) Create(ctx context.Context, c *store.Collection) 
 		Description: c.Description,
 		BannerUrl:   c.BannerURL,
 		Published:   c.Published,
+		Video:       c.Video,
 	})
 	return err
 }
@@ -1698,6 +1701,7 @@ func (cs *CollectionStoreImpl) Update(ctx context.Context, c *store.Collection) 
 		CollageUrl:  ptrStr(c.CollageURL),
 		Featured:    ptrBool(c.Featured),
 		Published:   ptrBool(c.Published),
+		Video:       ptrStr(c.Video),
 	})
 	return err
 }

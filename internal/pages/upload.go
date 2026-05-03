@@ -659,6 +659,9 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if trustedUser {
 			// Trusted users skip moderation and are auto-approved
 			schem.ModerationState = store.ModerationPublished
+			if scheduledAt != nil && scheduledAt.After(time.Now()) {
+				schem.CreatedOverride = scheduledAt
+			}
 			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("make-public: failed to auto-approve trusted user schematic", "error", updateErr, "id", schem.ID)
 			} else {

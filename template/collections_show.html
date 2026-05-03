@@ -1,4 +1,7 @@
 {{template "head.html" .}}
+{{ if ne .Video "" }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+{{ end }}
 <div class="page">
   {{template "sidebar.html" .}}
   <div class="page-wrapper">
@@ -58,6 +61,19 @@
               <div class="col-12">
                 <img src="{{ .BannerURL }}" alt="Collection banner" class="img-fluid rounded" />
               </div>
+            </div>
+            {{ end }}
+
+            {{ if ne .Video "" }}
+            <div class="card mb-3">
+              <div id="player-youtube" data-plyr-provider="youtube"
+                   data-plyr-embed-id="{{ .Video }}"></div>
+              <a href="{{ SignedOutURL (YouTubeWatchURL .Video) }}"
+                 class="card-footer d-flex align-items-center justify-content-center gap-2 text-decoration-none py-3" id="yt-link"
+                 style="font-size:1.05rem;font-weight:600;color:#f0f0f0;background:rgba(180,40,40,0.25);border-top:1px solid rgba(180,40,40,0.3);">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z" /><path d="M10 9l5 3l-5 3z" /></svg>
+                {{ T .Language "View on YouTube" }}
+              </a>
             </div>
             {{ end }}
 
@@ -145,6 +161,24 @@ function copyShareLink() {
   });
 }
 </script>
+
+{{ if ne .Video "" }}
+<script>
+(function initPlyr(retries) {
+  if (typeof Plyr === 'undefined') {
+    if (retries === 0) {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js';
+      document.head.appendChild(s);
+    }
+    if (retries < 50) { setTimeout(function(){ initPlyr(retries + 1); }, 100); }
+    return;
+  }
+  var el = document.querySelector('#player-youtube');
+  if (el && !el.getAttribute('data-plyr-init')) { el.setAttribute('data-plyr-init','1'); new Plyr(el); }
+})(0);
+</script>
+{{ end }}
 
 <!-- Ad Scripts -->
 <script>
