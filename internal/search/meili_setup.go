@@ -25,6 +25,7 @@ type MeiliDocument struct {
 	ModNames         []string `json:"mod_names,omitempty"`
 	Rating           float64  `json:"rating"`
 	Views            int64    `json:"views"`
+	Downloads        int64    `json:"downloads"`
 	Paid             bool     `json:"paid"`
 	MinecraftVersion string   `json:"minecraft_version"`
 	CreateVersion    string   `json:"create_version"`
@@ -33,22 +34,73 @@ type MeiliDocument struct {
 	DimX             int      `json:"dim_x"`
 	DimY             int      `json:"dim_y"`
 	DimZ             int      `json:"dim_z"`
+	TrendingScore    float64  `json:"trending_score"`
+	RatingCount      int      `json:"rating_count"`
 }
 
 // EnsureMeiliIndexes creates the Meilisearch index with proper settings.
 func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
-	searchable := []string{"title", "tags", "block_names", "mod_names", "description", "ai_description", "author"}
+	// Searchable attributes ordered by signal quality (highest first).
+	// The "attribute" ranking rule uses this order to boost matches in higher-priority fields.
+	searchable := []string{
+		"title",
+		"tags",
+		"ai_description",
+		"mod_names",
+		"author",
+		"block_names",
+		"description",
+	}
 
 	filterableStr := []string{
 		"id", "categories", "minecraft_version", "create_version",
-		"tags", "rating", "paid", "views", "created_timestamp",
+		"tags", "rating", "paid", "views", "downloads", "created_timestamp",
 		"block_count", "dim_x", "dim_y", "dim_z", "mod_names",
+		"trending_score", "rating_count",
 	}
 	filterable := make([]interface{}, len(filterableStr))
 	for i, s := range filterableStr {
 		filterable[i] = s
 	}
-	sortable := []string{"rating", "views", "created_timestamp"}
+
+	sortable := []string{"rating", "views", "downloads", "created_timestamp", "trending_score", "rating_count"}
+
+	rankingRules := []string{"words", "typo", "proximity", "attribute", "sort", "exactness"}
+
+	synonyms := map[string][]string{
+		"train":       {"locomotive", "railway", "rail"},
+		"locomotive":  {"train", "railway"},
+		"elevator":    {"lift"},
+		"lift":        {"elevator"},
+		"farm":        {"grinder", "harvester"},
+		"plane":       {"airplane", "aircraft", "biplane"},
+		"airplane":    {"plane", "aircraft"},
+		"ship":        {"boat", "vessel"},
+		"boat":        {"ship", "vessel"},
+		"car":         {"automobile", "vehicle"},
+		"vehicle":     {"car", "automobile"},
+		"factory":     {"processing", "production", "refinery"},
+		"door":        {"gate", "entrance"},
+		"gate":        {"door", "entrance"},
+		"house":       {"building", "home"},
+		"compact":     {"small", "mini", "tiny"},
+		"small":       {"compact", "mini", "tiny"},
+		"large":       {"big", "huge", "massive"},
+		"big":         {"large", "huge", "massive"},
+		"power":       {"energy", "generator"},
+		"storage":     {"silo", "warehouse"},
+		"contraption": {"machine", "mechanism", "device"},
+		"machine":     {"contraption", "mechanism", "device"},
+		"redstone":    {"logic", "circuitry"},
+		"decoration":  {"decor", "decorative"},
+		"bridge":      {"overpass", "viaduct"},
+		"tunnel":      {"underground", "subway"},
+		"crane":       {"hoist", "winch"},
+		"conveyor":    {"belt"},
+		"gear":        {"cog", "cogwheel"},
+	}
+
+	stopWords := []string{"the", "a", "an", "is", "it", "of", "for", "with", "and", "or", "in", "on", "to", "my", "this", "that"}
 
 	// Create index if it doesn't exist.
 	task, err := client.CreateIndex(&meilisearch.IndexConfig{
@@ -63,23 +115,64 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 
 	index := client.Index(MeiliIndex)
 
-	// Set searchable attributes.
 	if task, err := index.UpdateSearchableAttributes(&searchable); err != nil {
-		slog.Error("meili: update searchable attributes", "uid", MeiliIndex, "error", err)
+		slog.Error("meili: update searchable attributes", "error", err)
 	} else {
 		waitForTask(client, task)
 	}
 
-	// Set filterable attributes.
 	if task, err := index.UpdateFilterableAttributes(&filterable); err != nil {
-		slog.Error("meili: update filterable attributes", "uid", MeiliIndex, "error", err)
+		slog.Error("meili: update filterable attributes", "error", err)
 	} else {
 		waitForTask(client, task)
 	}
 
-	// Set sortable attributes.
 	if task, err := index.UpdateSortableAttributes(&sortable); err != nil {
-		slog.Error("meili: update sortable attributes", "uid", MeiliIndex, "error", err)
+		slog.Error("meili: update sortable attributes", "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	if task, err := index.UpdateRankingRules(&rankingRules); err != nil {
+		slog.Error("meili: update ranking rules", "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	if task, err := index.UpdateSynonyms(&synonyms); err != nil {
+		slog.Error("meili: update synonyms", "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	if task, err := index.UpdateStopWords(&stopWords); err != nil {
+		slog.Error("meili: update stop words", "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	if task, err := index.UpdateTypoTolerance(&meilisearch.TypoTolerance{
+		Enabled: true,
+		MinWordSizeForTypos: meilisearch.MinWordSizeForTypos{
+			OneTypo:  4,
+			TwoTypos: 7,
+		},
+	}); err != nil {
+		slog.Error("meili: update typo tolerance", "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	if task, err := index.UpdateSeparatorTokens([]string{"_", "-"}); err != nil {
+		slog.Error("meili: update separator tokens", "error", err)
+	} else {
+		waitForTask(client, task)
+	}
+
+	if task, err := index.UpdatePagination(&meilisearch.Pagination{
+		MaxTotalHits: 5000,
+	}); err != nil {
+		slog.Error("meili: update pagination", "error", err)
 	} else {
 		waitForTask(client, task)
 	}
@@ -149,7 +242,8 @@ func SyncMeiliIndex(client meilisearch.ServiceManager, indexUID string, docs []M
 }
 
 // MapToMeiliDocuments converts schematic index entries to Meilisearch documents.
-func MapToMeiliDocuments(filterIndex []schematicIndex) []MeiliDocument {
+// trendingScores maps schematic IDs to their computed trending scores.
+func MapToMeiliDocuments(filterIndex []schematicIndex, trendingScores map[string]float64) []MeiliDocument {
 	docs := make([]MeiliDocument, len(filterIndex))
 	for i, si := range filterIndex {
 		docs[i] = MeiliDocument{
@@ -162,6 +256,7 @@ func MapToMeiliDocuments(filterIndex []schematicIndex) []MeiliDocument {
 			Author:           si.Author,
 			Rating:           si.Rating,
 			Views:            si.Views,
+			Downloads:        si.Downloads,
 			Paid:             si.Paid,
 			MinecraftVersion: si.MinecraftVersion,
 			CreateVersion:    si.CreateVersion,
@@ -172,6 +267,10 @@ func MapToMeiliDocuments(filterIndex []schematicIndex) []MeiliDocument {
 			DimX:             si.DimX,
 			DimY:             si.DimY,
 			DimZ:             si.DimZ,
+			RatingCount:      si.RatingCount,
+		}
+		if trendingScores != nil {
+			docs[i].TrendingScore = trendingScores[si.ID]
 		}
 	}
 	return docs

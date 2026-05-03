@@ -57,7 +57,9 @@ type schematicIndex struct {
 	Tags             []string
 	Categories       []string
 	Views            int64
+	Downloads        int64
 	Rating           float64
+	RatingCount      int
 	Author           string
 	MinecraftVersion string
 	CreateVersion    string
@@ -118,6 +120,8 @@ func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[
 			Description: stripHtmlRegex(schematics[i].Content),
 			Created:     schematics[i].Created,
 			Views:       int64(schematics[i].Views),
+			Downloads:   int64(schematics[i].Downloads),
+			RatingCount: schematics[i].RatingCount,
 			Author:      authorName,
 		}
 		if parsedFloat, err := strconv.ParseFloat(schematics[i].Rating, 64); err == nil {

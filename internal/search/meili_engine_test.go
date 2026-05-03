@@ -94,7 +94,7 @@ func TestMeiliEngine_BuildSort(t *testing.T) {
 		{LowestRatingOrder, "rating:asc"},
 		{MostViewedOrder, "views:desc"},
 		{LeastViewedOrder, "views:asc"},
-		{TrendingOrder, ""},
+		{TrendingOrder, "trending_score:desc"},
 	}
 
 	for _, tt := range tests {
