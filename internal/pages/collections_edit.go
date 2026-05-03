@@ -341,6 +341,50 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 	}
 }
 
+// CollectionsRemoveSchematicHandler handles POST removal of a single schematic from a collection.
+func CollectionsRemoveSchematicHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if e.Request.Method != http.MethodPost {
+			return e.String(http.StatusMethodNotAllowed, "method not allowed")
+		}
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		ctx := context.Background()
+		slug := e.Request.PathValue("slug")
+
+		coll, err := appStore.Collections.GetBySlug(ctx, slug)
+		if err != nil || coll == nil {
+			coll, err = appStore.Collections.GetByID(ctx, slug)
+		}
+		if coll == nil {
+			return e.String(http.StatusNotFound, "collection not found")
+		}
+		if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
+			return e.String(http.StatusForbidden, "not allowed")
+		}
+
+		_ = e.Request.ParseForm()
+		schematicID := strings.TrimSpace(e.Request.FormValue("schematic_id"))
+		if schematicID == "" {
+			return e.String(http.StatusBadRequest, "missing schematic_id")
+		}
+
+		if err := appStore.Collections.RemoveSchematic(ctx, coll.ID, schematicID); err != nil {
+			return e.String(http.StatusInternalServerError, "failed to remove schematic")
+		}
+
+		go generateCollectionCollage(storageSvc, appStore, coll.ID)
+
+		dest := "/collections/" + slug + "/edit"
+		if e.Request.Header.Get("HX-Request") != "" {
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+	}
+}
+
 // CollectionsDeleteHandler handles POST delete (soft-delete) for a collection (author-only).
 func CollectionsDeleteHandler(appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
