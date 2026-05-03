@@ -53,14 +53,16 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 	mapped := pages.MapStoreSchematicsNoCache(w.deps.Store, storeSchematics, w.deps.Cache)
 	w.deps.Search.BuildIndex(mapped, modDisplayNames)
 
-	// Also refresh trending scores so they're available right after index rebuild.
+	// Compute trending scores and store them for Meilisearch indexing.
+	var trendingScores map[string]float64
 	if scores := pages.ComputeTrendingScoresFromStore(w.deps.Store); scores != nil {
+		trendingScores = scores
 		w.deps.Search.SetTrendingScores(scores)
 	}
 
 	// Sync Meilisearch indexes if client is available.
 	if w.deps.MeiliClient != nil {
-		w.syncMeiliIndexes()
+		w.syncMeiliIndexes(trendingScores)
 	}
 
 	slog.Info("search index rebuild complete", "count", len(mapped))
@@ -69,13 +71,13 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 
 // syncMeiliIndexes converts the in-memory index to Meilisearch documents
 // and syncs the Meilisearch index.
-func (w *SearchIndexWorker) syncMeiliIndexes() {
+func (w *SearchIndexWorker) syncMeiliIndexes(trendingScores map[string]float64) {
 	filterIndex := w.deps.Search.GetIndex()
 	if len(filterIndex) == 0 {
 		return
 	}
 
-	docs := search.MapToMeiliDocuments(filterIndex)
+	docs := search.MapToMeiliDocuments(filterIndex, trendingScores)
 	if err := search.SyncMeiliIndex(w.deps.MeiliClient, search.MeiliIndex, docs); err != nil {
 		slog.Error("meili sync failed", "index", search.MeiliIndex, "error", err)
 	} else {

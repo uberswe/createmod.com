@@ -74,6 +74,8 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &CommentModerationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &CommentTranslationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SearchCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SearchIndexUpsertWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SearchIndexDeleteWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &AnalyticsCleanupWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
@@ -229,4 +231,26 @@ func (w *Worker) Client() *river.Client[pgx.Tx] {
 func (w *Worker) Insert(ctx context.Context, args river.JobArgs, opts *river.InsertOpts) error {
 	_, err := w.client.Insert(ctx, args, opts)
 	return err
+}
+
+// EnqueueSearchIndexUpsert enqueues an incremental search index update for a schematic.
+// Safe to call with a nil Worker (no-ops gracefully).
+func (w *Worker) EnqueueSearchIndexUpsert(ctx context.Context, schematicID string) {
+	if w == nil || schematicID == "" {
+		return
+	}
+	_, _ = w.client.Insert(ctx, SearchIndexUpsertArgs{SchematicID: schematicID}, &river.InsertOpts{
+		UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 30 * time.Second},
+	})
+}
+
+// EnqueueSearchIndexDelete enqueues removal of a schematic from the search index.
+// Safe to call with a nil Worker (no-ops gracefully).
+func (w *Worker) EnqueueSearchIndexDelete(ctx context.Context, schematicID string) {
+	if w == nil || schematicID == "" {
+		return
+	}
+	_, _ = w.client.Insert(ctx, SearchIndexDeleteArgs{SchematicID: schematicID}, &river.InsertOpts{
+		UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 30 * time.Second},
+	})
 }

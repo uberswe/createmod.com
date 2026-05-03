@@ -223,7 +223,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 }
 
 // AdminSchematicUpdateHandler handles POST /admin/schematics/{id} to update a schematic as admin.
-func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.Store, mailService *mailer.Service, storageSvc *storage.Service, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if !isSuperAdmin(e) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -389,6 +389,11 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 			}()
 		}
 
+		// Enqueue incremental search index update
+		if enqueueSearchUpsert != nil {
+			_ = enqueueSearchUpsert(ctx, id)
+		}
+
 		// Redirect back to edit page with success
 		dest := fmt.Sprintf("/admin/schematics/%s?success=1", id)
 		if e.Request.Header.Get("HX-Request") != "" {
@@ -400,7 +405,7 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 }
 
 // AdminSchematicDeleteHandler handles POST /admin/schematics/{id}/delete to soft-delete a schematic.
-func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.Store, enqueueSearchDelete SearchIndexEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if !isSuperAdmin(e) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -440,6 +445,11 @@ func AdminSchematicDeleteHandler(cacheService *cache.Service, appStore *store.St
 		}
 		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
+
+		// Remove from search index
+		if enqueueSearchDelete != nil {
+			_ = enqueueSearchDelete(context.Background(), id)
+		}
 
 		if e.Request.Header.Get("HX-Request") != "" {
 			e.Response.Header().Set("HX-Redirect", "/admin/schematics")

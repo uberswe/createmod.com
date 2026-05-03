@@ -57,7 +57,9 @@ type schematicIndex struct {
 	Tags             []string
 	Categories       []string
 	Views            int64
+	Downloads        int64
 	Rating           float64
+	RatingCount      int
 	Author           string
 	MinecraftVersion string
 	CreateVersion    string
@@ -81,6 +83,29 @@ func (s *Service) Ready() bool {
 // SetTrendingScores sets the trending scores map used for trending sort order.
 func (s *Service) SetTrendingScores(scores map[string]float64) {
 	s.trendingScores = scores
+}
+
+// GetTrendingScores returns the current trending scores map.
+func (s *Service) GetTrendingScores() map[string]float64 {
+	return s.trendingScores
+}
+
+// GetIndexForIDs returns index entries matching the given IDs.
+func (s *Service) GetIndexForIDs(ids []string) []schematicIndex {
+	if s.index == nil {
+		return nil
+	}
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+	var result []schematicIndex
+	for _, si := range s.index {
+		if _, ok := idSet[si.ID]; ok {
+			result = append(result, si)
+		}
+	}
+	return result
 }
 
 // NewEmpty creates a search service without loading the S3 cache, so the
@@ -118,6 +143,8 @@ func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[
 			Description: stripHtmlRegex(schematics[i].Content),
 			Created:     schematics[i].Created,
 			Views:       int64(schematics[i].Views),
+			Downloads:   int64(schematics[i].Downloads),
+			RatingCount: schematics[i].RatingCount,
 			Author:      authorName,
 		}
 		if parsedFloat, err := strconv.ParseFloat(schematics[i].Rating, 64); err == nil {

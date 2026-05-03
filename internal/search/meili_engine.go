@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"sync"
 
@@ -29,12 +28,6 @@ func NewMeiliEngine(client meilisearch.ServiceManager, indexUID string, svc *Ser
 }
 
 func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, error) {
-	// Trending sort: query Meilisearch for filtered results, then re-sort
-	// by in-memory trending scores.
-	if q.Order == TrendingOrder {
-		return m.trendingSearch(ctx, q)
-	}
-
 	filter := m.buildFilter(q)
 	sort := m.buildSort(q.Order)
 
@@ -62,54 +55,6 @@ func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, erro
 	}
 
 	m.triggerResyncIfEmpty(q, len(ids))
-	return ids, nil
-}
-
-// trendingSearch queries Meilisearch for filtered results, then re-sorts
-// them by in-memory trending scores.
-func (m *MeiliEngine) trendingSearch(ctx context.Context, q SearchQuery) ([]string, error) {
-	filter := m.buildFilter(q)
-
-	searchReq := &meilisearch.SearchRequest{
-		Limit:  5000,
-		Filter: filter,
-	}
-
-	index := m.client.Index(m.indexUID)
-	result, err := index.SearchWithContext(ctx, q.Term, searchReq)
-	if err != nil {
-		return nil, fmt.Errorf("meili trending search error: %w", err)
-	}
-
-	ids := make([]string, 0, len(result.Hits))
-	for _, hit := range result.Hits {
-		var doc struct {
-			ID string `json:"id"`
-		}
-		if err := hit.DecodeInto(&doc); err != nil || doc.ID == "" {
-			continue
-		}
-		ids = append(ids, doc.ID)
-	}
-
-	m.triggerResyncIfEmpty(q, len(ids))
-
-	// Re-sort by trending scores from the in-memory service.
-	scores := m.svc.trendingScores
-	if scores != nil && len(ids) > 1 {
-		slices.SortFunc(ids, func(a, b string) int {
-			sa := scores[a]
-			sb := scores[b]
-			if sa > sb {
-				return -1
-			}
-			if sa < sb {
-				return 1
-			}
-			return 0
-		})
-	}
-
 	return ids, nil
 }
 
@@ -246,6 +191,8 @@ func (m *MeiliEngine) buildSort(order int) []string {
 		return []string{"views:desc"}
 	case LeastViewedOrder:
 		return []string{"views:asc"}
+	case TrendingOrder:
+		return []string{"trending_score:desc"}
 	default:
 		// BestMatch: use Meilisearch relevancy (no sort).
 		return nil
@@ -267,7 +214,7 @@ func (m *MeiliEngine) triggerResyncIfEmpty(q SearchQuery, hitCount int) {
 	m.resync.Do(func() {
 		go func() {
 			slog.Info("meili: 0-result broad query detected, triggering background resync", "index", m.indexUID, "docs", len(idx))
-			docs := MapToMeiliDocuments(idx)
+			docs := MapToMeiliDocuments(idx, m.svc.trendingScores)
 			if err := SyncMeiliIndex(m.client, m.indexUID, docs); err != nil {
 				slog.Error("meili: background resync failed", "index", m.indexUID, "error", err)
 			} else {
