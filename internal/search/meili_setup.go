@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
+
+	"createmod/internal/models"
 
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -274,4 +277,69 @@ func MapToMeiliDocuments(filterIndex []schematicIndex, trendingScores map[string
 		}
 	}
 	return docs
+}
+
+// BuildSingleDocument builds a MeiliDocument from a single models.Schematic.
+// Used for incremental index updates when a schematic is created or edited.
+func BuildSingleDocument(s models.Schematic, modDisplayNames map[string]string, trendingScores map[string]float64) MeiliDocument {
+	authorName := ""
+	if s.Author != nil {
+		authorName = s.Author.Username
+	}
+
+	var categories []string
+	for _, c := range s.Categories {
+		categories = append(categories, c.Name)
+	}
+
+	var tags []string
+	for _, t := range s.Tags {
+		tags = append(tags, t.Name)
+	}
+
+	blockNames := ExtractBlockNames(s.Materials)
+
+	var modNames []string
+	if modDisplayNames != nil {
+		for _, ns := range s.Mods {
+			if name, ok := modDisplayNames[ns]; ok && name != "" {
+				modNames = append(modNames, name)
+			}
+		}
+	}
+
+	var rating float64
+	if parsed, err := strconv.ParseFloat(s.Rating, 64); err == nil {
+		rating = parsed
+	}
+
+	doc := MeiliDocument{
+		ID:               s.ID,
+		Title:            stripHtmlRegex(s.Title),
+		Description:      stripHtmlRegex(s.Content),
+		AIDescription:    stripHtmlRegex(s.AIDescription),
+		Tags:             tags,
+		Categories:       categories,
+		Author:           authorName,
+		Rating:           rating,
+		Views:            int64(s.Views),
+		Downloads:        int64(s.Downloads),
+		Paid:             s.Paid,
+		MinecraftVersion: s.MinecraftVersion,
+		CreateVersion:    s.CreatemodVersion,
+		CreatedTimestamp:  s.Created.Unix(),
+		BlockNames:       blockNames,
+		ModNames:         modNames,
+		BlockCount:       s.BlockCount,
+		DimX:             s.DimX,
+		DimY:             s.DimY,
+		DimZ:             s.DimZ,
+		RatingCount:      s.RatingCount,
+	}
+
+	if trendingScores != nil {
+		doc.TrendingScore = trendingScores[s.ID]
+	}
+
+	return doc
 }

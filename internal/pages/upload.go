@@ -45,6 +45,10 @@ type ModerationJobArgs struct {
 // Nil means no async moderation is available.
 type ModerationEnqueuer func(ctx context.Context, args ModerationJobArgs) error
 
+// SearchIndexEnqueuer is a callback that enqueues a search index upsert or delete job.
+// Nil means no incremental indexing is available (falls back to periodic rebuild).
+type SearchIndexEnqueuer func(ctx context.Context, schematicID string) error
+
 const uploadPendingTemplate = "./template/upload_pending.html"
 
 // maxUploadSize is the maximum allowed NBT file size (10 MB).
@@ -262,7 +266,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
-func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer) func(e *server.RequestEvent) error {
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -685,6 +689,12 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}); insertErr != nil {
 				slog.Error("make-public: failed to enqueue moderation job", "error", insertErr, "id", schem.ID)
 			}
+		}
+
+		// For trusted users (auto-approved), immediately index in search.
+		// Non-trusted users get indexed via the moderation job when approved.
+		if autoApproved && enqueueSearchUpsert != nil {
+			_ = enqueueSearchUpsert(ctx, schem.ID)
 		}
 
 		// Async image moderation for gallery images (featured is handled by the moderation job).

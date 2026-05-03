@@ -344,7 +344,20 @@ func Register(p RegisterParams) chi.Router {
 			}, &river.InsertOpts{Queue: "ai"})
 		}
 	}
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration)))
+	// Build the search index enqueuer callbacks that close over the job worker.
+	var enqueueSearchUpsert, enqueueSearchDelete pages.SearchIndexEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueSearchUpsert = func(ctx context.Context, schematicID string) error {
+			jw.EnqueueSearchIndexUpsert(ctx, schematicID)
+			return nil
+		}
+		enqueueSearchDelete = func(ctx context.Context, schematicID string) error {
+			jw.EnqueueSearchIndexDelete(ctx, schematicID)
+			return nil
+		}
+	}
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
@@ -375,8 +388,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
-	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService)))
-	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore)))
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, enqueueSearchUpsert)))
+	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	r.Get("/blacklist-request", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/blacklist"), http.StatusMovedPermanently)
 	})
@@ -428,8 +441,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
 	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService, p.StorageService)))
-	r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore)))
+	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService, p.StorageService, enqueueSearchUpsert)))
+	r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
 	r.Post("/admin/tags/{id}/reject", Adapt(pages.AdminTagRejectHandler(p.CacheService, p.AppStore)))

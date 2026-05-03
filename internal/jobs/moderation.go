@@ -184,8 +184,14 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		w.deps.Translation.DetectAndTranslate(args.SchematicID)
 	}
 
-	if schem.ModerationState == store.ModerationPublished && w.deps.Cache != nil {
-		pages.RefreshIndexCache(w.deps.Cache, w.deps.Store, []int{7})
+	if schem.ModerationState == store.ModerationPublished {
+		if w.deps.Cache != nil {
+			pages.RefreshIndexCache(w.deps.Cache, w.deps.Store, []int{7})
+		}
+		// Immediately index the newly published schematic in Meilisearch.
+		if w.deps.MeiliClient != nil {
+			upsertSchematicToMeili(ctx, w.deps, args.SchematicID)
+		}
 	}
 
 	slog.Info("async moderation complete", "schematic_id", args.SchematicID, "moderation_state", schem.ModerationState)

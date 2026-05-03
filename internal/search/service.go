@@ -85,6 +85,29 @@ func (s *Service) SetTrendingScores(scores map[string]float64) {
 	s.trendingScores = scores
 }
 
+// GetTrendingScores returns the current trending scores map.
+func (s *Service) GetTrendingScores() map[string]float64 {
+	return s.trendingScores
+}
+
+// GetIndexForIDs returns index entries matching the given IDs.
+func (s *Service) GetIndexForIDs(ids []string) []schematicIndex {
+	if s.index == nil {
+		return nil
+	}
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+	var result []schematicIndex
+	for _, si := range s.index {
+		if _, ok := idSet[si.ID]; ok {
+			result = append(result, si)
+		}
+	}
+	return result
+}
+
 // NewEmpty creates a search service without loading the S3 cache, so the
 // caller is not blocked by network I/O. The index starts empty and is
 // populated by the River SearchIndexWorker which runs on start.

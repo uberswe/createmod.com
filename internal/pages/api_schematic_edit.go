@@ -36,6 +36,7 @@ func SchematicUpdateHandler(
 	storageSvc *storage.Service,
 	appStore *store.Store,
 	moderationSvc *moderation.Service,
+	enqueueSearchUpsert SearchIndexEnqueuer,
 ) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
@@ -394,6 +395,11 @@ func SchematicUpdateHandler(
 		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
 
+		// --- Enqueue incremental search index update ---
+		if enqueueSearchUpsert != nil {
+			_ = enqueueSearchUpsert(ctx, schematicID)
+		}
+
 		// --- Respond ---
 		if e.Request.Header.Get("HX-Request") != "" {
 			dest := "/schematics/" + schem.Name
@@ -414,6 +420,7 @@ func SchematicUpdateHandler(
 func SchematicDeleteHandler(
 	cacheService *cache.Service,
 	appStore *store.Store,
+	enqueueSearchDelete SearchIndexEnqueuer,
 ) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
@@ -454,6 +461,11 @@ func SchematicDeleteHandler(
 		cacheService.DeleteSchematicHTML(schem.Name)
 		cacheService.DeleteSchematicsListHTML()
 		RefreshIndexCache(cacheService, appStore, []int{7})
+
+		// Remove from search index
+		if enqueueSearchDelete != nil {
+			_ = enqueueSearchDelete(ctx, schematicID)
+		}
 
 		// Respond
 		if e.Request.Header.Get("HX-Request") != "" {
