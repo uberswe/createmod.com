@@ -699,6 +699,7 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		Paid:               ptrBool(s.Paid),
 		ExternalUrl:        ptrStr(s.ExternalURL),
 		SchematicFile:      ptrStr(s.SchematicFile),
+		Created:            toPgTimestamptz(s.CreatedOverride),
 	})
 	return err
 }

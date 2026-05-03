@@ -1738,7 +1738,8 @@ UPDATE schematics SET
     mods = COALESCE($23, mods),
     paid = COALESCE($24, paid),
     external_url = COALESCE($25, external_url),
-    schematic_file = COALESCE($26, schematic_file)
+    schematic_file = COALESCE($26, schematic_file),
+    created = COALESCE($27, created)
 WHERE id = $1
 RETURNING id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state
 `
@@ -1770,6 +1771,7 @@ type UpdateSchematicParams struct {
 	Paid               *bool              `json:"paid"`
 	ExternalUrl        *string            `json:"external_url"`
 	SchematicFile      *string            `json:"schematic_file"`
+	Created            pgtype.Timestamptz `json:"created"`
 }
 
 func (q *Queries) UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error) {
@@ -1800,6 +1802,7 @@ func (q *Queries) UpdateSchematic(ctx context.Context, arg UpdateSchematicParams
 		arg.Paid,
 		arg.ExternalUrl,
 		arg.SchematicFile,
+		arg.Created,
 	)
 	var i Schematic
 	err := row.Scan(

@@ -97,7 +97,8 @@ UPDATE schematics SET
     mods = COALESCE(sqlc.narg('mods'), mods),
     paid = COALESCE(sqlc.narg('paid'), paid),
     external_url = COALESCE(sqlc.narg('external_url'), external_url),
-    schematic_file = COALESCE(sqlc.narg('schematic_file'), schematic_file)
+    schematic_file = COALESCE(sqlc.narg('schematic_file'), schematic_file),
+    created = COALESCE(sqlc.narg('created'), created)
 WHERE id = $1
 RETURNING *;
 
