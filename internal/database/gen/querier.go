@@ -64,6 +64,8 @@ type Querier interface {
 	CreateSchematicVariation(ctx context.Context, arg CreateSchematicVariationParams) (SchematicVariation, error)
 	CreateSchematicVersion(ctx context.Context, arg CreateSchematicVersionParams) (SchematicVersion, error)
 	CreateSearch(ctx context.Context, arg CreateSearchParams) error
+	CreateSearchClick(ctx context.Context, arg CreateSearchClickParams) error
+	CreateSearchConversion(ctx context.Context, arg CreateSearchConversionParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error)
 	CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (CreateTempUploadRow, error)

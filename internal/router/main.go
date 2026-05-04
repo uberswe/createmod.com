@@ -566,7 +566,7 @@ func Register(p RegisterParams) chi.Router {
 	// Search autocomplete
 	r.Get("/api/search/suggest", Adapt(pages.SearchSuggestHandler(p.SearchEngine)))
 	// Click tracking
-	r.Post("/api/search/click", Adapt(pages.SearchClickHandler()))
+	r.Post("/api/search/click", Adapt(pages.SearchClickHandler(p.AppStore)))
 	r.Get("/search/{term}/page/{page}", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search/{term}", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))

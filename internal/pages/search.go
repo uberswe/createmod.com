@@ -463,8 +463,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		if err != nil {
 			return err
 		}
-		// Update search count via store
-		_ = appStore.SearchTracking.RecordSearch(ctx, term, d.SearchResultCount, "", "")
+		_ = appStore.SearchTracking.RecordSearch(ctx, term, d.SearchResultCount, authenticatedUserID(e), e.RealIP())
 		return e.HTML(http.StatusOK, html)
 	}
 }

@@ -132,10 +132,18 @@ SELECT id, version, created FROM minecraft_versions WHERE id = $1;
 SELECT id, version, created FROM createmod_versions WHERE id = $1;
 
 -- name: ListTopSearches :many
-SELECT query, search_count
+SELECT query, search_count, zero_result_count
 FROM search_query_counts
 ORDER BY search_count DESC
 LIMIT $1;
+
+-- name: CreateSearchClick :exec
+INSERT INTO search_clicks (query, result_id, position, user_id, ip_address)
+VALUES ($1, $2, $3, $4, $5);
+
+-- name: CreateSearchConversion :exec
+INSERT INTO search_conversions (query, schematic_id, user_id, ip_address)
+VALUES ($1, $2, $3, $4);
 
 -- name: RefreshSearchQueryCounts :exec
 -- Concurrent refresh: allows reads during the refresh. Requires a unique index

@@ -2629,6 +2629,41 @@ func (st *SearchTrackingStoreImpl) RecordSearch(ctx context.Context, query strin
 	})
 }
 
+func (st *SearchTrackingStoreImpl) RecordSearchClick(ctx context.Context, query, resultID string, position int, userID, ip string) error {
+	query = sanitizeSearchQuery(query)
+	if query == "" {
+		return nil
+	}
+	var uid *string
+	if userID != "" {
+		uid = &userID
+	}
+	return st.q.CreateSearchClick(ctx, db.CreateSearchClickParams{
+		Query:     query,
+		ResultID:  resultID,
+		Position:  int32(position),
+		UserID:    uid,
+		IpAddress: ip,
+	})
+}
+
+func (st *SearchTrackingStoreImpl) RecordSearchConversion(ctx context.Context, query, schematicID, userID, ip string) error {
+	query = sanitizeSearchQuery(query)
+	if query == "" {
+		return nil
+	}
+	var uid *string
+	if userID != "" {
+		uid = &userID
+	}
+	return st.q.CreateSearchConversion(ctx, db.CreateSearchConversionParams{
+		Query:       query,
+		SchematicID: schematicID,
+		UserID:      uid,
+		IpAddress:   ip,
+	})
+}
+
 func (st *SearchTrackingStoreImpl) ListTopSearches(ctx context.Context, limit int) ([]store.SearchEntry, error) {
 	rows, err := st.q.ListTopSearches(ctx, int32(limit))
 	if err != nil {
@@ -2637,8 +2672,9 @@ func (st *SearchTrackingStoreImpl) ListTopSearches(ctx context.Context, limit in
 	result := make([]store.SearchEntry, len(rows))
 	for i, r := range rows {
 		result[i] = store.SearchEntry{
-			Query:        r.Query,
-			ResultsCount: int(r.SearchCount),
+			Query:           r.Query,
+			ResultsCount:    int(r.SearchCount),
+			ZeroResultCount: int(r.ZeroResultCount),
 		}
 	}
 	return result, nil

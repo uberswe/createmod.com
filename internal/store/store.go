@@ -325,12 +325,13 @@ type MonthlyDataPoint struct {
 
 // SearchEntry represents a recorded search query.
 type SearchEntry struct {
-	ID           string
-	Query        string
-	ResultsCount int
-	UserID       string
-	IPAddress    string
-	Created      time.Time
+	ID              string
+	Query           string
+	ResultsCount    int
+	ZeroResultCount int
+	UserID          string
+	IPAddress       string
+	Created         time.Time
 }
 
 // SitemapSchematic is a lightweight schematic entry for sitemap generation.
@@ -674,6 +675,8 @@ type VersionLookupStore interface {
 // SearchTrackingStore handles search query persistence.
 type SearchTrackingStore interface {
 	RecordSearch(ctx context.Context, query string, resultsCount int, userID, ip string) error
+	RecordSearchClick(ctx context.Context, query, resultID string, position int, userID, ip string) error
+	RecordSearchConversion(ctx context.Context, query, schematicID, userID, ip string) error
 	ListTopSearches(ctx context.Context, limit int) ([]SearchEntry, error)
 	RefreshSearchQueryCounts(ctx context.Context) error
 	PruneOldSearches(ctx context.Context) (int64, error)
