@@ -24,6 +24,7 @@ var codeToBladeMaterial = map[string]string{"w": "wool", "s": "sail"}
 var codeToEnvelopeMaterial = map[string]string{"w": "wool", "e": "envelope"}
 var codeToFrameMaterial = map[string]string{"w": "wood", "a": "andesite_casing"}
 var codeToSternStyle = map[string]string{"r": "round", "s": "square", "p": "pointed"}
+var codeToOrientation = map[string]string{"h": "horizontal", "v": "vertical"}
 
 type fieldType int
 
@@ -50,6 +51,8 @@ var schemaPropeller = []schemaField{
 	{"airfoilShape", ftEnum, codeToAirfoilShape},
 	{"bladeMaterial", ftEnum, codeToBladeMaterial},
 	{"bladeColor", ftEnum, codeToColor},
+	{"rotation", ftFloat, nil},
+	{"orientation", ftEnum, codeToOrientation},
 }
 
 var schemaBalloon = []schemaField{
@@ -241,6 +244,10 @@ func decodePropellerParams(values []string, version int) PropellerParams {
 			p.BladeMaterial = v.(string)
 		case "bladeColor":
 			p.BladeColor = v.(string)
+		case "rotation":
+			p.Rotation = v.(float64)
+		case "orientation":
+			p.Orientation = v.(string)
 		}
 	}
 	return p

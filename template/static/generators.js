@@ -31,12 +31,15 @@ function generatePropeller(p) {
   var bladeColor = p.bladeColor || 'white';
   var blockType = bladeMat === 'sail' ? BT.SAIL : BT.WOOL;
   var sweepRad = sweepDeg * Math.PI / 180;
+  var rotationDeg = clamp(p.rotation || 0, 0, 360);
+  var rotationRad = rotationDeg * Math.PI / 180;
+  var orientation = p.orientation === 'vertical' ? 'vertical' : 'horizontal';
 
   var seen = {};
   var blocks = [];
 
   for (var b = 0; b < blades; b++) {
-    var angle = (b / blades) * 2 * Math.PI;
+    var angle = (b / blades) * 2 * Math.PI + rotationRad;
     var samples = sampleRange(0, length, 0.35);
     for (var si = 0; si < samples.length; si++) {
       var r = samples[si];
@@ -64,27 +67,38 @@ function generatePropeller(p) {
     }
   }
 
+  // Vertical orientation: rotate XZ disc into XY plane
+  if (orientation === 'vertical') {
+    for (var vi = 0; vi < blocks.length; vi++) {
+      blocks[vi].y = blocks[vi].z;
+      blocks[vi].z = 0;
+    }
+  }
+
   // Normalize
-  var minX = 1e9, minZ = 1e9, maxX = -1e9, maxZ = -1e9;
+  var minX = 1e9, minY = 1e9, minZ = 1e9, maxX = -1e9, maxY = -1e9, maxZ = -1e9;
   for (var i = 0; i < blocks.length; i++) {
     var bl = blocks[i];
     if (bl.x < minX) minX = bl.x;
+    if (bl.y < minY) minY = bl.y;
     if (bl.z < minZ) minZ = bl.z;
     if (bl.x > maxX) maxX = bl.x;
+    if (bl.y > maxY) maxY = bl.y;
     if (bl.z > maxZ) maxZ = bl.z;
   }
-  if (blocks.length === 0) { minX = 0; minZ = 0; maxX = 0; maxZ = 0; }
+  if (blocks.length === 0) { minX = 0; minY = 0; minZ = 0; maxX = 0; maxY = 0; maxZ = 0; }
   for (var i = 0; i < blocks.length; i++) {
     blocks[i].x -= minX;
+    blocks[i].y -= minY;
     blocks[i].z -= minZ;
   }
 
   return {
     blocks: blocks,
     sizeX: maxX - minX + 1,
-    sizeY: 1,
+    sizeY: maxY - minY + 1,
     sizeZ: maxZ - minZ + 1,
-    materials: { bladeMaterial: bladeMat, bladeColor: bladeColor }
+    materials: { bladeMaterial: bladeMat, bladeColor: bladeColor, orientation: orientation }
   };
 }
 
