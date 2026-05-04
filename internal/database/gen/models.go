@@ -457,9 +457,29 @@ type Search struct {
 	Created      time.Time `json:"created"`
 }
 
+type SearchClick struct {
+	ID        string    `json:"id"`
+	Query     string    `json:"query"`
+	ResultID  string    `json:"result_id"`
+	Position  int32     `json:"position"`
+	UserID    *string   `json:"user_id"`
+	IpAddress string    `json:"ip_address"`
+	Created   time.Time `json:"created"`
+}
+
+type SearchConversion struct {
+	ID          string    `json:"id"`
+	Query       string    `json:"query"`
+	SchematicID string    `json:"schematic_id"`
+	UserID      *string   `json:"user_id"`
+	IpAddress   string    `json:"ip_address"`
+	Created     time.Time `json:"created"`
+}
+
 type SearchQueryCount struct {
-	Query       string `json:"query"`
-	SearchCount int64  `json:"search_count"`
+	Query           string `json:"query"`
+	SearchCount     int64  `json:"search_count"`
+	ZeroResultCount int64  `json:"zero_result_count"`
 }
 
 type Session struct {

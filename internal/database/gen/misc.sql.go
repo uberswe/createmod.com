@@ -227,6 +227,52 @@ func (q *Queries) CreateSearch(ctx context.Context, arg CreateSearchParams) erro
 	return err
 }
 
+const createSearchClick = `-- name: CreateSearchClick :exec
+INSERT INTO search_clicks (query, result_id, position, user_id, ip_address)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type CreateSearchClickParams struct {
+	Query     string  `json:"query"`
+	ResultID  string  `json:"result_id"`
+	Position  int32   `json:"position"`
+	UserID    *string `json:"user_id"`
+	IpAddress string  `json:"ip_address"`
+}
+
+func (q *Queries) CreateSearchClick(ctx context.Context, arg CreateSearchClickParams) error {
+	_, err := q.db.Exec(ctx, createSearchClick,
+		arg.Query,
+		arg.ResultID,
+		arg.Position,
+		arg.UserID,
+		arg.IpAddress,
+	)
+	return err
+}
+
+const createSearchConversion = `-- name: CreateSearchConversion :exec
+INSERT INTO search_conversions (query, schematic_id, user_id, ip_address)
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateSearchConversionParams struct {
+	Query       string  `json:"query"`
+	SchematicID string  `json:"schematic_id"`
+	UserID      *string `json:"user_id"`
+	IpAddress   string  `json:"ip_address"`
+}
+
+func (q *Queries) CreateSearchConversion(ctx context.Context, arg CreateSearchConversionParams) error {
+	_, err := q.db.Exec(ctx, createSearchConversion,
+		arg.Query,
+		arg.SchematicID,
+		arg.UserID,
+		arg.IpAddress,
+	)
+	return err
+}
+
 const createUserMeta = `-- name: CreateUserMeta :exec
 INSERT INTO user_meta (id, user_id, key, value)
 VALUES ($1, $2, $3, $4)
@@ -735,7 +781,7 @@ func (q *Queries) ListSchematicVersions(ctx context.Context, schematicID string)
 }
 
 const listTopSearches = `-- name: ListTopSearches :many
-SELECT query, search_count
+SELECT query, search_count, zero_result_count
 FROM search_query_counts
 ORDER BY search_count DESC
 LIMIT $1
@@ -750,7 +796,7 @@ func (q *Queries) ListTopSearches(ctx context.Context, limit int32) ([]SearchQue
 	items := []SearchQueryCount{}
 	for rows.Next() {
 		var i SearchQueryCount
-		if err := rows.Scan(&i.Query, &i.SearchCount); err != nil {
+		if err := rows.Scan(&i.Query, &i.SearchCount, &i.ZeroResultCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

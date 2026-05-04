@@ -359,6 +359,13 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 
 		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
+
+		if searchQuery := extractSearchTermFromReferer(e.Request.Header.Get("Referer")); searchQuery != "" {
+			go func() {
+				_ = appStore.SearchTracking.RecordSearchConversion(stdctx.Background(), searchQuery, s.ID, authenticatedUserID(e), e.RealIP())
+			}()
+		}
+
 		html, err := registry.LoadFiles(schematicTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -372,6 +379,37 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 	}
 }
 
+
+// extractSearchTermFromReferer parses the HTTP Referer header and returns the
+// search term if the referrer is a local search results page (e.g. /search/trains).
+func extractSearchTermFromReferer(referer string) string {
+	if referer == "" {
+		return ""
+	}
+	u, err := url.Parse(referer)
+	if err != nil {
+		return ""
+	}
+	p := u.Path
+	// Strip optional language prefix (e.g. /de/search/trains → /search/trains)
+	for _, prefix := range []string{"/de/", "/fr/", "/es/", "/pl/", "/ru/", "/pt-BR/", "/pt-PT/", "/zh-Hans/"} {
+		if strings.HasPrefix(p, prefix) {
+			p = "/" + p[len(prefix):]
+			break
+		}
+	}
+	if !strings.HasPrefix(p, "/search/") {
+		return ""
+	}
+	term := strings.TrimPrefix(p, "/search/")
+	// Strip /page/N suffix
+	if idx := strings.Index(term, "/page/"); idx >= 0 {
+		term = term[:idx]
+	}
+	term, _ = url.PathUnescape(term)
+	term = strings.ReplaceAll(term, "-", " ")
+	return strings.TrimSpace(term)
+}
 
 // pctEncodedRe matches percent-encoded sequences like %cc%b6
 var pctEncodedRe = regexp.MustCompile(`%[0-9a-fA-F]{2}`)

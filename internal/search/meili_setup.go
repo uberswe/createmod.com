@@ -71,36 +71,84 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 	rankingRules := []string{"words", "typo", "proximity", "attribute", "sort", "exactness"}
 
 	synonyms := map[string][]string{
+		// Transport
 		"train":       {"locomotive", "railway", "rail"},
 		"locomotive":  {"train", "railway"},
 		"elevator":    {"lift"},
 		"lift":        {"elevator"},
-		"farm":        {"grinder", "harvester"},
 		"plane":       {"airplane", "aircraft", "biplane"},
 		"airplane":    {"plane", "aircraft"},
-		"ship":        {"boat", "vessel"},
+		"ship":        {"boat", "vessel", "galleon"},
 		"boat":        {"ship", "vessel"},
 		"car":         {"automobile", "vehicle"},
 		"vehicle":     {"car", "automobile"},
-		"factory":     {"processing", "production", "refinery"},
+		"helicopter":  {"chopper", "heli"},
+		"chopper":     {"helicopter"},
+
+		// Compound word variants (high-volume split/joined searches)
+		"airship":    {"air ship", "blimp", "zeppelin", "dirigible"},
+		"air ship":   {"airship", "blimp", "zeppelin"},
+		"zeppelin":   {"airship", "blimp"},
+		"blimp":      {"airship", "zeppelin"},
+		"steampunk":  {"steam punk"},
+		"steam punk": {"steampunk"},
+		"treehouse":  {"tree house"},
+		"tree house": {"treehouse"},
+
+		// Buildings & structures
+		"house":      {"building", "home"},
+		"factory":    {"processing", "production", "refinery"},
+		"castle":     {"fortress", "palace", "keep"},
+		"fortress":   {"castle", "keep", "stronghold"},
+		"chateau":    {"castle", "mansion", "palace"},
+		"mansion":    {"manor", "villa", "chateau"},
+		"tavern":     {"inn", "pub", "bar"},
+		"inn":        {"tavern", "pub"},
+		"harbor":     {"harbour", "port", "dock", "marina"},
+		"harbour":    {"harbor", "port", "dock", "marina"},
+		"port":       {"harbor", "harbour", "dock"},
+		"dock":       {"harbor", "harbour", "port", "pier", "wharf"},
+		"warehouse":  {"depot", "storehouse"},
+		"coliseum":   {"colosseum", "arena", "amphitheater"},
+		"colosseum":  {"coliseum", "arena", "amphitheater"},
+		"arena":      {"coliseum", "colosseum"},
+		"dungeon":    {"prison", "jail", "vault"},
+
+		// Mechanical & Create mod
 		"door":        {"gate", "entrance"},
 		"gate":        {"door", "entrance"},
-		"house":       {"building", "home"},
-		"compact":     {"small", "mini", "tiny"},
-		"small":       {"compact", "mini", "tiny"},
-		"large":       {"big", "huge", "massive"},
-		"big":         {"large", "huge", "massive"},
-		"power":       {"energy", "generator"},
-		"storage":     {"silo", "warehouse"},
-		"contraption": {"machine", "mechanism", "device"},
-		"machine":     {"contraption", "mechanism", "device"},
-		"redstone":    {"logic", "circuitry"},
-		"decoration":  {"decor", "decorative"},
-		"bridge":      {"overpass", "viaduct"},
-		"tunnel":      {"underground", "subway"},
 		"crane":       {"hoist", "winch"},
 		"conveyor":    {"belt"},
 		"gear":        {"cog", "cogwheel"},
+		"contraption": {"machine", "mechanism", "device"},
+		"machine":     {"contraption", "mechanism", "device"},
+		"power":       {"energy", "generator"},
+		"redstone":    {"logic", "circuitry"},
+
+		// Size
+		"compact": {"small", "mini", "tiny"},
+		"small":   {"compact", "mini", "tiny"},
+		"large":   {"big", "huge", "massive"},
+		"big":     {"large", "huge", "massive"},
+
+		// Style & theme
+		"decoration": {"decor", "decorative"},
+		"medieval":   {"medival", "medievil"},
+
+		// Nature & farming
+		"farm":   {"grinder", "harvester"},
+		"lumber": {"wood", "timber", "sawmill"},
+
+		// Infrastructure
+		"bridge":  {"overpass", "viaduct"},
+		"tunnel":  {"underground", "subway"},
+		"storage": {"silo", "warehouse"},
+
+		// Foreign language common search terms
+		"haus":        {"house", "home"},
+		"tren":        {"train"},
+		"trein":       {"train"},
+		"lokomotive":  {"locomotive", "train"},
 	}
 
 	stopWords := []string{"the", "a", "an", "is", "it", "of", "for", "with", "and", "or", "in", "on", "to", "my", "this", "that"}

@@ -1,8 +1,10 @@
 package pages
 
 import (
+	"context"
 	"createmod/internal/metrics"
 	"createmod/internal/server"
+	"createmod/internal/store"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -16,7 +18,7 @@ type searchClickRequest struct {
 
 // SearchClickHandler records a search result click for analytics.
 // POST /api/search/click
-func SearchClickHandler() func(e *server.RequestEvent) error {
+func SearchClickHandler(appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		var req searchClickRequest
 		if err := json.NewDecoder(e.Request.Body).Decode(&req); err != nil {
@@ -32,6 +34,15 @@ func SearchClickHandler() func(e *server.RequestEvent) error {
 			"query", req.Query,
 			"result_id", req.ResultID,
 			"position", req.Position,
+		)
+
+		_ = appStore.SearchTracking.RecordSearchClick(
+			context.Background(),
+			req.Query,
+			req.ResultID,
+			req.Position,
+			authenticatedUserID(e),
+			e.RealIP(),
 		)
 
 		e.Response.WriteHeader(http.StatusNoContent)
