@@ -1,0 +1,1 @@
+ALTER TABLE schematic_files ALTER COLUMN id DROP DEFAULT;
