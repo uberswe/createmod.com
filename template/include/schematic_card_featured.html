@@ -10,7 +10,7 @@
         <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180"
              srcset="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180 320w, /api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=640x360 640w"
              sizes="(max-width: 767px) 100vw, 33vw"
-             alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="640" height="360" style="position:relative;z-index:1;"
+             alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="640" height="360" style="z-index:1;"
              onerror="this.style.display='none'">
         {{ end }}
         {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:8px;left:8px;z-index:2;">Paid</span>{{ end }}

@@ -6,7 +6,7 @@
     </div>
     {{ if ne .FeaturedImage "" }}
     <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=240x136"
-         alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="120" height="68" style="position:relative;width:120px;height:68px;border-radius:.4rem;"
+         alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:1;"
          onerror="this.style.display='none'">
     {{ end }}
     {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:4px;left:4px;z-index:1;font-size:.6rem;">Paid</span>{{ end }}
