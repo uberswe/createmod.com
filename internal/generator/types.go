@@ -30,6 +30,8 @@ type MaterialConfig struct {
 	BladeMaterial    string `json:"bladeMaterial,omitempty"`
 	BladeColor       string `json:"bladeColor,omitempty"`
 	FrameMaterial    string `json:"frameMaterial,omitempty"`
+	SailFacing       string `json:"sailFacing,omitempty"`
+	Orientation      string `json:"orientation,omitempty"`
 }
 
 type GenerateResult struct {

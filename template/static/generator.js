@@ -230,7 +230,8 @@ function renderBlocks(data) {
   var boxGeo = new THREE.BoxGeometry(1, 1, 1);
   var slabGeo = new THREE.BoxGeometry(1, 0.5, 1);
   var trapdoorGeo = new THREE.BoxGeometry(0.95, 0.18, 0.95);
-  var sailGeo = new THREE.BoxGeometry(1, 0.35, 1);
+  var isVertical = materials && materials.orientation === 'vertical';
+  var sailGeo = isVertical ? new THREE.BoxGeometry(1, 1, 0.35) : new THREE.BoxGeometry(1, 0.35, 1);
 
   var dummy = new THREE.Object3D();
 
@@ -855,6 +856,7 @@ var ENUM_MAPS = {
   envelopeMaterial: { wool:'w', envelope:'e' },
   frameMaterial: { wood:'w', andesite_casing:'a' },
   sternStyle: { round:'r', square:'s', pointed:'p' },
+  orientation: { horizontal:'h', vertical:'v' },
   color: COLOR_TO_CODE,
   wood: WOOD_TO_CODE
 };
@@ -870,7 +872,8 @@ var SCHEMAS = {
     { k:'blades', t:'i' }, { k:'length', t:'i' }, { k:'rootChord', t:'i' },
     { k:'tipChord', t:'i' }, { k:'sweepDegrees', t:'f' }, { k:'swept', t:'b' },
     { k:'airfoilShape', t:'e', m:'airfoilShape' }, { k:'bladeMaterial', t:'e', m:'bladeMaterial' },
-    { k:'bladeColor', t:'e', m:'color' }
+    { k:'bladeColor', t:'e', m:'color' }, { k:'rotation', t:'f' },
+    { k:'orientation', t:'e', m:'orientation' }
   ],
   b: [
     { k:'lengthX', t:'i' }, { k:'widthZ', t:'i' }, { k:'heightY', t:'i' },
