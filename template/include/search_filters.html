@@ -88,25 +88,19 @@
         {{ if gt .MaxDimYAll 0 }}
         <div class="subheader mb-2">{{ T .Language "Dimensions" }}</div>
         <div class="mb-3">
+            {{ if gt .MaxHorizontalAll 0 }}
+            <div class="mb-2">
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Horizontal Size" }} (X/Z): <span id="hz-label">{{ if gt .MinHorizontal 0 }}{{ .MinHorizontal }}+{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="range" class="form-range flex-grow-1" name="minhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ .MinHorizontal }}" oninput="var v=parseInt(this.value)||0;document.getElementById('hz-label').textContent=v>0?v+'+':'{{ T .Language "Any" }}';">
+                </div>
+            </div>
+            {{ end }}
             <div class="mb-2">
                 <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y): <span id="dimy-label">{{ if and (gt .MinDimY 0) (gt .MaxDimY 0) }}{{ .MinDimY }}–{{ .MaxDimY }}{{ else if gt .MinDimY 0 }}{{ .MinDimY }}+{{ else if gt .MaxDimY 0 }}0–{{ .MaxDimY }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
                 <div class="d-flex gap-2 align-items-center">
                     <input type="range" class="form-range flex-grow-1" name="miny" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ .MinDimY }}" oninput="updateRangeLabel('dimy',this.value,document.querySelector('[name=maxy]').value,{{ .MaxDimYAll }})">
                     <input type="range" class="form-range flex-grow-1" name="maxy" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ if gt .MaxDimY 0 }}{{ .MaxDimY }}{{ else }}{{ .MaxDimYAll }}{{ end }}" oninput="updateRangeLabel('dimy',document.querySelector('[name=miny]').value,this.value,{{ .MaxDimYAll }})">
-                </div>
-            </div>
-            <div class="mb-2">
-                <label class="form-label small text-secondary mb-1">{{ T .Language "Width" }} (X): <span id="dimx-label">{{ if and (gt .MinDimX 0) (gt .MaxDimX 0) }}{{ .MinDimX }}–{{ .MaxDimX }}{{ else if gt .MinDimX 0 }}{{ .MinDimX }}+{{ else if gt .MaxDimX 0 }}0–{{ .MaxDimX }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
-                <div class="d-flex gap-2 align-items-center">
-                    <input type="range" class="form-range flex-grow-1" name="minx" min="0" max="{{ .MaxDimXAll }}" step="1" value="{{ .MinDimX }}" oninput="updateRangeLabel('dimx',this.value,document.querySelector('[name=maxx]').value,{{ .MaxDimXAll }})">
-                    <input type="range" class="form-range flex-grow-1" name="maxx" min="0" max="{{ .MaxDimXAll }}" step="1" value="{{ if gt .MaxDimX 0 }}{{ .MaxDimX }}{{ else }}{{ .MaxDimXAll }}{{ end }}" oninput="updateRangeLabel('dimx',document.querySelector('[name=minx]').value,this.value,{{ .MaxDimXAll }})">
-                </div>
-            </div>
-            <div class="mb-2">
-                <label class="form-label small text-secondary mb-1">{{ T .Language "Length" }} (Z): <span id="dimz-label">{{ if and (gt .MinDimZ 0) (gt .MaxDimZ 0) }}{{ .MinDimZ }}–{{ .MaxDimZ }}{{ else if gt .MinDimZ 0 }}{{ .MinDimZ }}+{{ else if gt .MaxDimZ 0 }}0–{{ .MaxDimZ }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
-                <div class="d-flex gap-2 align-items-center">
-                    <input type="range" class="form-range flex-grow-1" name="minz" min="0" max="{{ .MaxDimZAll }}" step="1" value="{{ .MinDimZ }}" oninput="updateRangeLabel('dimz',this.value,document.querySelector('[name=maxz]').value,{{ .MaxDimZAll }})">
-                    <input type="range" class="form-range flex-grow-1" name="maxz" min="0" max="{{ .MaxDimZAll }}" step="1" value="{{ if gt .MaxDimZ 0 }}{{ .MaxDimZ }}{{ else }}{{ .MaxDimZAll }}{{ end }}" oninput="updateRangeLabel('dimz',document.querySelector('[name=minz]').value,this.value,{{ .MaxDimZAll }})">
                 </div>
             </div>
         </div>
@@ -132,7 +126,7 @@
             {{ end }}
         </div>
         {{ end }}
-        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinDimX 0) (gt .MaxDimX 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt .MinDimZ 0) (gt .MaxDimZ 0) (gt (len .SelectedMods) 0) }}
+        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinHorizontal 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt (len .SelectedMods) 0) }}
         <div class="mb-3">
             <a href="/search/{{ .TermSlug }}" class="text-secondary small">{{ T .Language "Clear all filters" }}</a>
         </div>
@@ -179,7 +173,7 @@
         if (el.type === 'range') {
           var max = parseInt(el.max) || 0;
           var val = parseInt(el.value) || 0;
-          if (el.name.indexOf('max') === 0 || el.name === 'maxbc' || el.name === 'maxy' || el.name === 'maxx' || el.name === 'maxz') {
+          if (el.name.indexOf('max') === 0 || el.name === 'maxbc' || el.name === 'maxy') {
             if (val >= max) el.value = '0';
           }
         }
