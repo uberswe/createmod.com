@@ -828,6 +828,7 @@ type SchematicFile struct {
 	SchematicID  string
 	Filename     string
 	OriginalName string
+	Description  string
 	Size         int64
 	MimeType     string
 	Created      time.Time

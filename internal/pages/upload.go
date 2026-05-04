@@ -561,11 +561,11 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 				continue
 			}
 
-			// Create schematic_files record
 			sf := &store.SchematicFile{
 				SchematicID:  schematicID,
 				Filename:     s3Filename,
 				OriginalName: tf.Filename,
+				Description:  tf.Description,
 				Size:         tf.Size,
 				MimeType:     "application/octet-stream",
 			}

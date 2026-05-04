@@ -133,6 +133,9 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 		}
 
 		description := strings.TrimSpace(e.Request.FormValue("description"))
+		if len(description) > 200 {
+			description = description[:200]
+		}
 
 		// Marshal materials and mods to JSON
 		materialsJSON, _ := json.Marshal(parsedMaterials)

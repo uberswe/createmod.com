@@ -123,10 +123,13 @@
                                             <div id="variations-list">
                                                 {{ range .AdditionalFiles }}
                                                 <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-file-id="{{ .ID }}">
-                                                    <span>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /></svg>
-                                                        {{ .OriginalName }}
-                                                    </span>
+                                                    <div class="flex-fill">
+                                                        <div>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /></svg>
+                                                            {{ .OriginalName }}
+                                                        </div>
+                                                        {{ if .Description }}<div class="text-secondary small">{{ .Description }}</div>{{ end }}
+                                                    </div>
                                                     <button type="button" class="btn btn-sm btn-outline-danger delete-variation-file-btn" data-file-id="{{ .ID }}">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
                                                     </button>
@@ -135,7 +138,12 @@
                                             </div>
                                             <div class="border rounded p-3 mt-2">
                                                 <div class="mb-2">
+                                                    <label class="form-label">NBT File</label>
                                                     <input type="file" id="variation-file-input" class="form-control" accept=".nbt">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label class="form-label">Description</label>
+                                                    <input type="text" id="variation-description-input" class="form-control" placeholder="e.g. Compact version, Mirror variant..." maxlength="200">
                                                 </div>
                                                 <div id="variation-upload-error" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
                                                 <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-variation-btn">Add Variation</button>
@@ -786,12 +794,15 @@
     });
 
     // --- Variation file management ---
-    function createVariationRow(id, originalName) {
+    function createVariationRow(id, originalName, description) {
         var row = document.createElement('div');
         row.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
         row.setAttribute('data-file-id', id);
 
-        var span = document.createElement('span');
+        var info = document.createElement('div');
+        info.className = 'flex-fill';
+
+        var nameDiv = document.createElement('div');
         var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         icon.setAttribute('class', 'icon me-1');
         icon.setAttribute('width', '24');
@@ -808,8 +819,16 @@
             if (i === 0) { p.setAttribute('stroke', 'none'); p.setAttribute('fill', 'none'); }
             icon.appendChild(p);
         });
-        span.appendChild(icon);
-        span.appendChild(document.createTextNode(originalName));
+        nameDiv.appendChild(icon);
+        nameDiv.appendChild(document.createTextNode(originalName));
+        info.appendChild(nameDiv);
+
+        if (description) {
+            var descDiv = document.createElement('div');
+            descDiv.className = 'text-secondary small';
+            descDiv.textContent = description;
+            info.appendChild(descDiv);
+        }
 
         var delBtn = document.createElement('button');
         delBtn.type = 'button';
@@ -835,13 +854,14 @@
         });
         delBtn.appendChild(delIcon);
 
-        row.appendChild(span);
+        row.appendChild(info);
         row.appendChild(delBtn);
         return row;
     }
 
     document.getElementById('add-variation-btn').addEventListener('click', async function() {
         var varFileInput = document.getElementById('variation-file-input');
+        var descInput = document.getElementById('variation-description-input');
         var errorDiv = document.getElementById('variation-upload-error');
         errorDiv.style.display = 'none';
 
@@ -865,6 +885,7 @@
 
         var fd = new FormData();
         fd.append('file', varFile);
+        fd.append('description', descInput.value.trim());
 
         this.disabled = true;
         try {
@@ -877,8 +898,9 @@
                 return;
             }
             var respData = await resp.json();
-            document.getElementById('variations-list').appendChild(createVariationRow(respData.id, respData.original_name));
+            document.getElementById('variations-list').appendChild(createVariationRow(respData.id, respData.original_name, respData.description));
             varFileInput.value = '';
+            descInput.value = '';
         } catch(err) {
             errorDiv.textContent = 'Upload failed';
             errorDiv.style.display = 'block';

@@ -7,12 +7,13 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const createSchematicFile = `-- name: CreateSchematicFile :one
-INSERT INTO schematic_files (schematic_id, filename, original_name, size, mime_type)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, schematic_id, filename, original_name, size, mime_type, created, updated
+INSERT INTO schematic_files (schematic_id, filename, original_name, size, mime_type, description)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, schematic_id, filename, original_name, size, mime_type, description, created, updated
 `
 
 type CreateSchematicFileParams struct {
@@ -21,17 +22,31 @@ type CreateSchematicFileParams struct {
 	OriginalName string `json:"original_name"`
 	Size         int64  `json:"size"`
 	MimeType     string `json:"mime_type"`
+	Description  string `json:"description"`
 }
 
-func (q *Queries) CreateSchematicFile(ctx context.Context, arg CreateSchematicFileParams) (SchematicFile, error) {
+type CreateSchematicFileRow struct {
+	ID           string    `json:"id"`
+	SchematicID  string    `json:"schematic_id"`
+	Filename     string    `json:"filename"`
+	OriginalName string    `json:"original_name"`
+	Size         int64     `json:"size"`
+	MimeType     string    `json:"mime_type"`
+	Description  string    `json:"description"`
+	Created      time.Time `json:"created"`
+	Updated      time.Time `json:"updated"`
+}
+
+func (q *Queries) CreateSchematicFile(ctx context.Context, arg CreateSchematicFileParams) (CreateSchematicFileRow, error) {
 	row := q.db.QueryRow(ctx, createSchematicFile,
 		arg.SchematicID,
 		arg.Filename,
 		arg.OriginalName,
 		arg.Size,
 		arg.MimeType,
+		arg.Description,
 	)
-	var i SchematicFile
+	var i CreateSchematicFileRow
 	err := row.Scan(
 		&i.ID,
 		&i.SchematicID,
@@ -39,6 +54,7 @@ func (q *Queries) CreateSchematicFile(ctx context.Context, arg CreateSchematicFi
 		&i.OriginalName,
 		&i.Size,
 		&i.MimeType,
+		&i.Description,
 		&i.Created,
 		&i.Updated,
 	)
@@ -64,13 +80,25 @@ func (q *Queries) DeleteSchematicFilesBySchematicID(ctx context.Context, schemat
 }
 
 const getSchematicFileByID = `-- name: GetSchematicFileByID :one
-SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
+SELECT id, schematic_id, filename, original_name, size, mime_type, description, created, updated
 FROM schematic_files WHERE id = $1
 `
 
-func (q *Queries) GetSchematicFileByID(ctx context.Context, id string) (SchematicFile, error) {
+type GetSchematicFileByIDRow struct {
+	ID           string    `json:"id"`
+	SchematicID  string    `json:"schematic_id"`
+	Filename     string    `json:"filename"`
+	OriginalName string    `json:"original_name"`
+	Size         int64     `json:"size"`
+	MimeType     string    `json:"mime_type"`
+	Description  string    `json:"description"`
+	Created      time.Time `json:"created"`
+	Updated      time.Time `json:"updated"`
+}
+
+func (q *Queries) GetSchematicFileByID(ctx context.Context, id string) (GetSchematicFileByIDRow, error) {
 	row := q.db.QueryRow(ctx, getSchematicFileByID, id)
-	var i SchematicFile
+	var i GetSchematicFileByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.SchematicID,
@@ -78,6 +106,7 @@ func (q *Queries) GetSchematicFileByID(ctx context.Context, id string) (Schemati
 		&i.OriginalName,
 		&i.Size,
 		&i.MimeType,
+		&i.Description,
 		&i.Created,
 		&i.Updated,
 	)
@@ -85,21 +114,33 @@ func (q *Queries) GetSchematicFileByID(ctx context.Context, id string) (Schemati
 }
 
 const listSchematicFilesBySchematicID = `-- name: ListSchematicFilesBySchematicID :many
-SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
+SELECT id, schematic_id, filename, original_name, size, mime_type, description, created, updated
 FROM schematic_files
 WHERE schematic_id = $1
 ORDER BY created ASC
 `
 
-func (q *Queries) ListSchematicFilesBySchematicID(ctx context.Context, schematicID string) ([]SchematicFile, error) {
+type ListSchematicFilesBySchematicIDRow struct {
+	ID           string    `json:"id"`
+	SchematicID  string    `json:"schematic_id"`
+	Filename     string    `json:"filename"`
+	OriginalName string    `json:"original_name"`
+	Size         int64     `json:"size"`
+	MimeType     string    `json:"mime_type"`
+	Description  string    `json:"description"`
+	Created      time.Time `json:"created"`
+	Updated      time.Time `json:"updated"`
+}
+
+func (q *Queries) ListSchematicFilesBySchematicID(ctx context.Context, schematicID string) ([]ListSchematicFilesBySchematicIDRow, error) {
 	rows, err := q.db.Query(ctx, listSchematicFilesBySchematicID, schematicID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []SchematicFile{}
+	items := []ListSchematicFilesBySchematicIDRow{}
 	for rows.Next() {
-		var i SchematicFile
+		var i ListSchematicFilesBySchematicIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.SchematicID,
@@ -107,6 +148,7 @@ func (q *Queries) ListSchematicFilesBySchematicID(ctx context.Context, schematic
 			&i.OriginalName,
 			&i.Size,
 			&i.MimeType,
+			&i.Description,
 			&i.Created,
 			&i.Updated,
 		); err != nil {
