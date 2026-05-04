@@ -28,6 +28,7 @@
                 <a id="manual-link" class="btn btn-primary" hx-boost="false" href="#" style="display:none" aria-label="Download now">{{ T .Language "Download now" }}</a>
                 <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
                 <input type="hidden" id="token-id" value="{{ .TokenID }}">
+                {{ if .FileID }}<input type="hidden" id="file-id" value="{{ .FileID }}">{{ end }}
                 {{end}}
               </div>
             </div>
@@ -74,7 +75,10 @@
         // Free: fetch download URL from API
         var tokenID = document.getElementById('token-id');
         if (!tokenID || !tokenID.value) return;
-        fetch('/api/download-url/' + encodeURIComponent(tokenID.value))
+        var fileEl = document.getElementById('file-id');
+        var dlUrlPath = '/api/download-url/' + encodeURIComponent(tokenID.value);
+        if (fileEl && fileEl.value) { dlUrlPath += '?f=' + encodeURIComponent(fileEl.value); }
+        fetch(dlUrlPath)
           .then(function(r) {
             if (!r.ok) throw new Error('not ok');
             return r.json();
