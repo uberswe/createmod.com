@@ -117,11 +117,8 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		}
 		defer reader.Close()
 
-		// If not an image file, serve original
 		if !isImageFile(filename) {
-			setCacheHeaders()
-			e.Response.Header().Set("Content-Type", contentType)
-			return e.Stream(http.StatusOK, contentType, reader)
+			return e.String(http.StatusNotFound, "file not found")
 		}
 
 		// Read original image
@@ -133,10 +130,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		// Decode image
 		srcImage, _, err := image.Decode(bytes.NewReader(originalData))
 		if err != nil {
-			// If decoding fails (e.g., unsupported format), serve original
-			setCacheHeaders()
-			e.Response.Header().Set("Content-Type", contentType)
-			return e.Blob(http.StatusOK, contentType, originalData)
+			return e.String(http.StatusNotFound, "file not found")
 		}
 
 		// Resize
@@ -151,9 +145,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			Format:       imgconv.WEBP,
 			EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
 		}); err != nil {
-			setCacheHeaders()
-			e.Response.Header().Set("Content-Type", contentType)
-			return e.Blob(http.StatusOK, contentType, originalData)
+			return e.String(http.StatusNotFound, "file not found")
 		}
 		_ = bw.Flush()
 
