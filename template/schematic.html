@@ -396,16 +396,22 @@
                                     <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
                                         <div class="card-body">
                                             <div class="text-secondary">
-                                                {{ .Content }}
                                                 {{ if .IsTranslated }}
-                                                <div class="text-muted small mt-1">
-                                                    {{ T $.Language "Auto translated" }} &mdash;
-                                                    <a href="?comments=original#{{ .ID }}" class="link-muted">{{ T $.Language "show original" }}</a>
+                                                <div class="comment-translated" data-comment-id="{{ .ID }}">
+                                                    <div class="comment-translated-content">{{ .Content }}</div>
+                                                    <div class="comment-original-content" style="display:none;">{{ .OriginalContent }}</div>
+                                                    <div class="text-muted small mt-1">
+                                                        <span class="comment-translated-label">
+                                                            {{ T $.Language "Auto translated" }} &mdash;
+                                                            <a href="#" class="link-muted" onclick="toggleCommentTranslation(this); return false;">{{ T $.Language "show original" }}</a>
+                                                        </span>
+                                                        <span class="comment-original-label" style="display:none;">
+                                                            <a href="#" class="link-muted" onclick="toggleCommentTranslation(this); return false;">{{ T $.Language "show translation" }}</a>
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                {{ else if $.ShowingOriginalComments }}
-                                                <div class="text-muted small mt-1">
-                                                    <a href="?#{{ .ID }}" class="link-muted">{{ T $.Language "show translation" }}</a>
-                                                </div>
+                                                {{ else }}
+                                                {{ .Content }}
                                                 {{ end }}
                                             </div>
                                             <div class="mt-4">
@@ -1196,6 +1202,20 @@ function copyMaterialsAsMarkdown() {
             }
         });
     });
+
+    function toggleCommentTranslation(el) {
+        var c = el.closest('.comment-translated');
+        if (!c) return;
+        var t = c.querySelector('.comment-translated-content');
+        var o = c.querySelector('.comment-original-content');
+        var lt = c.querySelector('.comment-translated-label');
+        var lo = c.querySelector('.comment-original-label');
+        var showOriginal = o.style.display === 'none';
+        t.style.display = showOriginal ? 'none' : '';
+        o.style.display = showOriginal ? '' : 'none';
+        lt.style.display = showOriginal ? 'none' : '';
+        lo.style.display = showOriginal ? '' : 'none';
+    }
 </script>
 <script>
 document.addEventListener('htmx:afterRequest', function(evt) {
