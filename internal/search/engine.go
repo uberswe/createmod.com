@@ -33,5 +33,6 @@ type SearchQuery struct {
 	MaxDimY          int
 	MinDimZ          int
 	MaxDimZ          int
+	MinHorizontal    int // combined X/Z minimum: matches dim_x >= N OR dim_z >= N
 	Mods             []string // mod display names to filter by (AND semantics)
 }

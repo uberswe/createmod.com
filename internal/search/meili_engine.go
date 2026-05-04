@@ -149,6 +149,9 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 	if q.MaxBlockCount > 0 {
 		parts = append(parts, fmt.Sprintf("block_count <= %d", q.MaxBlockCount))
 	}
+	if q.MinHorizontal > 0 {
+		parts = append(parts, fmt.Sprintf("(dim_x >= %d OR dim_z >= %d)", q.MinHorizontal, q.MinHorizontal))
+	}
 	if q.MinDimX > 0 {
 		parts = append(parts, fmt.Sprintf("dim_x >= %d", q.MinDimX))
 	}

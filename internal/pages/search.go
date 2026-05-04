@@ -73,12 +73,14 @@ type SearchData struct {
 	MaxDimY           int
 	MinDimZ           int
 	MaxDimZ           int
+	MinHorizontal     int
 	SelectedMods      []string
 	AllMods           []ModOption
 	MaxBlockCountAll  int // global max for slider upper bound
 	MaxDimXAll        int
 	MaxDimYAll        int
 	MaxDimZAll        int
+	MaxHorizontalAll  int
 }
 
 func SearchHandler(searchEngine search.SearchEngine, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
@@ -169,6 +171,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		maxDimY := parseIntParam("maxy")
 		minDimZ := parseIntParam("minz")
 		maxDimZ := parseIntParam("maxz")
+		minHorizontal := parseIntParam("minhz")
 
 		// Parse mod filter (comma-separated "mods" param or multiple "mod" checkbox params)
 		var selectedMods []string
@@ -225,6 +228,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			MaxDimY:          maxDimY,
 			MinDimZ:          minDimZ,
 			MaxDimZ:          maxDimZ,
+			MinHorizontal:    minHorizontal,
 			Mods:             meiliModNames,
 		}
 
@@ -332,6 +336,9 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		if maxBlockCount > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("maxbc=%d", maxBlockCount))
 		}
+		if minHorizontal > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("minhz=%d", minHorizontal))
+		}
 		if minDimX > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("minx=%d", minDimX))
 		}
@@ -425,12 +432,14 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			MaxDimY:           maxDimY,
 			MinDimZ:           minDimZ,
 			MaxDimZ:           maxDimZ,
+			MinHorizontal:     minHorizontal,
 			SelectedMods:      selectedMods,
 			AllMods:           allMods,
 			MaxBlockCountAll:  maxStats.BlockCount,
 			MaxDimXAll:        maxStats.DimX,
 			MaxDimYAll:        maxStats.DimY,
 			MaxDimZAll:        maxStats.DimZ,
+			MaxHorizontalAll:  max(maxStats.DimX, maxStats.DimZ),
 		}
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
@@ -523,12 +532,9 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 			CreateVersion    string `json:"cv" form:"cv"`
 			MinBlockCount    string `json:"minbc" form:"minbc"`
 			MaxBlockCount    string `json:"maxbc" form:"maxbc"`
-			MinDimX          string `json:"minx" form:"minx"`
-			MaxDimX          string `json:"maxx" form:"maxx"`
+			MinHorizontal    string `json:"minhz" form:"minhz"`
 			MinDimY          string `json:"miny" form:"miny"`
 			MaxDimY          string `json:"maxy" form:"maxy"`
-			MinDimZ          string `json:"minz" form:"minz"`
-			MaxDimZ          string `json:"maxz" form:"maxz"`
 		}{}
 		if err := e.BindBody(&data); err != nil {
 			return &server.APIError{Status: 400, Message: "Failed to read request data"}
@@ -561,23 +567,14 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 		if data.MaxBlockCount != "" && data.MaxBlockCount != "0" {
 			redirectURL += "&maxbc=" + data.MaxBlockCount
 		}
-		if data.MinDimX != "" && data.MinDimX != "0" {
-			redirectURL += "&minx=" + data.MinDimX
-		}
-		if data.MaxDimX != "" && data.MaxDimX != "0" {
-			redirectURL += "&maxx=" + data.MaxDimX
+		if data.MinHorizontal != "" && data.MinHorizontal != "0" {
+			redirectURL += "&minhz=" + data.MinHorizontal
 		}
 		if data.MinDimY != "" && data.MinDimY != "0" {
 			redirectURL += "&miny=" + data.MinDimY
 		}
 		if data.MaxDimY != "" && data.MaxDimY != "0" {
 			redirectURL += "&maxy=" + data.MaxDimY
-		}
-		if data.MinDimZ != "" && data.MinDimZ != "0" {
-			redirectURL += "&minz=" + data.MinDimZ
-		}
-		if data.MaxDimZ != "" && data.MaxDimZ != "0" {
-			redirectURL += "&maxz=" + data.MaxDimZ
 		}
 		if modsParam != "" {
 			redirectURL += "&mods=" + modsParam
