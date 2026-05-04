@@ -37,8 +37,7 @@ func SchematicCommentsHandler(cacheService *cache.Service, registry *server.Regi
 			Schematic: MapStoreSchematicToModel(appStore, *storeSchematic, cacheService),
 		}
 		d.Populate(e)
-		commentShowOriginal := e.Request.URL.Query().Get("comments") == "original"
-		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID, translationService, cacheService, d.Language, commentShowOriginal)
+		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID, translationService, cacheService, d.Language)
 		d.Title = fmt.Sprintf("Comments for %s", d.Schematic.Title)
 
 		html, err := registry.LoadFiles(schematicCommentsTemplates...).Render(d)
