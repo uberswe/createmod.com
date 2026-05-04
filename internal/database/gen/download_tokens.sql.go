@@ -21,9 +21,9 @@ func (q *Queries) CleanupExpiredDownloadTokens(ctx context.Context) error {
 
 const consumeDownloadToken = `-- name: ConsumeDownloadToken :one
 UPDATE download_tokens
-SET used = true
-WHERE token = $1 AND used = false AND expires_at > NOW()
-RETURNING id, token, name, expires_at, used, created
+SET use_count = use_count + 1
+WHERE token = $1 AND use_count < 5 AND expires_at > NOW()
+RETURNING id, token, name, expires_at, used, created, use_count
 `
 
 func (q *Queries) ConsumeDownloadToken(ctx context.Context, token string) (DownloadToken, error) {
@@ -36,6 +36,7 @@ func (q *Queries) ConsumeDownloadToken(ctx context.Context, token string) (Downl
 		&i.ExpiresAt,
 		&i.Used,
 		&i.Created,
+		&i.UseCount,
 	)
 	return i, err
 }
@@ -43,7 +44,7 @@ func (q *Queries) ConsumeDownloadToken(ctx context.Context, token string) (Downl
 const createDownloadToken = `-- name: CreateDownloadToken :one
 INSERT INTO download_tokens (token, name, expires_at)
 VALUES ($1, $2, $3)
-RETURNING id, token, name, expires_at, used, created
+RETURNING id, token, name, expires_at, used, created, use_count
 `
 
 type CreateDownloadTokenParams struct {
@@ -62,12 +63,13 @@ func (q *Queries) CreateDownloadToken(ctx context.Context, arg CreateDownloadTok
 		&i.ExpiresAt,
 		&i.Used,
 		&i.Created,
+		&i.UseCount,
 	)
 	return i, err
 }
 
 const getDownloadTokenByID = `-- name: GetDownloadTokenByID :one
-SELECT id, token, name, expires_at, used, created FROM download_tokens WHERE id = $1 AND used = false AND expires_at > NOW()
+SELECT id, token, name, expires_at, used, created, use_count FROM download_tokens WHERE id = $1 AND use_count < 5 AND expires_at > NOW()
 `
 
 func (q *Queries) GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error) {
@@ -80,6 +82,7 @@ func (q *Queries) GetDownloadTokenByID(ctx context.Context, id string) (Download
 		&i.ExpiresAt,
 		&i.Used,
 		&i.Created,
+		&i.UseCount,
 	)
 	return i, err
 }

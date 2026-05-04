@@ -543,6 +543,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Download interstitial page
 	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/get/{name}/file/{fileID}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
 	// API endpoint to fetch download URL after interstitial delay
 	r.Get("/api/download-url/{id}", Adapt(pages.DownloadURLHandler(p.AppStore)))
 	// External link interstitial (encrypted token, no raw URL exposed)

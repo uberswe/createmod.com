@@ -24,10 +24,12 @@
                 {{else}}
                 <h1 class="card-title">{{ T .Language "Preparing your download..." }}</h1>
                 <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
-                <p id="download-hint">{{ T .Language "If it doesn't, click the button below:" }}</p>
+                <p id="download-hint" style="display:none">{{ T .Language "If it doesn't, click the button below:" }}</p>
                 <a id="manual-link" class="btn btn-primary" hx-boost="false" href="#" style="display:none" aria-label="Download now">{{ T .Language "Download now" }}</a>
+                <p id="remaining-hint" class="text-secondary small mt-2" style="display:none"></p>
                 <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
                 <input type="hidden" id="token-id" value="{{ .TokenID }}">
+                {{ if .FileID }}<input type="hidden" id="file-id" value="{{ .FileID }}">{{ end }}
                 {{end}}
               </div>
             </div>
@@ -47,9 +49,13 @@
 <script>
 (function(){
   var paid = {{if .Paid}}true{{else}}false{{end}};
+  var maxUses = 5;
+  var usesLeft = maxUses;
   var seconds = 10;
   var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
   var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
+  var hintEl = document.getElementById('download-hint');
+  var remainingEl = document.getElementById('remaining-hint');
   var timerId = null;
   var stopped = false;
 
@@ -58,38 +64,68 @@
     if (timerId) { clearTimeout(timerId); timerId = null; }
   }
 
+  function buildDownloadPath() {
+    var tokenID = document.getElementById('token-id');
+    if (!tokenID || !tokenID.value) return null;
+    var fileEl = document.getElementById('file-id');
+    var path = '/api/download-url/' + encodeURIComponent(tokenID.value);
+    if (fileEl && fileEl.value) { path += '?f=' + encodeURIComponent(fileEl.value); }
+    return path;
+  }
+
+  function updateRemainingHint() {
+    if (!remainingEl) return;
+    if (usesLeft > 0) {
+      remainingEl.textContent = usesLeft + ' download' + (usesLeft !== 1 ? 's' : '') + ' remaining';
+      remainingEl.style.display = '';
+    } else {
+      remainingEl.textContent = 'No downloads remaining';
+      remainingEl.style.display = '';
+    }
+  }
+
+  function triggerDownload() {
+    if (usesLeft <= 0) return;
+    var dlUrlPath = buildDownloadPath();
+    if (!dlUrlPath) return;
+    fetch(dlUrlPath)
+      .then(function(r) {
+        if (!r.ok) throw new Error('not ok');
+        return r.json();
+      })
+      .then(function(data) {
+        if (data.url) {
+          usesLeft--;
+          updateRemainingHint();
+          if (link) {
+            link.href = data.url;
+            link.style.display = '';
+            if (hintEl) hintEl.style.display = '';
+          }
+          window.location.href = data.url;
+          if (usesLeft <= 0 && link) {
+            link.classList.add('disabled');
+            link.style.pointerEvents = 'none';
+          }
+        }
+      })
+      .catch(function() {
+        var errEl = document.getElementById('download-error');
+        if (errEl) errEl.style.display = '';
+      });
+  }
+
   function tick(){
     if (stopped) return;
-    // If the interstitial elements are no longer in the DOM (HTMX swapped the
-    // page), or the user navigated away via back button, abort.
     if (!document.getElementById('countdown') && !document.getElementById('countdown-ext')) { stop(); return; }
     seconds -= 1;
     if (el) { el.textContent = String(seconds); }
     if (seconds <= 0) {
       stop();
       if (paid) {
-        // Paid: redirect immediately (URL already in href)
         if (link && link.href) { window.location.href = link.href; }
       } else {
-        // Free: fetch download URL from API
-        var tokenID = document.getElementById('token-id');
-        if (!tokenID || !tokenID.value) return;
-        fetch('/api/download-url/' + encodeURIComponent(tokenID.value))
-          .then(function(r) {
-            if (!r.ok) throw new Error('not ok');
-            return r.json();
-          })
-          .then(function(data) {
-            if (data.url && link) {
-              link.href = data.url;
-              link.style.display = '';
-              window.location.href = data.url;
-            }
-          })
-          .catch(function() {
-            var errEl = document.getElementById('download-error');
-            if (errEl) errEl.style.display = '';
-          });
+        triggerDownload();
       }
     } else {
       timerId = setTimeout(tick, 1000);
@@ -97,9 +133,12 @@
   }
   timerId = setTimeout(tick, 1000);
 
-  // Stop timer when user clicks the manual download link
-  if (link) {
-    link.addEventListener('click', function() { stop(); });
+  if (link && !paid) {
+    link.addEventListener('click', function(ev) {
+      ev.preventDefault();
+      if (usesLeft <= 0) return;
+      triggerDownload();
+    });
   }
 
   // Stop timer when HTMX navigates away (user clicks back or another link)

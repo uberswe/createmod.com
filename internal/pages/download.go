@@ -75,11 +75,6 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 			return e.String(http.StatusNotFound, "schematic not found")
 		}
 
-		// Block site download for paid schematics
-		if s.Paid {
-			return e.String(http.StatusForbidden, "This schematic is paid; please use the external link on the schematic page.")
-		}
-
 		// Block download for rejected or deleted schematics
 		if s.ModerationState == store.ModerationRejected || s.ModerationState == store.ModerationDeleted {
 			return e.String(http.StatusForbidden, "This schematic has been blocked and cannot be downloaded.")
@@ -87,6 +82,21 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 
 		// Increment download counter (best-effort, IP-deduped)
 		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
+
+		// Variation file download
+		if fileID := e.Request.URL.Query().Get("f"); fileID != "" {
+			sf, sfErr := appStore.SchematicFiles.GetByID(context.Background(), fileID)
+			if sfErr != nil || sf == nil || sf.SchematicID != s.ID {
+				return e.String(http.StatusNotFound, "variation file not found")
+			}
+			fileURL := fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(sf.Filename))
+			return e.Redirect(http.StatusFound, fileURL)
+		}
+
+		// Block site download for paid schematics (variations of paid schematics are still allowed above)
+		if s.Paid {
+			return e.String(http.StatusForbidden, "This schematic is paid; please use the external link on the schematic page.")
+		}
 
 		// Single file redirect
 		primary := strings.TrimSpace(s.SchematicFile)

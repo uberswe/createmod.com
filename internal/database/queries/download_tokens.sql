@@ -5,12 +5,12 @@ RETURNING *;
 
 -- name: ConsumeDownloadToken :one
 UPDATE download_tokens
-SET used = true
-WHERE token = $1 AND used = false AND expires_at > NOW()
+SET use_count = use_count + 1
+WHERE token = $1 AND use_count < 5 AND expires_at > NOW()
 RETURNING *;
 
 -- name: GetDownloadTokenByID :one
-SELECT * FROM download_tokens WHERE id = $1 AND used = false AND expires_at > NOW();
+SELECT * FROM download_tokens WHERE id = $1 AND use_count < 5 AND expires_at > NOW();
 
 -- name: CleanupExpiredDownloadTokens :exec
 DELETE FROM download_tokens WHERE expires_at < NOW() - INTERVAL '1 hour';

@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"time"
 
 	"createmod/internal/server"
@@ -23,6 +24,7 @@ type DownloadInterstitialData struct {
 	DefaultData
 	Name        string
 	TokenID     string
+	FileID      string
 	Paid        bool
 	ExternalURL string
 }
@@ -46,9 +48,19 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 		// Try to load schematic to determine if it's paid and already published
 		paid := false
 		external := ""
+		var schematic *store.Schematic
 		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && store.IsPublicState(s.ModerationState) && (s.Deleted == nil || s.Deleted.IsZero()) {
+			schematic = s
 			paid = s.Paid
 			external = s.ExternalURL
+		}
+
+		fileID := e.Request.PathValue("fileID")
+		if fileID != "" && schematic != nil {
+			sf, err := appStore.SchematicFiles.GetByID(context.Background(), fileID)
+			if err != nil || sf == nil || sf.SchematicID != schematic.ID {
+				return e.String(http.StatusNotFound, "variation file not found")
+			}
 		}
 
 		d := DownloadInterstitialData{}
@@ -58,15 +70,14 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 		d.NoIndex = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Name = name
+		d.FileID = fileID
 
-		if paid && external != "" {
-			// Paid: do not mint token; route to external interstitial
+		if paid && external != "" && fileID == "" {
 			d.Paid = true
 			d.ExternalURL = external
 			d.Title = i18n.T(d.Language, "Preparing External Link")
 			d.Description = i18n.T(d.Language, "page.download.external.description")
 		} else {
-			// Free: generate one-time token and store in PostgreSQL
 			token := randomHex(24)
 			dt := &store.DownloadToken{
 				Token:     token,
@@ -101,8 +112,12 @@ func DownloadURLHandler(appStore *store.Store) func(e *server.RequestEvent) erro
 			return e.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
 		}
 
+		dlURL := "/download/" + dt.Name + "?t=" + dt.Token
+		if f := e.Request.URL.Query().Get("f"); f != "" {
+			dlURL += "&f=" + url.QueryEscape(f)
+		}
 		return e.JSON(http.StatusOK, map[string]string{
-			"url": "/download/" + dt.Name + "?t=" + dt.Token,
+			"url": dlURL,
 		})
 	}
 }
