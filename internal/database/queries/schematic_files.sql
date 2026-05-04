@@ -1,14 +1,14 @@
 -- name: CreateSchematicFile :one
-INSERT INTO schematic_files (schematic_id, filename, original_name, size, mime_type)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, schematic_id, filename, original_name, size, mime_type, created, updated;
+INSERT INTO schematic_files (schematic_id, filename, original_name, size, mime_type, description)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, schematic_id, filename, original_name, size, mime_type, description, created, updated;
 
 -- name: GetSchematicFileByID :one
-SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
+SELECT id, schematic_id, filename, original_name, size, mime_type, description, created, updated
 FROM schematic_files WHERE id = $1;
 
 -- name: ListSchematicFilesBySchematicID :many
-SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
+SELECT id, schematic_id, filename, original_name, size, mime_type, description, created, updated
 FROM schematic_files
 WHERE schematic_id = $1
 ORDER BY created ASC;

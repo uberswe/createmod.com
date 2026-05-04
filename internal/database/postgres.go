@@ -3669,6 +3669,7 @@ func (sf *SchematicFileStoreImpl) Create(ctx context.Context, f *store.Schematic
 		OriginalName: f.OriginalName,
 		Size:         f.Size,
 		MimeType:     f.MimeType,
+		Description:  f.Description,
 	})
 	if err != nil {
 		return err
@@ -3689,6 +3690,7 @@ func (sf *SchematicFileStoreImpl) GetByID(ctx context.Context, id string) (*stor
 		SchematicID:  row.SchematicID,
 		Filename:     row.Filename,
 		OriginalName: row.OriginalName,
+		Description:  row.Description,
 		Size:         row.Size,
 		MimeType:     row.MimeType,
 		Created:      row.Created,
@@ -3708,6 +3710,7 @@ func (sf *SchematicFileStoreImpl) ListBySchematicID(ctx context.Context, schemat
 			SchematicID:  r.SchematicID,
 			Filename:     r.Filename,
 			OriginalName: r.OriginalName,
+			Description:  r.Description,
 			Size:         r.Size,
 			MimeType:     r.MimeType,
 			Created:      r.Created,

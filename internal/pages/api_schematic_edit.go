@@ -690,10 +690,16 @@ func SchematicFileAddHandler(
 			}
 		}
 
+		description := strings.TrimSpace(e.Request.FormValue("description"))
+		if len(description) > 200 {
+			description = description[:200]
+		}
+
 		sf := &store.SchematicFile{
 			SchematicID:  schematicID,
 			Filename:     s3Filename,
 			OriginalName: header.Filename,
+			Description:  description,
 			Size:         int64(len(data)),
 			MimeType:     "application/octet-stream",
 		}
@@ -706,6 +712,7 @@ func SchematicFileAddHandler(
 			"id":            sf.ID,
 			"filename":      sf.Filename,
 			"original_name": sf.OriginalName,
+			"description":   sf.Description,
 			"size":          sf.Size,
 		})
 	}

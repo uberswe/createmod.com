@@ -579,7 +579,7 @@ function deleteAdditionalFile(token, fileId, btn) {
                 </div>
                 <div class="mb-3">
                     <label class="form-label">{{ T .Language "Description" }}</label>
-                    <input type="text" id="add-file-description" class="form-control" placeholder="e.g. Compact version, Mirror variant...">
+                    <input type="text" id="add-file-description" class="form-control" placeholder="e.g. Compact version, Mirror variant..." maxlength="200">
                 </div>
                 <div id="add-file-error" class="alert alert-danger" style="display:none;" role="alert"></div>
             </div>

@@ -374,6 +374,7 @@ type SchematicFile struct {
 	MimeType     string    `json:"mime_type"`
 	Created      time.Time `json:"created"`
 	Updated      time.Time `json:"updated"`
+	Description  string    `json:"description"`
 }
 
 type SchematicRating struct {
