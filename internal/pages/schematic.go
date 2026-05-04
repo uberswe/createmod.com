@@ -75,10 +75,9 @@ type SchematicData struct {
 	// ScheduledFor is set when the schematic is scheduled for future publication and the viewer is the author.
 	ScheduledFor *time.Time
 	// Translation fields
-	IsTranslated            bool
-	OriginalLanguage        string
-	ShowingOriginal         bool
-	ShowingOriginalComments bool
+	IsTranslated     bool
+	OriginalLanguage string
+	ShowingOriginal  bool
 	// Moderation chat fields
 	ModerationChatEnabled bool
 	ModerationMessages    []models.ModerationChatMessage
@@ -151,9 +150,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 		d.SubCategory = "Schematic"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-		commentShowOriginal := e.Request.URL.Query().Get("comments") == "original"
-		d.ShowingOriginalComments = commentShowOriginal
-		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID, translationService, cacheService, d.Language, commentShowOriginal)
+		d.Comments = findSchematicCommentsFromStore(appStore, d.Schematic.ID, translationService, cacheService, d.Language)
 		authorID := ""
 		if d.Schematic.Author != nil {
 			authorID = d.Schematic.Author.ID
@@ -869,9 +866,10 @@ func findAuthorSchematicsFromStore(appStore *store.Store, cacheService *cache.Se
 
 // findSchematicCommentsFromStore returns approved comments for a schematic,
 // using the store which already joins user info.
-// When targetLang is non-empty and showOriginal is false, comment content is
-// replaced with the translated version (if available) and IsTranslated is set.
-func findSchematicCommentsFromStore(appStore *store.Store, schematicID string, translationSvc *translation.Service, cacheService *cache.Service, targetLang string, showOriginal bool) []models.Comment {
+// When targetLang is non-empty, comment content is replaced with the
+// translated version (if available and different from the original)
+// and IsTranslated is set. OriginalContent preserves the pre-translation text.
+func findSchematicCommentsFromStore(appStore *store.Store, schematicID string, translationSvc *translation.Service, cacheService *cache.Service, targetLang string) []models.Comment {
 	ctx := stdctx.Background()
 	storeComments, err := appStore.Comments.ListBySchematic(ctx, schematicID)
 	if err != nil {
@@ -951,16 +949,24 @@ func findSchematicCommentsFromStore(appStore *store.Store, schematicID string, t
 		}
 	}
 
-	// Apply translations if viewer's language differs from English and not showing original
-	if translationSvc != nil && cacheService != nil && targetLang != "" && !showOriginal {
+	// Apply translations when a translation exists and differs from the original.
+	if translationSvc != nil && cacheService != nil && targetLang != "" {
+		originalContent := make(map[string]string, len(storeComments))
+		for _, sc := range storeComments {
+			originalContent[sc.ID] = sc.Content
+		}
 		transSanitizer := htmlsanitizer.NewHTMLSanitizer()
 		for i := range comments {
 			ct := translationSvc.GetCommentTranslation(cacheService, comments[i].ID, targetLang)
 			if ct != nil && ct.Content != "" {
+				if ct.Content == originalContent[comments[i].ID] {
+					continue
+				}
 				sanitized, sErr := transSanitizer.SanitizeString(ct.Content)
 				if sErr != nil {
 					sanitized = template.HTMLEscapeString(ct.Content)
 				}
+				comments[i].OriginalContent = comments[i].Content
 				comments[i].Content = template.HTML(sanitized)
 				comments[i].IsTranslated = true
 			}

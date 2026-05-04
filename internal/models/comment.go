@@ -16,6 +16,7 @@ type Comment struct {
 	AuthorAvatar    string
 	Indent          int
 	Content         template.HTML
+	OriginalContent template.HTML
 	Approved        bool
 	ParentID        string
 	IsTranslated    bool
