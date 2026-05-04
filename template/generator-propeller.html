@@ -68,6 +68,16 @@
                             </select>
                         </div>
                         <div class="mb-2">
+                            <label class="form-label mb-0">Rotation: <span id="val-rotation">0</span>&deg;</label>
+                            <input type="range" class="form-range gen-param" id="param-rotation" min="0" max="360" value="0" step="1">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-check form-switch mb-0">
+                                <input class="form-check-input gen-param" type="checkbox" id="param-vertical">
+                                <span class="form-check-label">Vertical</span>
+                            </label>
+                        </div>
+                        <div class="mb-2">
                             <label class="form-label mb-0">Blade Color</label>
                             <select class="form-select form-select-sm gen-param" id="param-bladeColor">
                                 <option value="white" selected>White</option>
@@ -160,7 +170,9 @@
       swept:         document.getElementById('param-swept').checked,
       airfoilShape:  document.getElementById('param-airfoilShape').value,
       bladeMaterial: document.getElementById('param-bladeMaterial').value,
-      bladeColor:    document.getElementById('param-bladeColor').value
+      bladeColor:    document.getElementById('param-bladeColor').value,
+      rotation:      parseFloat(document.getElementById('param-rotation').value),
+      orientation:   document.getElementById('param-vertical').checked ? 'vertical' : 'horizontal'
     };
   }
 
@@ -179,6 +191,9 @@
     document.getElementById('param-airfoilShape').value = p.airfoilShape;
     if (p.bladeMaterial) document.getElementById('param-bladeMaterial').value = p.bladeMaterial;
     if (p.bladeColor) document.getElementById('param-bladeColor').value = p.bladeColor;
+    document.getElementById('param-rotation').value = p.rotation || 0;
+    document.getElementById('val-rotation').textContent = p.rotation || 0;
+    document.getElementById('param-vertical').checked = p.orientation === 'vertical';
   }
 
   function updateLabels() {
@@ -187,6 +202,7 @@
     document.getElementById('val-rootChord').textContent = document.getElementById('param-rootChord').value;
     document.getElementById('val-tipChord').textContent = document.getElementById('param-tipChord').value;
     document.getElementById('val-sweepDegrees').textContent = document.getElementById('param-sweepDegrees').value;
+    document.getElementById('val-rotation').textContent = document.getElementById('param-rotation').value;
   }
 
   function updateShareURLs() {
