@@ -235,6 +235,7 @@ var LangZhHans = map[string]string{
 
 	// ── Upload Preview ──
 	"Additional Files":                                           "附加文件",
+	"Variations":                                                 "变体",
 	"Add Variation":                                              "添加变体",
 	"No additional files yet.":                                   "暂无附加文件。",
 	"Download Schematic":                                         "下载蓝图",

@@ -235,6 +235,7 @@ var LangES = map[string]string{
 
 	// -- Upload Preview --
 	"Additional Files":                          "Archivos adicionales",
+	"Variations":                                "Variaciones",
 	"Add Variation":                             "Agregar variacion",
 	"No additional files yet.":                  "Aun no hay archivos adicionales.",
 	"Download Schematic":                        "Descargar esquema",

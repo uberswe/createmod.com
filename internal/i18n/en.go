@@ -234,6 +234,7 @@ var LangEN = map[string]string{
 
 	// ── Upload Preview ──
 	"Additional Files":                          "Additional Files",
+	"Variations":                                "Variations",
 	"Add Variation":                             "Add Variation",
 	"No additional files yet.":                  "No additional files yet.",
 	"Download Schematic":                        "Download Schematic",

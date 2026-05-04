@@ -834,6 +834,7 @@ type SchematicFile struct {
 // SchematicFileStore manages additional files for published schematics.
 type SchematicFileStore interface {
 	Create(ctx context.Context, f *SchematicFile) error
+	GetByID(ctx context.Context, id string) (*SchematicFile, error)
 	ListBySchematicID(ctx context.Context, schematicID string) ([]SchematicFile, error)
 	Delete(ctx context.Context, id string) error
 	DeleteBySchematicID(ctx context.Context, schematicID string) error

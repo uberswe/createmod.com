@@ -3643,6 +3643,23 @@ func (sf *SchematicFileStoreImpl) Create(ctx context.Context, f *store.Schematic
 	return nil
 }
 
+func (sf *SchematicFileStoreImpl) GetByID(ctx context.Context, id string) (*store.SchematicFile, error) {
+	row, err := sf.q.GetSchematicFileByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.SchematicFile{
+		ID:           row.ID,
+		SchematicID:  row.SchematicID,
+		Filename:     row.Filename,
+		OriginalName: row.OriginalName,
+		Size:         row.Size,
+		MimeType:     row.MimeType,
+		Created:      row.Created,
+		Updated:      row.Updated,
+	}, nil
+}
+
 func (sf *SchematicFileStoreImpl) ListBySchematicID(ctx context.Context, schematicID string) ([]store.SchematicFile, error) {
 	rows, err := sf.q.ListSchematicFilesBySchematicID(ctx, schematicID)
 	if err != nil {

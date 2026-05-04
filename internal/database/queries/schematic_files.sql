@@ -3,6 +3,10 @@ INSERT INTO schematic_files (schematic_id, filename, original_name, size, mime_t
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id, schematic_id, filename, original_name, size, mime_type, created, updated;
 
+-- name: GetSchematicFileByID :one
+SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
+FROM schematic_files WHERE id = $1;
+
 -- name: ListSchematicFilesBySchematicID :many
 SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
 FROM schematic_files
