@@ -134,6 +134,7 @@ type Querier interface {
 	GetSchematicByName(ctx context.Context, name string) (Schematic, error)
 	GetSchematicCategoryIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicDownloadCount(ctx context.Context, schematicID string) (int32, error)
+	GetSchematicFileByID(ctx context.Context, id string) (SchematicFile, error)
 	GetSchematicRating(ctx context.Context, schematicID string) (GetSchematicRatingRow, error)
 	GetSchematicTagIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicTranslation(ctx context.Context, arg GetSchematicTranslationParams) (SchematicTranslation, error)

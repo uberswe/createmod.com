@@ -619,3 +619,147 @@ func computeSchematicDiff(prev map[string]any, newSchem *store.Schematic) []stri
 
 	return changed
 }
+
+// SchematicFileAddHandler handles POST /api/schematics/{id}/files to upload
+// an additional .nbt variation file for a published schematic.
+func SchematicFileAddHandler(
+	storageSvc *storage.Service,
+	appStore *store.Store,
+) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		userID := authenticatedUserID(e)
+		if userID == "" {
+			return e.UnauthorizedError("authentication required", nil)
+		}
+
+		schematicID := e.Request.PathValue("id")
+		if schematicID == "" {
+			return e.BadRequestError("schematic id is required", nil)
+		}
+
+		ctx := context.Background()
+		schem, err := appStore.Schematics.GetByID(ctx, schematicID)
+		if err != nil || schem == nil {
+			return e.NotFoundError("schematic not found", nil)
+		}
+		if schem.AuthorID != userID {
+			return e.ForbiddenError("you are not the author of this schematic", nil)
+		}
+
+		if err := e.Request.ParseMultipartForm(maxUploadSize + 1<<20); err != nil {
+			return e.BadRequestError("invalid form data", nil)
+		}
+
+		file, header, fileErr := e.Request.FormFile("file")
+		if fileErr != nil || header == nil {
+			return e.BadRequestError("file is required", nil)
+		}
+		defer func() { _ = file.Close() }()
+
+		if !strings.HasSuffix(strings.ToLower(header.Filename), ".nbt") {
+			return e.BadRequestError("only .nbt files are allowed", nil)
+		}
+		if header.Size > maxUploadSize {
+			return e.BadRequestError("file too large (max 10MB)", nil)
+		}
+
+		data, readErr := io.ReadAll(io.LimitReader(file, maxUploadSize+1))
+		if readErr != nil {
+			return e.InternalServerError("failed to read file", nil)
+		}
+		if int64(len(data)) > maxUploadSize {
+			return e.BadRequestError("file too large (max 10MB)", nil)
+		}
+
+		if ok, reason := nbtparser.Validate(data); !ok {
+			msg := "invalid NBT file"
+			if reason != "" {
+				msg += ": " + reason
+			}
+			return e.BadRequestError(msg, nil)
+		}
+
+		s3Filename := schematicID + "_" + sanitizeFilename(header.Filename)
+		if storageSvc != nil {
+			if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, s3Filename, data, "application/octet-stream"); uploadErr != nil {
+				slog.Error("schematic file add: failed to upload to S3", "error", uploadErr, "id", schematicID)
+				return e.InternalServerError("failed to store file", nil)
+			}
+		}
+
+		sf := &store.SchematicFile{
+			SchematicID:  schematicID,
+			Filename:     s3Filename,
+			OriginalName: header.Filename,
+			Size:         int64(len(data)),
+			MimeType:     "application/octet-stream",
+		}
+		if err := appStore.SchematicFiles.Create(ctx, sf); err != nil {
+			slog.Error("schematic file add: failed to create record", "error", err, "id", schematicID)
+			return e.InternalServerError("failed to save file record", nil)
+		}
+
+		return e.JSON(http.StatusOK, map[string]any{
+			"id":            sf.ID,
+			"filename":      sf.Filename,
+			"original_name": sf.OriginalName,
+			"size":          sf.Size,
+		})
+	}
+}
+
+// SchematicFileDeleteHandler handles DELETE /api/schematics/{id}/files/{fileID}
+// to remove an additional variation file from a published schematic.
+func SchematicFileDeleteHandler(
+	storageSvc *storage.Service,
+	appStore *store.Store,
+) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		userID := authenticatedUserID(e)
+		if userID == "" {
+			return e.UnauthorizedError("authentication required", nil)
+		}
+
+		schematicID := e.Request.PathValue("id")
+		fileID := e.Request.PathValue("fileID")
+		if schematicID == "" || fileID == "" {
+			return e.BadRequestError("schematic id and file id are required", nil)
+		}
+
+		ctx := context.Background()
+		schem, err := appStore.Schematics.GetByID(ctx, schematicID)
+		if err != nil || schem == nil {
+			return e.NotFoundError("schematic not found", nil)
+		}
+		if schem.AuthorID != userID {
+			return e.ForbiddenError("you are not the author of this schematic", nil)
+		}
+
+		sf, err := appStore.SchematicFiles.GetByID(ctx, fileID)
+		if err != nil || sf == nil {
+			return e.NotFoundError("file not found", nil)
+		}
+		if sf.SchematicID != schematicID {
+			return e.ForbiddenError("file does not belong to this schematic", nil)
+		}
+
+		if storageSvc != nil {
+			if delErr := storageSvc.Delete(ctx, s3CollectionSchematics, schematicID, sf.Filename); delErr != nil {
+				slog.Warn("schematic file delete: failed to delete from S3", "error", delErr, "id", schematicID, "file", sf.Filename)
+			}
+		}
+
+		if err := appStore.SchematicFiles.Delete(ctx, fileID); err != nil {
+			slog.Error("schematic file delete: failed to delete record", "error", err, "id", fileID)
+			return e.InternalServerError("failed to delete file", nil)
+		}
+
+		return e.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}
+}

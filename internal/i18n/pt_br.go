@@ -235,6 +235,7 @@ var LangPtBR = map[string]string{
 
 	// ── Upload Preview ──
 	"Additional Files":                                                "Arquivos Adicionais",
+	"Variations":                                                      "Variações",
 	"Add Variation":                                                   "Adicionar Variacao",
 	"No additional files yet.":                                        "Nenhum arquivo adicional ainda.",
 	"Download Schematic":                                              "Baixar Esquematico",

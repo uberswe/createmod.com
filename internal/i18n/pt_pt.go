@@ -235,6 +235,7 @@ var LangPtPT = map[string]string{
 
 	// ── Upload Preview ──
 	"Additional Files":                                              "Ficheiros adicionais",
+	"Variations":                                                    "Variantes",
 	"Add Variation":                                                 "Adicionar variante",
 	"No additional files yet.":                                      "Ainda sem ficheiros adicionais.",
 	"Download Schematic":                                            "Descarregar esquema",

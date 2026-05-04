@@ -29,6 +29,7 @@ type EditSchematicData struct {
 	TagsWithSelected   []SchematicTagWithSelected
 	CreateModVersionId string
 	MinecraftVersionId string
+	AdditionalFiles    []store.SchematicFile
 }
 
 type SchematicTagWithSelected struct {
@@ -97,6 +98,11 @@ func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry
 				})
 			}
 		}
+
+		if additionalFiles, afErr := appStore.SchematicFiles.ListBySchematicID(context.Background(), storeSchematic.ID); afErr == nil {
+			d.AdditionalFiles = additionalFiles
+		}
+
 		html, err := registry.LoadFiles(editSchematicTemplates...).Render(d)
 		if err != nil {
 			return err

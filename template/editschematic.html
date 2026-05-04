@@ -117,6 +117,30 @@
                                             </div>
                                             <input type="file" id="edit-image-input" accept="image/*" multiple style="display:none;">
                                         </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Variations</label>
+                                            <small class="form-hint mb-2 d-block text-secondary">Add additional .nbt files as variations or sets for this schematic.</small>
+                                            <div id="variations-list">
+                                                {{ range .AdditionalFiles }}
+                                                <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-file-id="{{ .ID }}">
+                                                    <span>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /></svg>
+                                                        {{ .OriginalName }}
+                                                    </span>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger delete-variation-file-btn" data-file-id="{{ .ID }}">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
+                                                    </button>
+                                                </div>
+                                                {{ end }}
+                                            </div>
+                                            <div class="border rounded p-3 mt-2">
+                                                <div class="mb-2">
+                                                    <input type="file" id="variation-file-input" class="form-control" accept=".nbt">
+                                                </div>
+                                                <div id="variation-upload-error" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
+                                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-variation-btn">Add Variation</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="row">
@@ -757,6 +781,128 @@
             div.style.display = "block";
             div.innerText = "There were errors, please check above";
             btn.parentNode.insertAdjacentElement("beforeend", div);
+            btn.disabled = false;
+        }
+    });
+
+    // --- Variation file management ---
+    function createVariationRow(id, originalName) {
+        var row = document.createElement('div');
+        row.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
+        row.setAttribute('data-file-id', id);
+
+        var span = document.createElement('span');
+        var icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'icon me-1');
+        icon.setAttribute('width', '24');
+        icon.setAttribute('height', '24');
+        icon.setAttribute('viewBox', '0 0 24 24');
+        icon.setAttribute('stroke-width', '2');
+        icon.setAttribute('stroke', 'currentColor');
+        icon.setAttribute('fill', 'none');
+        icon.setAttribute('stroke-linecap', 'round');
+        icon.setAttribute('stroke-linejoin', 'round');
+        ['M0 0h24v24H0z', 'M14 3v4a1 1 0 0 0 1 1h4', 'M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z'].forEach(function(d, i) {
+            var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            p.setAttribute('d', d);
+            if (i === 0) { p.setAttribute('stroke', 'none'); p.setAttribute('fill', 'none'); }
+            icon.appendChild(p);
+        });
+        span.appendChild(icon);
+        span.appendChild(document.createTextNode(originalName));
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-sm btn-outline-danger delete-variation-file-btn';
+        delBtn.setAttribute('data-file-id', id);
+        var delIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        delIcon.setAttribute('class', 'icon');
+        delIcon.setAttribute('width', '24');
+        delIcon.setAttribute('height', '24');
+        delIcon.setAttribute('viewBox', '0 0 24 24');
+        delIcon.setAttribute('stroke-width', '2');
+        delIcon.setAttribute('stroke', 'currentColor');
+        delIcon.setAttribute('fill', 'none');
+        delIcon.setAttribute('stroke-linecap', 'round');
+        delIcon.setAttribute('stroke-linejoin', 'round');
+        ['M0 0h24v24H0z', 'M4 7l16 0', 'M10 11l0 6', 'M14 11l0 6',
+         'M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12',
+         'M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3'].forEach(function(d, i) {
+            var dp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            dp.setAttribute('d', d);
+            if (i === 0) { dp.setAttribute('stroke', 'none'); dp.setAttribute('fill', 'none'); }
+            delIcon.appendChild(dp);
+        });
+        delBtn.appendChild(delIcon);
+
+        row.appendChild(span);
+        row.appendChild(delBtn);
+        return row;
+    }
+
+    document.getElementById('add-variation-btn').addEventListener('click', async function() {
+        var varFileInput = document.getElementById('variation-file-input');
+        var errorDiv = document.getElementById('variation-upload-error');
+        errorDiv.style.display = 'none';
+
+        if (!varFileInput.files || varFileInput.files.length === 0) {
+            errorDiv.textContent = 'Please select an .nbt file';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        var varFile = varFileInput.files[0];
+        if (!varFile.name.toLowerCase().endsWith('.nbt')) {
+            errorDiv.textContent = 'Only .nbt files are allowed';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (varFile.size > 10 * 1024 * 1024) {
+            errorDiv.textContent = 'File too large (max 10MB)';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        var fd = new FormData();
+        fd.append('file', varFile);
+
+        this.disabled = true;
+        try {
+            var resp = await fetch('/api/schematics/' + schematicID + '/files', { method: 'POST', body: fd });
+            if (!resp.ok) {
+                var errText = await resp.text().catch(function(){ return ''; });
+                errorDiv.textContent = errText ? errText.trim() : 'Upload failed';
+                errorDiv.style.display = 'block';
+                this.disabled = false;
+                return;
+            }
+            var respData = await resp.json();
+            document.getElementById('variations-list').appendChild(createVariationRow(respData.id, respData.original_name));
+            varFileInput.value = '';
+        } catch(err) {
+            errorDiv.textContent = 'Upload failed';
+            errorDiv.style.display = 'block';
+        }
+        this.disabled = false;
+    });
+
+    document.getElementById('variations-list').addEventListener('click', async function(ev) {
+        var btn = ev.target.closest('.delete-variation-file-btn');
+        if (!btn) return;
+        var fileId = btn.getAttribute('data-file-id');
+        if (!fileId) return;
+        btn.disabled = true;
+        try {
+            var resp = await fetch('/api/schematics/' + schematicID + '/files/' + fileId, { method: 'DELETE' });
+            if (resp.ok) {
+                var row = btn.closest('[data-file-id]');
+                if (row) row.remove();
+            } else {
+                alert('Failed to delete file');
+                btn.disabled = false;
+            }
+        } catch(err) {
+            alert('Failed to delete file');
             btn.disabled = false;
         }
     });

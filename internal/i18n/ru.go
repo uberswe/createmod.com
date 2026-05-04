@@ -235,6 +235,7 @@ var LangRU = map[string]string{
 
 	// ── Upload Preview ──
 	"Additional Files":                          "Дополнительные файлы",
+	"Variations":                                "Вариации",
 	"Add Variation":                             "Добавить вариацию",
 	"No additional files yet.":                  "Дополнительных файлов пока нет.",
 	"Download Schematic":                        "Скачать схему",

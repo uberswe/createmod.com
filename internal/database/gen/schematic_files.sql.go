@@ -63,6 +63,27 @@ func (q *Queries) DeleteSchematicFilesBySchematicID(ctx context.Context, schemat
 	return err
 }
 
+const getSchematicFileByID = `-- name: GetSchematicFileByID :one
+SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
+FROM schematic_files WHERE id = $1
+`
+
+func (q *Queries) GetSchematicFileByID(ctx context.Context, id string) (SchematicFile, error) {
+	row := q.db.QueryRow(ctx, getSchematicFileByID, id)
+	var i SchematicFile
+	err := row.Scan(
+		&i.ID,
+		&i.SchematicID,
+		&i.Filename,
+		&i.OriginalName,
+		&i.Size,
+		&i.MimeType,
+		&i.Created,
+		&i.Updated,
+	)
+	return i, err
+}
+
 const listSchematicFilesBySchematicID = `-- name: ListSchematicFilesBySchematicID :many
 SELECT id, schematic_id, filename, original_name, size, mime_type, created, updated
 FROM schematic_files

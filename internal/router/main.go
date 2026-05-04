@@ -559,6 +559,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/schematics/{id}/variations/{variationID}", Adapt(pages.DeleteVariationHandler(p.AppStore)))
 	r.Get("/api/schematics/{id}/variations", Adapt(pages.ListVariationsHandler(p.AppStore)))
 	r.Get("/schematics/{name}/guide", Adapt(pages.SchematicGuideHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/api/schematics/{id}/files", Adapt(pages.SchematicFileAddHandler(p.StorageService, p.AppStore)))
+	r.Delete("/api/schematics/{id}/files/{fileID}", Adapt(pages.SchematicFileDeleteHandler(p.StorageService, p.AppStore)))
 	r.Get("/schematics/{name}/edit", Adapt(pages.EditSchematicHandler(p.CacheService, registry, p.AppStore)))
 	r.Get("/schematics/{name}/stats", Adapt(pages.SchematicStatsHandler(registry, p.CacheService, p.AppStore)))
 	// Search autocomplete
