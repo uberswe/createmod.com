@@ -126,6 +126,7 @@ type DownloadToken struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	Used      bool      `json:"used"`
 	Created   time.Time `json:"created"`
+	UseCount  int32     `json:"use_count"`
 }
 
 type ExternalAuth struct {

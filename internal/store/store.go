@@ -735,6 +735,7 @@ type DownloadToken struct {
 	Name      string // schematic name
 	ExpiresAt time.Time
 	Used      bool
+	UseCount  int
 	Created   time.Time
 }
 

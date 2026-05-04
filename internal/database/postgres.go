@@ -3759,6 +3759,7 @@ func (dt *DownloadTokenStoreImpl) GetByID(ctx context.Context, id string) (*stor
 		Name:      row.Name,
 		ExpiresAt: row.ExpiresAt,
 		Used:      row.Used,
+		UseCount:  int(row.UseCount),
 		Created:   row.Created,
 	}, nil
 }
@@ -3774,6 +3775,7 @@ func (dt *DownloadTokenStoreImpl) Consume(ctx context.Context, token string) (*s
 		Name:      row.Name,
 		ExpiresAt: row.ExpiresAt,
 		Used:      row.Used,
+		UseCount:  int(row.UseCount),
 		Created:   row.Created,
 	}, nil
 }
