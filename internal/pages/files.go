@@ -64,14 +64,19 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 
 		// Check If-None-Match for conditional requests
 		if match := e.Request.Header.Get("If-None-Match"); match != "" && match == etag {
+			e.Response.Header().Set("Cache-Control", "public, max-age=31536000")
 			e.Response.WriteHeader(http.StatusNotModified)
 			return nil
 		}
 
-		// Set long-lived cache headers (files are immutable by content hash)
-		e.Response.Header().Set("Cache-Control", "public, max-age=31536000")
-
 		contentType := detectContentType(filename)
+
+		// setCacheHeaders sets long-lived cache headers on successful responses only.
+		// Placing these on error responses (e.g. 404) causes CDNs like Cloudflare to
+		// cache the error for up to a year.
+		setCacheHeaders := func() {
+			e.Response.Header().Set("Cache-Control", "public, max-age=31536000")
+		}
 
 		// No thumbnail requested — stream original file
 		if thumbW == 0 && thumbH == 0 {
@@ -81,6 +86,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			}
 			defer reader.Close()
 
+			setCacheHeaders()
 			e.Response.Header().Set("Content-Type", contentType)
 			return e.Stream(http.StatusOK, contentType, reader)
 		}
@@ -98,6 +104,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 				if isImageFile(filename) {
 					thumbContentType = "image/webp"
 				}
+				setCacheHeaders()
 				e.Response.Header().Set("Content-Type", thumbContentType)
 				return e.Stream(http.StatusOK, thumbContentType, reader)
 			}
@@ -112,6 +119,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 
 		// If not an image file, serve original
 		if !isImageFile(filename) {
+			setCacheHeaders()
 			e.Response.Header().Set("Content-Type", contentType)
 			return e.Stream(http.StatusOK, contentType, reader)
 		}
@@ -126,6 +134,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		srcImage, _, err := image.Decode(bytes.NewReader(originalData))
 		if err != nil {
 			// If decoding fails (e.g., unsupported format), serve original
+			setCacheHeaders()
 			e.Response.Header().Set("Content-Type", contentType)
 			return e.Blob(http.StatusOK, contentType, originalData)
 		}
@@ -142,6 +151,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			Format:       imgconv.WEBP,
 			EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
 		}); err != nil {
+			setCacheHeaders()
 			e.Response.Header().Set("Content-Type", contentType)
 			return e.Blob(http.StatusOK, contentType, originalData)
 		}
@@ -158,6 +168,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		}()
 
 		// Serve the thumbnail
+		setCacheHeaders()
 		e.Response.Header().Set("Content-Type", thumbContentType)
 		return e.Blob(http.StatusOK, thumbContentType, thumbData)
 	}
