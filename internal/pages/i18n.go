@@ -11,7 +11,6 @@ var supportedLanguages = map[string]struct{}{
 	"pt-BR":   {},
 	"pt-PT":   {},
 	"es":      {},
-	"de":      {},
 	"pl":      {},
 	"ru":      {},
 	"zh-Hans": {},
@@ -45,7 +44,7 @@ func normalizeFromAcceptLanguage(header string) string {
 	case strings.HasPrefix(h, "es"):
 		return "es"
 	case strings.HasPrefix(h, "de"):
-		return "de"
+		return "en"
 	case strings.HasPrefix(h, "pl"):
 		return "pl"
 	case strings.HasPrefix(h, "ru"):

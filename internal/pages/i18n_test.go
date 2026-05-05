@@ -13,7 +13,7 @@ func Test_IsSupportedLanguage(t *testing.T) {
 		"pt-BR":   true,
 		"pt-PT":   true,
 		"es":      true,
-		"de":      true,
+		"de":      false,
 		"pl":      true,
 		"ru":      true,
 		"zh-Hans": true,
@@ -34,7 +34,7 @@ func Test_NormalizeFromAcceptLanguage(t *testing.T) {
 		{"pt", "pt-PT"},
 		{"pt-xx", "pt-PT"},
 		{"es-ES,es;q=0.9", "es"},
-		{"DE-de", "de"},
+		{"DE-de", "en"},
 		{"pl-PL", "pl"},
 		{"ru-RU", "ru"},
 		{"zh-CN", "zh-Hans"},
@@ -51,9 +51,9 @@ func Test_NormalizeFromAcceptLanguage(t *testing.T) {
 func Test_PreferredLanguageFromRequest(t *testing.T) {
 	// Cookie takes precedence when supported
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.AddCookie(&http.Cookie{Name: "cm_lang", Value: "de"})
-	if got := preferredLanguageFromRequest(req); got != "de" {
-		t.Fatalf("preferredLanguageFromRequest with de cookie = %q; want de", got)
+	req.AddCookie(&http.Cookie{Name: "cm_lang", Value: "fr"})
+	if got := preferredLanguageFromRequest(req); got != "fr" {
+		t.Fatalf("preferredLanguageFromRequest with fr cookie = %q; want fr", got)
 	}
 
 	// Unsupported cookie falls back to English (no Accept-Language detection)

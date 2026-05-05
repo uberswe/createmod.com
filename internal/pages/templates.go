@@ -64,8 +64,6 @@ func NewTestRegistry() *server.Registry {
 				cc = "pt"
 			case "es":
 				cc = "es"
-			case "de":
-				cc = "de"
 			case "pl":
 				cc = "pl"
 			case "ru":
