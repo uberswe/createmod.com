@@ -293,7 +293,7 @@
                                             <div class="avatar-list avatar-list-stacked">
                                                 {{ range .Schematic.Categories }}
                                                 <a href="/schematics/category/{{ .Key }}">
-                                                    <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                    <span class="badge badge-outline text-blue">{{ T $.Language .Name }}</span>
                                                 </a>
                                                 {{ end }}
                                             </div>
@@ -352,7 +352,7 @@
                                             <div class="avatar-list avatar-list-stacked">
                                                 {{ range .Schematic.Tags }}
                                                 <a href="/search/?tag={{ .Key }}">
-                                                    <span class="badge badge-outline text-blue">{{ .Name }}</span>
+                                                    <span class="badge badge-outline text-blue">{{ T $.Language .Name }}</span>
                                                 </a>
                                                 {{ end }}
                                             </div>

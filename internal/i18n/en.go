@@ -761,6 +761,39 @@ var LangEN = map[string]string{
 	// ── Webhooks (settings) ──
 	"Webhooks": "Webhooks",
 
+	// ── Generators ──
+	"Generators":       "Generators",
+	"Propeller":        "Propeller",
+	"Airship Balloon":  "Airship Balloon",
+	"Ship Hull":        "Ship Hull",
+
+	// ── Categories & Tags (DB-stored names, translated via T fallback) ──
+	"Trains":       "Trains",
+	"Factories":    "Factories",
+	"Farms":        "Farms",
+	"Decoration":   "Decoration",
+	"Storage":      "Storage",
+	"Vehicles":     "Vehicles",
+	"Automation":   "Automation",
+	"Rail":         "Rail",
+	"Transport":    "Transport",
+	"Bridges":      "Bridges",
+	"Houses":       "Houses",
+	"Ships":        "Ships",
+	"Military":     "Military",
+	"Elevators":    "Elevators",
+	"Stations":     "Stations",
+	"Doors":        "Doors",
+	"Clocks":       "Clocks",
+	"Power":        "Power",
+	"Processing":   "Processing",
+	"Contraptions": "Contraptions",
+	"Aesthetic":    "Aesthetic",
+	"Utility":      "Utility",
+	"Defense":      "Defense",
+	"Misc":         "Misc",
+	"Cannons":      "Cannons",
+
 	// ── Block Modification ──
 	"modify_blocks":             "Modify Blocks",
 	"modify_blocks_description": "Replace or remove blocks in this schematic",
