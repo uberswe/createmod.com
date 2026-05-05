@@ -120,10 +120,10 @@ ORDER BY postdate DESC
 LIMIT $1 OFFSET $2;
 
 -- name: ListVersions :many
-SELECT * FROM createmod_versions ORDER BY version DESC;
+SELECT * FROM createmod_versions ORDER BY created DESC;
 
 -- name: ListMinecraftVersions :many
-SELECT * FROM minecraft_versions ORDER BY version DESC;
+SELECT * FROM minecraft_versions ORDER BY created DESC;
 
 -- name: GetMinecraftVersionByID :one
 SELECT id, version, created FROM minecraft_versions WHERE id = $1;
