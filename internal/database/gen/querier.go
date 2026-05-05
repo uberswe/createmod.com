@@ -28,6 +28,7 @@ type Querier interface {
 	CleanupExpiredSessions(ctx context.Context) error
 	ClearCollectionSchematics(ctx context.Context, collectionID string) error
 	ConsumeDownloadToken(ctx context.Context, token string) (DownloadToken, error)
+	CountAllTempUploads(ctx context.Context) (int64, error)
 	CountApprovedSchematics(ctx context.Context) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
@@ -185,6 +186,7 @@ type Querier interface {
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)
+	ListAllTempUploads(ctx context.Context, arg ListAllTempUploadsParams) ([]ListAllTempUploadsRow, error)
 	ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error)
 	ListApprovedSchematics(ctx context.Context, arg ListApprovedSchematicsParams) ([]Schematic, error)
 	ListApprovedSchematicsWithVideo(ctx context.Context, arg ListApprovedSchematicsWithVideoParams) ([]Schematic, error)

@@ -78,3 +78,15 @@ WHERE uploaded_by = '' AND created < $1;
 UPDATE temp_uploads SET processing = TRUE, updated = NOW()
 WHERE token = @token AND processing = FALSE
 RETURNING id;
+
+-- name: ListAllTempUploads :many
+SELECT id, token, uploaded_by, filename, description, size, checksum,
+       block_count, dim_x, dim_y, dim_z, mods, materials,
+       minecraft_version, createmod_version, nbt_s3_key, image_s3_key,
+       parsed_summary, created, updated
+FROM temp_uploads
+ORDER BY created DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountAllTempUploads :one
+SELECT COUNT(*) FROM temp_uploads;

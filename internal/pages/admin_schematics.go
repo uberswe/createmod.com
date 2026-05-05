@@ -41,9 +41,21 @@ type AdminSchematicItem struct {
 	Downloads        int
 }
 
+type AdminDraftItem struct {
+	Token      string
+	Filename   string
+	Uploader   string
+	DimX       int
+	DimY       int
+	DimZ       int
+	BlockCount int
+	Created    time.Time
+}
+
 type AdminSchematicsData struct {
 	DefaultData
 	Schematics []AdminSchematicItem
+	Drafts     []AdminDraftItem
 	Filter     string
 	Page       int
 	TotalPages int
@@ -83,7 +95,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 		if filter == "" {
 			filter = "pending"
 		}
-		if filter != "all" && filter != "pending" && filter != "published" && filter != "flagged" && filter != "rejected" && filter != "deleted" && filter != "private" {
+		if filter != "all" && filter != "pending" && filter != "published" && filter != "flagged" && filter != "rejected" && filter != "deleted" && filter != "private" && filter != "drafts" {
 			filter = "pending"
 		}
 
@@ -94,14 +106,78 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 		}
 		offset := (page - 1) * adminSchematicsPerPage
 
-		schematics, err := appStore.Schematics.ListForAdmin(ctx, filter, adminSchematicsPerPage, offset)
-		if err != nil {
-			return e.String(http.StatusInternalServerError, "failed to list schematics")
-		}
+		var items []AdminSchematicItem
+		var drafts []AdminDraftItem
+		var total int64
 
-		total, err := appStore.Schematics.CountForAdmin(ctx, filter)
-		if err != nil {
-			return e.String(http.StatusInternalServerError, "failed to count schematics")
+		if filter == "drafts" {
+			uploads, err := appStore.TempUploads.ListAll(ctx, adminSchematicsPerPage, offset)
+			if err != nil {
+				return e.String(http.StatusInternalServerError, "failed to list drafts")
+			}
+			total, err = appStore.TempUploads.CountAll(ctx)
+			if err != nil {
+				return e.String(http.StatusInternalServerError, "failed to count drafts")
+			}
+			drafts = make([]AdminDraftItem, 0, len(uploads))
+			for _, t := range uploads {
+				username := ""
+				if t.UploadedBy != "" {
+					u, err := appStore.Users.GetUserByID(ctx, t.UploadedBy)
+					if err == nil && u != nil {
+						username = u.Username
+					}
+				}
+				drafts = append(drafts, AdminDraftItem{
+					Token:      t.Token,
+					Filename:   t.Filename,
+					Uploader:   username,
+					DimX:       t.DimX,
+					DimY:       t.DimY,
+					DimZ:       t.DimZ,
+					BlockCount: t.BlockCount,
+					Created:    t.Created,
+				})
+			}
+		} else {
+			schematics, err := appStore.Schematics.ListForAdmin(ctx, filter, adminSchematicsPerPage, offset)
+			if err != nil {
+				return e.String(http.StatusInternalServerError, "failed to list schematics")
+			}
+			total, err = appStore.Schematics.CountForAdmin(ctx, filter)
+			if err != nil {
+				return e.String(http.StatusInternalServerError, "failed to count schematics")
+			}
+
+			ids := make([]string, len(schematics))
+			for i, s := range schematics {
+				ids[i] = s.ID
+			}
+			viewCounts, _ := appStore.ViewRatings.BatchGetViewCounts(ctx, ids)
+			downloadCounts, _ := appStore.ViewRatings.BatchGetDownloadCounts(ctx, ids)
+
+			items = make([]AdminSchematicItem, 0, len(schematics))
+			for _, s := range schematics {
+				username := ""
+				if s.AuthorID != "" {
+					u, err := appStore.Users.GetUserByID(ctx, s.AuthorID)
+					if err == nil && u != nil {
+						username = u.Username
+					}
+				}
+				items = append(items, AdminSchematicItem{
+					ID:               s.ID,
+					Title:            s.Title,
+					Name:             s.Name,
+					AuthorUsername:   username,
+					ModerationState:  s.ModerationState,
+					ModerationReason: s.ModerationReason,
+					Created:          s.Created,
+					FeaturedImage:    s.FeaturedImage,
+					Views:            viewCounts[s.ID],
+					Downloads:        downloadCounts[s.ID],
+				})
+			}
 		}
 
 		totalPages := int(total) / adminSchematicsPerPage
@@ -112,38 +188,9 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 			totalPages = 1
 		}
 
-		ids := make([]string, len(schematics))
-		for i, s := range schematics {
-			ids[i] = s.ID
-		}
-		viewCounts, _ := appStore.ViewRatings.BatchGetViewCounts(ctx, ids)
-		downloadCounts, _ := appStore.ViewRatings.BatchGetDownloadCounts(ctx, ids)
-
-		items := make([]AdminSchematicItem, 0, len(schematics))
-		for _, s := range schematics {
-			username := ""
-			if s.AuthorID != "" {
-				u, err := appStore.Users.GetUserByID(ctx, s.AuthorID)
-				if err == nil && u != nil {
-					username = u.Username
-				}
-			}
-			items = append(items, AdminSchematicItem{
-				ID:               s.ID,
-				Title:            s.Title,
-				Name:             s.Name,
-				AuthorUsername:   username,
-				ModerationState:  s.ModerationState,
-				ModerationReason: s.ModerationReason,
-				Created:          s.Created,
-				FeaturedImage:    s.FeaturedImage,
-				Views:            viewCounts[s.ID],
-				Downloads:        downloadCounts[s.ID],
-			})
-		}
-
 		d := AdminSchematicsData{
 			Schematics: items,
+			Drafts:     drafts,
 			Filter:     filter,
 			Page:       page,
 			TotalPages: totalPages,

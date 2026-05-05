@@ -10,7 +10,7 @@
           <div class="row align-items-center">
             <div class="col">
               <h2 class="page-title">Admin: Schematics</h2>
-              <div class="text-secondary">{{ .Total }} schematics matching filter</div>
+              <div class="text-secondary">{{ .Total }} {{ if eq .Filter "drafts" }}drafts{{ else }}schematics{{ end }} matching filter</div>
             </div>
           </div>
         </div>
@@ -36,10 +36,51 @@
                 <a class="nav-link{{ if eq .Filter "private" }} active{{ end }}" href="/admin/schematics?filter=private">Private</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "drafts" }} active{{ end }}" href="/admin/schematics?filter=drafts">Drafts</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link{{ if eq .Filter "all" }} active{{ end }}" href="/admin/schematics?filter=all">All</a>
               </li>
             </ul>
           </div>
+          {{ if eq .Filter "drafts" }}
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter text-nowrap">
+              <thead>
+                <tr>
+                  <th>Filename</th>
+                  <th>Uploader</th>
+                  <th>Dimensions</th>
+                  <th>Blocks</th>
+                  <th>Uploaded</th>
+                  <th class="w-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .Drafts}}
+                <tr>
+                  <td>
+                    <div class="text-truncate" style="max-width: 300px;" title="{{.Filename}}">{{.Filename}}</div>
+                  </td>
+                  <td>
+                    {{if .Uploader}}{{.Uploader}}{{else}}<span class="text-secondary">Unclaimed</span>{{end}}
+                  </td>
+                  <td class="text-secondary">{{.DimX}}x{{.DimY}}x{{.DimZ}}</td>
+                  <td>{{.BlockCount}}</td>
+                  <td>{{HumanDate .Created}}</td>
+                  <td>
+                    <a href="/u/{{.Token}}" class="btn btn-sm btn-outline-secondary" hx-boost="false">View</a>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="6" class="text-center text-secondary">No drafts found.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+          {{ else }}
           <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
               <thead>
@@ -106,6 +147,7 @@
               </tbody>
             </table>
           </div>
+          {{ end }}
         </div>
         {{if gt .TotalPages 1}}
         <div class="d-flex justify-content-center">

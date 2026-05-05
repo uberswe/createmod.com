@@ -856,6 +856,8 @@ type TempUploadStore interface {
 	Delete(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
 	ListByUser(ctx context.Context, userID string, limit int, offset int) ([]TempUpload, error)
+	ListAll(ctx context.Context, limit int, offset int) ([]TempUpload, error)
+	CountAll(ctx context.Context) (int64, error)
 	ListExpiredUnclaimed(ctx context.Context, olderThan time.Time, limit int) ([]TempUpload, error)
 	DeleteExpiredUnclaimed(ctx context.Context, olderThan time.Time) (int64, error)
 }
