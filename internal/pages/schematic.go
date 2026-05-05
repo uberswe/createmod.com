@@ -141,10 +141,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			Schematic: MapStoreSchematicToModel(appStore, *s, cacheService),
 		}
 		d.Populate(e)
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
-		d.Title = d.Schematic.Title
 		d.Slug = fmt.Sprintf("/schematics/%s", d.Schematic.Name)
-		d.Description = strip.StripTags(d.Schematic.Content)
 		if d.Schematic.FeaturedImage != "" {
 			d.Thumbnail = fmt.Sprintf("https://createmod.com/api/files/schematics/%s/%s", d.Schematic.ID, url.PathEscape(d.Schematic.FeaturedImage))
 		}
@@ -310,7 +307,6 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, detectedLang)
 			if t != nil && t.Title != "" {
 				d.Schematic.Title = t.Title
-				d.Title = t.Title
 				if t.Content != "" {
 					d.Schematic.Content = t.Content
 					sanitizedOrigContent, sanitizeErr := transSanitizer.SanitizeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
@@ -332,7 +328,6 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 				t := translationService.GetTranslationCached(cacheService, d.Schematic.ID, targetLang)
 				if t != nil && t.Title != "" {
 					d.Schematic.Title = t.Title
-					d.Title = t.Title
 					if t.Content != "" {
 						d.Schematic.Content = t.Content
 						sanitizedTransContent, sanitizeErr := transSanitizer.SanitizeString(strings.ReplaceAll(t.Content, "\n", "<br/>"))
@@ -346,8 +341,8 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			}
 		}
 
-		// Re-derive the OG description from the (possibly translated) content
-		// so that meta tags match the language of the page.
+		d.Title = d.Schematic.Title
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
 		d.Description = strip.StripTags(d.Schematic.Content)
 
 		// If the schematic has no featured image but has a YouTube video,
