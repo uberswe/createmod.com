@@ -84,3 +84,25 @@ UPDATE collections SET collage_url = $2 WHERE id = $1;
 SELECT id, slug, updated FROM collections
 WHERE deleted = '' AND published = true
 ORDER BY updated DESC;
+
+-- name: ListCollectionsForAdmin :many
+SELECT * FROM collections
+WHERE
+  CASE
+    WHEN @filter::text = 'published' THEN deleted = '' AND published = true
+    WHEN @filter::text = 'unpublished' THEN deleted = '' AND published = false
+    WHEN @filter::text = 'deleted' THEN deleted != ''
+    ELSE deleted = ''
+  END
+ORDER BY updated DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountCollectionsForAdmin :one
+SELECT COUNT(*) FROM collections
+WHERE
+  CASE
+    WHEN @filter::text = 'published' THEN deleted = '' AND published = true
+    WHEN @filter::text = 'unpublished' THEN deleted = '' AND published = false
+    WHEN @filter::text = 'deleted' THEN deleted != ''
+    ELSE deleted = ''
+  END;

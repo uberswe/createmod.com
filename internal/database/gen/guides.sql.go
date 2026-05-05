@@ -10,6 +10,23 @@ import (
 	"time"
 )
 
+const countGuidesForAdmin = `-- name: CountGuidesForAdmin :one
+SELECT COUNT(*) FROM guides
+WHERE
+  CASE
+    WHEN $1::text = 'active' THEN deleted IS NULL
+    WHEN $1::text = 'deleted' THEN deleted IS NOT NULL
+    ELSE true
+  END
+`
+
+func (q *Queries) CountGuidesForAdmin(ctx context.Context, filter string) (int64, error) {
+	row := q.db.QueryRow(ctx, countGuidesForAdmin, filter)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUserGuides = `-- name: CountUserGuides :one
 SELECT COUNT(*) FROM guides WHERE author_id = $1 AND deleted IS NULL
 `
@@ -100,6 +117,30 @@ func (q *Queries) GetGuideByID(ctx context.Context, id string) (Guide, error) {
 	return i, err
 }
 
+const getGuideByIDAdmin = `-- name: GetGuideByIDAdmin :one
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides WHERE id = $1
+`
+
+func (q *Queries) GetGuideByIDAdmin(ctx context.Context, id string) (Guide, error) {
+	row := q.db.QueryRow(ctx, getGuideByIDAdmin, id)
+	var i Guide
+	err := row.Scan(
+		&i.ID,
+		&i.AuthorID,
+		&i.Title,
+		&i.Description,
+		&i.Content,
+		&i.Slug,
+		&i.UploadLink,
+		&i.Created,
+		&i.Updated,
+		&i.Views,
+		&i.BannerUrl,
+		&i.Deleted,
+	)
+	return i, err
+}
+
 const getGuideBySlug = `-- name: GetGuideBySlug :one
 SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides WHERE slug = $1 AND deleted IS NULL
 `
@@ -144,6 +185,57 @@ type ListGuidesParams struct {
 
 func (q *Queries) ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide, error) {
 	rows, err := q.db.Query(ctx, listGuides, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Guide{}
+	for rows.Next() {
+		var i Guide
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Title,
+			&i.Description,
+			&i.Content,
+			&i.Slug,
+			&i.UploadLink,
+			&i.Created,
+			&i.Updated,
+			&i.Views,
+			&i.BannerUrl,
+			&i.Deleted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGuidesForAdmin = `-- name: ListGuidesForAdmin :many
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides
+WHERE
+  CASE
+    WHEN $3::text = 'active' THEN deleted IS NULL
+    WHEN $3::text = 'deleted' THEN deleted IS NOT NULL
+    ELSE true
+  END
+ORDER BY created DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListGuidesForAdminParams struct {
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Filter string `json:"filter"`
+}
+
+func (q *Queries) ListGuidesForAdmin(ctx context.Context, arg ListGuidesForAdminParams) ([]Guide, error) {
+	rows, err := q.db.Query(ctx, listGuidesForAdmin, arg.Limit, arg.Offset, arg.Filter)
 	if err != nil {
 		return nil, err
 	}

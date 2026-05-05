@@ -30,6 +30,17 @@ func (q *Queries) ClaimTempUpload(ctx context.Context, arg ClaimTempUploadParams
 	return result.RowsAffected(), nil
 }
 
+const countAllTempUploads = `-- name: CountAllTempUploads :one
+SELECT COUNT(*) FROM temp_uploads
+`
+
+func (q *Queries) CountAllTempUploads(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllTempUploads)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTempUpload = `-- name: CreateTempUpload :one
 INSERT INTO temp_uploads (token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
@@ -377,6 +388,85 @@ func (q *Queries) GetTempUploadFileByID(ctx context.Context, id string) (TempUpl
 		&i.Created,
 	)
 	return i, err
+}
+
+const listAllTempUploads = `-- name: ListAllTempUploads :many
+SELECT id, token, uploaded_by, filename, description, size, checksum,
+       block_count, dim_x, dim_y, dim_z, mods, materials,
+       minecraft_version, createmod_version, nbt_s3_key, image_s3_key,
+       parsed_summary, created, updated
+FROM temp_uploads
+ORDER BY created DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListAllTempUploadsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListAllTempUploadsRow struct {
+	ID               string          `json:"id"`
+	Token            string          `json:"token"`
+	UploadedBy       string          `json:"uploaded_by"`
+	Filename         string          `json:"filename"`
+	Description      string          `json:"description"`
+	Size             int64           `json:"size"`
+	Checksum         string          `json:"checksum"`
+	BlockCount       int32           `json:"block_count"`
+	DimX             int32           `json:"dim_x"`
+	DimY             int32           `json:"dim_y"`
+	DimZ             int32           `json:"dim_z"`
+	Mods             json.RawMessage `json:"mods"`
+	Materials        json.RawMessage `json:"materials"`
+	MinecraftVersion string          `json:"minecraft_version"`
+	CreatemodVersion string          `json:"createmod_version"`
+	NbtS3Key         string          `json:"nbt_s3_key"`
+	ImageS3Key       string          `json:"image_s3_key"`
+	ParsedSummary    string          `json:"parsed_summary"`
+	Created          time.Time       `json:"created"`
+	Updated          time.Time       `json:"updated"`
+}
+
+func (q *Queries) ListAllTempUploads(ctx context.Context, arg ListAllTempUploadsParams) ([]ListAllTempUploadsRow, error) {
+	rows, err := q.db.Query(ctx, listAllTempUploads, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllTempUploadsRow{}
+	for rows.Next() {
+		var i ListAllTempUploadsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Token,
+			&i.UploadedBy,
+			&i.Filename,
+			&i.Description,
+			&i.Size,
+			&i.Checksum,
+			&i.BlockCount,
+			&i.DimX,
+			&i.DimY,
+			&i.DimZ,
+			&i.Mods,
+			&i.Materials,
+			&i.MinecraftVersion,
+			&i.CreatemodVersion,
+			&i.NbtS3Key,
+			&i.ImageS3Key,
+			&i.ParsedSummary,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listExpiredUnclaimedTempUploads = `-- name: ListExpiredUnclaimedTempUploads :many

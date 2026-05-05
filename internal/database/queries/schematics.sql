@@ -240,6 +240,7 @@ WHERE
     WHEN @filter::text = 'flagged' THEN moderation_state = 'flagged'
     WHEN @filter::text = 'rejected' THEN moderation_state = 'rejected'
     WHEN @filter::text = 'deleted' THEN moderation_state = 'deleted'
+    WHEN @filter::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END
 ORDER BY created DESC
@@ -254,6 +255,7 @@ WHERE
     WHEN @filter::text = 'flagged' THEN moderation_state = 'flagged'
     WHEN @filter::text = 'rejected' THEN moderation_state = 'rejected'
     WHEN @filter::text = 'deleted' THEN moderation_state = 'deleted'
+    WHEN @filter::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END;
 

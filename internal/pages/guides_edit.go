@@ -112,6 +112,21 @@ func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, sto
 		link := strings.TrimSpace(e.Request.FormValue("external_url"))
 		excerpt := strings.TrimSpace(e.Request.FormValue("excerpt"))
 
+		if moderationSvc != nil && (title != "" || content != "") {
+			modContent := fmt.Sprintf("Title: %s\nContent: %s", title, content)
+			result, mErr := moderationSvc.CheckContent(modContent)
+			if mErr != nil {
+				slog.Warn("guide update moderation unavailable, allowing", "error", mErr)
+			} else if !result.Approved {
+				dest := "/guides/" + id + "/edit?error=moderation"
+				if e.Request.Header.Get("HX-Request") != "" {
+					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+					return e.HTML(http.StatusNoContent, "")
+				}
+				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+			}
+		}
+
 		if title != "" {
 			guide.Title = title
 		}

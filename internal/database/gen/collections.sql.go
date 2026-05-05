@@ -36,6 +36,24 @@ func (q *Queries) ClearCollectionSchematics(ctx context.Context, collectionID st
 	return err
 }
 
+const countCollectionsForAdmin = `-- name: CountCollectionsForAdmin :one
+SELECT COUNT(*) FROM collections
+WHERE
+  CASE
+    WHEN $1::text = 'published' THEN deleted = '' AND published = true
+    WHEN $1::text = 'unpublished' THEN deleted = '' AND published = false
+    WHEN $1::text = 'deleted' THEN deleted != ''
+    ELSE deleted = ''
+  END
+`
+
+func (q *Queries) CountCollectionsForAdmin(ctx context.Context, filter string) (int64, error) {
+	row := q.db.QueryRow(ctx, countCollectionsForAdmin, filter)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUserCollections = `-- name: CountUserCollections :one
 SELECT COUNT(*) FROM collections WHERE author_id = $1 AND deleted = ''
 `
@@ -243,6 +261,61 @@ ORDER BY updated DESC
 
 func (q *Queries) ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error) {
 	rows, err := q.db.Query(ctx, listCollectionsByAuthor, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Collection{}
+	for rows.Next() {
+		var i Collection
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Title,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.BannerUrl,
+			&i.Featured,
+			&i.Views,
+			&i.Published,
+			&i.Deleted,
+			&i.Created,
+			&i.Updated,
+			&i.CollageUrl,
+			&i.Video,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCollectionsForAdmin = `-- name: ListCollectionsForAdmin :many
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
+WHERE
+  CASE
+    WHEN $3::text = 'published' THEN deleted = '' AND published = true
+    WHEN $3::text = 'unpublished' THEN deleted = '' AND published = false
+    WHEN $3::text = 'deleted' THEN deleted != ''
+    ELSE deleted = ''
+  END
+ORDER BY updated DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListCollectionsForAdminParams struct {
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Filter string `json:"filter"`
+}
+
+func (q *Queries) ListCollectionsForAdmin(ctx context.Context, arg ListCollectionsForAdminParams) ([]Collection, error) {
+	rows, err := q.db.Query(ctx, listCollectionsForAdmin, arg.Limit, arg.Offset, arg.Filter)
 	if err != nil {
 		return nil, err
 	}

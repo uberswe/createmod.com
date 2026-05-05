@@ -554,6 +554,10 @@ type GuideStore interface {
 	CountByUser(ctx context.Context, userID string) (int64, error)
 	IncrementViews(ctx context.Context, id string) error
 	ListForSitemap(ctx context.Context) ([]SitemapGuide, error)
+	ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]Guide, error)
+	CountForAdmin(ctx context.Context, filter string) (int64, error)
+	GetByIDAdmin(ctx context.Context, id string) (*Guide, error)
+	SoftDelete(ctx context.Context, id string) error
 }
 
 // CollectionStore handles collections.
@@ -575,6 +579,8 @@ type CollectionStore interface {
 	CountByUser(ctx context.Context, userID string) (int64, error)
 	ListForSitemap(ctx context.Context) ([]SitemapCollection, error)
 	UpdateCollageURL(ctx context.Context, id, collageURL string) error
+	ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]Collection, error)
+	CountForAdmin(ctx context.Context, filter string) (int64, error)
 }
 
 // AchievementStore handles achievements and points.
@@ -856,6 +862,8 @@ type TempUploadStore interface {
 	Delete(ctx context.Context, token string) error
 	DeleteExpired(ctx context.Context, olderThan time.Time) (int64, error)
 	ListByUser(ctx context.Context, userID string, limit int, offset int) ([]TempUpload, error)
+	ListAll(ctx context.Context, limit int, offset int) ([]TempUpload, error)
+	CountAll(ctx context.Context) (int64, error)
 	ListExpiredUnclaimed(ctx context.Context, olderThan time.Time, limit int) ([]TempUpload, error)
 	DeleteExpiredUnclaimed(ctx context.Context, olderThan time.Time) (int64, error)
 }
