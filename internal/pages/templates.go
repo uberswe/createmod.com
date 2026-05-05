@@ -50,7 +50,7 @@ func NewTestRegistry() *server.Registry {
 		},
 		"urlPathEscape": url.PathEscape,
 		"YouTubeWatchURL": func(video string) string {
-			return "https://www.youtube.com/watch?v=" + video
+			return YoutubeWatchURL(video)
 		},
 		"externalDomain": ExternalDomain,
 		"LangFlag": func(code string) html.HTML {
@@ -102,4 +102,46 @@ func ExternalDomain(rawURL string) string {
 	default:
 		return host
 	}
+}
+
+func ExtractYouTubeID(video string) string {
+	video = strings.TrimSpace(video)
+	if video == "" {
+		return ""
+	}
+	if u, err := url.Parse(video); err == nil && u.Host != "" {
+		host := strings.ToLower(u.Host)
+		switch {
+		case host == "youtu.be" || host == "www.youtu.be":
+			id := strings.TrimPrefix(u.Path, "/")
+			if id != "" {
+				return id
+			}
+		case strings.Contains(host, "youtube.com"):
+			if strings.HasPrefix(u.Path, "/embed/") {
+				id := strings.TrimPrefix(u.Path, "/embed/")
+				if id != "" {
+					return id
+				}
+			}
+			if strings.HasPrefix(u.Path, "/shorts/") {
+				id := strings.TrimPrefix(u.Path, "/shorts/")
+				if id != "" {
+					return id
+				}
+			}
+			if v := u.Query().Get("v"); v != "" {
+				return v
+			}
+		}
+	}
+	return video
+}
+
+func YoutubeWatchURL(video string) string {
+	id := ExtractYouTubeID(video)
+	if id == "" {
+		return video
+	}
+	return "https://www.youtube.com/watch?v=" + id
 }

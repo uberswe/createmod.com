@@ -156,17 +156,7 @@ func Register(p RegisterParams) chi.Router {
 			return pages.AllHreflangs()
 		},
 		"YouTubeWatchURL": func(video string) string {
-			if strings.Contains(video, "/embed/") {
-				parts := strings.Split(video, "/embed/")
-				if len(parts) == 2 && parts[1] != "" {
-					id := strings.SplitN(parts[1], "?", 2)[0]
-					return "https://www.youtube.com/watch?v=" + id
-				}
-			}
-			if strings.Contains(video, "watch?v=") {
-				return video
-			}
-			return "https://www.youtube.com/watch?v=" + video
+			return pages.YoutubeWatchURL(video)
 		},
 		"externalDomain": pages.ExternalDomain,
 		"LangFlag": func(code string) html.HTML {
