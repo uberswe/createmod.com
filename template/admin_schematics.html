@@ -93,7 +93,8 @@
                   <td>{{.Views}}</td>
                   <td>{{.Downloads}}</td>
                   <td>{{HumanDate .Created}}</td>
-                  <td>
+                  <td class="text-nowrap">
+                    <a href="/schematics/{{.Name}}" class="btn btn-sm btn-outline-secondary me-1">View</a>
                     <a href="/admin/schematics/{{.ID}}" class="btn btn-sm btn-primary">Edit</a>
                   </td>
                 </tr>
