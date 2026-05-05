@@ -37,6 +37,8 @@ type AdminSchematicItem struct {
 	ModerationReason string
 	Created          time.Time
 	FeaturedImage    string
+	Views            int
+	Downloads        int
 }
 
 type AdminSchematicsData struct {
@@ -81,7 +83,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 		if filter == "" {
 			filter = "pending"
 		}
-		if filter != "all" && filter != "pending" && filter != "published" && filter != "flagged" && filter != "rejected" && filter != "deleted" {
+		if filter != "all" && filter != "pending" && filter != "published" && filter != "flagged" && filter != "rejected" && filter != "deleted" && filter != "private" {
 			filter = "pending"
 		}
 
@@ -110,6 +112,13 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 			totalPages = 1
 		}
 
+		ids := make([]string, len(schematics))
+		for i, s := range schematics {
+			ids[i] = s.ID
+		}
+		viewCounts, _ := appStore.ViewRatings.BatchGetViewCounts(ctx, ids)
+		downloadCounts, _ := appStore.ViewRatings.BatchGetDownloadCounts(ctx, ids)
+
 		items := make([]AdminSchematicItem, 0, len(schematics))
 		for _, s := range schematics {
 			username := ""
@@ -128,6 +137,8 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 				ModerationReason: s.ModerationReason,
 				Created:          s.Created,
 				FeaturedImage:    s.FeaturedImage,
+				Views:            viewCounts[s.ID],
+				Downloads:        downloadCounts[s.ID],
 			})
 		}
 

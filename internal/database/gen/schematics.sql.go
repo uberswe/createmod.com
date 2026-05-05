@@ -171,6 +171,7 @@ WHERE
     WHEN $1::text = 'flagged' THEN moderation_state = 'flagged'
     WHEN $1::text = 'rejected' THEN moderation_state = 'rejected'
     WHEN $1::text = 'deleted' THEN moderation_state = 'deleted'
+    WHEN $1::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END
 `
@@ -1515,6 +1516,7 @@ WHERE
     WHEN $3::text = 'flagged' THEN moderation_state = 'flagged'
     WHEN $3::text = 'rejected' THEN moderation_state = 'rejected'
     WHEN $3::text = 'deleted' THEN moderation_state = 'deleted'
+    WHEN $3::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END
 ORDER BY created DESC

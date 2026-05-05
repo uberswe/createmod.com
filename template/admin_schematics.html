@@ -33,6 +33,9 @@
                 <a class="nav-link{{ if eq .Filter "deleted" }} active{{ end }}" href="/admin/schematics?filter=deleted">Deleted</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "private" }} active{{ end }}" href="/admin/schematics?filter=private">Private</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link{{ if eq .Filter "all" }} active{{ end }}" href="/admin/schematics?filter=all">All</a>
               </li>
             </ul>
@@ -46,6 +49,8 @@
                   <th>Author</th>
                   <th>Status</th>
                   <th>Moderation Reason</th>
+                  <th>Views</th>
+                  <th>Downloads</th>
                   <th>Created</th>
                   <th class="w-1"></th>
                 </tr>
@@ -85,6 +90,8 @@
                     <span class="text-secondary">—</span>
                     {{end}}
                   </td>
+                  <td>{{.Views}}</td>
+                  <td>{{.Downloads}}</td>
                   <td>{{HumanDate .Created}}</td>
                   <td>
                     <a href="/admin/schematics/{{.ID}}" class="btn btn-sm btn-primary">Edit</a>
@@ -92,7 +99,7 @@
                 </tr>
                 {{else}}
                 <tr>
-                  <td colspan="7" class="text-center text-secondary">No schematics match this filter.</td>
+                  <td colspan="9" class="text-center text-secondary">No schematics match this filter.</td>
                 </tr>
                 {{end}}
               </tbody>
