@@ -42,3 +42,26 @@ UPDATE guides SET views = views + 1 WHERE id = $1;
 
 -- name: ListGuidesForSitemap :many
 SELECT id, slug, updated FROM guides WHERE deleted IS NULL ORDER BY updated DESC;
+
+-- name: ListGuidesForAdmin :many
+SELECT * FROM guides
+WHERE
+  CASE
+    WHEN @filter::text = 'active' THEN deleted IS NULL
+    WHEN @filter::text = 'deleted' THEN deleted IS NOT NULL
+    ELSE true
+  END
+ORDER BY created DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountGuidesForAdmin :one
+SELECT COUNT(*) FROM guides
+WHERE
+  CASE
+    WHEN @filter::text = 'active' THEN deleted IS NULL
+    WHEN @filter::text = 'deleted' THEN deleted IS NOT NULL
+    ELSE true
+  END;
+
+-- name: GetGuideByIDAdmin :one
+SELECT * FROM guides WHERE id = $1;

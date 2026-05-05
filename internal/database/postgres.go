@@ -1599,6 +1599,39 @@ func (gs *GuideStoreImpl) ListForSitemap(ctx context.Context) ([]store.SitemapGu
 	return result, nil
 }
 
+func (gs *GuideStoreImpl) ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]store.Guide, error) {
+	rows, err := gs.q.ListGuidesForAdmin(ctx, db.ListGuidesForAdminParams{
+		Filter: filter,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Guide, len(rows))
+	for i, r := range rows {
+		result[i] = guideFromDB(r)
+	}
+	return result, nil
+}
+
+func (gs *GuideStoreImpl) CountForAdmin(ctx context.Context, filter string) (int64, error) {
+	return gs.q.CountGuidesForAdmin(ctx, filter)
+}
+
+func (gs *GuideStoreImpl) GetByIDAdmin(ctx context.Context, id string) (*store.Guide, error) {
+	row, err := gs.q.GetGuideByIDAdmin(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	g := guideFromDB(row)
+	return &g, nil
+}
+
+func (gs *GuideStoreImpl) SoftDelete(ctx context.Context, id string) error {
+	return gs.q.SoftDeleteGuide(ctx, id)
+}
+
 // CollectionStoreImpl implements store.CollectionStore.
 type CollectionStoreImpl struct{ q *db.Queries }
 
@@ -1762,6 +1795,26 @@ func (cs *CollectionStoreImpl) ListForSitemap(ctx context.Context) ([]store.Site
 		}
 	}
 	return result, nil
+}
+
+func (cs *CollectionStoreImpl) ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]store.Collection, error) {
+	rows, err := cs.q.ListCollectionsForAdmin(ctx, db.ListCollectionsForAdminParams{
+		Filter: filter,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Collection, len(rows))
+	for i, r := range rows {
+		result[i] = collectionFromDB(r)
+	}
+	return result, nil
+}
+
+func (cs *CollectionStoreImpl) CountForAdmin(ctx context.Context, filter string) (int64, error) {
+	return cs.q.CountCollectionsForAdmin(ctx, filter)
 }
 
 // AchievementStoreImpl implements store.AchievementStore.

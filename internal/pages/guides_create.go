@@ -140,6 +140,21 @@ func GuidesCreateHandler(cacheService *cache.Service, appStore *store.Store, sto
 			bannerURL = fmt.Sprintf("/api/files/images/%s/%s", imageID, filename)
 		}
 
+		if moderationSvc != nil {
+			modContent := fmt.Sprintf("Title: %s\nContent: %s", title, content)
+			result, mErr := moderationSvc.CheckContent(modContent)
+			if mErr != nil {
+				slog.Warn("guide create moderation unavailable, allowing", "error", mErr)
+			} else if !result.Approved {
+				dest := "/guides/new?error=moderation"
+				if e.Request.Header.Get("HX-Request") != "" {
+					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, dest))
+					return e.HTML(http.StatusNoContent, "")
+				}
+				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, dest))
+			}
+		}
+
 		newGuide := &store.Guide{
 			Title:     title,
 			Content:   content,
