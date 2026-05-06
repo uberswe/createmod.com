@@ -49,6 +49,7 @@ type Schematic struct {
 	Mods                 []string           `json:"mods"`
 	DetectedLanguage     string             `json:"detectedLanguage,omitempty"`
 	ModerationState      string             `json:"-"`
+	Language             string             `json:"-"`
 }
 
 // ModerationChatMessage holds a single message in the moderation discussion thread.
