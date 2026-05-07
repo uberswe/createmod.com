@@ -762,6 +762,39 @@ var LangPtBR = map[string]string{
 	// ── Webhooks (settings) ──
 	"Webhooks": "Webhooks",
 
+	// ── Generators ──
+	"Generators":       "Geradores",
+	"Propeller":        "Hélice",
+	"Airship Balloon":  "Balão de dirigível",
+	"Ship Hull":        "Casco de navio",
+
+	// ── Categories & Tags ──
+	"Trains":       "Trens",
+	"Factories":    "Fábricas",
+	"Farms":        "Fazendas",
+	"Decoration":   "Decoração",
+	"Storage":      "Armazenamento",
+	"Vehicles":     "Veículos",
+	"Automation":   "Automação",
+	"Rail":         "Trilhos",
+	"Transport":    "Transporte",
+	"Bridges":      "Pontes",
+	"Houses":       "Casas",
+	"Ships":        "Navios",
+	"Military":     "Militar",
+	"Elevators":    "Elevadores",
+	"Stations":     "Estações",
+	"Doors":        "Portas",
+	"Clocks":       "Relógios",
+	"Power":        "Energia",
+	"Processing":   "Processamento",
+	"Contraptions": "Engenhocas",
+	"Aesthetic":    "Estética",
+	"Utility":      "Utilidade",
+	"Defense":      "Defesa",
+	"Misc":         "Diversos",
+	"Cannons":      "Canhões",
+
 	// ── Block Modification ──
 	"modify_blocks":             "Modificar Blocos",
 	"modify_blocks_description": "Substituir ou remover blocos neste esquemático",

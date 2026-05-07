@@ -170,8 +170,6 @@ func Register(p RegisterParams) chi.Router {
 				cc = "pt"
 			case "es":
 				cc = "es"
-			case "de":
-				cc = "de"
 			case "pl":
 				cc = "pl"
 			case "ru":
@@ -788,7 +786,11 @@ func requestLogger(next http.Handler) http.Handler {
 		duration := elapsed.Round(time.Millisecond).String()
 		statusStr := fmt.Sprintf("%d", rr.status)
 
-		metrics.HTTPRequestDuration.WithLabelValues(r.Method, r.URL.Path, statusStr).Observe(elapsed.Seconds())
+		routePattern := "unmatched"
+		if rctx := chi.RouteContext(r.Context()); rctx != nil && rctx.RoutePattern() != "" {
+			routePattern = rctx.RoutePattern()
+		}
+		metrics.HTTPRequestDuration.WithLabelValues(r.Method, routePattern, statusStr).Observe(elapsed.Seconds())
 		metrics.HTTPRequestsTotal.WithLabelValues(r.Method, statusStr).Inc()
 		metrics.HTTPResponseSize.WithLabelValues(r.Method).Observe(float64(rr.bytesWritten))
 

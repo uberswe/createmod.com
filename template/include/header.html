@@ -34,14 +34,14 @@
                 {{ T .Language "Upload" }}
             </a>
             <div class="dropdown d-none d-md-block">
-                <a href="#" class="btn btn-outline-primary" data-bs-toggle="dropdown" hx-boost="false" hx-disable aria-label="Generators">
+                <a href="#" class="btn btn-outline-primary" data-bs-toggle="dropdown" hx-boost="false" hx-disable aria-label="{{ T .Language "Generators" }}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>
-                    Generators
+                    {{ T .Language "Generators" }}
                 </a>
                 <div class="dropdown-menu dropdown-menu-end">
-                    <a class="dropdown-item" href="{{ LangURL .Language "/generators/propeller" }}">Propeller</a>
-                    <a class="dropdown-item" href="{{ LangURL .Language "/generators/balloon" }}">Airship Balloon</a>
-                    <a class="dropdown-item" href="{{ LangURL .Language "/generators/hull" }}">Ship Hull</a>
+                    <a class="dropdown-item" href="{{ LangURL .Language "/generators/propeller" }}">{{ T .Language "Propeller" }}</a>
+                    <a class="dropdown-item" href="{{ LangURL .Language "/generators/balloon" }}">{{ T .Language "Airship Balloon" }}</a>
+                    <a class="dropdown-item" href="{{ LangURL .Language "/generators/hull" }}">{{ T .Language "Ship Hull" }}</a>
                 </div>
             </div>
             <a href="{{ LangURL .Language "/upload" }}" class="nav-link px-0 d-md-none" aria-label="{{ T .Language "Upload" }}" title="{{ T .Language "Upload" }}">
@@ -60,7 +60,6 @@
                     <a class="dropdown-item" href="/lang?l=pt-BR&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "pt-BR" }} Português (Brasil)</a>
                     <a class="dropdown-item" href="/lang?l=pt-PT&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "pt-PT" }} Português</a>
                     <a class="dropdown-item" href="/lang?l=es&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "es" }} Español</a>
-                    <a class="dropdown-item" href="/lang?l=de&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "de" }} Deutsch</a>
                     <a class="dropdown-item" href="/lang?l=pl&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "pl" }} Polski</a>
                     <a class="dropdown-item" href="/lang?l=ru&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "ru" }} Русский</a>
                     <a class="dropdown-item" href="/lang?l=zh-Hans&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "zh-Hans" }} 简体中文</a>

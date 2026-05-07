@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 const LANG_PREFIXES = [
-  { lang: 'de', prefix: '/de', name: 'German' },
   { lang: 'es', prefix: '/es', name: 'Spanish' },
   { lang: 'pl', prefix: '/pl', name: 'Polish' },
   { lang: 'pt-BR', prefix: '/pt-br', name: 'Portuguese (Brazil)' },
@@ -50,18 +49,18 @@ test.describe('hreflang tags', () => {
   test('homepage has hreflang tags for all languages', async ({ page }) => {
     await page.goto('/');
     const hreflangs = await page.locator('link[rel="alternate"][hreflang]').all();
-    // 8 languages + x-default = 9
-    expect(hreflangs.length).toBeGreaterThanOrEqual(9);
+    // 7 languages + x-default = 8
+    expect(hreflangs.length).toBeGreaterThanOrEqual(8);
 
     // Check x-default exists
     const xDefault = await page.locator('link[rel="alternate"][hreflang="x-default"]').getAttribute('href');
     expect(xDefault).toContain('createmod.com');
   });
 
-  test('German page has hreflang tags', async ({ page }) => {
-    await page.goto('/de/');
+  test('Spanish page has hreflang tags', async ({ page }) => {
+    await page.goto('/es/');
     const hreflangs = await page.locator('link[rel="alternate"][hreflang]').all();
-    expect(hreflangs.length).toBeGreaterThanOrEqual(9);
+    expect(hreflangs.length).toBeGreaterThanOrEqual(8);
   });
 });
 
@@ -72,10 +71,10 @@ test.describe('language switcher', () => {
     const langTrigger = page.locator('.lang-flag');
     await langTrigger.click();
 
-    // Check German link routes through /lang endpoint
-    const deLink = page.locator('.dropdown-item >> text=Deutsch');
-    const deHref = await deLink.getAttribute('href');
-    expect(deHref).toContain('/lang?l=de');
+    // Check Spanish link routes through /lang endpoint
+    const esLink = page.locator('.dropdown-item >> text=Español');
+    const esHref = await esLink.getAttribute('href');
+    expect(esHref).toContain('/lang?l=es');
 
     // Check Russian link
     const ruLink = page.locator('.dropdown-item >> text=Русский');
@@ -83,8 +82,8 @@ test.describe('language switcher', () => {
     expect(ruHref).toContain('/lang?l=ru');
   });
 
-  test('language switcher on German page preserves path', async ({ page }) => {
-    await page.goto('/de/schematics');
+  test('language switcher on Spanish page preserves path', async ({ page }) => {
+    await page.goto('/es/schematics');
     const langTrigger = page.locator('.lang-flag');
     await langTrigger.click();
 

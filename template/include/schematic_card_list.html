@@ -19,7 +19,7 @@
       </h4>
     </div>
     <div class="d-flex align-items-center gap-2 text-muted small mt-1">
-      {{ if .Author }}<span>by {{ .Author.Username }}</span>{{ end }}
+      {{ if .Author }}<span>{{ T $.Language "by" }} {{ .Author.Username }}</span>{{ end }}
       <span>{{ .CreatedHumanReadable }}</span>
       {{ if .HasRating }}
       <span title="Rating: {{ .Rating }}">
@@ -37,7 +37,7 @@
         {{ .Downloads }}
       </span>
       {{ end }}
-      {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-blue">{{ $tag.Name }}</span>{{ end }}{{ end }}
+      {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-blue">{{ T $.Language $tag.Name }}</span>{{ end }}{{ end }}
     </div>
   </div>
 </a>
