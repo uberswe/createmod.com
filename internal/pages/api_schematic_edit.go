@@ -118,6 +118,9 @@ func SchematicUpdateHandler(
 		}
 
 		if video != "" || e.Request.FormValue("video") != "" {
+			if video != "" && !IsValidYouTubeVideo(video) {
+				return e.BadRequestError("video must be a valid YouTube link", nil)
+			}
 			schem.Video = video
 		}
 

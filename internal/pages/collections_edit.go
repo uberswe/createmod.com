@@ -183,7 +183,11 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 			coll.Name = title
 		}
 		coll.Description = description
-		coll.Video = strings.TrimSpace(e.Request.FormValue("video"))
+		collVideo := strings.TrimSpace(e.Request.FormValue("video"))
+		if collVideo != "" && !IsValidYouTubeVideo(collVideo) {
+			return e.BadRequestError("video must be a valid YouTube link", nil)
+		}
+		coll.Video = collVideo
 
 		// If a banner file is provided, process it and set banner_url to a WebP data URL
 		if file, header, err := e.Request.FormFile("banner"); err == nil && header != nil {
