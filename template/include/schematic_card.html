@@ -38,13 +38,13 @@
           {{ .Downloads }}
         </span>
         {{ end }}
-        {{ if .Author }}<span class="text-truncate" style="max-width: 100px;">by {{ .Author.Username }}</span>{{ end }}
+        {{ if .Author }}<span class="text-truncate" style="max-width: 100px;">{{ T $.Language "by" }} {{ .Author.Username }}</span>{{ end }}
       </div>
       <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
         {{ range .Categories }}
-        <span class="badge badge-outline text-blue">{{ .Name }}</span>
+        <span class="badge badge-outline text-blue">{{ T $.Language .Name }}</span>
         {{ end }}
-        {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-secondary">{{ $tag.Name }}</span>{{ end }}{{ end }}
+        {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-secondary">{{ T $.Language $tag.Name }}</span>{{ end }}{{ end }}
       </div>
     </div>
   </div>

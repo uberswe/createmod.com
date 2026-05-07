@@ -11,7 +11,6 @@ func init() {
 	register("pt-BR", LangPtBR)
 	register("pt-PT", LangPtPT)
 	register("es", LangES)
-	register("de", LangDE)
 	register("pl", LangPL)
 	register("ru", LangRU)
 	register("zh-Hans", LangZhHans)

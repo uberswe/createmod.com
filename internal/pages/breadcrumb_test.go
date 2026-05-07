@@ -133,18 +133,18 @@ func Test_BreadcrumbJSONLD_Empty(t *testing.T) {
 
 func Test_BreadcrumbJSONLD_LanguagePrefix(t *testing.T) {
 	d := DefaultData{
-		Language: "de",
+		Language: "fr",
 		Breadcrumbs: []BreadcrumbItem{
-			{Label: "Startseite", URL: "/"},
+			{Label: "Accueil", URL: "/"},
 			{Label: "Schematics", URL: "/schematics"},
-			{Label: "Mein Bau"},
+			{Label: "Mon Build"},
 		},
 	}
 	result := string(d.BreadcrumbJSONLD())
-	if !strings.Contains(result, `https://createmod.com/de`) {
-		t.Fatal("expected German language prefix in URL")
+	if !strings.Contains(result, `https://createmod.com/fr`) {
+		t.Fatal("expected French language prefix in URL")
 	}
-	if !strings.Contains(result, `https://createmod.com/de/schematics`) {
-		t.Fatal("expected /de/schematics in URL")
+	if !strings.Contains(result, `https://createmod.com/fr/schematics`) {
+		t.Fatal("expected /fr/schematics in URL")
 	}
 }

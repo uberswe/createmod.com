@@ -23,7 +23,6 @@ func Test_Header_Language_Dropdown_And_Links(t *testing.T) {
 	// Go's html/template URL-normalizes href values, encoding / as %2f in query params.
 	langExpected := []string{
 		"/lang?l=en&return_to=%2fvideos",
-		"/lang?l=de&return_to=%2fvideos",
 		"/lang?l=es&return_to=%2fvideos",
 		"/lang?l=pl&return_to=%2fvideos",
 		"/lang?l=pt-BR&return_to=%2fvideos",

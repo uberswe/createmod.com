@@ -61,7 +61,7 @@
                         <!-- Categories -->
                         <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
                         {{ range .CategorySections }}
-                        <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ .Category.Name }} &rarr;</a></h3>
+                        <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ T $.Language .Category.Name }} &rarr;</a></h3>
                         <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel" data-trending-section="cat-{{ .Category.Key }}">
                             <div class="row g-3">
                                 {{ range .Items }}

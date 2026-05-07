@@ -520,7 +520,7 @@ func (q *Queries) ListExternalAuthsByUser(ctx context.Context, userID string) ([
 }
 
 const listMinecraftVersions = `-- name: ListMinecraftVersions :many
-SELECT id, version, created, updated FROM minecraft_versions ORDER BY version DESC
+SELECT id, version, created, updated FROM minecraft_versions ORDER BY created DESC
 `
 
 func (q *Queries) ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error) {
@@ -808,7 +808,7 @@ func (q *Queries) ListTopSearches(ctx context.Context, limit int32) ([]SearchQue
 }
 
 const listVersions = `-- name: ListVersions :many
-SELECT id, version, created, updated FROM createmod_versions ORDER BY version DESC
+SELECT id, version, created, updated FROM createmod_versions ORDER BY created DESC
 `
 
 func (q *Queries) ListVersions(ctx context.Context) ([]CreatemodVersion, error) {
