@@ -4,6 +4,7 @@ import (
 	"createmod/internal/i18n"
 	html "html/template"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -136,6 +137,33 @@ func ExtractYouTubeID(video string) string {
 		}
 	}
 	return video
+}
+
+var youtubeIDRegex = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
+
+func IsValidYouTubeVideo(video string) bool {
+	video = strings.TrimSpace(video)
+	if video == "" {
+		return true
+	}
+	u, err := url.Parse(video)
+	if err == nil && u.Host != "" {
+		host := strings.ToLower(u.Host)
+		switch {
+		case host == "youtu.be" || host == "www.youtu.be":
+			return strings.TrimPrefix(u.Path, "/") != ""
+		case strings.Contains(host, "youtube.com"):
+			if strings.HasPrefix(u.Path, "/embed/") {
+				return strings.TrimPrefix(u.Path, "/embed/") != ""
+			}
+			if strings.HasPrefix(u.Path, "/shorts/") {
+				return strings.TrimPrefix(u.Path, "/shorts/") != ""
+			}
+			return u.Query().Get("v") != ""
+		}
+		return false
+	}
+	return youtubeIDRegex.MatchString(video)
 }
 
 func YoutubeWatchURL(video string) string {

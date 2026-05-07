@@ -1,0 +1,1 @@
+-- No-op: cannot restore previously cleared video URLs.

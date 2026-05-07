@@ -369,6 +369,9 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 
 		// Optional fields
 		video := strings.TrimSpace(e.Request.FormValue("video"))
+		if video != "" && !IsValidYouTubeVideo(video) {
+			return e.BadRequestError("video must be a valid YouTube link", nil)
+		}
 		paid := e.Request.FormValue("paid") == "true"
 		externalURL := ""
 		if paid {

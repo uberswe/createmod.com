@@ -313,7 +313,11 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 		if content := e.Request.FormValue("content"); content != "" {
 			schem.Content = content
 		}
-		schem.Video = strings.TrimSpace(e.Request.FormValue("video"))
+		adminVideo := strings.TrimSpace(e.Request.FormValue("video"))
+		if adminVideo != "" && !IsValidYouTubeVideo(adminVideo) {
+			return e.BadRequestError("video must be a valid YouTube link", nil)
+		}
+		schem.Video = adminVideo
 
 		// Versions
 		if cmv := strings.TrimSpace(e.Request.FormValue("createmod_version")); cmv != "" {
