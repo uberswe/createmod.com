@@ -260,10 +260,15 @@ func parseThumbnailDimensions(s string) (int, int) {
 	return w, h
 }
 
-// resizeImage resizes an image to fit within the given dimensions while preserving aspect ratio.
+// resizeImage resizes an image preserving aspect ratio.
+// When both dimensions are set, the image is scaled to fit within the box.
+// When one dimension is 0, the other is auto-calculated from the aspect ratio.
 func resizeImage(src image.Image, w, h int) image.Image {
 	if w == 0 && h == 0 {
 		return src
+	}
+	if w == 0 || h == 0 {
+		return imaging.Resize(src, w, h, imaging.Lanczos)
 	}
 	return imaging.Fit(src, w, h, imaging.Lanczos)
 }
