@@ -51,7 +51,7 @@ test('login page has form with POST method', async ({ page, baseURL }) => {
   const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/login');
 
-  const form = page.locator('form');
+  const form = page.locator('#login-form');
   await expect(form).toBeAttached();
 
   // Verify it uses POST (the login fix from ISSUES.md)
