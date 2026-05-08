@@ -151,6 +151,135 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Additional Videos -->
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h3 class="card-title">Additional Videos</h3>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="videos-list">
+                                                    {{ range .Videos }}
+                                                    <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-video-id="{{ .ID }}">
+                                                        <div class="flex-fill">
+                                                            <div class="fw-medium">{{ if .Title }}{{ .Title }}{{ else }}{{ .VideoURL }}{{ end }}</div>
+                                                            <div class="text-secondary small text-capitalize">{{ .VideoType }}</div>
+                                                        </div>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-video-btn" data-video-id="{{ .ID }}">&times;</button>
+                                                    </div>
+                                                    {{ end }}
+                                                </div>
+                                                <div class="border rounded p-3 mt-2">
+                                                    <div class="row g-2">
+                                                        <div class="col-md-6">
+                                                            <input type="url" id="new-video-url" class="form-control form-control-sm" placeholder="YouTube URL">
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <select id="new-video-type" class="form-select form-select-sm">
+                                                                <option value="showcase">Showcase</option>
+                                                                <option value="tutorial">Tutorial</option>
+                                                                <option value="timelapse">Timelapse</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <input type="text" id="new-video-title" class="form-control form-control-sm" placeholder="Title (optional)">
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-video-btn">Add Video</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Build References -->
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h3 class="card-title">Inspired By</h3>
+                                            </div>
+                                            <div class="card-body">
+                                                <small class="form-hint mb-2 d-block text-secondary">Link to builds that inspired this schematic. Allowed: createmod.com, reddit.com, youtube.com, planetminecraft.com, and more.</small>
+                                                <div id="references-list">
+                                                    {{ range .References }}
+                                                    <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-ref-id="{{ .ID }}">
+                                                        <div class="flex-fill min-width-0">
+                                                            <div class="text-truncate">{{ if .Title }}{{ .Title }}{{ else }}{{ .URL }}{{ end }}</div>
+                                                            <div class="text-secondary small text-truncate">{{ .URL }}</div>
+                                                        </div>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-ref-btn" data-ref-id="{{ .ID }}">&times;</button>
+                                                    </div>
+                                                    {{ end }}
+                                                </div>
+                                                <div class="border rounded p-3 mt-2">
+                                                    <div class="row g-2">
+                                                        <div class="col-md-8">
+                                                            <input type="url" id="new-ref-url" class="form-control form-control-sm" placeholder="URL">
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <input type="text" id="new-ref-title" class="form-control form-control-sm" placeholder="Title (optional)">
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-ref-btn">Add Reference</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reddit Links -->
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h3 class="card-title">Reddit Posts</h3>
+                                            </div>
+                                            <div class="card-body">
+                                                <small class="form-hint mb-2 d-block text-secondary">Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft</small>
+                                                <div id="reddit-links-list">
+                                                    {{ range .RedditLinks }}
+                                                    <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-reddit-id="{{ .ID }}">
+                                                        <div class="flex-fill min-width-0">
+                                                            <div class="text-truncate">{{ if .PostTitle }}{{ .PostTitle }}{{ else }}{{ .RedditURL }}{{ end }}</div>
+                                                            <div class="text-secondary small">r/{{ .Subreddit }}</div>
+                                                        </div>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-reddit-btn" data-reddit-id="{{ .ID }}">&times;</button>
+                                                    </div>
+                                                    {{ end }}
+                                                </div>
+                                                <div class="border rounded p-3 mt-2">
+                                                    <input type="url" id="new-reddit-url" class="form-control form-control-sm" placeholder="Reddit post URL">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-reddit-btn">Add Reddit Link</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Modpack Compatibility -->
+                                {{ if .AllModpacks }}
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h3 class="card-title">Compatible Modpacks</h3>
+                                            </div>
+                                            <div class="card-body">
+                                                <select id="modpack-select" class="form-select" multiple>
+                                                    {{ range .AllModpacks }}
+                                                    <option value="{{ .ID }}"{{ range $.Modpacks }}{{ if eq .ID $.AllModpacks }}{{ end }}{{ end }}>{{ .Name }}</option>
+                                                    {{ end }}
+                                                </select>
+                                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="save-modpacks-btn">Save Modpacks</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{ end }}
+
                                 <div class="row">
                                     <div class="mt-5">
                                         <button class="btn btn-primary w-100" id="upload-schematic-btn">
@@ -928,6 +1057,120 @@
             btn.disabled = false;
         }
     });
+
+    function createContentRow(attrName, id, label, sublabel) {
+        var row = document.createElement('div');
+        row.className = 'd-flex align-items-center justify-content-between border rounded p-2 mb-2';
+        row.setAttribute('data-' + attrName, id);
+        var info = document.createElement('div');
+        info.className = 'flex-fill min-width-0';
+        var title = document.createElement('div');
+        title.className = 'text-truncate fw-medium';
+        title.textContent = label;
+        info.appendChild(title);
+        if (sublabel) {
+            var sub = document.createElement('div');
+            sub.className = 'text-secondary small text-truncate';
+            sub.textContent = sublabel;
+            info.appendChild(sub);
+        }
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-sm btn-outline-danger delete-' + attrName + '-btn';
+        delBtn.setAttribute('data-' + attrName, id);
+        delBtn.textContent = '×';
+        row.appendChild(info);
+        row.appendChild(delBtn);
+        return row;
+    }
+
+    function setupContentCrud(listId, addBtnId, endpoint, attrName, getFormData, getLabel) {
+        var addBtn = document.getElementById(addBtnId);
+        if (addBtn) {
+            addBtn.addEventListener('click', async function() {
+                var fd = getFormData();
+                if (!fd) return;
+                this.disabled = true;
+                try {
+                    var resp = await fetch('/api/schematics/' + schematicID + endpoint, { method: 'POST', body: fd.data });
+                    if (resp.ok) {
+                        var data = await resp.json();
+                        document.getElementById(listId).appendChild(createContentRow(attrName, data.id, fd.label, fd.sublabel));
+                        if (fd.reset) fd.reset();
+                    } else {
+                        var errText = await resp.text().catch(function(){ return ''; });
+                        alert(errText || 'Failed to add');
+                    }
+                } catch(err) { alert('Failed to add'); }
+                this.disabled = false;
+            });
+        }
+        document.getElementById(listId).addEventListener('click', async function(ev) {
+            var btn = ev.target.closest('.delete-' + attrName + '-btn');
+            if (!btn) return;
+            var itemId = btn.getAttribute('data-' + attrName);
+            btn.disabled = true;
+            try {
+                var resp = await fetch('/api/schematics/' + schematicID + endpoint + '/' + itemId, { method: 'DELETE' });
+                if (resp.ok) { btn.closest('[data-' + attrName + ']').remove(); }
+                else { alert('Failed to delete'); btn.disabled = false; }
+            } catch(err) { alert('Failed to delete'); btn.disabled = false; }
+        });
+    }
+
+    // --- Videos ---
+    setupContentCrud('videos-list', 'add-video-btn', '/videos', 'video-id', function() {
+        var urlInput = document.getElementById('new-video-url');
+        var typeInput = document.getElementById('new-video-type');
+        var titleInput = document.getElementById('new-video-title');
+        if (!urlInput.value.trim()) return null;
+        var fd = new FormData();
+        fd.append('video_url', urlInput.value.trim());
+        fd.append('video_type', typeInput.value);
+        fd.append('title', titleInput.value.trim());
+        return { data: fd, label: titleInput.value.trim() || urlInput.value.trim(), sublabel: typeInput.value, reset: function() { urlInput.value = ''; titleInput.value = ''; } };
+    });
+
+    // --- References ---
+    setupContentCrud('references-list', 'add-ref-btn', '/references', 'ref-id', function() {
+        var urlInput = document.getElementById('new-ref-url');
+        var titleInput = document.getElementById('new-ref-title');
+        if (!urlInput.value.trim()) return null;
+        var fd = new FormData();
+        fd.append('url', urlInput.value.trim());
+        fd.append('title', titleInput.value.trim());
+        return { data: fd, label: titleInput.value.trim() || urlInput.value.trim(), sublabel: urlInput.value.trim(), reset: function() { urlInput.value = ''; titleInput.value = ''; } };
+    });
+
+    // --- Reddit Links ---
+    setupContentCrud('reddit-links-list', 'add-reddit-btn', '/reddit-links', 'reddit-id', function() {
+        var urlInput = document.getElementById('new-reddit-url');
+        if (!urlInput.value.trim()) return null;
+        var fd = new FormData();
+        fd.append('reddit_url', urlInput.value.trim());
+        return { data: fd, label: urlInput.value.trim(), sublabel: null, reset: function() { urlInput.value = ''; } };
+    });
+
+    // --- Modpacks ---
+    var saveModpacksBtn = document.getElementById('save-modpacks-btn');
+    if (saveModpacksBtn) {
+        saveModpacksBtn.addEventListener('click', async function() {
+            var sel = document.getElementById('modpack-select');
+            if (!sel) return;
+            this.disabled = true;
+            var fd = new FormData();
+            for (var i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].selected) fd.append('modpack_ids', sel.options[i].value);
+            }
+            try {
+                var resp = await fetch('/api/schematics/' + schematicID + '/modpacks', { method: 'POST', body: fd });
+                if (resp.ok) {
+                    if (typeof showToast === 'function') showToast('Modpacks saved', 'success');
+                } else { alert('Failed to save modpacks'); }
+            } catch(err) { alert('Failed to save modpacks'); }
+            this.disabled = false;
+        });
+    }
 })();
 </script>
 {{template "foot.html" .}}

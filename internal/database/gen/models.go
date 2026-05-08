@@ -38,6 +38,19 @@ type ApiKeyUsage struct {
 	Created  time.Time `json:"created"`
 }
 
+type Badge struct {
+	ID          string    `json:"id"`
+	Key         string    `json:"key"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Icon        string    `json:"icon"`
+	Category    string    `json:"category"`
+	Threshold   int32     `json:"threshold"`
+	MultiEarn   bool      `json:"multi_earn"`
+	Created     time.Time `json:"created"`
+	Updated     time.Time `json:"updated"`
+}
+
 type Collection struct {
 	ID          string    `json:"id"`
 	AuthorID    *string   `json:"author_id"`
@@ -130,12 +143,18 @@ type DownloadToken struct {
 }
 
 type ExternalAuth struct {
-	ID         string    `json:"id"`
-	UserID     string    `json:"user_id"`
-	Provider   string    `json:"provider"`
-	ProviderID string    `json:"provider_id"`
-	Created    time.Time `json:"created"`
-	Updated    time.Time `json:"updated"`
+	ID                    string             `json:"id"`
+	UserID                string             `json:"user_id"`
+	Provider              string             `json:"provider"`
+	ProviderID            string             `json:"provider_id"`
+	Created               time.Time          `json:"created"`
+	Updated               time.Time          `json:"updated"`
+	AccessTokenEncrypted  string             `json:"access_token_encrypted"`
+	RefreshTokenEncrypted string             `json:"refresh_token_encrypted"`
+	TokenExpiry           pgtype.Timestamptz `json:"token_expiry"`
+	Username              string             `json:"username"`
+	AvatarUrl             string             `json:"avatar_url"`
+	Metadata              json.RawMessage    `json:"metadata"`
 }
 
 type Guide struct {
@@ -162,6 +181,16 @@ type GuideTranslation struct {
 	Content     string    `json:"content"`
 	Created     time.Time `json:"created"`
 	Updated     time.Time `json:"updated"`
+}
+
+type IpVerificationCode struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	IpAddress string    `json:"ip_address"`
+	CodeHash  string    `json:"code_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Used      bool      `json:"used"`
+	Created   time.Time `json:"created"`
 }
 
 type MinecraftVersion struct {
@@ -211,12 +240,31 @@ type ModerationMessage struct {
 }
 
 type ModerationThread struct {
-	ID          string    `json:"id"`
-	ContentType string    `json:"content_type"`
-	ContentID   string    `json:"content_id"`
-	Status      string    `json:"status"`
-	Created     time.Time `json:"created"`
-	Updated     time.Time `json:"updated"`
+	ID              string             `json:"id"`
+	ContentType     string             `json:"content_type"`
+	ContentID       string             `json:"content_id"`
+	Status          string             `json:"status"`
+	Created         time.Time          `json:"created"`
+	Updated         time.Time          `json:"updated"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	ResolvedBy      *string            `json:"resolved_by"`
+	CreatorNotified bool               `json:"creator_notified"`
+	LastMessageAt   pgtype.Timestamptz `json:"last_message_at"`
+	CreatorLastRead pgtype.Timestamptz `json:"creator_last_read"`
+}
+
+type Modpack struct {
+	ID          string             `json:"id"`
+	ModrinthID  string             `json:"modrinth_id"`
+	Slug        string             `json:"slug"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	IconUrl     string             `json:"icon_url"`
+	ModrinthUrl string             `json:"modrinth_url"`
+	Downloads   int32              `json:"downloads"`
+	LastFetched pgtype.Timestamptz `json:"last_fetched"`
+	Created     time.Time          `json:"created"`
+	Updated     time.Time          `json:"updated"`
 }
 
 type NbtHash struct {
@@ -239,6 +287,52 @@ type News struct {
 	Type     string             `json:"type"`
 	Created  time.Time          `json:"created"`
 	Updated  time.Time          `json:"updated"`
+}
+
+type NewsletterIssue struct {
+	ID       string             `json:"id"`
+	Type     string             `json:"type"`
+	Subject  string             `json:"subject"`
+	HtmlBody string             `json:"html_body"`
+	Slug     string             `json:"slug"`
+	SentAt   pgtype.Timestamptz `json:"sent_at"`
+	Created  time.Time          `json:"created"`
+}
+
+type NewsletterSubscriber struct {
+	ID               string    `json:"id"`
+	Email            string    `json:"email"`
+	UserID           *string   `json:"user_id"`
+	Type             string    `json:"type"`
+	Frequency        string    `json:"frequency"`
+	Confirmed        bool      `json:"confirmed"`
+	ConfirmToken     string    `json:"confirm_token"`
+	UnsubscribeToken string    `json:"unsubscribe_token"`
+	Created          time.Time `json:"created"`
+	Updated          time.Time `json:"updated"`
+}
+
+type Notification struct {
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	Type        string    `json:"type"`
+	Title       string    `json:"title"`
+	Body        string    `json:"body"`
+	Url         string    `json:"url"`
+	ActorID     *string   `json:"actor_id"`
+	ReferenceID *string   `json:"reference_id"`
+	Read        bool      `json:"read"`
+	Created     time.Time `json:"created"`
+}
+
+type NotificationPreference struct {
+	ID       string    `json:"id"`
+	UserID   string    `json:"user_id"`
+	Category string    `json:"category"`
+	Email    string    `json:"email"`
+	Web      bool      `json:"web"`
+	Created  time.Time `json:"created"`
+	Updated  time.Time `json:"updated"`
 }
 
 type OutgoingClick struct {
@@ -284,6 +378,7 @@ type PointLog struct {
 	EarnedAt    time.Time `json:"earned_at"`
 	Created     time.Time `json:"created"`
 	Updated     time.Time `json:"updated"`
+	ReferenceID string    `json:"reference_id"`
 }
 
 type Report struct {
@@ -389,6 +484,33 @@ type SchematicRating struct {
 	Deleted     pgtype.Timestamptz `json:"deleted"`
 }
 
+type SchematicRedditLink struct {
+	ID           string             `json:"id"`
+	SchematicID  string             `json:"schematic_id"`
+	RedditUrl    string             `json:"reddit_url"`
+	Subreddit    string             `json:"subreddit"`
+	PostTitle    string             `json:"post_title"`
+	Upvotes      int32              `json:"upvotes"`
+	CommentCount int32              `json:"comment_count"`
+	ThumbnailUrl string             `json:"thumbnail_url"`
+	LastFetched  pgtype.Timestamptz `json:"last_fetched"`
+	Created      time.Time          `json:"created"`
+	Updated      time.Time          `json:"updated"`
+}
+
+type SchematicReference struct {
+	ID           string             `json:"id"`
+	SchematicID  string             `json:"schematic_id"`
+	Url          string             `json:"url"`
+	SourceType   string             `json:"source_type"`
+	Title        string             `json:"title"`
+	ThumbnailUrl string             `json:"thumbnail_url"`
+	AuthorName   string             `json:"author_name"`
+	LastFetched  pgtype.Timestamptz `json:"last_fetched"`
+	Created      time.Time          `json:"created"`
+	Updated      time.Time          `json:"updated"`
+}
+
 type SchematicTag struct {
 	ID      string    `json:"id"`
 	Key     string    `json:"key"`
@@ -421,13 +543,30 @@ type SchematicVariation struct {
 }
 
 type SchematicVersion struct {
+	ID            string          `json:"id"`
+	SchematicID   string          `json:"schematic_id"`
+	Version       int32           `json:"version"`
+	Snapshot      string          `json:"snapshot"`
+	Note          string          `json:"note"`
+	Created       time.Time       `json:"created"`
+	Updated       time.Time       `json:"updated"`
+	SchematicFile string          `json:"schematic_file"`
+	Changelog     string          `json:"changelog"`
+	BlockCount    int32           `json:"block_count"`
+	DimX          int32           `json:"dim_x"`
+	DimY          int32           `json:"dim_y"`
+	DimZ          int32           `json:"dim_z"`
+	Materials     json.RawMessage `json:"materials"`
+}
+
+type SchematicVideo struct {
 	ID          string    `json:"id"`
 	SchematicID string    `json:"schematic_id"`
-	Version     int32     `json:"version"`
-	Snapshot    string    `json:"snapshot"`
-	Note        string    `json:"note"`
+	VideoUrl    string    `json:"video_url"`
+	VideoType   string    `json:"video_type"`
+	Title       string    `json:"title"`
+	Position    int32     `json:"position"`
 	Created     time.Time `json:"created"`
-	Updated     time.Time `json:"updated"`
 }
 
 type SchematicView struct {
@@ -445,6 +584,11 @@ type SchematicsCategory struct {
 	CategoryID  string `json:"category_id"`
 }
 
+type SchematicsModpack struct {
+	SchematicID string `json:"schematic_id"`
+	ModpackID   string `json:"modpack_id"`
+}
+
 type SchematicsTag struct {
 	SchematicID string `json:"schematic_id"`
 	TagID       string `json:"tag_id"`
@@ -457,6 +601,20 @@ type Search struct {
 	UserID       *string   `json:"user_id"`
 	IpAddress    string    `json:"ip_address"`
 	Created      time.Time `json:"created"`
+}
+
+type SearchAlert struct {
+	ID               string             `json:"id"`
+	UserID           string             `json:"user_id"`
+	Query            string             `json:"query"`
+	Filters          json.RawMessage    `json:"filters"`
+	Frequency        string             `json:"frequency"`
+	LastChecked      pgtype.Timestamptz `json:"last_checked"`
+	LastNotified     pgtype.Timestamptz `json:"last_notified"`
+	Active           bool               `json:"active"`
+	UnsubscribeToken string             `json:"unsubscribe_token"`
+	Created          time.Time          `json:"created"`
+	Updated          time.Time          `json:"updated"`
 }
 
 type SearchClick struct {
@@ -482,6 +640,23 @@ type SearchQueryCount struct {
 	Query           string `json:"query"`
 	SearchCount     int64  `json:"search_count"`
 	ZeroResultCount int64  `json:"zero_result_count"`
+}
+
+type SearchTermModeration struct {
+	Query     string    `json:"query"`
+	IsClean   bool      `json:"is_clean"`
+	CheckedAt time.Time `json:"checked_at"`
+}
+
+type SectionSubscription struct {
+	ID               string    `json:"id"`
+	UserID           string    `json:"user_id"`
+	SubscriptionType string    `json:"subscription_type"`
+	TargetID         string    `json:"target_id"`
+	Frequency        string    `json:"frequency"`
+	UnsubscribeToken string    `json:"unsubscribe_token"`
+	Created          time.Time `json:"created"`
+	Updated          time.Time `json:"updated"`
 }
 
 type Session struct {
@@ -544,18 +719,20 @@ type TempUploadImage struct {
 }
 
 type User struct {
-	ID           string             `json:"id"`
-	Email        string             `json:"email"`
-	Username     string             `json:"username"`
-	PasswordHash string             `json:"password_hash"`
-	OldPassword  string             `json:"old_password"`
-	Avatar       string             `json:"avatar"`
-	Points       int32              `json:"points"`
-	Verified     bool               `json:"verified"`
-	IsAdmin      bool               `json:"is_admin"`
-	Deleted      pgtype.Timestamptz `json:"deleted"`
-	Created      time.Time          `json:"created"`
-	Updated      time.Time          `json:"updated"`
+	ID             string             `json:"id"`
+	Email          string             `json:"email"`
+	Username       string             `json:"username"`
+	PasswordHash   string             `json:"password_hash"`
+	OldPassword    string             `json:"old_password"`
+	Avatar         string             `json:"avatar"`
+	Points         int32              `json:"points"`
+	Verified       bool               `json:"verified"`
+	IsAdmin        bool               `json:"is_admin"`
+	Deleted        pgtype.Timestamptz `json:"deleted"`
+	Created        time.Time          `json:"created"`
+	Updated        time.Time          `json:"updated"`
+	FollowerCount  int32              `json:"follower_count"`
+	FollowingCount int32              `json:"following_count"`
 }
 
 type UserAchievement struct {
@@ -566,6 +743,40 @@ type UserAchievement struct {
 	Updated       time.Time `json:"updated"`
 }
 
+type UserBadge struct {
+	ID      string    `json:"id"`
+	UserID  string    `json:"user_id"`
+	BadgeID string    `json:"badge_id"`
+	Count   int32     `json:"count"`
+	Created time.Time `json:"created"`
+	Updated time.Time `json:"updated"`
+}
+
+type UserDisplayedBadge struct {
+	ID       string    `json:"id"`
+	UserID   string    `json:"user_id"`
+	BadgeID  string    `json:"badge_id"`
+	Position int16     `json:"position"`
+	Created  time.Time `json:"created"`
+}
+
+type UserFollow struct {
+	ID         string    `json:"id"`
+	FollowerID string    `json:"follower_id"`
+	FollowedID string    `json:"followed_id"`
+	Created    time.Time `json:"created"`
+}
+
+type UserKnownIp struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	IpAddress string    `json:"ip_address"`
+	UserAgent string    `json:"user_agent"`
+	Verified  bool      `json:"verified"`
+	LastSeen  time.Time `json:"last_seen"`
+	Created   time.Time `json:"created"`
+}
+
 type UserMetum struct {
 	ID      string    `json:"id"`
 	UserID  string    `json:"user_id"`
@@ -573,6 +784,59 @@ type UserMetum struct {
 	Value   string    `json:"value"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
+}
+
+type UserPasskey struct {
+	ID              string             `json:"id"`
+	UserID          string             `json:"user_id"`
+	CredentialID    []byte             `json:"credential_id"`
+	PublicKey       []byte             `json:"public_key"`
+	AttestationType string             `json:"attestation_type"`
+	Transport       []string           `json:"transport"`
+	Aaguid          []byte             `json:"aaguid"`
+	SignCount       int32              `json:"sign_count"`
+	FriendlyName    string             `json:"friendly_name"`
+	LastUsed        pgtype.Timestamptz `json:"last_used"`
+	Created         time.Time          `json:"created"`
+}
+
+type UserSecuritySetting struct {
+	ID                string    `json:"id"`
+	UserID            string    `json:"user_id"`
+	NewIpVerification bool      `json:"new_ip_verification"`
+	TotpEnabled       bool      `json:"totp_enabled"`
+	PasskeysEnabled   bool      `json:"passkeys_enabled"`
+	Created           time.Time `json:"created"`
+	Updated           time.Time `json:"updated"`
+}
+
+type UserSocialLink struct {
+	ID       string    `json:"id"`
+	UserID   string    `json:"user_id"`
+	Platform string    `json:"platform"`
+	Url      string    `json:"url"`
+	Username string    `json:"username"`
+	Verified bool      `json:"verified"`
+	Created  time.Time `json:"created"`
+	Updated  time.Time `json:"updated"`
+}
+
+type UserTotp struct {
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	SecretEncrypted string    `json:"secret_encrypted"`
+	Enabled         bool      `json:"enabled"`
+	Verified        bool      `json:"verified"`
+	Created         time.Time `json:"created"`
+	Updated         time.Time `json:"updated"`
+}
+
+type UserTotpBackupCode struct {
+	ID       string    `json:"id"`
+	UserID   string    `json:"user_id"`
+	CodeHash string    `json:"code_hash"`
+	Used     bool      `json:"used"`
+	Created  time.Time `json:"created"`
 }
 
 type UserWebhook struct {
@@ -585,4 +849,13 @@ type UserWebhook struct {
 	LastFailureMessage  string             `json:"last_failure_message"`
 	Created             time.Time          `json:"created"`
 	Updated             time.Time          `json:"updated"`
+}
+
+type ZeroResultSuggestion struct {
+	ID         string    `json:"id"`
+	Query      string    `json:"query"`
+	Suggestion string    `json:"suggestion"`
+	Auto       bool      `json:"auto"`
+	Created    time.Time `json:"created"`
+	Updated    time.Time `json:"updated"`
 }

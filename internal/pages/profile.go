@@ -31,6 +31,7 @@ var profileTemplates = append([]string{
 
 type ProfileData struct {
 	ProfileUsername string
+	ProfileUserID  string
 	Name            string
 	HasSchematics  bool
 	UserAvatar     tmpl.URL
@@ -40,9 +41,16 @@ type ProfileData struct {
 	TotalDownloads int
 	Points         int
 	Sort           string
-	// Achievements earned by this user (minimal display)
 	Achievements    []UserAchievement
 	HasAchievements bool
+	SocialLinks     []store.SocialLink
+	HasSocialLinks  bool
+	DisplayBadges   []store.DisplayBadge
+	HasBadges       bool
+	FollowerCount   int
+	FollowingCount  int
+	IsFollowing     bool
+	IsOwnProfile    bool
 	DefaultData
 }
 
@@ -123,6 +131,27 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 		}
 		d.Achievements = uiAchs
 		d.HasAchievements = len(uiAchs) > 0
+	}
+
+	d.ProfileUserID = user.ID
+	d.FollowerCount = user.FollowerCount
+	d.FollowingCount = user.FollowingCount
+
+	if links, err := appStore.SocialLinks.ListByUser(ctx, user.ID); err == nil && len(links) > 0 {
+		d.SocialLinks = links
+		d.HasSocialLinks = true
+	}
+
+	if badges, err := appStore.Badges.GetDisplayedBadges(ctx, user.ID); err == nil && len(badges) > 0 {
+		d.DisplayBadges = badges
+		d.HasBadges = true
+	}
+
+	if currentUser := session.UserFromContext(ctx); currentUser != nil {
+		d.IsOwnProfile = currentUser.ID == user.ID
+		if !d.IsOwnProfile {
+			d.IsFollowing, _ = appStore.Follows.IsFollowing(ctx, currentUser.ID, user.ID)
+		}
 	}
 
 	if len(d.Schematics) > 0 {

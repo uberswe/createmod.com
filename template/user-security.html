@@ -1,0 +1,70 @@
+{{ template "head.html" . }}
+{{ template "sidebar.html" . }}
+{{ template "header.html" . }}
+<div class="page-wrapper">
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="row">
+                <div class="col-12 col-md-3 mb-3">
+                    {{ template "settings_nav.html" . }}
+                </div>
+                <div class="col-12 col-md-9">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ T .Language "Two-Factor Authentication" }}</h3>
+                        </div>
+                        <div class="card-body">
+                            {{ if .TOTPEnabled }}
+                            <div class="alert alert-success">
+                                {{ T .Language "Two-factor authentication is enabled." }}
+                            </div>
+                            <button class="btn btn-outline-danger" disabled>{{ T .Language "Disable 2FA" }}</button>
+                            {{ else }}
+                            <p class="text-secondary">{{ T .Language "Add an extra layer of security to your account with TOTP-based two-factor authentication." }}</p>
+                            <button class="btn btn-primary" disabled>{{ T .Language "Enable 2FA" }}</button>
+                            {{ end }}
+                        </div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ T .Language "Passkeys" }}</h3>
+                        </div>
+                        <div class="card-body">
+                            {{ if .Passkeys }}
+                            <div class="list-group list-group-flush mb-3">
+                                {{ range .Passkeys }}
+                                <div class="list-group-item">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <strong>{{ .FriendlyName }}</strong>
+                                            <div class="text-secondary">{{ T $.Language "Added" }} {{ HumanDate .Created }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{ end }}
+                            </div>
+                            {{ else }}
+                            <p class="text-secondary">{{ T .Language "No passkeys registered. Passkeys provide passwordless authentication using your device's built-in security." }}</p>
+                            {{ end }}
+                            <button class="btn btn-primary" disabled>{{ T .Language "Register passkey" }}</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ T .Language "IP Verification" }}</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-secondary">{{ T .Language "When enabled, you'll need to verify your identity via email when logging in from a new IP address." }}</p>
+                            <label class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" {{ if .IPVerification }}checked{{ end }} disabled>
+                                <span class="form-check-label">{{ T .Language "Require verification for new IPs" }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ template "footer.html" . }}
+{{ template "foot.html" . }}

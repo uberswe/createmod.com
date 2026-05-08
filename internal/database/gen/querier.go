@@ -11,35 +11,49 @@ import (
 
 type Querier interface {
 	AddSchematicCategory(ctx context.Context, arg AddSchematicCategoryParams) error
+	AddSchematicModpack(ctx context.Context, arg AddSchematicModpackParams) error
 	AddSchematicTag(ctx context.Context, arg AddSchematicTagParams) error
 	AddSchematicToCollection(ctx context.Context, arg AddSchematicToCollectionParams) error
 	ApproveCategoryByID(ctx context.Context, id string) error
 	ApproveComment(ctx context.Context, id string) error
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
+	AwardBadge(ctx context.Context, arg AwardBadgeParams) error
+	BatchGetDisplayedBadges(ctx context.Context, dollar_1 []string) ([]BatchGetDisplayedBadgesRow, error)
 	BatchGetDownloadCounts(ctx context.Context, dollar_1 []string) ([]BatchGetDownloadCountsRow, error)
 	BatchGetRatings(ctx context.Context, dollar_1 []string) ([]BatchGetRatingsRow, error)
 	BatchGetSchematicCategories(ctx context.Context, dollar_1 []string) ([]BatchGetSchematicCategoriesRow, error)
+	BatchGetSchematicModpacks(ctx context.Context, dollar_1 []string) ([]BatchGetSchematicModpacksRow, error)
 	BatchGetSchematicTags(ctx context.Context, dollar_1 []string) ([]BatchGetSchematicTagsRow, error)
+	BatchGetSchematicVideos(ctx context.Context, dollar_1 []string) ([]SchematicVideo, error)
 	BatchGetViewCounts(ctx context.Context, dollar_1 []string) ([]BatchGetViewCountsRow, error)
 	CheckHashIsBlacklisted(ctx context.Context, hash string) (bool, error)
 	ClaimTempUpload(ctx context.Context, arg ClaimTempUploadParams) (int64, error)
 	CleanupExpiredDownloadTokens(ctx context.Context) error
+	CleanupExpiredIPCodes(ctx context.Context) error
 	CleanupExpiredSessions(ctx context.Context) error
 	ClearCollectionSchematics(ctx context.Context, collectionID string) error
+	ClearDisplayedBadges(ctx context.Context, userID string) error
+	ConfirmNewsletterSubscriber(ctx context.Context, confirmToken string) error
 	ConsumeDownloadToken(ctx context.Context, token string) (DownloadToken, error)
+	CountActiveUsers(ctx context.Context) (int64, error)
 	CountAllTempUploads(ctx context.Context) (int64, error)
 	CountApprovedSchematics(ctx context.Context) (int64, error)
 	CountCollectionsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
+	CountFollowers(ctx context.Context, followedID string) (int32, error)
+	CountFollowing(ctx context.Context, followerID string) (int32, error)
 	CountGuidesForAdmin(ctx context.Context, filter string) (int64, error)
+	CountPointLogByReason(ctx context.Context, arg CountPointLogByReasonParams) (int32, error)
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsByAuthorAll(ctx context.Context, authorID *string) (int64, error)
+	CountSchematicsByModpack(ctx context.Context, modpackID string) (int64, error)
 	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountSoftDeletedByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountTempUploadImagesByToken(ctx context.Context, token string) (int32, error)
+	CountUnreadNotifications(ctx context.Context, userID string) (int64, error)
 	CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
@@ -55,21 +69,33 @@ type Querier interface {
 	CreateContactFormSubmission(ctx context.Context, arg CreateContactFormSubmissionParams) (ContactFormSubmission, error)
 	CreateDownloadToken(ctx context.Context, arg CreateDownloadTokenParams) (DownloadToken, error)
 	CreateExternalAuth(ctx context.Context, arg CreateExternalAuthParams) (ExternalAuth, error)
+	CreateFollow(ctx context.Context, arg CreateFollowParams) error
 	CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error)
+	CreateIPVerificationCode(ctx context.Context, arg CreateIPVerificationCodeParams) (IpVerificationCode, error)
 	CreateModerationLog(ctx context.Context, arg CreateModerationLogParams) (ModerationLog, error)
 	CreateModerationMessage(ctx context.Context, arg CreateModerationMessageParams) (ModerationMessage, error)
 	CreateModerationThread(ctx context.Context, arg CreateModerationThreadParams) (ModerationThread, error)
 	CreateNBTHash(ctx context.Context, arg CreateNBTHashParams) error
+	CreateNewsletterIssue(ctx context.Context, arg CreateNewsletterIssueParams) (NewsletterIssue, error)
+	CreateNewsletterSubscriber(ctx context.Context, arg CreateNewsletterSubscriberParams) (NewsletterSubscriber, error)
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
+	CreatePasskey(ctx context.Context, arg CreatePasskeyParams) (UserPasskey, error)
 	CreatePointLog(ctx context.Context, arg CreatePointLogParams) (PointLog, error)
+	CreateRedditLink(ctx context.Context, arg CreateRedditLinkParams) (SchematicRedditLink, error)
 	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateSchematic(ctx context.Context, arg CreateSchematicParams) (Schematic, error)
 	CreateSchematicFile(ctx context.Context, arg CreateSchematicFileParams) (CreateSchematicFileRow, error)
+	CreateSchematicReference(ctx context.Context, arg CreateSchematicReferenceParams) (SchematicReference, error)
 	CreateSchematicVariation(ctx context.Context, arg CreateSchematicVariationParams) (SchematicVariation, error)
 	CreateSchematicVersion(ctx context.Context, arg CreateSchematicVersionParams) (SchematicVersion, error)
+	CreateSchematicVideo(ctx context.Context, arg CreateSchematicVideoParams) (SchematicVideo, error)
 	CreateSearch(ctx context.Context, arg CreateSearchParams) error
+	CreateSearchAlert(ctx context.Context, arg CreateSearchAlertParams) (SearchAlert, error)
 	CreateSearchClick(ctx context.Context, arg CreateSearchClickParams) error
 	CreateSearchConversion(ctx context.Context, arg CreateSearchConversionParams) error
+	CreateSectionSubscription(ctx context.Context, arg CreateSectionSubscriptionParams) (SectionSubscription, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	CreateTOTPBackupCode(ctx context.Context, arg CreateTOTPBackupCodeParams) error
 	CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error)
 	CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (CreateTempUploadRow, error)
 	CreateTempUploadFile(ctx context.Context, arg CreateTempUploadFileParams) (TempUploadFile, error)
@@ -77,21 +103,36 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) error
 	CreateUserWebhook(ctx context.Context, arg CreateUserWebhookParams) (UserWebhook, error)
+	DailySearchTermVolume(ctx context.Context, arg DailySearchTermVolumeParams) ([]DailySearchTermVolumeRow, error)
+	DailySearchVolume(ctx context.Context, created time.Time) ([]DailySearchVolumeRow, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) error
 	DeleteCategoryByID(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
 	DeleteExpiredTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteExpiredUnclaimedTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteExternalAuth(ctx context.Context, arg DeleteExternalAuthParams) error
+	DeleteFollow(ctx context.Context, arg DeleteFollowParams) error
 	DeleteGuide(ctx context.Context, id string) error
+	DeleteKnownIP(ctx context.Context, arg DeleteKnownIPParams) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
+	DeleteOldNotifications(ctx context.Context, created time.Time) error
 	DeleteOldSchematicEvents(ctx context.Context, created time.Time) (int64, error)
+	DeletePasskey(ctx context.Context, arg DeletePasskeyParams) error
+	DeleteRedditLink(ctx context.Context, arg DeleteRedditLinkParams) error
 	DeleteReport(ctx context.Context, id string) error
 	DeleteReportsByTarget(ctx context.Context, arg DeleteReportsByTargetParams) (int64, error)
 	DeleteSchematicFile(ctx context.Context, id string) error
 	DeleteSchematicFilesBySchematicID(ctx context.Context, schematicID string) error
+	DeleteSchematicReference(ctx context.Context, arg DeleteSchematicReferenceParams) error
 	DeleteSchematicVariation(ctx context.Context, id string) error
+	DeleteSchematicVideo(ctx context.Context, arg DeleteSchematicVideoParams) error
+	DeleteSchematicVideosBySchematic(ctx context.Context, schematicID string) error
+	DeleteSearchAlert(ctx context.Context, arg DeleteSearchAlertParams) error
+	DeleteSectionSubscription(ctx context.Context, arg DeleteSectionSubscriptionParams) error
 	DeleteSession(ctx context.Context, id string) error
+	DeleteSocialLink(ctx context.Context, arg DeleteSocialLinkParams) error
+	DeleteTOTP(ctx context.Context, userID string) error
+	DeleteTOTPBackupCodes(ctx context.Context, userID string) error
 	DeleteTagByID(ctx context.Context, id string) error
 	DeleteTempUpload(ctx context.Context, token string) error
 	DeleteTempUploadFile(ctx context.Context, id string) error
@@ -100,7 +141,10 @@ type Querier interface {
 	DeleteTempUploadImagesByToken(ctx context.Context, token string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
 	DeleteUserWebhook(ctx context.Context, userID string) error
+	DeleteZeroResultSuggestion(ctx context.Context, id string) error
+	DisableTOTP(ctx context.Context, userID string) error
 	DisapproveComment(ctx context.Context, id string) error
+	EnableTOTP(ctx context.Context, userID string) error
 	FetchRatingCountBySchematic(ctx context.Context) ([]FetchRatingCountBySchematicRow, error)
 	FetchRatingSumBySchematic(ctx context.Context) ([]FetchRatingSumBySchematicRow, error)
 	FetchRecentDownloadsBySchematic(ctx context.Context, created time.Time) ([]FetchRecentDownloadsBySchematicRow, error)
@@ -110,6 +154,7 @@ type Querier interface {
 	FetchTotalViewsPreAggregated(ctx context.Context) ([]FetchTotalViewsPreAggregatedRow, error)
 	GetAPIKeyByLast8(ctx context.Context, last8 string) (ApiKey, error)
 	GetAchievementByKey(ctx context.Context, key string) (Achievement, error)
+	GetBadgeByKey(ctx context.Context, key string) (Badge, error)
 	GetCategoriesByIDs(ctx context.Context, dollar_1 []string) ([]SchematicCategory, error)
 	GetCategoryByID(ctx context.Context, id string) (SchematicCategory, error)
 	GetCategoryByKey(ctx context.Context, key string) (SchematicCategory, error)
@@ -121,19 +166,31 @@ type Querier interface {
 	GetCommentByID(ctx context.Context, id string) (Comment, error)
 	GetCommentTranslation(ctx context.Context, arg GetCommentTranslationParams) (CommentTranslation, error)
 	GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error)
+	GetDisplayedBadges(ctx context.Context, userID string) ([]GetDisplayedBadgesRow, error)
 	GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
+	GetExternalAuthByUserAndProvider(ctx context.Context, arg GetExternalAuthByUserAndProviderParams) (ExternalAuth, error)
 	GetGuideByID(ctx context.Context, id string) (Guide, error)
 	GetGuideByIDAdmin(ctx context.Context, id string) (Guide, error)
 	GetGuideBySlug(ctx context.Context, slug string) (Guide, error)
 	GetGuideTranslation(ctx context.Context, arg GetGuideTranslationParams) (GuideTranslation, error)
+	GetIPVerificationCode(ctx context.Context, arg GetIPVerificationCodeParams) (IpVerificationCode, error)
+	GetKnownIP(ctx context.Context, arg GetKnownIPParams) (UserKnownIp, error)
 	GetLatestSchematicVersion(ctx context.Context, schematicID string) (int32, error)
 	GetMinecraftVersionByID(ctx context.Context, id string) (GetMinecraftVersionByIDRow, error)
 	GetModMetadataByNamespace(ctx context.Context, namespace string) (ModMetadatum, error)
 	GetModerationThreadByContent(ctx context.Context, arg GetModerationThreadByContentParams) (ModerationThread, error)
+	GetModpackByID(ctx context.Context, id string) (Modpack, error)
+	GetModpackBySlug(ctx context.Context, slug string) (Modpack, error)
 	GetNBTHash(ctx context.Context, hash string) (NbtHash, error)
+	GetNewsletterIssueBySlug(ctx context.Context, slug string) (NewsletterIssue, error)
+	GetNewsletterSubscriberByEmail(ctx context.Context, arg GetNewsletterSubscriberByEmailParams) (NewsletterSubscriber, error)
+	GetNotificationPreference(ctx context.Context, arg GetNotificationPreferenceParams) (NotificationPreference, error)
+	GetNotificationPreferences(ctx context.Context, userID string) ([]NotificationPreference, error)
 	GetOldestSchematicVariationBySchematicAndUser(ctx context.Context, arg GetOldestSchematicVariationBySchematicAndUserParams) (SchematicVariation, error)
+	GetPasskeyByCredentialID(ctx context.Context, credentialID []byte) (UserPasskey, error)
 	GetPointLog(ctx context.Context, userID string) ([]PointLog, error)
+	GetRedditLinksBySchematic(ctx context.Context, schematicID string) ([]SchematicRedditLink, error)
 	GetSchematicByChecksum(ctx context.Context, hash string) (*string, error)
 	GetSchematicByID(ctx context.Context, id string) (Schematic, error)
 	GetSchematicByIDAdmin(ctx context.Context, id string) (Schematic, error)
@@ -141,13 +198,21 @@ type Querier interface {
 	GetSchematicCategoryIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicDownloadCount(ctx context.Context, schematicID string) (int32, error)
 	GetSchematicFileByID(ctx context.Context, id string) (GetSchematicFileByIDRow, error)
+	GetSchematicModpacks(ctx context.Context, schematicID string) ([]Modpack, error)
 	GetSchematicRating(ctx context.Context, schematicID string) (GetSchematicRatingRow, error)
 	GetSchematicTagIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicTranslation(ctx context.Context, arg GetSchematicTranslationParams) (SchematicTranslation, error)
+	GetSchematicVDRatioSinceCutoff(ctx context.Context, arg GetSchematicVDRatioSinceCutoffParams) (GetSchematicVDRatioSinceCutoffRow, error)
 	GetSchematicVariationByID(ctx context.Context, id string) (SchematicVariation, error)
+	GetSchematicVersionByID(ctx context.Context, id string) (SchematicVersion, error)
+	GetSchematicVersionBySchematicAndVersion(ctx context.Context, arg GetSchematicVersionBySchematicAndVersionParams) (SchematicVersion, error)
 	GetSchematicViewCount(ctx context.Context, schematicID string) (int32, error)
+	GetSecuritySettings(ctx context.Context, userID string) (UserSecuritySetting, error)
 	GetSession(ctx context.Context, id string) (GetSessionRow, error)
 	GetSiteAvgVDRatio(ctx context.Context) (interface{}, error)
+	GetSiteAvgVDRatioSinceCutoff(ctx context.Context, since time.Time) (interface{}, error)
+	GetSocialLinkByUserAndPlatform(ctx context.Context, arg GetSocialLinkByUserAndPlatformParams) (UserSocialLink, error)
+	GetTOTP(ctx context.Context, userID string) (UserTotp, error)
 	GetTagByID(ctx context.Context, id string) (SchematicTag, error)
 	GetTagByKey(ctx context.Context, key string) (SchematicTag, error)
 	GetTagByKeyIncludingPending(ctx context.Context, key string) (SchematicTag, error)
@@ -162,9 +227,12 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, lower string) (User, error)
 	GetUserIsContributor(ctx context.Context, authorID *string) (bool, error)
 	GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserMetum, error)
+	GetUserVDRatioSinceCutoff(ctx context.Context, arg GetUserVDRatioSinceCutoffParams) (GetUserVDRatioSinceCutoffRow, error)
 	GetUserWebhookByUserID(ctx context.Context, userID string) (UserWebhook, error)
+	GetZeroResultSuggestion(ctx context.Context, query string) (ZeroResultSuggestion, error)
 	HardDeleteComment(ctx context.Context, id string) error
 	HasAchievement(ctx context.Context, arg HasAchievementParams) (bool, error)
+	HasRecentApprovedUpload(ctx context.Context, arg HasRecentApprovedUploadParams) (bool, error)
 	HourlyCommentStats(ctx context.Context, created time.Time) ([]HourlyCommentStatsRow, error)
 	HourlyDownloadStats(ctx context.Context, created time.Time) ([]HourlyDownloadStatsRow, error)
 	HourlySchematicDownloadCounts(ctx context.Context, arg HourlySchematicDownloadCountsParams) ([]HourlySchematicDownloadCountsRow, error)
@@ -178,12 +246,15 @@ type Querier interface {
 	HourlyUserAggregateViewCounts(ctx context.Context, arg HourlyUserAggregateViewCountsParams) ([]HourlyUserAggregateViewCountsRow, error)
 	HourlyUserStats(ctx context.Context, created time.Time) ([]HourlyUserStatsRow, error)
 	HourlyViewStats(ctx context.Context, created time.Time) ([]HourlyViewStatsRow, error)
+	IncrementBadge(ctx context.Context, arg IncrementBadgeParams) error
 	IncrementCollectionViews(ctx context.Context, id string) error
 	IncrementGuideViews(ctx context.Context, id string) error
 	IncrementSchematicDownloads(ctx context.Context, id string) error
 	IncrementWebhookFailure(ctx context.Context, arg IncrementWebhookFailureParams) error
+	IsFollowing(ctx context.Context, arg IsFollowingParams) (bool, error)
 	ListAPIKeysByUser(ctx context.Context, userID string) ([]ApiKey, error)
 	ListAchievements(ctx context.Context) ([]Achievement, error)
+	ListActiveSearchAlerts(ctx context.Context, limit int32) ([]SearchAlert, error)
 	ListActiveUserWebhooks(ctx context.Context) ([]ListActiveUserWebhooksRow, error)
 	ListAdminEmails(ctx context.Context) ([]string, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
@@ -193,7 +264,9 @@ type Querier interface {
 	ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error)
 	ListApprovedSchematics(ctx context.Context, arg ListApprovedSchematicsParams) ([]Schematic, error)
 	ListApprovedSchematicsWithVideo(ctx context.Context, arg ListApprovedSchematicsWithVideoParams) ([]Schematic, error)
+	ListBadges(ctx context.Context) ([]Badge, error)
 	ListCategories(ctx context.Context) ([]SchematicCategory, error)
+	ListCleanSearchTerms(ctx context.Context, dollar_1 []string) ([]string, error)
 	ListCollections(ctx context.Context, arg ListCollectionsParams) ([]Collection, error)
 	ListCollectionsByAuthor(ctx context.Context, authorID *string) ([]Collection, error)
 	ListCollectionsForAdmin(ctx context.Context, arg ListCollectionsForAdminParams) ([]Collection, error)
@@ -201,55 +274,92 @@ type Querier interface {
 	ListCommentsBySchematic(ctx context.Context, schematicID *string) ([]ListCommentsBySchematicRow, error)
 	ListCommentsForAdmin(ctx context.Context, arg ListCommentsForAdminParams) ([]ListCommentsForAdminRow, error)
 	ListCommentsWithoutTranslation(ctx context.Context, arg ListCommentsWithoutTranslationParams) ([]ListCommentsWithoutTranslationRow, error)
+	ListConfirmedSubscribers(ctx context.Context, type_ string) ([]NewsletterSubscriber, error)
+	ListConfirmedSubscribersByFrequency(ctx context.Context, arg ListConfirmedSubscribersByFrequencyParams) ([]NewsletterSubscriber, error)
 	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	ListFeaturedCollections(ctx context.Context, limit int32) ([]Collection, error)
 	ListFeaturedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
+	ListFollowedIDs(ctx context.Context, followerID string) ([]string, error)
+	ListFollowers(ctx context.Context, arg ListFollowersParams) ([]User, error)
+	ListFollowing(ctx context.Context, arg ListFollowingParams) ([]User, error)
 	ListGuideTranslations(ctx context.Context, guideID string) ([]GuideTranslation, error)
 	ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide, error)
 	ListGuidesForAdmin(ctx context.Context, arg ListGuidesForAdminParams) ([]Guide, error)
 	ListGuidesForSitemap(ctx context.Context) ([]ListGuidesForSitemapRow, error)
 	ListHighestRatedSchematics(ctx context.Context, arg ListHighestRatedSchematicsParams) ([]Schematic, error)
+	ListKnownIPs(ctx context.Context, userID string) ([]UserKnownIp, error)
 	ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error)
 	ListModMetadataAll(ctx context.Context) ([]ModMetadatum, error)
 	ListModMetadataStale(ctx context.Context, limit int32) ([]ModMetadatum, error)
 	ListModerationLogBySchematic(ctx context.Context, schematicID string) ([]ListModerationLogBySchematicRow, error)
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
+	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
+	ListModpacks(ctx context.Context) ([]Modpack, error)
 	ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error)
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
+	ListNewsletterIssues(ctx context.Context, arg ListNewsletterIssuesParams) ([]NewsletterIssue, error)
+	ListNotificationsByUser(ctx context.Context, arg ListNotificationsByUserParams) ([]Notification, error)
+	ListPasskeys(ctx context.Context, userID string) ([]UserPasskey, error)
 	ListPendingCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListPendingTags(ctx context.Context) ([]SchematicTag, error)
 	ListPublicSchematicVariationsBySchematic(ctx context.Context, schematicID string) ([]SchematicVariation, error)
 	ListPublishedCollections(ctx context.Context, arg ListPublishedCollectionsParams) ([]Collection, error)
 	ListRandomApprovedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
+	ListRecentNotifications(ctx context.Context, arg ListRecentNotificationsParams) ([]Notification, error)
 	ListReports(ctx context.Context, arg ListReportsParams) ([]Report, error)
 	ListSchematicFilesBySchematicID(ctx context.Context, schematicID string) ([]ListSchematicFilesBySchematicIDRow, error)
+	ListSchematicReferences(ctx context.Context, schematicID string) ([]SchematicReference, error)
 	ListSchematicStatsForUser(ctx context.Context, arg ListSchematicStatsForUserParams) ([]ListSchematicStatsForUserRow, error)
 	ListSchematicTranslations(ctx context.Context, schematicID string) ([]SchematicTranslation, error)
 	ListSchematicVariationsBySchematicAndUser(ctx context.Context, arg ListSchematicVariationsBySchematicAndUserParams) ([]SchematicVariation, error)
 	ListSchematicVersions(ctx context.Context, schematicID string) ([]SchematicVersion, error)
+	ListSchematicVideos(ctx context.Context, schematicID string) ([]SchematicVideo, error)
 	ListSchematicsByAuthor(ctx context.Context, arg ListSchematicsByAuthorParams) ([]Schematic, error)
 	// Lists ALL schematics by an author regardless of moderation state (except deleted).
 	ListSchematicsByAuthorAll(ctx context.Context, arg ListSchematicsByAuthorAllParams) ([]Schematic, error)
 	ListSchematicsByAuthorExcluding(ctx context.Context, arg ListSchematicsByAuthorExcludingParams) ([]Schematic, error)
 	ListSchematicsByCategoryIDs(ctx context.Context, arg ListSchematicsByCategoryIDsParams) ([]Schematic, error)
 	ListSchematicsByIDs(ctx context.Context, dollar_1 []string) ([]Schematic, error)
+	ListSchematicsByModpack(ctx context.Context, arg ListSchematicsByModpackParams) ([]Schematic, error)
 	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
 	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
+	ListSearchAlertsByUser(ctx context.Context, userID string) ([]SearchAlert, error)
+	ListSectionSubscriptionsByTarget(ctx context.Context, arg ListSectionSubscriptionsByTargetParams) ([]SectionSubscription, error)
+	ListSectionSubscriptionsByUser(ctx context.Context, userID string) ([]SectionSubscription, error)
+	ListSocialLinksByPlatform(ctx context.Context, platform string) ([]UserSocialLink, error)
+	ListSocialLinksByUser(ctx context.Context, userID string) ([]UserSocialLink, error)
+	ListStaleRedditLinks(ctx context.Context, limit int32) ([]SchematicRedditLink, error)
+	ListStaleReferences(ctx context.Context, limit int32) ([]SchematicReference, error)
+	ListTOTPBackupCodes(ctx context.Context, userID string) ([]UserTotpBackupCode, error)
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)
 	ListTempUploadFilesByToken(ctx context.Context, token string) ([]TempUploadFile, error)
 	ListTempUploadImagesByToken(ctx context.Context, token string) ([]TempUploadImage, error)
 	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
 	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
+	ListTopSearchesSince(ctx context.Context, arg ListTopSearchesSinceParams) ([]ListTopSearchesSinceRow, error)
+	ListTopUsersByPoints(ctx context.Context, arg ListTopUsersByPointsParams) ([]User, error)
+	ListTopViewedSchematicsSince(ctx context.Context, arg ListTopViewedSchematicsSinceParams) ([]ListTopViewedSchematicsSinceRow, error)
+	ListUncheckedSearchTerms(ctx context.Context, arg ListUncheckedSearchTermsParams) ([]interface{}, error)
+	ListUnreadThreadsByCreator(ctx context.Context, authorID *string) ([]ModerationThread, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)
+	ListUserBadges(ctx context.Context, userID string) ([]ListUserBadgesRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminParams) ([]User, error)
 	ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error)
 	ListVersions(ctx context.Context) ([]CreatemodVersion, error)
+	ListZeroResultSuggestions(ctx context.Context, arg ListZeroResultSuggestionsParams) ([]ZeroResultSuggestion, error)
 	LogAPIKeyUsage(ctx context.Context, arg LogAPIKeyUsageParams) error
+	MarkAllNotificationsRead(ctx context.Context, userID string) error
+	MarkBackupCodeUsed(ctx context.Context, id string) error
+	MarkIPVerificationCodeUsed(ctx context.Context, id string) error
+	MarkModerationThreadCreatorNotified(ctx context.Context, id string) error
+	MarkModerationThreadCreatorRead(ctx context.Context, id string) error
+	MarkModerationThreadResolved(ctx context.Context, arg MarkModerationThreadResolvedParams) error
+	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
 	MarkTempUploadProcessing(ctx context.Context, token string) (string, error)
 	MonthlyUserDownloads(ctx context.Context, arg MonthlyUserDownloadsParams) ([]MonthlyUserDownloadsRow, error)
 	MonthlyUserUploads(ctx context.Context, arg MonthlyUserUploadsParams) ([]MonthlyUserUploadsRow, error)
@@ -262,6 +372,7 @@ type Querier interface {
 	// Concurrent refresh: allows reads during the refresh. Requires a unique index
 	// on the matview (idx_search_query_counts_query), which already exists.
 	RefreshSearchQueryCounts(ctx context.Context) error
+	RemoveBadge(ctx context.Context, arg RemoveBadgeParams) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
 	RestoreCollectionsByAuthor(ctx context.Context, authorID *string) error
@@ -272,8 +383,11 @@ type Querier interface {
 	RestoreSchematicsByAuthor(ctx context.Context, authorID *string) error
 	RestoreUser(ctx context.Context, id string) error
 	SchematicNameExists(ctx context.Context, name string) (bool, error)
+	SearchModpacks(ctx context.Context, arg SearchModpacksParams) ([]Modpack, error)
+	SetDisplayedBadge(ctx context.Context, arg SetDisplayedBadgeParams) error
 	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
+	SetSchematicModpacks(ctx context.Context, schematicID string) error
 	SetSchematicTags(ctx context.Context, schematicID string) error
 	SoftDeleteCollection(ctx context.Context, id string) error
 	SoftDeleteCollectionsByAuthor(ctx context.Context, authorID *string) error
@@ -285,9 +399,20 @@ type Querier interface {
 	SoftDeleteSchematicsByAuthor(ctx context.Context, authorID *string) error
 	SoftDeleteUser(ctx context.Context, id string) error
 	SumUserPoints(ctx context.Context, userID string) (int32, error)
+	UnsubscribeNewsletter(ctx context.Context, unsubscribeToken string) error
+	UnsubscribeSearchAlert(ctx context.Context, unsubscribeToken string) error
+	UnsubscribeSectionSubscription(ctx context.Context, unsubscribeToken string) error
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
 	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
+	UpdateFollowerCountDecrement(ctx context.Context, id string) error
+	UpdateFollowerCountIncrement(ctx context.Context, id string) error
+	UpdateFollowingCountDecrement(ctx context.Context, id string) error
+	UpdateFollowingCountIncrement(ctx context.Context, id string) error
 	UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error)
+	UpdateModerationThreadLastMessage(ctx context.Context, id string) error
+	UpdatePasskeySignCount(ctx context.Context, arg UpdatePasskeySignCountParams) error
+	UpdateRedditLinkMetadata(ctx context.Context, arg UpdateRedditLinkMetadataParams) error
+	UpdateReferenceMetadata(ctx context.Context, arg UpdateReferenceMetadataParams) error
 	UpdateSchematic(ctx context.Context, arg UpdateSchematicParams) (Schematic, error)
 	UpdateSchematicDetectedLanguage(ctx context.Context, arg UpdateSchematicDetectedLanguageParams) error
 	UpdateSchematicDownloads(ctx context.Context, arg UpdateSchematicDownloadsParams) error
@@ -295,7 +420,10 @@ type Querier interface {
 	UpdateSchematicRatingAggregates(ctx context.Context, arg UpdateSchematicRatingAggregatesParams) error
 	UpdateSchematicTrendingScore(ctx context.Context, arg UpdateSchematicTrendingScoreParams) error
 	UpdateSchematicVariation(ctx context.Context, arg UpdateSchematicVariationParams) error
+	UpdateSchematicVideoPosition(ctx context.Context, arg UpdateSchematicVideoPositionParams) error
 	UpdateSchematicViews(ctx context.Context, arg UpdateSchematicViewsParams) error
+	UpdateSearchAlertLastChecked(ctx context.Context, id string) error
+	UpdateSearchAlertLastNotified(ctx context.Context, id string) error
 	UpdateTempUpload(ctx context.Context, arg UpdateTempUploadParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
@@ -305,12 +433,21 @@ type Querier interface {
 	UpsertCollectionTranslation(ctx context.Context, arg UpsertCollectionTranslationParams) (CollectionTranslation, error)
 	UpsertCommentTranslation(ctx context.Context, arg UpsertCommentTranslationParams) (CommentTranslation, error)
 	UpsertGuideTranslation(ctx context.Context, arg UpsertGuideTranslationParams) (GuideTranslation, error)
+	UpsertKnownIP(ctx context.Context, arg UpsertKnownIPParams) (UserKnownIp, error)
 	UpsertModMetadata(ctx context.Context, arg UpsertModMetadataParams) (ModMetadatum, error)
+	UpsertModpack(ctx context.Context, arg UpsertModpackParams) (Modpack, error)
+	UpsertNotificationPreference(ctx context.Context, arg UpsertNotificationPreferenceParams) (NotificationPreference, error)
 	UpsertSchematicRating(ctx context.Context, arg UpsertSchematicRatingParams) error
 	UpsertSchematicTranslation(ctx context.Context, arg UpsertSchematicTranslationParams) (SchematicTranslation, error)
 	UpsertSchematicView(ctx context.Context, arg UpsertSchematicViewParams) error
 	UpsertSchematicViewCount(ctx context.Context, arg UpsertSchematicViewCountParams) error
+	UpsertSearchTermModeration(ctx context.Context, arg UpsertSearchTermModerationParams) error
+	UpsertSecuritySettings(ctx context.Context, arg UpsertSecuritySettingsParams) (UserSecuritySetting, error)
+	UpsertSocialLink(ctx context.Context, arg UpsertSocialLinkParams) error
+	UpsertTOTP(ctx context.Context, arg UpsertTOTPParams) (UserTotp, error)
 	UpsertUserWebhook(ctx context.Context, arg UpsertUserWebhookParams) error
+	UpsertZeroResultSuggestion(ctx context.Context, arg UpsertZeroResultSuggestionParams) (ZeroResultSuggestion, error)
+	VerifyKnownIP(ctx context.Context, arg VerifyKnownIPParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -71,18 +71,20 @@ func fromPgTimestamptz(ts pgtype.Timestamptz) *time.Time {
 
 func userFromDB(u db.User) *store.User {
 	return &store.User{
-		ID:           u.ID,
-		Email:        u.Email,
-		Username:     u.Username,
-		PasswordHash: u.PasswordHash,
-		OldPassword:  u.OldPassword,
-		Avatar:       u.Avatar,
-		Points:       int(u.Points),
-		Verified:     u.Verified,
-		IsAdmin:      u.IsAdmin,
-		Deleted:      fromPgTimestamptz(u.Deleted),
-		Created:      u.Created,
-		Updated:      u.Updated,
+		ID:             u.ID,
+		Email:          u.Email,
+		Username:       u.Username,
+		PasswordHash:   u.PasswordHash,
+		OldPassword:    u.OldPassword,
+		Avatar:         u.Avatar,
+		Points:         int(u.Points),
+		Verified:       u.Verified,
+		IsAdmin:        u.IsAdmin,
+		Deleted:        fromPgTimestamptz(u.Deleted),
+		Created:        u.Created,
+		Updated:        u.Updated,
+		FollowerCount:  int(u.FollowerCount),
+		FollowingCount: int(u.FollowingCount),
 	}
 }
 
@@ -226,13 +228,20 @@ func apiKeyFromDB(k db.ApiKey) store.APIKey {
 }
 
 func externalAuthFromDB(ea db.ExternalAuth) store.ExternalAuth {
-	return store.ExternalAuth{
-		ID:         ea.ID,
-		UserID:     ea.UserID,
-		Provider:   ea.Provider,
-		ProviderID: ea.ProviderID,
-		Created:    ea.Created,
+	result := store.ExternalAuth{
+		ID:                    ea.ID,
+		UserID:                ea.UserID,
+		Provider:              ea.Provider,
+		ProviderID:            ea.ProviderID,
+		AccessTokenEncrypted:  ea.AccessTokenEncrypted,
+		RefreshTokenEncrypted: ea.RefreshTokenEncrypted,
+		TokenExpiry:           fromPgTimestamptz(ea.TokenExpiry),
+		Username:              ea.Username,
+		AvatarURL:             ea.AvatarUrl,
+		Metadata:              ea.Metadata,
+		Created:               ea.Created,
 	}
+	return result
 }
 
 func modMetadataFromDB(m db.ModMetadatum) store.ModMetadata {
@@ -485,6 +494,25 @@ func (us *UserStoreImpl) ListForSitemap(ctx context.Context) ([]store.SitemapUse
 
 func (us *UserStoreImpl) ListAdminEmails(ctx context.Context) ([]string, error) {
 	return us.q.ListAdminEmails(ctx)
+}
+
+func (us *UserStoreImpl) ListTopByPoints(ctx context.Context, limit, offset int) ([]store.User, error) {
+	rows, err := us.q.ListTopUsersByPoints(ctx, db.ListTopUsersByPointsParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.User, len(rows))
+	for i, r := range rows {
+		result[i] = *userFromDB(r)
+	}
+	return result, nil
+}
+
+func (us *UserStoreImpl) CountActive(ctx context.Context) (int64, error) {
+	return us.q.CountActiveUsers(ctx)
 }
 
 // ============================================================================
@@ -1883,6 +1911,7 @@ func (as *AchievementStoreImpl) CreatePointLog(ctx context.Context, entry *store
 		UserID:      entry.UserID,
 		Points:      int32(entry.Points),
 		Reason:      entry.Reason,
+		ReferenceID: entry.ReferenceID,
 		Description: entry.Description,
 		EarnedAt:    entry.EarnedAt,
 	})
@@ -1905,6 +1934,7 @@ func (as *AchievementStoreImpl) GetPointLog(ctx context.Context, userID string) 
 			UserID:      r.UserID,
 			Points:      int(r.Points),
 			Reason:      r.Reason,
+			ReferenceID: r.ReferenceID,
 			Description: r.Description,
 			EarnedAt:    r.EarnedAt,
 		}
@@ -1915,6 +1945,310 @@ func (as *AchievementStoreImpl) GetPointLog(ctx context.Context, userID string) 
 func (as *AchievementStoreImpl) SumUserPoints(ctx context.Context, userID string) (int, error) {
 	total, err := as.q.SumUserPoints(ctx, userID)
 	return int(total), err
+}
+
+func (as *AchievementStoreImpl) CountPointLogByReason(ctx context.Context, userID, reason string) (int, error) {
+	cnt, err := as.q.CountPointLogByReason(ctx, db.CountPointLogByReasonParams{
+		UserID: userID,
+		Reason: reason,
+	})
+	return int(cnt), err
+}
+
+// --------------------------------------------------------------------------
+// BadgeStoreImpl implements store.BadgeStore.
+// --------------------------------------------------------------------------
+
+type BadgeStoreImpl struct{ q *db.Queries }
+
+func badgeFromDB(b db.Badge) store.Badge {
+	return store.Badge{
+		ID:          b.ID,
+		Key:         b.Key,
+		Title:       b.Title,
+		Description: b.Description,
+		Icon:        b.Icon,
+		Category:    b.Category,
+		Threshold:   int(b.Threshold),
+		MultiEarn:   b.MultiEarn,
+	}
+}
+
+func (bs *BadgeStoreImpl) GetByKey(ctx context.Context, key string) (*store.Badge, error) {
+	row, err := bs.q.GetBadgeByKey(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	b := badgeFromDB(row)
+	return &b, nil
+}
+
+func (bs *BadgeStoreImpl) List(ctx context.Context) ([]store.Badge, error) {
+	rows, err := bs.q.ListBadges(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Badge, len(rows))
+	for i, r := range rows {
+		result[i] = badgeFromDB(r)
+	}
+	return result, nil
+}
+
+func (bs *BadgeStoreImpl) ListUserBadges(ctx context.Context, userID string) ([]store.UserBadge, error) {
+	rows, err := bs.q.ListUserBadges(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.UserBadge, len(rows))
+	for i, r := range rows {
+		result[i] = store.UserBadge{
+			ID:      r.ID,
+			UserID:  r.UserID,
+			BadgeID: r.BadgeID,
+			Count:   int(r.Count),
+			Badge: store.Badge{
+				Key:         r.Key,
+				Title:       r.Title,
+				Description: r.Description,
+				Icon:        r.Icon,
+				Category:    r.Category,
+				Threshold:   int(r.Threshold),
+				MultiEarn:   r.MultiEarn,
+			},
+		}
+	}
+	return result, nil
+}
+
+func (bs *BadgeStoreImpl) AwardBadge(ctx context.Context, userID, badgeID string) error {
+	return bs.q.AwardBadge(ctx, db.AwardBadgeParams{UserID: userID, BadgeID: badgeID})
+}
+
+func (bs *BadgeStoreImpl) IncrementBadge(ctx context.Context, userID, badgeID string) error {
+	return bs.q.IncrementBadge(ctx, db.IncrementBadgeParams{UserID: userID, BadgeID: badgeID})
+}
+
+func (bs *BadgeStoreImpl) RemoveBadge(ctx context.Context, userID, badgeID string) error {
+	return bs.q.RemoveBadge(ctx, db.RemoveBadgeParams{UserID: userID, BadgeID: badgeID})
+}
+
+func (bs *BadgeStoreImpl) SetDisplayedBadges(ctx context.Context, userID string, badgeIDs []string) error {
+	if err := bs.q.ClearDisplayedBadges(ctx, userID); err != nil {
+		return err
+	}
+	for i, bid := range badgeIDs {
+		if i >= 3 {
+			break
+		}
+		if err := bs.q.SetDisplayedBadge(ctx, db.SetDisplayedBadgeParams{
+			UserID:   userID,
+			BadgeID:  bid,
+			Position: int16(i),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func displayBadgeFromRow(userID, badgeID string, position int16, key, title, description, icon, category string, threshold int32, multiEarn bool) store.DisplayBadge {
+	return store.DisplayBadge{
+		UserID:   userID,
+		BadgeID:  badgeID,
+		Position: int(position),
+		Badge: store.Badge{
+			ID:          badgeID,
+			Key:         key,
+			Title:       title,
+			Description: description,
+			Icon:        icon,
+			Category:    category,
+			Threshold:   int(threshold),
+			MultiEarn:   multiEarn,
+		},
+	}
+}
+
+func (bs *BadgeStoreImpl) GetDisplayedBadges(ctx context.Context, userID string) ([]store.DisplayBadge, error) {
+	rows, err := bs.q.GetDisplayedBadges(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.DisplayBadge, len(rows))
+	for i, r := range rows {
+		result[i] = displayBadgeFromRow(r.UserID, r.BadgeID, r.Position, r.Key, r.Title, r.Description, r.Icon, r.Category, r.Threshold, r.MultiEarn)
+	}
+	return result, nil
+}
+
+func (bs *BadgeStoreImpl) BatchGetDisplayedBadges(ctx context.Context, userIDs []string) (map[string][]store.DisplayBadge, error) {
+	rows, err := bs.q.BatchGetDisplayedBadges(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]store.DisplayBadge)
+	for _, r := range rows {
+		result[r.UserID] = append(result[r.UserID], displayBadgeFromRow(r.UserID, r.BadgeID, r.Position, r.Key, r.Title, r.Description, r.Icon, r.Category, r.Threshold, r.MultiEarn))
+	}
+	return result, nil
+}
+
+// --------------------------------------------------------------------------
+// SocialLinkStoreImpl implements store.SocialLinkStore.
+// --------------------------------------------------------------------------
+
+type SocialLinkStoreImpl struct{ q *db.Queries }
+
+func socialLinkFromDB(s db.UserSocialLink) store.SocialLink {
+	return store.SocialLink{
+		ID:       s.ID,
+		UserID:   s.UserID,
+		Platform: s.Platform,
+		URL:      s.Url,
+		Username: s.Username,
+		Verified: s.Verified,
+		Created:  s.Created,
+		Updated:  s.Updated,
+	}
+}
+
+func (sl *SocialLinkStoreImpl) Upsert(ctx context.Context, link *store.SocialLink) error {
+	return sl.q.UpsertSocialLink(ctx, db.UpsertSocialLinkParams{
+		UserID:   link.UserID,
+		Platform: link.Platform,
+		Url:      link.URL,
+		Username: link.Username,
+		Verified: link.Verified,
+	})
+}
+
+func (sl *SocialLinkStoreImpl) ListByUser(ctx context.Context, userID string) ([]store.SocialLink, error) {
+	rows, err := sl.q.ListSocialLinksByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SocialLink, len(rows))
+	for i, r := range rows {
+		result[i] = socialLinkFromDB(r)
+	}
+	return result, nil
+}
+
+func (sl *SocialLinkStoreImpl) GetByUserAndPlatform(ctx context.Context, userID, platform string) (*store.SocialLink, error) {
+	row, err := sl.q.GetSocialLinkByUserAndPlatform(ctx, db.GetSocialLinkByUserAndPlatformParams{
+		UserID:   userID,
+		Platform: platform,
+	})
+	if err != nil {
+		return nil, err
+	}
+	link := socialLinkFromDB(row)
+	return &link, nil
+}
+
+func (sl *SocialLinkStoreImpl) Delete(ctx context.Context, userID, platform string) error {
+	return sl.q.DeleteSocialLink(ctx, db.DeleteSocialLinkParams{
+		UserID:   userID,
+		Platform: platform,
+	})
+}
+
+func (sl *SocialLinkStoreImpl) ListByPlatform(ctx context.Context, platform string) ([]store.SocialLink, error) {
+	rows, err := sl.q.ListSocialLinksByPlatform(ctx, platform)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SocialLink, len(rows))
+	for i, r := range rows {
+		result[i] = socialLinkFromDB(r)
+	}
+	return result, nil
+}
+
+// --------------------------------------------------------------------------
+// FollowStoreImpl implements store.FollowStore.
+// --------------------------------------------------------------------------
+
+type FollowStoreImpl struct{ q *db.Queries }
+
+func (fs *FollowStoreImpl) Follow(ctx context.Context, followerID, followedID string) error {
+	if err := fs.q.CreateFollow(ctx, db.CreateFollowParams{
+		FollowerID: followerID,
+		FollowedID: followedID,
+	}); err != nil {
+		return err
+	}
+	if err := fs.q.UpdateFollowerCountIncrement(ctx, followedID); err != nil {
+		return err
+	}
+	return fs.q.UpdateFollowingCountIncrement(ctx, followerID)
+}
+
+func (fs *FollowStoreImpl) Unfollow(ctx context.Context, followerID, followedID string) error {
+	if err := fs.q.DeleteFollow(ctx, db.DeleteFollowParams{
+		FollowerID: followerID,
+		FollowedID: followedID,
+	}); err != nil {
+		return err
+	}
+	if err := fs.q.UpdateFollowerCountDecrement(ctx, followedID); err != nil {
+		return err
+	}
+	return fs.q.UpdateFollowingCountDecrement(ctx, followerID)
+}
+
+func (fs *FollowStoreImpl) IsFollowing(ctx context.Context, followerID, followedID string) (bool, error) {
+	return fs.q.IsFollowing(ctx, db.IsFollowingParams{
+		FollowerID: followerID,
+		FollowedID: followedID,
+	})
+}
+
+func (fs *FollowStoreImpl) ListFollowers(ctx context.Context, userID string, limit, offset int) ([]store.User, error) {
+	rows, err := fs.q.ListFollowers(ctx, db.ListFollowersParams{
+		FollowedID: userID,
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.User, len(rows))
+	for i, r := range rows {
+		result[i] = *userFromDB(r)
+	}
+	return result, nil
+}
+
+func (fs *FollowStoreImpl) ListFollowing(ctx context.Context, userID string, limit, offset int) ([]store.User, error) {
+	rows, err := fs.q.ListFollowing(ctx, db.ListFollowingParams{
+		FollowerID: userID,
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.User, len(rows))
+	for i, r := range rows {
+		result[i] = *userFromDB(r)
+	}
+	return result, nil
+}
+
+func (fs *FollowStoreImpl) CountFollowers(ctx context.Context, userID string) (int, error) {
+	cnt, err := fs.q.CountFollowers(ctx, userID)
+	return int(cnt), err
+}
+
+func (fs *FollowStoreImpl) CountFollowing(ctx context.Context, userID string) (int, error) {
+	cnt, err := fs.q.CountFollowing(ctx, userID)
+	return int(cnt), err
+}
+
+func (fs *FollowStoreImpl) ListFollowedIDs(ctx context.Context, followerID string) ([]string, error) {
+	return fs.q.ListFollowedIDs(ctx, followerID)
 }
 
 // TranslationStoreImpl implements store.TranslationStore.
@@ -2382,6 +2716,53 @@ func (vs *VersionStoreImpl) GetLatestVersion(ctx context.Context, schematicID st
 	return int(v), err
 }
 
+func (vs *VersionStoreImpl) GetByID(ctx context.Context, id string) (*store.SchematicVersion, error) {
+	row, err := vs.q.GetSchematicVersionByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &store.SchematicVersion{
+		ID:            row.ID,
+		SchematicID:   row.SchematicID,
+		Version:       int(row.Version),
+		Snapshot:      row.Snapshot,
+		Note:          row.Note,
+		SchematicFile: row.SchematicFile,
+		Changelog:     row.Changelog,
+		BlockCount:    int(row.BlockCount),
+		DimX:          int(row.DimX),
+		DimY:          int(row.DimY),
+		DimZ:          int(row.DimZ),
+		Materials:     json.RawMessage(row.Materials),
+		Created:       row.Created,
+	}, nil
+}
+
+func (vs *VersionStoreImpl) GetBySchematicAndVersion(ctx context.Context, schematicID string, version int) (*store.SchematicVersion, error) {
+	row, err := vs.q.GetSchematicVersionBySchematicAndVersion(ctx, db.GetSchematicVersionBySchematicAndVersionParams{
+		SchematicID: schematicID,
+		Version:     int32(version),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.SchematicVersion{
+		ID:            row.ID,
+		SchematicID:   row.SchematicID,
+		Version:       int(row.Version),
+		Snapshot:      row.Snapshot,
+		Note:          row.Note,
+		SchematicFile: row.SchematicFile,
+		Changelog:     row.Changelog,
+		BlockCount:    int(row.BlockCount),
+		DimX:          int(row.DimX),
+		DimY:          int(row.DimY),
+		DimZ:          int(row.DimZ),
+		Materials:     json.RawMessage(row.Materials),
+		Created:       row.Created,
+	}, nil
+}
+
 // APIKeyStoreImpl implements store.APIKeyStore.
 type APIKeyStoreImpl struct{ q *db.Queries }
 
@@ -2480,6 +2861,18 @@ func (as *AuthStoreImpl) DeleteByProvider(ctx context.Context, userID, provider 
 		UserID:   userID,
 		Provider: provider,
 	})
+}
+
+func (as *AuthStoreImpl) GetByUserAndProvider(ctx context.Context, userID, provider string) (*store.ExternalAuth, error) {
+	row, err := as.q.GetExternalAuthByUserAndProvider(ctx, db.GetExternalAuthByUserAndProviderParams{
+		UserID:   userID,
+		Provider: provider,
+	})
+	if err != nil {
+		return nil, err
+	}
+	ea := externalAuthFromDB(row)
+	return &ea, nil
 }
 
 // ReportStoreImpl implements store.ReportStore.
@@ -2739,6 +3132,109 @@ func (st *SearchTrackingStoreImpl) RefreshSearchQueryCounts(ctx context.Context)
 
 func (st *SearchTrackingStoreImpl) PruneOldSearches(ctx context.Context) (int64, error) {
 	return st.q.PruneOldSearches(ctx)
+}
+
+func (st *SearchTrackingStoreImpl) HasRecentApprovedUpload(ctx context.Context, userID string, since time.Time) (bool, error) {
+	return st.q.HasRecentApprovedUpload(ctx, db.HasRecentApprovedUploadParams{
+		AuthorID: &userID,
+		Created:  since,
+	})
+}
+
+func (st *SearchTrackingStoreImpl) ListTopSearchesSince(ctx context.Context, since time.Time, limit int) ([]store.SearchEntry, error) {
+	rows, err := st.q.ListTopSearchesSince(ctx, db.ListTopSearchesSinceParams{
+		Created: since,
+		Limit:   int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchEntry, len(rows))
+	for i, r := range rows {
+		result[i] = store.SearchEntry{
+			Query:        r.Query,
+			ResultsCount: int(r.SearchCount),
+		}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) ListTopViewedSchematicsSince(ctx context.Context, since time.Time, limit int) ([]store.TopViewedSchematic, error) {
+	rows, err := st.q.ListTopViewedSchematicsSince(ctx, db.ListTopViewedSchematicsSinceParams{
+		Created: since,
+		Limit:   int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TopViewedSchematic, len(rows))
+	for i, r := range rows {
+		result[i] = store.TopViewedSchematic{
+			ID:            r.ID,
+			Name:          r.Name,
+			Title:         r.Title,
+			FeaturedImage: r.FeaturedImage,
+			TotalViews:    r.TotalViews,
+		}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) DailySearchVolume(ctx context.Context, since time.Time) ([]store.DailyCount, error) {
+	rows, err := st.q.DailySearchVolume(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.DailyCount, len(rows))
+	for i, r := range rows {
+		result[i] = store.DailyCount{Day: r.Day, Count: r.Count}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) DailySearchTermVolume(ctx context.Context, since time.Time, terms []string) ([]store.SearchTermDailyCount, error) {
+	rows, err := st.q.DailySearchTermVolume(ctx, db.DailySearchTermVolumeParams{
+		Created: since,
+		Terms:   terms,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchTermDailyCount, len(rows))
+	for i, r := range rows {
+		result[i] = store.SearchTermDailyCount{Query: r.Query, Day: r.Day, Count: r.Count}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error {
+	return st.q.UpsertSearchTermModeration(ctx, db.UpsertSearchTermModerationParams{
+		Query:   query,
+		IsClean: isClean,
+	})
+}
+
+func (st *SearchTrackingStoreImpl) ListCleanSearchTerms(ctx context.Context, terms []string) ([]string, error) {
+	return st.q.ListCleanSearchTerms(ctx, terms)
+}
+
+func (st *SearchTrackingStoreImpl) ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error) {
+	rows, err := st.q.ListUncheckedSearchTerms(ctx, db.ListUncheckedSearchTermsParams{
+		Terms: terms,
+		Since: since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]string, len(rows))
+	for i, r := range rows {
+		if s, ok := r.(string); ok {
+			result[i] = s
+		} else {
+			result[i] = fmt.Sprintf("%v", r)
+		}
+	}
+	return result, nil
 }
 
 // OutgoingClickStoreImpl implements store.OutgoingClickStore.
@@ -3088,6 +3584,47 @@ func (ss *StatsStoreImpl) GetSiteAvgVDRatio(ctx context.Context) (float64, error
 	}
 }
 
+func (ss *StatsStoreImpl) GetSiteAvgVDRatioSinceCutoff(ctx context.Context, since time.Time) (float64, error) {
+	ratio, err := ss.q.GetSiteAvgVDRatioSinceCutoff(ctx, since)
+	if err != nil {
+		return 0, err
+	}
+	switch v := ratio.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	default:
+		return 0, nil
+	}
+}
+
+func (ss *StatsStoreImpl) GetSchematicVDRatioSinceCutoff(ctx context.Context, schematicID string, since time.Time) (int64, int64, error) {
+	row, err := ss.q.GetSchematicVDRatioSinceCutoff(ctx, db.GetSchematicVDRatioSinceCutoffParams{
+		SchematicID: schematicID,
+		Since:       since,
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	return row.TotalViews, row.TotalDownloads, nil
+}
+
+func (ss *StatsStoreImpl) GetUserVDRatioSinceCutoff(ctx context.Context, userID string, since time.Time) (int64, int64, error) {
+	row, err := ss.q.GetUserVDRatioSinceCutoff(ctx, db.GetUserVDRatioSinceCutoffParams{
+		UserID: &userID,
+		Since:  since,
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	return row.TotalViews, row.TotalDownloads, nil
+}
+
 func (ss *StatsStoreImpl) DeleteOldEvents(ctx context.Context, before time.Time) (int64, error) {
 	return ss.q.DeleteOldSchematicEvents(ctx, before)
 }
@@ -3178,6 +3715,19 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		SchematicVariations: &SchematicVariationStoreImpl{q: q},
 		ModerationChats:     &ModerationChatStoreImpl{q: q},
 		ModerationLog:       &ModerationLogStoreImpl{q: q},
+		Badges:               &BadgeStoreImpl{q: q},
+		SocialLinks:          &SocialLinkStoreImpl{q: q},
+		Follows:              &FollowStoreImpl{q: q},
+		SchematicVideos:      &SchematicVideoStoreImpl{q: q},
+		References:           &ReferenceStoreImpl{q: q},
+		Modpacks:             &ModpackStoreImpl{q: q},
+		RedditLinks:          &RedditLinkStoreImpl{q: q},
+		Notifications:        &NotificationStoreImpl{q: q},
+		Newsletters:          &NewsletterStoreImpl{q: q},
+		SearchAlerts:         &SearchAlertStoreImpl{q: q},
+		SectionSubscriptions: &SectionSubscriptionStoreImpl{q: q},
+		ZeroResults:          &ZeroResultStoreImpl{q: q},
+		Security:             &SecurityStoreImpl{q: q, pool: pool},
 	}
 }
 
@@ -3289,6 +3839,58 @@ func (s *ModerationChatStoreImpl) CountUserMessagesSinceLastModerator(ctx contex
 	return int(count), nil
 }
 
+func (s *ModerationChatStoreImpl) MarkResolved(ctx context.Context, threadID, resolvedBy string) error {
+	return s.q.MarkModerationThreadResolved(ctx, db.MarkModerationThreadResolvedParams{
+		ID:         threadID,
+		ResolvedBy: &resolvedBy,
+	})
+}
+
+func (s *ModerationChatStoreImpl) MarkCreatorRead(ctx context.Context, threadID string) error {
+	return s.q.MarkModerationThreadCreatorRead(ctx, threadID)
+}
+
+func (s *ModerationChatStoreImpl) ListUnreadByCreator(ctx context.Context, userID string) ([]store.ModerationThread, error) {
+	rows, err := s.q.ListUnreadThreadsByCreator(ctx, &userID)
+	if err != nil {
+		return nil, err
+	}
+	threads := make([]store.ModerationThread, len(rows))
+	for i, r := range rows {
+		threads[i] = store.ModerationThread{
+			ID:          r.ID,
+			ContentType: r.ContentType,
+			ContentID:   r.ContentID,
+			Status:      r.Status,
+			Created:     r.Created,
+			Updated:     r.Updated,
+		}
+	}
+	return threads, nil
+}
+
+func (s *ModerationChatStoreImpl) ListByModerator(ctx context.Context, limit, offset int) ([]store.ModerationThread, error) {
+	rows, err := s.q.ListModerationThreadsByModerator(ctx, db.ListModerationThreadsByModeratorParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	threads := make([]store.ModerationThread, len(rows))
+	for i, r := range rows {
+		threads[i] = store.ModerationThread{
+			ID:          r.ID,
+			ContentType: r.ContentType,
+			ContentID:   r.ContentID,
+			Status:      r.Status,
+			Created:     r.Created,
+			Updated:     r.Updated,
+		}
+	}
+	return threads, nil
+}
+
 // Ensure compile-time interface satisfaction for the types on PostgresStore.
 var (
 	_ store.SessionStore        = (*PostgresStore)(nil)
@@ -3325,6 +3927,10 @@ var (
 	_ store.WebhookStore             = (*WebhookStoreImpl)(nil)
 	_ store.SchematicVariationStore  = (*SchematicVariationStoreImpl)(nil)
 	_ store.ModerationLogStore       = (*ModerationLogStoreImpl)(nil)
+	_ store.BadgeStore               = (*BadgeStoreImpl)(nil)
+	_ store.SocialLinkStore          = (*SocialLinkStoreImpl)(nil)
+	_ store.FollowStore              = (*FollowStoreImpl)(nil)
+	_ store.SecurityStore            = (*SecurityStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------
@@ -3367,6 +3973,1220 @@ func (s *ModerationLogStoreImpl) ListBySchematic(ctx context.Context, schematicI
 		}
 	}
 	return entries, nil
+}
+
+// --------------------------------------------------------------------------
+// SecurityStoreImpl implements store.SecurityStore.
+// --------------------------------------------------------------------------
+
+type SecurityStoreImpl struct {
+	q    *db.Queries
+	pool *pgxpool.Pool
+}
+
+func (s *SecurityStoreImpl) UpsertKnownIP(ctx context.Context, ip *store.KnownIP) error {
+	_, err := s.q.UpsertKnownIP(ctx, db.UpsertKnownIPParams{
+		UserID:    ip.UserID,
+		IpAddress: ip.IPAddress,
+		UserAgent: ip.UserAgent,
+		Verified:  ip.Verified,
+	})
+	return err
+}
+
+func (s *SecurityStoreImpl) GetKnownIP(ctx context.Context, userID, ipAddress string) (*store.KnownIP, error) {
+	row, err := s.q.GetKnownIP(ctx, db.GetKnownIPParams{
+		UserID:    userID,
+		IpAddress: ipAddress,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.KnownIP{
+		ID:        row.ID,
+		UserID:    row.UserID,
+		IPAddress: row.IpAddress,
+		UserAgent: row.UserAgent,
+		Verified:  row.Verified,
+		LastSeen:  row.LastSeen,
+		Created:   row.Created,
+	}, nil
+}
+
+func (s *SecurityStoreImpl) ListKnownIPs(ctx context.Context, userID string) ([]store.KnownIP, error) {
+	rows, err := s.q.ListKnownIPs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.KnownIP, len(rows))
+	for i, r := range rows {
+		result[i] = store.KnownIP{
+			ID:        r.ID,
+			UserID:    r.UserID,
+			IPAddress: r.IpAddress,
+			UserAgent: r.UserAgent,
+			Verified:  r.Verified,
+			LastSeen:  r.LastSeen,
+			Created:   r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (s *SecurityStoreImpl) VerifyKnownIP(ctx context.Context, userID, ipAddress string) error {
+	return s.q.VerifyKnownIP(ctx, db.VerifyKnownIPParams{
+		UserID:    userID,
+		IpAddress: ipAddress,
+	})
+}
+
+func (s *SecurityStoreImpl) DeleteKnownIP(ctx context.Context, id, userID string) error {
+	return s.q.DeleteKnownIP(ctx, db.DeleteKnownIPParams{
+		ID:     id,
+		UserID: userID,
+	})
+}
+
+func (s *SecurityStoreImpl) CreateIPVerificationCode(ctx context.Context, code *store.IPVerificationCode) error {
+	row, err := s.q.CreateIPVerificationCode(ctx, db.CreateIPVerificationCodeParams{
+		UserID:    code.UserID,
+		IpAddress: code.IPAddress,
+		CodeHash:  code.CodeHash,
+		ExpiresAt: code.ExpiresAt,
+	})
+	if err != nil {
+		return err
+	}
+	code.ID = row.ID
+	code.Created = row.Created
+	return nil
+}
+
+func (s *SecurityStoreImpl) GetIPVerificationCode(ctx context.Context, userID, ipAddress string) (*store.IPVerificationCode, error) {
+	row, err := s.q.GetIPVerificationCode(ctx, db.GetIPVerificationCodeParams{
+		UserID:    userID,
+		IpAddress: ipAddress,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &store.IPVerificationCode{
+		ID:        row.ID,
+		UserID:    row.UserID,
+		IPAddress: row.IpAddress,
+		CodeHash:  row.CodeHash,
+		ExpiresAt: row.ExpiresAt,
+		Used:      row.Used,
+		Created:   row.Created,
+	}, nil
+}
+
+func (s *SecurityStoreImpl) MarkIPVerificationCodeUsed(ctx context.Context, id string) error {
+	return s.q.MarkIPVerificationCodeUsed(ctx, id)
+}
+
+func (s *SecurityStoreImpl) CleanupExpiredIPCodes(ctx context.Context) error {
+	return s.q.CleanupExpiredIPCodes(ctx)
+}
+
+func (s *SecurityStoreImpl) UpsertTOTP(ctx context.Context, totp *store.UserTOTP) error {
+	row, err := s.q.UpsertTOTP(ctx, db.UpsertTOTPParams{
+		UserID:          totp.UserID,
+		SecretEncrypted: totp.SecretEncrypted,
+		Enabled:         totp.Enabled,
+		Verified:        totp.Verified,
+	})
+	if err != nil {
+		return err
+	}
+	totp.ID = row.ID
+	totp.Created = row.Created
+	totp.Updated = row.Updated
+	return nil
+}
+
+func (s *SecurityStoreImpl) GetTOTP(ctx context.Context, userID string) (*store.UserTOTP, error) {
+	row, err := s.q.GetTOTP(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &store.UserTOTP{
+		ID:              row.ID,
+		UserID:          row.UserID,
+		SecretEncrypted: row.SecretEncrypted,
+		Enabled:         row.Enabled,
+		Verified:        row.Verified,
+		Created:         row.Created,
+		Updated:         row.Updated,
+	}, nil
+}
+
+func (s *SecurityStoreImpl) EnableTOTP(ctx context.Context, userID string) error {
+	return s.q.EnableTOTP(ctx, userID)
+}
+
+func (s *SecurityStoreImpl) DisableTOTP(ctx context.Context, userID string) error {
+	return s.q.DisableTOTP(ctx, userID)
+}
+
+func (s *SecurityStoreImpl) DeleteTOTP(ctx context.Context, userID string) error {
+	return s.q.DeleteTOTP(ctx, userID)
+}
+
+func (s *SecurityStoreImpl) CreateTOTPBackupCode(ctx context.Context, userID, codeHash string) error {
+	return s.q.CreateTOTPBackupCode(ctx, db.CreateTOTPBackupCodeParams{
+		UserID:   userID,
+		CodeHash: codeHash,
+	})
+}
+
+func (s *SecurityStoreImpl) ListTOTPBackupCodes(ctx context.Context, userID string) ([]store.TOTPBackupCode, error) {
+	rows, err := s.q.ListTOTPBackupCodes(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TOTPBackupCode, len(rows))
+	for i, r := range rows {
+		result[i] = store.TOTPBackupCode{
+			ID:       r.ID,
+			UserID:   r.UserID,
+			CodeHash: r.CodeHash,
+			Used:     r.Used,
+			Created:  r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (s *SecurityStoreImpl) MarkBackupCodeUsed(ctx context.Context, id string) error {
+	return s.q.MarkBackupCodeUsed(ctx, id)
+}
+
+func (s *SecurityStoreImpl) DeleteTOTPBackupCodes(ctx context.Context, userID string) error {
+	return s.q.DeleteTOTPBackupCodes(ctx, userID)
+}
+
+func (s *SecurityStoreImpl) CreatePasskey(ctx context.Context, pk *store.Passkey) error {
+	row, err := s.q.CreatePasskey(ctx, db.CreatePasskeyParams{
+		UserID:          pk.UserID,
+		CredentialID:    pk.CredentialID,
+		PublicKey:       pk.PublicKey,
+		AttestationType: pk.AttestationType,
+		Transport:       pk.Transport,
+		Aaguid:          pk.AAGUID,
+		SignCount:       int32(pk.SignCount),
+		FriendlyName:    pk.FriendlyName,
+	})
+	if err != nil {
+		return err
+	}
+	pk.ID = row.ID
+	return nil
+}
+
+func (s *SecurityStoreImpl) GetPasskeyByCredentialID(ctx context.Context, credentialID []byte) (*store.Passkey, error) {
+	row, err := s.q.GetPasskeyByCredentialID(ctx, credentialID)
+	if err != nil {
+		return nil, err
+	}
+	result := &store.Passkey{
+		ID:              row.ID,
+		UserID:          row.UserID,
+		CredentialID:    row.CredentialID,
+		PublicKey:       row.PublicKey,
+		AttestationType: row.AttestationType,
+		Transport:       row.Transport,
+		AAGUID:          row.Aaguid,
+		SignCount:       int(row.SignCount),
+		FriendlyName:    row.FriendlyName,
+		Created:         row.Created,
+	}
+	if row.LastUsed.Valid {
+		t := row.LastUsed.Time
+		result.LastUsed = &t
+	}
+	return result, nil
+}
+
+func (s *SecurityStoreImpl) ListPasskeys(ctx context.Context, userID string) ([]store.Passkey, error) {
+	rows, err := s.q.ListPasskeys(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Passkey, len(rows))
+	for i, r := range rows {
+		result[i] = store.Passkey{
+			ID:              r.ID,
+			UserID:          r.UserID,
+			CredentialID:    r.CredentialID,
+			PublicKey:       r.PublicKey,
+			AttestationType: r.AttestationType,
+			Transport:       r.Transport,
+			AAGUID:          r.Aaguid,
+			SignCount:       int(r.SignCount),
+			FriendlyName:    r.FriendlyName,
+			Created:         r.Created,
+		}
+		if r.LastUsed.Valid {
+			t := r.LastUsed.Time
+			result[i].LastUsed = &t
+		}
+	}
+	return result, nil
+}
+
+func (s *SecurityStoreImpl) UpdatePasskeySignCount(ctx context.Context, id string, signCount int) error {
+	return s.q.UpdatePasskeySignCount(ctx, db.UpdatePasskeySignCountParams{
+		ID:        id,
+		SignCount: int32(signCount),
+	})
+}
+
+func (s *SecurityStoreImpl) DeletePasskey(ctx context.Context, id, userID string) error {
+	return s.q.DeletePasskey(ctx, db.DeletePasskeyParams{
+		ID:     id,
+		UserID: userID,
+	})
+}
+
+func (s *SecurityStoreImpl) UpsertSecuritySettings(ctx context.Context, settings *store.SecuritySettings) error {
+	row, err := s.q.UpsertSecuritySettings(ctx, db.UpsertSecuritySettingsParams{
+		UserID:            settings.UserID,
+		NewIpVerification: settings.NewIPVerification,
+		TotpEnabled:       settings.TOTPEnabled,
+		PasskeysEnabled:   settings.PasskeysEnabled,
+	})
+	if err != nil {
+		return err
+	}
+	settings.ID = row.ID
+	settings.Created = row.Created
+	settings.Updated = row.Updated
+	return nil
+}
+
+func (s *SecurityStoreImpl) GetSecuritySettings(ctx context.Context, userID string) (*store.SecuritySettings, error) {
+	row, err := s.q.GetSecuritySettings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &store.SecuritySettings{
+		ID:                row.ID,
+		UserID:            row.UserID,
+		NewIPVerification: row.NewIpVerification,
+		TOTPEnabled:       row.TotpEnabled,
+		PasskeysEnabled:   row.PasskeysEnabled,
+		Created:           row.Created,
+		Updated:           row.Updated,
+	}, nil
+}
+
+// --------------------------------------------------------------------------
+// Compile-time interface checks for new store implementations.
+// --------------------------------------------------------------------------
+
+var (
+	_ store.SchematicVideoStore      = (*SchematicVideoStoreImpl)(nil)
+	_ store.ReferenceStore           = (*ReferenceStoreImpl)(nil)
+	_ store.ModpackStore             = (*ModpackStoreImpl)(nil)
+	_ store.RedditLinkStore          = (*RedditLinkStoreImpl)(nil)
+	_ store.NotificationStore        = (*NotificationStoreImpl)(nil)
+	_ store.NewsletterStore          = (*NewsletterStoreImpl)(nil)
+	_ store.SearchAlertStore         = (*SearchAlertStoreImpl)(nil)
+	_ store.SectionSubscriptionStore = (*SectionSubscriptionStoreImpl)(nil)
+	_ store.ZeroResultStore          = (*ZeroResultStoreImpl)(nil)
+)
+
+// --------------------------------------------------------------------------
+// SchematicVideo Store Implementation
+// --------------------------------------------------------------------------
+
+type SchematicVideoStoreImpl struct{ q *db.Queries }
+
+func schematicVideoFromDB(row db.SchematicVideo) store.SchematicVideo {
+	return store.SchematicVideo{
+		ID:          row.ID,
+		SchematicID: row.SchematicID,
+		VideoURL:    row.VideoUrl,
+		VideoType:   row.VideoType,
+		Title:       row.Title,
+		Position:    int(row.Position),
+		Created:     row.Created,
+	}
+}
+
+func (s *SchematicVideoStoreImpl) Create(ctx context.Context, v *store.SchematicVideo) error {
+	row, err := s.q.CreateSchematicVideo(ctx, db.CreateSchematicVideoParams{
+		SchematicID: v.SchematicID,
+		VideoUrl:    v.VideoURL,
+		VideoType:   v.VideoType,
+		Title:       v.Title,
+		Position:    int32(v.Position),
+	})
+	if err != nil {
+		return err
+	}
+	v.ID = row.ID
+	v.Created = row.Created
+	return nil
+}
+
+func (s *SchematicVideoStoreImpl) ListBySchematic(ctx context.Context, schematicID string) ([]store.SchematicVideo, error) {
+	rows, err := s.q.ListSchematicVideos(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SchematicVideo, len(rows))
+	for i, r := range rows {
+		result[i] = schematicVideoFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SchematicVideoStoreImpl) Delete(ctx context.Context, id, schematicID string) error {
+	return s.q.DeleteSchematicVideo(ctx, db.DeleteSchematicVideoParams{
+		ID:          id,
+		SchematicID: schematicID,
+	})
+}
+
+func (s *SchematicVideoStoreImpl) DeleteBySchematic(ctx context.Context, schematicID string) error {
+	return s.q.DeleteSchematicVideosBySchematic(ctx, schematicID)
+}
+
+func (s *SchematicVideoStoreImpl) UpdatePosition(ctx context.Context, id string, position int) error {
+	return s.q.UpdateSchematicVideoPosition(ctx, db.UpdateSchematicVideoPositionParams{
+		ID:       id,
+		Position: int32(position),
+	})
+}
+
+func (s *SchematicVideoStoreImpl) BatchGetBySchematicIDs(ctx context.Context, ids []string) (map[string][]store.SchematicVideo, error) {
+	rows, err := s.q.BatchGetSchematicVideos(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]store.SchematicVideo)
+	for _, r := range rows {
+		sv := schematicVideoFromDB(r)
+		result[r.SchematicID] = append(result[r.SchematicID], sv)
+	}
+	return result, nil
+}
+
+// --------------------------------------------------------------------------
+// Reference Store Implementation
+// --------------------------------------------------------------------------
+
+type ReferenceStoreImpl struct{ q *db.Queries }
+
+func schematicReferenceFromDB(row db.SchematicReference) store.SchematicReference {
+	return store.SchematicReference{
+		ID:           row.ID,
+		SchematicID:  row.SchematicID,
+		URL:          row.Url,
+		SourceType:   row.SourceType,
+		Title:        row.Title,
+		ThumbnailURL: row.ThumbnailUrl,
+		AuthorName:   row.AuthorName,
+		LastFetched:  fromPgTimestamptz(row.LastFetched),
+		Created:      row.Created,
+		Updated:      row.Updated,
+	}
+}
+
+func (s *ReferenceStoreImpl) Create(ctx context.Context, ref *store.SchematicReference) error {
+	row, err := s.q.CreateSchematicReference(ctx, db.CreateSchematicReferenceParams{
+		SchematicID:  ref.SchematicID,
+		Url:          ref.URL,
+		SourceType:   ref.SourceType,
+		Title:        ref.Title,
+		ThumbnailUrl: ref.ThumbnailURL,
+		AuthorName:   ref.AuthorName,
+	})
+	if err != nil {
+		return err
+	}
+	ref.ID = row.ID
+	ref.Created = row.Created
+	ref.Updated = row.Updated
+	return nil
+}
+
+func (s *ReferenceStoreImpl) ListBySchematic(ctx context.Context, schematicID string) ([]store.SchematicReference, error) {
+	rows, err := s.q.ListSchematicReferences(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SchematicReference, len(rows))
+	for i, r := range rows {
+		result[i] = schematicReferenceFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ReferenceStoreImpl) Delete(ctx context.Context, id, schematicID string) error {
+	return s.q.DeleteSchematicReference(ctx, db.DeleteSchematicReferenceParams{
+		ID:          id,
+		SchematicID: schematicID,
+	})
+}
+
+func (s *ReferenceStoreImpl) ListStale(ctx context.Context, limit int) ([]store.SchematicReference, error) {
+	rows, err := s.q.ListStaleReferences(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SchematicReference, len(rows))
+	for i, r := range rows {
+		result[i] = schematicReferenceFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ReferenceStoreImpl) UpdateMetadata(ctx context.Context, id, title, thumbnailURL, authorName string) error {
+	return s.q.UpdateReferenceMetadata(ctx, db.UpdateReferenceMetadataParams{
+		ID:           id,
+		Title:        title,
+		ThumbnailUrl: thumbnailURL,
+		AuthorName:   authorName,
+	})
+}
+
+// --------------------------------------------------------------------------
+// Modpack Store Implementation
+// --------------------------------------------------------------------------
+
+type ModpackStoreImpl struct{ q *db.Queries }
+
+func modpackFromDB(row db.Modpack) store.Modpack {
+	return store.Modpack{
+		ID:          row.ID,
+		ModrinthID:  row.ModrinthID,
+		Slug:        row.Slug,
+		Name:        row.Name,
+		Description: row.Description,
+		IconURL:     row.IconUrl,
+		ModrinthURL: row.ModrinthUrl,
+		Downloads:   int(row.Downloads),
+		LastFetched: fromPgTimestamptz(row.LastFetched),
+		Created:     row.Created,
+		Updated:     row.Updated,
+	}
+}
+
+func (s *ModpackStoreImpl) Upsert(ctx context.Context, m *store.Modpack) error {
+	row, err := s.q.UpsertModpack(ctx, db.UpsertModpackParams{
+		ModrinthID:  m.ModrinthID,
+		Slug:        m.Slug,
+		Name:        m.Name,
+		Description: m.Description,
+		IconUrl:     m.IconURL,
+		ModrinthUrl: m.ModrinthURL,
+		Downloads:   int32(m.Downloads),
+	})
+	if err != nil {
+		return err
+	}
+	m.ID = row.ID
+	m.Created = row.Created
+	m.Updated = row.Updated
+	return nil
+}
+
+func (s *ModpackStoreImpl) GetByID(ctx context.Context, id string) (*store.Modpack, error) {
+	row, err := s.q.GetModpackByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	m := modpackFromDB(row)
+	return &m, nil
+}
+
+func (s *ModpackStoreImpl) GetBySlug(ctx context.Context, slug string) (*store.Modpack, error) {
+	row, err := s.q.GetModpackBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	m := modpackFromDB(row)
+	return &m, nil
+}
+
+func (s *ModpackStoreImpl) List(ctx context.Context) ([]store.Modpack, error) {
+	rows, err := s.q.ListModpacks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Modpack, len(rows))
+	for i, r := range rows {
+		result[i] = modpackFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ModpackStoreImpl) Search(ctx context.Context, query string, limit int) ([]store.Modpack, error) {
+	rows, err := s.q.SearchModpacks(ctx, db.SearchModpacksParams{
+		Column1: &query,
+		Limit:   int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Modpack, len(rows))
+	for i, r := range rows {
+		result[i] = modpackFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ModpackStoreImpl) SetSchematicModpacks(ctx context.Context, schematicID string, modpackIDs []string) error {
+	// First delete existing associations.
+	if err := s.q.SetSchematicModpacks(ctx, schematicID); err != nil {
+		return err
+	}
+	// Then add each new association.
+	for _, mpID := range modpackIDs {
+		if err := s.q.AddSchematicModpack(ctx, db.AddSchematicModpackParams{
+			SchematicID: schematicID,
+			ModpackID:   mpID,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ModpackStoreImpl) GetSchematicModpacks(ctx context.Context, schematicID string) ([]store.Modpack, error) {
+	rows, err := s.q.GetSchematicModpacks(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Modpack, len(rows))
+	for i, r := range rows {
+		result[i] = modpackFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ModpackStoreImpl) BatchGetSchematicModpacks(ctx context.Context, schematicIDs []string) (map[string][]store.Modpack, error) {
+	rows, err := s.q.BatchGetSchematicModpacks(ctx, schematicIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]store.Modpack)
+	for _, r := range rows {
+		m := store.Modpack{
+			ID:          r.ID,
+			ModrinthID:  r.ModrinthID,
+			Slug:        r.Slug,
+			Name:        r.Name,
+			Description: r.Description,
+			IconURL:     r.IconUrl,
+			ModrinthURL: r.ModrinthUrl,
+			Downloads:   int(r.Downloads),
+			LastFetched: fromPgTimestamptz(r.LastFetched),
+			Created:     r.Created,
+			Updated:     r.Updated,
+		}
+		result[r.SchematicID] = append(result[r.SchematicID], m)
+	}
+	return result, nil
+}
+
+func (s *ModpackStoreImpl) ListSchematicsByModpack(ctx context.Context, modpackID string, limit, offset int) ([]store.Schematic, error) {
+	rows, err := s.q.ListSchematicsByModpack(ctx, db.ListSchematicsByModpackParams{
+		ModpackID: modpackID,
+		Limit:     int32(limit),
+		Offset:    int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Schematic, len(rows))
+	for i, r := range rows {
+		result[i] = schematicFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ModpackStoreImpl) CountSchematicsByModpack(ctx context.Context, modpackID string) (int64, error) {
+	return s.q.CountSchematicsByModpack(ctx, modpackID)
+}
+
+// --------------------------------------------------------------------------
+// RedditLink Store Implementation
+// --------------------------------------------------------------------------
+
+type RedditLinkStoreImpl struct{ q *db.Queries }
+
+func redditLinkFromDB(row db.SchematicRedditLink) store.RedditLink {
+	return store.RedditLink{
+		ID:           row.ID,
+		SchematicID:  row.SchematicID,
+		RedditURL:    row.RedditUrl,
+		Subreddit:    row.Subreddit,
+		PostTitle:    row.PostTitle,
+		Upvotes:      int(row.Upvotes),
+		CommentCount: int(row.CommentCount),
+		ThumbnailURL: row.ThumbnailUrl,
+		LastFetched:  fromPgTimestamptz(row.LastFetched),
+		Created:      row.Created,
+		Updated:      row.Updated,
+	}
+}
+
+func (s *RedditLinkStoreImpl) Create(ctx context.Context, link *store.RedditLink) error {
+	row, err := s.q.CreateRedditLink(ctx, db.CreateRedditLinkParams{
+		SchematicID: link.SchematicID,
+		RedditUrl:   link.RedditURL,
+		Subreddit:   link.Subreddit,
+		PostTitle:   link.PostTitle,
+	})
+	if err != nil {
+		return err
+	}
+	link.ID = row.ID
+	link.Created = row.Created
+	link.Updated = row.Updated
+	return nil
+}
+
+func (s *RedditLinkStoreImpl) GetBySchematic(ctx context.Context, schematicID string) ([]store.RedditLink, error) {
+	rows, err := s.q.GetRedditLinksBySchematic(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.RedditLink, len(rows))
+	for i, r := range rows {
+		result[i] = redditLinkFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *RedditLinkStoreImpl) Delete(ctx context.Context, id, schematicID string) error {
+	return s.q.DeleteRedditLink(ctx, db.DeleteRedditLinkParams{
+		ID:          id,
+		SchematicID: schematicID,
+	})
+}
+
+func (s *RedditLinkStoreImpl) ListStale(ctx context.Context, limit int) ([]store.RedditLink, error) {
+	rows, err := s.q.ListStaleRedditLinks(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.RedditLink, len(rows))
+	for i, r := range rows {
+		result[i] = redditLinkFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *RedditLinkStoreImpl) UpdateMetadata(ctx context.Context, id, postTitle string, upvotes, commentCount int, thumbnailURL string) error {
+	return s.q.UpdateRedditLinkMetadata(ctx, db.UpdateRedditLinkMetadataParams{
+		ID:           id,
+		PostTitle:    postTitle,
+		Upvotes:      int32(upvotes),
+		CommentCount: int32(commentCount),
+		ThumbnailUrl: thumbnailURL,
+	})
+}
+
+// --------------------------------------------------------------------------
+// Notification Store Implementation
+// --------------------------------------------------------------------------
+
+type NotificationStoreImpl struct{ q *db.Queries }
+
+func notificationFromDB(row db.Notification) store.Notification {
+	return store.Notification{
+		ID:          row.ID,
+		UserID:      row.UserID,
+		Type:        row.Type,
+		Title:       row.Title,
+		Body:        row.Body,
+		URL:         row.Url,
+		ActorID:     derefStr(row.ActorID),
+		ReferenceID: derefStr(row.ReferenceID),
+		Read:        row.Read,
+		Created:     row.Created,
+	}
+}
+
+func notificationPreferenceFromDB(row db.NotificationPreference) store.NotificationPreference {
+	return store.NotificationPreference{
+		ID:       row.ID,
+		UserID:   row.UserID,
+		Category: row.Category,
+		Email:    row.Email,
+		Web:      row.Web,
+		Created:  row.Created,
+		Updated:  row.Updated,
+	}
+}
+
+func (s *NotificationStoreImpl) Create(ctx context.Context, n *store.Notification) error {
+	row, err := s.q.CreateNotification(ctx, db.CreateNotificationParams{
+		UserID:      n.UserID,
+		Type:        n.Type,
+		Title:       n.Title,
+		Body:        n.Body,
+		Url:         n.URL,
+		ActorID:     ptrStrNonEmpty(n.ActorID),
+		ReferenceID: ptrStrNonEmpty(n.ReferenceID),
+	})
+	if err != nil {
+		return err
+	}
+	n.ID = row.ID
+	n.Created = row.Created
+	return nil
+}
+
+func (s *NotificationStoreImpl) ListByUser(ctx context.Context, userID string, limit, offset int) ([]store.Notification, error) {
+	rows, err := s.q.ListNotificationsByUser(ctx, db.ListNotificationsByUserParams{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Notification, len(rows))
+	for i, r := range rows {
+		result[i] = notificationFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *NotificationStoreImpl) ListRecent(ctx context.Context, userID string, limit int) ([]store.Notification, error) {
+	rows, err := s.q.ListRecentNotifications(ctx, db.ListRecentNotificationsParams{
+		UserID: userID,
+		Limit:  int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Notification, len(rows))
+	for i, r := range rows {
+		result[i] = notificationFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *NotificationStoreImpl) CountUnread(ctx context.Context, userID string) (int, error) {
+	count, err := s.q.CountUnreadNotifications(ctx, userID)
+	return int(count), err
+}
+
+func (s *NotificationStoreImpl) MarkRead(ctx context.Context, id, userID string) error {
+	return s.q.MarkNotificationRead(ctx, db.MarkNotificationReadParams{
+		ID:     id,
+		UserID: userID,
+	})
+}
+
+func (s *NotificationStoreImpl) MarkAllRead(ctx context.Context, userID string) error {
+	return s.q.MarkAllNotificationsRead(ctx, userID)
+}
+
+func (s *NotificationStoreImpl) DeleteOld(ctx context.Context, before time.Time) error {
+	return s.q.DeleteOldNotifications(ctx, before)
+}
+
+func (s *NotificationStoreImpl) GetPreferences(ctx context.Context, userID string) ([]store.NotificationPreference, error) {
+	rows, err := s.q.GetNotificationPreferences(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.NotificationPreference, len(rows))
+	for i, r := range rows {
+		result[i] = notificationPreferenceFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *NotificationStoreImpl) UpsertPreference(ctx context.Context, pref *store.NotificationPreference) error {
+	row, err := s.q.UpsertNotificationPreference(ctx, db.UpsertNotificationPreferenceParams{
+		UserID:   pref.UserID,
+		Category: pref.Category,
+		Email:    pref.Email,
+		Web:      pref.Web,
+	})
+	if err != nil {
+		return err
+	}
+	pref.ID = row.ID
+	pref.Created = row.Created
+	pref.Updated = row.Updated
+	return nil
+}
+
+func (s *NotificationStoreImpl) GetPreference(ctx context.Context, userID, category string) (*store.NotificationPreference, error) {
+	row, err := s.q.GetNotificationPreference(ctx, db.GetNotificationPreferenceParams{
+		UserID:   userID,
+		Category: category,
+	})
+	if err != nil {
+		return nil, err
+	}
+	p := notificationPreferenceFromDB(row)
+	return &p, nil
+}
+
+// --------------------------------------------------------------------------
+// Newsletter Store Implementation
+// --------------------------------------------------------------------------
+
+type NewsletterStoreImpl struct{ q *db.Queries }
+
+func newsletterSubscriberFromDB(row db.NewsletterSubscriber) store.NewsletterSubscriber {
+	return store.NewsletterSubscriber{
+		ID:               row.ID,
+		Email:            row.Email,
+		UserID:           row.UserID,
+		Type:             row.Type,
+		Frequency:        row.Frequency,
+		Confirmed:        row.Confirmed,
+		ConfirmToken:     row.ConfirmToken,
+		UnsubscribeToken: row.UnsubscribeToken,
+		Created:          row.Created,
+		Updated:          row.Updated,
+	}
+}
+
+func newsletterIssueFromDB(row db.NewsletterIssue) store.NewsletterIssue {
+	return store.NewsletterIssue{
+		ID:       row.ID,
+		Type:     row.Type,
+		Subject:  row.Subject,
+		HTMLBody: row.HtmlBody,
+		Slug:     row.Slug,
+		SentAt:   fromPgTimestamptz(row.SentAt),
+		Created:  row.Created,
+	}
+}
+
+func (s *NewsletterStoreImpl) Subscribe(ctx context.Context, sub *store.NewsletterSubscriber) error {
+	row, err := s.q.CreateNewsletterSubscriber(ctx, db.CreateNewsletterSubscriberParams{
+		Email:            sub.Email,
+		UserID:           sub.UserID,
+		Type:             sub.Type,
+		Frequency:        sub.Frequency,
+		ConfirmToken:     sub.ConfirmToken,
+		UnsubscribeToken: sub.UnsubscribeToken,
+	})
+	if err != nil {
+		return err
+	}
+	sub.ID = row.ID
+	sub.Created = row.Created
+	sub.Updated = row.Updated
+	return nil
+}
+
+func (s *NewsletterStoreImpl) Confirm(ctx context.Context, confirmToken string) error {
+	return s.q.ConfirmNewsletterSubscriber(ctx, confirmToken)
+}
+
+func (s *NewsletterStoreImpl) Unsubscribe(ctx context.Context, unsubscribeToken string) error {
+	return s.q.UnsubscribeNewsletter(ctx, unsubscribeToken)
+}
+
+func (s *NewsletterStoreImpl) ListConfirmed(ctx context.Context, subType string) ([]store.NewsletterSubscriber, error) {
+	rows, err := s.q.ListConfirmedSubscribers(ctx, subType)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.NewsletterSubscriber, len(rows))
+	for i, r := range rows {
+		result[i] = newsletterSubscriberFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *NewsletterStoreImpl) ListConfirmedByFrequency(ctx context.Context, subType, frequency string) ([]store.NewsletterSubscriber, error) {
+	rows, err := s.q.ListConfirmedSubscribersByFrequency(ctx, db.ListConfirmedSubscribersByFrequencyParams{
+		Type:      subType,
+		Frequency: frequency,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.NewsletterSubscriber, len(rows))
+	for i, r := range rows {
+		result[i] = newsletterSubscriberFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *NewsletterStoreImpl) GetByEmail(ctx context.Context, email, subType string) (*store.NewsletterSubscriber, error) {
+	row, err := s.q.GetNewsletterSubscriberByEmail(ctx, db.GetNewsletterSubscriberByEmailParams{
+		Email: email,
+		Type:  subType,
+	})
+	if err != nil {
+		return nil, err
+	}
+	sub := newsletterSubscriberFromDB(row)
+	return &sub, nil
+}
+
+func (s *NewsletterStoreImpl) CreateIssue(ctx context.Context, issue *store.NewsletterIssue) error {
+	row, err := s.q.CreateNewsletterIssue(ctx, db.CreateNewsletterIssueParams{
+		Type:     issue.Type,
+		Subject:  issue.Subject,
+		HtmlBody: issue.HTMLBody,
+		Slug:     issue.Slug,
+		SentAt:   toPgTimestamptz(issue.SentAt),
+	})
+	if err != nil {
+		return err
+	}
+	issue.ID = row.ID
+	issue.Created = row.Created
+	return nil
+}
+
+func (s *NewsletterStoreImpl) GetIssueBySlug(ctx context.Context, slug string) (*store.NewsletterIssue, error) {
+	row, err := s.q.GetNewsletterIssueBySlug(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	issue := newsletterIssueFromDB(row)
+	return &issue, nil
+}
+
+func (s *NewsletterStoreImpl) ListIssues(ctx context.Context, issueType string, limit, offset int) ([]store.NewsletterIssue, error) {
+	rows, err := s.q.ListNewsletterIssues(ctx, db.ListNewsletterIssuesParams{
+		Type:   issueType,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.NewsletterIssue, len(rows))
+	for i, r := range rows {
+		result[i] = newsletterIssueFromDB(r)
+	}
+	return result, nil
+}
+
+// --------------------------------------------------------------------------
+// SearchAlert Store Implementation
+// --------------------------------------------------------------------------
+
+type SearchAlertStoreImpl struct{ q *db.Queries }
+
+func searchAlertFromDB(row db.SearchAlert) store.SearchAlert {
+	return store.SearchAlert{
+		ID:               row.ID,
+		UserID:           row.UserID,
+		Query:            row.Query,
+		Filters:          row.Filters,
+		Frequency:        row.Frequency,
+		LastChecked:      fromPgTimestamptz(row.LastChecked),
+		LastNotified:     fromPgTimestamptz(row.LastNotified),
+		Active:           row.Active,
+		UnsubscribeToken: row.UnsubscribeToken,
+		Created:          row.Created,
+		Updated:          row.Updated,
+	}
+}
+
+func (s *SearchAlertStoreImpl) Create(ctx context.Context, alert *store.SearchAlert) error {
+	row, err := s.q.CreateSearchAlert(ctx, db.CreateSearchAlertParams{
+		UserID:           alert.UserID,
+		Query:            alert.Query,
+		Filters:          alert.Filters,
+		Frequency:        alert.Frequency,
+		UnsubscribeToken: alert.UnsubscribeToken,
+	})
+	if err != nil {
+		return err
+	}
+	alert.ID = row.ID
+	alert.Created = row.Created
+	alert.Updated = row.Updated
+	return nil
+}
+
+func (s *SearchAlertStoreImpl) ListByUser(ctx context.Context, userID string) ([]store.SearchAlert, error) {
+	rows, err := s.q.ListSearchAlertsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchAlert, len(rows))
+	for i, r := range rows {
+		result[i] = searchAlertFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SearchAlertStoreImpl) ListActive(ctx context.Context, limit int) ([]store.SearchAlert, error) {
+	rows, err := s.q.ListActiveSearchAlerts(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchAlert, len(rows))
+	for i, r := range rows {
+		result[i] = searchAlertFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SearchAlertStoreImpl) Delete(ctx context.Context, id, userID string) error {
+	return s.q.DeleteSearchAlert(ctx, db.DeleteSearchAlertParams{
+		ID:     id,
+		UserID: userID,
+	})
+}
+
+func (s *SearchAlertStoreImpl) Unsubscribe(ctx context.Context, unsubscribeToken string) error {
+	return s.q.UnsubscribeSearchAlert(ctx, unsubscribeToken)
+}
+
+func (s *SearchAlertStoreImpl) UpdateLastChecked(ctx context.Context, id string) error {
+	return s.q.UpdateSearchAlertLastChecked(ctx, id)
+}
+
+func (s *SearchAlertStoreImpl) UpdateLastNotified(ctx context.Context, id string) error {
+	return s.q.UpdateSearchAlertLastNotified(ctx, id)
+}
+
+// --------------------------------------------------------------------------
+// SectionSubscription Store Implementation
+// --------------------------------------------------------------------------
+
+type SectionSubscriptionStoreImpl struct{ q *db.Queries }
+
+func sectionSubscriptionFromDB(row db.SectionSubscription) store.SectionSubscription {
+	return store.SectionSubscription{
+		ID:               row.ID,
+		UserID:           row.UserID,
+		SubscriptionType: row.SubscriptionType,
+		TargetID:         row.TargetID,
+		Frequency:        row.Frequency,
+		UnsubscribeToken: row.UnsubscribeToken,
+		Created:          row.Created,
+		Updated:          row.Updated,
+	}
+}
+
+func (s *SectionSubscriptionStoreImpl) Create(ctx context.Context, sub *store.SectionSubscription) error {
+	row, err := s.q.CreateSectionSubscription(ctx, db.CreateSectionSubscriptionParams{
+		UserID:           sub.UserID,
+		SubscriptionType: sub.SubscriptionType,
+		TargetID:         sub.TargetID,
+		Frequency:        sub.Frequency,
+		UnsubscribeToken: sub.UnsubscribeToken,
+	})
+	if err != nil {
+		return err
+	}
+	sub.ID = row.ID
+	sub.Created = row.Created
+	sub.Updated = row.Updated
+	return nil
+}
+
+func (s *SectionSubscriptionStoreImpl) ListByUser(ctx context.Context, userID string) ([]store.SectionSubscription, error) {
+	rows, err := s.q.ListSectionSubscriptionsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SectionSubscription, len(rows))
+	for i, r := range rows {
+		result[i] = sectionSubscriptionFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SectionSubscriptionStoreImpl) ListByTarget(ctx context.Context, subscriptionType, targetID string) ([]store.SectionSubscription, error) {
+	rows, err := s.q.ListSectionSubscriptionsByTarget(ctx, db.ListSectionSubscriptionsByTargetParams{
+		SubscriptionType: subscriptionType,
+		TargetID:         targetID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SectionSubscription, len(rows))
+	for i, r := range rows {
+		result[i] = sectionSubscriptionFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *SectionSubscriptionStoreImpl) Delete(ctx context.Context, id, userID string) error {
+	return s.q.DeleteSectionSubscription(ctx, db.DeleteSectionSubscriptionParams{
+		ID:     id,
+		UserID: userID,
+	})
+}
+
+func (s *SectionSubscriptionStoreImpl) Unsubscribe(ctx context.Context, unsubscribeToken string) error {
+	return s.q.UnsubscribeSectionSubscription(ctx, unsubscribeToken)
+}
+
+// --------------------------------------------------------------------------
+// ZeroResult Store Implementation
+// --------------------------------------------------------------------------
+
+type ZeroResultStoreImpl struct{ q *db.Queries }
+
+func zeroResultFromDB(row db.ZeroResultSuggestion) store.ZeroResultSuggestion {
+	return store.ZeroResultSuggestion{
+		ID:         row.ID,
+		Query:      row.Query,
+		Suggestion: row.Suggestion,
+		Auto:       row.Auto,
+		Created:    row.Created,
+		Updated:    row.Updated,
+	}
+}
+
+func (s *ZeroResultStoreImpl) Upsert(ctx context.Context, sug *store.ZeroResultSuggestion) error {
+	row, err := s.q.UpsertZeroResultSuggestion(ctx, db.UpsertZeroResultSuggestionParams{
+		Query:      sug.Query,
+		Suggestion: sug.Suggestion,
+		Auto:       sug.Auto,
+	})
+	if err != nil {
+		return err
+	}
+	sug.ID = row.ID
+	sug.Created = row.Created
+	sug.Updated = row.Updated
+	return nil
+}
+
+func (s *ZeroResultStoreImpl) Get(ctx context.Context, query string) (*store.ZeroResultSuggestion, error) {
+	row, err := s.q.GetZeroResultSuggestion(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	sug := zeroResultFromDB(row)
+	return &sug, nil
+}
+
+func (s *ZeroResultStoreImpl) List(ctx context.Context, limit, offset int) ([]store.ZeroResultSuggestion, error) {
+	rows, err := s.q.ListZeroResultSuggestions(ctx, db.ListZeroResultSuggestionsParams{
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.ZeroResultSuggestion, len(rows))
+	for i, r := range rows {
+		result[i] = zeroResultFromDB(r)
+	}
+	return result, nil
+}
+
+func (s *ZeroResultStoreImpl) Delete(ctx context.Context, id string) error {
+	return s.q.DeleteZeroResultSuggestion(ctx, id)
 }
 
 // Ensure unused import is satisfied.

@@ -57,6 +57,12 @@ SELECT COALESCE(MAX(version), 0)::INTEGER AS latest_version
 FROM schematic_versions
 WHERE schematic_id = $1;
 
+-- name: GetSchematicVersionByID :one
+SELECT * FROM schematic_versions WHERE id = $1 LIMIT 1;
+
+-- name: GetSchematicVersionBySchematicAndVersion :one
+SELECT * FROM schematic_versions WHERE schematic_id = $1 AND version = $2 LIMIT 1;
+
 -- name: GetModMetadataByNamespace :one
 SELECT * FROM mod_metadata WHERE namespace = $1;
 
@@ -104,6 +110,11 @@ SELECT * FROM external_auths WHERE user_id = $1;
 
 -- name: DeleteExternalAuth :exec
 DELETE FROM external_auths WHERE user_id = $1 AND provider = $2;
+
+-- name: GetExternalAuthByUserAndProvider :one
+SELECT * FROM external_auths
+WHERE user_id = $1 AND provider = $2
+LIMIT 1;
 
 -- name: CreateUserMeta :exec
 INSERT INTO user_meta (id, user_id, key, value)
@@ -166,3 +177,51 @@ DELETE FROM searches s
 USING single_use su
 WHERE LEFT(s.query, 500) = su.q
   AND s.created < NOW() - INTERVAL '90 days';
+
+-- name: HasRecentApprovedUpload :one
+SELECT EXISTS(
+    SELECT 1 FROM schematics
+    WHERE author_id = $1
+      AND moderation_state IN ('published', 'approved')
+      AND created >= $2
+) AS has_recent;
+
+-- name: ListTopSearchesSince :many
+SELECT LEFT(query, 500) AS query, COUNT(*)::BIGINT AS search_count
+FROM searches
+WHERE created >= $1
+GROUP BY LEFT(query, 500)
+ORDER BY search_count DESC
+LIMIT $2;
+
+-- name: DailySearchVolume :many
+SELECT to_char(created, 'YYYY-MM-DD') AS day, COUNT(*)::BIGINT AS count
+FROM searches
+WHERE created >= $1
+GROUP BY day
+ORDER BY day;
+
+-- name: DailySearchTermVolume :many
+SELECT LEFT(query, 500) AS query, to_char(created, 'YYYY-MM-DD') AS day, COUNT(*)::BIGINT AS count
+FROM searches
+WHERE created >= $1
+  AND LEFT(query, 500) = ANY(@terms::text[])
+GROUP BY LEFT(query, 500), day
+ORDER BY LEFT(query, 500), day;
+
+-- name: UpsertSearchTermModeration :exec
+INSERT INTO search_term_moderation (query, is_clean, checked_at)
+VALUES ($1, $2, NOW())
+ON CONFLICT (query) DO UPDATE SET is_clean = EXCLUDED.is_clean, checked_at = NOW();
+
+-- name: ListCleanSearchTerms :many
+SELECT query FROM search_term_moderation
+WHERE is_clean = true AND query = ANY($1::text[]);
+
+-- name: ListUncheckedSearchTerms :many
+SELECT t.term AS query
+FROM unnest(@terms::text[]) AS t(term)
+WHERE NOT EXISTS (
+    SELECT 1 FROM search_term_moderation stm
+    WHERE stm.query = t.term AND stm.checked_at >= @since::timestamptz
+);

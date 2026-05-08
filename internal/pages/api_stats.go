@@ -164,11 +164,11 @@ func APISchematicStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service,
 		}
 
 		var siteAvg float64
-		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio"); ok {
+		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
 			siteAvg = cached
 		} else {
-			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatio(ctx)
-			cacheService.SetFloat("site_avg_vd_ratio", siteAvg)
+			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
+			cacheService.SetFloat("site_avg_vd_ratio_v2", siteAvg)
 		}
 
 		resp := apiSchematicStatsResponse{
@@ -235,11 +235,11 @@ func APIUserStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appS
 		}
 
 		var siteAvg float64
-		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio"); ok {
+		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
 			siteAvg = cached
 		} else {
-			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatio(ctx)
-			cacheService.SetFloat("site_avg_vd_ratio", siteAvg)
+			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
+			cacheService.SetFloat("site_avg_vd_ratio_v2", siteAvg)
 		}
 
 		pageSize := 20

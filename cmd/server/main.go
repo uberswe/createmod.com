@@ -32,9 +32,19 @@ const (
 	S3UseSSL            = "S3_USE_SSL"
 	DiscordClientID     = "DISCORD_CLIENT_ID"
 	DiscordClientSecret = "DISCORD_CLIENT_SECRET"
-	GithubClientID      = "GITHUB_CLIENT_ID"
-	GithubClientSecret  = "GITHUB_CLIENT_SECRET"
-	BaseURL             = "BASE_URL"
+	GithubClientID        = "GITHUB_CLIENT_ID"
+	GithubClientSecret    = "GITHUB_CLIENT_SECRET"
+	TwitchClientID        = "TWITCH_CLIENT_ID"
+	TwitchClientSecret    = "TWITCH_CLIENT_SECRET"
+	PatreonClientID       = "PATREON_CLIENT_ID"
+	PatreonClientSecret   = "PATREON_CLIENT_SECRET"
+	RedditClientID        = "REDDIT_CLIENT_ID"
+	RedditClientSecret    = "REDDIT_CLIENT_SECRET"
+	GoogleClientID        = "GOOGLE_CLIENT_ID"
+	GoogleClientSecret    = "GOOGLE_CLIENT_SECRET"
+	MicrosoftClientID     = "MICROSOFT_CLIENT_ID"
+	MicrosoftClientSecret = "MICROSOFT_CLIENT_SECRET"
+	BaseURL               = "BASE_URL"
 )
 
 // getEnv returns the value from the envFile map if present,
@@ -89,9 +99,19 @@ func main() {
 		RedisURL:            getEnv(envFile, RedisURL),
 		DiscordClientID:     getEnv(envFile, DiscordClientID),
 		DiscordClientSecret: getEnv(envFile, DiscordClientSecret),
-		GithubClientID:      getEnv(envFile, GithubClientID),
-		GithubClientSecret:  getEnv(envFile, GithubClientSecret),
-		BaseURL:             getEnv(envFile, BaseURL),
+		GithubClientID:        getEnv(envFile, GithubClientID),
+		GithubClientSecret:    getEnv(envFile, GithubClientSecret),
+		TwitchClientID:        getEnv(envFile, TwitchClientID),
+		TwitchClientSecret:    getEnv(envFile, TwitchClientSecret),
+		PatreonClientID:       getEnv(envFile, PatreonClientID),
+		PatreonClientSecret:   getEnv(envFile, PatreonClientSecret),
+		RedditClientID:        getEnv(envFile, RedditClientID),
+		RedditClientSecret:    getEnv(envFile, RedditClientSecret),
+		GoogleClientID:        getEnv(envFile, GoogleClientID),
+		GoogleClientSecret:    getEnv(envFile, GoogleClientSecret),
+		MicrosoftClientID:     getEnv(envFile, MicrosoftClientID),
+		MicrosoftClientSecret: getEnv(envFile, MicrosoftClientSecret),
+		BaseURL:               getEnv(envFile, BaseURL),
 	}
 
 	// PostgreSQL is required

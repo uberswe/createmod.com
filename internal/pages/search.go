@@ -74,6 +74,7 @@ type SearchData struct {
 	MinDimZ           int
 	MaxDimZ           int
 	MinHorizontal     int
+	MaxHorizontal     int
 	SelectedMods      []string
 	AllMods           []ModOption
 	MaxBlockCountAll  int // global max for slider upper bound
@@ -81,6 +82,7 @@ type SearchData struct {
 	MaxDimYAll        int
 	MaxDimZAll        int
 	MaxHorizontalAll  int
+	PerPage           int
 }
 
 func SearchHandler(searchEngine search.SearchEngine, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
@@ -172,6 +174,13 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		minDimZ := parseIntParam("minz")
 		maxDimZ := parseIntParam("maxz")
 		minHorizontal := parseIntParam("minhz")
+		maxHorizontal := parseIntParam("maxhz")
+
+		// Parse per_page
+		perPage := parseIntParam("per_page")
+		if perPage != 8 && perPage != 16 && perPage != 32 && perPage != 64 {
+			perPage = 0 // will use default pageSize
+		}
 
 		// Parse mod filter (comma-separated "mods" param or multiple "mod" checkbox params)
 		var selectedMods []string
@@ -229,6 +238,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			MinDimZ:          minDimZ,
 			MaxDimZ:          maxDimZ,
 			MinHorizontal:    minHorizontal,
+			MaxHorizontal:    maxHorizontal,
 			Mods:             meiliModNames,
 		}
 
@@ -287,6 +297,9 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			}
 		}
 		pageSize := 18
+		if perPage > 0 {
+			pageSize = perPage
+		}
 		total := len(orderedSchematics)
 		maxPage := 0
 		if pageSize > 0 {
@@ -338,6 +351,12 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		}
 		if minHorizontal > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("minhz=%d", minHorizontal))
+		}
+		if maxHorizontal > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxhz=%d", maxHorizontal))
+		}
+		if perPage > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("per_page=%d", perPage))
 		}
 		if minDimX > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("minx=%d", minDimX))
@@ -433,6 +452,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			MinDimZ:           minDimZ,
 			MaxDimZ:           maxDimZ,
 			MinHorizontal:     minHorizontal,
+			MaxHorizontal:     maxHorizontal,
 			SelectedMods:      selectedMods,
 			AllMods:           allMods,
 			MaxBlockCountAll:  maxStats.BlockCount,
@@ -440,6 +460,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			MaxDimYAll:        maxStats.DimY,
 			MaxDimZAll:        maxStats.DimZ,
 			MaxHorizontalAll:  max(maxStats.DimX, maxStats.DimZ),
+			PerPage:           pageSize,
 		}
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
@@ -533,8 +554,10 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 			MinBlockCount    string `json:"minbc" form:"minbc"`
 			MaxBlockCount    string `json:"maxbc" form:"maxbc"`
 			MinHorizontal    string `json:"minhz" form:"minhz"`
+			MaxHorizontal    string `json:"maxhz" form:"maxhz"`
 			MinDimY          string `json:"miny" form:"miny"`
 			MaxDimY          string `json:"maxy" form:"maxy"`
+			PerPage          string `json:"per_page" form:"per_page"`
 		}{}
 		if err := e.BindBody(&data); err != nil {
 			return &server.APIError{Status: 400, Message: "Failed to read request data"}
@@ -569,6 +592,12 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 		}
 		if data.MinHorizontal != "" && data.MinHorizontal != "0" {
 			redirectURL += "&minhz=" + data.MinHorizontal
+		}
+		if data.MaxHorizontal != "" && data.MaxHorizontal != "0" {
+			redirectURL += "&maxhz=" + data.MaxHorizontal
+		}
+		if data.PerPage != "" && data.PerPage != "0" && data.PerPage != "18" {
+			redirectURL += "&per_page=" + data.PerPage
 		}
 		if data.MinDimY != "" && data.MinDimY != "0" {
 			redirectURL += "&miny=" + data.MinDimY

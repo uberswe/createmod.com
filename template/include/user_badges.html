@@ -1,0 +1,1 @@
+{{define "user_badges.html"}}{{ range . }}<span class="badge bg-yellow-lt ms-1" title="{{ .Badge.Description }}">{{ if .Badge.Icon }}<span class="me-1">{{ .Badge.Icon }}</span>{{ end }}{{ .Badge.Title }}</span>{{ end }}{{end}}

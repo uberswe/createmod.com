@@ -1,0 +1,50 @@
+{{ template "head.html" . }}
+{{ template "sidebar.html" . }}
+{{ template "header.html" . }}
+<div class="page-wrapper">
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="page-header d-print-none mb-4">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">{{ T .Language "Live Streams" }}</h2>
+                        <div class="text-secondary">{{ T .Language "Create mod streams happening right now" }}</div>
+                    </div>
+                </div>
+            </div>
+            {{ if .Streams }}
+            <div class="row row-cards">
+                {{ range .Streams }}
+                <div class="col-sm-6 col-lg-4">
+                    <div class="card">
+                        <a href="{{ .StreamURL }}" target="_blank" rel="noopener noreferrer">
+                            <img src="{{ .ThumbnailURL }}" class="card-img-top" alt="{{ .Title }}">
+                        </a>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-red text-white me-2">LIVE</span>
+                                <span class="text-secondary">{{ .ViewerCount }} viewers</span>
+                            </div>
+                            <h3 class="card-title">
+                                <a href="{{ .StreamURL }}" target="_blank" rel="noopener noreferrer">{{ .Title }}</a>
+                            </h3>
+                            <div class="text-secondary">{{ .Username }}</div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+            {{ else }}
+            <div class="empty">
+                <div class="empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/></svg>
+                </div>
+                <p class="empty-title">{{ T .Language "No live streams right now" }}</p>
+                <p class="empty-subtitle text-secondary">{{ T .Language "Check back later or follow creators to get notified when they go live" }}</p>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+{{ template "footer.html" . }}
+{{ template "foot.html" . }}

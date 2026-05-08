@@ -91,5 +91,46 @@ LEFT JOIN (
 ) dl ON dl.schematic_id = sv.schematic_id
 WHERE sv.type = '4' AND sv.period = 'total';
 
+-- name: GetSiteAvgVDRatioSinceCutoff :one
+SELECT CASE WHEN COALESCE(SUM(sv.count), 0) = 0 THEN 0
+            ELSE COALESCE(dl_total.cnt, 0)::REAL / SUM(sv.count)::REAL
+       END AS ratio
+FROM schematic_views sv
+CROSS JOIN (
+    SELECT COUNT(*) AS cnt FROM schematic_downloads WHERE created >= @since::timestamptz
+) dl_total
+WHERE sv.type = '5' AND sv.created >= @since::timestamptz;
+
+-- name: GetSchematicVDRatioSinceCutoff :one
+SELECT
+    COALESCE(SUM(sv.count), 0)::BIGINT AS total_views,
+    (SELECT COUNT(*) FROM schematic_downloads sd WHERE sd.schematic_id = @schematic_id AND sd.created >= @since::timestamptz)::BIGINT AS total_downloads
+FROM schematic_views sv
+WHERE sv.schematic_id = @schematic_id AND sv.type = '5' AND sv.created >= @since::timestamptz;
+
+-- name: GetUserVDRatioSinceCutoff :one
+SELECT
+    COALESCE(SUM(sv.count), 0)::BIGINT AS total_views,
+    COALESCE(dl.cnt, 0)::BIGINT AS total_downloads
+FROM schematic_views sv
+JOIN schematics s ON s.id = sv.schematic_id
+CROSS JOIN (
+    SELECT COUNT(*) AS cnt
+    FROM schematic_downloads sd
+    JOIN schematics s2 ON s2.id = sd.schematic_id
+    WHERE s2.author_id = @user_id AND sd.created >= @since::timestamptz AND s2.deleted IS NULL
+) dl
+WHERE s.author_id = @user_id AND sv.type = '5' AND sv.created >= @since::timestamptz AND s.deleted IS NULL;
+
+-- name: ListTopViewedSchematicsSince :many
+SELECT s.id, s.name, s.title, s.featured_image, SUM(sv.count)::BIGINT AS total_views
+FROM schematic_views sv
+JOIN schematics s ON s.id = sv.schematic_id
+WHERE sv.type = '5' AND sv.created >= $1 AND s.deleted IS NULL
+  AND s.moderation_state IN ('published', 'approved')
+GROUP BY s.id, s.name, s.title, s.featured_image
+ORDER BY total_views DESC
+LIMIT $2;
+
 -- name: DeleteOldSchematicEvents :execrows
 DELETE FROM schematic_events WHERE created < $1;

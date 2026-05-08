@@ -9,27 +9,7 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="row g-0">
-                                <div class="col-12 col-md-3 border-end">
-                                    <div class="card-body">
-                                        <h4 class="subheader">{{ T .Language "Account settings" }}</h4>
-                                        <div class="list-group list-group-transparent">
-                                            <a href="/settings"
-                                               class="list-group-item list-group-item-action d-flex align-items-center active">{{ T .Language "My Account" }}</a>
-                                            <a href="/settings/password"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Password" }}</a>
-                                            <a href="/settings/points"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Points" }}</a>
-                                            <a href="/settings/api-keys"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "API Keys" }}</a>
-                                            <a href="/settings/webhooks"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Webhooks" }}</a>
-                                            <a href="/settings/statistics" hx-boost="false"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Statistics" }}</a>
-                                            <a href="/settings/blacklist"
-                                               class="list-group-item list-group-item-action d-flex align-items-center">{{ T .Language "Blacklist Request" }}</a>
-                                        </div>
-                                    </div>
-                                </div>
+                                {{ template "settings_nav.html" . }}
                                 <div class="col-12 col-md-9 d-flex flex-column">
                                     <div class="card-body">
                                         <h2 class="mb-4">{{ T .Language "My Account" }}</h2>
@@ -93,7 +73,7 @@
                                             {{ end }}
                                         </div>
                                         {{ end }}
-                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled }}
+                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled .TwitchOAuthEnabled .PatreonOAuthEnabled .RedditOAuthEnabled .GoogleOAuthEnabled .MicrosoftOAuthEnabled }}
                                         <h3 class="card-title mt-4">{{ T .Language "Linked Accounts" }}</h3>
                                         {{ if .GithubOAuthEnabled }}
                                         <div class="row g-3 mb-2">
@@ -143,7 +123,118 @@
                                             </div>
                                         </div>
                                         {{ end }}
+                                        {{ if .GoogleOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedGoogle }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <span>Google {{ T .Language "linked" }}</span>
+                                                    {{ if .HasPassword }}<button class="btn btn-outline-danger btn-sm" onclick="unlinkProvider('google')">{{ T .Language "Unlink" }}</button>{{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/google" hx-boost="false" class="btn w-100">{{ T .Language "Link Google account" }}</a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
                                         {{ end }}
+                                        {{ if .MicrosoftOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedMicrosoft }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <span>Microsoft {{ T .Language "linked" }}</span>
+                                                    {{ if .HasPassword }}<button class="btn btn-outline-danger btn-sm" onclick="unlinkProvider('microsoft')">{{ T .Language "Unlink" }}</button>{{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/microsoft" hx-boost="false" class="btn w-100">{{ T .Language "Link Microsoft account" }}</a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                        {{ if .TwitchOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedTwitch }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <span>Twitch {{ T .Language "linked" }}</span>
+                                                    {{ if .HasPassword }}<button class="btn btn-outline-danger btn-sm" onclick="unlinkProvider('twitch')">{{ T .Language "Unlink" }}</button>{{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/twitch" hx-boost="false" class="btn w-100">{{ T .Language "Link Twitch account" }}</a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                        {{ if .PatreonOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedPatreon }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <span>Patreon {{ T .Language "linked" }}</span>
+                                                    {{ if .HasPassword }}<button class="btn btn-outline-danger btn-sm" onclick="unlinkProvider('patreon')">{{ T .Language "Unlink" }}</button>{{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/patreon" hx-boost="false" class="btn w-100">{{ T .Language "Link Patreon account" }}</a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                        {{ if .RedditOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedReddit }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <span>Reddit {{ T .Language "linked" }}</span>
+                                                    {{ if .HasPassword }}<button class="btn btn-outline-danger btn-sm" onclick="unlinkProvider('reddit')">{{ T .Language "Unlink" }}</button>{{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/reddit" hx-boost="false" class="btn w-100">{{ T .Language "Link Reddit account" }}</a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                        {{ end }}
+
+                                        <h3 class="card-title mt-4">{{ T .Language "Social Links" }}</h3>
+                                        <p class="card-subtitle">{{ T .Language "Add links to your social profiles that will appear on your profile page." }}</p>
+                                        <form method="POST" action="/settings/social-links" class="mb-3">
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-auto">
+                                                    <label class="form-label">{{ T .Language "Platform" }}</label>
+                                                    <select name="platform" class="form-select form-select-sm">
+                                                        <option value="youtube">YouTube</option>
+                                                        <option value="twitch">Twitch</option>
+                                                        <option value="patreon">Patreon</option>
+                                                        <option value="reddit">Reddit</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col">
+                                                    <label class="form-label">{{ T .Language "URL" }}</label>
+                                                    <input type="url" name="url" class="form-control form-control-sm" placeholder="https://...">
+                                                </div>
+                                                <div class="col-auto">
+                                                    <label class="form-label">{{ T .Language "Username" }}</label>
+                                                    <input type="text" name="username" class="form-control form-control-sm" placeholder="{{ T .Language "Optional" }}">
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button type="submit" class="btn btn-primary btn-sm">{{ T .Language "Add" }}</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                        {{ range .SocialLinks }}
+                                        <div class="d-flex align-items-center justify-content-between p-2 border rounded mb-2">
+                                            <div>
+                                                <strong>{{ .Platform }}</strong>{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ if .URL }}<a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="ms-2 small">{{ .URL }}</a>{{ end }}
+                                                {{ if .Verified }}<span class="badge bg-green-lt ms-1">{{ T $.Language "Verified" }}</span>{{ end }}
+                                            </div>
+                                            <form method="POST" action="/settings/social-links/{{ .Platform }}" style="display:inline">
+                                                <input type="hidden" name="_method" value="DELETE">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" hx-delete="/settings/social-links/{{ .Platform }}" hx-confirm="{{ T $.Language "Remove this social link?" }}">{{ T $.Language "Remove" }}</button>
+                                            </form>
+                                        </div>
+                                        {{ end }}
+
                                         <h3 class="card-title mt-4">{{ T .Language "Password" }}</h3>
                                         <p class="card-subtitle">{{ T .Language "If you need to change your password you can do so here." }}</p>
                                         <div>

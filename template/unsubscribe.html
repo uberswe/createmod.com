@@ -1,0 +1,24 @@
+{{ template "head.html" . }}
+<main class="page page-center">
+    <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+            <a href="/" class="navbar-brand navbar-brand-autodark">
+                <img src="/assets/x/logo.png" alt="CreateMod.com">
+            </a>
+        </div>
+        <div class="card card-md">
+            <div class="card-body text-center">
+                {{ if .Success }}
+                <h2 class="mb-3">{{ T .Language "Unsubscribed" }}</h2>
+                <p class="text-secondary">{{ T .Language "You have been successfully unsubscribed." }}</p>
+                {{ else }}
+                <h2 class="mb-3">{{ T .Language "Unsubscribe" }}</h2>
+                <p class="text-secondary">{{ T .Language "Invalid or expired unsubscribe link." }}</p>
+                {{ end }}
+                <a href="/" class="btn btn-primary mt-3">{{ T .Language "Back to home" }}</a>
+            </div>
+        </div>
+    </div>
+</main>
+{{ template "footer.html" . }}
+{{ template "foot.html" . }}

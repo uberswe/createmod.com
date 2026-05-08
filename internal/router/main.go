@@ -100,6 +100,11 @@ type RegisterParams struct {
 	StorageService     *storage.Service
 	DiscordOAuth       *auth.OAuthProvider
 	GithubOAuth        *auth.OAuthProvider
+	TwitchOAuth        *auth.OAuthProvider
+	PatreonOAuth       *auth.OAuthProvider
+	RedditOAuth        *auth.OAuthProvider
+	GoogleOAuth        *auth.OAuthProvider
+	MicrosoftOAuth     *auth.OAuthProvider
 	MailService        *mailer.Service
 	JobWorker          *jobs.Worker
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
@@ -112,7 +117,15 @@ func Register(p RegisterParams) chi.Router {
 	// Record which OAuth providers are configured so templates can hide
 	// the matching login / link buttons when they aren't. Missing env vars
 	// are the top reason OAuth buttons appear dead on production.
-	pages.SetOAuthEnabled(p.DiscordOAuth != nil, p.GithubOAuth != nil)
+	pages.SetOAuthEnabled(map[string]bool{
+		"discord":   p.DiscordOAuth != nil,
+		"github":    p.GithubOAuth != nil,
+		"twitch":    p.TwitchOAuth != nil,
+		"patreon":   p.PatreonOAuth != nil,
+		"reddit":    p.RedditOAuth != nil,
+		"google":    p.GoogleOAuth != nil,
+		"microsoft": p.MicrosoftOAuth != nil,
+	})
 	pages.SetOAuthSigningSecret(deriveOAuthSigningSecret())
 	if p.DiscordOAuth == nil {
 		slog.Info("oauth: Discord provider disabled (DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set)")
@@ -129,6 +142,7 @@ func Register(p RegisterParams) chi.Router {
 	funcMap := html.FuncMap{
 		"ToLower":        strings.ToLower,
 		"mod":            func(i, j int) bool { return i%j == 0 },
+		"add":            func(a, b int) int { return a + b },
 		"urlPathEscape":  url.PathEscape,
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
@@ -370,6 +384,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/moderation-chat/{id}", Adapt(pages.ModerationChatCreateHandler(p.AppStore)))
 	r.Delete("/api/comments/{id}", Adapt(pages.CommentDeleteHandler(p.AppStore)))
 	r.Post("/api/ratings", Adapt(pages.RatingUpsertHandler(p.AppStore)))
+	r.Post("/api/users/{id}/follow", Adapt(pages.FollowHandler(p.AppStore)))
+	r.Delete("/api/users/{id}/follow", Adapt(pages.UnfollowHandler(p.AppStore)))
 	analyticsRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
 	r.With(analyticsRateLimit).Post("/api/analytics", Adapt(pages.AnalyticsEventHandler(p.CacheService, p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
@@ -378,6 +394,14 @@ func Register(p RegisterParams) chi.Router {
 	// Schematic edit/delete API (replaces PB REST endpoints)
 	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, enqueueSearchUpsert)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
+	// Schematic content management APIs (videos, references, modpacks, reddit links)
+	r.Post("/api/schematics/{id}/videos", Adapt(pages.AddSchematicVideoHandler(p.AppStore)))
+	r.Delete("/api/schematics/{id}/videos/{videoId}", Adapt(pages.DeleteSchematicVideoHandler(p.AppStore)))
+	r.Post("/api/schematics/{id}/references", Adapt(pages.AddSchematicReferenceHandler(p.AppStore)))
+	r.Delete("/api/schematics/{id}/references/{refId}", Adapt(pages.DeleteSchematicReferenceHandler(p.AppStore)))
+	r.Post("/api/schematics/{id}/reddit-links", Adapt(pages.AddSchematicRedditLinkHandler(p.AppStore)))
+	r.Delete("/api/schematics/{id}/reddit-links/{linkId}", Adapt(pages.DeleteSchematicRedditLinkHandler(p.AppStore)))
+	r.Post("/api/schematics/{id}/modpacks", Adapt(pages.SetSchematicModpacksHandler(p.AppStore)))
 	r.Get("/blacklist-request", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, pages.LangRedirectURLFromRequest(req, "/settings/blacklist"), http.StatusMovedPermanently)
 	})
@@ -404,6 +428,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/settings/webhooks", Adapt(pages.UserWebhookSaveHandler(p.CacheService, p.AppStore, webhookSecret)))
 	r.Post("/settings/webhooks/delete", Adapt(pages.UserWebhookDeleteHandler(p.AppStore)))
 	r.Get("/settings/statistics", Adapt(pages.UserStatsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/settings/badges", Adapt(pages.UserBadgesHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/settings/badges", Adapt(pages.UserBadgesSaveHandler(p.AppStore)))
+	r.Post("/settings/social-links", Adapt(pages.SocialLinkSaveHandler(p.AppStore)))
+	r.Delete("/settings/social-links/{platform}", Adapt(pages.SocialLinkDeleteHandler(p.AppStore)))
 	r.Get("/settings/blacklist", Adapt(pages.BlacklistRequestHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/settings/blacklist/upload", Adapt(pages.BlacklistUploadHandler(p.AppStore)))
 	r.Delete("/settings/blacklist/{id}", Adapt(pages.BlacklistDeleteHandler(p.AppStore)))
@@ -464,6 +492,16 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore)))
 	r.Get("/auth/github", Adapt(pages.OAuthRedirectHandler(p.GithubOAuth)))
 	r.Get("/auth/github/callback", Adapt(pages.OAuthCallbackHandler(p.GithubOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/twitch", Adapt(pages.OAuthRedirectHandler(p.TwitchOAuth)))
+	r.Get("/auth/twitch/callback", Adapt(pages.OAuthCallbackHandler(p.TwitchOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/patreon", Adapt(pages.OAuthRedirectHandler(p.PatreonOAuth)))
+	r.Get("/auth/patreon/callback", Adapt(pages.OAuthCallbackHandler(p.PatreonOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/reddit", Adapt(pages.OAuthRedirectHandler(p.RedditOAuth)))
+	r.Get("/auth/reddit/callback", Adapt(pages.OAuthCallbackHandler(p.RedditOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/google", Adapt(pages.OAuthRedirectHandler(p.GoogleOAuth)))
+	r.Get("/auth/google/callback", Adapt(pages.OAuthCallbackHandler(p.GoogleOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/microsoft", Adapt(pages.OAuthRedirectHandler(p.MicrosoftOAuth)))
+	r.Get("/auth/microsoft/callback", Adapt(pages.OAuthCallbackHandler(p.MicrosoftOAuth, p.AppStore, p.SessionStore)))
 	r.Get("/auth/oauth/complete", Adapt(pages.OAuthCompleteHandler(registry, p.AppStore)))
 	r.With(authRateLimit).Post("/auth/oauth/complete", Adapt(pages.OAuthCompletePostHandler(registry, p.AppStore, p.SessionStore)))
 	r.Get("/logout", func(w http.ResponseWriter, req *http.Request) {
@@ -587,9 +625,39 @@ func Register(p RegisterParams) chi.Router {
 	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))
 	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
 	// User
+	r.Get("/following", Adapt(pages.FollowingHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
+
+	// Phase 4: Notifications
+	r.Get("/notifications", Adapt(pages.NotificationsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/api/notifications/recent", Adapt(pages.NotificationsRecentHandler(p.AppStore)))
+	r.Get("/api/notifications/unread-count", Adapt(pages.NotificationsUnreadCountHandler(p.AppStore)))
+	r.Post("/api/notifications/mark-read", Adapt(pages.NotificationsMarkReadHandler(p.AppStore)))
+	r.Get("/settings/notifications", Adapt(pages.UserNotificationsHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/settings/notifications", Adapt(pages.UserNotificationsSaveHandler(p.AppStore)))
+
+	// Phase 4: Subscriptions
+	r.Get("/settings/subscriptions", Adapt(pages.UserSubscriptionsHandler(registry, p.CacheService, p.AppStore)))
+	r.Delete("/settings/subscriptions/alerts/{id}", Adapt(pages.DeleteSearchAlertHandler(p.AppStore)))
+	r.Delete("/settings/subscriptions/sections/{id}", Adapt(pages.DeleteSectionSubscriptionHandler(p.AppStore)))
+
+	// Phase 4: Newsletters
+	r.Post("/api/newsletter/subscribe", Adapt(pages.NewsletterSubscribeHandler(p.AppStore)))
+	r.Get("/unsubscribe", Adapt(pages.UnsubscribeHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/newsletters/{slug}", Adapt(pages.NewsletterViewHandler(registry, p.CacheService, p.AppStore)))
+
+	// Phase 2.4: Security
+	r.Get("/settings/security", Adapt(pages.UserSecurityHandler(registry, p.CacheService, p.AppStore)))
+
+	// Site statistics
+	r.Get("/stats", Adapt(pages.SiteStatsHandler(registry, p.CacheService, p.AppStore)))
+
+	// Phase 5: Social features
+	r.Get("/top-creators", Adapt(pages.TopCreatorsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/live", Adapt(pages.LivestreamsHandler(registry, p.CacheService, p.AppStore)))
+
 	// Fallback
 	r.Get("/*", Adapt(pages.FourOhFourHandler(registry, p.AppStore)))
 

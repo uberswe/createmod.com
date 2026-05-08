@@ -25,10 +25,16 @@ type APIKeyItem struct {
 
 type UserSettingsData struct {
 	DefaultData
-	LinkedGithub  bool
-	LinkedDiscord bool
-	HasPassword   bool
-	OAuthError    string
+	LinkedGithub    bool
+	LinkedDiscord   bool
+	LinkedTwitch    bool
+	LinkedPatreon   bool
+	LinkedReddit    bool
+	LinkedGoogle    bool
+	LinkedMicrosoft bool
+	HasPassword     bool
+	OAuthError      string
+	SocialLinks     []store.SocialLink
 }
 
 func UserSettingsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -39,6 +45,7 @@ func UserSettingsHandler(registry *server.Registry, cacheService *cache.Service,
 
 		d := UserSettingsData{}
 		d.Populate(e)
+		d.SettingsPage = "account"
 		d.HideOutstream = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"))
 		d.Title = i18n.T(d.Language, "Settings")
@@ -58,8 +65,23 @@ func UserSettingsHandler(registry *server.Registry, cacheService *cache.Service,
 					d.LinkedGithub = true
 				case "discord":
 					d.LinkedDiscord = true
+				case "twitch":
+					d.LinkedTwitch = true
+				case "patreon":
+					d.LinkedPatreon = true
+				case "reddit":
+					d.LinkedReddit = true
+				case "google":
+					d.LinkedGoogle = true
+				case "microsoft":
+					d.LinkedMicrosoft = true
 				}
 			}
+		}
+
+		socialLinks, err := appStore.SocialLinks.ListByUser(ctx, userID)
+		if err == nil {
+			d.SocialLinks = socialLinks
 		}
 
 		user, err := appStore.Users.GetUserByID(ctx, userID)

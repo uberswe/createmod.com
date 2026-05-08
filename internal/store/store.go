@@ -25,18 +25,20 @@ func IsPublicState(state string) bool {
 
 // User represents a user account.
 type User struct {
-	ID           string
-	Email        string
-	Username     string
-	PasswordHash string
-	OldPassword  string
-	Avatar       string
-	Points       int
-	Verified     bool
-	IsAdmin      bool
-	Deleted      *time.Time
-	Created      time.Time
-	Updated      time.Time
+	ID             string
+	Email          string
+	Username       string
+	PasswordHash   string
+	OldPassword    string
+	Avatar         string
+	Points         int
+	Verified       bool
+	IsAdmin        bool
+	Deleted        *time.Time
+	Created        time.Time
+	Updated        time.Time
+	FollowerCount  int
+	FollowingCount int
 }
 
 // Session represents an authenticated user session.
@@ -188,6 +190,7 @@ type PointLogEntry struct {
 	UserID      string
 	Points      int
 	Reason      string
+	ReferenceID string
 	Description string
 	EarnedAt    time.Time
 }
@@ -243,21 +246,293 @@ type SchematicTagInfo struct {
 
 // ExternalAuth represents an OAuth provider link.
 type ExternalAuth struct {
-	ID         string
-	UserID     string
-	Provider   string
-	ProviderID string
-	Created    time.Time
+	ID                    string
+	UserID                string
+	Provider              string
+	ProviderID            string
+	AccessTokenEncrypted  string
+	RefreshTokenEncrypted string
+	TokenExpiry           *time.Time
+	Username              string
+	AvatarURL             string
+	Metadata              json.RawMessage
+	Created               time.Time
 }
 
 // SchematicVersion represents a version snapshot.
 type SchematicVersion struct {
+	ID            string
+	SchematicID   string
+	Version       int
+	Snapshot      string
+	Note          string
+	SchematicFile string
+	Changelog     string
+	BlockCount    int
+	DimX          int
+	DimY          int
+	DimZ          int
+	Materials     json.RawMessage
+	Created       time.Time
+}
+
+// Badge represents an earnable badge.
+type Badge struct {
+	ID          string
+	Key         string
+	Title       string
+	Description string
+	Icon        string
+	Category    string // "achievement", "supporter", "verified"
+	Threshold   int
+	MultiEarn   bool
+}
+
+// UserBadge represents a badge earned by a user.
+type UserBadge struct {
+	ID      string
+	UserID  string
+	BadgeID string
+	Count   int
+	Badge   Badge
+}
+
+// DisplayBadge represents a badge chosen for display on a user profile.
+type DisplayBadge struct {
+	UserID   string
+	BadgeID  string
+	Position int
+	Badge    Badge
+}
+
+// SocialLink represents a user's social platform link.
+type SocialLink struct {
+	ID       string
+	UserID   string
+	Platform string
+	URL      string
+	Username string
+	Verified bool
+	Created  time.Time
+	Updated  time.Time
+}
+
+// UserFollow represents a follow relationship between users.
+type UserFollow struct {
+	ID         string
+	FollowerID string
+	FollowedID string
+	Created    time.Time
+}
+
+// SchematicVideo represents a video linked to a schematic.
+type SchematicVideo struct {
 	ID          string
 	SchematicID string
-	Version     int
-	Snapshot    string
-	Note        string
+	VideoURL    string
+	VideoType   string // "showcase", "tutorial", "timelapse"
+	Title       string
+	Position    int
 	Created     time.Time
+}
+
+// SchematicReference represents an "inspired by" reference link.
+type SchematicReference struct {
+	ID           string
+	SchematicID  string
+	URL          string
+	SourceType   string
+	Title        string
+	ThumbnailURL string
+	AuthorName   string
+	LastFetched  *time.Time
+	Created      time.Time
+	Updated      time.Time
+}
+
+// Modpack represents a modpack from Modrinth.
+type Modpack struct {
+	ID          string
+	ModrinthID  string
+	Slug        string
+	Name        string
+	Description string
+	IconURL     string
+	ModrinthURL string
+	Downloads   int
+	LastFetched *time.Time
+	Created     time.Time
+	Updated     time.Time
+}
+
+// RedditLink represents a Reddit post linked to a schematic.
+type RedditLink struct {
+	ID           string
+	SchematicID  string
+	RedditURL    string
+	Subreddit    string
+	PostTitle    string
+	Upvotes      int
+	CommentCount int
+	ThumbnailURL string
+	LastFetched  *time.Time
+	Created      time.Time
+	Updated      time.Time
+}
+
+// Notification represents a user notification.
+type Notification struct {
+	ID          string
+	UserID      string
+	Type        string
+	Title       string
+	Body        string
+	URL         string
+	ActorID     string
+	ReferenceID string
+	Read        bool
+	Created     time.Time
+}
+
+// NotificationPreference represents user notification preferences per category.
+type NotificationPreference struct {
+	ID       string
+	UserID   string
+	Category string
+	Email    string // "immediate", "daily", "weekly", "off"
+	Web      bool
+	Created  time.Time
+	Updated  time.Time
+}
+
+// NewsletterSubscriber represents an email subscription.
+type NewsletterSubscriber struct {
+	ID               string
+	Email            string
+	UserID           *string
+	Type             string
+	Frequency        string
+	Confirmed        bool
+	ConfirmToken     string
+	UnsubscribeToken string
+	Created          time.Time
+	Updated          time.Time
+}
+
+// NewsletterIssue represents a sent newsletter.
+type NewsletterIssue struct {
+	ID       string
+	Type     string
+	Subject  string
+	HTMLBody string
+	Slug     string
+	SentAt   *time.Time
+	Created  time.Time
+}
+
+// SearchAlert represents a saved search alert.
+type SearchAlert struct {
+	ID               string
+	UserID           string
+	Query            string
+	Filters          json.RawMessage
+	Frequency        string
+	LastChecked      *time.Time
+	LastNotified     *time.Time
+	Active           bool
+	UnsubscribeToken string
+	Created          time.Time
+	Updated          time.Time
+}
+
+// SectionSubscription represents a category/section subscription.
+type SectionSubscription struct {
+	ID               string
+	UserID           string
+	SubscriptionType string
+	TargetID         string
+	Frequency        string
+	UnsubscribeToken string
+	Created          time.Time
+	Updated          time.Time
+}
+
+// ZeroResultSuggestion represents a suggestion for zero-result queries.
+type ZeroResultSuggestion struct {
+	ID         string
+	Query      string
+	Suggestion string
+	Auto       bool
+	Created    time.Time
+	Updated    time.Time
+}
+
+// KnownIP represents a user's recognized IP address.
+type KnownIP struct {
+	ID        string
+	UserID    string
+	IPAddress string
+	UserAgent string
+	Verified  bool
+	LastSeen  time.Time
+	Created   time.Time
+}
+
+// IPVerificationCode represents a pending IP verification.
+type IPVerificationCode struct {
+	ID        string
+	UserID    string
+	IPAddress string
+	CodeHash  string
+	ExpiresAt time.Time
+	Used      bool
+	Created   time.Time
+}
+
+// UserTOTP represents TOTP configuration for a user.
+type UserTOTP struct {
+	ID              string
+	UserID          string
+	SecretEncrypted string
+	Enabled         bool
+	Verified        bool
+	Created         time.Time
+	Updated         time.Time
+}
+
+// TOTPBackupCode represents a TOTP backup code.
+type TOTPBackupCode struct {
+	ID       string
+	UserID   string
+	CodeHash string
+	Used     bool
+	Created  time.Time
+}
+
+// Passkey represents a WebAuthn credential.
+type Passkey struct {
+	ID              string
+	UserID          string
+	CredentialID    []byte
+	PublicKey       []byte
+	AttestationType string
+	Transport       []string
+	AAGUID          []byte
+	SignCount       int
+	FriendlyName    string
+	LastUsed        *time.Time
+	Created         time.Time
+}
+
+// SecuritySettings represents per-user security configuration.
+type SecuritySettings struct {
+	ID                string
+	UserID            string
+	NewIPVerification bool
+	TOTPEnabled       bool
+	PasskeysEnabled   bool
+	Created           time.Time
+	Updated           time.Time
 }
 
 // APIKey represents a user API key.
@@ -334,6 +609,28 @@ type SearchEntry struct {
 	Created         time.Time
 }
 
+// TopViewedSchematic holds a schematic's identity and total views for ranking.
+type TopViewedSchematic struct {
+	ID            string
+	Name          string
+	Title         string
+	FeaturedImage string
+	TotalViews    int64
+}
+
+// DailyCount holds a day label and an aggregate count.
+type DailyCount struct {
+	Day   string
+	Count int64
+}
+
+// SearchTermDailyCount holds a per-term daily count.
+type SearchTermDailyCount struct {
+	Query string
+	Day   string
+	Count int64
+}
+
 // SitemapSchematic is a lightweight schematic entry for sitemap generation.
 type SitemapSchematic struct {
 	ID      string
@@ -401,6 +698,8 @@ type UserStore interface {
 	GetByIDIncludingDeleted(ctx context.Context, id string) (*User, error)
 	ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]User, error)
 	CountForAdmin(ctx context.Context, filter, search string) (int64, error)
+	ListTopByPoints(ctx context.Context, limit, offset int) ([]User, error)
+	CountActive(ctx context.Context) (int64, error)
 }
 
 // SessionStore handles session persistence.
@@ -439,6 +738,10 @@ type ModerationChatStore interface {
 	ListMessages(ctx context.Context, threadID string) ([]ModerationMessage, error)
 	CreateMessage(ctx context.Context, threadID, authorID string, isModerator bool, body string) (*ModerationMessage, error)
 	CountUserMessagesSinceLastModerator(ctx context.Context, threadID string) (int, error)
+	MarkResolved(ctx context.Context, threadID, resolvedBy string) error
+	MarkCreatorRead(ctx context.Context, threadID string) error
+	ListUnreadByCreator(ctx context.Context, userID string) ([]ModerationThread, error)
+	ListByModerator(ctx context.Context, limit, offset int) ([]ModerationThread, error)
 }
 
 // SchematicStore handles schematic persistence.
@@ -593,6 +896,41 @@ type AchievementStore interface {
 	CreatePointLog(ctx context.Context, entry *PointLogEntry) error
 	GetPointLog(ctx context.Context, userID string) ([]PointLogEntry, error)
 	SumUserPoints(ctx context.Context, userID string) (int, error)
+	CountPointLogByReason(ctx context.Context, userID, reason string) (int, error)
+}
+
+// BadgeStore handles badge management and awards.
+type BadgeStore interface {
+	GetByKey(ctx context.Context, key string) (*Badge, error)
+	List(ctx context.Context) ([]Badge, error)
+	ListUserBadges(ctx context.Context, userID string) ([]UserBadge, error)
+	AwardBadge(ctx context.Context, userID, badgeID string) error
+	IncrementBadge(ctx context.Context, userID, badgeID string) error
+	RemoveBadge(ctx context.Context, userID, badgeID string) error
+	SetDisplayedBadges(ctx context.Context, userID string, badgeIDs []string) error
+	GetDisplayedBadges(ctx context.Context, userID string) ([]DisplayBadge, error)
+	BatchGetDisplayedBadges(ctx context.Context, userIDs []string) (map[string][]DisplayBadge, error)
+}
+
+// SocialLinkStore handles user social platform links.
+type SocialLinkStore interface {
+	Upsert(ctx context.Context, link *SocialLink) error
+	ListByUser(ctx context.Context, userID string) ([]SocialLink, error)
+	GetByUserAndPlatform(ctx context.Context, userID, platform string) (*SocialLink, error)
+	Delete(ctx context.Context, userID, platform string) error
+	ListByPlatform(ctx context.Context, platform string) ([]SocialLink, error)
+}
+
+// FollowStore handles user follow relationships.
+type FollowStore interface {
+	Follow(ctx context.Context, followerID, followedID string) error
+	Unfollow(ctx context.Context, followerID, followedID string) error
+	IsFollowing(ctx context.Context, followerID, followedID string) (bool, error)
+	ListFollowers(ctx context.Context, userID string, limit, offset int) ([]User, error)
+	ListFollowing(ctx context.Context, userID string, limit, offset int) ([]User, error)
+	CountFollowers(ctx context.Context, userID string) (int, error)
+	CountFollowing(ctx context.Context, userID string) (int, error)
+	ListFollowedIDs(ctx context.Context, followerID string) ([]string, error)
 }
 
 // TranslationStore handles translations for all content types.
@@ -634,6 +972,8 @@ type VersionStore interface {
 	Create(ctx context.Context, v *SchematicVersion) error
 	ListBySchematic(ctx context.Context, schematicID string) ([]SchematicVersion, error)
 	GetLatestVersion(ctx context.Context, schematicID string) (int, error)
+	GetByID(ctx context.Context, id string) (*SchematicVersion, error)
+	GetBySchematicAndVersion(ctx context.Context, schematicID string, version int) (*SchematicVersion, error)
 }
 
 // APIKeyStore handles API key management.
@@ -651,6 +991,7 @@ type AuthStore interface {
 	Create(ctx context.Context, ea *ExternalAuth) error
 	ListByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	DeleteByProvider(ctx context.Context, userID, provider string) error
+	GetByUserAndProvider(ctx context.Context, userID, provider string) (*ExternalAuth, error)
 }
 
 // ReportStore handles content reports.
@@ -686,6 +1027,14 @@ type SearchTrackingStore interface {
 	ListTopSearches(ctx context.Context, limit int) ([]SearchEntry, error)
 	RefreshSearchQueryCounts(ctx context.Context) error
 	PruneOldSearches(ctx context.Context) (int64, error)
+	HasRecentApprovedUpload(ctx context.Context, userID string, since time.Time) (bool, error)
+	ListTopSearchesSince(ctx context.Context, since time.Time, limit int) ([]SearchEntry, error)
+	ListTopViewedSchematicsSince(ctx context.Context, since time.Time, limit int) ([]TopViewedSchematic, error)
+	DailySearchVolume(ctx context.Context, since time.Time) ([]DailyCount, error)
+	DailySearchTermVolume(ctx context.Context, since time.Time, terms []string) ([]SearchTermDailyCount, error)
+	UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error
+	ListCleanSearchTerms(ctx context.Context, terms []string) ([]string, error)
+	ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error)
 }
 
 // OutgoingClickStore handles external link click tracking.
@@ -714,6 +1063,9 @@ type StatsStore interface {
 	ListSchematicStats(ctx context.Context, userID string, limit, offset int) ([]SchematicStatsSummary, error)
 	CountUserSchematics(ctx context.Context, userID string) (int, error)
 	GetSiteAvgVDRatio(ctx context.Context) (float64, error)
+	GetSiteAvgVDRatioSinceCutoff(ctx context.Context, since time.Time) (float64, error)
+	GetSchematicVDRatioSinceCutoff(ctx context.Context, schematicID string, since time.Time) (views int64, downloads int64, err error)
+	GetUserVDRatioSinceCutoff(ctx context.Context, userID string, since time.Time) (views int64, downloads int64, err error)
 	DeleteOldEvents(ctx context.Context, before time.Time) (int64, error)
 }
 
@@ -941,6 +1293,132 @@ type ModerationLogStore interface {
 	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationLogEntry, error)
 }
 
+// SchematicVideoStore handles videos linked to schematics.
+type SchematicVideoStore interface {
+	Create(ctx context.Context, v *SchematicVideo) error
+	ListBySchematic(ctx context.Context, schematicID string) ([]SchematicVideo, error)
+	Delete(ctx context.Context, id, schematicID string) error
+	DeleteBySchematic(ctx context.Context, schematicID string) error
+	UpdatePosition(ctx context.Context, id string, position int) error
+	BatchGetBySchematicIDs(ctx context.Context, ids []string) (map[string][]SchematicVideo, error)
+}
+
+// ReferenceStore handles "inspired by" build references.
+type ReferenceStore interface {
+	Create(ctx context.Context, ref *SchematicReference) error
+	ListBySchematic(ctx context.Context, schematicID string) ([]SchematicReference, error)
+	Delete(ctx context.Context, id, schematicID string) error
+	ListStale(ctx context.Context, limit int) ([]SchematicReference, error)
+	UpdateMetadata(ctx context.Context, id, title, thumbnailURL, authorName string) error
+}
+
+// ModpackStore handles modpack management and associations.
+type ModpackStore interface {
+	Upsert(ctx context.Context, m *Modpack) error
+	GetByID(ctx context.Context, id string) (*Modpack, error)
+	GetBySlug(ctx context.Context, slug string) (*Modpack, error)
+	List(ctx context.Context) ([]Modpack, error)
+	Search(ctx context.Context, query string, limit int) ([]Modpack, error)
+	SetSchematicModpacks(ctx context.Context, schematicID string, modpackIDs []string) error
+	GetSchematicModpacks(ctx context.Context, schematicID string) ([]Modpack, error)
+	BatchGetSchematicModpacks(ctx context.Context, schematicIDs []string) (map[string][]Modpack, error)
+	ListSchematicsByModpack(ctx context.Context, modpackID string, limit, offset int) ([]Schematic, error)
+	CountSchematicsByModpack(ctx context.Context, modpackID string) (int64, error)
+}
+
+// RedditLinkStore handles Reddit post links on schematics.
+type RedditLinkStore interface {
+	Create(ctx context.Context, link *RedditLink) error
+	GetBySchematic(ctx context.Context, schematicID string) ([]RedditLink, error)
+	Delete(ctx context.Context, id, schematicID string) error
+	ListStale(ctx context.Context, limit int) ([]RedditLink, error)
+	UpdateMetadata(ctx context.Context, id, postTitle string, upvotes, commentCount int, thumbnailURL string) error
+}
+
+// NotificationStore handles user notifications.
+type NotificationStore interface {
+	Create(ctx context.Context, n *Notification) error
+	ListByUser(ctx context.Context, userID string, limit, offset int) ([]Notification, error)
+	ListRecent(ctx context.Context, userID string, limit int) ([]Notification, error)
+	CountUnread(ctx context.Context, userID string) (int, error)
+	MarkRead(ctx context.Context, id, userID string) error
+	MarkAllRead(ctx context.Context, userID string) error
+	DeleteOld(ctx context.Context, before time.Time) error
+	GetPreferences(ctx context.Context, userID string) ([]NotificationPreference, error)
+	UpsertPreference(ctx context.Context, pref *NotificationPreference) error
+	GetPreference(ctx context.Context, userID, category string) (*NotificationPreference, error)
+}
+
+// NewsletterStore handles newsletter subscriptions and issues.
+type NewsletterStore interface {
+	Subscribe(ctx context.Context, sub *NewsletterSubscriber) error
+	Confirm(ctx context.Context, confirmToken string) error
+	Unsubscribe(ctx context.Context, unsubscribeToken string) error
+	ListConfirmed(ctx context.Context, subType string) ([]NewsletterSubscriber, error)
+	ListConfirmedByFrequency(ctx context.Context, subType, frequency string) ([]NewsletterSubscriber, error)
+	GetByEmail(ctx context.Context, email, subType string) (*NewsletterSubscriber, error)
+	CreateIssue(ctx context.Context, issue *NewsletterIssue) error
+	GetIssueBySlug(ctx context.Context, slug string) (*NewsletterIssue, error)
+	ListIssues(ctx context.Context, issueType string, limit, offset int) ([]NewsletterIssue, error)
+}
+
+// SearchAlertStore handles saved search alerts.
+type SearchAlertStore interface {
+	Create(ctx context.Context, alert *SearchAlert) error
+	ListByUser(ctx context.Context, userID string) ([]SearchAlert, error)
+	ListActive(ctx context.Context, limit int) ([]SearchAlert, error)
+	Delete(ctx context.Context, id, userID string) error
+	Unsubscribe(ctx context.Context, unsubscribeToken string) error
+	UpdateLastChecked(ctx context.Context, id string) error
+	UpdateLastNotified(ctx context.Context, id string) error
+}
+
+// SectionSubscriptionStore handles category/section subscriptions.
+type SectionSubscriptionStore interface {
+	Create(ctx context.Context, sub *SectionSubscription) error
+	ListByUser(ctx context.Context, userID string) ([]SectionSubscription, error)
+	ListByTarget(ctx context.Context, subscriptionType, targetID string) ([]SectionSubscription, error)
+	Delete(ctx context.Context, id, userID string) error
+	Unsubscribe(ctx context.Context, unsubscribeToken string) error
+}
+
+// ZeroResultStore handles zero-result search suggestions.
+type ZeroResultStore interface {
+	Upsert(ctx context.Context, s *ZeroResultSuggestion) error
+	Get(ctx context.Context, query string) (*ZeroResultSuggestion, error)
+	List(ctx context.Context, limit, offset int) ([]ZeroResultSuggestion, error)
+	Delete(ctx context.Context, id string) error
+}
+
+// SecurityStore handles account security features.
+type SecurityStore interface {
+	UpsertKnownIP(ctx context.Context, ip *KnownIP) error
+	GetKnownIP(ctx context.Context, userID, ipAddress string) (*KnownIP, error)
+	ListKnownIPs(ctx context.Context, userID string) ([]KnownIP, error)
+	VerifyKnownIP(ctx context.Context, userID, ipAddress string) error
+	DeleteKnownIP(ctx context.Context, id, userID string) error
+	CreateIPVerificationCode(ctx context.Context, code *IPVerificationCode) error
+	GetIPVerificationCode(ctx context.Context, userID, ipAddress string) (*IPVerificationCode, error)
+	MarkIPVerificationCodeUsed(ctx context.Context, id string) error
+	CleanupExpiredIPCodes(ctx context.Context) error
+	UpsertTOTP(ctx context.Context, totp *UserTOTP) error
+	GetTOTP(ctx context.Context, userID string) (*UserTOTP, error)
+	EnableTOTP(ctx context.Context, userID string) error
+	DisableTOTP(ctx context.Context, userID string) error
+	DeleteTOTP(ctx context.Context, userID string) error
+	CreateTOTPBackupCode(ctx context.Context, userID, codeHash string) error
+	ListTOTPBackupCodes(ctx context.Context, userID string) ([]TOTPBackupCode, error)
+	MarkBackupCodeUsed(ctx context.Context, id string) error
+	DeleteTOTPBackupCodes(ctx context.Context, userID string) error
+	CreatePasskey(ctx context.Context, pk *Passkey) error
+	GetPasskeyByCredentialID(ctx context.Context, credentialID []byte) (*Passkey, error)
+	ListPasskeys(ctx context.Context, userID string) ([]Passkey, error)
+	UpdatePasskeySignCount(ctx context.Context, id string, signCount int) error
+	DeletePasskey(ctx context.Context, id, userID string) error
+	UpsertSecuritySettings(ctx context.Context, settings *SecuritySettings) error
+	GetSecuritySettings(ctx context.Context, userID string) (*SecuritySettings, error)
+}
+
 type Store struct {
 	Users               UserStore
 	Sessions            SessionStore
@@ -973,4 +1451,17 @@ type Store struct {
 	SchematicVariations SchematicVariationStore
 	ModerationChats     ModerationChatStore
 	ModerationLog       ModerationLogStore
+	Badges               BadgeStore
+	SocialLinks          SocialLinkStore
+	Follows              FollowStore
+	SchematicVideos      SchematicVideoStore
+	References           ReferenceStore
+	Modpacks             ModpackStore
+	RedditLinks          RedditLinkStore
+	Notifications        NotificationStore
+	Newsletters          NewsletterStore
+	SearchAlerts         SearchAlertStore
+	SectionSubscriptions SectionSubscriptionStore
+	ZeroResults          ZeroResultStore
+	Security             SecurityStore
 }

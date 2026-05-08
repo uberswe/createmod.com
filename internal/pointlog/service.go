@@ -2,33 +2,39 @@ package pointlog
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"createmod/internal/store"
 )
 
-// pointDef maps an achievement key to the points awarded and a human description.
-type pointDef struct {
+const (
+	ReasonUpload   = "upload"
+	ReasonViews10K = "views_10k"
+	ReasonRating4  = "rating_4plus"
+	ReasonDown100  = "downloads_100"
+	ReasonComment  = "comment"
+)
+
+type pointRule struct {
 	Points      int
 	Description string
 }
 
-// achievementPoints defines points per achievement reason.
-var achievementPoints = map[string]pointDef{
-	"first_upload":       {Points: 50, Description: "Uploaded your first schematic"},
-	"first_upload_bonus": {Points: 30, Description: "First upload bonus"},
-	"first_comment":      {Points: 10, Description: "Posted your first comment"},
-	// first_guide and first_collection are achievement-only, no separate points.
+var rules = map[string]pointRule{
+	ReasonUpload:   {Points: 1, Description: "Uploaded a schematic"},
+	ReasonViews10K: {Points: 5, Description: "Schematic reached 10,000 views"},
+	ReasonRating4:  {Points: 2, Description: "Schematic received 4+ star rating"},
+	ReasonDown100:  {Points: 2, Description: "Schematic reached 100 downloads"},
+	ReasonComment:  {Points: 1, Description: "Commented on a schematic"},
 }
 
-// Service manages the point log background recalculation.
 type Service struct {
 	appStore *store.Store
 	stopChan chan struct{}
 }
 
-// New creates a new point log service.
 func New(appStore *store.Store) *Service {
 	return &Service{
 		appStore: appStore,
@@ -36,12 +42,10 @@ func New(appStore *store.Store) *Service {
 	}
 }
 
-// Stop signals the background scheduler to stop.
 func (s *Service) Stop() {
 	close(s.stopChan)
 }
 
-// StartScheduler runs RecalculateAll immediately, then every hour.
 func (s *Service) StartScheduler() {
 	go func() {
 		s.RecalculateAll()
@@ -62,7 +66,6 @@ func (s *Service) StartScheduler() {
 	slog.Info("Point log scheduler started (polling every hour)")
 }
 
-// RecalculateAll finds all users and backfills their point log.
 func (s *Service) RecalculateAll() {
 	slog.Info("Point log recalculation started")
 
@@ -95,49 +98,49 @@ func (s *Service) RecalculateAll() {
 	slog.Info("Point log recalculation completed", "users", count)
 }
 
-// RecalculateUser backfills point_log entries for a single user based on their achievements,
-// and corrects the user.points total if needed.
 func (s *Service) RecalculateUser(userID string) {
 	ctx := context.Background()
+	now := time.Now()
 
-	// Load achievements for this user
-	achs, err := s.appStore.Achievements.ListUserAchievements(ctx, userID)
+	schematics, err := s.appStore.Schematics.ListByAuthorAll(ctx, userID, 10000, 0)
 	if err != nil {
 		return
 	}
 
-	// Load existing point_log entries once to avoid repeated queries
-	existingEntries, err := s.appStore.Achievements.GetPointLog(ctx, userID)
-	if err != nil {
-		existingEntries = nil
-	}
-	loggedReasons := make(map[string]bool, len(existingEntries))
-	for _, e := range existingEntries {
-		loggedReasons[e.Reason] = true
+	schematicIDs := make([]string, len(schematics))
+	for i, sc := range schematics {
+		schematicIDs[i] = sc.ID
 	}
 
-	for _, ach := range achs {
-		def, ok := achievementPoints[ach.Key]
-		if !ok || def.Points <= 0 {
-			continue
+	for _, sc := range schematics {
+		awardPoint(ctx, s.appStore, userID, ReasonUpload, sc.ID, now)
+	}
+
+	if len(schematicIDs) > 0 {
+		viewCounts, _ := s.appStore.ViewRatings.BatchGetViewCounts(ctx, schematicIDs)
+		downloadCounts, _ := s.appStore.ViewRatings.BatchGetDownloadCounts(ctx, schematicIDs)
+		ratings, _ := s.appStore.ViewRatings.BatchGetRatings(ctx, schematicIDs)
+
+		for _, sc := range schematics {
+			if views, ok := viewCounts[sc.ID]; ok && views >= 10000 {
+				awardPoint(ctx, s.appStore, userID, ReasonViews10K, sc.ID, now)
+			}
+			if downloads, ok := downloadCounts[sc.ID]; ok && downloads >= 100 {
+				awardPoint(ctx, s.appStore, userID, ReasonDown100, sc.ID, now)
+			}
+			if r, ok := ratings[sc.ID]; ok && r.AvgRating >= 4.0 && r.RatingCount > 0 {
+				awardPoint(ctx, s.appStore, userID, ReasonRating4, sc.ID, now)
+			}
 		}
-
-		// Check if point_log entry already exists for this reason
-		if loggedReasons[ach.Key] {
-			continue
-		}
-
-		// Create the missing entry
-		_ = s.appStore.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
-			UserID:      userID,
-			Points:      def.Points,
-			Reason:      ach.Key,
-			Description: def.Description,
-			EarnedAt:    time.Now(),
-		})
 	}
 
-	// Sum all point_log entries and reconcile user.points
+	commentCount, err := s.appStore.Comments.CountByUser(ctx, userID)
+	if err == nil && commentCount > 0 {
+		for i := int64(0); i < commentCount; i++ {
+			awardPoint(ctx, s.appStore, userID, ReasonComment, fmt.Sprintf("comment_%d", i), now)
+		}
+	}
+
 	total, err := s.appStore.Achievements.SumUserPoints(ctx, userID)
 	if err != nil {
 		return
@@ -153,19 +156,29 @@ func (s *Service) RecalculateUser(userID string) {
 	}
 }
 
-// CreateLogEntry creates a point_log entry with earned_at = now.
-// Call this from hooks when awarding points in real-time.
-func CreateLogEntry(appStore *store.Store, userID string, points int, reason, description string) {
-	createLogEntryDirect(appStore, userID, points, reason, description, time.Now())
+func awardPoint(ctx context.Context, appStore *store.Store, userID, reason, referenceID string, earnedAt time.Time) {
+	rule, ok := rules[reason]
+	if !ok {
+		return
+	}
+	_ = appStore.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
+		UserID:      userID,
+		Points:      rule.Points,
+		Reason:      reason,
+		ReferenceID: referenceID,
+		Description: rule.Description,
+		EarnedAt:    earnedAt,
+	})
 }
 
-func createLogEntryDirect(appStore *store.Store, userID string, points int, reason, description string, earnedAt time.Time) {
+func CreateLogEntry(appStore *store.Store, userID string, points int, reason, referenceID, description string) {
 	ctx := context.Background()
 	_ = appStore.Achievements.CreatePointLog(ctx, &store.PointLogEntry{
 		UserID:      userID,
 		Points:      points,
 		Reason:      reason,
+		ReferenceID: referenceID,
 		Description: description,
-		EarnedAt:    earnedAt,
+		EarnedAt:    time.Now(),
 	})
 }

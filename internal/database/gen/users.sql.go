@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const countActiveUsers = `-- name: CountActiveUsers :one
+SELECT COUNT(*) FROM users
+WHERE deleted IS NULL
+`
+
+func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*) FROM users WHERE deleted IS NULL
 `
@@ -49,7 +61,7 @@ func (q *Queries) CountUsersForAdmin(ctx context.Context, arg CountUsersForAdmin
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, username, password_hash, old_password, avatar, verified)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated
+RETURNING id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count
 `
 
 type CreateUserParams struct {
@@ -86,12 +98,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.FollowerCount,
+		&i.FollowingCount,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users WHERE email = $1 AND deleted IS NULL
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users WHERE email = $1 AND deleted IS NULL
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -110,12 +124,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.FollowerCount,
+		&i.FollowingCount,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users WHERE id = $1 AND deleted IS NULL
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users WHERE id = $1 AND deleted IS NULL
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -134,12 +150,14 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.FollowerCount,
+		&i.FollowingCount,
 	)
 	return i, err
 }
 
 const getUserByIDIncludingDeleted = `-- name: GetUserByIDIncludingDeleted :one
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users WHERE id = $1
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByIDIncludingDeleted(ctx context.Context, id string) (User, error) {
@@ -158,12 +176,14 @@ func (q *Queries) GetUserByIDIncludingDeleted(ctx context.Context, id string) (U
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.FollowerCount,
+		&i.FollowingCount,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users WHERE LOWER(username) = LOWER($1) AND deleted IS NULL
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users WHERE LOWER(username) = LOWER($1) AND deleted IS NULL
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, lower string) (User, error) {
@@ -182,6 +202,8 @@ func (q *Queries) GetUserByUsername(ctx context.Context, lower string) (User, er
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.FollowerCount,
+		&i.FollowingCount,
 	)
 	return i, err
 }
@@ -225,8 +247,55 @@ func (q *Queries) ListAdminEmails(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const listTopUsersByPoints = `-- name: ListTopUsersByPoints :many
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users
+WHERE deleted IS NULL AND points > 0
+ORDER BY points DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListTopUsersByPointsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListTopUsersByPoints(ctx context.Context, arg ListTopUsersByPointsParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listTopUsersByPoints, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Username,
+			&i.PasswordHash,
+			&i.OldPassword,
+			&i.Avatar,
+			&i.Points,
+			&i.Verified,
+			&i.IsAdmin,
+			&i.Deleted,
+			&i.Created,
+			&i.Updated,
+			&i.FollowerCount,
+			&i.FollowingCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated FROM users
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users
 WHERE deleted IS NULL
 ORDER BY created DESC
 LIMIT $1 OFFSET $2
@@ -259,6 +328,8 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.Deleted,
 			&i.Created,
 			&i.Updated,
+			&i.FollowerCount,
+			&i.FollowingCount,
 		); err != nil {
 			return nil, err
 		}
@@ -271,7 +342,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 }
 
 const listUsersForAdmin = `-- name: ListUsersForAdmin :many
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count
 FROM users
 WHERE
   ($3::text = 'all'
@@ -319,6 +390,8 @@ func (q *Queries) ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminPa
 			&i.Deleted,
 			&i.Created,
 			&i.Updated,
+			&i.FollowerCount,
+			&i.FollowingCount,
 		); err != nil {
 			return nil, err
 		}
@@ -391,7 +464,7 @@ SET email = COALESCE($2, email),
     verified = COALESCE($8, verified),
     is_admin = COALESCE($9, is_admin)
 WHERE id = $1
-RETURNING id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated
+RETURNING id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count
 `
 
 type UpdateUserParams struct {
@@ -432,6 +505,8 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Deleted,
 		&i.Created,
 		&i.Updated,
+		&i.FollowerCount,
+		&i.FollowingCount,
 	)
 	return i, err
 }

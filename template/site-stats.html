@@ -1,0 +1,230 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="page-header d-print-none mb-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h2 class="page-title mb-0">{{ T .Language "Site Statistics" }}</h2>
+                        {{ if .ShowYourStatsLink }}
+                        <a href="{{ LangURL .Language "/settings/statistics" }}" class="btn btn-outline-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855" /></svg>
+                            {{ T .Language "Your Stats" }}
+                        </a>
+                        {{ end }}
+                    </div>
+                </div>
+
+                <div class="row row-deck row-cards mb-3">
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Views (30d)" }}</div>
+                                <div class="h1 mb-0">{{ .TotalViews30d }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
+                                <div class="h1 mb-0">{{ .TotalDownloads30d }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Download/View Ratio" }}</div>
+                                <div class="h1 mb-0">{{ .GlobalVDRatio }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row row-deck row-cards mb-3">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Views per Hour" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-views" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Downloads per Hour" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-downloads" style="min-height:250px;width:100%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="search-stats-section">
+                    {{ if not .CanViewSearchStats }}
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 9h.01" /><path d="M11 12h1v4h1" /></svg>
+                            <div>{{ .SearchStatsNotice }}</div>
+                        </div>
+                    </div>
+                    {{ else }}
+                    {{block "search_stats_content" .}}
+                    <div class="mb-3">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn {{ if eq .ActiveWindow "7d" }}btn-primary{{ else }}btn-outline-secondary{{ end }}"
+                                    hx-get="{{ LangURL .Language "/stats" }}?window=7d" hx-target="#search-stats-section" hx-swap="innerHTML" hx-push-url="true" hx-boost="false">
+                                {{ T .Language "7 Days" }}
+                            </button>
+                            <button type="button" class="btn {{ if eq .ActiveWindow "30d" }}btn-primary{{ else }}btn-outline-secondary{{ end }}"
+                                    hx-get="{{ LangURL .Language "/stats" }}?window=30d" hx-target="#search-stats-section" hx-swap="innerHTML" hx-push-url="true" hx-boost="false">
+                                {{ T .Language "30 Days" }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row row-deck row-cards mb-3">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">{{ T .Language "Daily Search Volume" }}</h3></div>
+                                <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-search-volume" style="min-height:250px;width:100%;"></div></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">{{ T .Language "Trending Search Terms" }}</h3></div>
+                                <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-trending-terms" style="min-height:250px;width:100%;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row row-deck row-cards">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">{{ T .Language "Top Searches" }}</h3></div>
+                                <div class="card-body">
+                                    <div class="table-responsive" style="max-height:500px;overflow-y:auto;">
+                                        <table class="table table-vcenter table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>{{ T .Language "Search Term" }}</th>
+                                                    <th class="text-end">{{ T .Language "Count" }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{ range $i, $s := .TopSearches }}
+                                                <tr>
+                                                    <td class="text-secondary">{{ add $i 1 }}</td>
+                                                    <td><a href="{{ LangURL $.Language "/search" }}?q={{ $s.Query }}">{{ $s.Query }}</a></td>
+                                                    <td class="text-end">{{ $s.SearchCount }}</td>
+                                                </tr>
+                                                {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">{{ T .Language "Top Visited Schematics" }}</h3></div>
+                                <div class="card-body">
+                                    <div class="table-responsive" style="max-height:500px;overflow-y:auto;">
+                                        <table class="table table-vcenter table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>{{ T .Language "Schematic" }}</th>
+                                                    <th class="text-end">{{ T .Language "Views" }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{ range $i, $s := .TopSchematics }}
+                                                <tr>
+                                                    <td class="text-secondary">{{ add $i 1 }}</td>
+                                                    <td><a href="{{ LangURL $.Language (printf "/schematics/%s" $s.Name) }}">{{ $s.Title }}</a></td>
+                                                    <td class="text-end">{{ $s.TotalViews }}</td>
+                                                </tr>
+                                                {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                    (function() {
+                        var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+                        var fg = isDark ? '#a0aec0' : '#616876';
+                        var grid = isDark ? '#3a3f4b' : '#e0e0e0';
+                        var commonOpts = {
+                            chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+                            dataLabels: { enabled: false },
+                            stroke: { curve: 'smooth', width: 2 },
+                            grid: { borderColor: grid, strokeDashArray: 4 },
+                            xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+                            yaxis: { min: 0, labels: { style: { colors: fg } } },
+                            tooltip: { theme: isDark ? 'dark' : 'light' }
+                        };
+                        function makeChart(elId, data, name, color) {
+                            var el = document.getElementById(elId);
+                            if (!el) return;
+                            new ApexCharts(el, Object.assign({}, commonOpts, {
+                                series: [{ name: name, data: data }],
+                                colors: [color]
+                            })).render();
+                        }
+                        makeChart('chart-search-volume', {{ .SearchVolumeJSON }}, 'Searches', '#ed8936');
+
+                        var trendEl = document.getElementById('chart-trending-terms');
+                        if (trendEl) {
+                            var trendData = {{ .TrendingSearchTermsJSON }};
+                            if (trendData && trendData.length > 0) {
+                                new ApexCharts(trendEl, Object.assign({}, commonOpts, {
+                                    chart: { type: 'line', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+                                    series: trendData,
+                                    stroke: { curve: 'smooth', width: 2 },
+                                    legend: { show: true, position: 'bottom', labels: { colors: fg } }
+                                })).render();
+                            }
+                        }
+                    })();
+                    </script>
+                    {{end}}
+                    {{ end }}
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+<script>
+(function() {
+    var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+    var fg = isDark ? '#a0aec0' : '#616876';
+    var grid = isDark ? '#3a3f4b' : '#e0e0e0';
+    var commonOpts = {
+        chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 2 },
+        grid: { borderColor: grid, strokeDashArray: 4 },
+        xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+        yaxis: { min: 0, labels: { style: { colors: fg } } },
+        tooltip: { theme: isDark ? 'dark' : 'light' }
+    };
+    function makeChart(elId, data, name, color) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        new ApexCharts(el, Object.assign({}, commonOpts, {
+            series: [{ name: name, data: data }],
+            colors: [color]
+        })).render();
+    }
+    makeChart('chart-views', {{ .HourlyViewsJSON }}, 'Views', '#4299e1');
+    makeChart('chart-downloads', {{ .HourlyDownloadsJSON }}, 'Downloads', '#48bb78');
+})();
+</script>
+{{template "foot.html" .}}

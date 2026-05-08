@@ -87,14 +87,14 @@ func SchematicStatsHandler(registry *server.Registry, cacheService *cache.Servic
 		}
 
 		var siteAvg float64
-		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio"); ok {
+		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
 			siteAvg = cached
 		} else {
-			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatio(ctx)
-			cacheService.SetFloat("site_avg_vd_ratio", siteAvg)
+			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
+			cacheService.SetFloat("site_avg_vd_ratio_v2", siteAvg)
 		}
 
-		cutoff := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+		cutoff := HourlyTrackingCutoff
 
 		d := SchematicAnalyticsData{
 			SchematicName:         name,

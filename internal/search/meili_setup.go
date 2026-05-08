@@ -47,19 +47,19 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 	// The "attribute" ranking rule uses this order to boost matches in higher-priority fields.
 	searchable := []string{
 		"title",
-		"tags",
 		"ai_description",
+		"description",
 		"mod_names",
 		"author",
+		"tags",
 		"block_names",
-		"description",
 	}
 
 	filterableStr := []string{
 		"id", "categories", "minecraft_version", "create_version",
 		"tags", "rating", "paid", "views", "downloads", "created_timestamp",
 		"block_count", "dim_x", "dim_y", "dim_z", "mod_names",
-		"trending_score", "rating_count",
+		"trending_score", "rating_count", "modpack_ids",
 	}
 	filterable := make([]interface{}, len(filterableStr))
 	for i, s := range filterableStr {
@@ -144,11 +144,76 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 		"tunnel":  {"underground", "subway"},
 		"storage": {"silo", "warehouse"},
 
-		// Foreign language common search terms
+		// French
+		"maison":      {"house", "home"},
+		"usine":       {"factory", "production"},
+		"pont":        {"bridge"},
+		"gare":        {"station", "train station"},
+		"bateau":      {"boat", "ship"},
+		"avion":       {"plane", "airplane"},
+		"tour":        {"tower"},
+		"moulin":      {"mill", "windmill"},
+		"ferme":       {"farm"},
+		"eglise":      {"church", "cathedral"},
+		"phare":       {"lighthouse"},
+		"entrepot":    {"warehouse", "storage"},
+		"mine":        {"mine", "mineshaft"},
+
+		// German
 		"haus":        {"house", "home"},
-		"tren":        {"train"},
-		"trein":       {"train"},
+		"brucke":      {"bridge"},
+		"fabrik":      {"factory", "production"},
 		"lokomotive":  {"locomotive", "train"},
+		"bahnhof":     {"station", "train station"},
+		"schiff":      {"ship", "boat"},
+		"flugzeug":    {"plane", "airplane"},
+		"turm":        {"tower"},
+		"burg":        {"castle", "fortress"},
+		"schloss":     {"castle", "palace"},
+		"muhle":       {"mill", "windmill"},
+		"bauernhof":   {"farm"},
+		"kirche":      {"church"},
+		"leuchtturm":  {"lighthouse"},
+
+		// Spanish
+		"tren":        {"train"},
+		"casa":        {"house", "home"},
+		"puente":      {"bridge"},
+		"barco":       {"boat", "ship"},
+		"castillo":    {"castle", "fortress"},
+		"torre":       {"tower"},
+		"iglesia":     {"church", "cathedral"},
+		"granja":      {"farm"},
+		"molino":      {"mill", "windmill"},
+		"estacion":    {"station"},
+		"fabrica":     {"factory"},
+		"almacen":     {"warehouse", "storage"},
+		"faro":        {"lighthouse"},
+
+		// Portuguese
+		"ponte":       {"bridge"},
+		"navio":       {"ship", "boat"},
+		"aviao":       {"plane", "airplane"},
+		"castelo":     {"castle"},
+		"fazenda":     {"farm"},
+		"moinho":      {"mill", "windmill"},
+		"estacao":     {"station"},
+		"igreja":      {"church"},
+
+		// Dutch
+		"trein":       {"train"},
+		"brug":        {"bridge"},
+		"huis":        {"house", "home"},
+
+		// Russian transliterated
+		"poezd":       {"train"},
+		"dom":         {"house", "home"},
+		"most":        {"bridge"},
+		"zamok":       {"castle"},
+
+		// Polish
+		"pociag":      {"train"},
+		"zamek":       {"castle"},
 	}
 
 	stopWords := []string{"the", "a", "an", "is", "it", "of", "for", "with", "and", "or", "in", "on", "to", "my", "this", "that"}

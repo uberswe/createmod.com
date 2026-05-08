@@ -1,0 +1,32 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="d-flex gap-3">
+                    <div class="flex-grow-1 min-width-0">
+                        <h2 class="mb-3">{{ T .Language "Following Feed" }}</h2>
+                        {{ if .HasSchematics }}
+                        <div class="row row-cards">
+                            {{ range .Schematics }}
+                                {{ template "schematic_card_small.html" . }}
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <div class="empty">
+                            <p class="empty-title">{{ T .Language "No schematics yet" }}</p>
+                            <p class="empty-subtitle text-secondary">
+                                {{ T .Language "Follow creators to see their schematics here." }}
+                            </p>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}

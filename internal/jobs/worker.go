@@ -76,6 +76,21 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &SearchIndexUpsertWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SearchIndexDeleteWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &AnalyticsCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &BadgeRecalculationWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &NotificationCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &NotificationEmailDigestWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &RedditMetadataWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ReferenceMetadataWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ModpackSyncWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &TwitchLiveCheckWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &TwitchStreamSearchWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &PatreonMembershipWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &TrendingNewsletterWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SearchAlertCheckWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SectionUpdateWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ZeroResultAnalysisWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &PointBackfillWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SearchStatsFilterWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -186,6 +201,133 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 					}
 				},
 				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(1*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return BadgeRecalculationArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return NotificationCleanupArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(1*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return NotificationEmailDigestArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(6*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return RedditMetadataArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 6 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return ReferenceMetadataArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return ModpackSyncArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(5*time.Minute),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return TwitchLiveCheckArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 5 * time.Minute},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(5*time.Minute),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return TwitchStreamSearchArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 5 * time.Minute},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(6*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return PatreonMembershipArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 6 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return TrendingNewsletterArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(1*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return SearchAlertCheckArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return SectionUpdateArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return ZeroResultAnalysisArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return SearchStatsFilterArgs{}, &river.InsertOpts{
+						Queue:      "ai",
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
 			),
 		},
 	})
