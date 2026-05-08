@@ -202,8 +202,15 @@ type FilterMaxStats struct {
 	DimZ       int
 }
 
-// MaxStats returns the maximum block count and dimension values across all
-// indexed schematics. Used to set slider upper bounds in the search UI.
+const (
+	sliderMaxBlockCount = 50000
+	sliderMaxDimX       = 150
+	sliderMaxDimY       = 100
+	sliderMaxDimZ       = 150
+)
+
+// MaxStats returns capped maximum values for slider upper bounds in the search UI.
+// Raw maximums are capped to cover ~P99 of the data so sliders remain usable.
 func (s *Service) MaxStats() FilterMaxStats {
 	var stats FilterMaxStats
 	for _, si := range s.index {
@@ -219,6 +226,18 @@ func (s *Service) MaxStats() FilterMaxStats {
 		if si.DimZ > stats.DimZ {
 			stats.DimZ = si.DimZ
 		}
+	}
+	if stats.BlockCount > sliderMaxBlockCount {
+		stats.BlockCount = sliderMaxBlockCount
+	}
+	if stats.DimX > sliderMaxDimX {
+		stats.DimX = sliderMaxDimX
+	}
+	if stats.DimY > sliderMaxDimY {
+		stats.DimY = sliderMaxDimY
+	}
+	if stats.DimZ > sliderMaxDimZ {
+		stats.DimZ = sliderMaxDimZ
 	}
 	return stats
 }

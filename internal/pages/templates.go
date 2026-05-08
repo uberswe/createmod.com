@@ -19,6 +19,8 @@ var commonTemplates = []string{
 	"./template/include/footer.html",
 	"./template/include/foot.html",
 	"./template/include/admin_nav.html",
+	"./template/include/settings_nav.html",
+	"./template/include/user_badges.html",
 }
 
 // NewTestRegistry creates a template registry with the FuncMap needed
@@ -32,6 +34,7 @@ func NewTestRegistry() *server.Registry {
 		"T":         func(lang, key string) string { return i18n.T(lang, key) },
 		"ToLower":   strings.ToLower,
 		"mod":       func(i, j int) bool { return i%j == 0 },
+		"add":       func(a, b int) int { return a + b },
 		"SignedOutURL": func(rawURL string, args ...string) string {
 			return "/out/test-token"
 		},

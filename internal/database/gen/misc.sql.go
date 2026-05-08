@@ -83,7 +83,7 @@ func (q *Queries) CreateContactFormSubmission(ctx context.Context, arg CreateCon
 const createExternalAuth = `-- name: CreateExternalAuth :one
 INSERT INTO external_auths (id, user_id, provider, provider_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, provider, provider_id, created, updated
+RETURNING id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata
 `
 
 type CreateExternalAuthParams struct {
@@ -108,6 +108,12 @@ func (q *Queries) CreateExternalAuth(ctx context.Context, arg CreateExternalAuth
 		&i.ProviderID,
 		&i.Created,
 		&i.Updated,
+		&i.AccessTokenEncrypted,
+		&i.RefreshTokenEncrypted,
+		&i.TokenExpiry,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.Metadata,
 	)
 	return i, err
 }
@@ -171,7 +177,7 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Rep
 const createSchematicVersion = `-- name: CreateSchematicVersion :one
 INSERT INTO schematic_versions (id, schematic_id, version, snapshot, note)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, schematic_id, version, snapshot, note, created, updated
+RETURNING id, schematic_id, version, snapshot, note, created, updated, schematic_file, changelog, block_count, dim_x, dim_y, dim_z, materials
 `
 
 type CreateSchematicVersionParams struct {
@@ -199,6 +205,13 @@ func (q *Queries) CreateSchematicVersion(ctx context.Context, arg CreateSchemati
 		&i.Note,
 		&i.Created,
 		&i.Updated,
+		&i.SchematicFile,
+		&i.Changelog,
+		&i.BlockCount,
+		&i.DimX,
+		&i.DimY,
+		&i.DimZ,
+		&i.Materials,
 	)
 	return i, err
 }
@@ -296,6 +309,79 @@ func (q *Queries) CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) 
 	return err
 }
 
+const dailySearchTermVolume = `-- name: DailySearchTermVolume :many
+SELECT LEFT(query, 500) AS query, to_char(created, 'YYYY-MM-DD') AS day, COUNT(*)::BIGINT AS count
+FROM searches
+WHERE created >= $1
+  AND LEFT(query, 500) = ANY($2::text[])
+GROUP BY LEFT(query, 500), day
+ORDER BY LEFT(query, 500), day
+`
+
+type DailySearchTermVolumeParams struct {
+	Created time.Time `json:"created"`
+	Terms   []string  `json:"terms"`
+}
+
+type DailySearchTermVolumeRow struct {
+	Query string `json:"query"`
+	Day   string `json:"day"`
+	Count int64  `json:"count"`
+}
+
+func (q *Queries) DailySearchTermVolume(ctx context.Context, arg DailySearchTermVolumeParams) ([]DailySearchTermVolumeRow, error) {
+	rows, err := q.db.Query(ctx, dailySearchTermVolume, arg.Created, arg.Terms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DailySearchTermVolumeRow{}
+	for rows.Next() {
+		var i DailySearchTermVolumeRow
+		if err := rows.Scan(&i.Query, &i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const dailySearchVolume = `-- name: DailySearchVolume :many
+SELECT to_char(created, 'YYYY-MM-DD') AS day, COUNT(*)::BIGINT AS count
+FROM searches
+WHERE created >= $1
+GROUP BY day
+ORDER BY day
+`
+
+type DailySearchVolumeRow struct {
+	Day   string `json:"day"`
+	Count int64  `json:"count"`
+}
+
+func (q *Queries) DailySearchVolume(ctx context.Context, created time.Time) ([]DailySearchVolumeRow, error) {
+	rows, err := q.db.Query(ctx, dailySearchVolume, created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DailySearchVolumeRow{}
+	for rows.Next() {
+		var i DailySearchVolumeRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteExternalAuth = `-- name: DeleteExternalAuth :exec
 DELETE FROM external_auths WHERE user_id = $1 AND provider = $2
 `
@@ -368,7 +454,7 @@ func (q *Queries) GetCreatemodVersionByID(ctx context.Context, id string) (GetCr
 }
 
 const getExternalAuth = `-- name: GetExternalAuth :one
-SELECT id, user_id, provider, provider_id, created, updated FROM external_auths
+SELECT id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata FROM external_auths
 WHERE provider = $1 AND provider_id = $2
 `
 
@@ -387,6 +473,43 @@ func (q *Queries) GetExternalAuth(ctx context.Context, arg GetExternalAuthParams
 		&i.ProviderID,
 		&i.Created,
 		&i.Updated,
+		&i.AccessTokenEncrypted,
+		&i.RefreshTokenEncrypted,
+		&i.TokenExpiry,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.Metadata,
+	)
+	return i, err
+}
+
+const getExternalAuthByUserAndProvider = `-- name: GetExternalAuthByUserAndProvider :one
+SELECT id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata FROM external_auths
+WHERE user_id = $1 AND provider = $2
+LIMIT 1
+`
+
+type GetExternalAuthByUserAndProviderParams struct {
+	UserID   string `json:"user_id"`
+	Provider string `json:"provider"`
+}
+
+func (q *Queries) GetExternalAuthByUserAndProvider(ctx context.Context, arg GetExternalAuthByUserAndProviderParams) (ExternalAuth, error) {
+	row := q.db.QueryRow(ctx, getExternalAuthByUserAndProvider, arg.UserID, arg.Provider)
+	var i ExternalAuth
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Provider,
+		&i.ProviderID,
+		&i.Created,
+		&i.Updated,
+		&i.AccessTokenEncrypted,
+		&i.RefreshTokenEncrypted,
+		&i.TokenExpiry,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.Metadata,
 	)
 	return i, err
 }
@@ -465,6 +588,63 @@ func (q *Queries) GetNBTHash(ctx context.Context, hash string) (NbtHash, error) 
 	return i, err
 }
 
+const getSchematicVersionByID = `-- name: GetSchematicVersionByID :one
+SELECT id, schematic_id, version, snapshot, note, created, updated, schematic_file, changelog, block_count, dim_x, dim_y, dim_z, materials FROM schematic_versions WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetSchematicVersionByID(ctx context.Context, id string) (SchematicVersion, error) {
+	row := q.db.QueryRow(ctx, getSchematicVersionByID, id)
+	var i SchematicVersion
+	err := row.Scan(
+		&i.ID,
+		&i.SchematicID,
+		&i.Version,
+		&i.Snapshot,
+		&i.Note,
+		&i.Created,
+		&i.Updated,
+		&i.SchematicFile,
+		&i.Changelog,
+		&i.BlockCount,
+		&i.DimX,
+		&i.DimY,
+		&i.DimZ,
+		&i.Materials,
+	)
+	return i, err
+}
+
+const getSchematicVersionBySchematicAndVersion = `-- name: GetSchematicVersionBySchematicAndVersion :one
+SELECT id, schematic_id, version, snapshot, note, created, updated, schematic_file, changelog, block_count, dim_x, dim_y, dim_z, materials FROM schematic_versions WHERE schematic_id = $1 AND version = $2 LIMIT 1
+`
+
+type GetSchematicVersionBySchematicAndVersionParams struct {
+	SchematicID string `json:"schematic_id"`
+	Version     int32  `json:"version"`
+}
+
+func (q *Queries) GetSchematicVersionBySchematicAndVersion(ctx context.Context, arg GetSchematicVersionBySchematicAndVersionParams) (SchematicVersion, error) {
+	row := q.db.QueryRow(ctx, getSchematicVersionBySchematicAndVersion, arg.SchematicID, arg.Version)
+	var i SchematicVersion
+	err := row.Scan(
+		&i.ID,
+		&i.SchematicID,
+		&i.Version,
+		&i.Snapshot,
+		&i.Note,
+		&i.Created,
+		&i.Updated,
+		&i.SchematicFile,
+		&i.Changelog,
+		&i.BlockCount,
+		&i.DimX,
+		&i.DimY,
+		&i.DimZ,
+		&i.Materials,
+	)
+	return i, err
+}
+
 const getUserMeta = `-- name: GetUserMeta :one
 SELECT id, user_id, key, value, created, updated FROM user_meta WHERE user_id = $1 AND key = $2
 `
@@ -488,8 +668,54 @@ func (q *Queries) GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserM
 	return i, err
 }
 
+const hasRecentApprovedUpload = `-- name: HasRecentApprovedUpload :one
+SELECT EXISTS(
+    SELECT 1 FROM schematics
+    WHERE author_id = $1
+      AND moderation_state IN ('published', 'approved')
+      AND created >= $2
+) AS has_recent
+`
+
+type HasRecentApprovedUploadParams struct {
+	AuthorID *string   `json:"author_id"`
+	Created  time.Time `json:"created"`
+}
+
+func (q *Queries) HasRecentApprovedUpload(ctx context.Context, arg HasRecentApprovedUploadParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRecentApprovedUpload, arg.AuthorID, arg.Created)
+	var has_recent bool
+	err := row.Scan(&has_recent)
+	return has_recent, err
+}
+
+const listCleanSearchTerms = `-- name: ListCleanSearchTerms :many
+SELECT query FROM search_term_moderation
+WHERE is_clean = true AND query = ANY($1::text[])
+`
+
+func (q *Queries) ListCleanSearchTerms(ctx context.Context, dollar_1 []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCleanSearchTerms, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var query string
+		if err := rows.Scan(&query); err != nil {
+			return nil, err
+		}
+		items = append(items, query)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExternalAuthsByUser = `-- name: ListExternalAuthsByUser :many
-SELECT id, user_id, provider, provider_id, created, updated FROM external_auths WHERE user_id = $1
+SELECT id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata FROM external_auths WHERE user_id = $1
 `
 
 func (q *Queries) ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error) {
@@ -508,6 +734,12 @@ func (q *Queries) ListExternalAuthsByUser(ctx context.Context, userID string) ([
 			&i.ProviderID,
 			&i.Created,
 			&i.Updated,
+			&i.AccessTokenEncrypted,
+			&i.RefreshTokenEncrypted,
+			&i.TokenExpiry,
+			&i.Username,
+			&i.AvatarUrl,
+			&i.Metadata,
 		); err != nil {
 			return nil, err
 		}
@@ -747,7 +979,7 @@ func (q *Queries) ListReports(ctx context.Context, arg ListReportsParams) ([]Rep
 }
 
 const listSchematicVersions = `-- name: ListSchematicVersions :many
-SELECT id, schematic_id, version, snapshot, note, created, updated FROM schematic_versions
+SELECT id, schematic_id, version, snapshot, note, created, updated, schematic_file, changelog, block_count, dim_x, dim_y, dim_z, materials FROM schematic_versions
 WHERE schematic_id = $1
 ORDER BY version DESC
 `
@@ -769,6 +1001,13 @@ func (q *Queries) ListSchematicVersions(ctx context.Context, schematicID string)
 			&i.Note,
 			&i.Created,
 			&i.Updated,
+			&i.SchematicFile,
+			&i.Changelog,
+			&i.BlockCount,
+			&i.DimX,
+			&i.DimY,
+			&i.DimZ,
+			&i.Materials,
 		); err != nil {
 			return nil, err
 		}
@@ -800,6 +1039,79 @@ func (q *Queries) ListTopSearches(ctx context.Context, limit int32) ([]SearchQue
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTopSearchesSince = `-- name: ListTopSearchesSince :many
+SELECT LEFT(query, 500) AS query, COUNT(*)::BIGINT AS search_count
+FROM searches
+WHERE created >= $1
+GROUP BY LEFT(query, 500)
+ORDER BY search_count DESC
+LIMIT $2
+`
+
+type ListTopSearchesSinceParams struct {
+	Created time.Time `json:"created"`
+	Limit   int32     `json:"limit"`
+}
+
+type ListTopSearchesSinceRow struct {
+	Query       string `json:"query"`
+	SearchCount int64  `json:"search_count"`
+}
+
+func (q *Queries) ListTopSearchesSince(ctx context.Context, arg ListTopSearchesSinceParams) ([]ListTopSearchesSinceRow, error) {
+	rows, err := q.db.Query(ctx, listTopSearchesSince, arg.Created, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTopSearchesSinceRow{}
+	for rows.Next() {
+		var i ListTopSearchesSinceRow
+		if err := rows.Scan(&i.Query, &i.SearchCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUncheckedSearchTerms = `-- name: ListUncheckedSearchTerms :many
+SELECT t.term AS query
+FROM unnest($1::text[]) AS t(term)
+WHERE NOT EXISTS (
+    SELECT 1 FROM search_term_moderation stm
+    WHERE stm.query = t.term AND stm.checked_at >= $2::timestamptz
+)
+`
+
+type ListUncheckedSearchTermsParams struct {
+	Terms []string  `json:"terms"`
+	Since time.Time `json:"since"`
+}
+
+func (q *Queries) ListUncheckedSearchTerms(ctx context.Context, arg ListUncheckedSearchTermsParams) ([]interface{}, error) {
+	rows, err := q.db.Query(ctx, listUncheckedSearchTerms, arg.Terms, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []interface{}{}
+	for rows.Next() {
+		var query interface{}
+		if err := rows.Scan(&query); err != nil {
+			return nil, err
+		}
+		items = append(items, query)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -963,4 +1275,20 @@ func (q *Queries) UpsertModMetadata(ctx context.Context, arg UpsertModMetadataPa
 		&i.BlocksitemsMatched,
 	)
 	return i, err
+}
+
+const upsertSearchTermModeration = `-- name: UpsertSearchTermModeration :exec
+INSERT INTO search_term_moderation (query, is_clean, checked_at)
+VALUES ($1, $2, NOW())
+ON CONFLICT (query) DO UPDATE SET is_clean = EXCLUDED.is_clean, checked_at = NOW()
+`
+
+type UpsertSearchTermModerationParams struct {
+	Query   string `json:"query"`
+	IsClean bool   `json:"is_clean"`
+}
+
+func (q *Queries) UpsertSearchTermModeration(ctx context.Context, arg UpsertSearchTermModerationParams) error {
+	_, err := q.db.Exec(ctx, upsertSearchTermModeration, arg.Query, arg.IsClean)
+	return err
 }

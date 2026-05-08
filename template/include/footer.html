@@ -20,6 +20,14 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M4 4a16 16 0 0 1 16 16"/><path d="M4 11a9 9 0 0 1 9 9"/></svg>
                         </a>
                     </div>
+                    <div class="footer-newsletter mt-3">
+                        <h6 class="footer-heading">{{ T .Language "Newsletter" }}</h6>
+                        <p class="text-secondary small mb-2">{{ T .Language "Get weekly trending schematics in your inbox." }}</p>
+                        <form id="footer-newsletter-form" hx-post="/api/newsletter/subscribe" hx-swap="outerHTML" hx-boost="false" class="d-flex gap-2">
+                            <input type="email" name="email" class="form-control form-control-sm" placeholder="{{ T .Language "Your email" }}" required>
+                            <button type="submit" class="btn btn-primary btn-sm text-nowrap">{{ T .Language "Subscribe" }}</button>
+                        </form>
+                    </div>
                 </div>
                 <!-- Browse column -->
                 <div class="col-6 col-md-3 col-lg-2 offset-lg-1">

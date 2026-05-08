@@ -16,9 +16,33 @@
                                 {{ end }}
                             </div>
                             <div class="col-md-auto align-center">
-                                <h2 class="mb-0">{{ .ProfileUsername }}</h2>
-                                {{ if .HasSchematics }}
-                                <span class="badge bg-green ms-2" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h2 class="mb-0">{{ .ProfileUsername }}</h2>
+                                    {{ if .HasSchematics }}
+                                    <span class="badge bg-green" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
+                                    {{ end }}
+                                    {{ if .HasBadges }}
+                                    {{ template "user_badges.html" .DisplayBadges }}
+                                    {{ end }}
+                                </div>
+                                <div class="d-flex align-items-center gap-3 text-secondary">
+                                    <span>{{ .FollowerCount }} {{ T .Language "followers" }}</span>
+                                    <span>{{ .FollowingCount }} {{ T .Language "following" }}</span>
+                                </div>
+                                {{ if and .IsAuthenticated (not .IsOwnProfile) }}
+                                <div class="mt-2">
+                                    {{ if .IsFollowing }}
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            hx-delete="/api/users/{{ .ProfileUserID }}/follow"
+                                            hx-swap="outerHTML"
+                                            hx-target="this">{{ T .Language "Unfollow" }}</button>
+                                    {{ else }}
+                                    <button class="btn btn-sm btn-primary"
+                                            hx-post="/api/users/{{ .ProfileUserID }}/follow"
+                                            hx-swap="outerHTML"
+                                            hx-target="this">{{ T .Language "Follow" }}</button>
+                                    {{ end }}
+                                </div>
                                 {{ end }}
                             </div>
                         </div>
@@ -60,6 +84,20 @@
                                 </div>
                             </div>
                         </div>
+
+                        {{ if .HasSocialLinks }}
+                        <div class="row mb-3">
+                            <div class="col-12 col-md-8">
+                                <div class="d-flex flex-wrap gap-2">
+                                    {{ range .SocialLinks }}
+                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-purple{{ else if eq .Platform "patreon" }}btn-orange{{ else if eq .Platform "reddit" }}btn-warning{{ else }}btn-secondary{{ end }}">
+                                        {{ if eq .Platform "youtube" }}YouTube{{ else if eq .Platform "twitch" }}Twitch{{ else if eq .Platform "patreon" }}Patreon{{ else if eq .Platform "reddit" }}Reddit{{ else }}{{ .Platform }}{{ end }}{{ if .Username }} &middot; {{ .Username }}{{ end }}{{ if .Verified }} ✓{{ end }}
+                                    </a>
+                                    {{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
 
                         <!-- Mobile ad (smaller screens) -->
                         <div id="profile-mobile" class="d-xl-none mb-3 text-center"></div>

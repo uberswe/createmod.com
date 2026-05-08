@@ -92,3 +92,13 @@ WHERE
   AND (sqlc.arg('search')::text = ''
      OR username ILIKE '%' || sqlc.arg('search')::text || '%'
      OR email ILIKE '%' || sqlc.arg('search')::text || '%');
+
+-- name: ListTopUsersByPoints :many
+SELECT * FROM users
+WHERE deleted IS NULL AND points > 0
+ORDER BY points DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountActiveUsers :one
+SELECT COUNT(*) FROM users
+WHERE deleted IS NULL;

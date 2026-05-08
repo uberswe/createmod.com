@@ -35,6 +35,31 @@ func (q *Queries) DeleteOldSchematicEvents(ctx context.Context, created time.Tim
 	return result.RowsAffected(), nil
 }
 
+const getSchematicVDRatioSinceCutoff = `-- name: GetSchematicVDRatioSinceCutoff :one
+SELECT
+    COALESCE(SUM(sv.count), 0)::BIGINT AS total_views,
+    (SELECT COUNT(*) FROM schematic_downloads sd WHERE sd.schematic_id = $1 AND sd.created >= $2::timestamptz)::BIGINT AS total_downloads
+FROM schematic_views sv
+WHERE sv.schematic_id = $1 AND sv.type = '5' AND sv.created >= $2::timestamptz
+`
+
+type GetSchematicVDRatioSinceCutoffParams struct {
+	SchematicID string    `json:"schematic_id"`
+	Since       time.Time `json:"since"`
+}
+
+type GetSchematicVDRatioSinceCutoffRow struct {
+	TotalViews     int64 `json:"total_views"`
+	TotalDownloads int64 `json:"total_downloads"`
+}
+
+func (q *Queries) GetSchematicVDRatioSinceCutoff(ctx context.Context, arg GetSchematicVDRatioSinceCutoffParams) (GetSchematicVDRatioSinceCutoffRow, error) {
+	row := q.db.QueryRow(ctx, getSchematicVDRatioSinceCutoff, arg.SchematicID, arg.Since)
+	var i GetSchematicVDRatioSinceCutoffRow
+	err := row.Scan(&i.TotalViews, &i.TotalDownloads)
+	return i, err
+}
+
 const getSiteAvgVDRatio = `-- name: GetSiteAvgVDRatio :one
 SELECT CASE WHEN COALESCE(SUM(sv.count), 0) = 0 THEN 0
             ELSE COALESCE(SUM(dl.dl_count), 0)::REAL / SUM(sv.count)::REAL
@@ -51,6 +76,56 @@ func (q *Queries) GetSiteAvgVDRatio(ctx context.Context) (interface{}, error) {
 	var ratio interface{}
 	err := row.Scan(&ratio)
 	return ratio, err
+}
+
+const getSiteAvgVDRatioSinceCutoff = `-- name: GetSiteAvgVDRatioSinceCutoff :one
+SELECT CASE WHEN COALESCE(SUM(sv.count), 0) = 0 THEN 0
+            ELSE COALESCE(dl_total.cnt, 0)::REAL / SUM(sv.count)::REAL
+       END AS ratio
+FROM schematic_views sv
+CROSS JOIN (
+    SELECT COUNT(*) AS cnt FROM schematic_downloads WHERE created >= $1::timestamptz
+) dl_total
+WHERE sv.type = '5' AND sv.created >= $1::timestamptz
+`
+
+func (q *Queries) GetSiteAvgVDRatioSinceCutoff(ctx context.Context, since time.Time) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getSiteAvgVDRatioSinceCutoff, since)
+	var ratio interface{}
+	err := row.Scan(&ratio)
+	return ratio, err
+}
+
+const getUserVDRatioSinceCutoff = `-- name: GetUserVDRatioSinceCutoff :one
+SELECT
+    COALESCE(SUM(sv.count), 0)::BIGINT AS total_views,
+    COALESCE(dl.cnt, 0)::BIGINT AS total_downloads
+FROM schematic_views sv
+JOIN schematics s ON s.id = sv.schematic_id
+CROSS JOIN (
+    SELECT COUNT(*) AS cnt
+    FROM schematic_downloads sd
+    JOIN schematics s2 ON s2.id = sd.schematic_id
+    WHERE s2.author_id = $1 AND sd.created >= $2::timestamptz AND s2.deleted IS NULL
+) dl
+WHERE s.author_id = $1 AND sv.type = '5' AND sv.created >= $2::timestamptz AND s.deleted IS NULL
+`
+
+type GetUserVDRatioSinceCutoffParams struct {
+	UserID *string   `json:"user_id"`
+	Since  time.Time `json:"since"`
+}
+
+type GetUserVDRatioSinceCutoffRow struct {
+	TotalViews     int64 `json:"total_views"`
+	TotalDownloads int64 `json:"total_downloads"`
+}
+
+func (q *Queries) GetUserVDRatioSinceCutoff(ctx context.Context, arg GetUserVDRatioSinceCutoffParams) (GetUserVDRatioSinceCutoffRow, error) {
+	row := q.db.QueryRow(ctx, getUserVDRatioSinceCutoff, arg.UserID, arg.Since)
+	var i GetUserVDRatioSinceCutoffRow
+	err := row.Scan(&i.TotalViews, &i.TotalDownloads)
+	return i, err
 }
 
 const hourlySchematicDownloadCounts = `-- name: HourlySchematicDownloadCounts :many
@@ -413,6 +488,56 @@ func (q *Queries) ListSchematicStatsForUser(ctx context.Context, arg ListSchemat
 			&i.Views,
 			&i.Downloads,
 			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTopViewedSchematicsSince = `-- name: ListTopViewedSchematicsSince :many
+SELECT s.id, s.name, s.title, s.featured_image, SUM(sv.count)::BIGINT AS total_views
+FROM schematic_views sv
+JOIN schematics s ON s.id = sv.schematic_id
+WHERE sv.type = '5' AND sv.created >= $1 AND s.deleted IS NULL
+  AND s.moderation_state IN ('published', 'approved')
+GROUP BY s.id, s.name, s.title, s.featured_image
+ORDER BY total_views DESC
+LIMIT $2
+`
+
+type ListTopViewedSchematicsSinceParams struct {
+	Created time.Time `json:"created"`
+	Limit   int32     `json:"limit"`
+}
+
+type ListTopViewedSchematicsSinceRow struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Title         string `json:"title"`
+	FeaturedImage string `json:"featured_image"`
+	TotalViews    int64  `json:"total_views"`
+}
+
+func (q *Queries) ListTopViewedSchematicsSince(ctx context.Context, arg ListTopViewedSchematicsSinceParams) ([]ListTopViewedSchematicsSinceRow, error) {
+	rows, err := q.db.Query(ctx, listTopViewedSchematicsSince, arg.Created, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTopViewedSchematicsSinceRow{}
+	for rows.Next() {
+		var i ListTopViewedSchematicsSinceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Title,
+			&i.FeaturedImage,
+			&i.TotalViews,
 		); err != nil {
 			return nil, err
 		}

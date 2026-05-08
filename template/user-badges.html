@@ -1,0 +1,84 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-xl">
+                <div class="card">
+                    <div class="row g-0">
+                        {{ template "settings_nav.html" . }}
+                        <div class="col-12 col-md-9 d-flex flex-column">
+                            <div class="card-body">
+                                <h2 class="mb-4">{{ T .Language "Badges" }}</h2>
+
+                                {{ if .HasBadges }}
+                                <h3 class="mb-3">{{ T .Language "Your Badges" }}</h3>
+                                <div class="row g-3 mb-4">
+                                    {{ range .AllBadges }}
+                                    <div class="col-6 col-md-4 col-lg-3">
+                                        <div class="card card-sm">
+                                            <div class="card-body text-center">
+                                                {{ if .Badge.Icon }}<div class="h1 mb-1">{{ .Badge.Icon }}</div>{{ end }}
+                                                <div class="fw-bold">{{ .Badge.Title }}</div>
+                                                <div class="text-secondary small">{{ .Badge.Description }}</div>
+                                                {{ if and .Badge.MultiEarn (gt .Count 1) }}
+                                                <span class="badge bg-yellow-lt mt-1">x{{ .Count }}</span>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ end }}
+                                </div>
+
+                                <hr>
+                                <h3 class="mb-3">{{ T .Language "Displayed Badges" }}</h3>
+                                <p class="text-secondary">{{ T .Language "Choose up to 3 badges to display on your profile." }}</p>
+
+                                <form method="POST" action="/settings/badges">
+                                    <div class="mb-3">
+                                        {{ range .AllBadges }}
+                                        <label class="form-check form-check-inline">
+                                            <input class="form-check-input badge-checkbox" type="checkbox" name="badge_{{ .BadgeID }}" value="{{ .BadgeID }}"
+                                                {{ range $.DisplayedBadges }}{{ if eq .BadgeID $.BadgeID }} checked{{ end }}{{ end }}>
+                                            <span class="form-check-label">{{ if .Badge.Icon }}{{ .Badge.Icon }} {{ end }}{{ .Badge.Title }}</span>
+                                        </label>
+                                        {{ end }}
+                                    </div>
+                                    <input type="hidden" name="displayed_badges" id="displayed-badges-input">
+                                    <button type="submit" class="btn btn-primary">{{ T .Language "Save" }}</button>
+                                </form>
+                                {{ else }}
+                                <div class="empty">
+                                    <p class="empty-title">{{ T .Language "No badges yet" }}</p>
+                                    <p class="empty-subtitle text-secondary">
+                                        {{ T .Language "Keep creating and engaging with the community to earn badges!" }}
+                                    </p>
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.badge-checkbox');
+    const hiddenInput = document.getElementById('displayed-badges-input');
+    function updateHidden() {
+        const checked = Array.from(checkboxes).filter(c => c.checked);
+        if (checked.length > 3) {
+            this.checked = false;
+            return;
+        }
+        hiddenInput.value = checked.map(c => c.value).join(',');
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', updateHidden));
+    updateHidden.call(document);
+});
+</script>

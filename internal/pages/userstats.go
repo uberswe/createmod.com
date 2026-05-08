@@ -84,6 +84,7 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 		d := UserStatsData{}
 		d.Populate(e)
+		d.SettingsPage = "statistics"
 		d.HideOutstream = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Statistics"))
 		d.Title = i18n.T(d.Language, "Statistics")
@@ -177,11 +178,11 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 		// VD ratio
 		var siteAvg float64
-		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio"); ok {
+		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
 			siteAvg = cached
 		} else {
-			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatio(ctx)
-			cacheService.SetFloat("site_avg_vd_ratio", siteAvg)
+			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
+			cacheService.SetFloat("site_avg_vd_ratio_v2", siteAvg)
 		}
 		d.SiteAvgVDRatio = siteAvg
 
@@ -210,7 +211,7 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.NextPage = d.Page + 1
 
 		schematicStats, _ := appStore.Stats.ListSchematicStats(ctx, userID, d.PageSize, offset)
-		cutoff := time.Date(2026, 5, 8, 0, 0, 0, 0, time.UTC)
+		cutoff := HourlyTrackingCutoff
 		for _, s := range schematicStats {
 			var ratio float64
 			if s.Views > 0 {

@@ -82,6 +82,11 @@ type SchematicData struct {
 	ModerationChatEnabled bool
 	ModerationMessages    []models.ModerationChatMessage
 	CanPostMessage        bool
+	// Phase 3 content features
+	Videos      []store.SchematicVideo
+	References  []store.SchematicReference
+	Modpacks    []store.Modpack
+	RedditLinks []store.RedditLink
 }
 
 // ModInfo holds display info for a mod in the Required Mods section.
@@ -290,6 +295,34 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		// Load additional files (variations)
 		if additionalFiles, afErr := appStore.SchematicFiles.ListBySchematicID(ctx, s.ID); afErr == nil && len(additionalFiles) > 0 {
 			d.AdditionalFiles = additionalFiles
+		}
+
+		// Load videos
+		if appStore.SchematicVideos != nil {
+			if videos, vErr := appStore.SchematicVideos.ListBySchematic(ctx, s.ID); vErr == nil {
+				d.Videos = videos
+			}
+		}
+
+		// Load build references
+		if appStore.References != nil {
+			if refs, rErr := appStore.References.ListBySchematic(ctx, s.ID); rErr == nil {
+				d.References = refs
+			}
+		}
+
+		// Load modpacks
+		if appStore.Modpacks != nil {
+			if packs, mErr := appStore.Modpacks.GetSchematicModpacks(ctx, s.ID); mErr == nil {
+				d.Modpacks = packs
+			}
+		}
+
+		// Load Reddit links
+		if appStore.RedditLinks != nil {
+			if links, rlErr := appStore.RedditLinks.GetBySchematic(ctx, s.ID); rlErr == nil {
+				d.RedditLinks = links
+			}
 		}
 
 		// Translation: show translated title/content if user's language differs from detected language

@@ -1,0 +1,99 @@
+{{ template "head.html" . }}
+{{ template "sidebar.html" . }}
+{{ template "header.html" . }}
+<div class="page-wrapper">
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="row">
+                <div class="col-12 col-md-3 mb-3">
+                    {{ template "settings_nav.html" . }}
+                </div>
+                <div class="col-12 col-md-9">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ T .Language "Notification Preferences" }}</h3>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" action="/settings/notifications">
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter">
+                                        <thead>
+                                            <tr>
+                                                <th>{{ T .Language "Category" }}</th>
+                                                <th>{{ T .Language "Email" }}</th>
+                                                <th>{{ T .Language "Web" }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>{{ T .Language "Ratings" }}</td>
+                                                <td>
+                                                    <select name="email_rating" class="form-select form-select-sm">
+                                                        <option value="off">{{ T .Language "Off" }}</option>
+                                                        <option value="immediate">{{ T .Language "Immediate" }}</option>
+                                                        <option value="daily">{{ T .Language "Daily" }}</option>
+                                                        <option value="weekly">{{ T .Language "Weekly" }}</option>
+                                                    </select>
+                                                </td>
+                                                <td><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="web_rating" checked></label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>{{ T .Language "Comments" }}</td>
+                                                <td>
+                                                    <select name="email_comment" class="form-select form-select-sm">
+                                                        <option value="off">{{ T .Language "Off" }}</option>
+                                                        <option value="immediate">{{ T .Language "Immediate" }}</option>
+                                                        <option value="daily">{{ T .Language "Daily" }}</option>
+                                                        <option value="weekly">{{ T .Language "Weekly" }}</option>
+                                                    </select>
+                                                </td>
+                                                <td><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="web_comment" checked></label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>{{ T .Language "New followers" }}</td>
+                                                <td>
+                                                    <select name="email_follow" class="form-select form-select-sm">
+                                                        <option value="off">{{ T .Language "Off" }}</option>
+                                                        <option value="immediate">{{ T .Language "Immediate" }}</option>
+                                                        <option value="daily">{{ T .Language "Daily" }}</option>
+                                                        <option value="weekly">{{ T .Language "Weekly" }}</option>
+                                                    </select>
+                                                </td>
+                                                <td><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="web_follow" checked></label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>{{ T .Language "Badges" }}</td>
+                                                <td>
+                                                    <select name="email_badge" class="form-select form-select-sm">
+                                                        <option value="off">{{ T .Language "Off" }}</option>
+                                                        <option value="immediate">{{ T .Language "Immediate" }}</option>
+                                                    </select>
+                                                </td>
+                                                <td><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="web_badge" checked></label></td>
+                                            </tr>
+                                            <tr>
+                                                <td>{{ T .Language "Moderation" }}</td>
+                                                <td>
+                                                    <select name="email_moderation" class="form-select form-select-sm">
+                                                        <option value="immediate" selected>{{ T .Language "Immediate" }}</option>
+                                                        <option value="off">{{ T .Language "Off" }}</option>
+                                                    </select>
+                                                </td>
+                                                <td><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="web_moderation" checked></label></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">{{ T .Language "Save preferences" }}</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ template "footer.html" . }}
+{{ template "foot.html" . }}

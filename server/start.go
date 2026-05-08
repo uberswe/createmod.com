@@ -57,6 +57,16 @@ type Config struct {
 	DiscordClientSecret string
 	GithubClientID      string
 	GithubClientSecret  string
+	TwitchClientID      string
+	TwitchClientSecret  string
+	PatreonClientID     string
+	PatreonClientSecret string
+	RedditClientID      string
+	RedditClientSecret  string
+	GoogleClientID      string
+	GoogleClientSecret  string
+	MicrosoftClientID   string
+	MicrosoftClientSecret string
 	BaseURL             string
 	MaintenanceMode     *atomic.Bool // runtime-togglable maintenance flag
 }
@@ -82,6 +92,11 @@ type Server struct {
 	jobWorker            *jobs.Worker
 	discordOAuth         *auth.OAuthProvider
 	githubOAuth          *auth.OAuthProvider
+	twitchOAuth          *auth.OAuthProvider
+	patreonOAuth         *auth.OAuthProvider
+	redditOAuth          *auth.OAuthProvider
+	googleOAuth          *auth.OAuthProvider
+	microsoftOAuth       *auth.OAuthProvider
 	meiliClient          meilisearch.ServiceManager
 }
 
@@ -199,6 +214,36 @@ func New(conf Config) *Server {
 			conf.BaseURL+"/auth/github/callback",
 		)
 	}
+	if conf.TwitchClientID != "" && conf.TwitchClientSecret != "" {
+		srv.twitchOAuth = auth.NewTwitchProvider(
+			conf.TwitchClientID, conf.TwitchClientSecret,
+			conf.BaseURL+"/auth/twitch/callback",
+		)
+	}
+	if conf.PatreonClientID != "" && conf.PatreonClientSecret != "" {
+		srv.patreonOAuth = auth.NewPatreonProvider(
+			conf.PatreonClientID, conf.PatreonClientSecret,
+			conf.BaseURL+"/auth/patreon/callback",
+		)
+	}
+	if conf.RedditClientID != "" && conf.RedditClientSecret != "" {
+		srv.redditOAuth = auth.NewRedditProvider(
+			conf.RedditClientID, conf.RedditClientSecret,
+			conf.BaseURL+"/auth/reddit/callback",
+		)
+	}
+	if conf.GoogleClientID != "" && conf.GoogleClientSecret != "" {
+		srv.googleOAuth = auth.NewGoogleProvider(
+			conf.GoogleClientID, conf.GoogleClientSecret,
+			conf.BaseURL+"/auth/google/callback",
+		)
+	}
+	if conf.MicrosoftClientID != "" && conf.MicrosoftClientSecret != "" {
+		srv.microsoftOAuth = auth.NewMicrosoftProvider(
+			conf.MicrosoftClientID, conf.MicrosoftClientSecret,
+			conf.BaseURL+"/auth/microsoft/callback",
+		)
+	}
 
 	return srv
 }
@@ -294,6 +339,11 @@ func (s *Server) Start() {
 		StorageService:     s.storageService,
 		DiscordOAuth:       s.discordOAuth,
 		GithubOAuth:        s.githubOAuth,
+		TwitchOAuth:        s.twitchOAuth,
+		PatreonOAuth:       s.patreonOAuth,
+		RedditOAuth:        s.redditOAuth,
+		GoogleOAuth:        s.googleOAuth,
+		MicrosoftOAuth:     s.microsoftOAuth,
 		MailService:        s.mailService,
 		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,

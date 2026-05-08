@@ -36,11 +36,28 @@ func (q *Queries) AwardAchievement(ctx context.Context, arg AwardAchievementPara
 	return i, err
 }
 
+const countPointLogByReason = `-- name: CountPointLogByReason :one
+SELECT COUNT(*)::INTEGER AS cnt
+FROM point_log WHERE user_id = $1 AND reason = $2
+`
+
+type CountPointLogByReasonParams struct {
+	UserID string `json:"user_id"`
+	Reason string `json:"reason"`
+}
+
+func (q *Queries) CountPointLogByReason(ctx context.Context, arg CountPointLogByReasonParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countPointLogByReason, arg.UserID, arg.Reason)
+	var cnt int32
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
 const createPointLog = `-- name: CreatePointLog :one
-INSERT INTO point_log (id, user_id, points, reason, description, earned_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (user_id, reason) DO NOTHING
-RETURNING id, user_id, points, reason, description, earned_at, created, updated
+INSERT INTO point_log (id, user_id, points, reason, reference_id, description, earned_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (user_id, reason, reference_id) DO NOTHING
+RETURNING id, user_id, points, reason, description, earned_at, created, updated, reference_id
 `
 
 type CreatePointLogParams struct {
@@ -48,6 +65,7 @@ type CreatePointLogParams struct {
 	UserID      string    `json:"user_id"`
 	Points      int32     `json:"points"`
 	Reason      string    `json:"reason"`
+	ReferenceID string    `json:"reference_id"`
 	Description string    `json:"description"`
 	EarnedAt    time.Time `json:"earned_at"`
 }
@@ -58,6 +76,7 @@ func (q *Queries) CreatePointLog(ctx context.Context, arg CreatePointLogParams) 
 		arg.UserID,
 		arg.Points,
 		arg.Reason,
+		arg.ReferenceID,
 		arg.Description,
 		arg.EarnedAt,
 	)
@@ -71,6 +90,7 @@ func (q *Queries) CreatePointLog(ctx context.Context, arg CreatePointLogParams) 
 		&i.EarnedAt,
 		&i.Created,
 		&i.Updated,
+		&i.ReferenceID,
 	)
 	return i, err
 }
@@ -95,7 +115,7 @@ func (q *Queries) GetAchievementByKey(ctx context.Context, key string) (Achievem
 }
 
 const getPointLog = `-- name: GetPointLog :many
-SELECT id, user_id, points, reason, description, earned_at, created, updated FROM point_log WHERE user_id = $1 ORDER BY earned_at DESC
+SELECT id, user_id, points, reason, description, earned_at, created, updated, reference_id FROM point_log WHERE user_id = $1 ORDER BY earned_at DESC
 `
 
 func (q *Queries) GetPointLog(ctx context.Context, userID string) ([]PointLog, error) {
@@ -116,6 +136,7 @@ func (q *Queries) GetPointLog(ctx context.Context, userID string) ([]PointLog, e
 			&i.EarnedAt,
 			&i.Created,
 			&i.Updated,
+			&i.ReferenceID,
 		); err != nil {
 			return nil, err
 		}

@@ -1,0 +1,84 @@
+{{ template "head.html" . }}
+{{ template "sidebar.html" . }}
+{{ template "header.html" . }}
+<div class="page-wrapper">
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="page-header d-print-none mb-4">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">{{ T .Language "Top Creators" }}</h2>
+                        <div class="text-secondary">{{ T .Language "Community leaderboard ranked by contribution points" }}</div>
+                    </div>
+                </div>
+            </div>
+            {{ if .Creators }}
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th class="w-1">{{ T .Language "Rank" }}</th>
+                                <th>{{ T .Language "Creator" }}</th>
+                                <th>{{ T .Language "Badges" }}</th>
+                                <th>{{ T .Language "Points" }}</th>
+                                <th>{{ T .Language "Links" }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .Creators }}
+                            <tr>
+                                <td class="text-secondary">#{{ .Rank }}</td>
+                                <td>
+                                    <div class="d-flex py-1 align-items-center">
+                                        <span class="avatar me-2" style="background-image: url(https://www.gravatar.com/avatar/?d=mp&s=40)"></span>
+                                        <div class="flex-fill">
+                                            <div class="font-weight-medium">
+                                                <a href="/user/{{ ToLower .User.Username }}">{{ .User.Username }}</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {{ template "user_badges.html" .DisplayBadges }}
+                                </td>
+                                <td class="text-secondary">{{ .User.Points }}</td>
+                                <td>
+                                    {{ range .SocialLinks }}
+                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-icon btn-ghost-secondary" title="{{ .Platform }}">
+                                        {{ if eq .Platform "youtube" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z"/><path d="M10 9l5 3l-5 3z"/></svg>
+                                        {{ else if eq .Platform "twitch" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/><path d="M16 8l0 4"/><path d="M12 8l0 4"/></svg>
+                                        {{ else if eq .Platform "reddit" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
+                                        {{ else if eq .Platform "patreon" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                        {{ end }}
+                                    </a>
+                                    {{ end }}
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="d-flex justify-content-center mt-4">
+                {{ if .PrevPageURL }}
+                <a href="{{ .PrevPageURL }}" class="btn btn-outline-secondary me-2">{{ T .Language "Previous" }}</a>
+                {{ end }}
+                {{ if .NextPageURL }}
+                <a href="{{ .NextPageURL }}" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
+                {{ end }}
+            </div>
+            {{ else }}
+            <div class="empty">
+                <p class="empty-title">{{ T .Language "No creators found" }}</p>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+{{ template "footer.html" . }}
+{{ template "foot.html" . }}

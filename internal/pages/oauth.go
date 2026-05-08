@@ -20,23 +20,37 @@ import (
 
 // OAuth enablement flags — set at startup via SetOAuthEnabled so templates
 // can conditionally render the Discord / GitHub login buttons.
-var (
-	discordOAuthEnabled bool
-	githubOAuthEnabled  bool
-)
+var oauthEnabled = map[string]bool{}
 
 // SetOAuthEnabled records whether each OAuth provider is configured.
 // Called once from router.Register at startup.
-func SetOAuthEnabled(discord, github bool) {
-	discordOAuthEnabled = discord
-	githubOAuthEnabled = github
+func SetOAuthEnabled(providers map[string]bool) {
+	oauthEnabled = providers
 }
 
+// OAuthProviderEnabled returns true if the named OAuth provider is configured.
+func OAuthProviderEnabled(name string) bool { return oauthEnabled[name] }
+
 // DiscordOAuthEnabled returns true if the Discord OAuth provider is configured.
-func DiscordOAuthEnabled() bool { return discordOAuthEnabled }
+func DiscordOAuthEnabled() bool { return oauthEnabled["discord"] }
 
 // GithubOAuthEnabled returns true if the GitHub OAuth provider is configured.
-func GithubOAuthEnabled() bool { return githubOAuthEnabled }
+func GithubOAuthEnabled() bool { return oauthEnabled["github"] }
+
+// TwitchOAuthEnabled returns true if the Twitch OAuth provider is configured.
+func TwitchOAuthEnabled() bool { return oauthEnabled["twitch"] }
+
+// PatreonOAuthEnabled returns true if the Patreon OAuth provider is configured.
+func PatreonOAuthEnabled() bool { return oauthEnabled["patreon"] }
+
+// RedditOAuthEnabled returns true if the Reddit OAuth provider is configured.
+func RedditOAuthEnabled() bool { return oauthEnabled["reddit"] }
+
+// GoogleOAuthEnabled returns true if the Google OAuth provider is configured.
+func GoogleOAuthEnabled() bool { return oauthEnabled["google"] }
+
+// MicrosoftOAuthEnabled returns true if the Microsoft OAuth provider is configured.
+func MicrosoftOAuthEnabled() bool { return oauthEnabled["microsoft"] }
 
 // oauthLoginErrorRedirect sends the user back to /login with an error code so
 // the login page can surface a helpful message instead of failing silently.

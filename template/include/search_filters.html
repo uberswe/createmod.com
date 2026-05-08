@@ -5,38 +5,25 @@
           hx-trigger="change" hx-include="#search-hero-input">
         <div class="subheader mb-2">{{ T .Language "Order by" }}</div>
         <div class="mb-3">
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="1" {{ if eq .DisplaySort 1 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Best match" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="8" {{ if eq .DisplaySort 8 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Trending" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="2" {{ if eq .DisplaySort 2 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Newest" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="3" {{ if eq .DisplaySort 3 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Oldest" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="4" {{ if eq .DisplaySort 4 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Highest rating" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="5" {{ if eq .DisplaySort 5 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Lowest rating" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="6" {{ if eq .DisplaySort 6 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Most views" }}</span>
-            </label>
-            <label class="form-check">
-                <input type="radio" class="form-check-input" name="sort" value="7" {{ if eq .DisplaySort 7 }}checked{{ end }}>
-                <span class="form-check-label">{{ T .Language "Least views" }}</span>
-            </label>
+            <select name="sort" class="form-select form-select-sm">
+                <option value="1" {{ if eq .DisplaySort 1 }}selected{{ end }}>{{ T .Language "Best match" }}</option>
+                <option value="8" {{ if eq .DisplaySort 8 }}selected{{ end }}>{{ T .Language "Trending" }}</option>
+                <option value="2" {{ if eq .DisplaySort 2 }}selected{{ end }}>{{ T .Language "Newest" }}</option>
+                <option value="3" {{ if eq .DisplaySort 3 }}selected{{ end }}>{{ T .Language "Oldest" }}</option>
+                <option value="4" {{ if eq .DisplaySort 4 }}selected{{ end }}>{{ T .Language "Highest rating" }}</option>
+                <option value="5" {{ if eq .DisplaySort 5 }}selected{{ end }}>{{ T .Language "Lowest rating" }}</option>
+                <option value="6" {{ if eq .DisplaySort 6 }}selected{{ end }}>{{ T .Language "Most views" }}</option>
+                <option value="7" {{ if eq .DisplaySort 7 }}selected{{ end }}>{{ T .Language "Least views" }}</option>
+            </select>
+        </div>
+        <div class="subheader mb-2">{{ T .Language "Results per page" }}</div>
+        <div class="mb-3">
+            <select name="per_page" class="form-select form-select-sm">
+                <option value="8" {{ if eq .PerPage 8 }}selected{{ end }}>8</option>
+                <option value="16" {{ if eq .PerPage 16 }}selected{{ end }}>16</option>
+                <option value="32" {{ if eq .PerPage 32 }}selected{{ end }}>32</option>
+                <option value="64" {{ if eq .PerPage 64 }}selected{{ end }}>64</option>
+            </select>
         </div>
         <div class="subheader mb-2">{{ T .Language "Minimum Rating" }}</div>
         <div class="mb-3">
@@ -59,13 +46,12 @@
             </select>
         </div>
         <div class="subheader mb-2">{{ T .Language "Tags" }}</div>
-        <div class="mb-3 search-tag-list">
-            {{ range .TagsWithCount }}
-            <label class="form-check">
-                <input type="checkbox" class="form-check-input" name="tag" value="{{ .Key }}" {{ if tagSelected $.SelectedTags .Key }}checked{{ end }}>
-                <span class="form-check-label">{{ .Name }} <span class="text-secondary">({{ .Count }})</span></span>
-            </label>
-            {{ end }}
+        <div class="mb-3">
+            <select id="search-tag-select" name="tag" multiple class="form-select" placeholder="{{ T .Language "Select tags..." }}">
+                {{ range .TagsWithCount }}
+                <option value="{{ .Key }}" {{ if tagSelected $.SelectedTags .Key }}selected{{ end }}>{{ .Name }} ({{ .Count }})</option>
+                {{ end }}
+            </select>
         </div>
         <div class="subheader mb-2">{{ T .Language "Minecraft Version" }}</div>
         <div class="mb-3">
@@ -78,21 +64,22 @@
         </div>
         <div class="subheader mb-2">{{ T .Language "Create Version" }}</div>
         <div class="mb-3">
-            <select name="cv" class="form-select">
-                <option value="all" {{ if eq .CreateVersion "all" }}selected{{ end }}>{{ T .Language "All" }}</option>
-                {{ range .CreateVersions }}
-                <option value="{{ .Version }}" {{ if eq $.CreateVersion .Version }}selected{{ end }}>{{ .Version }}</option>
-                {{ end }}
-            </select>
+            <input type="hidden" name="cv" id="cv-hidden" value="{{ .CreateVersion }}">
+            <div id="cv-tree" class="accordion accordion-flush border rounded">
+                <div class="cv-tree-item">
+                    <a href="#" class="cv-tree-link d-block px-2 py-1 text-reset{{ if eq .CreateVersion "all" }} fw-bold{{ end }}" data-cv="all">{{ T .Language "All" }}</a>
+                </div>
+            </div>
         </div>
         {{ if gt .MaxDimYAll 0 }}
         <div class="subheader mb-2">{{ T .Language "Dimensions" }}</div>
         <div class="mb-3">
             {{ if gt .MaxHorizontalAll 0 }}
             <div class="mb-2">
-                <label class="form-label small text-secondary mb-1">{{ T .Language "Horizontal Size" }} (X/Z): <span id="hz-label">{{ if gt .MinHorizontal 0 }}{{ .MinHorizontal }}+{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                <label class="form-label small text-secondary mb-1">{{ T .Language "Horizontal Size" }} (X/Z): <span id="hz-label">{{ if and (gt .MinHorizontal 0) (gt .MaxHorizontal 0) }}{{ .MinHorizontal }}–{{ .MaxHorizontal }}{{ else if gt .MinHorizontal 0 }}{{ .MinHorizontal }}+{{ else if gt .MaxHorizontal 0 }}0–{{ .MaxHorizontal }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
                 <div class="d-flex gap-2 align-items-center">
-                    <input type="range" class="form-range flex-grow-1" name="minhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ .MinHorizontal }}" oninput="var v=parseInt(this.value)||0;document.getElementById('hz-label').textContent=v>0?v+'+':'{{ T .Language "Any" }}';">
+                    <input type="range" class="form-range flex-grow-1" name="minhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ .MinHorizontal }}" oninput="updateRangeLabel('hz',this.value,document.querySelector('[name=maxhz]').value,{{ .MaxHorizontalAll }})">
+                    <input type="range" class="form-range flex-grow-1" name="maxhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ if gt .MaxHorizontal 0 }}{{ .MaxHorizontal }}{{ else }}{{ .MaxHorizontalAll }}{{ end }}" oninput="updateRangeLabel('hz',document.querySelector('[name=minhz]').value,this.value,{{ .MaxHorizontalAll }})">
                 </div>
             </div>
             {{ end }}
@@ -110,23 +97,22 @@
         <div class="mb-3">
             <label class="form-label small text-secondary mb-1"><span id="bc-label">{{ if and (gt .MinBlockCount 0) (gt .MaxBlockCount 0) }}{{ .MinBlockCount }}–{{ .MaxBlockCount }}{{ else if gt .MinBlockCount 0 }}{{ .MinBlockCount }}+{{ else if gt .MaxBlockCount 0 }}0–{{ .MaxBlockCount }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
             <div class="d-flex gap-2 align-items-center">
-                <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="1" value="{{ .MinBlockCount }}" oninput="updateRangeLabel('bc',this.value,document.querySelector('[name=maxbc]').value,{{ .MaxBlockCountAll }})">
-                <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="1" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="updateRangeLabel('bc',document.querySelector('[name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
+                <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ .MinBlockCount }}" oninput="updateRangeLabel('bc',this.value,document.querySelector('[name=maxbc]').value,{{ .MaxBlockCountAll }})">
+                <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="updateRangeLabel('bc',document.querySelector('[name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
             </div>
         </div>
         {{ end }}
         {{ if gt (len .AllMods) 0 }}
         <div class="subheader mb-2">{{ T .Language "Mods" }}</div>
-        <div class="mb-3 search-tag-list">
-            {{ range .AllMods }}
-            <label class="form-check">
-                <input type="checkbox" class="form-check-input" name="mod" value="{{ .Namespace }}" {{ if tagSelected $.SelectedMods .Namespace }}checked{{ end }}>
-                <span class="form-check-label">{{ .DisplayName }} <span class="text-secondary">({{ .Count }})</span></span>
-            </label>
-            {{ end }}
+        <div class="mb-3">
+            <select id="search-mod-select" name="mod" multiple class="form-select" placeholder="{{ T .Language "Select mods..." }}">
+                {{ range .AllMods }}
+                <option value="{{ .Namespace }}" {{ if tagSelected $.SelectedMods .Namespace }}selected{{ end }}>{{ .DisplayName }} ({{ .Count }})</option>
+                {{ end }}
+            </select>
         </div>
         {{ end }}
-        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinHorizontal 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt (len .SelectedMods) 0) }}
+        {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (ne .Rating -1) (gt .MinBlockCount 0) (gt .MaxBlockCount 0) (gt .MinHorizontal 0) (gt .MaxHorizontal 0) (gt .MinDimY 0) (gt .MaxDimY 0) (gt (len .SelectedMods) 0) }}
         <div class="mb-3">
             <a href="/search/{{ .TermSlug }}" class="text-secondary small">{{ T .Language "Clear all filters" }}</a>
         </div>
@@ -153,6 +139,93 @@
         el.textContent = mn + '\u2013' + mx;
       }
     }
+    function initVersionTree() {
+      var tree = document.getElementById('cv-tree');
+      var hidden = document.getElementById('cv-hidden');
+      if (!tree || !hidden) return;
+      if (tree.getAttribute('data-init')) return;
+      tree.setAttribute('data-init', '1');
+      var versions = [{{ range .CreateVersions }}{ v: "{{ .Version }}" },{{ end }}];
+      var groups = {};
+      var groupOrder = [];
+      for (var i = 0; i < versions.length; i++) {
+        var v = versions[i].v;
+        var parts = v.split('.');
+        var major = parts.length >= 2 ? parts[0] + '.' + parts[1] : parts[0];
+        if (parseInt(parts[0]) >= 1) major = parts[0];
+        if (!groups[major]) { groups[major] = []; groupOrder.push(major); }
+        groups[major].push(v);
+      }
+      var selected = hidden.value;
+      for (var g = 0; g < groupOrder.length; g++) {
+        var key = groupOrder[g];
+        var vList = groups[key];
+        var label = key + '.x';
+        if (parseInt(key) >= 1 && key.indexOf('.') === -1) label = key + '.x';
+        var wrapper = document.createElement('div');
+        wrapper.className = 'cv-tree-group';
+        var header = document.createElement('a');
+        header.href = '#';
+        header.className = 'cv-tree-header d-flex justify-content-between align-items-center px-2 py-1 text-reset';
+        header.setAttribute('data-cv-group', key);
+        var headerText = document.createElement('span');
+        headerText.textContent = label;
+        var chevron = document.createElement('span');
+        chevron.className = 'cv-chevron small text-secondary';
+        chevron.textContent = '▸';
+        header.appendChild(headerText);
+        header.appendChild(chevron);
+        var body = document.createElement('div');
+        body.className = 'cv-tree-body ps-3';
+        body.style.display = 'none';
+        var groupHasSelected = false;
+        for (var v = 0; v < vList.length; v++) {
+          var link = document.createElement('a');
+          link.href = '#';
+          link.className = 'cv-tree-link d-block px-2 py-1 text-reset small';
+          link.setAttribute('data-cv', vList[v]);
+          link.textContent = vList[v];
+          if (vList[v] === selected) { link.classList.add('fw-bold'); groupHasSelected = true; }
+          body.appendChild(link);
+        }
+        if (groupHasSelected) { body.style.display = ''; chevron.textContent = '▾'; }
+        wrapper.appendChild(header);
+        wrapper.appendChild(body);
+        tree.appendChild(wrapper);
+      }
+      tree.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        var link = ev.target.closest('.cv-tree-link');
+        if (link) {
+          hidden.value = link.getAttribute('data-cv');
+          tree.querySelectorAll('.cv-tree-link').forEach(function(l) { l.classList.remove('fw-bold'); });
+          link.classList.add('fw-bold');
+          var form = document.getElementById('advanced-search-form');
+          if (form) { form.dispatchEvent(new Event('change', {bubbles: true})); }
+          return;
+        }
+        var hdr = ev.target.closest('.cv-tree-header');
+        if (hdr) {
+          var bod = hdr.nextElementSibling;
+          var chev = hdr.querySelector('.cv-chevron');
+          if (bod.style.display === 'none') { bod.style.display = ''; if (chev) chev.textContent = '▾'; }
+          else { bod.style.display = 'none'; if (chev) chev.textContent = '▸'; }
+        }
+      });
+    }
+    initVersionTree();
+    function initTomSelects() {
+      if (typeof TomSelect === 'undefined') return;
+      var tagEl = document.getElementById('search-tag-select');
+      if (tagEl && !tagEl.tomselect) {
+        new TomSelect(tagEl, { plugins: ['remove_button'], maxOptions: 200 });
+      }
+      var modEl = document.getElementById('search-mod-select');
+      if (modEl && !modEl.tomselect) {
+        new TomSelect(modEl, { plugins: ['remove_button'], maxOptions: 200 });
+      }
+    }
+    initTomSelects();
     (function(){
       if (window._cmFilterTrack) return;
       window._cmFilterTrack = true;

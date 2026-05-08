@@ -103,6 +103,101 @@ func fetchGitHubPrimaryEmail(ctx context.Context, client *http.Client) (string, 
 	return "", fmt.Errorf("no verified github email found")
 }
 
+// NewTwitchProvider creates a Twitch OAuth2 provider config.
+func NewTwitchProvider(clientID, clientSecret, redirectURL string) *OAuthProvider {
+	return &OAuthProvider{
+		Name: "twitch",
+		Config: oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"user:read:email"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://id.twitch.tv/oauth2/authorize",
+				TokenURL: "https://id.twitch.tv/oauth2/token",
+			},
+		},
+		UserURL: "https://api.twitch.tv/helix/users",
+		IDField: "id",
+	}
+}
+
+// NewPatreonProvider creates a Patreon OAuth2 provider config.
+func NewPatreonProvider(clientID, clientSecret, redirectURL string) *OAuthProvider {
+	return &OAuthProvider{
+		Name: "patreon",
+		Config: oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"identity", "identity[email]"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://www.patreon.com/oauth2/authorize",
+				TokenURL: "https://www.patreon.com/api/oauth2/token",
+			},
+		},
+		UserURL: "https://www.patreon.com/api/oauth2/v2/identity?fields%5Buser%5D=email,full_name,image_url,vanity",
+		IDField: "id",
+	}
+}
+
+// NewRedditProvider creates a Reddit OAuth2 provider config.
+func NewRedditProvider(clientID, clientSecret, redirectURL string) *OAuthProvider {
+	return &OAuthProvider{
+		Name: "reddit",
+		Config: oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"identity"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://www.reddit.com/api/v1/authorize",
+				TokenURL: "https://www.reddit.com/api/v1/access_token",
+			},
+		},
+		UserURL: "https://oauth.reddit.com/api/v1/me",
+		IDField: "id",
+	}
+}
+
+// NewGoogleProvider creates a Google OAuth2 provider config.
+func NewGoogleProvider(clientID, clientSecret, redirectURL string) *OAuthProvider {
+	return &OAuthProvider{
+		Name: "google",
+		Config: oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"openid", "email", "profile"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://accounts.google.com/o/oauth2/v2/auth",
+				TokenURL: "https://oauth2.googleapis.com/token",
+			},
+		},
+		UserURL: "https://www.googleapis.com/oauth2/v2/userinfo",
+		IDField: "id",
+	}
+}
+
+// NewMicrosoftProvider creates a Microsoft OAuth2 provider config.
+func NewMicrosoftProvider(clientID, clientSecret, redirectURL string) *OAuthProvider {
+	return &OAuthProvider{
+		Name: "microsoft",
+		Config: oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"openid", "email", "profile", "User.Read"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
+				TokenURL: "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
+			},
+		},
+		UserURL: "https://graph.microsoft.com/v1.0/me",
+		IDField: "id",
+	}
+}
+
 // AuthURL returns the OAuth2 authorization URL with the given state parameter.
 func (p *OAuthProvider) AuthURL(state string) string {
 	return p.Config.AuthCodeURL(state)
@@ -116,7 +211,20 @@ func (p *OAuthProvider) Exchange(ctx context.Context, code string) (*oauth2.Toke
 // FetchUser fetches the user info from the provider using the given token.
 func (p *OAuthProvider) FetchUser(ctx context.Context, token *oauth2.Token) (*OAuthUser, error) {
 	client := p.Config.Client(ctx, token)
-	resp, err := client.Get(p.UserURL)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", p.UserURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating %s user info request: %w", p.Name, err)
+	}
+
+	if p.Name == "twitch" {
+		req.Header.Set("Client-Id", p.Config.ClientID)
+	}
+	if p.Name == "reddit" {
+		req.Header.Set("User-Agent", "createmod.com:v1.0 (by /u/createmod)")
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetching %s user info: %w", p.Name, err)
 	}
@@ -159,13 +267,72 @@ func (p *OAuthProvider) FetchUser(ctx context.Context, token *oauth2.Token) (*OA
 		if avatar, ok := data["avatar_url"].(string); ok {
 			user.Avatar = avatar
 		}
-		// GitHub returns email: null when the user's primary email is set to
-		// private. Fall back to the /user/emails endpoint to fetch the
-		// verified primary email so we can create an account.
 		if user.Email == "" {
 			if email, err := fetchGitHubPrimaryEmail(ctx, client); err == nil {
 				user.Email = email
 			}
+		}
+	case "twitch":
+		if dataArr, ok := data["data"].([]interface{}); ok && len(dataArr) > 0 {
+			if u, ok := dataArr[0].(map[string]interface{}); ok {
+				user.ID = fmt.Sprintf("%v", u["id"])
+				if login, ok := u["login"].(string); ok {
+					user.Username = login
+				}
+				if email, ok := u["email"].(string); ok {
+					user.Email = email
+				}
+				if avatar, ok := u["profile_image_url"].(string); ok {
+					user.Avatar = avatar
+				}
+			}
+		}
+	case "patreon":
+		if d, ok := data["data"].(map[string]interface{}); ok {
+			user.ID = fmt.Sprintf("%v", d["id"])
+			if attrs, ok := d["attributes"].(map[string]interface{}); ok {
+				if email, ok := attrs["email"].(string); ok {
+					user.Email = email
+				}
+				if name, ok := attrs["full_name"].(string); ok {
+					user.Username = name
+				}
+				if vanity, ok := attrs["vanity"].(string); ok && vanity != "" {
+					user.Username = vanity
+				}
+				if img, ok := attrs["image_url"].(string); ok {
+					user.Avatar = img
+				}
+			}
+		}
+	case "reddit":
+		user.ID = fmt.Sprintf("%v", data["id"])
+		if name, ok := data["name"].(string); ok {
+			user.Username = name
+		}
+		if icon, ok := data["icon_img"].(string); ok {
+			user.Avatar = icon
+		}
+	case "google":
+		user.ID = fmt.Sprintf("%v", data["id"])
+		if name, ok := data["name"].(string); ok {
+			user.Username = name
+		}
+		if email, ok := data["email"].(string); ok {
+			user.Email = email
+		}
+		if picture, ok := data["picture"].(string); ok {
+			user.Avatar = picture
+		}
+	case "microsoft":
+		user.ID = fmt.Sprintf("%v", data["id"])
+		if name, ok := data["displayName"].(string); ok {
+			user.Username = name
+		}
+		if email, ok := data["mail"].(string); ok && email != "" {
+			user.Email = email
+		} else if upn, ok := data["userPrincipalName"].(string); ok {
+			user.Email = upn
 		}
 	default:
 		user.ID = fmt.Sprintf("%v", data[p.IDField])

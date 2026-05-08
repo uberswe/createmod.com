@@ -23,9 +23,9 @@ SELECT EXISTS(
 ) AS has_achievement;
 
 -- name: CreatePointLog :one
-INSERT INTO point_log (id, user_id, points, reason, description, earned_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (user_id, reason) DO NOTHING
+INSERT INTO point_log (id, user_id, points, reason, reference_id, description, earned_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (user_id, reason, reference_id) DO NOTHING
 RETURNING *;
 
 -- name: GetPointLog :many
@@ -34,3 +34,7 @@ SELECT * FROM point_log WHERE user_id = $1 ORDER BY earned_at DESC;
 -- name: SumUserPoints :one
 SELECT COALESCE(SUM(points), 0)::INTEGER AS total_points
 FROM point_log WHERE user_id = $1;
+
+-- name: CountPointLogByReason :one
+SELECT COUNT(*)::INTEGER AS cnt
+FROM point_log WHERE user_id = $1 AND reason = $2;

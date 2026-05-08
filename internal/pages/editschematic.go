@@ -30,6 +30,11 @@ type EditSchematicData struct {
 	CreateModVersionId string
 	MinecraftVersionId string
 	AdditionalFiles    []store.SchematicFile
+	Videos             []store.SchematicVideo
+	References         []store.SchematicReference
+	Modpacks           []store.Modpack
+	AllModpacks        []store.Modpack
+	RedditLinks        []store.RedditLink
 }
 
 type SchematicTagWithSelected struct {
@@ -101,6 +106,31 @@ func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry
 
 		if additionalFiles, afErr := appStore.SchematicFiles.ListBySchematicID(context.Background(), storeSchematic.ID); afErr == nil {
 			d.AdditionalFiles = additionalFiles
+		}
+
+		ctx := context.Background()
+		if appStore.SchematicVideos != nil {
+			if videos, vErr := appStore.SchematicVideos.ListBySchematic(ctx, storeSchematic.ID); vErr == nil {
+				d.Videos = videos
+			}
+		}
+		if appStore.References != nil {
+			if refs, rErr := appStore.References.ListBySchematic(ctx, storeSchematic.ID); rErr == nil {
+				d.References = refs
+			}
+		}
+		if appStore.Modpacks != nil {
+			if packs, mErr := appStore.Modpacks.GetSchematicModpacks(ctx, storeSchematic.ID); mErr == nil {
+				d.Modpacks = packs
+			}
+			if allPacks, aErr := appStore.Modpacks.List(ctx); aErr == nil {
+				d.AllModpacks = allPacks
+			}
+		}
+		if appStore.RedditLinks != nil {
+			if links, rlErr := appStore.RedditLinks.GetBySchematic(ctx, storeSchematic.ID); rlErr == nil {
+				d.RedditLinks = links
+			}
 		}
 
 		html, err := registry.LoadFiles(editSchematicTemplates...).Render(d)

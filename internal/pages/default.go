@@ -54,9 +54,15 @@ type DefaultData struct {
 	BreadcrumbOverlay  bool
 	HideOutstream      bool
 	AdminSection       string
-	DiscordOAuthEnabled bool
-	GithubOAuthEnabled  bool
-	OAuthError          string
+	SettingsPage         string
+	DiscordOAuthEnabled    bool
+	GithubOAuthEnabled     bool
+	TwitchOAuthEnabled     bool
+	PatreonOAuthEnabled    bool
+	RedditOAuthEnabled     bool
+	GoogleOAuthEnabled     bool
+	MicrosoftOAuthEnabled  bool
+	OAuthError             string
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
@@ -138,6 +144,11 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	// OAuth provider availability (used by login / settings templates).
 	d.DiscordOAuthEnabled = DiscordOAuthEnabled()
 	d.GithubOAuthEnabled = GithubOAuthEnabled()
+	d.TwitchOAuthEnabled = TwitchOAuthEnabled()
+	d.PatreonOAuthEnabled = PatreonOAuthEnabled()
+	d.RedditOAuthEnabled = RedditOAuthEnabled()
+	d.GoogleOAuthEnabled = GoogleOAuthEnabled()
+	d.MicrosoftOAuthEnabled = MicrosoftOAuthEnabled()
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {

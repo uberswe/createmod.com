@@ -60,7 +60,7 @@ func (q *Queries) CreateModerationMessage(ctx context.Context, arg CreateModerat
 const createModerationThread = `-- name: CreateModerationThread :one
 INSERT INTO moderation_threads (content_type, content_id)
 VALUES ($1, $2)
-RETURNING id, content_type, content_id, status, created, updated
+RETURNING id, content_type, content_id, status, created, updated, resolved_at, resolved_by, creator_notified, last_message_at, creator_last_read
 `
 
 type CreateModerationThreadParams struct {
@@ -78,12 +78,17 @@ func (q *Queries) CreateModerationThread(ctx context.Context, arg CreateModerati
 		&i.Status,
 		&i.Created,
 		&i.Updated,
+		&i.ResolvedAt,
+		&i.ResolvedBy,
+		&i.CreatorNotified,
+		&i.LastMessageAt,
+		&i.CreatorLastRead,
 	)
 	return i, err
 }
 
 const getModerationThreadByContent = `-- name: GetModerationThreadByContent :one
-SELECT id, content_type, content_id, status, created, updated FROM moderation_threads
+SELECT id, content_type, content_id, status, created, updated, resolved_at, resolved_by, creator_notified, last_message_at, creator_last_read FROM moderation_threads
 WHERE content_type = $1 AND content_id = $2
 LIMIT 1
 `
@@ -103,6 +108,11 @@ func (q *Queries) GetModerationThreadByContent(ctx context.Context, arg GetModer
 		&i.Status,
 		&i.Created,
 		&i.Updated,
+		&i.ResolvedAt,
+		&i.ResolvedBy,
+		&i.CreatorNotified,
+		&i.LastMessageAt,
+		&i.CreatorLastRead,
 	)
 	return i, err
 }
@@ -138,4 +148,134 @@ func (q *Queries) ListModerationMessagesByThread(ctx context.Context, threadID s
 		return nil, err
 	}
 	return items, nil
+}
+
+const listModerationThreadsByModerator = `-- name: ListModerationThreadsByModerator :many
+SELECT t.id, t.content_type, t.content_id, t.status, t.created, t.updated, t.resolved_at, t.resolved_by, t.creator_notified, t.last_message_at, t.creator_last_read FROM moderation_threads t
+WHERE t.resolved_at IS NULL
+ORDER BY t.last_message_at DESC NULLS LAST
+LIMIT $1 OFFSET $2
+`
+
+type ListModerationThreadsByModeratorParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error) {
+	rows, err := q.db.Query(ctx, listModerationThreadsByModerator, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ModerationThread{}
+	for rows.Next() {
+		var i ModerationThread
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContentType,
+			&i.ContentID,
+			&i.Status,
+			&i.Created,
+			&i.Updated,
+			&i.ResolvedAt,
+			&i.ResolvedBy,
+			&i.CreatorNotified,
+			&i.LastMessageAt,
+			&i.CreatorLastRead,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnreadThreadsByCreator = `-- name: ListUnreadThreadsByCreator :many
+SELECT t.id, t.content_type, t.content_id, t.status, t.created, t.updated, t.resolved_at, t.resolved_by, t.creator_notified, t.last_message_at, t.creator_last_read FROM moderation_threads t
+JOIN schematics s ON s.id = t.content_id AND t.content_type = 'schematic'
+WHERE s.author_id = $1
+  AND t.resolved_at IS NULL
+  AND (t.creator_last_read IS NULL OR t.last_message_at > t.creator_last_read)
+ORDER BY t.last_message_at DESC NULLS LAST
+`
+
+func (q *Queries) ListUnreadThreadsByCreator(ctx context.Context, authorID *string) ([]ModerationThread, error) {
+	rows, err := q.db.Query(ctx, listUnreadThreadsByCreator, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ModerationThread{}
+	for rows.Next() {
+		var i ModerationThread
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContentType,
+			&i.ContentID,
+			&i.Status,
+			&i.Created,
+			&i.Updated,
+			&i.ResolvedAt,
+			&i.ResolvedBy,
+			&i.CreatorNotified,
+			&i.LastMessageAt,
+			&i.CreatorLastRead,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markModerationThreadCreatorNotified = `-- name: MarkModerationThreadCreatorNotified :exec
+UPDATE moderation_threads SET creator_notified = true, updated = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) MarkModerationThreadCreatorNotified(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markModerationThreadCreatorNotified, id)
+	return err
+}
+
+const markModerationThreadCreatorRead = `-- name: MarkModerationThreadCreatorRead :exec
+UPDATE moderation_threads SET creator_last_read = NOW(), updated = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) MarkModerationThreadCreatorRead(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markModerationThreadCreatorRead, id)
+	return err
+}
+
+const markModerationThreadResolved = `-- name: MarkModerationThreadResolved :exec
+UPDATE moderation_threads SET resolved_at = NOW(), resolved_by = $2, updated = NOW()
+WHERE id = $1
+`
+
+type MarkModerationThreadResolvedParams struct {
+	ID         string  `json:"id"`
+	ResolvedBy *string `json:"resolved_by"`
+}
+
+func (q *Queries) MarkModerationThreadResolved(ctx context.Context, arg MarkModerationThreadResolvedParams) error {
+	_, err := q.db.Exec(ctx, markModerationThreadResolved, arg.ID, arg.ResolvedBy)
+	return err
+}
+
+const updateModerationThreadLastMessage = `-- name: UpdateModerationThreadLastMessage :exec
+UPDATE moderation_threads SET last_message_at = NOW(), updated = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) UpdateModerationThreadLastMessage(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, updateModerationThreadLastMessage, id)
+	return err
 }
