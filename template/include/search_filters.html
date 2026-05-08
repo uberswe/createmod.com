@@ -110,8 +110,8 @@
         <div class="mb-3">
             <label class="form-label small text-secondary mb-1"><span id="bc-label">{{ if and (gt .MinBlockCount 0) (gt .MaxBlockCount 0) }}{{ .MinBlockCount }}–{{ .MaxBlockCount }}{{ else if gt .MinBlockCount 0 }}{{ .MinBlockCount }}+{{ else if gt .MaxBlockCount 0 }}0–{{ .MaxBlockCount }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
             <div class="d-flex gap-2 align-items-center">
-                <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="1" value="{{ .MinBlockCount }}" oninput="updateRangeLabel('bc',this.value,document.querySelector('[name=maxbc]').value,{{ .MaxBlockCountAll }})">
-                <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="1" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="updateRangeLabel('bc',document.querySelector('[name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
+                <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ .MinBlockCount }}" oninput="updateRangeLabel('bc',this.value,document.querySelector('[name=maxbc]').value,{{ .MaxBlockCountAll }})">
+                <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="updateRangeLabel('bc',document.querySelector('[name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
             </div>
         </div>
         {{ end }}
