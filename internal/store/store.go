@@ -609,6 +609,15 @@ type SearchEntry struct {
 	Created         time.Time
 }
 
+// CachedTwitchStream holds stream data stored in cache by the job worker and read by the page handler.
+type CachedTwitchStream struct {
+	UserName     string
+	UserLogin    string
+	Title        string
+	ViewerCount  int
+	ThumbnailURL string
+}
+
 // TopViewedSchematic holds a schematic's identity and total views for ranking.
 type TopViewedSchematic struct {
 	ID            string

@@ -5,13 +5,9 @@ test.describe('Search page filters', () => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
 
-    // The "Best match" radio (value="1") should be checked by default
-    const bestMatch = page.locator('#advanced-search-form input[name="sort"][value="1"]');
-    await expect(bestMatch).toBeChecked();
-
-    // "Most views" (value="6") should NOT be checked
-    const mostViews = page.locator('#advanced-search-form input[name="sort"][value="6"]');
-    await expect(mostViews).not.toBeChecked();
+    // The sort dropdown should default to "Best match" (value="1")
+    const sortSelect = page.locator('#advanced-search-form select[name="sort"]');
+    await expect(sortSelect).toHaveValue('1');
   });
 
   test('Changing sort filter updates search results via HTMX', async ({ page, baseURL }) => {
@@ -20,11 +16,10 @@ test.describe('Search page filters', () => {
 
     // Wait for initial results to load
     await page.waitForSelector('#search-results');
-    const initialText = await page.locator('#search-results').textContent();
 
-    // Click "Newest" sort option
-    const newest = page.locator('#advanced-search-form input[name="sort"][value="2"]');
-    await newest.check();
+    // Select "Newest" from the sort dropdown
+    const sortSelect = page.locator('#advanced-search-form select[name="sort"]');
+    await sortSelect.selectOption('2');
 
     // Wait for HTMX to update the results
     await page.waitForTimeout(1000);
@@ -65,7 +60,7 @@ test.describe('Search page filters', () => {
     await heroInput.click();
     await heroInput.pressSequentially('farm', { delay: 50 });
 
-    // Wait for HTMX debounce (400ms) + response
+    // Wait for HTMX debounce (800ms) + response
     await page.waitForTimeout(3000);
 
     // URL should reflect the search

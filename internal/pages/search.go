@@ -493,7 +493,9 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		if err != nil {
 			return err
 		}
-		_ = appStore.SearchTracking.RecordSearch(ctx, term, d.SearchResultCount, authenticatedUserID(e), e.RealIP())
+		if len(term) >= 3 {
+			_ = appStore.SearchTracking.RecordSearch(ctx, term, d.SearchResultCount, authenticatedUserID(e), e.RealIP())
+		}
 		return e.HTML(http.StatusOK, html)
 	}
 }

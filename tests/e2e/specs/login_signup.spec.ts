@@ -101,7 +101,7 @@ test.describe('signup flow', () => {
     await expect(page.locator('#email')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.locator('#terms')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('#signup-form button[type="submit"]')).toBeVisible();
   });
 
   test('signup form validates empty fields', async ({ page, baseURL }) => {

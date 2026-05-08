@@ -9,6 +9,8 @@ import (
 	"fmt"
 	html "html/template"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
 
 	"createmod/internal/server"
@@ -172,14 +174,20 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 					for _, c := range clean {
 						cleanSet[c] = true
 					}
+					var candidates []SiteSearchEntry
 					for _, r := range raw {
-						if cleanSet[r.Query] && len(d.TopSearches) < 100 {
-							d.TopSearches = append(d.TopSearches, SiteSearchEntry{
+						if cleanSet[r.Query] && len(r.Query) >= 3 {
+							candidates = append(candidates, SiteSearchEntry{
 								Query:       r.Query,
 								SearchCount: r.ResultsCount,
 							})
 						}
 					}
+					candidates = filterPrefixQueries(candidates)
+					if len(candidates) > 100 {
+						candidates = candidates[:100]
+					}
+					d.TopSearches = candidates
 				}
 				cacheService.SetWithTTL(searchCacheKey, d.TopSearches, 1*time.Hour)
 			}
@@ -282,4 +290,29 @@ func searchTermSeriesJSON(terms []string, data []store.SearchTermDailyCount) str
 
 	b, _ := json.Marshal(result)
 	return string(b)
+}
+
+// filterPrefixQueries removes queries that are likely typing prefixes of a
+// more popular query. A short query is considered a prefix if a longer query
+// starting with the same characters has an equal or higher search count.
+func filterPrefixQueries(entries []SiteSearchEntry) []SiteSearchEntry {
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].SearchCount > entries[j].SearchCount
+	})
+
+	kept := make([]SiteSearchEntry, 0, len(entries))
+	for _, e := range entries {
+		lower := strings.ToLower(e.Query)
+		isPrefix := false
+		for _, k := range kept {
+			if strings.HasPrefix(strings.ToLower(k.Query), lower) && len(k.Query) > len(e.Query) {
+				isPrefix = true
+				break
+			}
+		}
+		if !isPrefix {
+			kept = append(kept, e)
+		}
+	}
+	return kept
 }

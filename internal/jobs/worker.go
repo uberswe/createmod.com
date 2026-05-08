@@ -29,19 +29,21 @@ import (
 
 // Deps holds service dependencies shared by all job workers.
 type Deps struct {
-	Store        *store.Store
-	Storage      *storage.Service
-	Search       *search.Service
-	Cache        *cache.Service
-	Sitemap      *sitemap.Service
-	AIDesc       *aidescription.Service
-	Translation  *translation.Service
-	PointLog     *pointlog.Service
-	ModMeta      *modmeta.Service
-	SessionStore *session.Store
-	Moderation   *moderation.Service
-	Mail         *mailer.Service
-	MeiliClient  meilisearch.ServiceManager
+	Store              *store.Store
+	Storage            *storage.Service
+	Search             *search.Service
+	Cache              *cache.Service
+	Sitemap            *sitemap.Service
+	AIDesc             *aidescription.Service
+	Translation        *translation.Service
+	PointLog           *pointlog.Service
+	ModMeta            *modmeta.Service
+	SessionStore       *session.Store
+	Moderation         *moderation.Service
+	Mail               *mailer.Service
+	MeiliClient        meilisearch.ServiceManager
+	TwitchClientID     string
+	TwitchClientSecret string
 }
 
 // Config holds job worker configuration.
