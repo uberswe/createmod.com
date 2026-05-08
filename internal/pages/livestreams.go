@@ -5,7 +5,9 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/server"
 	"createmod/internal/store"
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 var livestreamsTemplates = append([]string{
@@ -13,12 +15,12 @@ var livestreamsTemplates = append([]string{
 }, commonTemplates...)
 
 type LiveStream struct {
-	Username    string
-	UserID      string
-	Title       string
-	ViewerCount int
+	Username     string
+	Title        string
+	ViewerCount  int
 	ThumbnailURL string
 	StreamURL    string
+	IsSiteMember bool
 }
 
 type LivestreamsData struct {
@@ -37,8 +39,32 @@ func LivestreamsHandler(registry *server.Registry, cacheService *cache.Service, 
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Live Streams"))
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
-		// TODO: load from Redis cache populated by TwitchStreamSearchWorker
-		d.Streams = []LiveStream{}
+		if cached, found := cacheService.Get("twitch_live_streams"); found {
+			if streams, ok := cached.([]store.CachedTwitchStream); ok {
+				var siteMembers map[string]bool
+				if sm, found := cacheService.Get("twitch_site_members"); found {
+					if m, ok := sm.(map[string]bool); ok {
+						siteMembers = m
+					}
+				}
+				if siteMembers == nil {
+					siteMembers = map[string]bool{}
+				}
+
+				for _, s := range streams {
+					ls := LiveStream{
+						Username:     s.UserName,
+						Title:        s.Title,
+						ViewerCount:  s.ViewerCount,
+						ThumbnailURL: s.ThumbnailURL,
+						StreamURL:    fmt.Sprintf("https://www.twitch.tv/%s", s.UserLogin),
+						IsSiteMember: siteMembers[strings.ToLower(s.UserLogin)],
+					}
+					d.Streams = append(d.Streams, ls)
+				}
+				sortStreams(d.Streams)
+			}
+		}
 
 		if !isAuthenticated(e) {
 			setPublicCacheControl(e, 60)
@@ -49,5 +75,21 @@ func LivestreamsHandler(registry *server.Registry, cacheService *cache.Service, 
 			return err
 		}
 		return e.HTML(http.StatusOK, html)
+	}
+}
+
+func sortStreams(streams []LiveStream) {
+	for i := 0; i < len(streams); i++ {
+		for j := i + 1; j < len(streams); j++ {
+			swap := false
+			if streams[j].IsSiteMember && !streams[i].IsSiteMember {
+				swap = true
+			} else if streams[j].IsSiteMember == streams[i].IsSiteMember && streams[j].ViewerCount > streams[i].ViewerCount {
+				swap = true
+			}
+			if swap {
+				streams[i], streams[j] = streams[j], streams[i]
+			}
+		}
 	}
 }
