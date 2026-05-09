@@ -105,6 +105,7 @@ type RegisterParams struct {
 	RedditOAuth        *auth.OAuthProvider
 	GoogleOAuth        *auth.OAuthProvider
 	MicrosoftOAuth     *auth.OAuthProvider
+	SteamAuth          *auth.SteamProvider
 	MailService        *mailer.Service
 	JobWorker          *jobs.Worker
 	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
@@ -125,6 +126,7 @@ func Register(p RegisterParams) chi.Router {
 		"reddit":    p.RedditOAuth != nil,
 		"google":    p.GoogleOAuth != nil,
 		"microsoft": p.MicrosoftOAuth != nil,
+		"steam":     p.SteamAuth != nil,
 	})
 	pages.SetOAuthSigningSecret(deriveOAuthSigningSecret())
 	if p.DiscordOAuth == nil {
@@ -502,6 +504,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/auth/google/callback", Adapt(pages.OAuthCallbackHandler(p.GoogleOAuth, p.AppStore, p.SessionStore)))
 	r.Get("/auth/microsoft", Adapt(pages.OAuthRedirectHandler(p.MicrosoftOAuth)))
 	r.Get("/auth/microsoft/callback", Adapt(pages.OAuthCallbackHandler(p.MicrosoftOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/steam", Adapt(pages.SteamRedirectHandler(p.SteamAuth)))
+	r.Get("/auth/steam/callback", Adapt(pages.SteamCallbackHandler(p.SteamAuth, p.AppStore, p.SessionStore)))
 	r.Get("/auth/oauth/complete", Adapt(pages.OAuthCompleteHandler(registry, p.AppStore)))
 	r.With(authRateLimit).Post("/auth/oauth/complete", Adapt(pages.OAuthCompletePostHandler(registry, p.AppStore, p.SessionStore)))
 	r.Get("/logout", func(w http.ResponseWriter, req *http.Request) {

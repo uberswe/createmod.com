@@ -62,6 +62,7 @@ type DefaultData struct {
 	RedditOAuthEnabled     bool
 	GoogleOAuthEnabled     bool
 	MicrosoftOAuthEnabled  bool
+	SteamOAuthEnabled      bool
 	OAuthError             string
 }
 
@@ -149,6 +150,7 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	d.RedditOAuthEnabled = RedditOAuthEnabled()
 	d.GoogleOAuthEnabled = GoogleOAuthEnabled()
 	d.MicrosoftOAuthEnabled = MicrosoftOAuthEnabled()
+	d.SteamOAuthEnabled = SteamOAuthEnabled()
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {

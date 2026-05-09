@@ -73,7 +73,7 @@
                                             {{ end }}
                                         </div>
                                         {{ end }}
-                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled .TwitchOAuthEnabled .PatreonOAuthEnabled .RedditOAuthEnabled .GoogleOAuthEnabled .MicrosoftOAuthEnabled }}
+                                        {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled .TwitchOAuthEnabled .PatreonOAuthEnabled .RedditOAuthEnabled .GoogleOAuthEnabled .MicrosoftOAuthEnabled .SteamOAuthEnabled }}
                                         <h3 class="card-title mt-4">{{ T .Language "Linked Accounts" }}</h3>
                                         {{ if .GithubOAuthEnabled }}
                                         <div class="row g-3 mb-2">
@@ -189,6 +189,20 @@
                                                 </div>
                                                 {{ else }}
                                                 <a href="/auth/reddit" hx-boost="false" class="btn w-100">{{ T .Language "Link Reddit account" }}</a>
+                                                {{ end }}
+                                            </div>
+                                        </div>
+                                        {{ end }}
+                                        {{ if .SteamOAuthEnabled }}
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md">
+                                                {{ if .LinkedSteam }}
+                                                <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                                                    <span>Steam {{ T .Language "linked" }}</span>
+                                                    {{ if .HasPassword }}<button class="btn btn-outline-danger btn-sm" onclick="unlinkProvider('steam')">{{ T .Language "Unlink" }}</button>{{ end }}
+                                                </div>
+                                                {{ else }}
+                                                <a href="/auth/steam" hx-boost="false" class="btn w-100">{{ T .Language "Link Steam account" }}</a>
                                                 {{ end }}
                                             </div>
                                         </div>

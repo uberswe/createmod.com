@@ -32,6 +32,7 @@ type UserSettingsData struct {
 	LinkedReddit    bool
 	LinkedGoogle    bool
 	LinkedMicrosoft bool
+	LinkedSteam     bool
 	HasPassword     bool
 	OAuthError      string
 	SocialLinks     []store.SocialLink
@@ -75,6 +76,8 @@ func UserSettingsHandler(registry *server.Registry, cacheService *cache.Service,
 					d.LinkedGoogle = true
 				case "microsoft":
 					d.LinkedMicrosoft = true
+				case "steam":
+					d.LinkedSteam = true
 				}
 			}
 		}
