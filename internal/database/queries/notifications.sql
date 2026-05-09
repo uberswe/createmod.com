@@ -46,3 +46,12 @@ RETURNING *;
 SELECT * FROM notification_preferences
 WHERE user_id = $1 AND category = $2
 LIMIT 1;
+
+-- name: ListUsersWithDigestPreference :many
+SELECT DISTINCT user_id FROM notification_preferences
+WHERE email = $1;
+
+-- name: ListUnreadNotificationsSince :many
+SELECT * FROM notifications
+WHERE user_id = $1 AND read = false AND created >= $2
+ORDER BY created DESC;

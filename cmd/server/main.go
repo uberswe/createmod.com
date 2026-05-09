@@ -44,6 +44,7 @@ const (
 	GoogleClientSecret    = "GOOGLE_CLIENT_SECRET"
 	MicrosoftClientID     = "MICROSOFT_CLIENT_ID"
 	MicrosoftClientSecret = "MICROSOFT_CLIENT_SECRET"
+	SteamAPIKey           = "STEAM_API_KEY"
 	BaseURL               = "BASE_URL"
 )
 
@@ -111,6 +112,7 @@ func main() {
 		GoogleClientSecret:    getEnv(envFile, GoogleClientSecret),
 		MicrosoftClientID:     getEnv(envFile, MicrosoftClientID),
 		MicrosoftClientSecret: getEnv(envFile, MicrosoftClientSecret),
+		SteamAPIKey:           getEnv(envFile, SteamAPIKey),
 		BaseURL:               getEnv(envFile, BaseURL),
 	}
 

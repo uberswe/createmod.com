@@ -1063,31 +1063,6 @@ var blockNameMap = {};
         }
     }
 })();
-function fetchBlockNames(blockIds, callback) {
-    if (!blockIds || blockIds.length === 0) { if (callback) callback(); return; }
-    try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://blocksitems.com/api/v1/blocks/lookup', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                try {
-                    var result = JSON.parse(xhr.responseText);
-                    if (result.data) { blockNameMap = result.data; }
-                } catch(e) {}
-            }
-            if (callback) callback();
-        };
-        xhr.onerror = function() { if (callback) callback(); };
-        xhr.send(JSON.stringify({ block_ids: blockIds }));
-    } catch(e) { if (callback) callback(); }
-}
-function formatBlockName(blockId) {
-    if (!blockId) return '';
-    var parts = blockId.split(':');
-    var name = parts.length > 1 ? parts[1] : parts[0];
-    return name.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
-}
 // Format mod namespace badges into readable names (e.g. "create" → "Create", "create_central_kitchen" → "Create Central Kitchen")
 (function() {
     var badges = document.querySelectorAll('#mods-list [data-mod-id]');
@@ -1097,10 +1072,6 @@ function formatBlockName(blockId) {
         badge.textContent = modId.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
     });
 })();
-function animateCopyButton(btn) {
-    btn.classList.add('copy-success');
-    setTimeout(function() { btn.classList.remove('copy-success'); }, 2000);
-}
 function copyMaterialsAsMarkdown() {
     var rows = document.getElementById('materials-list');
     if (!rows) return;

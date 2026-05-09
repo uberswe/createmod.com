@@ -62,6 +62,7 @@ type DefaultData struct {
 	RedditOAuthEnabled     bool
 	GoogleOAuthEnabled     bool
 	MicrosoftOAuthEnabled  bool
+	SteamOAuthEnabled      bool
 	OAuthError             string
 }
 
@@ -149,6 +150,7 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	d.RedditOAuthEnabled = RedditOAuthEnabled()
 	d.GoogleOAuthEnabled = GoogleOAuthEnabled()
 	d.MicrosoftOAuthEnabled = MicrosoftOAuthEnabled()
+	d.SteamOAuthEnabled = SteamOAuthEnabled()
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {
@@ -308,6 +310,15 @@ func sanitizeFilename(filename string) string {
 	}
 
 	return base + ext
+}
+
+func randomHex(n int) string {
+	if n <= 0 {
+		n = 16
+	}
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // sanitizeContentDispositionFilename strips characters that could cause header injection

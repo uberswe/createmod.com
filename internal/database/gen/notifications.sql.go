@@ -220,6 +220,73 @@ func (q *Queries) ListRecentNotifications(ctx context.Context, arg ListRecentNot
 	return items, nil
 }
 
+const listUnreadNotificationsSince = `-- name: ListUnreadNotificationsSince :many
+SELECT id, user_id, type, title, body, url, actor_id, reference_id, read, created FROM notifications
+WHERE user_id = $1 AND read = false AND created >= $2
+ORDER BY created DESC
+`
+
+type ListUnreadNotificationsSinceParams struct {
+	UserID  string    `json:"user_id"`
+	Created time.Time `json:"created"`
+}
+
+func (q *Queries) ListUnreadNotificationsSince(ctx context.Context, arg ListUnreadNotificationsSinceParams) ([]Notification, error) {
+	rows, err := q.db.Query(ctx, listUnreadNotificationsSince, arg.UserID, arg.Created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Notification{}
+	for rows.Next() {
+		var i Notification
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.Title,
+			&i.Body,
+			&i.Url,
+			&i.ActorID,
+			&i.ReferenceID,
+			&i.Read,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersWithDigestPreference = `-- name: ListUsersWithDigestPreference :many
+SELECT DISTINCT user_id FROM notification_preferences
+WHERE email = $1
+`
+
+func (q *Queries) ListUsersWithDigestPreference(ctx context.Context, email string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listUsersWithDigestPreference, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAllNotificationsRead = `-- name: MarkAllNotificationsRead :exec
 UPDATE notifications SET read = true WHERE user_id = $1 AND read = false
 `

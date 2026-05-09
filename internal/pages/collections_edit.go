@@ -228,10 +228,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 				return e.String(http.StatusInternalServerError, "failed to encode banner image")
 			}
 			_ = bw.Flush()
-			imageID, err := generateImageID()
-			if err != nil {
-				return e.String(http.StatusInternalServerError, "failed to generate image ID")
-			}
+			imageID := generateImageID()
 			filename := "banner.webp"
 			if err := storageSvc.UploadBytes(ctx, "images", imageID, filename, out.Bytes(), "image/webp"); err != nil {
 				return e.String(http.StatusInternalServerError, "failed to upload banner")

@@ -1202,11 +1202,8 @@ func allCreatemodVersionsFromStore(appStore *store.Store) []models.CreatemodVers
 	return result
 }
 
-// generateSchematicID generates a random 15-character hex ID matching the existing ID format.
 func generateSchematicID() string {
-	b := make([]byte, 8)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)[:15]
+	return randomHex(8)[:15]
 }
 
 func allMinecraftVersionsFromStore(appStore *store.Store) []models.MinecraftVersion {

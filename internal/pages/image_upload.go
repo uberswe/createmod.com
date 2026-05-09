@@ -3,8 +3,6 @@ package pages
 import (
 	"bufio"
 	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -29,13 +27,8 @@ var allowedImageTypes = map[string]string{
 	".gif":  "image/gif",
 }
 
-// generateImageID returns a random 15-character hex string for use as a record ID.
-func generateImageID() (string, error) {
-	buf := make([]byte, 8) // 16 hex chars, we trim to 15
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf)[:15], nil
+func generateImageID() string {
+	return randomHex(8)[:15]
 }
 
 // ImageUploadHandler handles POST /api/images/upload for authenticated users.
@@ -100,10 +93,7 @@ func ImageUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		}
 
 		// Generate unique ID
-		imageID, err := generateImageID()
-		if err != nil {
-			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to generate ID"})
-		}
+		imageID := generateImageID()
 
 		// Upload to S3
 		if err := storageSvc.UploadBytes(e.Request.Context(), "images", imageID, filename, data, contentType); err != nil {

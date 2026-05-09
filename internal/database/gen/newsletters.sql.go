@@ -293,6 +293,41 @@ func (q *Queries) ListActiveSearchAlerts(ctx context.Context, limit int32) ([]Se
 	return items, nil
 }
 
+const listAllSectionSubscriptions = `-- name: ListAllSectionSubscriptions :many
+SELECT id, user_id, subscription_type, target_id, frequency, unsubscribe_token, created, updated FROM section_subscriptions
+WHERE frequency != 'off'
+ORDER BY subscription_type, target_id
+`
+
+func (q *Queries) ListAllSectionSubscriptions(ctx context.Context) ([]SectionSubscription, error) {
+	rows, err := q.db.Query(ctx, listAllSectionSubscriptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SectionSubscription{}
+	for rows.Next() {
+		var i SectionSubscription
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SubscriptionType,
+			&i.TargetID,
+			&i.Frequency,
+			&i.UnsubscribeToken,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listConfirmedSubscribers = `-- name: ListConfirmedSubscribers :many
 SELECT id, email, user_id, type, frequency, confirmed, confirm_token, unsubscribe_token, created, updated FROM newsletter_subscribers
 WHERE type = $1 AND confirmed = true
@@ -553,6 +588,15 @@ WHERE unsubscribe_token = $1
 
 func (q *Queries) UnsubscribeSectionSubscription(ctx context.Context, unsubscribeToken string) error {
 	_, err := q.db.Exec(ctx, unsubscribeSectionSubscription, unsubscribeToken)
+	return err
+}
+
+const updateNewsletterIssueSentAt = `-- name: UpdateNewsletterIssueSentAt :exec
+UPDATE newsletter_issues SET sent_at = NOW() WHERE id = $1
+`
+
+func (q *Queries) UpdateNewsletterIssueSentAt(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, updateNewsletterIssueSentAt, id)
 	return err
 }
 

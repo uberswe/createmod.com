@@ -156,40 +156,47 @@
 
                     <script>
                     (function() {
-                        var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
-                        var fg = isDark ? '#a0aec0' : '#616876';
-                        var grid = isDark ? '#3a3f4b' : '#e0e0e0';
-                        var commonOpts = {
-                            chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
-                            dataLabels: { enabled: false },
-                            stroke: { curve: 'smooth', width: 2 },
-                            grid: { borderColor: grid, strokeDashArray: 4 },
-                            xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
-                            yaxis: { min: 0, labels: { style: { colors: fg } } },
-                            tooltip: { theme: isDark ? 'dark' : 'light' }
-                        };
-                        function makeChart(elId, data, name, color) {
-                            var el = document.getElementById(elId);
-                            if (!el) return;
-                            new ApexCharts(el, Object.assign({}, commonOpts, {
-                                series: [{ name: name, data: data }],
-                                colors: [color]
-                            })).render();
-                        }
-                        makeChart('chart-search-volume', {{ .SearchVolumeJSON }}, 'Searches', '#ed8936');
-
-                        var trendEl = document.getElementById('chart-trending-terms');
-                        if (trendEl) {
-                            var trendData = {{ .TrendingSearchTermsJSON }};
-                            if (trendData && trendData.length > 0) {
-                                new ApexCharts(trendEl, Object.assign({}, commonOpts, {
-                                    chart: { type: 'line', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
-                                    series: trendData,
-                                    stroke: { curve: 'smooth', width: 2 },
-                                    legend: { show: true, position: 'bottom', labels: { colors: fg } }
-                                })).render();
+                        function initSearchCharts() {
+                            if (typeof ApexCharts === 'undefined') return;
+                            ['chart-search-volume', 'chart-trending-terms'].forEach(function(id) {
+                                var el = document.getElementById(id);
+                                if (el && el._apexChart) { el._apexChart.destroy(); el._apexChart = null; }
+                            });
+                            var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+                            var fg = isDark ? '#a0aec0' : '#616876';
+                            var grid = isDark ? '#3a3f4b' : '#e0e0e0';
+                            var commonOpts = {
+                                chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+                                dataLabels: { enabled: false },
+                                stroke: { curve: 'smooth', width: 2 },
+                                grid: { borderColor: grid, strokeDashArray: 4 },
+                                xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+                                yaxis: { min: 0, labels: { style: { colors: fg } } },
+                                tooltip: { theme: isDark ? 'dark' : 'light' }
+                            };
+                            function renderChart(el, opts) { var c = new ApexCharts(el, opts); el._apexChart = c; c.render(); }
+                            var svEl = document.getElementById('chart-search-volume');
+                            if (svEl) {
+                                renderChart(svEl, Object.assign({}, commonOpts, {
+                                    series: [{ name: 'Searches', data: {{ .SearchVolumeJSON }} }],
+                                    colors: ['#ed8936']
+                                }));
+                            }
+                            var trendEl = document.getElementById('chart-trending-terms');
+                            if (trendEl) {
+                                var trendData = {{ .TrendingSearchTermsJSON }};
+                                if (trendData && trendData.length > 0) {
+                                    renderChart(trendEl, Object.assign({}, commonOpts, {
+                                        chart: { type: 'line', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+                                        series: trendData,
+                                        stroke: { curve: 'smooth', width: 2 },
+                                        legend: { show: true, position: 'bottom', labels: { colors: fg } }
+                                    }));
+                                }
                             }
                         }
+                        initSearchCharts();
+                        document.addEventListener('htmx:afterSettle', initSearchCharts);
                     })();
                     </script>
                     {{end}}
@@ -203,28 +210,47 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
 <script>
 (function() {
-    var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
-    var fg = isDark ? '#a0aec0' : '#616876';
-    var grid = isDark ? '#3a3f4b' : '#e0e0e0';
-    var commonOpts = {
-        chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
-        dataLabels: { enabled: false },
-        stroke: { curve: 'smooth', width: 2 },
-        grid: { borderColor: grid, strokeDashArray: 4 },
-        xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
-        yaxis: { min: 0, labels: { style: { colors: fg } } },
-        tooltip: { theme: isDark ? 'dark' : 'light' }
-    };
-    function makeChart(elId, data, name, color) {
-        var el = document.getElementById(elId);
-        if (!el) return;
-        new ApexCharts(el, Object.assign({}, commonOpts, {
-            series: [{ name: name, data: data }],
-            colors: [color]
-        })).render();
+    function initSiteCharts() {
+        if (typeof ApexCharts === 'undefined') return;
+        ['chart-views', 'chart-downloads'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el._apexChart) { el._apexChart.destroy(); el._apexChart = null; }
+        });
+        var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+        var fg = isDark ? '#a0aec0' : '#616876';
+        var grid = isDark ? '#3a3f4b' : '#e0e0e0';
+        var commonOpts = {
+            chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 2 },
+            grid: { borderColor: grid, strokeDashArray: 4 },
+            xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+            yaxis: { min: 0, labels: { style: { colors: fg } } },
+            tooltip: { theme: isDark ? 'dark' : 'light' }
+        };
+        function renderChart(el, opts) { var c = new ApexCharts(el, opts); el._apexChart = c; c.render(); }
+        var viewsEl = document.getElementById('chart-views');
+        if (viewsEl) {
+            renderChart(viewsEl, Object.assign({}, commonOpts, {
+                series: [{ name: 'Views', data: {{ .HourlyViewsJSON }} }],
+                colors: ['#4299e1']
+            }));
+        }
+        var dlEl = document.getElementById('chart-downloads');
+        if (dlEl) {
+            renderChart(dlEl, Object.assign({}, commonOpts, {
+                series: [{ name: 'Downloads', data: {{ .HourlyDownloadsJSON }} }],
+                colors: ['#48bb78']
+            }));
+        }
     }
-    makeChart('chart-views', {{ .HourlyViewsJSON }}, 'Views', '#4299e1');
-    makeChart('chart-downloads', {{ .HourlyDownloadsJSON }}, 'Downloads', '#48bb78');
+    if (typeof ApexCharts !== 'undefined') {
+        initSiteCharts();
+    } else {
+        var s = document.querySelector('script[src*="apexcharts"]');
+        if (s) { s.onload = initSiteCharts; }
+    }
+    document.addEventListener('htmx:afterSettle', initSiteCharts);
 })();
 </script>
 {{template "foot.html" .}}

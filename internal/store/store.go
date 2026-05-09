@@ -598,6 +598,12 @@ type MonthlyDataPoint struct {
 	Views     int64
 }
 
+// ZeroResultQuery represents a search query that returned zero results.
+type ZeroResultQuery struct {
+	Query           string
+	ZeroResultCount int64
+}
+
 // SearchEntry represents a recorded search query.
 type SearchEntry struct {
 	ID              string
@@ -1001,6 +1007,7 @@ type AuthStore interface {
 	ListByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	DeleteByProvider(ctx context.Context, userID, provider string) error
 	GetByUserAndProvider(ctx context.Context, userID, provider string) (*ExternalAuth, error)
+	ListByProvider(ctx context.Context, provider string) ([]ExternalAuth, error)
 }
 
 // ReportStore handles content reports.
@@ -1044,6 +1051,8 @@ type SearchTrackingStore interface {
 	UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error
 	ListCleanSearchTerms(ctx context.Context, terms []string) ([]string, error)
 	ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error)
+	ListTopZeroResultQueries(ctx context.Context, limit int) ([]ZeroResultQuery, error)
+	ListTopSuccessfulQueries(ctx context.Context, limit int) ([]string, error)
 }
 
 // OutgoingClickStore handles external link click tracking.
@@ -1356,6 +1365,8 @@ type NotificationStore interface {
 	GetPreferences(ctx context.Context, userID string) ([]NotificationPreference, error)
 	UpsertPreference(ctx context.Context, pref *NotificationPreference) error
 	GetPreference(ctx context.Context, userID, category string) (*NotificationPreference, error)
+	ListUsersWithDigestPreference(ctx context.Context, frequency string) ([]string, error)
+	ListUnreadSince(ctx context.Context, userID string, since time.Time) ([]Notification, error)
 }
 
 // NewsletterStore handles newsletter subscriptions and issues.
@@ -1369,6 +1380,7 @@ type NewsletterStore interface {
 	CreateIssue(ctx context.Context, issue *NewsletterIssue) error
 	GetIssueBySlug(ctx context.Context, slug string) (*NewsletterIssue, error)
 	ListIssues(ctx context.Context, issueType string, limit, offset int) ([]NewsletterIssue, error)
+	UpdateIssueSentAt(ctx context.Context, id string) error
 }
 
 // SearchAlertStore handles saved search alerts.
@@ -1389,6 +1401,7 @@ type SectionSubscriptionStore interface {
 	ListByTarget(ctx context.Context, subscriptionType, targetID string) ([]SectionSubscription, error)
 	Delete(ctx context.Context, id, userID string) error
 	Unsubscribe(ctx context.Context, unsubscribeToken string) error
+	ListAll(ctx context.Context) ([]SectionSubscription, error)
 }
 
 // ZeroResultStore handles zero-result search suggestions.

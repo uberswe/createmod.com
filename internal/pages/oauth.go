@@ -52,6 +52,9 @@ func GoogleOAuthEnabled() bool { return oauthEnabled["google"] }
 // MicrosoftOAuthEnabled returns true if the Microsoft OAuth provider is configured.
 func MicrosoftOAuthEnabled() bool { return oauthEnabled["microsoft"] }
 
+// SteamOAuthEnabled returns true if the Steam provider is configured.
+func SteamOAuthEnabled() bool { return oauthEnabled["steam"] }
+
 // oauthLoginErrorRedirect sends the user back to /login with an error code so
 // the login page can surface a helpful message instead of failing silently.
 func oauthLoginErrorRedirect(e *server.RequestEvent, reason string) error {
@@ -265,6 +268,95 @@ func oauthCreateSession(e *server.RequestEvent, appStore *store.Store, sessStore
 	session.SetCookie(e.Response, token, secure)
 
 	return e.Redirect(http.StatusFound, LangRedirectURL(e, "/"))
+}
+
+// SteamRedirectHandler redirects to the Steam OpenID login page.
+func SteamRedirectHandler(provider *auth.SteamProvider) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if provider == nil {
+			return oauthLoginErrorRedirect(e, "not_configured")
+		}
+		return e.Redirect(http.StatusFound, provider.AuthURL())
+	}
+}
+
+// SteamCallbackHandler handles the Steam OpenID callback.
+func SteamCallbackHandler(provider *auth.SteamProvider, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if provider == nil {
+			return oauthLoginErrorRedirect(e, "not_configured")
+		}
+
+		ctx := e.Request.Context()
+		query := e.Request.URL.Query()
+
+		steamID, err := provider.ValidateCallback(ctx, query)
+		if err != nil {
+			slog.Error("Steam OpenID validation failed", "error", err)
+			return oauthLoginErrorRedirect(e, "provider_error")
+		}
+
+		oauthUser, err := provider.FetchUser(ctx, steamID)
+		if err != nil {
+			slog.Error("Steam user fetch failed", "error", err)
+			return oauthLoginErrorRedirect(e, "user_fetch")
+		}
+
+		var currentUserID string
+		if current := session.UserFromContext(ctx); current != nil {
+			currentUserID = current.ID
+		}
+
+		extAuth, err := appStore.Auth.GetByProvider(ctx, "steam", oauthUser.ID)
+
+		if currentUserID != "" {
+			if err == nil && extAuth != nil {
+				if extAuth.UserID == currentUserID {
+					return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings"))
+				}
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings?oauth_error=already_linked"))
+			}
+			if createErr := appStore.Auth.Create(ctx, &store.ExternalAuth{
+				UserID:     currentUserID,
+				Provider:   "steam",
+				ProviderID: oauthUser.ID,
+			}); createErr != nil {
+				slog.Error("Steam auth link creation failed", "error", createErr)
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings?oauth_error=link_failed"))
+			}
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings"))
+		}
+
+		if err == nil && extAuth != nil {
+			return oauthCreateSession(e, appStore, sessStore, extAuth.UserID)
+		}
+
+		username := sanitizeUsername(oauthUser.Username)
+		if username == "" {
+			username = fmt.Sprintf("steam_%s", oauthUser.ID)
+		}
+		username = ensureUniqueUsername(ctx, appStore, username)
+
+		newUser := &store.User{
+			Username: username,
+			Avatar:   oauthUser.Avatar,
+			Verified: true,
+		}
+		if err := appStore.Users.CreateUser(ctx, newUser); err != nil {
+			slog.Error("Steam user creation failed", "error", err)
+			return oauthLoginErrorRedirect(e, "user_create")
+		}
+
+		if err := appStore.Auth.Create(ctx, &store.ExternalAuth{
+			UserID:     newUser.ID,
+			Provider:   "steam",
+			ProviderID: oauthUser.ID,
+		}); err != nil {
+			slog.Error("Steam auth link creation failed", "error", err)
+		}
+
+		return oauthCreateSession(e, appStore, sessStore, newUser.ID)
+	}
 }
 
 // sanitizeUsername removes non-alphanumeric characters and lowercases.

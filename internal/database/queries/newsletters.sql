@@ -98,3 +98,11 @@ DELETE FROM section_subscriptions WHERE id = $1 AND user_id = $2;
 -- name: UnsubscribeSectionSubscription :exec
 UPDATE section_subscriptions SET frequency = 'off', updated = NOW()
 WHERE unsubscribe_token = $1;
+
+-- name: UpdateNewsletterIssueSentAt :exec
+UPDATE newsletter_issues SET sent_at = NOW() WHERE id = $1;
+
+-- name: ListAllSectionSubscriptions :many
+SELECT * FROM section_subscriptions
+WHERE frequency != 'off'
+ORDER BY subscription_type, target_id;

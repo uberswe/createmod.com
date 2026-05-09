@@ -67,6 +67,7 @@ type Config struct {
 	GoogleClientSecret  string
 	MicrosoftClientID   string
 	MicrosoftClientSecret string
+	SteamAPIKey         string
 	BaseURL             string
 	MaintenanceMode     *atomic.Bool // runtime-togglable maintenance flag
 }
@@ -97,6 +98,7 @@ type Server struct {
 	redditOAuth          *auth.OAuthProvider
 	googleOAuth          *auth.OAuthProvider
 	microsoftOAuth       *auth.OAuthProvider
+	steamAuth            *auth.SteamProvider
 	meiliClient          meilisearch.ServiceManager
 }
 
@@ -244,6 +246,12 @@ func New(conf Config) *Server {
 			conf.BaseURL+"/auth/microsoft/callback",
 		)
 	}
+	if conf.SteamAPIKey != "" {
+		srv.steamAuth = auth.NewSteamProvider(
+			conf.SteamAPIKey,
+			conf.BaseURL+"/auth/steam/callback",
+		)
+	}
 
 	return srv
 }
@@ -344,6 +352,7 @@ func (s *Server) Start() {
 		RedditOAuth:        s.redditOAuth,
 		GoogleOAuth:        s.googleOAuth,
 		MicrosoftOAuth:     s.microsoftOAuth,
+		SteamAuth:          s.steamAuth,
 		MailService:        s.mailService,
 		JobWorker:          s.jobWorker,
 		MaintenanceMode:    s.conf.MaintenanceMode,

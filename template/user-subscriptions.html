@@ -1,83 +1,84 @@
 {{ template "head.html" . }}
-{{ template "sidebar.html" . }}
-{{ template "header.html" . }}
-<div class="page-wrapper">
-    <div class="page-body">
-        <div class="container-xl">
-            <div class="row">
-                <div class="col-12 col-md-3 mb-3">
-                    {{ template "settings_nav.html" . }}
-                </div>
-                <div class="col-12 col-md-9">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h3 class="card-title">{{ T .Language "Search Alerts" }}</h3>
-                        </div>
-                        <div class="card-body">
-                            {{ if .SearchAlerts }}
-                            <div class="list-group list-group-flush">
-                                {{ range .SearchAlerts }}
-                                <div class="list-group-item" id="alert-{{ .ID }}">
-                                    <div class="row align-items-center">
-                                        <div class="col">
-                                            <strong>{{ .Query }}</strong>
-                                            <span class="badge bg-secondary ms-2">{{ .Frequency }}</span>
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="row row-cards">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="row g-0">
+                                {{ template "settings_nav.html" . }}
+                                <div class="col-12 col-md-9 d-flex flex-column">
+                                    <div class="card-body">
+                                        <h2 class="mb-4">{{ T .Language "Subscriptions" }}</h2>
+
+                                        <h3 class="card-title">{{ T .Language "Search Alerts" }}</h3>
+                                        {{ if .SearchAlerts }}
+                                        <div class="list-group list-group-flush mb-3">
+                                            {{ range .SearchAlerts }}
+                                            <div class="list-group-item" id="alert-{{ .ID }}">
+                                                <div class="row align-items-center">
+                                                    <div class="col">
+                                                        <strong>{{ .Query }}</strong>
+                                                        <span class="badge bg-secondary ms-2">{{ .Frequency }}</span>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <button class="btn btn-sm btn-ghost-danger"
+                                                                hx-delete="/settings/subscriptions/alerts/{{ .ID }}"
+                                                                hx-target="#alert-{{ .ID }}"
+                                                                hx-swap="outerHTML"
+                                                                hx-confirm="{{ T $.Language "Are you sure?" }}">
+                                                            {{ T $.Language "Remove" }}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {{ end }}
                                         </div>
-                                        <div class="col-auto">
-                                            <button class="btn btn-sm btn-ghost-danger"
-                                                    hx-delete="/settings/subscriptions/alerts/{{ .ID }}"
-                                                    hx-target="#alert-{{ .ID }}"
-                                                    hx-swap="outerHTML"
-                                                    hx-confirm="{{ T $.Language "Are you sure?" }}">
-                                                {{ T $.Language "Remove" }}
-                                            </button>
+                                        {{ else }}
+                                        <p class="text-secondary">{{ T .Language "No search alerts. Save a search from the search page to get notified about new results." }}</p>
+                                        {{ end }}
+
+                                        <hr class="my-4">
+
+                                        <h3 class="card-title">{{ T .Language "Section Subscriptions" }}</h3>
+                                        {{ if .SectionSubscriptions }}
+                                        <div class="list-group list-group-flush">
+                                            {{ range .SectionSubscriptions }}
+                                            <div class="list-group-item" id="sub-{{ .ID }}">
+                                                <div class="row align-items-center">
+                                                    <div class="col">
+                                                        <strong>{{ .SubscriptionType }}</strong>
+                                                        {{ if .TargetID }}<span class="text-secondary ms-2">{{ .TargetID }}</span>{{ end }}
+                                                        <span class="badge bg-secondary ms-2">{{ .Frequency }}</span>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <button class="btn btn-sm btn-ghost-danger"
+                                                                hx-delete="/settings/subscriptions/sections/{{ .ID }}"
+                                                                hx-target="#sub-{{ .ID }}"
+                                                                hx-swap="outerHTML"
+                                                                hx-confirm="{{ T $.Language "Are you sure?" }}">
+                                                            {{ T $.Language "Remove" }}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {{ end }}
                                         </div>
+                                        {{ else }}
+                                        <p class="text-secondary">{{ T .Language "No section subscriptions." }}</p>
+                                        {{ end }}
                                     </div>
                                 </div>
-                                {{ end }}
                             </div>
-                            {{ else }}
-                            <p class="text-secondary">{{ T .Language "No search alerts. Save a search from the search page to get notified about new results." }}</p>
-                            {{ end }}
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">{{ T .Language "Section Subscriptions" }}</h3>
-                        </div>
-                        <div class="card-body">
-                            {{ if .SectionSubscriptions }}
-                            <div class="list-group list-group-flush">
-                                {{ range .SectionSubscriptions }}
-                                <div class="list-group-item" id="sub-{{ .ID }}">
-                                    <div class="row align-items-center">
-                                        <div class="col">
-                                            <strong>{{ .SubscriptionType }}</strong>
-                                            {{ if .TargetID }}<span class="text-secondary ms-2">{{ .TargetID }}</span>{{ end }}
-                                            <span class="badge bg-secondary ms-2">{{ .Frequency }}</span>
-                                        </div>
-                                        <div class="col-auto">
-                                            <button class="btn btn-sm btn-ghost-danger"
-                                                    hx-delete="/settings/subscriptions/sections/{{ .ID }}"
-                                                    hx-target="#sub-{{ .ID }}"
-                                                    hx-swap="outerHTML"
-                                                    hx-confirm="{{ T $.Language "Are you sure?" }}">
-                                                {{ T $.Language "Remove" }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                {{ end }}
-                            </div>
-                            {{ else }}
-                            <p class="text-secondary">{{ T .Language "No section subscriptions." }}</p>
-                            {{ end }}
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
+        {{template "footer.html" .}}
     </div>
 </div>
-{{ template "footer.html" . }}
-{{ template "foot.html" . }}
+{{template "foot.html" .}}
