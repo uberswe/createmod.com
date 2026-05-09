@@ -21,7 +21,7 @@
                class="list-group-item list-group-item-action d-flex align-items-center{{ if eq .SettingsPage "api-keys" }} active{{ end }}">{{ T .Language "API Keys" }}</a>
             <a href="/settings/webhooks"
                class="list-group-item list-group-item-action d-flex align-items-center{{ if eq .SettingsPage "webhooks" }} active{{ end }}">{{ T .Language "Webhooks" }}</a>
-            <a href="/settings/statistics" hx-boost="false"
+            <a href="/settings/statistics"
                class="list-group-item list-group-item-action d-flex align-items-center{{ if eq .SettingsPage "statistics" }} active{{ end }}">{{ T .Language "Statistics" }}</a>
             <a href="/settings/blacklist"
                class="list-group-item list-group-item-action d-flex align-items-center{{ if eq .SettingsPage "blacklist" }} active{{ end }}">{{ T .Language "Blacklist Request" }}</a>

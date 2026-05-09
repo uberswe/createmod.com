@@ -167,7 +167,30 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
 <script>
 (function(){
+    var chartIds = [
+        'chart-monthly-views', 'chart-monthly-downloads',
+        'chart-hourly-views', 'chart-hourly-downloads',
+        'chart-hourly-video-plays', 'chart-hourly-yt-clicks',
+        'chart-hourly-time-on-page', 'chart-hourly-layer-views'
+    ];
+
+    function destroyExisting() {
+        chartIds.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el._apexChart) { el._apexChart.destroy(); el._apexChart = null; }
+        });
+    }
+
+    function renderChart(el, opts) {
+        var c = new ApexCharts(el, opts);
+        el._apexChart = c;
+        c.render();
+    }
+
     function initCharts() {
+        if (typeof ApexCharts === 'undefined') return;
+        destroyExisting();
+
         var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
         var labelColor = isDark ? '#a0aec0' : '#616876';
         var gridColor = isDark ? '#3a3f4b' : '#e0e0e0';
@@ -182,39 +205,37 @@
             tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: function(v){ return v.toLocaleString(); } } }
         };
 
-        // Monthly charts
         var viewLabels = [{{ .ViewLabelsJSON }}];
         var viewValues = [{{ .ViewValuesJSON }}];
         var dlLabels = [{{ .DownloadLabelsJSON }}];
         var dlValues = [{{ .DownloadValuesJSON }}];
 
-        var viewEl = document.querySelector('#chart-monthly-views');
+        var viewEl = document.getElementById('chart-monthly-views');
         if (viewEl) {
-            new ApexCharts(viewEl, Object.assign({}, commonOpts, {
+            renderChart(viewEl, Object.assign({}, commonOpts, {
                 series: [{ name: 'Views', data: viewValues }],
                 xaxis: { categories: viewLabels, type: 'category', labels: { style: { colors: labelColor } } },
                 colors: ['#206bc4']
-            })).render();
+            }));
         }
-        var dlEl = document.querySelector('#chart-monthly-downloads');
+        var dlEl = document.getElementById('chart-monthly-downloads');
         if (dlEl) {
-            new ApexCharts(dlEl, Object.assign({}, commonOpts, {
+            renderChart(dlEl, Object.assign({}, commonOpts, {
                 series: [{ name: 'Downloads', data: dlValues }],
                 xaxis: { categories: dlLabels, type: 'category', labels: { style: { colors: labelColor } } },
                 colors: ['#2fb344']
-            })).render();
+            }));
         }
 
-        // Hourly charts – reuse the same config as the monthly charts above
         function makeHourlyChart(elId, data, name, color) {
             var el = document.getElementById(elId);
             if (!el) return;
-            new ApexCharts(el, Object.assign({}, commonOpts, {
+            renderChart(el, Object.assign({}, commonOpts, {
                 chart: Object.assign({}, commonOpts.chart, { height: 200 }),
                 series: [{ name: name, data: data }],
                 xaxis: { type: 'category', labels: { show: false } },
                 colors: [color]
-            })).render();
+            }));
         }
 
         makeHourlyChart('chart-hourly-views', {{ .HourlyViewsJSON }}, 'Views', '#4299e1');
@@ -231,6 +252,7 @@
         var s = document.querySelector('script[src*="apexcharts"]');
         if (s) { s.onload = initCharts; }
     }
+    document.addEventListener('htmx:afterSettle', initCharts);
 })();
 </script>
 {{template "foot.html" .}}
