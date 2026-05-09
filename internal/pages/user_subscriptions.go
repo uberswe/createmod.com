@@ -1,11 +1,13 @@
 package pages
 
 import (
+	"encoding/json"
+	"net/http"
+
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/server"
 	"createmod/internal/store"
-	"net/http"
 )
 
 var userSubscriptionsTemplates = append([]string{
@@ -51,6 +53,85 @@ func UserSubscriptionsHandler(registry *server.Registry, cacheService *cache.Ser
 			return err
 		}
 		return e.HTML(http.StatusOK, html)
+	}
+}
+
+func CreateSearchAlertHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		ctx := e.Request.Context()
+		userID := authenticatedUserID(e)
+
+		var body struct {
+			Query     string          `json:"query"`
+			Filters   json.RawMessage `json:"filters"`
+			Frequency string          `json:"frequency"`
+		}
+		if err := json.NewDecoder(e.Request.Body).Decode(&body); err != nil {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid request body"}
+		}
+		if body.Query == "" {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "query is required"}
+		}
+		if body.Frequency == "" {
+			body.Frequency = "daily"
+		}
+
+		alert := &store.SearchAlert{
+			UserID:           userID,
+			Query:            body.Query,
+			Filters:          body.Filters,
+			Frequency:        body.Frequency,
+			Active:           true,
+			UnsubscribeToken: randomHex(16),
+		}
+		if err := appStore.SearchAlerts.Create(ctx, alert); err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to create alert"}
+		}
+
+		return e.JSON(http.StatusCreated, map[string]string{"id": alert.ID})
+	}
+}
+
+func CreateSectionSubscriptionHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		ctx := e.Request.Context()
+		userID := authenticatedUserID(e)
+
+		var body struct {
+			SubscriptionType string `json:"subscription_type"`
+			TargetID         string `json:"target_id"`
+			Frequency        string `json:"frequency"`
+		}
+		if err := json.NewDecoder(e.Request.Body).Decode(&body); err != nil {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid request body"}
+		}
+		if body.SubscriptionType == "" || body.TargetID == "" {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "subscription_type and target_id are required"}
+		}
+		if body.Frequency == "" {
+			body.Frequency = "daily"
+		}
+
+		sub := &store.SectionSubscription{
+			UserID:           userID,
+			SubscriptionType: body.SubscriptionType,
+			TargetID:         body.TargetID,
+			Frequency:        body.Frequency,
+			UnsubscribeToken: randomHex(16),
+		}
+		if err := appStore.SectionSubscriptions.Create(ctx, sub); err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to create subscription"}
+		}
+
+		return e.JSON(http.StatusCreated, map[string]string{"id": sub.ID})
 	}
 }
 

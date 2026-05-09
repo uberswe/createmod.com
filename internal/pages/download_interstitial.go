@@ -5,8 +5,6 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"crypto/rand"
-	"encoding/hex"
 	"net/http"
 	"net/url"
 	"time"
@@ -27,15 +25,6 @@ type DownloadInterstitialData struct {
 	FileID      string
 	Paid        bool
 	ExternalURL string
-}
-
-func randomHex(n int) string {
-	if n <= 0 {
-		n = 16
-	}
-	b := make([]byte, n)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {

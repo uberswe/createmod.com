@@ -116,6 +116,9 @@ SELECT * FROM external_auths
 WHERE user_id = $1 AND provider = $2
 LIMIT 1;
 
+-- name: ListExternalAuthsByProvider :many
+SELECT * FROM external_auths WHERE provider = $1;
+
 -- name: CreateUserMeta :exec
 INSERT INTO user_meta (id, user_id, key, value)
 VALUES ($1, $2, $3, $4)
@@ -145,6 +148,18 @@ SELECT id, version, created FROM createmod_versions WHERE id = $1;
 -- name: ListTopSearches :many
 SELECT query, search_count, zero_result_count
 FROM search_query_counts
+ORDER BY search_count DESC
+LIMIT $1;
+
+-- name: ListTopZeroResultQueries :many
+SELECT query, zero_result_count FROM search_query_counts
+WHERE zero_result_count > 0
+ORDER BY zero_result_count DESC
+LIMIT $1;
+
+-- name: ListTopSuccessfulQueries :many
+SELECT query FROM search_query_counts
+WHERE search_count > zero_result_count
 ORDER BY search_count DESC
 LIMIT $1;
 

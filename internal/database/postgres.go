@@ -2875,6 +2875,18 @@ func (as *AuthStoreImpl) GetByUserAndProvider(ctx context.Context, userID, provi
 	return &ea, nil
 }
 
+func (as *AuthStoreImpl) ListByProvider(ctx context.Context, provider string) ([]store.ExternalAuth, error) {
+	rows, err := as.q.ListExternalAuthsByProvider(ctx, provider)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.ExternalAuth, len(rows))
+	for i, r := range rows {
+		result[i] = externalAuthFromDB(r)
+	}
+	return result, nil
+}
+
 // ReportStoreImpl implements store.ReportStore.
 type ReportStoreImpl struct{ q *db.Queries }
 
@@ -3235,6 +3247,22 @@ func (st *SearchTrackingStoreImpl) ListUncheckedSearchTerms(ctx context.Context,
 		}
 	}
 	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) ListTopZeroResultQueries(ctx context.Context, limit int) ([]store.ZeroResultQuery, error) {
+	rows, err := st.q.ListTopZeroResultQueries(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.ZeroResultQuery, len(rows))
+	for i, r := range rows {
+		result[i] = store.ZeroResultQuery{Query: r.Query, ZeroResultCount: r.ZeroResultCount}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) ListTopSuccessfulQueries(ctx context.Context, limit int) ([]string, error) {
+	return st.q.ListTopSuccessfulQueries(ctx, int32(limit))
 }
 
 // OutgoingClickStoreImpl implements store.OutgoingClickStore.
@@ -4834,6 +4862,25 @@ func (s *NotificationStoreImpl) GetPreference(ctx context.Context, userID, categ
 	return &p, nil
 }
 
+func (s *NotificationStoreImpl) ListUsersWithDigestPreference(ctx context.Context, frequency string) ([]string, error) {
+	return s.q.ListUsersWithDigestPreference(ctx, frequency)
+}
+
+func (s *NotificationStoreImpl) ListUnreadSince(ctx context.Context, userID string, since time.Time) ([]store.Notification, error) {
+	rows, err := s.q.ListUnreadNotificationsSince(ctx, db.ListUnreadNotificationsSinceParams{
+		UserID:  userID,
+		Created: since,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Notification, len(rows))
+	for i, r := range rows {
+		result[i] = notificationFromDB(r)
+	}
+	return result, nil
+}
+
 // --------------------------------------------------------------------------
 // Newsletter Store Implementation
 // --------------------------------------------------------------------------
@@ -4971,6 +5018,10 @@ func (s *NewsletterStoreImpl) ListIssues(ctx context.Context, issueType string, 
 		result[i] = newsletterIssueFromDB(r)
 	}
 	return result, nil
+}
+
+func (s *NewsletterStoreImpl) UpdateIssueSentAt(ctx context.Context, id string) error {
+	return s.q.UpdateNewsletterIssueSentAt(ctx, id)
 }
 
 // --------------------------------------------------------------------------
@@ -5127,6 +5178,18 @@ func (s *SectionSubscriptionStoreImpl) Delete(ctx context.Context, id, userID st
 
 func (s *SectionSubscriptionStoreImpl) Unsubscribe(ctx context.Context, unsubscribeToken string) error {
 	return s.q.UnsubscribeSectionSubscription(ctx, unsubscribeToken)
+}
+
+func (s *SectionSubscriptionStoreImpl) ListAll(ctx context.Context) ([]store.SectionSubscription, error) {
+	rows, err := s.q.ListAllSectionSubscriptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SectionSubscription, len(rows))
+	for i, r := range rows {
+		result[i] = sectionSubscriptionFromDB(r)
+	}
+	return result, nil
 }
 
 // --------------------------------------------------------------------------

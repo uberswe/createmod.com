@@ -7,8 +7,6 @@ import (
 	"createmod/internal/server"
 	"createmod/internal/storage"
 	"createmod/internal/store"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -310,11 +308,8 @@ func ModifyPreviewFileHandler(storageService *storage.Service) func(e *server.Re
 	}
 }
 
-// generateTempID generates a short random hex ID for temp file naming.
 func generateTempID() string {
-	b := make([]byte, 8)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
+	return randomHex(8)
 }
 
 // CreateVariationHandler handles POST /api/schematics/{id}/variations.

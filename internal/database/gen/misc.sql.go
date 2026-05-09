@@ -714,6 +714,43 @@ func (q *Queries) ListCleanSearchTerms(ctx context.Context, dollar_1 []string) (
 	return items, nil
 }
 
+const listExternalAuthsByProvider = `-- name: ListExternalAuthsByProvider :many
+SELECT id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata FROM external_auths WHERE provider = $1
+`
+
+func (q *Queries) ListExternalAuthsByProvider(ctx context.Context, provider string) ([]ExternalAuth, error) {
+	rows, err := q.db.Query(ctx, listExternalAuthsByProvider, provider)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExternalAuth{}
+	for rows.Next() {
+		var i ExternalAuth
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Provider,
+			&i.ProviderID,
+			&i.Created,
+			&i.Updated,
+			&i.AccessTokenEncrypted,
+			&i.RefreshTokenEncrypted,
+			&i.TokenExpiry,
+			&i.Username,
+			&i.AvatarUrl,
+			&i.Metadata,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExternalAuthsByUser = `-- name: ListExternalAuthsByUser :many
 SELECT id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata FROM external_auths WHERE user_id = $1
 `
@@ -1075,6 +1112,65 @@ func (q *Queries) ListTopSearchesSince(ctx context.Context, arg ListTopSearchesS
 	for rows.Next() {
 		var i ListTopSearchesSinceRow
 		if err := rows.Scan(&i.Query, &i.SearchCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTopSuccessfulQueries = `-- name: ListTopSuccessfulQueries :many
+SELECT query FROM search_query_counts
+WHERE search_count > zero_result_count
+ORDER BY search_count DESC
+LIMIT $1
+`
+
+func (q *Queries) ListTopSuccessfulQueries(ctx context.Context, limit int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, listTopSuccessfulQueries, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var query string
+		if err := rows.Scan(&query); err != nil {
+			return nil, err
+		}
+		items = append(items, query)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTopZeroResultQueries = `-- name: ListTopZeroResultQueries :many
+SELECT query, zero_result_count FROM search_query_counts
+WHERE zero_result_count > 0
+ORDER BY zero_result_count DESC
+LIMIT $1
+`
+
+type ListTopZeroResultQueriesRow struct {
+	Query           string `json:"query"`
+	ZeroResultCount int64  `json:"zero_result_count"`
+}
+
+func (q *Queries) ListTopZeroResultQueries(ctx context.Context, limit int32) ([]ListTopZeroResultQueriesRow, error) {
+	rows, err := q.db.Query(ctx, listTopZeroResultQueries, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTopZeroResultQueriesRow{}
+	for rows.Next() {
+		var i ListTopZeroResultQueriesRow
+		if err := rows.Scan(&i.Query, &i.ZeroResultCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

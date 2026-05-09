@@ -259,6 +259,7 @@ type Querier interface {
 	ListAdminEmails(ctx context.Context) ([]string, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
+	ListAllSectionSubscriptions(ctx context.Context) ([]SectionSubscription, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)
 	ListAllTempUploads(ctx context.Context, arg ListAllTempUploadsParams) ([]ListAllTempUploadsRow, error)
 	ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error)
@@ -277,6 +278,7 @@ type Querier interface {
 	ListConfirmedSubscribers(ctx context.Context, type_ string) ([]NewsletterSubscriber, error)
 	ListConfirmedSubscribersByFrequency(ctx context.Context, arg ListConfirmedSubscribersByFrequencyParams) ([]NewsletterSubscriber, error)
 	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
+	ListExternalAuthsByProvider(ctx context.Context, provider string) ([]ExternalAuth, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	ListFeaturedCollections(ctx context.Context, limit int32) ([]Collection, error)
 	ListFeaturedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
@@ -341,15 +343,19 @@ type Querier interface {
 	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
 	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
 	ListTopSearchesSince(ctx context.Context, arg ListTopSearchesSinceParams) ([]ListTopSearchesSinceRow, error)
+	ListTopSuccessfulQueries(ctx context.Context, limit int32) ([]string, error)
 	ListTopUsersByPoints(ctx context.Context, arg ListTopUsersByPointsParams) ([]User, error)
 	ListTopViewedSchematicsSince(ctx context.Context, arg ListTopViewedSchematicsSinceParams) ([]ListTopViewedSchematicsSinceRow, error)
+	ListTopZeroResultQueries(ctx context.Context, limit int32) ([]ListTopZeroResultQueriesRow, error)
 	ListUncheckedSearchTerms(ctx context.Context, arg ListUncheckedSearchTermsParams) ([]interface{}, error)
+	ListUnreadNotificationsSince(ctx context.Context, arg ListUnreadNotificationsSinceParams) ([]Notification, error)
 	ListUnreadThreadsByCreator(ctx context.Context, authorID *string) ([]ModerationThread, error)
 	ListUserAchievements(ctx context.Context, userID string) ([]Achievement, error)
 	ListUserBadges(ctx context.Context, userID string) ([]ListUserBadgesRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersForAdmin(ctx context.Context, arg ListUsersForAdminParams) ([]User, error)
 	ListUsersForSitemap(ctx context.Context) ([]ListUsersForSitemapRow, error)
+	ListUsersWithDigestPreference(ctx context.Context, email string) ([]string, error)
 	ListVersions(ctx context.Context) ([]CreatemodVersion, error)
 	ListZeroResultSuggestions(ctx context.Context, arg ListZeroResultSuggestionsParams) ([]ZeroResultSuggestion, error)
 	LogAPIKeyUsage(ctx context.Context, arg LogAPIKeyUsageParams) error
@@ -410,6 +416,7 @@ type Querier interface {
 	UpdateFollowingCountIncrement(ctx context.Context, id string) error
 	UpdateGuide(ctx context.Context, arg UpdateGuideParams) (Guide, error)
 	UpdateModerationThreadLastMessage(ctx context.Context, id string) error
+	UpdateNewsletterIssueSentAt(ctx context.Context, id string) error
 	UpdatePasskeySignCount(ctx context.Context, arg UpdatePasskeySignCountParams) error
 	UpdateRedditLinkMetadata(ctx context.Context, arg UpdateRedditLinkMetadataParams) error
 	UpdateReferenceMetadata(ctx context.Context, arg UpdateReferenceMetadataParams) error

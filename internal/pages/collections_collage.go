@@ -131,11 +131,7 @@ func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Stor
 	}
 	_ = bw.Flush()
 
-	imageID, err := generateImageID()
-	if err != nil {
-		slog.Error("collage: failed to generate image ID", "error", err)
-		return
-	}
+	imageID := generateImageID()
 	filename := "collage.webp"
 	if err := storageSvc.UploadBytes(ctx, "images", imageID, filename, out.Bytes(), "image/webp"); err != nil {
 		slog.Error("collage: failed to upload", "error", err)

@@ -310,6 +310,15 @@ func sanitizeFilename(filename string) string {
 	return base + ext
 }
 
+func randomHex(n int) string {
+	if n <= 0 {
+		n = 16
+	}
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
 // sanitizeContentDispositionFilename strips characters that could cause header injection
 // in Content-Disposition filenames.
 func sanitizeContentDispositionFilename(filename string) string {
