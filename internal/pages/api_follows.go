@@ -26,7 +26,7 @@ func FollowHandler(appStore *store.Store) func(e *server.RequestEvent) error {
 			return &server.APIError{Status: http.StatusNotFound, Message: "User not found"}
 		}
 
-		if err := appStore.Follows.Follow(ctx, followerID, followedID); err != nil {
+		if err := appStore.Follows.Follow(ctx, followerID, "user", followedID, "off"); err != nil {
 			return err
 		}
 
@@ -47,7 +47,7 @@ func UnfollowHandler(appStore *store.Store) func(e *server.RequestEvent) error {
 		followerID := authenticatedUserID(e)
 
 		ctx := e.Request.Context()
-		if err := appStore.Follows.Unfollow(ctx, followerID, followedID); err != nil {
+		if err := appStore.Follows.Unfollow(ctx, followerID, "user", followedID); err != nil {
 			return err
 		}
 

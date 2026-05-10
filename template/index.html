@@ -8,7 +8,14 @@
                 <div class="d-flex gap-3">
                     <div class="flex-grow-1 min-width-0">
                         <!-- Trending -->
-                        <h2 class="mb-3"><a href="/search?sort=8" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
+                        <div class="d-flex align-items-center mb-3">
+                            <h2 class="mb-0"><a href="/search?sort=8" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
+                            {{ if .IsAuthenticated }}
+                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="trending" data-target-id="trending" title="{{ T .Language "Follow" }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                            </button>
+                            {{ end }}
+                        </div>
                         <div id="tab-panel-trending" class="tab-panel" data-trending-section="trending">
                             <div class="row g-3">
                                 {{ range .Trending }}
@@ -25,7 +32,14 @@
                         </div>
 
                         <!-- Latest -->
-                        <h2 class="mb-3 mt-4"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} &rarr;</a></h2>
+                        <div class="d-flex align-items-center mb-3 mt-4">
+                            <h2 class="mb-0"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} &rarr;</a></h2>
+                            {{ if .IsAuthenticated }}
+                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="latest" data-target-id="latest" title="{{ T .Language "Follow" }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                            </button>
+                            {{ end }}
+                        </div>
                         <div id="tab-panel-latest" class="tab-panel">
                             <div class="row g-3">
                                 {{ range .Schematics }}
@@ -42,7 +56,14 @@
                         </div>
 
                         <!-- Highest Rated -->
-                        <h2 class="mb-3 mt-4"><a href="/search?sort=4" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
+                        <div class="d-flex align-items-center mb-3 mt-4">
+                            <h2 class="mb-0"><a href="/search?sort=4" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
+                            {{ if .IsAuthenticated }}
+                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="highest_rated" data-target-id="highest_rated" title="{{ T .Language "Follow" }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                            </button>
+                            {{ end }}
+                        </div>
                         <div id="tab-panel-highest" class="tab-panel">
                             <div class="row g-3">
                                 {{ range .HighestRated }}
@@ -61,7 +82,14 @@
                         <!-- Categories -->
                         <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
                         {{ range .CategorySections }}
-                        <h3 class="mb-3 mt-4"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ T $.Language .Category.Name }} &rarr;</a></h3>
+                        <div class="d-flex align-items-center mb-3 mt-4">
+                            <h3 class="mb-0"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ T $.Language .Category.Name }} &rarr;</a></h3>
+                            {{ if $.IsAuthenticated }}
+                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="category" data-target-id="{{ .Category.ID }}" title="{{ T $.Language "Follow" }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                            </button>
+                            {{ end }}
+                        </div>
                         <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel" data-trending-section="cat-{{ .Category.Key }}">
                             <div class="row g-3">
                                 {{ range .Items }}
@@ -86,6 +114,28 @@
     </div>
 </div>
 {{template "foot.html" .}}
+<script>
+(function() {
+  document.querySelectorAll('.follow-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var followType = btn.dataset.followType;
+      var targetId = btn.dataset.targetId;
+      fetch('/api/follows', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({follow_type: followType, target_id: targetId, email_frequency: 'daily'})
+      }).then(function(resp) {
+        if (resp.ok) {
+          btn.classList.remove('btn-ghost-primary');
+          btn.classList.add('btn-primary');
+          btn.disabled = true;
+          btn.title = 'Following';
+        }
+      });
+    });
+  });
+})();
+</script>
 <script>
 (function() {
   document.querySelectorAll('[data-trending-section] a[href*="/schematics/"]').forEach(function(link, i) {

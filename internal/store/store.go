@@ -317,12 +317,16 @@ type SocialLink struct {
 	Updated  time.Time
 }
 
-// UserFollow represents a follow relationship between users.
+// UserFollow represents a unified follow (user, category, feed, search, mod).
 type UserFollow struct {
-	ID         string
-	FollowerID string
-	FollowedID string
-	Created    time.Time
+	ID               string
+	UserID           string
+	FollowType       string // "user","category","latest","trending","highest_rated","search","mod"
+	TargetID         string
+	EmailFrequency   string // "realtime","daily","weekly","off"
+	UnsubscribeToken string
+	LastNotified     *time.Time
+	Created          time.Time
 }
 
 // SchematicVideo represents a video linked to a schematic.
@@ -445,17 +449,6 @@ type SearchAlert struct {
 	Updated          time.Time
 }
 
-// SectionSubscription represents a category/section subscription.
-type SectionSubscription struct {
-	ID               string
-	UserID           string
-	SubscriptionType string
-	TargetID         string
-	Frequency        string
-	UnsubscribeToken string
-	Created          time.Time
-	Updated          time.Time
-}
 
 // ZeroResultSuggestion represents a suggestion for zero-result queries.
 type ZeroResultSuggestion struct {
@@ -936,16 +929,24 @@ type SocialLinkStore interface {
 	ListByPlatform(ctx context.Context, platform string) ([]SocialLink, error)
 }
 
-// FollowStore handles user follow relationships.
+// FollowStore handles unified follow relationships (users, categories, feeds, searches, mods).
 type FollowStore interface {
-	Follow(ctx context.Context, followerID, followedID string) error
-	Unfollow(ctx context.Context, followerID, followedID string) error
-	IsFollowing(ctx context.Context, followerID, followedID string) (bool, error)
-	ListFollowers(ctx context.Context, userID string, limit, offset int) ([]User, error)
-	ListFollowing(ctx context.Context, userID string, limit, offset int) ([]User, error)
+	Follow(ctx context.Context, userID, followType, targetID, emailFrequency string) error
+	Unfollow(ctx context.Context, userID, followType, targetID string) error
+	UpdateFrequency(ctx context.Context, userID, followType, targetID, emailFrequency string) error
+	IsFollowing(ctx context.Context, userID, followType, targetID string) (bool, error)
+	GetFollow(ctx context.Context, userID, followType, targetID string) (*UserFollow, error)
+	ListByUser(ctx context.Context, userID string) ([]UserFollow, error)
+	ListByUserAndType(ctx context.Context, userID, followType string) ([]UserFollow, error)
+	ListByTarget(ctx context.Context, followType, targetID string) ([]UserFollow, error)
+	ListByFrequency(ctx context.Context, emailFrequency string) ([]UserFollow, error)
+	Unsubscribe(ctx context.Context, unsubscribeToken string) error
+	UpdateLastNotified(ctx context.Context, id string) error
+	// User-specific helpers for profile follower/following counts and lists.
+	ListFollowerUsers(ctx context.Context, userID string, limit, offset int) ([]User, error)
+	ListFollowingUsers(ctx context.Context, userID string, limit, offset int) ([]User, error)
 	CountFollowers(ctx context.Context, userID string) (int, error)
-	CountFollowing(ctx context.Context, userID string) (int, error)
-	ListFollowedIDs(ctx context.Context, followerID string) ([]string, error)
+	ListFollowedUserIDs(ctx context.Context, userID string) ([]string, error)
 }
 
 // TranslationStore handles translations for all content types.
@@ -1394,15 +1395,6 @@ type SearchAlertStore interface {
 	UpdateLastNotified(ctx context.Context, id string) error
 }
 
-// SectionSubscriptionStore handles category/section subscriptions.
-type SectionSubscriptionStore interface {
-	Create(ctx context.Context, sub *SectionSubscription) error
-	ListByUser(ctx context.Context, userID string) ([]SectionSubscription, error)
-	ListByTarget(ctx context.Context, subscriptionType, targetID string) ([]SectionSubscription, error)
-	Delete(ctx context.Context, id, userID string) error
-	Unsubscribe(ctx context.Context, unsubscribeToken string) error
-	ListAll(ctx context.Context) ([]SectionSubscription, error)
-}
 
 // ZeroResultStore handles zero-result search suggestions.
 type ZeroResultStore interface {
@@ -1483,7 +1475,6 @@ type Store struct {
 	Notifications        NotificationStore
 	Newsletters          NewsletterStore
 	SearchAlerts         SearchAlertStore
-	SectionSubscriptions SectionSubscriptionStore
 	ZeroResults          ZeroResultStore
 	Security             SecurityStore
 }

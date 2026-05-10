@@ -648,17 +648,6 @@ type SearchTermModeration struct {
 	CheckedAt time.Time `json:"checked_at"`
 }
 
-type SectionSubscription struct {
-	ID               string    `json:"id"`
-	UserID           string    `json:"user_id"`
-	SubscriptionType string    `json:"subscription_type"`
-	TargetID         string    `json:"target_id"`
-	Frequency        string    `json:"frequency"`
-	UnsubscribeToken string    `json:"unsubscribe_token"`
-	Created          time.Time `json:"created"`
-	Updated          time.Time `json:"updated"`
-}
-
 type Session struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
@@ -761,10 +750,14 @@ type UserDisplayedBadge struct {
 }
 
 type UserFollow struct {
-	ID         string    `json:"id"`
-	FollowerID string    `json:"follower_id"`
-	FollowedID string    `json:"followed_id"`
-	Created    time.Time `json:"created"`
+	ID               string             `json:"id"`
+	UserID           string             `json:"user_id"`
+	FollowType       string             `json:"follow_type"`
+	TargetID         string             `json:"target_id"`
+	EmailFrequency   string             `json:"email_frequency"`
+	UnsubscribeToken string             `json:"unsubscribe_token"`
+	LastNotified     pgtype.Timestamptz `json:"last_notified"`
+	Created          time.Time          `json:"created"`
 }
 
 type UserKnownIp struct {

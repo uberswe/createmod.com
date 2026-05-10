@@ -74,35 +74,5 @@ WHERE id = $1;
 UPDATE search_alerts SET last_notified = NOW(), updated = NOW()
 WHERE id = $1;
 
--- name: CreateSectionSubscription :one
-INSERT INTO section_subscriptions (user_id, subscription_type, target_id, frequency, unsubscribe_token)
-VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (user_id, subscription_type, target_id) DO UPDATE SET
-    frequency = EXCLUDED.frequency,
-    updated = NOW()
-RETURNING *;
-
--- name: ListSectionSubscriptionsByUser :many
-SELECT * FROM section_subscriptions
-WHERE user_id = $1
-ORDER BY created DESC;
-
--- name: ListSectionSubscriptionsByTarget :many
-SELECT * FROM section_subscriptions
-WHERE subscription_type = $1 AND target_id = $2
-ORDER BY created ASC;
-
--- name: DeleteSectionSubscription :exec
-DELETE FROM section_subscriptions WHERE id = $1 AND user_id = $2;
-
--- name: UnsubscribeSectionSubscription :exec
-UPDATE section_subscriptions SET frequency = 'off', updated = NOW()
-WHERE unsubscribe_token = $1;
-
 -- name: UpdateNewsletterIssueSentAt :exec
 UPDATE newsletter_issues SET sent_at = NOW() WHERE id = $1;
-
--- name: ListAllSectionSubscriptions :many
-SELECT * FROM section_subscriptions
-WHERE frequency != 'off'
-ORDER BY subscription_type, target_id;

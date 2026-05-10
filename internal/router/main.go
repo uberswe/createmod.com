@@ -646,8 +646,9 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/settings/subscriptions", Adapt(pages.UserSubscriptionsHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/api/search-alerts", Adapt(pages.CreateSearchAlertHandler(p.AppStore)))
 	r.Delete("/settings/subscriptions/alerts/{id}", Adapt(pages.DeleteSearchAlertHandler(p.AppStore)))
-	r.Post("/api/section-subscriptions", Adapt(pages.CreateSectionSubscriptionHandler(p.AppStore)))
-	r.Delete("/settings/subscriptions/sections/{id}", Adapt(pages.DeleteSectionSubscriptionHandler(p.AppStore)))
+	r.Post("/api/follows", Adapt(pages.GenericFollowHandler(p.AppStore)))
+	r.Delete("/api/follows", Adapt(pages.GenericUnfollowHandler(p.AppStore)))
+	r.Put("/api/follows/frequency", Adapt(pages.UpdateFollowFrequencyHandler(p.AppStore)))
 
 	// Phase 4: Newsletters
 	r.Post("/api/newsletter/subscribe", Adapt(pages.NewsletterSubscribeHandler(p.AppStore)))

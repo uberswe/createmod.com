@@ -16,8 +16,8 @@ var userSubscriptionsTemplates = append([]string{
 
 type UserSubscriptionsData struct {
 	DefaultData
-	SearchAlerts         []store.SearchAlert
-	SectionSubscriptions []store.SectionSubscription
+	SearchAlerts []store.SearchAlert
+	Follows      []store.UserFollow
 }
 
 func UserSubscriptionsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -43,9 +43,9 @@ func UserSubscriptionsHandler(registry *server.Registry, cacheService *cache.Ser
 			d.SearchAlerts = alerts
 		}
 
-		subs, err := appStore.SectionSubscriptions.ListByUser(ctx, userID)
+		follows, err := appStore.Follows.ListByUser(ctx, userID)
 		if err == nil {
-			d.SectionSubscriptions = subs
+			d.Follows = follows
 		}
 
 		html, err := registry.LoadFiles(userSubscriptionsTemplates...).Render(d)
@@ -96,45 +96,6 @@ func CreateSearchAlertHandler(appStore *store.Store) func(e *server.RequestEvent
 	}
 }
 
-func CreateSectionSubscriptionHandler(appStore *store.Store) func(e *server.RequestEvent) error {
-	return func(e *server.RequestEvent) error {
-		if ok, err := requireAuth(e); !ok {
-			return err
-		}
-
-		ctx := e.Request.Context()
-		userID := authenticatedUserID(e)
-
-		var body struct {
-			SubscriptionType string `json:"subscription_type"`
-			TargetID         string `json:"target_id"`
-			Frequency        string `json:"frequency"`
-		}
-		if err := json.NewDecoder(e.Request.Body).Decode(&body); err != nil {
-			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid request body"}
-		}
-		if body.SubscriptionType == "" || body.TargetID == "" {
-			return &server.APIError{Status: http.StatusBadRequest, Message: "subscription_type and target_id are required"}
-		}
-		if body.Frequency == "" {
-			body.Frequency = "daily"
-		}
-
-		sub := &store.SectionSubscription{
-			UserID:           userID,
-			SubscriptionType: body.SubscriptionType,
-			TargetID:         body.TargetID,
-			Frequency:        body.Frequency,
-			UnsubscribeToken: randomHex(16),
-		}
-		if err := appStore.SectionSubscriptions.Create(ctx, sub); err != nil {
-			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to create subscription"}
-		}
-
-		return e.JSON(http.StatusCreated, map[string]string{"id": sub.ID})
-	}
-}
-
 func DeleteSearchAlertHandler(appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
@@ -153,7 +114,7 @@ func DeleteSearchAlertHandler(appStore *store.Store) func(e *server.RequestEvent
 	}
 }
 
-func DeleteSectionSubscriptionHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+func GenericFollowHandler(appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
@@ -161,12 +122,87 @@ func DeleteSectionSubscriptionHandler(appStore *store.Store) func(e *server.Requ
 
 		ctx := e.Request.Context()
 		userID := authenticatedUserID(e)
-		subID := e.Request.PathValue("id")
 
-		if err := appStore.SectionSubscriptions.Delete(ctx, subID, userID); err != nil {
-			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to delete subscription"}
+		var body struct {
+			FollowType     string `json:"follow_type"`
+			TargetID       string `json:"target_id"`
+			EmailFrequency string `json:"email_frequency"`
+		}
+		if err := json.NewDecoder(e.Request.Body).Decode(&body); err != nil {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid request body"}
+		}
+		if body.FollowType == "" || body.TargetID == "" {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "follow_type and target_id are required"}
+		}
+		if body.EmailFrequency == "" {
+			body.EmailFrequency = "daily"
 		}
 
-		return e.String(http.StatusOK, "")
+		if body.FollowType == "user" && body.TargetID == userID {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "cannot follow yourself"}
+		}
+
+		if err := appStore.Follows.Follow(ctx, userID, body.FollowType, body.TargetID, body.EmailFrequency); err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to create follow"}
+		}
+
+		return e.JSON(http.StatusCreated, map[string]string{"status": "ok"})
+	}
+}
+
+func GenericUnfollowHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		ctx := e.Request.Context()
+		userID := authenticatedUserID(e)
+
+		var body struct {
+			FollowType string `json:"follow_type"`
+			TargetID   string `json:"target_id"`
+		}
+		if err := json.NewDecoder(e.Request.Body).Decode(&body); err != nil {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid request body"}
+		}
+		if body.FollowType == "" || body.TargetID == "" {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "follow_type and target_id are required"}
+		}
+
+		if err := appStore.Follows.Unfollow(ctx, userID, body.FollowType, body.TargetID); err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to unfollow"}
+		}
+
+		return e.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}
+}
+
+func UpdateFollowFrequencyHandler(appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		ctx := e.Request.Context()
+		userID := authenticatedUserID(e)
+
+		var body struct {
+			FollowType     string `json:"follow_type"`
+			TargetID       string `json:"target_id"`
+			EmailFrequency string `json:"email_frequency"`
+		}
+		if err := json.NewDecoder(e.Request.Body).Decode(&body); err != nil {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid request body"}
+		}
+		if body.FollowType == "" || body.TargetID == "" || body.EmailFrequency == "" {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "follow_type, target_id, and email_frequency are required"}
+		}
+
+		if err := appStore.Follows.UpdateFrequency(ctx, userID, body.FollowType, body.TargetID, body.EmailFrequency); err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "failed to update frequency"}
+		}
+
+		return e.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	}
 }

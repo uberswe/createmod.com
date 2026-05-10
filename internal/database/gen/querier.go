@@ -42,8 +42,6 @@ type Querier interface {
 	CountCollectionsForAdmin(ctx context.Context, filter string) (int64, error)
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
-	CountFollowers(ctx context.Context, followedID string) (int32, error)
-	CountFollowing(ctx context.Context, followerID string) (int32, error)
 	CountGuidesForAdmin(ctx context.Context, filter string) (int64, error)
 	CountPointLogByReason(ctx context.Context, arg CountPointLogByReasonParams) (int32, error)
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
@@ -57,6 +55,8 @@ type Querier interface {
 	CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountUserCollections(ctx context.Context, authorID *string) (int64, error)
 	CountUserComments(ctx context.Context, authorID *string) (int64, error)
+	CountUserFollowers(ctx context.Context, targetID string) (int32, error)
+	CountUserFollowing(ctx context.Context, userID string) (int32, error)
 	CountUserGuides(ctx context.Context, authorID *string) (int64, error)
 	CountUserMessagesSinceLastModerator(ctx context.Context, threadID string) (int64, error)
 	CountUserSchematics(ctx context.Context, authorID *string) (int32, error)
@@ -93,7 +93,6 @@ type Querier interface {
 	CreateSearchAlert(ctx context.Context, arg CreateSearchAlertParams) (SearchAlert, error)
 	CreateSearchClick(ctx context.Context, arg CreateSearchClickParams) error
 	CreateSearchConversion(ctx context.Context, arg CreateSearchConversionParams) error
-	CreateSectionSubscription(ctx context.Context, arg CreateSectionSubscriptionParams) (SectionSubscription, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTOTPBackupCode(ctx context.Context, arg CreateTOTPBackupCodeParams) error
 	CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error)
@@ -128,7 +127,6 @@ type Querier interface {
 	DeleteSchematicVideo(ctx context.Context, arg DeleteSchematicVideoParams) error
 	DeleteSchematicVideosBySchematic(ctx context.Context, schematicID string) error
 	DeleteSearchAlert(ctx context.Context, arg DeleteSearchAlertParams) error
-	DeleteSectionSubscription(ctx context.Context, arg DeleteSectionSubscriptionParams) error
 	DeleteSession(ctx context.Context, id string) error
 	DeleteSocialLink(ctx context.Context, arg DeleteSocialLinkParams) error
 	DeleteTOTP(ctx context.Context, userID string) error
@@ -170,6 +168,7 @@ type Querier interface {
 	GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
 	GetExternalAuthByUserAndProvider(ctx context.Context, arg GetExternalAuthByUserAndProviderParams) (ExternalAuth, error)
+	GetFollow(ctx context.Context, arg GetFollowParams) (UserFollow, error)
 	GetGuideByID(ctx context.Context, id string) (Guide, error)
 	GetGuideByIDAdmin(ctx context.Context, id string) (Guide, error)
 	GetGuideBySlug(ctx context.Context, slug string) (Guide, error)
@@ -259,7 +258,6 @@ type Querier interface {
 	ListAdminEmails(ctx context.Context) ([]string, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
-	ListAllSectionSubscriptions(ctx context.Context) ([]SectionSubscription, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)
 	ListAllTempUploads(ctx context.Context, arg ListAllTempUploadsParams) ([]ListAllTempUploadsRow, error)
 	ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error)
@@ -282,9 +280,14 @@ type Querier interface {
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)
 	ListFeaturedCollections(ctx context.Context, limit int32) ([]Collection, error)
 	ListFeaturedSchematics(ctx context.Context, limit int32) ([]Schematic, error)
-	ListFollowedIDs(ctx context.Context, followerID string) ([]string, error)
-	ListFollowers(ctx context.Context, arg ListFollowersParams) ([]User, error)
-	ListFollowing(ctx context.Context, arg ListFollowingParams) ([]User, error)
+	ListFollowedUserIDs(ctx context.Context, userID string) ([]string, error)
+	// User-specific queries for profile follower counts
+	ListFollowerUsers(ctx context.Context, arg ListFollowerUsersParams) ([]User, error)
+	ListFollowingUsers(ctx context.Context, arg ListFollowingUsersParams) ([]User, error)
+	ListFollowsByFrequency(ctx context.Context, emailFrequency string) ([]UserFollow, error)
+	ListFollowsByTarget(ctx context.Context, arg ListFollowsByTargetParams) ([]UserFollow, error)
+	ListFollowsByUser(ctx context.Context, userID string) ([]UserFollow, error)
+	ListFollowsByUserAndType(ctx context.Context, arg ListFollowsByUserAndTypeParams) ([]UserFollow, error)
 	ListGuideTranslations(ctx context.Context, guideID string) ([]GuideTranslation, error)
 	ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide, error)
 	ListGuidesForAdmin(ctx context.Context, arg ListGuidesForAdminParams) ([]Guide, error)
@@ -329,8 +332,6 @@ type Querier interface {
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListSearchAlertsByUser(ctx context.Context, userID string) ([]SearchAlert, error)
-	ListSectionSubscriptionsByTarget(ctx context.Context, arg ListSectionSubscriptionsByTargetParams) ([]SectionSubscription, error)
-	ListSectionSubscriptionsByUser(ctx context.Context, userID string) ([]SectionSubscription, error)
 	ListSocialLinksByPlatform(ctx context.Context, platform string) ([]UserSocialLink, error)
 	ListSocialLinksByUser(ctx context.Context, userID string) ([]UserSocialLink, error)
 	ListStaleRedditLinks(ctx context.Context, limit int32) ([]SchematicRedditLink, error)
@@ -405,11 +406,13 @@ type Querier interface {
 	SoftDeleteSchematicsByAuthor(ctx context.Context, authorID *string) error
 	SoftDeleteUser(ctx context.Context, id string) error
 	SumUserPoints(ctx context.Context, userID string) (int32, error)
+	UnsubscribeFollow(ctx context.Context, unsubscribeToken string) error
 	UnsubscribeNewsletter(ctx context.Context, unsubscribeToken string) error
 	UnsubscribeSearchAlert(ctx context.Context, unsubscribeToken string) error
-	UnsubscribeSectionSubscription(ctx context.Context, unsubscribeToken string) error
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
 	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
+	UpdateFollowFrequency(ctx context.Context, arg UpdateFollowFrequencyParams) error
+	UpdateFollowLastNotified(ctx context.Context, id string) error
 	UpdateFollowerCountDecrement(ctx context.Context, id string) error
 	UpdateFollowerCountIncrement(ctx context.Context, id string) error
 	UpdateFollowingCountDecrement(ctx context.Context, id string) error
