@@ -611,20 +611,30 @@ body.sidebar-ready .sidebar-rail {
   height: 60px;
   width: auto;
 }
-.top-header-search {
-  flex: 1;
-  max-width: 520px;
-  margin: 0 auto;
-}
 .top-header-actions {
   display: flex;
   align-items: center;
   gap: 1.25rem;
   flex-shrink: 0;
 }
-.top-header-actions .lang-flag {
-  font-size: 1.5rem;
-  line-height: 1;
+.btn-search {
+  --tblr-btn-bg: #0ea5e9;
+  --tblr-btn-border-color: #0ea5e9;
+  --tblr-btn-color: #fff;
+  --tblr-btn-hover-bg: #0284c7;
+  --tblr-btn-hover-border-color: #0284c7;
+  --tblr-btn-hover-color: #fff;
+  --tblr-btn-active-bg: #0369a1;
+  --tblr-btn-active-border-color: #0369a1;
+  --tblr-btn-active-color: #fff;
+}
+[data-bs-theme=dark] .btn-search {
+  --tblr-btn-bg: #38bdf8;
+  --tblr-btn-border-color: #38bdf8;
+  --tblr-btn-color: #0c1425;
+  --tblr-btn-hover-bg: #7dd3fc;
+  --tblr-btn-hover-border-color: #7dd3fc;
+  --tblr-btn-hover-color: #0c1425;
 }
 .sidebar-mobile-toggle {
   background: none;
@@ -634,33 +644,6 @@ body.sidebar-ready .sidebar-rail {
   cursor: pointer;
 }
 
-/* Mobile search toggle (icon button visible only on small screens) */
-.mobile-search-toggle {
-  background: none;
-  border: none;
-  padding: 0.25rem;
-  color: var(--tblr-body-color);
-  cursor: pointer;
-  display: none;
-}
-/* Mobile search bar: full-width bar below the header, hidden by default.
-   Only shown on screens below md (< 768px) when toggled active. */
-.mobile-search-bar {
-  display: none !important;
-}
-@media (max-width: 767.98px) {
-  .mobile-search-bar.active {
-    display: block !important;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    background: var(--tblr-bg-surface);
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.12);
-    z-index: 1049;
-  }
-}
 
 /***************
   Mobile header (< 768px)
@@ -678,14 +661,7 @@ body.sidebar-ready .sidebar-rail {
   }
   .top-header-actions {
     gap: 0.75rem;
-  }
-  .mobile-search-toggle {
-    display: block;
     margin-left: auto;
-  }
-  /* Push actions to the right, search icon fills gap */
-  .top-header-actions .lang-flag {
-    font-size: 1.25rem;
   }
 }
 
@@ -740,9 +716,6 @@ body.sidebar-pinned .page-wrapper {
   }
   body.sidebar-pinned .page-wrapper {
     margin-left: 0;
-  }
-  .top-header-search {
-    max-width: none;
   }
   /* Hide the expand/collapse toggle on mobile — mobile uses the hamburger */
   .sidebar-toggle {

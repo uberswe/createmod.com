@@ -16,32 +16,15 @@ func mustRead(t *testing.T, path string) string {
 	return string(b)
 }
 
-func Test_Header_Search_Uses_Boost(t *testing.T) {
-	// The header search forms must NOT have explicit hx-post/hx-target/hx-swap
-	// attributes.  They rely on the global hx-boost="true" on <body> to handle
-	// POST → redirect → full-page swap correctly.  Explicit attributes cause a
-	// broken body-innerHTML swap that loses <head> scripts and body attributes.
+func Test_Header_Has_Search_Button(t *testing.T) {
 	path := filepath.Join("..", "..", "template", "include", "header.html")
 	s := mustRead(t, path)
 
-	forbidden := []string{
-		`hx-post="/search"`,
-		`hx-target="body"`,
-		`hx-swap="innerHTML"`,
-		`hx-select="body"`,
+	if !strings.Contains(s, `btn-search`) {
+		t.Fatalf("header.html missing search button with btn-search class")
 	}
-	for _, a := range forbidden {
-		if strings.Contains(s, a) {
-			t.Fatalf("header.html must not contain %s — rely on hx-boost instead", a)
-		}
-	}
-
-	// The forms must still have action="/search" method="post" for boosting.
-	if !strings.Contains(s, `action="/search"`) {
-		t.Fatalf("header.html missing action=\"/search\"")
-	}
-	if !strings.Contains(s, `method="post"`) {
-		t.Fatalf("header.html missing method=\"post\"")
+	if !strings.Contains(s, `/search`) {
+		t.Fatalf("header.html missing link to /search")
 	}
 }
 

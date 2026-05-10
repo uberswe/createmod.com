@@ -45,31 +45,15 @@ func renderSearchPage(t *testing.T, data SearchData) string {
 }
 
 // Test that the header search form has the expected HTMX attributes
-func Test_Search_HTMX_HeaderFormAttributes(t *testing.T) {
+func Test_Search_Header_Has_Search_Button(t *testing.T) {
 	d := DefaultData{IsAuthenticated: false}
 	header := renderTemplate_search(t, "template/include/header.html", d)
 
-	// The header search forms must rely on the global hx-boost="true" on
-	// <body> instead of explicit hx-post/hx-target/hx-swap attributes.
-	// Explicit attributes caused a broken body-innerHTML swap that lost
-	// <head> scripts and body attributes, producing a blank screen.
-	forbidden := []string{
-		"hx-post=\"/search\"",
-		"hx-target=\"body\"",
-		"hx-swap=\"innerHTML\"",
-		"hx-select=\"body\"",
+	if !strings.Contains(header, "btn-search") {
+		t.Errorf("header should contain a search button with btn-search class")
 	}
-	for _, a := range forbidden {
-		if strings.Contains(header, a) {
-			t.Errorf("header search form must not contain %s — rely on hx-boost instead", a)
-		}
-	}
-
-	if !strings.Contains(header, "action=\"/search\"") {
-		t.Errorf("header search form should include action=\"/search\"")
-	}
-	if !strings.Contains(header, "method=\"post\"") {
-		t.Errorf("header search form should include method=\"post\"")
+	if !strings.Contains(header, "/search") {
+		t.Errorf("header should contain a link to /search")
 	}
 }
 
