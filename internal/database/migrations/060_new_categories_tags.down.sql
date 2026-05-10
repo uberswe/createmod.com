@@ -1,0 +1,2 @@
+-- No-op: categories and tags may already be in use by schematics.
+-- Removing them would break existing data.

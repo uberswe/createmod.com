@@ -1,9 +1,17 @@
 import { test, expect } from '@playwright/test';
 
+async function expandFilters(page) {
+  const toggle = page.locator('button[data-bs-target="#search-filters-collapse"]');
+  await toggle.click();
+  await page.waitForSelector('#search-filters-collapse.show', { timeout: 5000 });
+}
+
 test.describe('Search page filters', () => {
   test('Best match is the default selected sort', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/search');
+
+    await expandFilters(page);
 
     // The sort dropdown should default to "Best match" (value="1")
     const sortSelect = page.locator('#advanced-search-form select[name="sort"]');
@@ -16,6 +24,7 @@ test.describe('Search page filters', () => {
 
     // Wait for initial results to load
     await page.waitForSelector('#search-results');
+    await expandFilters(page);
 
     // Select "Newest" from the sort dropdown
     const sortSelect = page.locator('#advanced-search-form select[name="sort"]');
@@ -33,6 +42,7 @@ test.describe('Search page filters', () => {
     await page.goto(url + '/search');
 
     await page.waitForSelector('#search-results');
+    await expandFilters(page);
 
     // Change category dropdown
     const categorySelect = page.locator('#advanced-search-form select[name="category"]');
@@ -72,6 +82,7 @@ test.describe('Search page filters', () => {
     await page.goto(url + '/search');
 
     await page.waitForSelector('#search-results');
+    await expandFilters(page);
 
     // Move the rating range slider to 4 stars
     const slider = page.locator('#rating-slider');

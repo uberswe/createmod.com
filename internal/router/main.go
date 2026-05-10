@@ -539,6 +539,9 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/guides/{id}/edit", Adapt(pages.GuidesEditHandler(registry, p.CacheService, p.AppStore)))
 	r.Post("/guides/{id}", Adapt(pages.GuidesUpdateHandler(p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Post("/guides/{id}/delete", Adapt(pages.GuidesDeleteHandler(p.AppStore)))
+	// Feed pages
+	r.Get("/trending", Adapt(pages.TrendingPageHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Get("/highest-scores", Adapt(pages.HighestScoresPageHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	// Mods
 	r.Get("/mods", Adapt(pages.ModsHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
 	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.CacheService, registry, p.ModMetaService, p.AppStore, p.TranslationService)))

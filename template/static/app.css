@@ -762,6 +762,31 @@ body.sidebar-open::after {
   }
 }
 
+.search-layout-wide {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 1200px) {
+  .search-layout-wide {
+    grid-template-columns: 1fr 300px;
+  }
+}
+
+.search-center-wide {
+  min-width: 0;
+}
+
+.search-ad-rail-wide {
+  min-width: 160px;
+  flex-shrink: 0;
+  align-self: start;
+}
+.search-ad-rail-wide > div:last-child {
+  position: sticky;
+  top: 110px;
+}
+
 .search-sidebar {
   min-width: 0;
   overflow: hidden;
