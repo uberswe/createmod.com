@@ -18,7 +18,23 @@
                 </div>
 
                 <div class="row row-deck row-cards mb-3">
-                    <div class="col-sm-6 col-lg-4">
+                    <div class="col-6 col-lg-3">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Total Schematics" }}</div>
+                                <div class="h1 mb-0">{{ .TotalSchematics }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card card-sm">
+                            <div class="card-body">
+                                <div class="subheader">{{ T .Language "Drafts" }}</div>
+                                <div class="h1 mb-0">{{ .TotalDrafts }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
                         <div class="card card-sm">
                             <div class="card-body">
                                 <div class="subheader">{{ T .Language "Views (30d)" }}</div>
@@ -26,7 +42,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-sm-6 col-lg-4">
+                    <div class="col-6 col-lg-3">
                         <div class="card card-sm">
                             <div class="card-body">
                                 <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
@@ -34,12 +50,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-sm-6 col-lg-4">
-                        <div class="card card-sm">
-                            <div class="card-body">
-                                <div class="subheader">{{ T .Language "Download/View Ratio" }}</div>
-                                <div class="h1 mb-0">{{ .GlobalVDRatio }}</div>
-                            </div>
+                </div>
+
+                <div class="row row-deck row-cards mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Uploads per Day (30d)" }}</h3></div>
+                            <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-uploads" style="min-height:250px;width:100%;"></div></div>
                         </div>
                     </div>
                 </div>
@@ -212,7 +229,7 @@
 (function() {
     function initSiteCharts() {
         if (typeof ApexCharts === 'undefined') return;
-        ['chart-views', 'chart-downloads'].forEach(function(id) {
+        ['chart-uploads', 'chart-views', 'chart-downloads'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el && el._apexChart) { el._apexChart.destroy(); el._apexChart = null; }
         });
@@ -229,6 +246,15 @@
             tooltip: { theme: isDark ? 'dark' : 'light' }
         };
         function renderChart(el, opts) { var c = new ApexCharts(el, opts); el._apexChart = c; c.render(); }
+        var uploadsEl = document.getElementById('chart-uploads');
+        if (uploadsEl) {
+            renderChart(uploadsEl, Object.assign({}, commonOpts, {
+                chart: { type: 'bar', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+                series: [{ name: 'Uploads', data: {{ .DailyUploadsJSON }} }],
+                colors: ['#bf9045'],
+                plotOptions: { bar: { borderRadius: 3, columnWidth: '60%' } }
+            }));
+        }
         var viewsEl = document.getElementById('chart-views');
         if (viewsEl) {
             renderChart(viewsEl, Object.assign({}, commonOpts, {

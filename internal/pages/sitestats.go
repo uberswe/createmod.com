@@ -39,9 +39,13 @@ type SiteStatsData struct {
 	HourlyViewsJSON     html.JS
 	HourlyDownloadsJSON html.JS
 
-	TotalViews30d    int
+	TotalViews30d     int
 	TotalDownloads30d int
-	GlobalVDRatio    string
+	GlobalVDRatio     string
+
+	TotalSchematics int64
+	TotalDrafts     int64
+	DailyUploadsJSON html.JS
 
 	ShowYourStatsLink bool
 
@@ -132,6 +136,29 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.TotalViews30d = global.TotalViews
 		d.TotalDownloads30d = global.TotalDL
 		d.GlobalVDRatio = global.VDRatio
+
+		type cachedCounts struct {
+			TotalSchematics int64
+			TotalDrafts     int64
+			DailyUploads    string
+		}
+		countsCacheKey := "site_stats_counts"
+		var counts cachedCounts
+		if cached, found := cacheService.Get(countsCacheKey); found {
+			if c, ok := cached.(cachedCounts); ok {
+				counts = c
+			}
+		}
+		if counts.DailyUploads == "" {
+			counts.TotalSchematics, _ = appStore.Schematics.CountApproved(ctx)
+			counts.TotalDrafts, _ = appStore.TempUploads.CountAll(ctx)
+			daily, _ := appStore.Stats.DailySchematicUploads(ctx, since30d)
+			counts.DailyUploads = dailyCountsJSON(daily)
+			cacheService.SetWithTTL(countsCacheKey, counts, 15*time.Minute)
+		}
+		d.TotalSchematics = counts.TotalSchematics
+		d.TotalDrafts = counts.TotalDrafts
+		d.DailyUploadsJSON = html.JS(counts.DailyUploads)
 
 		userID := authenticatedUserID(e)
 		d.ShowYourStatsLink = userID != ""

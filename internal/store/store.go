@@ -1086,6 +1086,7 @@ type StatsStore interface {
 	GetSchematicVDRatioSinceCutoff(ctx context.Context, schematicID string, since time.Time) (views int64, downloads int64, err error)
 	GetUserVDRatioSinceCutoff(ctx context.Context, userID string, since time.Time) (views int64, downloads int64, err error)
 	DeleteOldEvents(ctx context.Context, before time.Time) (int64, error)
+	DailySchematicUploads(ctx context.Context, since time.Time) ([]DailyCount, error)
 }
 
 // NBTHash represents a stored NBT file hash for duplicate/blacklist detection.
