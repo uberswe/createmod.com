@@ -24,6 +24,6 @@
     "tom-select": "^2.4.2"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.28.0"
   }
 }
