@@ -13,7 +13,10 @@
             </div>
           </div>
         </div>
-        <div class="row row-cards">
+        <div class="mb-3">
+          <input type="text" class="form-control" id="mod-filter" placeholder="{{ T .Language "Filter mods..." }}" aria-label="{{ T .Language "Filter mods" }}">
+        </div>
+        <div class="row row-cards" id="mods-grid">
           {{range .Mods}}
           <div class="col-12 col-sm-6 col-md-4 col-lg-3">
             <a href="/mods/{{ .Slug }}" class="d-block text-decoration-none">
@@ -54,3 +57,17 @@
   </div>
 </div>
 {{template "foot.html" .}}
+<script>
+(function() {
+  var filter = document.getElementById('mod-filter');
+  var grid = document.getElementById('mods-grid');
+  if (!filter || !grid) return;
+  filter.addEventListener('input', function() {
+    var q = filter.value.toLowerCase();
+    grid.querySelectorAll('.col-12').forEach(function(card) {
+      var name = card.querySelector('.card-title');
+      card.style.display = (name && name.textContent.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+    });
+  });
+})();
+</script>

@@ -2170,49 +2170,159 @@ func (sl *SocialLinkStoreImpl) ListByPlatform(ctx context.Context, platform stri
 }
 
 // --------------------------------------------------------------------------
-// FollowStoreImpl implements store.FollowStore.
+// FollowStoreImpl implements store.FollowStore (unified follows).
 // --------------------------------------------------------------------------
 
 type FollowStoreImpl struct{ q *db.Queries }
 
-func (fs *FollowStoreImpl) Follow(ctx context.Context, followerID, followedID string) error {
+func followFromDB(row db.UserFollow) store.UserFollow {
+	return store.UserFollow{
+		ID:               row.ID,
+		UserID:           row.UserID,
+		FollowType:       row.FollowType,
+		TargetID:         row.TargetID,
+		EmailFrequency:   row.EmailFrequency,
+		UnsubscribeToken: row.UnsubscribeToken,
+		LastNotified:     fromPgTimestamptz(row.LastNotified),
+		Created:          row.Created,
+	}
+}
+
+func (fs *FollowStoreImpl) Follow(ctx context.Context, userID, followType, targetID, emailFrequency string) error {
+	token := ""
+	if emailFrequency != "off" {
+		b := make([]byte, 16)
+		_, _ = rand.Read(b)
+		token = hex.EncodeToString(b)
+	}
 	if err := fs.q.CreateFollow(ctx, db.CreateFollowParams{
-		FollowerID: followerID,
-		FollowedID: followedID,
+		UserID:           userID,
+		FollowType:       followType,
+		TargetID:         targetID,
+		EmailFrequency:   emailFrequency,
+		UnsubscribeToken: token,
 	}); err != nil {
 		return err
 	}
-	if err := fs.q.UpdateFollowerCountIncrement(ctx, followedID); err != nil {
-		return err
+	if followType == "user" {
+		_ = fs.q.UpdateFollowerCountIncrement(ctx, targetID)
+		_ = fs.q.UpdateFollowingCountIncrement(ctx, userID)
 	}
-	return fs.q.UpdateFollowingCountIncrement(ctx, followerID)
+	return nil
 }
 
-func (fs *FollowStoreImpl) Unfollow(ctx context.Context, followerID, followedID string) error {
+func (fs *FollowStoreImpl) Unfollow(ctx context.Context, userID, followType, targetID string) error {
 	if err := fs.q.DeleteFollow(ctx, db.DeleteFollowParams{
-		FollowerID: followerID,
-		FollowedID: followedID,
+		UserID:     userID,
+		FollowType: followType,
+		TargetID:   targetID,
 	}); err != nil {
 		return err
 	}
-	if err := fs.q.UpdateFollowerCountDecrement(ctx, followedID); err != nil {
-		return err
+	if followType == "user" {
+		_ = fs.q.UpdateFollowerCountDecrement(ctx, targetID)
+		_ = fs.q.UpdateFollowingCountDecrement(ctx, userID)
 	}
-	return fs.q.UpdateFollowingCountDecrement(ctx, followerID)
+	return nil
 }
 
-func (fs *FollowStoreImpl) IsFollowing(ctx context.Context, followerID, followedID string) (bool, error) {
-	return fs.q.IsFollowing(ctx, db.IsFollowingParams{
-		FollowerID: followerID,
-		FollowedID: followedID,
+func (fs *FollowStoreImpl) UpdateFrequency(ctx context.Context, userID, followType, targetID, emailFrequency string) error {
+	return fs.q.UpdateFollowFrequency(ctx, db.UpdateFollowFrequencyParams{
+		UserID:         userID,
+		FollowType:     followType,
+		TargetID:       targetID,
+		EmailFrequency: emailFrequency,
 	})
 }
 
-func (fs *FollowStoreImpl) ListFollowers(ctx context.Context, userID string, limit, offset int) ([]store.User, error) {
-	rows, err := fs.q.ListFollowers(ctx, db.ListFollowersParams{
-		FollowedID: userID,
-		Limit:      int32(limit),
-		Offset:     int32(offset),
+func (fs *FollowStoreImpl) IsFollowing(ctx context.Context, userID, followType, targetID string) (bool, error) {
+	return fs.q.IsFollowing(ctx, db.IsFollowingParams{
+		UserID:     userID,
+		FollowType: followType,
+		TargetID:   targetID,
+	})
+}
+
+func (fs *FollowStoreImpl) GetFollow(ctx context.Context, userID, followType, targetID string) (*store.UserFollow, error) {
+	row, err := fs.q.GetFollow(ctx, db.GetFollowParams{
+		UserID:     userID,
+		FollowType: followType,
+		TargetID:   targetID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	f := followFromDB(row)
+	return &f, nil
+}
+
+func (fs *FollowStoreImpl) ListByUser(ctx context.Context, userID string) ([]store.UserFollow, error) {
+	rows, err := fs.q.ListFollowsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.UserFollow, len(rows))
+	for i, r := range rows {
+		result[i] = followFromDB(r)
+	}
+	return result, nil
+}
+
+func (fs *FollowStoreImpl) ListByUserAndType(ctx context.Context, userID, followType string) ([]store.UserFollow, error) {
+	rows, err := fs.q.ListFollowsByUserAndType(ctx, db.ListFollowsByUserAndTypeParams{
+		UserID:     userID,
+		FollowType: followType,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.UserFollow, len(rows))
+	for i, r := range rows {
+		result[i] = followFromDB(r)
+	}
+	return result, nil
+}
+
+func (fs *FollowStoreImpl) ListByTarget(ctx context.Context, followType, targetID string) ([]store.UserFollow, error) {
+	rows, err := fs.q.ListFollowsByTarget(ctx, db.ListFollowsByTargetParams{
+		FollowType: followType,
+		TargetID:   targetID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.UserFollow, len(rows))
+	for i, r := range rows {
+		result[i] = followFromDB(r)
+	}
+	return result, nil
+}
+
+func (fs *FollowStoreImpl) ListByFrequency(ctx context.Context, emailFrequency string) ([]store.UserFollow, error) {
+	rows, err := fs.q.ListFollowsByFrequency(ctx, emailFrequency)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.UserFollow, len(rows))
+	for i, r := range rows {
+		result[i] = followFromDB(r)
+	}
+	return result, nil
+}
+
+func (fs *FollowStoreImpl) Unsubscribe(ctx context.Context, unsubscribeToken string) error {
+	return fs.q.UnsubscribeFollow(ctx, unsubscribeToken)
+}
+
+func (fs *FollowStoreImpl) UpdateLastNotified(ctx context.Context, id string) error {
+	return fs.q.UpdateFollowLastNotified(ctx, id)
+}
+
+func (fs *FollowStoreImpl) ListFollowerUsers(ctx context.Context, userID string, limit, offset int) ([]store.User, error) {
+	rows, err := fs.q.ListFollowerUsers(ctx, db.ListFollowerUsersParams{
+		TargetID: userID,
+		Limit:    int32(limit),
+		Offset:   int32(offset),
 	})
 	if err != nil {
 		return nil, err
@@ -2224,11 +2334,11 @@ func (fs *FollowStoreImpl) ListFollowers(ctx context.Context, userID string, lim
 	return result, nil
 }
 
-func (fs *FollowStoreImpl) ListFollowing(ctx context.Context, userID string, limit, offset int) ([]store.User, error) {
-	rows, err := fs.q.ListFollowing(ctx, db.ListFollowingParams{
-		FollowerID: userID,
-		Limit:      int32(limit),
-		Offset:     int32(offset),
+func (fs *FollowStoreImpl) ListFollowingUsers(ctx context.Context, userID string, limit, offset int) ([]store.User, error) {
+	rows, err := fs.q.ListFollowingUsers(ctx, db.ListFollowingUsersParams{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
 	})
 	if err != nil {
 		return nil, err
@@ -2241,17 +2351,12 @@ func (fs *FollowStoreImpl) ListFollowing(ctx context.Context, userID string, lim
 }
 
 func (fs *FollowStoreImpl) CountFollowers(ctx context.Context, userID string) (int, error) {
-	cnt, err := fs.q.CountFollowers(ctx, userID)
+	cnt, err := fs.q.CountUserFollowers(ctx, userID)
 	return int(cnt), err
 }
 
-func (fs *FollowStoreImpl) CountFollowing(ctx context.Context, userID string) (int, error) {
-	cnt, err := fs.q.CountFollowing(ctx, userID)
-	return int(cnt), err
-}
-
-func (fs *FollowStoreImpl) ListFollowedIDs(ctx context.Context, followerID string) ([]string, error) {
-	return fs.q.ListFollowedIDs(ctx, followerID)
+func (fs *FollowStoreImpl) ListFollowedUserIDs(ctx context.Context, userID string) ([]string, error) {
+	return fs.q.ListFollowedUserIDs(ctx, userID)
 }
 
 // TranslationStoreImpl implements store.TranslationStore.
@@ -3756,7 +3861,6 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		Notifications:        &NotificationStoreImpl{q: q},
 		Newsletters:          &NewsletterStoreImpl{q: q},
 		SearchAlerts:         &SearchAlertStoreImpl{q: q},
-		SectionSubscriptions: &SectionSubscriptionStoreImpl{q: q},
 		ZeroResults:          &ZeroResultStoreImpl{q: q},
 		Security:             &SecurityStoreImpl{q: q, pool: pool},
 	}
@@ -4324,8 +4428,7 @@ var (
 	_ store.NotificationStore        = (*NotificationStoreImpl)(nil)
 	_ store.NewsletterStore          = (*NewsletterStoreImpl)(nil)
 	_ store.SearchAlertStore         = (*SearchAlertStoreImpl)(nil)
-	_ store.SectionSubscriptionStore = (*SectionSubscriptionStoreImpl)(nil)
-	_ store.ZeroResultStore          = (*ZeroResultStoreImpl)(nil)
+	_ store.ZeroResultStore = (*ZeroResultStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------
@@ -5107,92 +5210,6 @@ func (s *SearchAlertStoreImpl) UpdateLastChecked(ctx context.Context, id string)
 
 func (s *SearchAlertStoreImpl) UpdateLastNotified(ctx context.Context, id string) error {
 	return s.q.UpdateSearchAlertLastNotified(ctx, id)
-}
-
-// --------------------------------------------------------------------------
-// SectionSubscription Store Implementation
-// --------------------------------------------------------------------------
-
-type SectionSubscriptionStoreImpl struct{ q *db.Queries }
-
-func sectionSubscriptionFromDB(row db.SectionSubscription) store.SectionSubscription {
-	return store.SectionSubscription{
-		ID:               row.ID,
-		UserID:           row.UserID,
-		SubscriptionType: row.SubscriptionType,
-		TargetID:         row.TargetID,
-		Frequency:        row.Frequency,
-		UnsubscribeToken: row.UnsubscribeToken,
-		Created:          row.Created,
-		Updated:          row.Updated,
-	}
-}
-
-func (s *SectionSubscriptionStoreImpl) Create(ctx context.Context, sub *store.SectionSubscription) error {
-	row, err := s.q.CreateSectionSubscription(ctx, db.CreateSectionSubscriptionParams{
-		UserID:           sub.UserID,
-		SubscriptionType: sub.SubscriptionType,
-		TargetID:         sub.TargetID,
-		Frequency:        sub.Frequency,
-		UnsubscribeToken: sub.UnsubscribeToken,
-	})
-	if err != nil {
-		return err
-	}
-	sub.ID = row.ID
-	sub.Created = row.Created
-	sub.Updated = row.Updated
-	return nil
-}
-
-func (s *SectionSubscriptionStoreImpl) ListByUser(ctx context.Context, userID string) ([]store.SectionSubscription, error) {
-	rows, err := s.q.ListSectionSubscriptionsByUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]store.SectionSubscription, len(rows))
-	for i, r := range rows {
-		result[i] = sectionSubscriptionFromDB(r)
-	}
-	return result, nil
-}
-
-func (s *SectionSubscriptionStoreImpl) ListByTarget(ctx context.Context, subscriptionType, targetID string) ([]store.SectionSubscription, error) {
-	rows, err := s.q.ListSectionSubscriptionsByTarget(ctx, db.ListSectionSubscriptionsByTargetParams{
-		SubscriptionType: subscriptionType,
-		TargetID:         targetID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	result := make([]store.SectionSubscription, len(rows))
-	for i, r := range rows {
-		result[i] = sectionSubscriptionFromDB(r)
-	}
-	return result, nil
-}
-
-func (s *SectionSubscriptionStoreImpl) Delete(ctx context.Context, id, userID string) error {
-	return s.q.DeleteSectionSubscription(ctx, db.DeleteSectionSubscriptionParams{
-		ID:     id,
-		UserID: userID,
-	})
-}
-
-func (s *SectionSubscriptionStoreImpl) Unsubscribe(ctx context.Context, unsubscribeToken string) error {
-	return s.q.UnsubscribeSectionSubscription(ctx, unsubscribeToken)
-}
-
-func (s *SectionSubscriptionStoreImpl) ListAll(ctx context.Context) ([]store.SectionSubscription, error) {
-	rows, err := s.q.ListAllSectionSubscriptions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]store.SectionSubscription, len(rows))
-	for i, r := range rows {
-		result[i] = sectionSubscriptionFromDB(r)
-	}
-	return result, nil
 }
 
 // --------------------------------------------------------------------------

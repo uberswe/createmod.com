@@ -80,7 +80,7 @@ func UnsubscribeHandler(registry *server.Registry, cacheService *cache.Service, 
 			ctx := e.Request.Context()
 			_ = appStore.Newsletters.Unsubscribe(ctx, token)
 			_ = appStore.SearchAlerts.Unsubscribe(ctx, token)
-			_ = appStore.SectionSubscriptions.Unsubscribe(ctx, token)
+			_ = appStore.Follows.Unsubscribe(ctx, token)
 			d.Success = true
 		}
 

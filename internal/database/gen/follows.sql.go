@@ -9,97 +9,137 @@ import (
 	"context"
 )
 
-const countFollowers = `-- name: CountFollowers :one
-SELECT COUNT(*)::INTEGER FROM user_follows WHERE followed_id = $1
+const countUserFollowers = `-- name: CountUserFollowers :one
+SELECT COUNT(*)::INTEGER FROM user_follows
+WHERE follow_type = 'user' AND target_id = $1
 `
 
-func (q *Queries) CountFollowers(ctx context.Context, followedID string) (int32, error) {
-	row := q.db.QueryRow(ctx, countFollowers, followedID)
+func (q *Queries) CountUserFollowers(ctx context.Context, targetID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countUserFollowers, targetID)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
-const countFollowing = `-- name: CountFollowing :one
-SELECT COUNT(*)::INTEGER FROM user_follows WHERE follower_id = $1
+const countUserFollowing = `-- name: CountUserFollowing :one
+SELECT COUNT(*)::INTEGER FROM user_follows
+WHERE follow_type = 'user' AND user_id = $1
 `
 
-func (q *Queries) CountFollowing(ctx context.Context, followerID string) (int32, error) {
-	row := q.db.QueryRow(ctx, countFollowing, followerID)
+func (q *Queries) CountUserFollowing(ctx context.Context, userID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countUserFollowing, userID)
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
 const createFollow = `-- name: CreateFollow :exec
-WITH ins AS (
-    INSERT INTO user_follows (id, follower_id, followed_id)
-    VALUES (gen_random_uuid()::text, $1, $2)
-    ON CONFLICT (follower_id, followed_id) DO NOTHING
-    RETURNING follower_id, followed_id
-)
-SELECT follower_id, followed_id FROM ins
+INSERT INTO user_follows (user_id, follow_type, target_id, email_frequency, unsubscribe_token)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (user_id, follow_type, target_id) DO UPDATE SET
+    email_frequency = EXCLUDED.email_frequency,
+    unsubscribe_token = CASE WHEN EXCLUDED.unsubscribe_token != '' THEN EXCLUDED.unsubscribe_token ELSE user_follows.unsubscribe_token END
 `
 
 type CreateFollowParams struct {
-	FollowerID string `json:"follower_id"`
-	FollowedID string `json:"followed_id"`
+	UserID           string `json:"user_id"`
+	FollowType       string `json:"follow_type"`
+	TargetID         string `json:"target_id"`
+	EmailFrequency   string `json:"email_frequency"`
+	UnsubscribeToken string `json:"unsubscribe_token"`
 }
 
 func (q *Queries) CreateFollow(ctx context.Context, arg CreateFollowParams) error {
-	_, err := q.db.Exec(ctx, createFollow, arg.FollowerID, arg.FollowedID)
+	_, err := q.db.Exec(ctx, createFollow,
+		arg.UserID,
+		arg.FollowType,
+		arg.TargetID,
+		arg.EmailFrequency,
+		arg.UnsubscribeToken,
+	)
 	return err
 }
 
 const deleteFollow = `-- name: DeleteFollow :exec
-DELETE FROM user_follows WHERE follower_id = $1 AND followed_id = $2
+DELETE FROM user_follows WHERE user_id = $1 AND follow_type = $2 AND target_id = $3
 `
 
 type DeleteFollowParams struct {
-	FollowerID string `json:"follower_id"`
-	FollowedID string `json:"followed_id"`
+	UserID     string `json:"user_id"`
+	FollowType string `json:"follow_type"`
+	TargetID   string `json:"target_id"`
 }
 
 func (q *Queries) DeleteFollow(ctx context.Context, arg DeleteFollowParams) error {
-	_, err := q.db.Exec(ctx, deleteFollow, arg.FollowerID, arg.FollowedID)
+	_, err := q.db.Exec(ctx, deleteFollow, arg.UserID, arg.FollowType, arg.TargetID)
 	return err
+}
+
+const getFollow = `-- name: GetFollow :one
+SELECT id, user_id, follow_type, target_id, email_frequency, unsubscribe_token, last_notified, created FROM user_follows
+WHERE user_id = $1 AND follow_type = $2 AND target_id = $3
+LIMIT 1
+`
+
+type GetFollowParams struct {
+	UserID     string `json:"user_id"`
+	FollowType string `json:"follow_type"`
+	TargetID   string `json:"target_id"`
+}
+
+func (q *Queries) GetFollow(ctx context.Context, arg GetFollowParams) (UserFollow, error) {
+	row := q.db.QueryRow(ctx, getFollow, arg.UserID, arg.FollowType, arg.TargetID)
+	var i UserFollow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FollowType,
+		&i.TargetID,
+		&i.EmailFrequency,
+		&i.UnsubscribeToken,
+		&i.LastNotified,
+		&i.Created,
+	)
+	return i, err
 }
 
 const isFollowing = `-- name: IsFollowing :one
 SELECT EXISTS(
-    SELECT 1 FROM user_follows WHERE follower_id = $1 AND followed_id = $2
+    SELECT 1 FROM user_follows WHERE user_id = $1 AND follow_type = $2 AND target_id = $3
 ) AS is_following
 `
 
 type IsFollowingParams struct {
-	FollowerID string `json:"follower_id"`
-	FollowedID string `json:"followed_id"`
+	UserID     string `json:"user_id"`
+	FollowType string `json:"follow_type"`
+	TargetID   string `json:"target_id"`
 }
 
 func (q *Queries) IsFollowing(ctx context.Context, arg IsFollowingParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isFollowing, arg.FollowerID, arg.FollowedID)
+	row := q.db.QueryRow(ctx, isFollowing, arg.UserID, arg.FollowType, arg.TargetID)
 	var is_following bool
 	err := row.Scan(&is_following)
 	return is_following, err
 }
 
-const listFollowedIDs = `-- name: ListFollowedIDs :many
-SELECT followed_id FROM user_follows WHERE follower_id = $1
+const listFollowedUserIDs = `-- name: ListFollowedUserIDs :many
+SELECT target_id FROM user_follows
+WHERE user_id = $1 AND follow_type = 'user'
 `
 
-func (q *Queries) ListFollowedIDs(ctx context.Context, followerID string) ([]string, error) {
-	rows, err := q.db.Query(ctx, listFollowedIDs, followerID)
+func (q *Queries) ListFollowedUserIDs(ctx context.Context, userID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listFollowedUserIDs, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	items := []string{}
 	for rows.Next() {
-		var followed_id string
-		if err := rows.Scan(&followed_id); err != nil {
+		var target_id string
+		if err := rows.Scan(&target_id); err != nil {
 			return nil, err
 		}
-		items = append(items, followed_id)
+		items = append(items, target_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -107,22 +147,23 @@ func (q *Queries) ListFollowedIDs(ctx context.Context, followerID string) ([]str
 	return items, nil
 }
 
-const listFollowers = `-- name: ListFollowers :many
+const listFollowerUsers = `-- name: ListFollowerUsers :many
 SELECT u.id, u.email, u.username, u.password_hash, u.old_password, u.avatar, u.points, u.verified, u.is_admin, u.deleted, u.created, u.updated, u.follower_count, u.following_count FROM users u
-JOIN user_follows uf ON uf.follower_id = u.id
-WHERE uf.followed_id = $1
+JOIN user_follows uf ON uf.user_id = u.id
+WHERE uf.follow_type = 'user' AND uf.target_id = $1
 ORDER BY uf.created DESC
 LIMIT $2 OFFSET $3
 `
 
-type ListFollowersParams struct {
-	FollowedID string `json:"followed_id"`
-	Limit      int32  `json:"limit"`
-	Offset     int32  `json:"offset"`
+type ListFollowerUsersParams struct {
+	TargetID string `json:"target_id"`
+	Limit    int32  `json:"limit"`
+	Offset   int32  `json:"offset"`
 }
 
-func (q *Queries) ListFollowers(ctx context.Context, arg ListFollowersParams) ([]User, error) {
-	rows, err := q.db.Query(ctx, listFollowers, arg.FollowedID, arg.Limit, arg.Offset)
+// User-specific queries for profile follower counts
+func (q *Queries) ListFollowerUsers(ctx context.Context, arg ListFollowerUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listFollowerUsers, arg.TargetID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -156,22 +197,22 @@ func (q *Queries) ListFollowers(ctx context.Context, arg ListFollowersParams) ([
 	return items, nil
 }
 
-const listFollowing = `-- name: ListFollowing :many
+const listFollowingUsers = `-- name: ListFollowingUsers :many
 SELECT u.id, u.email, u.username, u.password_hash, u.old_password, u.avatar, u.points, u.verified, u.is_admin, u.deleted, u.created, u.updated, u.follower_count, u.following_count FROM users u
-JOIN user_follows uf ON uf.followed_id = u.id
-WHERE uf.follower_id = $1
+JOIN user_follows uf ON uf.target_id = u.id
+WHERE uf.follow_type = 'user' AND uf.user_id = $1
 ORDER BY uf.created DESC
 LIMIT $2 OFFSET $3
 `
 
-type ListFollowingParams struct {
-	FollowerID string `json:"follower_id"`
-	Limit      int32  `json:"limit"`
-	Offset     int32  `json:"offset"`
+type ListFollowingUsersParams struct {
+	UserID string `json:"user_id"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
 }
 
-func (q *Queries) ListFollowing(ctx context.Context, arg ListFollowingParams) ([]User, error) {
-	rows, err := q.db.Query(ctx, listFollowing, arg.FollowerID, arg.Limit, arg.Offset)
+func (q *Queries) ListFollowingUsers(ctx context.Context, arg ListFollowingUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listFollowingUsers, arg.UserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +244,198 @@ func (q *Queries) ListFollowing(ctx context.Context, arg ListFollowingParams) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const listFollowsByFrequency = `-- name: ListFollowsByFrequency :many
+SELECT id, user_id, follow_type, target_id, email_frequency, unsubscribe_token, last_notified, created FROM user_follows
+WHERE email_frequency = $1
+ORDER BY user_id, follow_type
+`
+
+func (q *Queries) ListFollowsByFrequency(ctx context.Context, emailFrequency string) ([]UserFollow, error) {
+	rows, err := q.db.Query(ctx, listFollowsByFrequency, emailFrequency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UserFollow{}
+	for rows.Next() {
+		var i UserFollow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FollowType,
+			&i.TargetID,
+			&i.EmailFrequency,
+			&i.UnsubscribeToken,
+			&i.LastNotified,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFollowsByTarget = `-- name: ListFollowsByTarget :many
+SELECT id, user_id, follow_type, target_id, email_frequency, unsubscribe_token, last_notified, created FROM user_follows
+WHERE follow_type = $1 AND target_id = $2
+ORDER BY created ASC
+`
+
+type ListFollowsByTargetParams struct {
+	FollowType string `json:"follow_type"`
+	TargetID   string `json:"target_id"`
+}
+
+func (q *Queries) ListFollowsByTarget(ctx context.Context, arg ListFollowsByTargetParams) ([]UserFollow, error) {
+	rows, err := q.db.Query(ctx, listFollowsByTarget, arg.FollowType, arg.TargetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UserFollow{}
+	for rows.Next() {
+		var i UserFollow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FollowType,
+			&i.TargetID,
+			&i.EmailFrequency,
+			&i.UnsubscribeToken,
+			&i.LastNotified,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFollowsByUser = `-- name: ListFollowsByUser :many
+SELECT id, user_id, follow_type, target_id, email_frequency, unsubscribe_token, last_notified, created FROM user_follows
+WHERE user_id = $1
+ORDER BY created DESC
+`
+
+func (q *Queries) ListFollowsByUser(ctx context.Context, userID string) ([]UserFollow, error) {
+	rows, err := q.db.Query(ctx, listFollowsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UserFollow{}
+	for rows.Next() {
+		var i UserFollow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FollowType,
+			&i.TargetID,
+			&i.EmailFrequency,
+			&i.UnsubscribeToken,
+			&i.LastNotified,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFollowsByUserAndType = `-- name: ListFollowsByUserAndType :many
+SELECT id, user_id, follow_type, target_id, email_frequency, unsubscribe_token, last_notified, created FROM user_follows
+WHERE user_id = $1 AND follow_type = $2
+ORDER BY created DESC
+`
+
+type ListFollowsByUserAndTypeParams struct {
+	UserID     string `json:"user_id"`
+	FollowType string `json:"follow_type"`
+}
+
+func (q *Queries) ListFollowsByUserAndType(ctx context.Context, arg ListFollowsByUserAndTypeParams) ([]UserFollow, error) {
+	rows, err := q.db.Query(ctx, listFollowsByUserAndType, arg.UserID, arg.FollowType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UserFollow{}
+	for rows.Next() {
+		var i UserFollow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FollowType,
+			&i.TargetID,
+			&i.EmailFrequency,
+			&i.UnsubscribeToken,
+			&i.LastNotified,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unsubscribeFollow = `-- name: UnsubscribeFollow :exec
+UPDATE user_follows SET email_frequency = 'off'
+WHERE unsubscribe_token = $1 AND unsubscribe_token != ''
+`
+
+func (q *Queries) UnsubscribeFollow(ctx context.Context, unsubscribeToken string) error {
+	_, err := q.db.Exec(ctx, unsubscribeFollow, unsubscribeToken)
+	return err
+}
+
+const updateFollowFrequency = `-- name: UpdateFollowFrequency :exec
+UPDATE user_follows SET email_frequency = $4
+WHERE user_id = $1 AND follow_type = $2 AND target_id = $3
+`
+
+type UpdateFollowFrequencyParams struct {
+	UserID         string `json:"user_id"`
+	FollowType     string `json:"follow_type"`
+	TargetID       string `json:"target_id"`
+	EmailFrequency string `json:"email_frequency"`
+}
+
+func (q *Queries) UpdateFollowFrequency(ctx context.Context, arg UpdateFollowFrequencyParams) error {
+	_, err := q.db.Exec(ctx, updateFollowFrequency,
+		arg.UserID,
+		arg.FollowType,
+		arg.TargetID,
+		arg.EmailFrequency,
+	)
+	return err
+}
+
+const updateFollowLastNotified = `-- name: UpdateFollowLastNotified :exec
+UPDATE user_follows SET last_notified = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) UpdateFollowLastNotified(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, updateFollowLastNotified, id)
+	return err
 }
 
 const updateFollowerCountDecrement = `-- name: UpdateFollowerCountDecrement :exec
