@@ -67,8 +67,8 @@ test.describe('hreflang tags', () => {
 test.describe('language switcher', () => {
   test('language switcher links use /lang endpoint to set cookie', async ({ page }) => {
     await page.goto('/');
-    // Open language dropdown
-    const langTrigger = page.locator('.lang-flag');
+    // Open language dropdown (globe icon trigger)
+    const langTrigger = page.locator('a[aria-label="Select language"]');
     await langTrigger.click();
 
     // Check Spanish link routes through /lang endpoint
@@ -84,7 +84,7 @@ test.describe('language switcher', () => {
 
   test('language switcher on Spanish page preserves path', async ({ page }) => {
     await page.goto('/es/schematics');
-    const langTrigger = page.locator('.lang-flag');
+    const langTrigger = page.locator('a[aria-label="Select language"]');
     await langTrigger.click();
 
     // English link should route through /lang with return_to
