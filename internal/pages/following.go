@@ -19,6 +19,7 @@ var followingTemplates = append([]string{
 type FollowingData struct {
 	Schematics    []models.Schematic
 	HasSchematics bool
+	Follows       []store.UserFollow
 	DefaultData
 }
 
@@ -35,8 +36,13 @@ func FollowingHandler(cacheService *cache.Service, registry *server.Registry, ap
 		ctx := e.Request.Context()
 		userID := authenticatedUserID(e)
 
-		followedIDs, err := appStore.Follows.ListFollowedIDs(ctx, userID)
-		if err != nil || len(followedIDs) == 0 {
+		follows, err := appStore.Follows.ListByUser(ctx, userID)
+		if err == nil {
+			d.Follows = follows
+		}
+
+		followedUserIDs, err := appStore.Follows.ListFollowedUserIDs(ctx, userID)
+		if err != nil || len(followedUserIDs) == 0 {
 			html, err := registry.LoadFiles(followingTemplates...).Render(d)
 			if err != nil {
 				return err
@@ -45,7 +51,7 @@ func FollowingHandler(cacheService *cache.Service, registry *server.Registry, ap
 		}
 
 		var allSchematics []models.Schematic
-		for _, fid := range followedIDs {
+		for _, fid := range followedUserIDs {
 			schematics := findAuthorSchematicsFromStore(appStore, cacheService, "", fid, 20)
 			allSchematics = append(allSchematics, schematics...)
 		}

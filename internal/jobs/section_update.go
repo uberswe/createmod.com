@@ -30,15 +30,6 @@ func (w *SectionUpdateWorker) Work(ctx context.Context, job *river.Job[SectionUp
 		return nil
 	}
 
-	subs, err := w.deps.Store.SectionSubscriptions.ListAll(ctx)
-	if err != nil {
-		return fmt.Errorf("section update: list subscriptions: %w", err)
-	}
-	if len(subs) == 0 {
-		slog.Info("section update: no subscriptions")
-		return nil
-	}
-
 	now := time.Now().UTC()
 	isMonday := now.Weekday() == time.Monday
 
@@ -47,14 +38,29 @@ func (w *SectionUpdateWorker) Work(ctx context.Context, job *river.Job[SectionUp
 		baseURL = "https://createmod.com"
 	}
 
-	sent := 0
-	for _, sub := range subs {
-		if sub.Frequency == "weekly" && !isMonday {
-			continue
-		}
+	dailyFollows, err := w.deps.Store.Follows.ListByFrequency(ctx, "daily")
+	if err != nil {
+		return fmt.Errorf("section update: list daily follows: %w", err)
+	}
 
+	var weeklyFollows []store.UserFollow
+	if isMonday {
+		weeklyFollows, err = w.deps.Store.Follows.ListByFrequency(ctx, "weekly")
+		if err != nil {
+			return fmt.Errorf("section update: list weekly follows: %w", err)
+		}
+	}
+
+	allFollows := append(dailyFollows, weeklyFollows...)
+	if len(allFollows) == 0 {
+		slog.Info("section update: no follows with email frequency due")
+		return nil
+	}
+
+	sent := 0
+	for _, follow := range allFollows {
 		var since time.Time
-		switch sub.Frequency {
+		switch follow.EmailFrequency {
 		case "daily":
 			since = now.Add(-24 * time.Hour)
 		case "weekly":
@@ -63,17 +69,17 @@ func (w *SectionUpdateWorker) Work(ctx context.Context, job *river.Job[SectionUp
 			continue
 		}
 
-		schematics := w.findNewSchematics(ctx, sub, since)
+		schematics := w.findNewSchematics(ctx, follow, since)
 		if len(schematics) == 0 {
 			continue
 		}
 
-		user, err := w.deps.Store.Users.GetUserByID(ctx, sub.UserID)
+		user, err := w.deps.Store.Users.GetUserByID(ctx, follow.UserID)
 		if err != nil || user.Email == "" {
 			continue
 		}
 
-		sectionName := w.resolveSectionName(ctx, sub)
+		sectionName := w.resolveFollowName(ctx, follow)
 		subject := fmt.Sprintf("New schematics in %s", sectionName)
 
 		var lines []string
@@ -90,7 +96,7 @@ func (w *SectionUpdateWorker) Work(ctx context.Context, job *river.Job[SectionUp
 			lines = append(lines, fmt.Sprintf("- %s\n  %s/schematics/%s", title, baseURL, s.Name))
 		}
 
-		unsubLink := fmt.Sprintf("%s/unsubscribe-section?token=%s", baseURL, sub.UnsubscribeToken)
+		unsubLink := fmt.Sprintf("%s/unsubscribe?token=%s", baseURL, follow.UnsubscribeToken)
 		lines = append(lines, fmt.Sprintf("\nTo unsubscribe: %s", unsubLink))
 
 		bodyText := strings.Join(lines, "\n")
@@ -102,20 +108,45 @@ func (w *SectionUpdateWorker) Work(ctx context.Context, job *river.Job[SectionUp
 			HTML:    htmlBody,
 		}
 		if err := w.deps.Mail.Send(msg); err != nil {
-			slog.Warn("section update: send failed", "user", sub.UserID, "err", err)
+			slog.Warn("section update: send failed", "user", follow.UserID, "err", err)
 		} else {
+			_ = w.deps.Store.Follows.UpdateLastNotified(ctx, follow.ID)
 			sent++
 		}
 	}
 
-	slog.Info("section update digest completed", "subscriptions", len(subs), "sent", sent)
+	slog.Info("section update digest completed", "follows", len(allFollows), "sent", sent)
 	return nil
 }
 
-func (w *SectionUpdateWorker) findNewSchematics(ctx context.Context, sub store.SectionSubscription, since time.Time) []store.Schematic {
-	switch sub.SubscriptionType {
+func (w *SectionUpdateWorker) findNewSchematics(ctx context.Context, follow store.UserFollow, since time.Time) []store.Schematic {
+	switch follow.FollowType {
 	case "category":
-		schematics, err := w.deps.Store.Schematics.ListByCategoryIDs(ctx, []string{sub.TargetID}, nil, 10)
+		schematics, err := w.deps.Store.Schematics.ListByCategoryIDs(ctx, []string{follow.TargetID}, nil, 10)
+		if err != nil {
+			return nil
+		}
+		var recent []store.Schematic
+		for _, s := range schematics {
+			if s.Created.After(since) {
+				recent = append(recent, s)
+			}
+		}
+		return recent
+	case "user":
+		schematics, err := w.deps.Store.Schematics.ListByAuthor(ctx, follow.TargetID, 10, 0)
+		if err != nil {
+			return nil
+		}
+		var recent []store.Schematic
+		for _, s := range schematics {
+			if s.Created.After(since) {
+				recent = append(recent, s)
+			}
+		}
+		return recent
+	case "latest":
+		schematics, err := w.deps.Store.Schematics.ListApproved(ctx, 10, 0)
 		if err != nil {
 			return nil
 		}
@@ -127,7 +158,7 @@ func (w *SectionUpdateWorker) findNewSchematics(ctx context.Context, sub store.S
 		}
 		return recent
 	case "tag":
-		tag, err := w.deps.Store.Tags.GetByID(ctx, sub.TargetID)
+		tag, err := w.deps.Store.Tags.GetByID(ctx, follow.TargetID)
 		if err != nil || tag == nil {
 			return nil
 		}
@@ -145,7 +176,7 @@ func (w *SectionUpdateWorker) findNewSchematics(ctx context.Context, sub store.S
 				continue
 			}
 			for _, tid := range tagIDs {
-				if tid == sub.TargetID {
+				if tid == follow.TargetID {
 					recent = append(recent, s)
 					break
 				}
@@ -160,21 +191,37 @@ func (w *SectionUpdateWorker) findNewSchematics(ctx context.Context, sub store.S
 	}
 }
 
-func (w *SectionUpdateWorker) resolveSectionName(ctx context.Context, sub store.SectionSubscription) string {
-	switch sub.SubscriptionType {
+func (w *SectionUpdateWorker) resolveFollowName(ctx context.Context, follow store.UserFollow) string {
+	switch follow.FollowType {
 	case "category":
-		cat, err := w.deps.Store.Categories.GetByID(ctx, sub.TargetID)
+		cat, err := w.deps.Store.Categories.GetByID(ctx, follow.TargetID)
 		if err == nil && cat != nil {
 			return cat.Name
 		}
 		return "your subscribed category"
 	case "tag":
-		tag, err := w.deps.Store.Tags.GetByID(ctx, sub.TargetID)
+		tag, err := w.deps.Store.Tags.GetByID(ctx, follow.TargetID)
 		if err == nil && tag != nil {
 			return tag.Name
 		}
 		return "your subscribed tag"
+	case "user":
+		user, err := w.deps.Store.Users.GetUserByID(ctx, follow.TargetID)
+		if err == nil {
+			return user.Username
+		}
+		return "a creator you follow"
+	case "latest":
+		return "Latest Schematics"
+	case "trending":
+		return "Trending Schematics"
+	case "highest_rated":
+		return "Highest Rated Schematics"
+	case "mod":
+		return "a mod you follow"
+	case "search":
+		return "a saved search"
 	default:
-		return "your subscribed section"
+		return "your subscription"
 	}
 }

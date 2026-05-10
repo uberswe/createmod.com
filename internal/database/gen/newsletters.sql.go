@@ -139,45 +139,6 @@ func (q *Queries) CreateSearchAlert(ctx context.Context, arg CreateSearchAlertPa
 	return i, err
 }
 
-const createSectionSubscription = `-- name: CreateSectionSubscription :one
-INSERT INTO section_subscriptions (user_id, subscription_type, target_id, frequency, unsubscribe_token)
-VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (user_id, subscription_type, target_id) DO UPDATE SET
-    frequency = EXCLUDED.frequency,
-    updated = NOW()
-RETURNING id, user_id, subscription_type, target_id, frequency, unsubscribe_token, created, updated
-`
-
-type CreateSectionSubscriptionParams struct {
-	UserID           string `json:"user_id"`
-	SubscriptionType string `json:"subscription_type"`
-	TargetID         string `json:"target_id"`
-	Frequency        string `json:"frequency"`
-	UnsubscribeToken string `json:"unsubscribe_token"`
-}
-
-func (q *Queries) CreateSectionSubscription(ctx context.Context, arg CreateSectionSubscriptionParams) (SectionSubscription, error) {
-	row := q.db.QueryRow(ctx, createSectionSubscription,
-		arg.UserID,
-		arg.SubscriptionType,
-		arg.TargetID,
-		arg.Frequency,
-		arg.UnsubscribeToken,
-	)
-	var i SectionSubscription
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.SubscriptionType,
-		&i.TargetID,
-		&i.Frequency,
-		&i.UnsubscribeToken,
-		&i.Created,
-		&i.Updated,
-	)
-	return i, err
-}
-
 const deleteSearchAlert = `-- name: DeleteSearchAlert :exec
 DELETE FROM search_alerts WHERE id = $1 AND user_id = $2
 `
@@ -189,20 +150,6 @@ type DeleteSearchAlertParams struct {
 
 func (q *Queries) DeleteSearchAlert(ctx context.Context, arg DeleteSearchAlertParams) error {
 	_, err := q.db.Exec(ctx, deleteSearchAlert, arg.ID, arg.UserID)
-	return err
-}
-
-const deleteSectionSubscription = `-- name: DeleteSectionSubscription :exec
-DELETE FROM section_subscriptions WHERE id = $1 AND user_id = $2
-`
-
-type DeleteSectionSubscriptionParams struct {
-	ID     string `json:"id"`
-	UserID string `json:"user_id"`
-}
-
-func (q *Queries) DeleteSectionSubscription(ctx context.Context, arg DeleteSectionSubscriptionParams) error {
-	_, err := q.db.Exec(ctx, deleteSectionSubscription, arg.ID, arg.UserID)
 	return err
 }
 
@@ -279,41 +226,6 @@ func (q *Queries) ListActiveSearchAlerts(ctx context.Context, limit int32) ([]Se
 			&i.LastChecked,
 			&i.LastNotified,
 			&i.Active,
-			&i.UnsubscribeToken,
-			&i.Created,
-			&i.Updated,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listAllSectionSubscriptions = `-- name: ListAllSectionSubscriptions :many
-SELECT id, user_id, subscription_type, target_id, frequency, unsubscribe_token, created, updated FROM section_subscriptions
-WHERE frequency != 'off'
-ORDER BY subscription_type, target_id
-`
-
-func (q *Queries) ListAllSectionSubscriptions(ctx context.Context) ([]SectionSubscription, error) {
-	rows, err := q.db.Query(ctx, listAllSectionSubscriptions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SectionSubscription{}
-	for rows.Next() {
-		var i SectionSubscription
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.SubscriptionType,
-			&i.TargetID,
-			&i.Frequency,
 			&i.UnsubscribeToken,
 			&i.Created,
 			&i.Updated,
@@ -486,81 +398,6 @@ func (q *Queries) ListSearchAlertsByUser(ctx context.Context, userID string) ([]
 	return items, nil
 }
 
-const listSectionSubscriptionsByTarget = `-- name: ListSectionSubscriptionsByTarget :many
-SELECT id, user_id, subscription_type, target_id, frequency, unsubscribe_token, created, updated FROM section_subscriptions
-WHERE subscription_type = $1 AND target_id = $2
-ORDER BY created ASC
-`
-
-type ListSectionSubscriptionsByTargetParams struct {
-	SubscriptionType string `json:"subscription_type"`
-	TargetID         string `json:"target_id"`
-}
-
-func (q *Queries) ListSectionSubscriptionsByTarget(ctx context.Context, arg ListSectionSubscriptionsByTargetParams) ([]SectionSubscription, error) {
-	rows, err := q.db.Query(ctx, listSectionSubscriptionsByTarget, arg.SubscriptionType, arg.TargetID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SectionSubscription{}
-	for rows.Next() {
-		var i SectionSubscription
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.SubscriptionType,
-			&i.TargetID,
-			&i.Frequency,
-			&i.UnsubscribeToken,
-			&i.Created,
-			&i.Updated,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSectionSubscriptionsByUser = `-- name: ListSectionSubscriptionsByUser :many
-SELECT id, user_id, subscription_type, target_id, frequency, unsubscribe_token, created, updated FROM section_subscriptions
-WHERE user_id = $1
-ORDER BY created DESC
-`
-
-func (q *Queries) ListSectionSubscriptionsByUser(ctx context.Context, userID string) ([]SectionSubscription, error) {
-	rows, err := q.db.Query(ctx, listSectionSubscriptionsByUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SectionSubscription{}
-	for rows.Next() {
-		var i SectionSubscription
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.SubscriptionType,
-			&i.TargetID,
-			&i.Frequency,
-			&i.UnsubscribeToken,
-			&i.Created,
-			&i.Updated,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const unsubscribeNewsletter = `-- name: UnsubscribeNewsletter :exec
 UPDATE newsletter_subscribers SET confirmed = false, updated = NOW()
 WHERE unsubscribe_token = $1
@@ -578,16 +415,6 @@ WHERE unsubscribe_token = $1
 
 func (q *Queries) UnsubscribeSearchAlert(ctx context.Context, unsubscribeToken string) error {
 	_, err := q.db.Exec(ctx, unsubscribeSearchAlert, unsubscribeToken)
-	return err
-}
-
-const unsubscribeSectionSubscription = `-- name: UnsubscribeSectionSubscription :exec
-UPDATE section_subscriptions SET frequency = 'off', updated = NOW()
-WHERE unsubscribe_token = $1
-`
-
-func (q *Queries) UnsubscribeSectionSubscription(ctx context.Context, unsubscribeToken string) error {
-	_, err := q.db.Exec(ctx, unsubscribeSectionSubscription, unsubscribeToken)
 	return err
 }
 

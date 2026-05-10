@@ -14,6 +14,69 @@
                                     <div class="card-body">
                                         <h2 class="mb-4">{{ T .Language "Subscriptions" }}</h2>
 
+                                        <h3 class="card-title">{{ T .Language "Follows" }}</h3>
+                                        <p class="text-secondary mb-3">{{ T .Language "Manage what you follow and how often you receive email notifications." }}</p>
+                                        {{ if .Follows }}
+                                        <div class="table-responsive mb-4">
+                                            <table class="table table-vcenter">
+                                                <thead>
+                                                    <tr>
+                                                        <th>{{ T .Language "Type" }}</th>
+                                                        <th>{{ T .Language "Target" }}</th>
+                                                        <th>{{ T .Language "Email Frequency" }}</th>
+                                                        <th class="w-1"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {{ range .Follows }}
+                                                    <tr id="follow-{{ .ID }}">
+                                                        <td>
+                                                            {{ if eq .FollowType "user" }}
+                                                                <span class="badge bg-blue-lt">{{ T $.Language "Creator" }}</span>
+                                                            {{ else if eq .FollowType "category" }}
+                                                                <span class="badge bg-green-lt">{{ T $.Language "Category" }}</span>
+                                                            {{ else if eq .FollowType "latest" }}
+                                                                <span class="badge bg-cyan-lt">{{ T $.Language "Latest" }}</span>
+                                                            {{ else if eq .FollowType "trending" }}
+                                                                <span class="badge bg-orange-lt">{{ T $.Language "Trending" }}</span>
+                                                            {{ else if eq .FollowType "highest_rated" }}
+                                                                <span class="badge bg-yellow-lt">{{ T $.Language "Highest Rated" }}</span>
+                                                            {{ else if eq .FollowType "search" }}
+                                                                <span class="badge bg-purple-lt">{{ T $.Language "Search" }}</span>
+                                                            {{ else if eq .FollowType "mod" }}
+                                                                <span class="badge bg-red-lt">{{ T $.Language "Mod" }}</span>
+                                                            {{ else }}
+                                                                <span class="badge bg-secondary-lt">{{ .FollowType }}</span>
+                                                            {{ end }}
+                                                        </td>
+                                                        <td>{{ .TargetID }}</td>
+                                                        <td>
+                                                            <select class="form-select form-select-sm" style="width: auto;"
+                                                                    onchange="updateFollowFrequency('{{ .FollowType }}', '{{ .TargetID }}', this.value)">
+                                                                <option value="realtime" {{ if eq .EmailFrequency "realtime" }}selected{{ end }}>{{ T $.Language "Realtime" }}</option>
+                                                                <option value="daily" {{ if eq .EmailFrequency "daily" }}selected{{ end }}>{{ T $.Language "Daily" }}</option>
+                                                                <option value="weekly" {{ if eq .EmailFrequency "weekly" }}selected{{ end }}>{{ T $.Language "Weekly" }}</option>
+                                                                <option value="off" {{ if eq .EmailFrequency "off" }}selected{{ end }}>{{ T $.Language "Off" }}</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-ghost-danger"
+                                                                    onclick="unfollowItem('{{ .FollowType }}', '{{ .TargetID }}', 'follow-{{ .ID }}')"
+                                                                    title="{{ T $.Language "Unfollow" }}">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {{ end }}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {{ else }}
+                                        <p class="text-secondary mb-4">{{ T .Language "You are not following anything yet. Follow creators, categories, or feeds to get notified about new content." }}</p>
+                                        {{ end }}
+
+                                        <hr class="my-4">
+
                                         <h3 class="card-title">{{ T .Language "Search Alerts" }}</h3>
                                         {{ if .SearchAlerts }}
                                         <div class="list-group list-group-flush mb-3">
@@ -40,36 +103,6 @@
                                         {{ else }}
                                         <p class="text-secondary">{{ T .Language "No search alerts. Save a search from the search page to get notified about new results." }}</p>
                                         {{ end }}
-
-                                        <hr class="my-4">
-
-                                        <h3 class="card-title">{{ T .Language "Section Subscriptions" }}</h3>
-                                        {{ if .SectionSubscriptions }}
-                                        <div class="list-group list-group-flush">
-                                            {{ range .SectionSubscriptions }}
-                                            <div class="list-group-item" id="sub-{{ .ID }}">
-                                                <div class="row align-items-center">
-                                                    <div class="col">
-                                                        <strong>{{ .SubscriptionType }}</strong>
-                                                        {{ if .TargetID }}<span class="text-secondary ms-2">{{ .TargetID }}</span>{{ end }}
-                                                        <span class="badge bg-secondary ms-2">{{ .Frequency }}</span>
-                                                    </div>
-                                                    <div class="col-auto">
-                                                        <button class="btn btn-sm btn-ghost-danger"
-                                                                hx-delete="/settings/subscriptions/sections/{{ .ID }}"
-                                                                hx-target="#sub-{{ .ID }}"
-                                                                hx-swap="outerHTML"
-                                                                hx-confirm="{{ T $.Language "Are you sure?" }}">
-                                                            {{ T $.Language "Remove" }}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {{ end }}
-                                        </div>
-                                        {{ else }}
-                                        <p class="text-secondary">{{ T .Language "No section subscriptions." }}</p>
-                                        {{ end }}
                                     </div>
                                 </div>
                             </div>
@@ -81,4 +114,26 @@
         {{template "footer.html" .}}
     </div>
 </div>
+<script>
+function updateFollowFrequency(followType, targetId, frequency) {
+    fetch('/api/follows/frequency', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({follow_type: followType, target_id: targetId, email_frequency: frequency})
+    });
+}
+function unfollowItem(followType, targetId, elementId) {
+    if (!confirm('Are you sure?')) return;
+    fetch('/api/follows', {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({follow_type: followType, target_id: targetId})
+    }).then(function(resp) {
+        if (resp.ok) {
+            var el = document.getElementById(elementId);
+            if (el) el.remove();
+        }
+    });
+}
+</script>
 {{template "foot.html" .}}

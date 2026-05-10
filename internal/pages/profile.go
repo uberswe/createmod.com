@@ -150,7 +150,7 @@ func showProfile(e *server.RequestEvent, appStore *store.Store, cacheService *ca
 	if currentUser := session.UserFromContext(ctx); currentUser != nil {
 		d.IsOwnProfile = currentUser.ID == user.ID
 		if !d.IsOwnProfile {
-			d.IsFollowing, _ = appStore.Follows.IsFollowing(ctx, currentUser.ID, user.ID)
+			d.IsFollowing, _ = appStore.Follows.IsFollowing(ctx, currentUser.ID, "user", user.ID)
 		}
 	}
 

@@ -20,6 +20,13 @@
                   {{ if .Mod.Description }}<div class="text-secondary">{{ .Mod.Description }}</div>
                   {{ else }}<div class="text-secondary">{{ .Subtitle }}</div>{{ end }}
                   <div class="d-flex flex-wrap gap-2 mt-2">
+                    {{ if $.IsAuthenticated }}
+                    <button class="btn btn-sm btn-outline-primary follow-mod-btn" data-mod-slug="{{ .Mod.Slug }}"
+                            onclick="followMod(this, '{{ .Mod.Slug }}')">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                      {{ T .Language "Follow" }}
+                    </button>
+                    {{ end }}
                     {{ if .Mod.ModrinthURL }}
                     <a href="{{ .Mod.ModrinthURL }}" class="btn btn-sm btn-modrinth" target="_blank" rel="noopener">
                       <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
@@ -37,6 +44,15 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="mb-3">
+          <form action="/search" method="get" class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="{{ T .Language "Search schematics in" }} {{ .Mod.Name }}..." aria-label="{{ T .Language "Search" }}">
+            <input type="hidden" name="mod" value="{{ .Mod.Slug }}">
+            <button class="btn btn-primary" type="submit">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+            </button>
+          </form>
         </div>
         <div id="mod-results">
           <h3 class="mb-3">{{ .Subtitle }}</h3>
@@ -77,6 +93,22 @@
   </div>
 </div>
 {{template "foot.html" .}}
+<script>
+function followMod(btn, slug) {
+  fetch('/api/follows', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({follow_type: 'mod', target_id: slug, email_frequency: 'daily'})
+  }).then(function(resp) {
+    if (resp.ok) {
+      btn.classList.remove('btn-outline-primary');
+      btn.classList.add('btn-primary');
+      btn.disabled = true;
+      btn.textContent = 'Following';
+    }
+  });
+}
+</script>
 <script>
 window['nitroAds'].createAd('moddetail-video-nc-top-right', {
   "format": "video-nc",
