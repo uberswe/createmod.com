@@ -102,7 +102,7 @@
                             <div class="card-header d-flex align-items-center">
                                 <h3 class="card-title mb-0">{{ T .Language "Additional Files" }}</h3>
                                 {{ if .IsOwner }}
-                                <button class="btn btn-sm btn-outline-primary ms-auto" type="button" data-bs-toggle="modal" data-bs-target="#add-file-modal">
+                                <button class="btn btn-sm btn-outline-primary ms-auto" type="button" data-cm-toggle="modal" data-cm-target="#add-file-modal">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
                                     {{ T .Language "Add Variation" }}
                                 </button>
@@ -205,7 +205,7 @@
                                     <div class="material-row" data-block-id="{{ .BlockID }}">
                                         <div class="material-icon-wrap">
                                             <img src="https://blocksitems.com/api/v1/blocks/{{ urlPathEscape .BlockID }}/icon?size=64" alt="" loading="lazy"
-                                                 onerror="this.style.display='none';var p=document.createElement('div');p.style.cssText='width:32px;height:32px;background:var(--tblr-border-color);border-radius:2px';this.parentNode.appendChild(p);">
+                                                 onerror="this.style.display='none';var p=document.createElement('div');p.style.cssText='width:32px;height:32px;background:var(--cm-border-color);border-radius:2px';this.parentNode.appendChild(p);">
                                         </div>
                                         <div class="material-info">
                                             <span class="material-name">{{ .BlockID }}</span>
@@ -246,7 +246,7 @@
     align-items: center;
     padding: 0.5rem 1rem;
     gap: 0.75rem;
-    border-bottom: 1px solid var(--tblr-border-color);
+    border-bottom: 1px solid var(--cm-border-color);
 }
 .material-row:last-child {
     border-bottom: none;
@@ -258,7 +258,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--tblr-bg-surface-secondary);
+    background: var(--cm-bg-surface-secondary);
     border-radius: 4px;
 }
 .material-icon-wrap img {
@@ -281,7 +281,7 @@
 }
 .material-block-id {
     font-size: 0.75rem;
-    color: var(--tblr-secondary-color);
+    color: var(--cm-secondary-color);
     opacity: 0.7;
     white-space: nowrap;
     overflow: hidden;
@@ -290,14 +290,14 @@
 .material-count {
     flex-shrink: 0;
     font-size: 0.9rem;
-    color: var(--tblr-body-color);
+    color: var(--cm-body-color);
     opacity: 0.75;
     font-variant-numeric: tabular-nums;
 }
 .material-stacks {
     flex-shrink: 0;
     font-size: 0.75rem;
-    color: var(--tblr-body-color);
+    color: var(--cm-body-color);
     opacity: 0.5;
     min-width: 70px;
     text-align: right;
@@ -519,7 +519,7 @@ function deleteAdditionalFile(token, fileId, btn) {
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{{ T .Language "Add Variation" }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -534,7 +534,7 @@ function deleteAdditionalFile(token, fileId, btn) {
                 <div id="add-file-error" class="alert alert-danger" style="display:none;" role="alert"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                <button type="button" class="btn me-auto" data-cm-dismiss="modal">{{ T .Language "Cancel" }}</button>
                 <button type="button" class="btn btn-primary" id="add-file-submit" onclick="submitAdditionalFile()">{{ T .Language "Upload" }}</button>
             </div>
         </div>

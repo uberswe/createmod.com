@@ -52,7 +52,7 @@
                     {{end}}
                   </td>
                   <td class="text-end text-nowrap">
-                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#resolve-modal-{{.ID}}">
+                    <button type="button" class="btn btn-sm btn-success" data-cm-toggle="modal" data-cm-target="#resolve-modal-{{.ID}}">
                       {{ T $.Language "Resolve" }}
                     </button>
                     <form method="post" action="/admin/reports/{{.ID}}/ignore" class="d-inline" hx-boost="false">
@@ -60,7 +60,7 @@
                         {{ T $.Language "Ignore" }}
                       </button>
                     </form>
-                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal-{{.ID}}">
+                    <button type="button" class="btn btn-sm btn-danger" data-cm-toggle="modal" data-cm-target="#delete-modal-{{.ID}}">
                       {{ T $.Language "Delete" }}
                     </button>
                   </td>
@@ -84,7 +84,7 @@
               <form method="post" action="/admin/reports/{{.ID}}/resolve" hx-boost="false">
                 <div class="modal-header">
                   <h5 class="modal-title">{{ T $.Language "Resolve Report" }}</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                   <div class="mb-3">
@@ -116,7 +116,7 @@
                   {{end}}
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
+                  <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">{{ T $.Language "Cancel" }}</button>
                   <button type="submit" class="btn btn-success">{{ T $.Language "Resolve" }}</button>
                 </div>
               </form>
@@ -135,7 +135,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
+                <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">{{ T $.Language "Cancel" }}</button>
                 <form method="post" action="/admin/reports/{{.ID}}/delete-target" hx-boost="false">
                   <button type="submit" class="btn btn-danger">{{ T $.Language "Yes, delete" }}</button>
                 </form>

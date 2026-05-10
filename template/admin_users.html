@@ -88,7 +88,7 @@
                         <button type="submit" class="btn btn-sm btn-success">{{ T $.Language "Restore" }}</button>
                       </form>
                     {{else}}
-                      <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#user-delete-modal-{{.ID}}">{{ T $.Language "Delete" }}</button>
+                      <button type="button" class="btn btn-sm btn-danger" data-cm-toggle="modal" data-cm-target="#user-delete-modal-{{.ID}}">{{ T $.Language "Delete" }}</button>
                     {{end}}
                   </td>
                 </tr>
@@ -136,7 +136,7 @@
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T $.Language "Cancel" }}</button>
+                <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">{{ T $.Language "Cancel" }}</button>
                 <form method="post" action="/admin/users/{{.ID}}/delete" hx-boost="false">
                   <input type="hidden" name="return" value="/admin/users?{{$.QueryStr}}&page={{$.Page}}">
                   <button type="submit" class="btn btn-danger">{{ T $.Language "Yes, delete" }}</button>

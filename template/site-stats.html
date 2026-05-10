@@ -162,7 +162,7 @@
                                 var el = document.getElementById(id);
                                 if (el && el._apexChart) { el._apexChart.destroy(); el._apexChart = null; }
                             });
-                            var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+                            var isDark = document.body.getAttribute('data-cm-theme') === 'dark';
                             var fg = isDark ? '#a0aec0' : '#616876';
                             var grid = isDark ? '#3a3f4b' : '#e0e0e0';
                             var commonOpts = {
@@ -216,7 +216,7 @@
             var el = document.getElementById(id);
             if (el && el._apexChart) { el._apexChart.destroy(); el._apexChart = null; }
         });
-        var isDark = document.body.getAttribute('data-bs-theme') === 'dark';
+        var isDark = document.body.getAttribute('data-cm-theme') === 'dark';
         var fg = isDark ? '#a0aec0' : '#616876';
         var grid = isDark ? '#3a3f4b' : '#e0e0e0';
         var commonOpts = {

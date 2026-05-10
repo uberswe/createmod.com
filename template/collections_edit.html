@@ -28,7 +28,7 @@
         {{ end }}
         <div class="row row-cards">
           <div class="col-12 col-md-8">
-            <form class="card" action="{{ .Slug }}" method="post" enctype="multipart/form-data" onsubmit="if(window.tinyMCE){tinyMCE.triggerSave(true,true);}">
+            <form class="card" action="{{ .Slug }}" method="post" enctype="multipart/form-data">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Collection details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
@@ -175,8 +175,8 @@ function updateDescCount(){
   var span=document.getElementById('desc-count');
   if(!span)return;
   var len=0;
-  if(window.tinyMCE&&tinyMCE.get('description')){
-    len=tinyMCE.get('description').getContent({format:'text'}).trim().length;
+  if(window._cmCollectionEditor){
+    len=(window._cmCollectionEditor.getText()||'').trim().length;
   }else{
     var ta=document.getElementById('description');
     if(ta) len=ta.value.trim().length;
@@ -188,44 +188,13 @@ updateTitleCount();
 updateDescCount();
 </script>
 <script>
-(function initCollectionEditor(retries){
-  retries=retries||0;
-  if(typeof tinyMCE==='undefined'){
-    if(retries<100){
-      if(retries===0){
-        var s=document.createElement('script');
-        s.src='https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js';
-        document.head.appendChild(s);
-      }
-      setTimeout(function(){initCollectionEditor(retries+1);},100);
-    }
-    return;
-  }
-  var options={
-    license_key:"gpl",
-    selector:'#description',
-    height:300,
-    menubar:false,
-    statusbar:true,
-    promotion:false,
-    branding:false,
-    plugins:'lists link autolink wordcount autoresize',
-    toolbar:'undo redo | bold italic underline strikethrough | bullist numlist | link | removeformat',
-    content_style:'body{font-family:-apple-system,BlinkMacSystemFont,San Francisco,Segoe UI,Roboto,Helvetica Neue,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;max-width:100%;padding:8px 16px;}',
-    autoresize_min_height:200,
-    autoresize_max_height:600,
-    link_default_target:'_blank',
-    link_assume_external_targets:true,
-    setup:function(editor){
-      editor.on('keyup input change',function(){updateDescCount();});
-      editor.on('init',function(){updateDescCount();});
-    }
-  };
-  if(localStorage.getItem("createmodTheme")==='dark'){
-    options.skin='tinymce-5-dark';
-    options.content_css='dark';
-  }
-  tinyMCE.baseURL="https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
-  tinyMCE.init(options);
+(function(){
+  window._cmCollectionEditor = cmEditor.create('#description', {
+    preset: 'basic',
+    minHeight: 200,
+    maxHeight: 600,
+    onUpdate: function(){ updateDescCount(); }
+  });
+  updateDescCount();
 })();
 </script>

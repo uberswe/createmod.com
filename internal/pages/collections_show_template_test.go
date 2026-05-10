@@ -116,7 +116,7 @@ func Test_Collections_Show_Template_Edit_Button_For_Owner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render collections_show.html failed: %v", err)
 	}
-	if strings.Contains(out, "/edit") {
+	if strings.Contains(out, "/collections/test-slug/edit") {
 		t.Fatalf("non-owner should not see edit link")
 	}
 }

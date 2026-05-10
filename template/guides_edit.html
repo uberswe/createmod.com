@@ -18,7 +18,7 @@
         </div>
         <div class="row">
           <div class="col-12 col-lg-9">
-            <form class="card" action="/guides/{{ .GuideID }}" method="post" enctype="multipart/form-data" onsubmit="if (window.tinyMCE) { tinyMCE.triggerSave(true,true); }">
+            <form class="card" action="/guides/{{ .GuideID }}" method="post" enctype="multipart/form-data">
               <div class="card-header"><h3 class="card-title">{{ T .Language "Guide details" }}</h3></div>
               <div class="card-body">
                 <div class="mb-3">
@@ -67,45 +67,12 @@
 </div>
 {{template "foot.html" .}}
 <script>
-(function initGuideEditor(retries) {
-  retries = retries || 0;
-  if (typeof tinyMCE === 'undefined') {
-    if (retries < 100) {
-      // Load TinyMCE if not already loaded
-      if (retries === 0) {
-        var s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js';
-        document.head.appendChild(s);
-      }
-      setTimeout(function(){ initGuideEditor(retries + 1); }, 100);
-    }
-    return;
-  }
-  var options = {
-    license_key: "gpl",
-    selector: '#guide-editor',
-    height: 500,
-    menubar: true,
-    statusbar: true,
-    promotion: false,
-    branding: false,
-    plugins: 'lists link image table code wordcount help autolink autoresize',
-    toolbar: 'undo redo | blocks | bold italic underline strikethrough | alignleft aligncenter alignright | bullist numlist | link image table | code | help',
-    block_formats: 'Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4; Blockquote=blockquote; Code=pre',
-    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; max-width: 100%; padding: 8px 16px; } img { max-width: 100%; height: auto; } pre { background: #f4f4f5; padding: 12px; border-radius: 6px; overflow-x: auto; } blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 16px; color: #666; }',
-    autoresize_min_height: 400,
-    autoresize_max_height: 800,
-    link_default_target: '_blank',
-    link_assume_external_targets: true,
-    images_upload_url: '/api/images/upload',
-    images_upload_credentials: true,
-    automatic_uploads: true
-  };
-  if (localStorage.getItem("createmodTheme") === 'dark') {
-    options.skin = 'tinymce-5-dark';
-    options.content_css = 'dark';
-  }
-  tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
-  tinyMCE.init(options);
+(function() {
+  window._cmGuideEditor = cmEditor.create('#guide-editor', {
+    preset: 'full',
+    minHeight: 400,
+    maxHeight: 800,
+    imageUploadUrl: '/api/images/upload'
+  });
 })();
 </script>

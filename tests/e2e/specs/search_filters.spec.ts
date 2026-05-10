@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 async function expandFilters(page) {
-  const toggle = page.locator('button[data-bs-target="#search-filters-collapse"]');
+  const toggle = page.locator('button[data-cm-target="#search-filters-collapse"]');
   await toggle.click();
   await page.waitForSelector('#search-filters-collapse.show', { timeout: 5000 });
 }

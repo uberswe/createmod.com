@@ -221,33 +221,33 @@
     body .ts-dropdown .create {
         color: #6b7280 !important;
     }
-    body[data-bs-theme=dark] .ts-control {
+    body[data-cm-theme=dark] .ts-control {
         background: #1f2121 !important;
         border: none !important;
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-control input {
+    body[data-cm-theme=dark] .ts-control input {
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control>div {
+    body[data-cm-theme=dark] .ts-wrapper.multi .ts-control>div {
         background: #bf9045 !important;
         color: #ffffff !important;
     }
-    body[data-bs-theme=dark] .ts-wrapper.single .ts-control .item {
+    body[data-cm-theme=dark] .ts-wrapper.single .ts-control .item {
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown {
+    body[data-cm-theme=dark] .ts-dropdown {
         background: #1f2121 !important;
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown .option {
+    body[data-cm-theme=dark] .ts-dropdown .option {
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown .active {
+    body[data-cm-theme=dark] .ts-dropdown .active {
         background: #bf9045 !important;
         color: #ffffff !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown .create {
+    body[data-cm-theme=dark] .ts-dropdown .create {
         color: #9ca3af !important;
     }
     /* Unified image upload area */
@@ -335,7 +335,6 @@
         background: rgba(191,144,69,0.1);
     }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js" defer crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -378,29 +377,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    var options = {
-        license_key: "gpl",
-        selector: '#tinymce-schematic',
-        height: 300,
-        menubar: false,
-        statusbar: false,
-        plugins: [
-            'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
-            'searchreplace', 'visualblocks', 'code', 'fullscreen',
-            'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-        ],
-        toolbar: 'undo redo | formatselect | ' +
-            'bold italic | ' +
-            'link | bullist numlist outdent indent | ' +
-            'removeformat',
-        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
-    };
-    if (localStorage.getItem("createmodTheme") === 'dark') {
-        options.skin = 'tinymce-5-dark';
-        options.content_css = 'dark';
-    }
-    tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
-    tinyMCE.init(options);
+    window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600 });
 });
 </script>
 <script>
@@ -615,10 +592,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         formData.append("title", titleElement.value);
         formData.append("author", "{{ .UserID }}");
-        var content = '';
-        if (tinyMCE && tinyMCE.activeEditor) {
-            content = tinyMCE.activeEditor.getContent();
-        }
+        var content = document.getElementById('tinymce-schematic').value || '';
         formData.append("content", content);
         formData.append("description", content);
         formData.append("categories", document.getElementById("schematic-category").value);

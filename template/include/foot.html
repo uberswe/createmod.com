@@ -122,11 +122,11 @@ if (!window._htmxErrorInit) {
 (function(){
   function reinit() {
     if (typeof bootstrap === 'undefined') return;
-    document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el) {
+    document.querySelectorAll('[data-cm-toggle="dropdown"]').forEach(function(el) {
       var existing = bootstrap.Dropdown.getInstance(el);
       if (existing) { try { existing.dispose(); } catch(e) {} }
     });
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    document.querySelectorAll('[data-cm-toggle="tooltip"]').forEach(function(el) {
       var existing = bootstrap.Tooltip.getInstance(el);
       if (existing) { try { existing.dispose(); } catch(e) {} }
       new bootstrap.Tooltip(el);
