@@ -8,7 +8,7 @@
                 <div class="d-flex gap-3">
                     <div class="flex-grow-1 min-width-0">
                         <!-- Trending -->
-                        <h2 class="mb-3"><a href="/search?sort=8" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
+                        <h2 class="mb-3"><a href="/trending" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
                         <div id="tab-panel-trending" class="tab-panel" data-trending-section="trending">
                             <div class="row g-3">
                                 {{ range .Trending }}
@@ -42,7 +42,7 @@
                         </div>
 
                         <!-- Highest Rated -->
-                        <h2 class="mb-3 mt-4"><a href="/search?sort=4" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
+                        <h2 class="mb-3 mt-4"><a href="/highest-scores" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
                         <div id="tab-panel-highest" class="tab-panel">
                             <div class="row g-3">
                                 {{ range .HighestRated }}

@@ -794,6 +794,9 @@ func (ps *PostgresStore) SetCategories(ctx context.Context, schematicID string, 
 }
 
 func (ps *PostgresStore) SetTags(ctx context.Context, schematicID string, tagIDs []string) error {
+	if len(tagIDs) > 5 {
+		tagIDs = tagIDs[:5]
+	}
 	if err := ps.q.SetSchematicTags(ctx, schematicID); err != nil {
 		return err
 	}

@@ -22,38 +22,46 @@
                     </div>
                 </div>
 
-                <!-- 3-column layout -->
-                <div class="search-layout">
-                    <!-- Left: Filter sidebar -->
-                    <div class="search-sidebar d-none d-lg-block">
-                        {{template "search_filters.html" .}}
-                        <div class="mt-4 search-sticky-under-container">
-                            <div id="search-sticky-under" style="min-height: 550px; display: block; margin-bottom: 2rem;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Mobile filter toggle -->
-                    <div class="d-lg-none mb-3">
-                        <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobile-filters" aria-controls="mobile-filters">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z" /></svg>
+                <!-- Filters bar (top, collapsible) -->
+                <div class="mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#search-filters-collapse" aria-expanded="false" aria-controls="search-filters-collapse">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z" /></svg>
                             {{ T .Language "Filters" }}
                         </button>
-                    </div>
-                    <!-- Mobile filters offcanvas -->
-                    <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="mobile-filters" aria-labelledby="mobile-filters-label">
-                        <div class="offcanvas-header">
-                            <h5 class="offcanvas-title" id="mobile-filters-label">{{ T .Language "Filters" }}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                        <!-- Quick filter pills -->
+                        <div class="d-flex flex-wrap gap-1">
+                            {{ if ne .Category "all" }}
+                            <span class="badge bg-blue-lt">{{ .Category }}</span>
+                            {{ end }}
+                            {{ range .SelectedTags }}
+                            <span class="badge bg-green-lt">{{ . }}</span>
+                            {{ end }}
+                            {{ if ne .MinecraftVersion "all" }}
+                            <span class="badge bg-cyan-lt">MC {{ .MinecraftVersion }}</span>
+                            {{ end }}
+                            {{ if ne .CreateVersion "all" }}
+                            <span class="badge bg-orange-lt">Create {{ .CreateVersion }}</span>
+                            {{ end }}
+                            {{ if gt (len .SelectedMods) 0 }}
+                            {{ range .SelectedMods }}
+                            <span class="badge bg-purple-lt">{{ . }}</span>
+                            {{ end }}
+                            {{ end }}
+                            {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (gt (len .SelectedMods) 0) (ne .Rating -1) }}
+                            <a href="/search/{{ .TermSlug }}" class="badge bg-secondary-lt text-decoration-none">{{ T .Language "Clear all" }}</a>
+                            {{ end }}
                         </div>
-                        <div class="offcanvas-body" id="mobile-filters-body" style="padding-bottom: 5rem;">
-                        </div>
                     </div>
+                    <div class="collapse" id="search-filters-collapse">
+                        {{template "search_filters.html" .}}
+                    </div>
+                </div>
 
-                    <!-- Mobile: top ad -->
-                    <div id="search-top-mobile" class="d-lg-none mb-3 text-center"></div>
-
-                    <!-- Center: Results -->
-                    <div class="search-center">
+                <!-- Results layout: full width + ad rail -->
+                <div class="search-layout-wide">
+                    <!-- Results -->
+                    <div class="search-center-wide">
                         <div id="search-results">
                             <div class="d-flex align-items-center justify-content-between mb-3">
                                 <div class="text-secondary small">
@@ -86,19 +94,28 @@
                             {{ if gt .SearchResultCount 0 }}
                             {{template "search_pagination.html" .}}
                             {{ end }}
-                            <div class="row row-cards">
+                            <div class="row row-cards" id="search-grid">
                                 {{range $i, $s := .Schematics }}
-                                    <div class="col-lg-4 col-md-6 col-12 mb-3" data-schematic-id="{{ $s.ID }}" data-position="{{ $i }}">
+                                    <div class="col-xl-3 col-lg-4 col-md-6 col-12 mb-3" data-schematic-id="{{ $s.ID }}" data-position="{{ $i }}">
                                     {{template "schematic_card.html" $s}}
                                     </div>
                                 {{end}}
                             </div>
+                            {{ if .HasNext }}
+                            <div class="text-center mt-4" id="infinite-scroll-sentinel">
+                                <a href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-grid" hx-select="#search-grid > div" hx-swap="beforeend" hx-trigger="revealed" hx-push-url="false" class="btn btn-outline-secondary" id="load-more-btn">
+                                    {{ T .Language "Load More" }}
+                                </a>
+                            </div>
+                            {{ end }}
+                            {{ if not .HasNext }}
                             {{template "search_pagination.html" .}}
+                            {{ end }}
                         </div>
                     </div>
 
                     <!-- Right: Ad rail (desktop only) -->
-                    <div class="search-ad-rail d-none d-lg-block">
+                    <div class="search-ad-rail-wide d-none d-xl-block">
                         <div id="search-video-nc-top-right" class="mb-3"></div>
                         <div id="search-sticky-adrail-top" class="mb-3"></div>
                     </div>
@@ -107,66 +124,9 @@
         </main>
         {{template "footer.html" .}}
         <script>
-            // Populate mobile offcanvas with a copy of the desktop filters on open
-            var mobileFilters = document.getElementById('mobile-filters');
-            if (mobileFilters) {
-                mobileFilters.addEventListener('show.bs.offcanvas', function () {
-                    var src = document.querySelector('.search-sidebar #search-filters');
-                    var dest = document.getElementById('mobile-filters-body');
-                    if (src && dest) {
-                        var clone = src.cloneNode(true);
-                        // Remove HTMX attributes from clone so it acts as a plain form
-                        var form = clone.querySelector('form');
-                        if (form) {
-                            form.removeAttribute('hx-get');
-                            form.removeAttribute('hx-target');
-                            form.removeAttribute('hx-select');
-                            form.removeAttribute('hx-swap');
-                            form.removeAttribute('hx-push-url');
-                            form.removeAttribute('hx-trigger');
-                            form.removeAttribute('hx-include');
-                            form.id = 'mobile-search-form';
-                            // Add a search input at the top so the query is included
-                            var heroVal = (document.getElementById('search-hero-input') || {}).value || '';
-                            var wrapper = document.createElement('div');
-                            wrapper.className = 'mb-3';
-                            var label = document.createElement('div');
-                            label.className = 'subheader mb-2';
-                            label.textContent = '{{ T .Language "Search" }}';
-                            var input = document.createElement('input');
-                            input.type = 'text';
-                            input.name = 'q';
-                            input.className = 'form-control';
-                            input.placeholder = '{{ T .Language "Search schematics..." }}';
-                            input.value = heroVal;
-                            wrapper.appendChild(label);
-                            wrapper.appendChild(input);
-                            form.insertBefore(wrapper, form.firstChild);
-                        }
-                        dest.innerHTML = '';
-                        dest.appendChild(clone);
-                    }
-                });
-            }
-            // Mobile top banner
+            // Video NC ad (desktop only)
             var searchKw = 'minecraft,create-mod,search,schematics';
             var searchTarget = { "pageType": "search" };
-            window['nitroAds'].createAd('search-top-mobile', {
-                "refreshTime": 60,
-                "refreshVisibleOnly": true,
-                "renderVisibleOnly": true,
-                "visibleMargin": 300,
-                "keywords": searchKw,
-                "targeting": searchTarget,
-                "report": {
-                    "enabled": true,
-                    "icon": true,
-                    "wording": "Report Ad",
-                    "position": "top-right"
-                },
-                "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
-            });
-            // Video NC ad (desktop only)
             window['nitroAds'].createAd('search-video-nc-top-right', {
                 "format": "video-nc",
                 "keywords": searchKw,
@@ -177,26 +137,7 @@
                     "wording": "Report Ad",
                     "position": "top-right"
                 },
-                "mediaQuery": "(min-width: 992px)"
-            });
-            // Left sidebar sticky ads
-            window['nitroAds'].createAd('search-sticky-under', {
-                "refreshTime": 30,
-                "refreshVisibleOnly": true,
-                "format": "sticky-stack",
-                "stickyStackLimit": 15,
-                "stickyStackSpace": 2.5,
-                "stickyStackOffset": 110,
-                "stickyStackResizable": false,
-                "keywords": searchKw,
-                "targeting": searchTarget,
-                "report": {
-                    "enabled": true,
-                    "icon": true,
-                    "wording": "Report Ad",
-                    "position": "top-right"
-                },
-                "mediaQuery": "(min-width: 992px)"
+                "mediaQuery": "(min-width: 1200px)"
             });
             window['nitroAds'].createAd('search-sticky-adrail-top', {
                 "refreshTime": 45,
@@ -216,7 +157,33 @@
                     "wording": "Report Ad",
                     "position": "top-right"
                 },
-                "mediaQuery": "(min-width: 992px)"
+                "mediaQuery": "(min-width: 1200px)"
+            });
+
+            // Infinite scroll: when the sentinel is revealed and HTMX loads more,
+            // update the sentinel with the next page URL
+            document.addEventListener('htmx:afterSwap', function(evt) {
+                if (evt.detail.target && evt.detail.target.id === 'search-grid') {
+                    var sentinel = document.getElementById('infinite-scroll-sentinel');
+                    if (!sentinel) return;
+                    var btn = document.getElementById('load-more-btn');
+                    if (!btn) return;
+                    var currentURL = btn.getAttribute('hx-get') || btn.getAttribute('href');
+                    if (!currentURL) return;
+                    // Parse current page from URL and increment
+                    var urlObj = new URL(currentURL, window.location.origin);
+                    var currentPage = parseInt(urlObj.searchParams.get('page') || urlObj.searchParams.get('p') || '2');
+                    urlObj.searchParams.set('page', currentPage + 1);
+                    var nextURL = urlObj.pathname + urlObj.search;
+                    btn.setAttribute('href', nextURL);
+                    btn.setAttribute('hx-get', nextURL);
+                    htmx.process(btn);
+                    // Check if the response had fewer items than expected (end of results)
+                    var newItems = evt.detail.target.querySelectorAll('[data-schematic-id]');
+                    if (newItems.length === 0) {
+                        sentinel.remove();
+                    }
+                }
             });
 
             // Search click tracking
@@ -234,7 +201,6 @@
               if (term) {
                 gtag('event', 'search', { 'search_term': term });
               }
-              // Track search result count
               var countEl = document.querySelector('#search-results .text-secondary.small');
               if (countEl && term) {
                 var match = countEl.textContent.match(/(\d+)/);
@@ -248,7 +214,7 @@
 
             // Attach click tracking to search result links
             document.addEventListener('click', function(e) {
-                var link = e.target && e.target.closest && e.target.closest('.search-center a[href*="/schematics/"]');
+                var link = e.target && e.target.closest && e.target.closest('.search-center-wide a[href*="/schematics/"]');
                 if (!link) return;
                 var card = link.closest('[data-schematic-id]');
                 if (!card) return;

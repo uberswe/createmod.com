@@ -93,6 +93,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &ZeroResultAnalysisWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &PointBackfillWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SearchStatsFilterWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &FeedOGImageWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -326,6 +327,15 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 				func() (river.JobArgs, *river.InsertOpts) {
 					return SearchStatsFilterArgs{}, &river.InsertOpts{
 						Queue:      "ai",
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
+					}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return FeedOGImageArgs{}, &river.InsertOpts{
 						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
 					}
 				},
