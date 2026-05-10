@@ -85,7 +85,7 @@
                                                         <span>{{ T .Language "GitHub linked" }}</span>
                                                     </div>
                                                     {{ if .HasPassword }}
-                                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#unlink-github-modal">{{ T .Language "Unlink" }}</button>
+                                                    <button class="btn btn-outline-danger btn-sm" data-cm-toggle="modal" data-cm-target="#unlink-github-modal">{{ T .Language "Unlink" }}</button>
                                                     {{ else }}
                                                     <span class="text-secondary small">{{ T .Language "Set a password to unlink" }}</span>
                                                     {{ end }}
@@ -109,7 +109,7 @@
                                                         <span>{{ T .Language "Discord linked" }}</span>
                                                     </div>
                                                     {{ if .HasPassword }}
-                                                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#unlink-discord-modal">{{ T .Language "Unlink" }}</button>
+                                                    <button class="btn btn-outline-danger btn-sm" data-cm-toggle="modal" data-cm-target="#unlink-discord-modal">{{ T .Language "Unlink" }}</button>
                                                     {{ else }}
                                                     <span class="text-secondary small">{{ T .Language "Set a password to unlink" }}</span>
                                                     {{ end }}
@@ -259,7 +259,7 @@
                                         <h3 class="card-title mt-4">{{ T .Language "Account Actions" }}</h3>
                                         <p class="card-subtitle">{{ T .Language "You can delete your account permanently." }}</p>
                                         <div>
-                                            <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                                            <button class="btn btn-danger w-100" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
                                                 {{ T .Language "Delete Account" }}
                                             </button>
                                         </div>
@@ -279,9 +279,9 @@
                         <div>{{ T .Language "If you proceed, you will no longer have access to your account. Your schematics will be removed." }}</div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                        <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">{{ T .Language "Cancel" }}</button>
                         <form id="delete-account-form" hx-delete="/api/users/{{ .UserID }}" hx-swap="none">
-                            <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">{{ T .Language "Yes, delete my account" }}</button>
+                            <button type="submit" class="btn btn-danger" data-cm-dismiss="modal">{{ T .Language "Yes, delete my account" }}</button>
                         </form>
                     </div>
                 </div>
@@ -299,7 +299,7 @@
                             <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                            <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">{{ T .Language "Cancel" }}</button>
                             <button type="submit" class="btn btn-danger">{{ T .Language "Unlink" }}</button>
                         </div>
                     </form>
@@ -319,7 +319,7 @@
                             <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+                            <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">{{ T .Language "Cancel" }}</button>
                             <button type="submit" class="btn btn-danger">{{ T .Language "Unlink" }}</button>
                         </div>
                     </form>

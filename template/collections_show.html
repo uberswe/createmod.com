@@ -37,7 +37,7 @@
             </form>
             {{ end }}
             <a class="btn btn-outline-secondary" href="/collections">{{ T .Language "Back to collections" }}</a>
-            <a href="#" class="btn btn-ghost-secondary btn-sm text-muted" data-bs-toggle="modal" data-bs-target="#reportModal">{{ T .Language "Report" }}</a>
+            <a href="#" class="btn btn-ghost-secondary btn-sm text-muted" data-cm-toggle="modal" data-cm-target="#reportModal">{{ T .Language "Report" }}</a>
           </div>
         </div>
 
@@ -261,7 +261,7 @@ window['nitroAds'].createAd('collshow-mobile', {
         <form class="report-form" method="post" action="/reports">
           <div class="modal-header">
             <h5 class="modal-title">{{ T .Language "Report Collection" }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
+            <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
           </div>
           <div class="modal-body">
             <input type="hidden" name="target_type" value="collection">
@@ -273,7 +273,7 @@ window['nitroAds'].createAd('collshow-mobile', {
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-link" data-bs-dismiss="modal">{{ T .Language "Cancel" }}</button>
+            <button type="button" class="btn btn-link" data-cm-dismiss="modal">{{ T .Language "Cancel" }}</button>
             <button type="submit" class="btn btn-danger">{{ T .Language "Submit report" }}</button>
           </div>
         </form>
@@ -281,14 +281,14 @@ window['nitroAds'].createAd('collshow-mobile', {
       <div class="report-success-view" style="display:none;">
         <div class="modal-header">
           <h5 class="modal-title">{{ T .Language "Report Submitted" }}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
+          <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
         </div>
         <div class="modal-body text-center py-4">
           <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
           <p class="mb-0">{{ T .Language "Thank you for your report, we will review this within 24 hours." }}</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ T .Language "Close" }}</button>
+          <button type="button" class="btn btn-primary" data-cm-dismiss="modal">{{ T .Language "Close" }}</button>
         </div>
       </div>
     </div>

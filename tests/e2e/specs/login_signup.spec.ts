@@ -77,7 +77,7 @@ test.describe('login flow', () => {
     await expect(page.locator('.auth-section')).toBeVisible({ timeout: 10000 });
 
     // Click the avatar dropdown to reveal menu
-    await page.locator('.auth-section [data-bs-toggle="dropdown"]').click();
+    await page.locator('.auth-section [data-cm-toggle="dropdown"]').click();
 
     // The dropdown menu should become visible after clicking
     const dropdownMenu = page.locator('.auth-section .dropdown-menu');

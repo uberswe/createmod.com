@@ -77,7 +77,7 @@
                                     </div>
                                     <div class="col-md-12 col-lg-6">
                                         <div class="mb-3">
-                                            <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#confirm-delete-modal">
+                                            <button class="btn btn-danger w-100" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
                                                 Delete Schematic
                                             </button>
                                         </div>
@@ -330,8 +330,8 @@
                 <div>If you proceed, you will no longer have access to this schematic.</div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="delete-schematic-btn">Yes, delete my schematic</button>
+                <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" data-cm-dismiss="modal" id="delete-schematic-btn">Yes, delete my schematic</button>
             </div>
         </div>
     </div>
@@ -363,33 +363,33 @@
     body .ts-dropdown .create {
         color: #6b7280 !important;
     }
-    body[data-bs-theme=dark] .ts-control {
+    body[data-cm-theme=dark] .ts-control {
         background: #1f2121 !important;
         border: none !important;
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-control input {
+    body[data-cm-theme=dark] .ts-control input {
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-wrapper.multi .ts-control > div {
+    body[data-cm-theme=dark] .ts-wrapper.multi .ts-control > div {
         background: #bf9045 !important;
         color: #ffffff !important;
     }
-    body[data-bs-theme=dark] .ts-wrapper.single .ts-control .item {
+    body[data-cm-theme=dark] .ts-wrapper.single .ts-control .item {
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown {
+    body[data-cm-theme=dark] .ts-dropdown {
         background: #1f2121 !important;
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown .option {
+    body[data-cm-theme=dark] .ts-dropdown .option {
         color: #e2e8f0 !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown .active {
+    body[data-cm-theme=dark] .ts-dropdown .active {
         background: #bf9045 !important;
         color: #ffffff !important;
     }
-    body[data-bs-theme=dark] .ts-dropdown .create {
+    body[data-cm-theme=dark] .ts-dropdown .create {
         color: #9ca3af !important;
     }
     /* Unified image upload area */
@@ -488,7 +488,6 @@
     if (retries === 0) {
         var libs = [
             { global: 'Dropzone',  src: 'https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone-min.js' },
-            { global: 'tinyMCE',   src: 'https://cdn.jsdelivr.net/npm/tinymce@8.0.0/tinymce.min.js' },
             { global: 'TomSelect', src: 'https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js' }
         ];
         libs.forEach(function(lib) {
@@ -501,7 +500,7 @@
     }
 
     // --- Wait until all three globals are available ---
-    if (typeof Dropzone === 'undefined' || typeof tinyMCE === 'undefined' || typeof TomSelect === 'undefined') {
+    if (typeof Dropzone === 'undefined' || typeof TomSelect === 'undefined') {
         if (retries < 200) {
             setTimeout(function() { initEditSchematic(retries + 1); }, 50);
         }
@@ -550,38 +549,11 @@
         });
     }
 
-    // --- TinyMCE ---
+    // --- Rich text editor ---
     var editorEl = document.getElementById('tinymce-schematic');
     if (editorEl) {
-        // Remove any stale instance left over from a previous HTMX navigation
-        // (the old DOM is gone but TinyMCE still tracks the editor by id).
-        var existing = tinyMCE.get('tinymce-schematic');
-        if (existing) {
-            try { existing.remove(); } catch(_) {}
-        }
-        var options = {
-            license_key: "gpl",
-            selector: '#tinymce-schematic',
-            height: 300,
-            menubar: false,
-            statusbar: false,
-            plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview', 'anchor',
-                'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-                'bold italic | ' +
-                'link | bullist numlist outdent indent | ' +
-                'removeformat',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }'
-        };
-        if (localStorage.getItem("createmodTheme") === 'dark') {
-            options.skin = 'tinymce-5-dark';
-            options.content_css = 'dark';
-        }
-        tinyMCE.baseURL = "https://cdn.jsdelivr.net/npm/tinymce@8.0.0";
-        tinyMCE.init(options);
+        if (window._cmSchematicEditor) { cmEditor.destroy(window._cmSchematicEditor); }
+        window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600 });
     }
 
     // --- Schematic file Dropzone (kept for .nbt uploads) ---
@@ -828,11 +800,7 @@
 
         formData.append("title", titleElement.value);
         formData.append("author", "{{ .UserID }}");
-        var content = '';
-        var editor = tinyMCE.get('tinymce-schematic');
-        if (editor) {
-            content = editor.getContent();
-        }
+        var content = document.getElementById('tinymce-schematic').value || '';
         formData.append("content", content);
         formData.append("description", content);
         formData.append("categories", document.getElementById("schematic-category").value);

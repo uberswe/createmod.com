@@ -132,26 +132,26 @@
 
 <style>
     #materials-table tr.table-warning {
-        --tblr-table-bg: rgba(247, 191, 60, 0.08);
-        --tblr-table-color: inherit;
+        --cm-table-bg: rgba(247, 191, 60, 0.08);
+        --cm-table-color: inherit;
     }
     #materials-table tr.table-danger {
-        --tblr-table-bg: rgba(214, 57, 57, 0.08);
-        --tblr-table-color: inherit;
+        --cm-table-bg: rgba(214, 57, 57, 0.08);
+        --cm-table-color: inherit;
     }
     @media (prefers-color-scheme: dark) {
         #materials-table tr.table-warning {
-            --tblr-table-bg: rgba(247, 191, 60, 0.1);
+            --cm-table-bg: rgba(247, 191, 60, 0.1);
         }
         #materials-table tr.table-danger {
-            --tblr-table-bg: rgba(214, 57, 57, 0.1);
+            --cm-table-bg: rgba(214, 57, 57, 0.1);
         }
     }
     .block-suggestions {
         position: absolute;
         z-index: 1050;
-        background: var(--tblr-bg-surface, #fff);
-        border: 1px solid var(--tblr-border-color, #e6e7e9);
+        background: var(--cm-bg-surface, #fff);
+        border: 1px solid var(--cm-border-color, #e6e7e9);
         border-radius: 4px;
         max-height: 200px;
         overflow-y: auto;
@@ -168,7 +168,7 @@
     }
     .block-suggestions .suggestion-item:hover,
     .block-suggestions .suggestion-item.active {
-        background: var(--tblr-bg-surface-secondary, #f1f5f9);
+        background: var(--cm-bg-surface-secondary, #f1f5f9);
     }
     .block-suggestions .suggestion-item img {
         width: 24px;
@@ -178,10 +178,10 @@
         flex-shrink: 0;
     }
     .block-suggestions .suggestion-name {
-        color: var(--tblr-body-color);
+        color: var(--cm-body-color);
     }
     .block-suggestions .suggestion-id {
-        color: var(--tblr-secondary);
+        color: var(--cm-secondary);
         font-size: 0.75rem;
         margin-left: auto;
         padding-left: 8px;

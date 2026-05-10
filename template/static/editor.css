@@ -1,0 +1,165 @@
+/* CreateMod Editor — Tiptap styling */
+
+.cm-editor-wrap {
+  --cm-editor-min-h: 200px;
+  --cm-editor-max-h: 600px;
+  border: 1px solid var(--cm-border-color);
+  border-radius: var(--cm-border-radius, 4px);
+  background: var(--cm-bg-forms, var(--cm-bg-surface, #fff));
+  overflow: hidden;
+}
+
+.cm-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--cm-border-color);
+  background: var(--cm-tertiary-bg, #f5f5f5);
+}
+
+.cm-editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--cm-body-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.cm-editor-btn:hover {
+  background: var(--cm-secondary-bg, #e0e0e0);
+}
+.cm-editor-btn.is-active {
+  background: var(--cm-primary, #bf9045);
+  color: #fff;
+}
+.cm-editor-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cm-editor-sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--cm-border-color);
+}
+
+.cm-editor-content {
+  min-height: var(--cm-editor-min-h);
+  max-height: var(--cm-editor-max-h);
+  overflow-y: auto;
+}
+
+.cm-editor-content .tiptap {
+  outline: none;
+  padding: 12px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--cm-body-color);
+  min-height: var(--cm-editor-min-h);
+}
+
+.cm-editor-content .tiptap > *:first-child { margin-top: 0; }
+.cm-editor-content .tiptap > *:last-child { margin-bottom: 0; }
+
+.cm-editor-content .tiptap p { margin: 0 0 0.75em; }
+.cm-editor-content .tiptap h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5em 0 0.5em; }
+.cm-editor-content .tiptap h3 { font-size: 1.1rem; font-weight: 600; margin: 1.25em 0 0.5em; }
+.cm-editor-content .tiptap h4 { font-size: 1rem; font-weight: 600; margin: 1em 0 0.5em; }
+
+.cm-editor-content .tiptap ul,
+.cm-editor-content .tiptap ol { padding-left: 1.5em; margin: 0.5em 0; }
+
+.cm-editor-content .tiptap blockquote {
+  border-left: 3px solid var(--cm-border-color);
+  margin: 0.5em 0;
+  padding-left: 1em;
+  color: var(--cm-muted, #6c7a91);
+}
+
+.cm-editor-content .tiptap pre {
+  background: var(--cm-tertiary-bg, #f4f4f5);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: var(--cm-font-monospace, monospace);
+  font-size: 13px;
+}
+
+.cm-editor-content .tiptap code {
+  background: var(--cm-tertiary-bg, #f4f4f5);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.cm-editor-content .tiptap pre code {
+  background: none;
+  padding: 0;
+}
+
+.cm-editor-content .tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.cm-editor-content .tiptap a {
+  color: var(--cm-link-color, var(--cm-primary));
+  text-decoration: underline;
+}
+
+/* Table styles */
+.cm-editor-content .tiptap table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  width: 100%;
+}
+.cm-editor-content .tiptap table td,
+.cm-editor-content .tiptap table th {
+  border: 1px solid var(--cm-border-color);
+  padding: 6px 10px;
+  min-width: 60px;
+  vertical-align: top;
+}
+.cm-editor-content .tiptap table th {
+  font-weight: 600;
+  background: var(--cm-tertiary-bg, #f4f4f5);
+}
+
+/* Placeholder */
+.cm-editor-content .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--cm-muted, #adb5bd);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Dark mode */
+[data-cm-theme=dark] .cm-editor-wrap {
+  background: var(--cm-bg-forms, var(--cm-bg-surface, #353838));
+}
+[data-cm-theme=dark] .cm-editor-toolbar {
+  background: var(--cm-secondary-bg, #2d3030);
+}
+[data-cm-theme=dark] .cm-editor-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-cm-theme=dark] .cm-editor-content .tiptap pre {
+  background: #1a1d1d;
+}
+[data-cm-theme=dark] .cm-editor-content .tiptap code {
+  background: #1a1d1d;
+}

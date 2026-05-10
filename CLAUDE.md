@@ -110,13 +110,19 @@ River queue with PostgreSQL backing. Handles periodic tasks: search index rebuil
 - **Search** (`internal/search/`): Meilisearch handles all full-text search queries. A per-pod in-memory index (`search.Service`) provides autocomplete suggestions, search page filter slider bounds (`MaxStats`), trending score storage, and acts as the data bridge for syncing to Meilisearch. The in-memory index is built on startup from the DB (with an optional S3 cache for faster warm-up) and rebuilt every 10 minutes via River job. It is **not** a search engine — removing it would require migrating autocomplete, slider bounds, trending scores, and the Meilisearch sync pipeline to other backends.
 - **Cache** (`internal/cache/`): go-cache (per-pod in-memory, 60min default TTL). Used for categories, trending calculations, rendered content.
 - **Storage** (`internal/storage/`): Minio/S3 SDK for file storage. Use `StorageService.DownloadRaw(ctx, path)` to read files. Optional — if S3 not configured, file features are unavailable.
-- **i18n** (`internal/i18n/`): Translation via `T(lang, key)` template function. Language detected from URL prefix or `Accept-Language` header. Supports: en, pt-BR, pt-PT, es, de, pl, ru, zh-Hans, fr.
+- **i18n** (`internal/i18n/`): Translation via `T(lang, key)` template function. Language detected from URL prefix or `Accept-Language` header. Supports: en, pt-BR, pt-PT, es, pl, ru, zh-Hans, fr.
 - **Discord** (`internal/discord/`): Webhook notifications. `Post()` sends to site webhook; `PostWithUserWebhooks()` also sends to all active user webhooks.
 - **Webhook** (`internal/webhook/`): AES-256-GCM encryption/decryption for user webhook URLs; Discord webhook URL validation.
 
 ### Frontend
 
-Vite builds from `template/src/` to `template/dist/`. CSS uses Tailwind + PurgeCSS via PostCSS. Static libraries (TinyMCE, Tom Select, Plyr, Masonry, fslightbox) served from `template/static/`. UI framework is Tabler (Bootstrap-based).
+Vite builds from `template/src/` to `template/dist/`. CSS uses PostCSS. Static libraries (TinyMCE, Tom Select, Plyr, Masonry, fslightbox) served from `template/static/`.
+
+**CSS architecture:** Custom CSS in `template/static/app.css` provides the layout system (sidebar rail, top header, full-width containers), component overrides, and page-specific styles. The site uses CSS custom properties prefixed `--cm-*` for its design tokens.
+
+**Tabler removal (in progress):** The project is migrating away from Tabler (Bootstrap-based UI framework). Previously loaded from CDN (`@tabler/core@1.1.1`). Being replaced with custom lightweight CSS that provides only what the site actually needs: a responsive grid, form controls, buttons, cards, dropdowns, modals, and utility classes. Do NOT introduce new Tabler/Bootstrap class dependencies. When touching templates, prefer replacing Tabler classes with the custom equivalents defined in app.css.
+
+**Layout system:** Full-width layout with a collapsible sidebar rail (56px collapsed, 220px expanded). The `.page-wrapper` adjusts via `margin-left` with CSS transitions. The `.container-wide` class provides responsive padding without a max-width cap. On mobile (<992px), the sidebar becomes an overlay and the page-wrapper uses full width.
 
 ## Common Pitfalls
 

@@ -19,10 +19,10 @@
                                 <h3 class="card-title">{{ T .Language "Upload Schematic" }}</h3>
                                 <p class="text-secondary">{{ T .Language "Upload a Create Mod schematic to analyze it, get a private share link, or publish it to the community." }}</p>
 
-                                <div id="upload-zone" style="border: 2px dashed var(--tblr-border-color); border-radius: 8px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;"
-                                     ondragover="event.preventDefault(); this.style.borderColor='var(--tblr-primary)'; this.style.backgroundColor='rgba(191,144,69,0.05)';"
-                                     ondragleave="this.style.borderColor='var(--tblr-border-color)'; this.style.backgroundColor='';"
-                                     ondrop="event.preventDefault(); this.style.borderColor='var(--tblr-border-color)'; this.style.backgroundColor=''; handleFileDrop(event.dataTransfer.files);">
+                                <div id="upload-zone" style="border: 2px dashed var(--cm-border-color); border-radius: 8px; padding: 3rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s;"
+                                     ondragover="event.preventDefault(); this.style.borderColor='var(--cm-primary)'; this.style.backgroundColor='rgba(191,144,69,0.05)';"
+                                     ondragleave="this.style.borderColor='var(--cm-border-color)'; this.style.backgroundColor='';"
+                                     ondrop="event.preventDefault(); this.style.borderColor='var(--cm-border-color)'; this.style.backgroundColor=''; handleFileDrop(event.dataTransfer.files);">
                                     <input type="file" id="nbt-file-input" accept=".nbt" style="display:none;" onchange="handleFileDrop(this.files);">
                                     <div id="upload-prompt" onclick="document.getElementById('nbt-file-input').click();">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 9l5 -5l5 5" /><path d="M12 4l0 12" /></svg>
@@ -255,7 +255,7 @@
     align-items: center;
     padding: 0.5rem 1rem;
     gap: 0.75rem;
-    border-bottom: 1px solid var(--tblr-border-color);
+    border-bottom: 1px solid var(--cm-border-color);
 }
 .material-row:last-child {
     border-bottom: none;
@@ -267,7 +267,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--tblr-bg-surface-secondary);
+    background: var(--cm-bg-surface-secondary);
     border-radius: 4px;
 }
 .material-icon-wrap img {
@@ -290,7 +290,7 @@
 }
 .material-block-id {
     font-size: 0.75rem;
-    color: var(--tblr-secondary-color);
+    color: var(--cm-secondary-color);
     opacity: 0.7;
     white-space: nowrap;
     overflow: hidden;
@@ -299,14 +299,14 @@
 .material-count {
     flex-shrink: 0;
     font-size: 0.9rem;
-    color: var(--tblr-body-color);
+    color: var(--cm-body-color);
     opacity: 0.75;
     font-variant-numeric: tabular-nums;
 }
 .material-stacks {
     flex-shrink: 0;
     font-size: 0.75rem;
-    color: var(--tblr-body-color);
+    color: var(--cm-body-color);
     opacity: 0.5;
     min-width: 70px;
     text-align: right;
@@ -471,7 +471,7 @@ function createMaterialRow(m) {
         var placeholder = document.createElement('div');
         placeholder.style.width = '32px';
         placeholder.style.height = '32px';
-        placeholder.style.background = 'var(--tblr-border-color)';
+        placeholder.style.background = 'var(--cm-border-color)';
         placeholder.style.borderRadius = '2px';
         this.parentNode.appendChild(placeholder);
     };
