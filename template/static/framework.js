@@ -18,7 +18,8 @@
   }
 
   function toggleDropdown(e) {
-    var btn = e.currentTarget;
+    var btn = e.target.closest('[data-cm-toggle="dropdown"]');
+    if (!btn) return;
     var parent = btn.closest('.dropdown') || btn.parentElement;
     var menu = parent.querySelector('.dropdown-menu');
     if (!menu) return;
