@@ -1,0 +1,40 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="d-flex gap-3">
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="page-header d-print-none mb-4">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <h1 class="page-title">{{ T .Language "Highest Rated Schematics" }}</h1>
+                                    <p class="text-secondary">{{ T .Language "The best Create mod builds as rated by the community. Browse top-rated machines, contraptions, and architectural designs." }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row row-cards">
+                            {{ range .Schematics }}
+                                {{template "schematic_card_small.html" .}}
+                            {{ end }}
+                        </div>
+                        {{ if not .Schematics }}
+                        <div class="empty">
+                            <p class="empty-title">{{ T .Language "No rated schematics yet" }}</p>
+                        </div>
+                        {{ end }}
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a {{ if .HasPrev }}href="{{ .PrevURL }}" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
+                            <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+                            <a {{ if .HasNext }}href="{{ .NextURL }}" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}
