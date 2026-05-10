@@ -3765,6 +3765,18 @@ func (ss *StatsStoreImpl) DeleteOldEvents(ctx context.Context, before time.Time)
 	return ss.q.DeleteOldSchematicEvents(ctx, before)
 }
 
+func (ss *StatsStoreImpl) DailySchematicUploads(ctx context.Context, since time.Time) ([]store.DailyCount, error) {
+	rows, err := ss.q.DailySchematicUploads(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.DailyCount, len(rows))
+	for i, r := range rows {
+		result[i] = store.DailyCount{Day: r.Day, Count: r.Count}
+	}
+	return result, nil
+}
+
 // --------------------------------------------------------------------------
 // NBTHashStoreImpl
 // --------------------------------------------------------------------------

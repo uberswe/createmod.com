@@ -102,6 +102,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) error
 	CreateUserWebhook(ctx context.Context, arg CreateUserWebhookParams) (UserWebhook, error)
+	DailySchematicUploads(ctx context.Context, created time.Time) ([]DailySchematicUploadsRow, error)
 	DailySearchTermVolume(ctx context.Context, arg DailySearchTermVolumeParams) ([]DailySearchTermVolumeRow, error)
 	DailySearchVolume(ctx context.Context, created time.Time) ([]DailySearchVolumeRow, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) error

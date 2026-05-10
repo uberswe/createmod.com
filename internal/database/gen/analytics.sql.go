@@ -23,6 +23,39 @@ func (q *Queries) CountUserSchematics(ctx context.Context, authorID *string) (in
 	return total, err
 }
 
+const dailySchematicUploads = `-- name: DailySchematicUploads :many
+SELECT to_char(created, 'YYYY-MM-DD') AS day, COUNT(*)::BIGINT AS count
+FROM schematics
+WHERE created >= $1 AND deleted IS NULL
+GROUP BY day
+ORDER BY day
+`
+
+type DailySchematicUploadsRow struct {
+	Day   string `json:"day"`
+	Count int64  `json:"count"`
+}
+
+func (q *Queries) DailySchematicUploads(ctx context.Context, created time.Time) ([]DailySchematicUploadsRow, error) {
+	rows, err := q.db.Query(ctx, dailySchematicUploads, created)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DailySchematicUploadsRow{}
+	for rows.Next() {
+		var i DailySchematicUploadsRow
+		if err := rows.Scan(&i.Day, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteOldSchematicEvents = `-- name: DeleteOldSchematicEvents :execrows
 DELETE FROM schematic_events WHERE created < $1
 `

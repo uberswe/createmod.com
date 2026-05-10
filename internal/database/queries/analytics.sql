@@ -132,5 +132,12 @@ GROUP BY s.id, s.name, s.title, s.featured_image
 ORDER BY total_views DESC
 LIMIT $2;
 
+-- name: DailySchematicUploads :many
+SELECT to_char(created, 'YYYY-MM-DD') AS day, COUNT(*)::BIGINT AS count
+FROM schematics
+WHERE created >= $1 AND deleted IS NULL
+GROUP BY day
+ORDER BY day;
+
 -- name: DeleteOldSchematicEvents :execrows
 DELETE FROM schematic_events WHERE created < $1;
