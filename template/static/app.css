@@ -622,10 +622,6 @@ body.sidebar-ready .sidebar-rail {
   gap: 1.25rem;
   flex-shrink: 0;
 }
-.top-header-actions .lang-flag {
-  font-size: 1.5rem;
-  line-height: 1;
-}
 .sidebar-mobile-toggle {
   background: none;
   border: none;

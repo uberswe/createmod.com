@@ -58,24 +58,31 @@ func NewTestRegistry() *server.Registry {
 		},
 		"externalDomain": ExternalDomain,
 		"LangFlag": func(code string) html.HTML {
-			cc := "gb"
+			return ""
+		},
+		"LangName": func(code string) string {
 			switch code {
 			case "en":
-				cc = "gb"
-			case "pt-BR":
-				cc = "br"
-			case "pt-PT":
-				cc = "pt"
+				return "English"
+			case "de":
+				return "Deutsch"
 			case "es":
-				cc = "es"
+				return "Español"
+			case "fr":
+				return "Français"
 			case "pl":
-				cc = "pl"
+				return "Polski"
+			case "pt-BR":
+				return "Português (Brasil)"
+			case "pt-PT":
+				return "Português (Portugal)"
 			case "ru":
-				cc = "ru"
+				return "Русский"
 			case "zh-Hans":
-				cc = "cn"
+				return "简体中文"
+			default:
+				return code
 			}
-			return html.HTML(`<span class="fi fi-` + cc + `"></span>`)
 		},
 	})
 	return r

@@ -29,7 +29,8 @@ func renderTemplate(t *testing.T, file string, data any) string {
 	// Register minimal func map to match production (HumanDate used in sidebar).
 	r.AddFuncs(htmltmpl.FuncMap{
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
-		"LangFlag":  func(code string) string { return code },
+		"LangFlag":  func(code string) string { return "" },
+		"LangName":  func(code string) string { return code },
 		"T":         func(lang, key string) string { return i18n.T(lang, key) },
 		"LangURL": func(lang string, path string) string {
 			return PrefixedPath(lang, path)

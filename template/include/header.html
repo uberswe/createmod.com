@@ -54,16 +54,18 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"></path></svg>
             </button>
             <div class="dropdown">
-                <a href="#" class="nav-link px-0 lang-flag" data-bs-toggle="dropdown" hx-boost="false" hx-disable aria-label="Select language" title="{{ .Language }}">{{ LangFlag .Language }}</a>
+                <a href="#" class="nav-link px-0" data-bs-toggle="dropdown" hx-boost="false" hx-disable aria-label="Select language" title="{{ LangName .Language }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M3.6 9h16.8"/><path d="M3.6 15h16.8"/><path d="M11.5 3a17 17 0 0 0 0 18"/><path d="M12.5 3a17 17 0 0 1 0 18"/></svg>
+                </a>
                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                    <a class="dropdown-item" href="/lang?l=en&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "en" }} English</a>
-                    <a class="dropdown-item" href="/lang?l=pt-BR&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "pt-BR" }} Português (Brasil)</a>
-                    <a class="dropdown-item" href="/lang?l=pt-PT&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "pt-PT" }} Português</a>
-                    <a class="dropdown-item" href="/lang?l=es&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "es" }} Español</a>
-                    <a class="dropdown-item" href="/lang?l=pl&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "pl" }} Polski</a>
-                    <a class="dropdown-item" href="/lang?l=ru&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "ru" }} Русский</a>
-                    <a class="dropdown-item" href="/lang?l=zh-Hans&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "zh-Hans" }} 简体中文</a>
-                    <a class="dropdown-item" href="/lang?l=fr&return_to={{ .Slug }}" hx-boost="false">{{ LangFlag "fr" }} Français</a>
+                    <a class="dropdown-item" href="/lang?l=en&return_to={{ .Slug }}" hx-boost="false">English</a>
+                    <a class="dropdown-item" href="/lang?l=es&return_to={{ .Slug }}" hx-boost="false">Español</a>
+                    <a class="dropdown-item" href="/lang?l=fr&return_to={{ .Slug }}" hx-boost="false">Français</a>
+                    <a class="dropdown-item" href="/lang?l=pl&return_to={{ .Slug }}" hx-boost="false">Polski</a>
+                    <a class="dropdown-item" href="/lang?l=pt-BR&return_to={{ .Slug }}" hx-boost="false">Português (Brasil)</a>
+                    <a class="dropdown-item" href="/lang?l=pt-PT&return_to={{ .Slug }}" hx-boost="false">Português (Portugal)</a>
+                    <a class="dropdown-item" href="/lang?l=ru&return_to={{ .Slug }}" hx-boost="false">Русский</a>
+                    <a class="dropdown-item" href="/lang?l=zh-Hans&return_to={{ .Slug }}" hx-boost="false">简体中文</a>
                 </div>
             </div>
             {{ if .IsAuthenticated }}
