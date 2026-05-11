@@ -97,8 +97,9 @@ test('dark mode toggle exists in page source', async ({ request, baseURL }) => {
   const resp = await request.get(url + '/');
   const html = await resp.text();
 
-  // Both theme toggle links should be present in the HTML
-  expect(html).toContain('hide-theme-dark');
-  expect(html).toContain('hide-theme-light');
+  // Single theme toggle button with both icon classes should be present
+  expect(html).toContain('id="theme-toggle"');
+  expect(html).toContain('theme-icon-dark');
+  expect(html).toContain('theme-icon-light');
 });
 
