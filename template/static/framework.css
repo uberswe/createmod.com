@@ -398,6 +398,7 @@ th { text-align: inherit; }
   .d-md-flex { display: flex !important; }
   .d-md-inline { display: inline !important; }
   .d-md-inline-block { display: inline-block !important; }
+  .d-md-inline-flex { display: inline-flex !important; }
   .d-md-table-cell { display: table-cell !important; }
 }
 @media (min-width: 992px) {

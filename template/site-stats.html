@@ -203,12 +203,18 @@
                             if (trendEl) {
                                 var trendData = {{ .TrendingSearchTermsJSON }};
                                 if (trendData && trendData.length > 0) {
-                                    renderChart(trendEl, Object.assign({}, commonOpts, {
-                                        chart: { type: 'line', height: 250, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
-                                        series: trendData,
+                                    renderChart(trendEl, {
+                                        chart: { type: 'line', height: 250, stacked: false, toolbar: { show: false }, zoom: { enabled: false }, foreColor: fg },
+                                        dataLabels: { enabled: false },
                                         stroke: { curve: 'smooth', width: 2 },
+                                        fill: { opacity: 1 },
+                                        grid: { borderColor: grid, strokeDashArray: 4 },
+                                        xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
+                                        yaxis: { min: 0, labels: { style: { colors: fg } } },
+                                        tooltip: { theme: isDark ? 'dark' : 'light' },
+                                        series: trendData,
                                         legend: { show: true, position: 'bottom', labels: { colors: fg } }
-                                    }));
+                                    });
                                 }
                             }
                         }
