@@ -10,18 +10,14 @@ test.describe('Theme toggle', () => {
     expect(hasSetTheme, 'window.setTheme should be a function').toBe(true);
   });
 
-  test('clicking light mode button switches to light theme', async ({ page, baseURL }) => {
+  test('clicking theme toggle switches to light theme', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
-    // Default theme is dark — the "switch to light" button should be visible
-    const lightBtn = page.locator('button.hide-theme-light');
-    // The light button has class hide-theme-light, which is shown when theme is dark
-    // (hide-theme-light means "hide this when theme IS light")
-    await expect(lightBtn).toBeAttached();
-
-    // Click the light mode toggle
-    await lightBtn.click();
+    // Default theme is dark — click the single toggle button to switch to light
+    const toggleBtn = page.locator('#theme-toggle');
+    await expect(toggleBtn).toBeAttached();
+    await toggleBtn.click();
 
     // After clicking, data-cm-theme should be "light"
     const theme = await page.evaluate(() => document.documentElement.getAttribute('data-cm-theme'));
@@ -32,7 +28,7 @@ test.describe('Theme toggle', () => {
     expect(stored).toBe('light');
   });
 
-  test('clicking dark mode button switches back to dark theme', async ({ page, baseURL }) => {
+  test('clicking theme toggle twice switches back to dark theme', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
@@ -41,10 +37,10 @@ test.describe('Theme toggle', () => {
     const lightTheme = await page.evaluate(() => document.documentElement.getAttribute('data-cm-theme'));
     expect(lightTheme).toBe('light');
 
-    // The dark-mode button (hide-theme-dark) should now be visible
-    const darkBtn = page.locator('button.hide-theme-dark');
-    await expect(darkBtn).toBeAttached();
-    await darkBtn.click();
+    // Click toggle to go back to dark
+    const toggleBtn = page.locator('#theme-toggle');
+    await expect(toggleBtn).toBeAttached();
+    await toggleBtn.click();
 
     // After clicking, theme should be dark again
     const theme = await page.evaluate(() => document.documentElement.getAttribute('data-cm-theme'));
@@ -69,23 +65,29 @@ test.describe('Theme toggle', () => {
     expect(theme).toBe('light');
   });
 
-  test('toggle buttons have correct visibility for dark theme', async ({ page, baseURL }) => {
+  test('theme icons have correct visibility', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/');
 
-    // In dark mode: hide-theme-dark buttons should be hidden, hide-theme-light should be visible
+    // In dark mode: moon icon (.theme-icon-dark) hidden, sun icon (.theme-icon-light) visible
     await page.evaluate(() => (window as any).setTheme('dark'));
 
-    // The "switch to light" button (class hide-theme-light) should be visible in dark mode
-    const lightBtn = page.locator('button.hide-theme-light');
-    await expect(lightBtn).toBeAttached();
-    const lightDisplay = await lightBtn.evaluate(el => getComputedStyle(el).display);
-    expect(lightDisplay).not.toBe('none');
+    const toggleBtn = page.locator('#theme-toggle');
+    await expect(toggleBtn).toBeAttached();
 
-    // The "switch to dark" button (class hide-theme-dark) should be hidden in dark mode
-    const darkBtn = page.locator('button.hide-theme-dark');
-    await expect(darkBtn).toBeAttached();
-    const darkDisplay = await darkBtn.evaluate(el => el.style.display);
-    expect(darkDisplay).toBe('none');
+    const moonDisplay = await toggleBtn.locator('.theme-icon-dark').evaluate(el => getComputedStyle(el).display);
+    expect(moonDisplay).toBe('none');
+
+    const sunDisplay = await toggleBtn.locator('.theme-icon-light').evaluate(el => getComputedStyle(el).display);
+    expect(sunDisplay).not.toBe('none');
+
+    // Switch to light mode: moon visible, sun hidden
+    await page.evaluate(() => (window as any).setTheme('light'));
+
+    const moonDisplayLight = await toggleBtn.locator('.theme-icon-dark').evaluate(el => getComputedStyle(el).display);
+    expect(moonDisplayLight).not.toBe('none');
+
+    const sunDisplayLight = await toggleBtn.locator('.theme-icon-light').evaluate(el => getComputedStyle(el).display);
+    expect(sunDisplayLight).toBe('none');
   });
 });

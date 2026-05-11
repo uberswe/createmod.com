@@ -12,13 +12,10 @@
   Dark theme: improve contrast for muted text and secondary buttons
 ***************/
 [data-cm-theme=dark] {
-  /* Default --cm-muted (#49566c) is nearly invisible on dark backgrounds.
-     Lighten to a readable gray that still feels subdued. */
   --cm-muted: #9ea5ad;
-
-  /* Secondary color (used by .text-muted, secondary badges, etc.)
-     Must meet 4.5:1 ratio against #353838 surface. */
   --cm-secondary-color: #c4b896;
+  --cm-card-bg: var(--cm-bg-surface, #353838);
+  --cm-card-border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* btn-outline-secondary and btn-ghost-secondary use --cm-secondary which
@@ -619,7 +616,14 @@ body.sidebar-ready .sidebar-rail {
   align-items: center;
   gap: 1.25rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
+
+/* Theme toggle: show moon in light mode, sun in dark mode */
+.theme-icon-light { display: none; }
+.theme-icon-dark  { display: inline-block; }
+[data-cm-theme=dark] .theme-icon-light { display: inline-block; }
+[data-cm-theme=dark] .theme-icon-dark  { display: none; }
 .btn-search {
   --cm-btn-bg: #0ea5e9;
   --cm-btn-border-color: #0ea5e9;

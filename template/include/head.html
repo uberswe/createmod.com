@@ -13,8 +13,6 @@ window.setTheme=function(theme){
     localStorage.setItem(k,theme);
     document.documentElement.setAttribute("data-cm-theme",theme);
     if(document.body)document.body.setAttribute("data-cm-theme",theme);
-    document.querySelectorAll('.hide-theme-light').forEach(function(el){el.style.display=theme==='light'?'none':'';});
-    document.querySelectorAll('.hide-theme-dark').forEach(function(el){el.style.display=theme===d?'none':'';});
     document.documentElement.style.background="";
   }catch(e){}
 };
