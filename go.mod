@@ -22,8 +22,8 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.19.0
-	github.com/riverqueue/river v0.35.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
+	github.com/riverqueue/river v0.36.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.36.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.1
@@ -31,6 +31,7 @@ require (
 	github.com/yuin/goldmark v1.8.2
 	golang.org/x/crypto v0.51.0
 	golang.org/x/image v0.40.0
+	golang.org/x/net v0.54.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.37.0
@@ -67,9 +68,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.35.1 // indirect
-	github.com/riverqueue/river/rivershared v0.35.1 // indirect
-	github.com/riverqueue/river/rivertype v0.35.1 // indirect
+	github.com/riverqueue/river/riverdriver v0.36.0 // indirect
+	github.com/riverqueue/river/rivershared v0.36.0 // indirect
+	github.com/riverqueue/river/rivertype v0.36.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
@@ -85,7 +86,6 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
