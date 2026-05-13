@@ -271,11 +271,11 @@
                 </div>
             </div>
         </main>
-        <div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="confirm-delete-modal-title">
             <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-body">
-                        <div class="modal-title">{{ T .Language "Are you sure?" }}</div>
+                        <div class="modal-title" id="confirm-delete-modal-title">{{ T .Language "Are you sure?" }}</div>
                         <div>{{ T .Language "If you proceed, you will no longer have access to your account. Your schematics will be removed." }}</div>
                     </div>
                     <div class="modal-footer">
@@ -288,12 +288,12 @@
             </div>
         </div>
         {{ if .LinkedGithub }}
-        <div class="modal modal-blur fade" id="unlink-github-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal modal-blur fade" id="unlink-github-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="unlink-github-modal-title">
             <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <form method="post" action="/settings/unlink-oauth" hx-boost="false">
                         <div class="modal-body">
-                            <div class="modal-title">{{ T .Language "Unlink GitHub" }}</div>
+                            <div class="modal-title" id="unlink-github-modal-title">{{ T .Language "Unlink GitHub" }}</div>
                             <div class="mb-3">{{ T .Language "Enter your password to confirm unlinking your GitHub account." }}</div>
                             <input type="hidden" name="provider" value="github">
                             <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">
@@ -308,12 +308,12 @@
         </div>
         {{ end }}
         {{ if .LinkedDiscord }}
-        <div class="modal modal-blur fade" id="unlink-discord-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal modal-blur fade" id="unlink-discord-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="unlink-discord-modal-title">
             <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <form method="post" action="/settings/unlink-oauth" hx-boost="false">
                         <div class="modal-body">
-                            <div class="modal-title">{{ T .Language "Unlink Discord" }}</div>
+                            <div class="modal-title" id="unlink-discord-modal-title">{{ T .Language "Unlink Discord" }}</div>
                             <div class="mb-3">{{ T .Language "Enter your password to confirm unlinking your Discord account." }}</div>
                             <input type="hidden" name="provider" value="discord">
                             <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">

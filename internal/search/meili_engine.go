@@ -138,7 +138,13 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf(`minecraft_version = "%s"`, escapeMeiliString(q.MinecraftVersion)))
 	}
 
-	if q.CreateVersion != "" && q.CreateVersion != "all" {
+	if len(q.CreateVersions) > 0 {
+		var cvParts []string
+		for _, cv := range q.CreateVersions {
+			cvParts = append(cvParts, fmt.Sprintf(`"%s"`, escapeMeiliString(cv)))
+		}
+		parts = append(parts, fmt.Sprintf(`create_version IN [%s]`, strings.Join(cvParts, ", ")))
+	} else if q.CreateVersion != "" && q.CreateVersion != "all" {
 		parts = append(parts, fmt.Sprintf(`create_version = "%s"`, escapeMeiliString(q.CreateVersion)))
 	}
 

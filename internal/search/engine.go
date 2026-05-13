@@ -22,6 +22,7 @@ type SearchQuery struct {
 	Category         string
 	MinecraftVersion string
 	CreateVersion    string
+	CreateVersions   []string // when non-empty, matches any of these versions (OR)
 	Order            int
 	Rating           int
 	Tags             []string

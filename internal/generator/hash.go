@@ -25,6 +25,7 @@ var codeToEnvelopeMaterial = map[string]string{"w": "wool", "e": "envelope"}
 var codeToFrameMaterial = map[string]string{"w": "wood", "a": "andesite_casing"}
 var codeToSternStyle = map[string]string{"r": "round", "s": "square", "p": "pointed"}
 var codeToOrientation = map[string]string{"h": "horizontal", "v": "vertical"}
+var codeToBowStyle = map[string]string{"d": "default", "pt": "pointed", "cl": "clipper", "rk": "raked", "pl": "plumb"}
 
 type fieldType int
 
@@ -78,6 +79,7 @@ var schemaBalloon = []schemaField{
 	{"envelopeColor", ftEnum, codeToColor},
 	{"frameMaterial", ftEnum, codeToFrameMaterial},
 	{"frameWoodType", ftEnum, codeToWood},
+	{"ribOffset", ftInt, nil},
 }
 
 var schemaHull = []schemaField{
@@ -116,6 +118,7 @@ var schemaHull = []schemaField{
 	{"bowCurve", ftFloat, nil},
 	{"sternOverhang", ftFloat, nil},
 	{"midWidthBias", ftFloat, nil},
+	{"bowStyle", ftEnum, codeToBowStyle},
 }
 
 // DecodeHash decodes a base64url generator hash into a GenerateResult.
@@ -309,6 +312,8 @@ func decodeBalloonParams(values []string, version int) BalloonParams {
 			p.FrameMaterial = v.(string)
 		case "frameWoodType":
 			p.FrameWoodType = v.(string)
+		case "ribOffset":
+			p.RibOffset = v.(int)
 		}
 	}
 	return p
@@ -396,6 +401,8 @@ func decodeHullParams(values []string, version int) HullParams {
 			p.SternOverhang = v.(float64)
 		case "midWidthBias":
 			p.MidWidthBias = v.(float64)
+		case "bowStyle":
+			p.BowStyle = v.(string)
 		}
 	}
 	return p

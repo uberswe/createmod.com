@@ -10,6 +10,8 @@
     c = document.createElement('div');
     c.id = 'toast-container';
     c.style.cssText = 'position:fixed;top:4rem;left:50%;transform:translateX(-50%);z-index:2140;display:flex;flex-direction:column;align-items:center;gap:.5rem;width:100%;max-width:600px;padding:0 1rem;pointer-events:none;';
+    c.setAttribute('aria-live', 'assertive');
+    c.setAttribute('aria-atomic', 'true');
     document.body.appendChild(c);
     return c;
   }
@@ -20,8 +22,7 @@
       var wrap = document.createElement('div');
       wrap.className = 'alert alert-important alert-' + v;
       wrap.role = 'alert';
-      var bg = v === 'success' ? '#2fb344' : v === 'warning' ? '#f76707' : '#d63939';
-      wrap.style.cssText = 'width:100%;box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:auto;margin:0;background:' + bg + ';color:#fff;border:none;';
+      wrap.style.cssText = 'width:100%;box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:auto;margin:0;border:none;';
       var icon = '';
       if (v === 'danger') {
         icon = '<svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>';
@@ -112,31 +113,6 @@ if (!window._htmxErrorInit) {
   }
   // Always observe lazy images in current content.
   observeLazy();
-})();
-</script>
-<script>
-// Re-initialize Bootstrap components after HTMX page swaps.
-// Dropdowns: dispose stale instances so Bootstrap's document-level data-api
-// handler (registered once from <head>) can recreate them on the next click.
-// Tooltips: need explicit recreation since they have no click-based data-api.
-(function(){
-  function reinit() {
-    if (typeof bootstrap === 'undefined') return;
-    document.querySelectorAll('[data-cm-toggle="dropdown"]').forEach(function(el) {
-      var existing = bootstrap.Dropdown.getInstance(el);
-      if (existing) { try { existing.dispose(); } catch(e) {} }
-    });
-    document.querySelectorAll('[data-cm-toggle="tooltip"]').forEach(function(el) {
-      var existing = bootstrap.Tooltip.getInstance(el);
-      if (existing) { try { existing.dispose(); } catch(e) {} }
-      new bootstrap.Tooltip(el);
-    });
-  }
-  if (!window._htmxBootstrapReinit) {
-    window._htmxBootstrapReinit = true;
-    document.addEventListener('htmx:afterSettle', reinit);
-  }
-  reinit();
 })();
 </script>
 <script>

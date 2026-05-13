@@ -105,9 +105,9 @@ function generatePropeller(p) {
 // ===== Balloon Generator =====
 
 function generateBalloon(p) {
-  var lx = clamp(p.lengthX || 12, 6, 120);
-  var wz = clamp(p.widthZ || 12, 4, 60);
-  var hy = clamp(p.heightY || 16, 4, 60);
+  var lx = clamp(p.lengthX || 12, 6, 500);
+  var wz = clamp(p.widthZ || 12, 4, 250);
+  var hy = clamp(p.heightY || 16, 4, 250);
   var cylinderMid = clamp(p.cylinderMid || 0, 0, 0.85);
   var frontTaper = clamp(p.frontTaper || 0, 0, 1);
   var rearTaper = clamp(p.rearTaper || 0, 0, 1);
@@ -117,6 +117,7 @@ function generateBalloon(p) {
   var shell = clamp(p.shell || 1, 1, 5);
   var ribEnabled = !!p.ribEnabled;
   var ribSpacing = clamp(p.ribSpacing || 4, 2, 12);
+  var ribOffset = clamp(p.ribOffset || 0, 0, ribSpacing - 1);
   var keelEnabled = !!p.keelEnabled;
   var keelDepth = clamp(p.keelDepth || 0, 0, 10);
   var finEnabled = !!p.finEnabled;
@@ -251,13 +252,30 @@ function generateBalloon(p) {
     }
   }
 
-  // Pass 3: ribbing
+  // Pass 3: ribbing — replace shell wool with log at rib columns, then back each rib with envelope
   if (ribEnabled && ribSpacing > 0) {
+    var isRibCol = function(x) {
+      return ((x - ribOffset) % ribSpacing + ribSpacing) % ribSpacing === 0;
+    };
+    var ribKeys = [];
     for (var gk in grid) {
       if (grid[gk] !== BT.WOOL) continue;
       var gp = gk.split(',');
-      if (parseInt(gp[0]) % ribSpacing === 0) {
+      if (isRibCol(parseInt(gp[0]))) {
         grid[gk] = BT.LOG;
+        ribKeys.push(gk);
+      }
+    }
+    if (hollow) {
+      for (var ri = 0; ri < ribKeys.length; ri++) {
+        var rp = ribKeys[ri].split(',');
+        var rx = parseInt(rp[0]), ry = parseInt(rp[1]), rz = parseInt(rp[2]);
+        for (var di = 0; di < 6; di++) {
+          var nbk = coordKey(rx + dirs[di][0], ry + dirs[di][1], rz + dirs[di][2]);
+          if (grid[nbk] === undefined && insideKeys[nbk]) {
+            grid[nbk] = BT.WOOL;
+          }
+        }
       }
     }
   }
@@ -385,9 +403,9 @@ function generateBalloon(p) {
 // ===== Hull Generator =====
 
 function generateHull(p) {
-  var L = clamp(p.length || 40, 20, 200);
-  var B = clamp(p.beam || 10, 4, 40);
-  var D = clamp(p.depth || 6, 3, 20);
+  var L = clamp(p.length || 40, 20, 500);
+  var B = clamp(p.beam || 10, 4, 100);
+  var D = clamp(p.depth || 6, 3, 40);
   var bottomPinch = clamp(p.bottomPinch || 0.3, 0.1, 0.7);
   var hullFlare = clamp(p.hullFlare || 0, 0, 0.6);
   var flareCurve = clamp(p.flareCurve || 2.6, 1.2, 4.0);
@@ -396,7 +414,7 @@ function generateHull(p) {
   var sheerCurve = clamp(p.sheerCurve || 0, 0, 0.75);
   var sheerCurveExp = clamp(p.sheerCurveExp || 2, 1.0, 4.0);
   var bowLength = clamp(p.bowLength || 8, 2, Math.floor(L / 2));
-  var bowSharpness = clamp(p.bowSharpness || 1.3, 0.4, 2.5);
+  var bowSharpness = clamp(p.bowSharpness || 1.3, 0.4, 4.0);
   var bowKeelRise = clamp(p.bowKeelRise || 0, 0, 1.5);
   var bowKeelLength = clamp(p.bowKeelLength || 0, 0, 40);
   var bowCurve = clamp(p.bowCurve || 0, -1.0, 1.0);
@@ -420,6 +438,8 @@ function generateHull(p) {
   var gunPortRow = clamp(p.gunPortRow || 2, 1, 6);
   var gunPortSpacing = clamp(p.gunPortSpacing || 4, 2, 8);
   var midWidthBias = clamp(p.midWidthBias || 0, 0, 1.0);
+  var bowStyle = p.bowStyle || 'default';
+  if (['default','pointed','clipper','raked','plumb'].indexOf(bowStyle) < 0) bowStyle = 'default';
 
   var depth = D;
   var length = L;
@@ -456,15 +476,33 @@ function generateHull(p) {
     if (zNorm >= bowStart) {
       var t = (1 - zNorm) / Math.max(1 - bowStart, 0.001);
       var st = smootherstep(Math.max(t, 0));
-      var base = Math.pow(Math.max(st, 0), bowSharpness);
-      if (bowCurve !== 0) {
-        if (bowCurve > 0) {
-          var convex = Math.sqrt(Math.max(st, 0));
-          base = base * (1 - bowCurve) + convex * bowCurve;
-        } else {
-          var concave = st * st * st;
-          base = base * (1 + bowCurve) + concave * (-bowCurve);
-        }
+      var base;
+      switch (bowStyle) {
+        case 'pointed':
+          base = Math.pow(Math.max(st, 0), bowSharpness * 1.5);
+          break;
+        case 'clipper':
+          base = st * st * st;
+          if (bowCurve < 0) base = base * (1 + bowCurve) + Math.pow(st, 5) * (-bowCurve);
+          break;
+        case 'raked':
+          var rakeT = Math.pow(st, 0.5);
+          base = Math.pow(rakeT, bowSharpness * 0.8);
+          break;
+        case 'plumb':
+          base = st < 0.15 ? st / 0.15 * 0.15 : 1.0;
+          break;
+        default:
+          base = Math.pow(Math.max(st, 0), bowSharpness);
+          if (bowCurve !== 0) {
+            if (bowCurve > 0) {
+              var convex = Math.sqrt(Math.max(st, 0));
+              base = base * (1 - bowCurve) + convex * bowCurve;
+            } else {
+              var concave = st * st * st;
+              base = base * (1 + bowCurve) + concave * (-bowCurve);
+            }
+          }
       }
       return base;
     }

@@ -514,11 +514,11 @@ function deleteAdditionalFile(token, fileId, btn) {
 
 {{ if .IsOwner }}
 <!-- Add File Modal -->
-<div class="modal modal-blur fade" id="add-file-modal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal modal-blur fade" id="add-file-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="add-file-modal-title">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ T .Language "Add Variation" }}</h5>
+                <h5 class="modal-title" id="add-file-modal-title">{{ T .Language "Add Variation" }}</h5>
                 <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">

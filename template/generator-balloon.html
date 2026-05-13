@@ -38,15 +38,15 @@
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Length (X): <span id="val-lengthX">36</span></label>
-                                <input type="range" class="form-range gen-param" id="param-lengthX" min="6" max="120" value="36" step="1">
+                                <input type="range" class="form-range gen-param" id="param-lengthX" min="6" max="500" value="36" step="1">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Width (Z): <span id="val-widthZ">18</span></label>
-                                <input type="range" class="form-range gen-param" id="param-widthZ" min="4" max="60" value="18" step="1">
+                                <input type="range" class="form-range gen-param" id="param-widthZ" min="4" max="250" value="18" step="1">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Height (Y): <span id="val-heightY">16</span></label>
-                                <input type="range" class="form-range gen-param" id="param-heightY" min="4" max="60" value="16" step="1">
+                                <input type="range" class="form-range gen-param" id="param-heightY" min="4" max="250" value="16" step="1">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Cylinder Middle: <span id="val-cylinderMid">0</span></label>
@@ -87,6 +87,10 @@
                             <div class="mb-2" id="ribSpacing-group">
                                 <label class="form-label mb-0">Rib Spacing: <span id="val-ribSpacing">4</span></label>
                                 <input type="range" class="form-range gen-param" id="param-ribSpacing" min="2" max="12" value="4" step="1">
+                            </div>
+                            <div class="mb-2" id="ribOffset-group">
+                                <label class="form-label mb-0">Rib Offset: <span id="val-ribOffset">0</span></label>
+                                <input type="range" class="form-range gen-param" id="param-ribOffset" min="0" max="11" value="0" step="1">
                             </div>
                             <div class="mb-2">
                                 <label class="form-check form-switch mb-0">
@@ -169,6 +173,10 @@
                             </div>
                             <div class="d-flex justify-content-between align-items-center mt-3">
                                 <span id="gen-block-count" class="text-secondary">0 blocks</span>
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="param-spinPreview">
+                                    <span class="form-check-label">Spin</span>
+                                </label>
                             </div>
                             <div class="gen-action-buttons">
                                 <a class="btn btn-sm btn-outline-secondary" id="gen-guide-btn" hx-boost="false" title="Step by step building guide" href="/generators/balloon">
@@ -221,24 +229,24 @@
 <script>
 (function(){
   var PRESETS = {
-    roundBlimp:     { lengthX:36, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
-    fatBalloon:     { lengthX:22, widthZ:22, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.08, bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
-    sphere:         { lengthX:18, widthZ:18, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
-    hotAirBalloon:  { lengthX:16, widthZ:16, heightY:24, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.15, bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'red', frameMaterial:'wood', frameWoodType:'dark_oak' },
-    tube:           { lengthX:50, widthZ:14, heightY:14, cylinderMid:0.6,  frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:6, envelopeMaterial:'envelope', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
-    zeppelin:       { lengthX:60, widthZ:14, heightY:14, cylinderMid:0,    frontTaper:0.4,  rearTaper:0.6,  topFlatten:0.05, bottomFlatten:0.1,  hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:5, finLength:8, envelopeMaterial:'envelope', envelopeColor:'light_gray', frameMaterial:'wood', frameWoodType:'spruce' },
-    warZeppelin:    { lengthX:80, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0.5,  rearTaper:0.7,  topFlatten:0.08, bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:true,  keelDepth:2, finEnabled:true, sideFinEnabled:false, finHeight:7, finLength:12, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
-    torpedo:        { lengthX:50, widthZ:10, heightY:10, cylinderMid:0,    frontTaper:0.7,  rearTaper:0.8,  topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
-    skyWhale:       { lengthX:50, widthZ:20, heightY:18, cylinderMid:0.2,  frontTaper:0.4,  rearTaper:0.2,  topFlatten:0.1,  bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:6, finLength:10, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'dark_oak' },
-    fantasy:        { lengthX:35, widthZ:18, heightY:22, cylinderMid:0,    frontTaper:0.1,  rearTaper:0.1,  topFlatten:0.2,  bottomFlatten:0.05, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'purple', frameMaterial:'wood', frameWoodType:'dark_oak' },
-    dirigible:      { lengthX:90, widthZ:16, heightY:18, cylinderMid:0.5,  frontTaper:0.3,  rearTaper:0.5,  topFlatten:0.05, bottomFlatten:0.08, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, keelEnabled:true,  keelDepth:2, finEnabled:true, sideFinEnabled:true, finHeight:6, finLength:10, envelopeMaterial:'envelope', envelopeColor:'light_gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
-    flyingFish:     { lengthX:40, widthZ:12, heightY:10, cylinderMid:0.1,  frontTaper:0.6,  rearTaper:0.3,  topFlatten:0.15, bottomFlatten:0.3,  hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:true, finHeight:5, finLength:8, envelopeMaterial:'wool', envelopeColor:'light_blue', frameMaterial:'wood', frameWoodType:'birch' },
-    egg:            { lengthX:14, widthZ:12, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.1,  bottomFlatten:0.05, hollow:true, shell:1, ribEnabled:false, ribSpacing:4, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'birch' },
-    cigar:          { lengthX:70, widthZ:10, heightY:10, cylinderMid:0.65, frontTaper:0.2,  rearTaper:0.2,  topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:6, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
-    teardrop:       { lengthX:30, widthZ:16, heightY:20, cylinderMid:0,    frontTaper:0,    rearTaper:0.8,  topFlatten:0,    bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, keelEnabled:true,  keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'red', frameMaterial:'wood', frameWoodType:'dark_oak' }
+    roundBlimp:     { lengthX:36, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    fatBalloon:     { lengthX:22, widthZ:22, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.08, bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    sphere:         { lengthX:18, widthZ:18, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    hotAirBalloon:  { lengthX:16, widthZ:16, heightY:24, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.15, bottomFlatten:0,    hollow:true, shell:1, ribEnabled:false, ribSpacing:4, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'red', frameMaterial:'wood', frameWoodType:'dark_oak' },
+    tube:           { lengthX:50, widthZ:14, heightY:14, cylinderMid:0.6,  frontTaper:0,    rearTaper:0,    topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:6, envelopeMaterial:'envelope', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'spruce' },
+    zeppelin:       { lengthX:60, widthZ:14, heightY:14, cylinderMid:0,    frontTaper:0.4,  rearTaper:0.6,  topFlatten:0.05, bottomFlatten:0.1,  hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, ribOffset:0, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:5, finLength:8, envelopeMaterial:'envelope', envelopeColor:'light_gray', frameMaterial:'wood', frameWoodType:'spruce' },
+    warZeppelin:    { lengthX:80, widthZ:18, heightY:16, cylinderMid:0,    frontTaper:0.5,  rearTaper:0.7,  topFlatten:0.08, bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, ribOffset:0, keelEnabled:true,  keelDepth:2, finEnabled:true, sideFinEnabled:false, finHeight:7, finLength:12, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    torpedo:        { lengthX:50, widthZ:10, heightY:10, cylinderMid:0,    frontTaper:0.7,  rearTaper:0.8,  topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, ribOffset:0, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    skyWhale:       { lengthX:50, widthZ:20, heightY:18, cylinderMid:0.2,  frontTaper:0.4,  rearTaper:0.2,  topFlatten:0.1,  bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:6, finLength:10, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'dark_oak' },
+    fantasy:        { lengthX:35, widthZ:18, heightY:22, cylinderMid:0,    frontTaper:0.1,  rearTaper:0.1,  topFlatten:0.2,  bottomFlatten:0.05, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'purple', frameMaterial:'wood', frameWoodType:'dark_oak' },
+    dirigible:      { lengthX:90, widthZ:16, heightY:18, cylinderMid:0.5,  frontTaper:0.3,  rearTaper:0.5,  topFlatten:0.05, bottomFlatten:0.08, hollow:true, shell:1, ribEnabled:true,  ribSpacing:4, ribOffset:0, keelEnabled:true,  keelDepth:2, finEnabled:true, sideFinEnabled:true, finHeight:6, finLength:10, envelopeMaterial:'envelope', envelopeColor:'light_gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    flyingFish:     { lengthX:40, widthZ:12, heightY:10, cylinderMid:0.1,  frontTaper:0.6,  rearTaper:0.3,  topFlatten:0.15, bottomFlatten:0.3,  hollow:true, shell:1, ribEnabled:false, ribSpacing:4, ribOffset:0, keelEnabled:true,  keelDepth:1, finEnabled:true, sideFinEnabled:true, finHeight:5, finLength:8, envelopeMaterial:'wool', envelopeColor:'light_blue', frameMaterial:'wood', frameWoodType:'birch' },
+    egg:            { lengthX:14, widthZ:12, heightY:18, cylinderMid:0,    frontTaper:0,    rearTaper:0,    topFlatten:0.1,  bottomFlatten:0.05, hollow:true, shell:1, ribEnabled:false, ribSpacing:4, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'white', frameMaterial:'wood', frameWoodType:'birch' },
+    cigar:          { lengthX:70, widthZ:10, heightY:10, cylinderMid:0.65, frontTaper:0.2,  rearTaper:0.2,  topFlatten:0,    bottomFlatten:0,    hollow:true, shell:1, ribEnabled:true,  ribSpacing:6, ribOffset:0, keelEnabled:false, keelDepth:1, finEnabled:true, sideFinEnabled:false, finHeight:4, finLength:6, envelopeMaterial:'envelope', envelopeColor:'gray', frameMaterial:'andesite_casing', frameWoodType:'spruce' },
+    teardrop:       { lengthX:30, widthZ:16, heightY:20, cylinderMid:0,    frontTaper:0,    rearTaper:0.8,  topFlatten:0,    bottomFlatten:0.15, hollow:true, shell:1, ribEnabled:true,  ribSpacing:5, ribOffset:0, keelEnabled:true,  keelDepth:1, finEnabled:false, sideFinEnabled:false, finHeight:4, finLength:5, envelopeMaterial:'wool', envelopeColor:'red', frameMaterial:'wood', frameWoodType:'dark_oak' }
   };
 
-  var PARAMS = ['lengthX','widthZ','heightY','cylinderMid','frontTaper','rearTaper','topFlatten','bottomFlatten','shell','ribSpacing','keelDepth','finHeight','finLength'];
+  var PARAMS = ['lengthX','widthZ','heightY','cylinderMid','frontTaper','rearTaper','topFlatten','bottomFlatten','shell','ribSpacing','ribOffset','keelDepth','finHeight','finLength'];
   var CHECKS = ['hollow','ribEnabled','keelEnabled','finEnabled','sideFinEnabled'];
   var SELECTS = ['envelopeMaterial','envelopeColor','frameMaterial','frameWoodType'];
 
@@ -295,6 +303,13 @@
     var frameMat = document.getElementById('param-frameMaterial').value;
     document.getElementById('shell-group').style.display = hollow ? '' : 'none';
     document.getElementById('ribSpacing-group').style.display = ribs ? '' : 'none';
+    document.getElementById('ribOffset-group').style.display = ribs ? '' : 'none';
+    if (ribs) {
+      var spacing = parseInt(document.getElementById('param-ribSpacing').value) || 4;
+      var offsetEl = document.getElementById('param-ribOffset');
+      offsetEl.max = spacing - 1;
+      if (parseInt(offsetEl.value) >= spacing) offsetEl.value = 0;
+    }
     document.getElementById('keelDepth-group').style.display = keel ? '' : 'none';
     document.getElementById('finHeight-group').style.display = anyFins ? '' : 'none';
     document.getElementById('finLength-group').style.display = anyFins ? '' : 'none';
@@ -339,6 +354,10 @@
         var p = PRESETS[this.getAttribute('data-preset')];
         if (p) { setParams(p); refresh(); }
       });
+    });
+
+    document.getElementById('param-spinPreview').addEventListener('change', function() {
+      GeneratorApp.setSpinEnabled(this.checked);
     });
 
     document.getElementById('gen-download-btn').addEventListener('click', function(e) {

@@ -90,7 +90,7 @@
                             <div class="col-12 col-md-8">
                                 <div class="d-flex flex-wrap gap-2">
                                     {{ range .SocialLinks }}
-                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-purple{{ else if eq .Platform "patreon" }}btn-orange{{ else if eq .Platform "reddit" }}btn-warning{{ else }}btn-secondary{{ end }}">
+                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-twitch{{ else if eq .Platform "patreon" }}btn-patreon{{ else if eq .Platform "reddit" }}btn-warning{{ else }}btn-secondary{{ end }}">
                                         {{ if eq .Platform "youtube" }}YouTube{{ else if eq .Platform "twitch" }}Twitch{{ else if eq .Platform "patreon" }}Patreon{{ else if eq .Platform "reddit" }}Reddit{{ else }}{{ .Platform }}{{ end }}{{ if .Username }} &middot; {{ .Username }}{{ end }}{{ if .Verified }} ✓{{ end }}
                                     </a>
                                     {{ end }}

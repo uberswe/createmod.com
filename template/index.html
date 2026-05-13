@@ -15,6 +15,14 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
+                            {{ if .TrendingHasNext }}
+                            <ul class="pagination ms-auto mb-0">
+                                <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} 1</span></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
+                                </li>
+                            </ul>
+                            {{ end }}
                         </div>
                         <div id="tab-panel-trending" class="tab-panel" data-trending-section="trending">
                             <div class="row g-3">
@@ -22,13 +30,6 @@
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
-                            {{ if .TrendingHasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
-                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
-                                <a href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
-                            </div>
-                            {{ end }}
                         </div>
 
                         <!-- Latest -->
@@ -39,6 +40,14 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
+                            {{ if .HasNext }}
+                            <ul class="pagination ms-auto mb-0">
+                                <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} 1</span></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
+                                </li>
+                            </ul>
+                            {{ end }}
                         </div>
                         <div id="tab-panel-latest" class="tab-panel">
                             <div class="row g-3">
@@ -46,13 +55,6 @@
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
-                            {{ if .HasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
-                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
-                                <a href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
-                            </div>
-                            {{ end }}
                         </div>
 
                         <!-- Highest Rated -->
@@ -63,6 +65,14 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
+                            {{ if .HighestHasNext }}
+                            <ul class="pagination ms-auto mb-0">
+                                <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} 1</span></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
+                                </li>
+                            </ul>
+                            {{ end }}
                         </div>
                         <div id="tab-panel-highest" class="tab-panel">
                             <div class="row g-3">
@@ -70,13 +80,6 @@
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
-                            {{ if .HighestHasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T .Language "Previous" }}</a>
-                                <div class="text-secondary">{{ T .Language "Page" }} 1</div>
-                                <a href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
-                            </div>
-                            {{ end }}
                         </div>
 
                         <!-- Categories -->
@@ -89,6 +92,14 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
+                            {{ if .HasNext }}
+                            <ul class="pagination ms-auto mb-0">
+                                <li class="page-item disabled"><span class="page-link">{{ T $.Language "Page" }} 1</span></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false">{{ T $.Language "Next" }}</a>
+                                </li>
+                            </ul>
+                            {{ end }}
                         </div>
                         <div id="tab-panel-cat-{{ .Category.Key }}" class="tab-panel" data-trending-section="cat-{{ .Category.Key }}">
                             <div class="row g-3">
@@ -96,13 +107,6 @@
                                 {{template "schematic_card_small.html" .}}
                                 {{ end }}
                             </div>
-                            {{ if .HasNext }}
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true">{{ T $.Language "Previous" }}</a>
-                                <div class="text-secondary">{{ T $.Language "Page" }} 1</div>
-                                <a href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary">{{ T $.Language "Next" }}</a>
-                            </div>
-                            {{ end }}
                         </div>
                         {{ end }}
                     </div>

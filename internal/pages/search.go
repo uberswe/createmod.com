@@ -24,6 +24,7 @@ import (
 var searchTemplates = append([]string{
 	"./template/search.html",
 	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_list.html",
 	"./template/include/schematic_card_medium.html",
 	"./template/include/search_filters.html",
 	"./template/include/search_pagination.html",
@@ -36,53 +37,136 @@ type ModOption struct {
 	Count       int
 }
 
+// CreateVersionGroup holds a major version group label and its child versions.
+type CreateVersionGroup struct {
+	Label    string                   // e.g. "6.0.x", "0.5.x"
+	Value    string                   // e.g. "~6.0", "~0.5"  (prefix marker)
+	Versions []models.CreatemodVersion // individual versions
+}
+
 type SearchData struct {
 	DefaultData
-	Schematics        []models.Schematic
-	Tags              []models.SchematicTag
-	TagsWithCount     []models.SchematicTagWithCount
-	SelectedTags      []string
-	MinecraftVersions []models.MinecraftVersion
-	CreateVersions    []models.CreatemodVersion
-	SearchSpeed       string
-	SearchResultCount int // total results count
-	TotalResults      int
-	TotalPages        int
-	PageNumbers       []int // sliding window page numbers; -1 = ellipsis
-	Term              string
-	TermSlug          string
-	Sort              int
-	DisplaySort       int // sort value shown in the UI (always BestMatch when no explicit sort)
-	Rating            int
-	Category          string
-	Tag               string // backward compat: first selected tag
-	MinecraftVersion  string
-	CreateVersion     string
-	Page              int
-	PageSize          int
-	HasPrev           bool
-	HasNext           bool
-	PrevURL           string
-	NextURL           string
-	ViewMode          string
-	MinBlockCount     int
-	MaxBlockCount     int
-	MinDimX           int
-	MaxDimX           int
-	MinDimY           int
-	MaxDimY           int
-	MinDimZ           int
-	MaxDimZ           int
-	MinHorizontal     int
-	MaxHorizontal     int
-	SelectedMods      []string
-	AllMods           []ModOption
-	MaxBlockCountAll  int // global max for slider upper bound
-	MaxDimXAll        int
-	MaxDimYAll        int
-	MaxDimZAll        int
-	MaxHorizontalAll  int
-	PerPage           int
+	Schematics           []models.Schematic
+	Tags                 []models.SchematicTag
+	TagsWithCount        []models.SchematicTagWithCount
+	SelectedTags         []string
+	MinecraftVersions    []models.MinecraftVersion
+	CreateVersions       []models.CreatemodVersion
+	CreateVersionGroups  []CreateVersionGroup
+	SearchSpeed          string
+	SearchResultCount    int // total results count
+	TotalResults         int
+	TotalPages           int
+	PageNumbers          []int // sliding window page numbers; -1 = ellipsis
+	Term                 string
+	TermSlug             string
+	Sort                 int
+	DisplaySort          int // sort value shown in the UI (always BestMatch when no explicit sort)
+	Rating               int
+	Category             string
+	Tag                  string // backward compat: first selected tag
+	MinecraftVersion     string
+	CreateVersion        string
+	CreateVersionDisplay string
+	Page                 int
+	PageSize             int
+	HasPrev              bool
+	HasNext              bool
+	PrevURL              string
+	NextURL              string
+	ViewMode             string
+	MinBlockCount        int
+	MaxBlockCount        int
+	MinDimX              int
+	MaxDimX              int
+	MinDimY              int
+	MaxDimY              int
+	MinDimZ              int
+	MaxDimZ              int
+	MinHorizontal        int
+	MaxHorizontal        int
+	SelectedMods         []string
+	AllMods              []ModOption
+	MaxBlockCountAll     int // global max for slider upper bound
+	MaxDimXAll           int
+	MaxDimYAll           int
+	MaxDimZAll           int
+	MaxHorizontalAll     int
+	PerPage              int
+}
+
+// groupCreateVersions groups a flat list of Create mod versions into major version groups.
+// Major versions: anything starting with "6." → "6.0", otherwise take first two segments (e.g. "0.5").
+func groupCreateVersions(versions []models.CreatemodVersion) []CreateVersionGroup {
+	type entry struct {
+		key      string
+		label    string
+		versions []models.CreatemodVersion
+	}
+	var order []string
+	groups := map[string]*entry{}
+
+	for _, v := range versions {
+		ver := v.Version
+		var major string
+		if strings.HasPrefix(ver, "6.") || strings.HasPrefix(ver, "6 ") {
+			major = "6.0"
+		} else {
+			parts := strings.SplitN(ver, ".", 3)
+			if len(parts) >= 2 {
+				minor := parts[1]
+				// Extract just the leading digits from the minor part
+				// so "4c"→"4", "31a"→"3" (first digit only for legacy naming)
+				if len(minor) > 0 && minor[0] >= '0' && minor[0] <= '9' {
+					minor = string(minor[0])
+				}
+				major = parts[0] + "." + minor
+			} else {
+				// Single-segment version like "0.31a" without dots
+				major = "0.x"
+			}
+		}
+		e, ok := groups[major]
+		if !ok {
+			e = &entry{key: major, label: major + ".x"}
+			groups[major] = e
+			order = append(order, major)
+		}
+		e.versions = append(e.versions, v)
+	}
+
+	result := make([]CreateVersionGroup, 0, len(order))
+	for _, key := range order {
+		e := groups[key]
+		result = append(result, CreateVersionGroup{
+			Label:    e.label,
+			Value:    "~" + e.key,
+			Versions: e.versions,
+		})
+	}
+	return result
+}
+
+func createVersionDisplay(cv string) string {
+	if strings.HasPrefix(cv, "~") {
+		return strings.TrimPrefix(cv, "~") + ".x"
+	}
+	return cv
+}
+
+func createVersionMajor(ver string) string {
+	if strings.HasPrefix(ver, "6.") || strings.HasPrefix(ver, "6 ") {
+		return "6.0"
+	}
+	parts := strings.SplitN(ver, ".", 3)
+	if len(parts) >= 2 {
+		minor := parts[1]
+		if len(minor) > 0 && minor[0] >= '0' && minor[0] <= '9' {
+			minor = string(minor[0])
+		}
+		return parts[0] + "." + minor
+	}
+	return "0.x"
 }
 
 func SearchHandler(searchEngine search.SearchEngine, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
@@ -221,6 +305,18 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 
 		term := strings.ReplaceAll(slugTerm, "-", " ")
 
+		// Expand major-version group selection (e.g. "~6.0") into individual versions.
+		var createVersionList []string
+		if strings.HasPrefix(createVersion, "~") {
+			prefix := strings.TrimPrefix(createVersion, "~")
+			allCV := allCreatemodVersionsFromStore(appStore)
+			for _, cv := range allCV {
+				if createVersionMajor(cv.Version) == prefix {
+					createVersionList = append(createVersionList, cv.Version)
+				}
+			}
+		}
+
 		sq := search.SearchQuery{
 			Term:             term,
 			Order:            order,
@@ -229,6 +325,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			Tags:             searchTags,
 			MinecraftVersion: mcVersion,
 			CreateVersion:    createVersion,
+			CreateVersions:   createVersionList,
 			MinBlockCount:    minBlockCount,
 			MaxBlockCount:    maxBlockCount,
 			MinDimX:          minDimX,
@@ -409,19 +506,24 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		if viewMode != "list" {
 			viewMode = "grid"
 		}
+		if viewMode == "list" {
+			queryParts = append(queryParts, "view=list")
+		}
 
 		totalPages := 0
 		if pageSize > 0 {
 			totalPages = (total + pageSize - 1) / pageSize
 		}
 
+		cvAll := allCreatemodVersionsFromStore(appStore)
 		d := SearchData{
-			Schematics:        schematicModels,
-			Tags:              allTagsFromStore(appStore),
-			TagsWithCount:     allTagsWithCountFromStore(appStore, cacheService),
-			SelectedTags:      selectedTags,
-			MinecraftVersions: allMinecraftVersionsFromStore(appStore),
-			CreateVersions:    allCreatemodVersionsFromStore(appStore),
+			Schematics:          schematicModels,
+			Tags:                allTagsFromStore(appStore),
+			TagsWithCount:       allTagsWithCountFromStore(appStore, cacheService),
+			SelectedTags:        selectedTags,
+			MinecraftVersions:   allMinecraftVersionsFromStore(appStore),
+			CreateVersions:      cvAll,
+			CreateVersionGroups: groupCreateVersions(cvAll),
 			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
 			SearchResultCount: total,
 			TotalResults:      total,
@@ -434,9 +536,10 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			Rating:            rating,
 			Category:          category,
 			Tag:               tagURLParam,
-			MinecraftVersion:  mcVersion,
-			CreateVersion:     createVersion,
-			Page:              page,
+			MinecraftVersion:     mcVersion,
+			CreateVersion:        createVersion,
+			CreateVersionDisplay: createVersionDisplay(createVersion),
+			Page:                 page,
 			PageSize:          pageSize,
 			HasPrev:           prevURL != "",
 			HasNext:           nextURL != "",

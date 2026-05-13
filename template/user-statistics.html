@@ -142,10 +142,14 @@
                                             <ul class="pagination">
                                                 {{ if .HasPrevPage }}
                                                 <li class="page-item"><a class="page-link" href="?page={{ .PrevPage }}" hx-boost="true" hx-swap="innerHTML show:no-scroll" hx-target="body" hx-push-url="true">{{ T .Language "Previous" }}</a></li>
+                                                {{ else }}
+                                                <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
                                                 {{ end }}
-                                                <li class="page-item disabled"><a class="page-link">{{ .Page }} / {{ .TotalPages }}</a></li>
+                                                <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{ .Page }} / {{ .TotalPages }}</span></li>
                                                 {{ if .HasNextPage }}
                                                 <li class="page-item"><a class="page-link" href="?page={{ .NextPage }}" hx-boost="true" hx-swap="innerHTML show:no-scroll" hx-target="body" hx-push-url="true">{{ T .Language "Next" }}</a></li>
+                                                {{ else }}
+                                                <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>
                                                 {{ end }}
                                             </ul>
                                         </div>

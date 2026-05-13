@@ -175,6 +175,14 @@ func Register(p RegisterParams) chi.Router {
 			return pages.YoutubeWatchURL(video)
 		},
 		"externalDomain": pages.ExternalDomain,
+		"PlaceholderImg": func(id string) string {
+			themes := [8]string{"brass", "cobble", "copper", "forest", "night", "redst", "sand", "sky"}
+			h := sha256.Sum256([]byte(id))
+			idx := int(h[0]) % 64
+			theme := themes[idx/8]
+			num := idx%8 + 1
+			return fmt.Sprintf("/assets/x/placeholders/schematic-%s-%02d.svg", theme, num)
+		},
 		"LangFlag": func(code string) html.HTML {
 			return ""
 		},
@@ -632,7 +640,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/api/generators/balloon", Adapt(pages.GeneratorBalloonAPIHandler()))
 	r.Post("/api/generators/hull", Adapt(pages.GeneratorHullAPIHandler()))
 	downloadRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
-	r.Get("/api/generators/preview/{hash}", Adapt(pages.GeneratorPreviewHandler(p.StorageService)))
+	r.Get("/api/generators/preview/{hash}", Adapt(pages.GeneratorPreviewHandler()))
 	r.With(downloadRateLimit).Post("/api/generators/propeller/download", Adapt(pages.GeneratorDownloadHandler("propeller")))
 	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))
 	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
@@ -672,6 +680,11 @@ func Register(p RegisterParams) chi.Router {
 	// Phase 5: Social features
 	r.Get("/top-creators", Adapt(pages.TopCreatorsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/live", Adapt(pages.LivestreamsHandler(registry, p.CacheService, p.AppStore)))
+
+	// Dev-only routes
+	if os.Getenv("DEV") == "true" {
+		r.Get("/styleguide", Adapt(pages.StyleguideHandler(registry)))
+	}
 
 	// Fallback
 	r.Get("/*", Adapt(pages.FourOhFourHandler(registry, p.AppStore)))

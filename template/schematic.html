@@ -486,13 +486,13 @@
                                                     </div>
                                                 </div>
                                                 <!-- Comment Report Modal -->
-                                                <div class="modal report-modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog">
+                                                <div class="modal report-modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog" aria-labelledby="reportCommentModal-{{ .ID }}-title">
                                                   <div class="modal-dialog modal-dialog-centered" role="document">
                                                     <div class="modal-content">
                                                       <div class="report-form-view">
                                                         <form class="report-form" method="post" action="/reports">
                                                           <div class="modal-header">
-                                                            <h5 class="modal-title">{{ T $.Language "Report Comment" }}</h5>
+                                                            <h5 class="modal-title" id="reportCommentModal-{{ .ID }}-title">{{ T $.Language "Report Comment" }}</h5>
                                                             <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="{{ T $.Language "Close" }}"></button>
                                                           </div>
                                                           <div class="modal-body">
@@ -590,8 +590,7 @@
                             <div id="player-youtube" data-plyr-provider="youtube"
                                  data-plyr-embed-id="{{ .Schematic.Video }}"></div>
                             <a href="{{ SignedOutURL (YouTubeWatchURL .Schematic.Video) }}"
-                               class="card-footer d-flex align-items-center justify-content-center gap-2 text-decoration-none py-3" id="yt-link"
-                               style="font-size:1.05rem;font-weight:600;color:#f0f0f0;background:rgba(180,40,40,0.25);border-top:1px solid rgba(180,40,40,0.3);">
+                               class="card-footer d-flex align-items-center justify-content-center gap-2 text-decoration-none py-3 yt-footer-link" id="yt-link">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z" /><path d="M10 9l5 3l-5 3z" /></svg>
                                 {{ T .Language "View on YouTube" }}
                             </a>
@@ -1392,13 +1391,13 @@ document.addEventListener('htmx:afterRequest', function(evt) {
 </script>
 
 <!-- Report Modal -->
-<div class="modal report-modal" id="reportModal" tabindex="-1" role="dialog">
+<div class="modal report-modal" id="reportModal" tabindex="-1" role="dialog" aria-labelledby="reportModal-title">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="report-form-view">
         <form class="report-form" method="post" action="/reports">
           <div class="modal-header">
-            <h5 class="modal-title">{{ T .Language "Report Schematic" }}</h5>
+            <h5 class="modal-title" id="reportModal-title">{{ T .Language "Report Schematic" }}</h5>
             <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
           </div>
           <div class="modal-body">

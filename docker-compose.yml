@@ -44,6 +44,21 @@ services:
       exit 0
       "
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    ports:
+      - "7701:7700"
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: localdev
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
   mailhog:
     image: mailhog/mailhog:latest
     ports:
@@ -64,6 +79,8 @@ services:
       - CREATE_ADMIN=true
       - AUTO_MIGRATE=true
       - LISTEN_ADDR=0.0.0.0:8080
+      - MEILISEARCH_URL=http://meilisearch:7700
+      - MEILISEARCH_KEY=localdev
       - SQLITE_PATH=/pb_data/data.db
     volumes:
       - ./pb_data:/pb_data
@@ -82,7 +99,10 @@ services:
         condition: service_completed_successfully
       mailhog:
         condition: service_started
+      meilisearch:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   minio_data:
+  meilisearch_data:
