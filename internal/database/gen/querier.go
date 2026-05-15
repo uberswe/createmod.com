@@ -98,7 +98,7 @@ type Querier interface {
 	CreateTag(ctx context.Context, arg CreateTagParams) (SchematicTag, error)
 	CreateTempUpload(ctx context.Context, arg CreateTempUploadParams) (CreateTempUploadRow, error)
 	CreateTempUploadFile(ctx context.Context, arg CreateTempUploadFileParams) (TempUploadFile, error)
-	CreateTempUploadImage(ctx context.Context, arg CreateTempUploadImageParams) (TempUploadImage, error)
+	CreateTempUploadImage(ctx context.Context, arg CreateTempUploadImageParams) (CreateTempUploadImageRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserMeta(ctx context.Context, arg CreateUserMetaParams) error
 	CreateUserWebhook(ctx context.Context, arg CreateUserWebhookParams) (UserWebhook, error)
@@ -195,6 +195,7 @@ type Querier interface {
 	GetSchematicByID(ctx context.Context, id string) (Schematic, error)
 	GetSchematicByIDAdmin(ctx context.Context, id string) (Schematic, error)
 	GetSchematicByName(ctx context.Context, name string) (Schematic, error)
+	GetSchematicByShortCode(ctx context.Context, shortCode string) (Schematic, error)
 	GetSchematicCategoryIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicDownloadCount(ctx context.Context, schematicID string) (int32, error)
 	GetSchematicFileByID(ctx context.Context, id string) (GetSchematicFileByIDRow, error)
@@ -227,6 +228,7 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, lower string) (User, error)
 	GetUserIsContributor(ctx context.Context, authorID *string) (bool, error)
 	GetUserMeta(ctx context.Context, arg GetUserMetaParams) (UserMetum, error)
+	GetUserPointsRank(ctx context.Context, id string) (int32, error)
 	GetUserVDRatioSinceCutoff(ctx context.Context, arg GetUserVDRatioSinceCutoffParams) (GetUserVDRatioSinceCutoffRow, error)
 	GetUserWebhookByUserID(ctx context.Context, userID string) (UserWebhook, error)
 	GetZeroResultSuggestion(ctx context.Context, query string) (ZeroResultSuggestion, error)
@@ -341,7 +343,8 @@ type Querier interface {
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)
 	ListTempUploadFilesByToken(ctx context.Context, token string) ([]TempUploadFile, error)
-	ListTempUploadImagesByToken(ctx context.Context, token string) ([]TempUploadImage, error)
+	ListTempUploadImagesByToken(ctx context.Context, token string) ([]ListTempUploadImagesByTokenRow, error)
+	ListTempUploadImagesByTokenAndCategory(ctx context.Context, arg ListTempUploadImagesByTokenAndCategoryParams) ([]ListTempUploadImagesByTokenAndCategoryRow, error)
 	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
 	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
 	ListTopSearchesSince(ctx context.Context, arg ListTopSearchesSinceParams) ([]ListTopSearchesSinceRow, error)
@@ -396,7 +399,9 @@ type Querier interface {
 	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
 	SetSchematicModpacks(ctx context.Context, schematicID string) error
+	SetSchematicShortCode(ctx context.Context, arg SetSchematicShortCodeParams) error
 	SetSchematicTags(ctx context.Context, schematicID string) error
+	ShortCodeExists(ctx context.Context, shortCode string) (bool, error)
 	SoftDeleteCollection(ctx context.Context, id string) error
 	SoftDeleteCollectionsByAuthor(ctx context.Context, authorID *string) error
 	SoftDeleteCommentsByAuthor(ctx context.Context, authorID *string) error

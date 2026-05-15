@@ -307,6 +307,21 @@ var LangES = map[string]string{
 	"How to earn points":                       "Como ganar puntos",
 	"Points history":                           "Historial de puntos",
 	"No points earned yet":                     "Aun no has ganado puntos. Comienza a contribuir!",
+	"pts":                                      "pts",
+	"points.action.upload":                     "Subir un esquemático",
+	"points.action.comment":                    "Comentar en un esquemático",
+	"points.action.rating4":                    "Esquemático recibe valoración de 4+ estrellas",
+	"points.action.downloads100":               "Esquemático alcanza 100 descargas",
+	"points.action.views10k":                   "Esquemático alcanza 10.000 vistas",
+	"points.action.first_comment":              "Publica tu primer comentario",
+	"points.action.views100":                   "Esquemático alcanza 100 vistas",
+	"points.action.views1k":                    "Esquemático alcanza 1.000 vistas",
+	"points.action.views10k_milestone":         "Esquemático alcanza 10.000 vistas (hito)",
+	"Repeatable":                               "Repetible",
+	"One-time":                                 "Una vez",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Gana puntos contribuyendo a la comunidad. ¡Sube esquemáticos, comenta y participa para subir en la clasificación!",
+	"topcreators.antispam":                     "El spam de esquemáticos, comentarios o cualquier otra manipulación intencional de puntos resultará en un baneo.",
 	"Achievements":                             "Logros",
 	"This user has not posted any schematics.": "Este usuario aún no ha publicado ningún esquema.",
 
@@ -787,4 +802,18 @@ var LangES = map[string]string{
 	"block_search_placeholder":  "Buscar un bloque...",
 	"replacements":              "reemplazos",
 
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "Cargando vista 360°",
+	"rotation.auto_rotate":      "Rotar automáticamente",
+	"rotation.how":              "¿Cómo funciona?",
+	"rotation.tooltip.line1":    "Esta vista previa 360° está hecha con %s imágenes capturadas alrededor del esquema.",
+	"rotation.tooltip.line2":    "¿Quieres crear una vista previa 3D como esta para tus propias construcciones? Sube tu esquema usando el mod Create Schematic Helper.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Desplazar a la izquierda",
+	"gallery.scroll_right": "Desplazar a la derecha",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Selecciona una categoría",
+	"delete_draft.confirm": "¿Estás seguro de que quieres eliminar este borrador? Esta acción no se puede deshacer.",
 }

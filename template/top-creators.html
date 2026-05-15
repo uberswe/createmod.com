@@ -3,67 +3,129 @@
 {{ template "header.html" . }}
 <div class="page-wrapper">
     <div class="page-body">
-        <div class="container-xl">
+        <div class="container-wide">
             <div class="page-header d-print-none mb-4">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <h2 class="page-title">{{ T .Language "Top Creators" }}</h2>
-                        <div class="text-secondary">{{ T .Language "Community leaderboard ranked by contribution points" }}</div>
-                    </div>
-                </div>
+                <h2 class="page-title">{{ T .Language "Top Creators" }}</h2>
+                <p class="text-secondary mt-1 mb-0">{{ T .Language "topcreators.page.description" }}</p>
             </div>
-            {{ if .Creators }}
-            <div class="card">
-                <div class="table-responsive">
-                    <table class="table table-vcenter card-table">
-                        <thead>
-                            <tr>
-                                <th class="w-1">{{ T .Language "Rank" }}</th>
-                                <th>{{ T .Language "Creator" }}</th>
-                                <th>{{ T .Language "Badges" }}</th>
-                                <th>{{ T .Language "Points" }}</th>
-                                <th>{{ T .Language "Links" }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{ range .Creators }}
-                            <tr>
-                                <td class="text-secondary">#{{ .Rank }}</td>
-                                <td>
-                                    <div class="d-flex py-1 align-items-center">
-                                        <span class="avatar me-2" style="background-image: url(https://www.gravatar.com/avatar/?d=mp&s=40)"></span>
-                                        <div class="flex-fill">
-                                            <div class="font-weight-medium">
-                                                <a href="/user/{{ ToLower .User.Username }}">{{ .User.Username }}</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
+            {{ if .CreatorsLeft }}
+            <div class="d-flex gap-3">
+            <div class="flex-grow-1 min-width-0">
+            <div class="row g-4">
+                <div class="col-12 col-lg-6">
+                    {{ if .CurrentUser }}
+                    <div class="card mb-4">
+                        <div class="card-body py-2">
+                            <div class="leaderboard-row">
+                                <span class="leaderboard-rank">#{{ .CurrentRank }}</span>
+                                <a href="/author/{{ ToLower .CurrentUser.User.Username }}" class="leaderboard-user">
+                                    <img class="avatar avatar-sm avatar-rounded" src="{{ .CurrentUser.AvatarURL }}" alt="{{ .CurrentUser.User.Username }}">
+                                    <span class="leaderboard-name">{{ .CurrentUser.User.Username }}</span>
+                                </a>
+                                <span class="leaderboard-points">{{ FormatNumber .CurrentUser.User.Points }} {{ T .Language "pts" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">{{ T .Language "Top Creators" }} #1–{{ len .CreatorsLeft }}</h3></div>
+                        <div class="leaderboard-list">
+                            {{ range .CreatorsLeft }}
+                            <div class="leaderboard-row{{ if le .Rank 3 }} leaderboard-top{{ end }}">
+                                <span class="leaderboard-rank{{ if eq .Rank 1 }} rank-gold{{ else if eq .Rank 2 }} rank-silver{{ else if eq .Rank 3 }} rank-bronze{{ end }}">#{{ .Rank }}</span>
+                                <a href="/author/{{ ToLower .User.Username }}" class="leaderboard-user">
+                                    <img class="avatar avatar-sm avatar-rounded" src="{{ .AvatarURL }}" alt="{{ .User.Username }}">
+                                    <span class="leaderboard-name">{{ .User.Username }}</span>
+                                </a>
+                                <span class="leaderboard-badges">
                                     {{ template "user_badges.html" .DisplayBadges }}
-                                </td>
-                                <td class="text-secondary">{{ .User.Points }}</td>
-                                <td>
+                                </span>
+                                <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
+                                <span class="leaderboard-links">
                                     {{ range .SocialLinks }}
-                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-icon btn-ghost-secondary" title="{{ .Platform }}" aria-label="{{ .Platform }}">
+                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" title="{{ .Platform }}" aria-label="{{ .Platform }}">
                                         {{ if eq .Platform "youtube" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z"/><path d="M10 9l5 3l-5 3z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z"/><path d="M10 9l5 3l-5 3z"/></svg>
                                         {{ else if eq .Platform "twitch" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/><path d="M16 8l0 4"/><path d="M12 8l0 4"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/><path d="M16 8l0 4"/><path d="M12 8l0 4"/></svg>
                                         {{ else if eq .Platform "reddit" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
                                         {{ else if eq .Platform "patreon" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
                                         {{ end }}
                                     </a>
                                     {{ end }}
-                                </td>
-                            </tr>
+                                </span>
+                            </div>
                             {{ end }}
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="card mb-4">
+                        <div class="card-header"><h3 class="card-title">{{ T .Language "How to earn points" }}</h3></div>
+                        <div class="card-body">
+                            <p class="text-secondary mb-3">{{ T .Language "topcreators.points.description" }}</p>
+                            <table class="table table-vcenter mb-0">
+                                <thead>
+                                <tr>
+                                    <th>{{ T .Language "Action" }}</th>
+                                    <th class="text-end">{{ T .Language "Points" }}</th>
+                                    <th class="text-end">{{ T .Language "Type" }}</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {{ range .HowToEarn }}
+                                <tr>
+                                    <td>{{ .Action }}</td>
+                                    <td class="text-end"><span class="badge bg-green">+{{ .Points }}</span></td>
+                                    <td class="text-end">{{ if .Repeatable }}<span class="badge bg-azure">{{ T $.Language "Repeatable" }}</span>{{ else }}<span class="badge bg-secondary">{{ T $.Language "One-time" }}</span>{{ end }}</td>
+                                </tr>
+                                {{ end }}
+                                </tbody>
+                            </table>
+                            <p class="text-secondary small mt-3 mb-0">{{ T .Language "topcreators.antispam" }}</p>
+                        </div>
+                    </div>
+                    {{ if .CreatorsRight }}
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">#{{ (index .CreatorsRight 0).Rank }}–{{ (index .CreatorsRight (sub (len .CreatorsRight) 1)).Rank }}</h3></div>
+                        <div class="leaderboard-list">
+                            {{ range .CreatorsRight }}
+                            <div class="leaderboard-row">
+                                <span class="leaderboard-rank">#{{ .Rank }}</span>
+                                <a href="/author/{{ ToLower .User.Username }}" class="leaderboard-user">
+                                    <img class="avatar avatar-sm avatar-rounded" src="{{ .AvatarURL }}" alt="{{ .User.Username }}">
+                                    <span class="leaderboard-name">{{ .User.Username }}</span>
+                                </a>
+                                <span class="leaderboard-badges">
+                                    {{ template "user_badges.html" .DisplayBadges }}
+                                </span>
+                                <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
+                                <span class="leaderboard-links">
+                                    {{ range .SocialLinks }}
+                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" title="{{ .Platform }}" aria-label="{{ .Platform }}">
+                                        {{ if eq .Platform "youtube" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z"/><path d="M10 9l5 3l-5 3z"/></svg>
+                                        {{ else if eq .Platform "twitch" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/><path d="M16 8l0 4"/><path d="M12 8l0 4"/></svg>
+                                        {{ else if eq .Platform "reddit" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
+                                        {{ else if eq .Platform "patreon" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                        {{ end }}
+                                    </a>
+                                    {{ end }}
+                                </span>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
+            <!-- Mobile ad (above pagination on smaller screens) -->
+            <div id="topcreators-mobile" class="d-xl-none mt-3 mb-3 text-center"></div>
             <div class="d-flex justify-content-center mt-4">
                 {{ if .PrevPageURL }}
                 <a href="{{ .PrevPageURL }}" class="btn btn-outline-secondary me-2">{{ T .Language "Previous" }}</a>
@@ -71,6 +133,13 @@
                 {{ if .NextPageURL }}
                 <a href="{{ .NextPageURL }}" class="btn btn-outline-secondary">{{ T .Language "Next" }}</a>
                 {{ end }}
+            </div>
+            </div>
+            <!-- Ad Rail (desktop only) -->
+            <div class="ad-rail d-none d-xl-block">
+                <div id="topcreators-video-nc-top-right" class="mb-3"></div>
+                <div id="topcreators-sticky-adrail" class="mb-3"></div>
+            </div>
             </div>
             {{ else }}
             <div class="empty">
@@ -82,3 +151,53 @@
 </div>
 {{ template "footer.html" . }}
 {{ template "foot.html" . }}
+<script>
+window['nitroAds'].createAd('topcreators-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,leaderboard,creators",
+  "targeting": { "pageType": "top-creators" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('topcreators-sticky-adrail', {
+  "refreshLimit": 10,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "format": "sticky-stack",
+  "stickyStackLimit": 15,
+  "stickyStackSpace": 2.5,
+  "stickyStackOffset": 110,
+  "stickyStackResizable": false,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,leaderboard,creators",
+  "targeting": { "pageType": "top-creators" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('topcreators-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "keywords": "minecraft,create-mod,leaderboard,creators",
+  "targeting": { "pageType": "top-creators" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 320px) and (max-width: 1199px)"
+});
+</script>

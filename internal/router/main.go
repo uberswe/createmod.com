@@ -129,6 +129,7 @@ func Register(p RegisterParams) chi.Router {
 		"steam":     p.SteamAuth != nil,
 	})
 	pages.SetOAuthSigningSecret(deriveOAuthSigningSecret())
+	pages.InitWebAuthn()
 	if p.DiscordOAuth == nil {
 		slog.Info("oauth: Discord provider disabled (DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET not set)")
 	}
@@ -145,6 +146,21 @@ func Register(p RegisterParams) chi.Router {
 		"ToLower":        strings.ToLower,
 		"mod":            func(i, j int) bool { return i%j == 0 },
 		"add":            func(a, b int) int { return a + b },
+		"sub":            func(a, b int) int { return a - b },
+		"FormatNumber": func(n int) string {
+			s := fmt.Sprintf("%d", n)
+			if len(s) <= 3 {
+				return s
+			}
+			var result []byte
+			for i, c := range s {
+				if i > 0 && (len(s)-i)%3 == 0 {
+					result = append(result, ',')
+				}
+				result = append(result, byte(c))
+			}
+			return string(result)
+		},
 		"urlPathEscape":  url.PathEscape,
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
@@ -340,6 +356,7 @@ func Register(p RegisterParams) chi.Router {
 	// Download endpoint for temporary uploads
 	r.Get("/u/{token}/download", Adapt(pages.UploadDownloadHandler(p.AppStore, p.StorageService)))
 	r.Post("/u/{token}/claim", Adapt(pages.UploadClaimHandler(p.AppStore)))
+	r.Post("/u/{token}/delete", Adapt(pages.UploadDeleteHandler(p.AppStore, p.StorageService)))
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
 	r.Delete("/u/{token}/files/{fileId}", Adapt(pages.UploadDeleteFileHandler(p.AppStore, p.StorageService)))
 	r.Get("/u/{token}/files/{fileId}/download", Adapt(pages.UploadFileDownloadHandler(p.AppStore, p.StorageService)))
@@ -495,7 +512,7 @@ func Register(p RegisterParams) chi.Router {
 	// Auth — rate-limited to 10 POST requests per IP per minute
 	authRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
 	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))
-	r.With(authRateLimit).Post("/login", Adapt(pages.LoginPostHandler(p.AppStore, p.SessionStore)))
+	r.With(authRateLimit).Post("/login", Adapt(pages.LoginPostHandler(p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/register", Adapt(pages.RegisterHandler(registry, p.AppStore)))
 	r.With(authRateLimit).Post("/register", Adapt(pages.RegisterPostHandler(p.AppStore, p.SessionStore)))
 	r.Get("/reset-password", Adapt(pages.PasswordResetHandler(registry, p.AppStore)))
@@ -504,23 +521,23 @@ func Register(p RegisterParams) chi.Router {
 	r.With(authRateLimit).Post("/reset-password/{token}", Adapt(pages.PasswordResetConfirmPostHandler(registry, p.AppStore, p.SessionStore)))
 	// OAuth routes
 	r.Get("/auth/discord", Adapt(pages.OAuthRedirectHandler(p.DiscordOAuth)))
-	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/discord/callback", Adapt(pages.OAuthCallbackHandler(p.DiscordOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/github", Adapt(pages.OAuthRedirectHandler(p.GithubOAuth)))
-	r.Get("/auth/github/callback", Adapt(pages.OAuthCallbackHandler(p.GithubOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/github/callback", Adapt(pages.OAuthCallbackHandler(p.GithubOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/twitch", Adapt(pages.OAuthRedirectHandler(p.TwitchOAuth)))
-	r.Get("/auth/twitch/callback", Adapt(pages.OAuthCallbackHandler(p.TwitchOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/twitch/callback", Adapt(pages.OAuthCallbackHandler(p.TwitchOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/patreon", Adapt(pages.OAuthRedirectHandler(p.PatreonOAuth)))
-	r.Get("/auth/patreon/callback", Adapt(pages.OAuthCallbackHandler(p.PatreonOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/patreon/callback", Adapt(pages.OAuthCallbackHandler(p.PatreonOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/reddit", Adapt(pages.OAuthRedirectHandler(p.RedditOAuth)))
-	r.Get("/auth/reddit/callback", Adapt(pages.OAuthCallbackHandler(p.RedditOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/reddit/callback", Adapt(pages.OAuthCallbackHandler(p.RedditOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/google", Adapt(pages.OAuthRedirectHandler(p.GoogleOAuth)))
-	r.Get("/auth/google/callback", Adapt(pages.OAuthCallbackHandler(p.GoogleOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/google/callback", Adapt(pages.OAuthCallbackHandler(p.GoogleOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/microsoft", Adapt(pages.OAuthRedirectHandler(p.MicrosoftOAuth)))
-	r.Get("/auth/microsoft/callback", Adapt(pages.OAuthCallbackHandler(p.MicrosoftOAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/microsoft/callback", Adapt(pages.OAuthCallbackHandler(p.MicrosoftOAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/steam", Adapt(pages.SteamRedirectHandler(p.SteamAuth)))
-	r.Get("/auth/steam/callback", Adapt(pages.SteamCallbackHandler(p.SteamAuth, p.AppStore, p.SessionStore)))
+	r.Get("/auth/steam/callback", Adapt(pages.SteamCallbackHandler(p.SteamAuth, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/auth/oauth/complete", Adapt(pages.OAuthCompleteHandler(registry, p.AppStore)))
-	r.With(authRateLimit).Post("/auth/oauth/complete", Adapt(pages.OAuthCompletePostHandler(registry, p.AppStore, p.SessionStore)))
+	r.With(authRateLimit).Post("/auth/oauth/complete", Adapt(pages.OAuthCompletePostHandler(registry, p.AppStore, p.SessionStore, p.MailService)))
 	r.Get("/logout", func(w http.ResponseWriter, req *http.Request) {
 		secure := req.TLS != nil || strings.EqualFold(req.Header.Get("X-Forwarded-Proto"), "https")
 
@@ -557,7 +574,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/highest-scores", Adapt(pages.HighestScoresPageHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	// Mods
 	r.Get("/mods", Adapt(pages.ModsHandler(p.CacheService, registry, p.ModMetaService, p.AppStore)))
-	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.CacheService, registry, p.ModMetaService, p.AppStore, p.TranslationService)))
+	r.Get("/mods/{slug}", Adapt(pages.ModDetailHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.ModMetaService, p.AppStore, p.TranslationService)))
 	// Collections
 	r.Get("/collections", Adapt(pages.CollectionsHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/collections/new", Adapt(pages.CollectionsNewHandler(registry, p.CacheService, p.AppStore)))
@@ -646,6 +663,7 @@ func Register(p RegisterParams) chi.Router {
 	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
 	// User
 	r.Get("/following", Adapt(pages.FollowingHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
+	r.Post("/following/unfollow", Adapt(pages.FollowingUnfollowHandler(p.AppStore)))
 	r.Get("/author/{username}/feed", Adapt(pages.AuthorFeedHandler(p.AppStore, p.CacheService)))
 	r.Get("/author/{username}", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Get("/profile", Adapt(pages.ProfileHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
@@ -673,6 +691,24 @@ func Register(p RegisterParams) chi.Router {
 
 	// Phase 2.4: Security
 	r.Get("/settings/security", Adapt(pages.UserSecurityHandler(registry, p.CacheService, p.AppStore)))
+	// TOTP 2FA
+	r.Get("/settings/security/totp/setup", Adapt(pages.TOTPSetupHandler(registry, p.CacheService, p.AppStore)))
+	r.With(authRateLimit).Post("/settings/security/totp/verify", Adapt(pages.TOTPSetupVerifyHandler(registry, p.CacheService, p.AppStore)))
+	r.With(authRateLimit).Post("/settings/security/totp/disable", Adapt(pages.TOTPDisableHandler(p.AppStore)))
+	r.Get("/auth/totp", Adapt(pages.TOTPChallengeHandler(registry, p.CacheService, p.AppStore)))
+	r.With(authRateLimit).Post("/auth/totp", Adapt(pages.TOTPChallengeVerifyHandler(registry, p.CacheService, p.AppStore, p.SessionStore)))
+	// IP Verification
+	r.With(authRateLimit).Post("/settings/security/ip-verification", Adapt(pages.IPVerificationToggleHandler(p.AppStore)))
+	r.Post("/settings/security/known-ips/{id}/delete", Adapt(pages.KnownIPDeleteHandler(p.AppStore)))
+	r.Get("/auth/verify-ip", Adapt(pages.IPVerificationChallengeHandler(registry, p.CacheService, p.AppStore, p.MailService)))
+	r.With(authRateLimit).Post("/auth/verify-ip", Adapt(pages.IPVerificationVerifyHandler(p.AppStore, p.SessionStore, p.MailService)))
+	r.With(authRateLimit).Post("/auth/verify-ip/resend", Adapt(pages.IPVerificationResendHandler(p.AppStore, p.MailService)))
+	// Passkeys (WebAuthn)
+	r.With(authRateLimit).Post("/settings/security/passkeys/register/begin", Adapt(pages.PasskeyBeginRegistrationHandler(p.AppStore)))
+	r.With(authRateLimit).Post("/settings/security/passkeys/register/finish", Adapt(pages.PasskeyFinishRegistrationHandler(p.AppStore)))
+	r.Post("/settings/security/passkeys/{id}/delete", Adapt(pages.PasskeyDeleteHandler(p.AppStore)))
+	r.With(authRateLimit).Post("/auth/passkey/begin", Adapt(pages.PasskeyDiscoverableLoginBeginHandler(p.AppStore)))
+	r.With(authRateLimit).Post("/auth/passkey/finish", Adapt(pages.PasskeyLoginFinishHandler(p.AppStore, p.SessionStore)))
 
 	// Site statistics
 	r.Get("/stats", Adapt(pages.SiteStatsHandler(registry, p.CacheService, p.AppStore)))
@@ -684,6 +720,7 @@ func Register(p RegisterParams) chi.Router {
 	// Dev-only routes
 	if os.Getenv("DEV") == "true" {
 		r.Get("/styleguide", Adapt(pages.StyleguideHandler(registry)))
+		r.Get("/kin-tiles", Adapt(pages.KinTilesPreviewHandler(registry)))
 	}
 
 	// Fallback

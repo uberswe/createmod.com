@@ -26,8 +26,23 @@ type PointLogEntry struct {
 
 // HowToEarnItem describes one way to earn points.
 type HowToEarnItem struct {
-	Action string
-	Points int
+	Action     string
+	Points     int
+	Repeatable bool
+}
+
+func howToEarnItems(lang string) []HowToEarnItem {
+	return []HowToEarnItem{
+		{Action: i18n.T(lang, "points.action.upload"), Points: 1, Repeatable: true},
+		{Action: i18n.T(lang, "points.action.comment"), Points: 1, Repeatable: true},
+		{Action: i18n.T(lang, "points.action.rating4"), Points: 2, Repeatable: true},
+		{Action: i18n.T(lang, "points.action.downloads100"), Points: 2, Repeatable: true},
+		{Action: i18n.T(lang, "points.action.views10k"), Points: 5, Repeatable: true},
+		{Action: i18n.T(lang, "points.action.first_comment"), Points: 10, Repeatable: false},
+		{Action: i18n.T(lang, "points.action.views100"), Points: 5, Repeatable: false},
+		{Action: i18n.T(lang, "points.action.views1k"), Points: 25, Repeatable: false},
+		{Action: i18n.T(lang, "points.action.views10k_milestone"), Points: 100, Repeatable: false},
+	}
 }
 
 // UserPointsData is the template data for /settings/points.
@@ -70,12 +85,7 @@ func UserPointsHandler(registry *server.Registry, cacheService *cache.Service, a
 			d.Points = user.Points
 		}
 
-		// How to earn table
-		d.HowToEarn = []HowToEarnItem{
-			{Action: "Upload your first schematic", Points: 50},
-			{Action: "First upload bonus", Points: 30},
-			{Action: "Post your first comment", Points: 10},
-		}
+		d.HowToEarn = howToEarnItems(d.Language)
 
 		// Pagination
 		d.PageSize = 20

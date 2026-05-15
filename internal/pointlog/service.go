@@ -10,11 +10,15 @@ import (
 )
 
 const (
-	ReasonUpload   = "upload"
-	ReasonViews10K = "views_10k"
-	ReasonRating4  = "rating_4plus"
-	ReasonDown100  = "downloads_100"
-	ReasonComment  = "comment"
+	ReasonUpload          = "upload"
+	ReasonComment         = "comment"
+	ReasonRating4         = "rating_4plus"
+	ReasonDown100         = "downloads_100"
+	ReasonViews10K        = "views_10k"
+	ReasonFirstComm       = "first_comment"
+	ReasonViews100        = "views_100_milestone"
+	ReasonViews1K         = "views_1k_milestone"
+	ReasonViews10KMilestone = "views_10k_milestone"
 )
 
 type pointRule struct {
@@ -23,11 +27,15 @@ type pointRule struct {
 }
 
 var rules = map[string]pointRule{
-	ReasonUpload:   {Points: 1, Description: "Uploaded a schematic"},
-	ReasonViews10K: {Points: 5, Description: "Schematic reached 10,000 views"},
-	ReasonRating4:  {Points: 2, Description: "Schematic received 4+ star rating"},
-	ReasonDown100:  {Points: 2, Description: "Schematic reached 100 downloads"},
-	ReasonComment:  {Points: 1, Description: "Commented on a schematic"},
+	ReasonUpload:            {Points: 1, Description: "Uploaded a schematic"},
+	ReasonComment:           {Points: 1, Description: "Commented on a schematic"},
+	ReasonRating4:           {Points: 2, Description: "Schematic received 4+ star rating"},
+	ReasonDown100:           {Points: 2, Description: "Schematic reached 100 downloads"},
+	ReasonViews10K:          {Points: 5, Description: "Schematic reached 10,000 views"},
+	ReasonFirstComm:         {Points: 10, Description: "Posted your first comment"},
+	ReasonViews100:          {Points: 5, Description: "Schematic reached 100 views"},
+	ReasonViews1K:           {Points: 25, Description: "Schematic reached 1,000 views"},
+	ReasonViews10KMilestone: {Points: 100, Description: "Schematic reached 10,000 views (milestone)"},
 }
 
 type Service struct {
@@ -122,11 +130,31 @@ func (s *Service) RecalculateUser(userID string) {
 		ratings, _ := s.appStore.ViewRatings.BatchGetRatings(ctx, schematicIDs)
 
 		for _, sc := range schematics {
-			if views, ok := viewCounts[sc.ID]; ok && views >= 10000 {
-				awardPoint(ctx, s.appStore, userID, ReasonViews10K, sc.ID, now)
+			if views, ok := viewCounts[sc.ID]; ok {
+				// Repeating: +5 for every 10,000 views
+				milestones := views / 10000
+				for i := 1; i <= milestones; i++ {
+					ref := fmt.Sprintf("%s:%d", sc.ID, i*10000)
+					awardPoint(ctx, s.appStore, userID, ReasonViews10K, ref, now)
+				}
+				// One-time view milestones
+				if views >= 100 {
+					awardPoint(ctx, s.appStore, userID, ReasonViews100, sc.ID, now)
+				}
+				if views >= 1000 {
+					awardPoint(ctx, s.appStore, userID, ReasonViews1K, sc.ID, now)
+				}
+				if views >= 10000 {
+					awardPoint(ctx, s.appStore, userID, ReasonViews10KMilestone, sc.ID, now)
+				}
 			}
-			if downloads, ok := downloadCounts[sc.ID]; ok && downloads >= 100 {
-				awardPoint(ctx, s.appStore, userID, ReasonDown100, sc.ID, now)
+			if downloads, ok := downloadCounts[sc.ID]; ok {
+				// Repeating: +2 for every 100 downloads
+				milestones := downloads / 100
+				for i := 1; i <= milestones; i++ {
+					ref := fmt.Sprintf("%s:%d", sc.ID, i*100)
+					awardPoint(ctx, s.appStore, userID, ReasonDown100, ref, now)
+				}
 			}
 			if r, ok := ratings[sc.ID]; ok && r.AvgRating >= 4.0 && r.RatingCount > 0 {
 				awardPoint(ctx, s.appStore, userID, ReasonRating4, sc.ID, now)
@@ -139,6 +167,7 @@ func (s *Service) RecalculateUser(userID string) {
 		for i := int64(0); i < commentCount; i++ {
 			awardPoint(ctx, s.appStore, userID, ReasonComment, fmt.Sprintf("comment_%d", i), now)
 		}
+		awardPoint(ctx, s.appStore, userID, ReasonFirstComm, "first", now)
 	}
 
 	total, err := s.appStore.Achievements.SumUserPoints(ctx, userID)

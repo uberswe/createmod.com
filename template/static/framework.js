@@ -344,21 +344,25 @@
   }
 
   document.addEventListener('mouseenter', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) showTooltipEl(target);
   }, true);
 
   document.addEventListener('mouseleave', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) hideTooltipEl();
   }, true);
 
   document.addEventListener('focusin', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) showTooltipEl(target);
   }, true);
 
   document.addEventListener('focusout', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) hideTooltipEl();
   }, true);

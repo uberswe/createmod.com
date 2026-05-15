@@ -307,6 +307,21 @@ var LangZhHans = map[string]string{
 	"How to earn points":                       "如何获得积分",
 	"Points history":                           "积分记录",
 	"No points earned yet":                     "暂无积分。开始贡献以获得积分！",
+	"pts":                                      "分",
+	"points.action.upload":                     "上传蓝图",
+	"points.action.comment":                    "评论蓝图",
+	"points.action.rating4":                    "蓝图获得4星以上评价",
+	"points.action.downloads100":               "蓝图达到100次下载",
+	"points.action.views10k":                   "蓝图达到10,000次浏览",
+	"points.action.first_comment":              "发表你的第一条评论",
+	"points.action.views100":                   "蓝图达到100次浏览",
+	"points.action.views1k":                    "蓝图达到1,000次浏览",
+	"points.action.views10k_milestone":         "蓝图达到10,000次浏览（里程碑）",
+	"Repeatable":                               "可重复",
+	"One-time":                                 "一次性",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "通过为社区做贡献来赚取积分。上传蓝图、评论和参与互动，攀登排行榜！",
+	"topcreators.antispam":                     "刷蓝图、评论或任何其他故意操纵积分的行为将导致封禁。",
 	"Achievements":                             "成就",
 	"This user has not posted any schematics.": "该用户尚未发布任何蓝图。",
 
@@ -787,4 +802,19 @@ var LangZhHans = map[string]string{
 	"no_replacement":            "无替换",
 	"block_search_placeholder":  "搜索方块...",
 	"replacements":              "个替换",
+
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "正在加载360°视图",
+	"rotation.auto_rotate":      "自动旋转",
+	"rotation.how":              "这是怎么做到的？",
+	"rotation.tooltip.line1":    "此360°预览由围绕蓝图拍摄的%s张图像组成。",
+	"rotation.tooltip.line2":    "想为自己的建筑创建这样的3D预览吗？使用Create Schematic Helper模组上传你的蓝图。",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "向左滚动",
+	"gallery.scroll_right": "向右滚动",
+
+	// ── Upload / Publish ──
+	"Select a category":   "选择分类",
+	"delete_draft.confirm": "确定要删除此草稿吗？此操作无法撤消。",
 }

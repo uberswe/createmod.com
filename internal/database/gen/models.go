@@ -435,6 +435,8 @@ type Schematic struct {
 	AvgRating          float32            `json:"avg_rating"`
 	RatingCount        int32              `json:"rating_count"`
 	ModerationState    string             `json:"moderation_state"`
+	RotationImages     []string           `json:"rotation_images"`
+	ShortCode          string             `json:"short_code"`
 }
 
 type SchematicCategory struct {
@@ -705,6 +707,7 @@ type TempUploadImage struct {
 	S3Key     string    `json:"s3_key"`
 	SortOrder int32     `json:"sort_order"`
 	Created   time.Time `json:"created"`
+	Category  string    `json:"category"`
 }
 
 type User struct {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/server"
 	"createmod/internal/session"
 	"createmod/internal/store"
@@ -184,7 +185,7 @@ func OAuthCompleteHandler(registry *server.Registry, appStore *store.Store) func
 
 // OAuthCompletePostHandler creates the account + OAuth link using the email
 // submitted by the user, then logs them in.
-func OAuthCompletePostHandler(registry *server.Registry, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+func OAuthCompletePostHandler(registry *server.Registry, appStore *store.Store, sessStore *session.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -252,7 +253,7 @@ func OAuthCompletePostHandler(registry *server.Registry, appStore *store.Store, 
 		}
 
 		clearOAuthPendingCookie(e)
-		return oauthCreateSession(e, appStore, sessStore, userID)
+		return maybeCreateSessionOrChallenge(e, appStore, sessStore, mailService, userID, "/")
 	}
 }
 

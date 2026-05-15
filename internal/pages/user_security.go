@@ -14,11 +14,14 @@ var userSecurityTemplates = append([]string{
 
 type UserSecurityData struct {
 	DefaultData
-	Settings       *store.SecuritySettings
-	TOTPEnabled    bool
-	HasPasskeys    bool
-	Passkeys       []store.Passkey
-	IPVerification bool
+	Settings             *store.SecuritySettings
+	TOTPEnabled          bool
+	HasPasskeys          bool
+	Passkeys             []store.Passkey
+	IPVerification       bool
+	KnownIPs             []store.KnownIP
+	BackupCodesRemaining int
+	WebAuthnEnabled      bool
 }
 
 func UserSecurityHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -50,6 +53,24 @@ func UserSecurityHandler(registry *server.Registry, cacheService *cache.Service,
 		if err == nil {
 			d.Passkeys = passkeys
 			d.HasPasskeys = len(passkeys) > 0
+		}
+
+		d.WebAuthnEnabled = WebAuthnEnabled()
+
+		if d.TOTPEnabled {
+			codes, _ := appStore.Security.ListTOTPBackupCodes(ctx, userID)
+			count := 0
+			for _, c := range codes {
+				if !c.Used {
+					count++
+				}
+			}
+			d.BackupCodesRemaining = count
+		}
+
+		if d.IPVerification {
+			knownIPs, _ := appStore.Security.ListKnownIPs(ctx, userID)
+			d.KnownIPs = knownIPs
 		}
 
 		html, err := registry.LoadFiles(userSecurityTemplates...).Render(d)

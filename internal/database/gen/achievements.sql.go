@@ -56,7 +56,7 @@ func (q *Queries) CountPointLogByReason(ctx context.Context, arg CountPointLogBy
 const createPointLog = `-- name: CreatePointLog :one
 INSERT INTO point_log (id, user_id, points, reason, reference_id, description, earned_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-ON CONFLICT (user_id, reason, reference_id) DO NOTHING
+ON CONFLICT (user_id, reason, reference_id) DO UPDATE SET points = EXCLUDED.points, description = EXCLUDED.description
 RETURNING id, user_id, points, reason, description, earned_at, created, updated, reference_id
 `
 

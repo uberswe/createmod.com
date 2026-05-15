@@ -307,6 +307,21 @@ var LangPtPT = map[string]string{
 	"How to earn points":                       "Como ganhar pontos",
 	"Points history":                           "Histórico de pontos",
 	"No points earned yet":                     "Ainda não ganhou pontos. Comece a contribuir!",
+	"pts":                                      "pts",
+	"points.action.upload":                     "Carregar um esquema",
+	"points.action.comment":                    "Comentar num esquema",
+	"points.action.rating4":                    "Esquema recebe avaliação de 4+ estrelas",
+	"points.action.downloads100":               "Esquema atinge 100 transferências",
+	"points.action.views10k":                   "Esquema atinge 10.000 visualizações",
+	"points.action.first_comment":              "Publique o seu primeiro comentário",
+	"points.action.views100":                   "Esquema atinge 100 visualizações",
+	"points.action.views1k":                    "Esquema atinge 1.000 visualizações",
+	"points.action.views10k_milestone":         "Esquema atinge 10.000 visualizações (marco)",
+	"Repeatable":                               "Repetível",
+	"One-time":                                 "Uma vez",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Ganhe pontos ao contribuir para a comunidade. Carregue esquemas, comente e participe para subir na classificação!",
+	"topcreators.antispam":                     "O spam de esquemas, comentários ou qualquer outra manipulação intencional de pontos resultará em banimento.",
 	"Achievements":                             "Conquistas",
 	"This user has not posted any schematics.": "Este utilizador ainda não publicou nenhum esquema.",
 
@@ -811,4 +826,19 @@ var LangPtPT = map[string]string{
 	"no_replacement":            "Sem substituição",
 	"block_search_placeholder":  "Procurar um bloco...",
 	"replacements":              "substituições",
+
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "A carregar vista 360°",
+	"rotation.auto_rotate":      "Rodar automaticamente",
+	"rotation.how":              "Como funciona?",
+	"rotation.tooltip.line1":    "Esta pré-visualização 360° é feita com %s imagens capturadas em redor do esquema.",
+	"rotation.tooltip.line2":    "Queres criar uma pré-visualização 3D como esta para as tuas construções? Carrega o teu esquema usando o mod Create Schematic Helper.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Deslocar para a esquerda",
+	"gallery.scroll_right": "Deslocar para a direita",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Seleciona uma categoria",
+	"delete_draft.confirm": "Tens a certeza de que queres eliminar este rascunho? Esta ação não pode ser revertida.",
 }

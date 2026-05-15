@@ -1,0 +1,46 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="row row-cards">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="row g-0">
+                                {{ template "settings_nav.html" . }}
+                                <div class="col-12 col-md-9 d-flex flex-column">
+                                    <div class="card-body" style="max-width:480px">
+                                        <h2 class="mb-4">{{ T .Language "Set Up Two-Factor Authentication" }}</h2>
+                                        <p class="text-secondary">{{ T .Language "Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)." }}</p>
+                                        <div class="text-center mb-3">
+                                            <img src="{{ .QRCodeDataURI }}" alt="QR Code" width="200" height="200">
+                                        </div>
+                                        <p class="text-secondary mb-1">{{ T .Language "Or enter this key manually:" }}</p>
+                                        <div class="mb-4">
+                                            <code class="user-select-all" style="word-break:break-all">{{ .ManualKey }}</code>
+                                        </div>
+                                        {{ if .Error }}
+                                        <div class="alert alert-danger">{{ .Error }}</div>
+                                        {{ end }}
+                                        <form method="post" action="/settings/security/totp/verify" hx-boost="false">
+                                            <div class="mb-3">
+                                                <label class="form-label">{{ T .Language "Verification code" }}</label>
+                                                <input name="code" type="text" class="form-control" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" required autofocus>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">{{ T .Language "Verify and enable" }}</button>
+                                            <a href="/settings/security" class="btn btn-ghost-secondary ms-2">{{ T .Language "Cancel" }}</a>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}

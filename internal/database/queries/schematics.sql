@@ -8,6 +8,19 @@ WHERE name = $1
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 LIMIT 1;
 
+-- name: GetSchematicByShortCode :one
+SELECT * FROM schematics
+WHERE short_code = $1
+  AND moderation_state != 'deleted'
+  AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+LIMIT 1;
+
+-- name: SetSchematicShortCode :exec
+UPDATE schematics SET short_code = $2 WHERE id = $1;
+
+-- name: ShortCodeExists :one
+SELECT EXISTS(SELECT 1 FROM schematics WHERE short_code = $1) AS exists;
+
 -- name: ListApprovedSchematics :many
 SELECT * FROM schematics
 WHERE moderation_state IN ('published', 'approved')
@@ -61,13 +74,13 @@ INSERT INTO schematics (
     postdate, detected_language, featured_image, gallery, schematic_file,
     video, has_dependencies, dependencies, createmod_version_id,
     minecraft_version_id, block_count, dim_x, dim_y, dim_z,
-    materials, mods, paid, moderation_state, type, status
+    materials, mods, paid, moderation_state, type, status, rotation_images, short_code
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     $8, $9, $10, $11, $12,
     $13, $14, $15, $16,
     $17, $18, $19, $20, $21,
-    $22, $23, $24, $25, $26, $27
+    $22, $23, $24, $25, $26, $27, $28, $29
 )
 RETURNING *;
 
@@ -79,6 +92,7 @@ UPDATE schematics SET
     content = COALESCE(sqlc.narg('content'), content),
     featured_image = COALESCE(sqlc.narg('featured_image'), featured_image),
     gallery = COALESCE(sqlc.narg('gallery'), gallery),
+    rotation_images = COALESCE(sqlc.narg('rotation_images'), rotation_images),
     video = COALESCE(sqlc.narg('video'), video),
     has_dependencies = COALESCE(sqlc.narg('has_dependencies'), has_dependencies),
     dependencies = COALESCE(sqlc.narg('dependencies'), dependencies),
@@ -98,6 +112,7 @@ UPDATE schematics SET
     paid = COALESCE(sqlc.narg('paid'), paid),
     external_url = COALESCE(sqlc.narg('external_url'), external_url),
     schematic_file = COALESCE(sqlc.narg('schematic_file'), schematic_file),
+    short_code = COALESCE(sqlc.narg('short_code'), short_code),
     created = COALESCE(sqlc.narg('created'), created)
 WHERE id = $1
 RETURNING *;

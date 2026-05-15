@@ -3,6 +3,7 @@ package pages
 import (
 	"context"
 	"createmod/internal/cache"
+	"encoding/json"
 	"createmod/internal/i18n"
 	"createmod/internal/metrics"
 	"createmod/internal/models"
@@ -87,6 +88,8 @@ type SearchData struct {
 	MaxHorizontal        int
 	SelectedMods         []string
 	AllMods              []ModOption
+	ModMatch             string
+	InfiniteScroll       bool
 	MaxBlockCountAll     int // global max for slider upper bound
 	MaxDimXAll           int
 	MaxDimYAll           int
@@ -261,6 +264,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		maxHorizontal := parseIntParam("maxhz")
 
 		// Parse per_page
+		infiniteScroll := e.Request.URL.Query().Get("per_page") == "infinite"
 		perPage := parseIntParam("per_page")
 		if perPage != 8 && perPage != 16 && perPage != 32 && perPage != 64 {
 			perPage = 0 // will use default pageSize
@@ -285,6 +289,11 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 					}
 				}
 			}
+		}
+
+		modMatch := e.Request.URL.Query().Get("mod_match")
+		if modMatch != "all" {
+			modMatch = "any"
 		}
 
 		// Build mod options list and resolve selected namespaces to display names for Meilisearch
@@ -382,6 +391,35 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			}
 		}
 
+		// "Has only these mods" post-filter: exclude schematics with mods not in the selected set
+		if modMatch == "all" && len(selectedMods) > 0 {
+			allowedSet := make(map[string]bool, len(meiliModNames))
+			for _, dn := range meiliModNames {
+				allowedSet[dn] = true
+			}
+			filtered := orderedSchematics[:0]
+			for _, s := range orderedSchematics {
+				if s.Mods == nil {
+					continue
+				}
+				var sMods []string
+				if err := json.Unmarshal(s.Mods, &sMods); err != nil {
+					continue
+				}
+				onlySelected := true
+				for _, m := range sMods {
+					if !allowedSet[m] {
+						onlySelected = false
+						break
+					}
+				}
+				if onlySelected {
+					filtered = append(filtered, s)
+				}
+			}
+			orderedSchematics = filtered
+		}
+
 		// Pagination: check path value first, fall back to ?p= query param
 		page := 1
 		if pathPage := e.Request.PathValue("page"); pathPage != "" {
@@ -393,8 +431,10 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 				page = p
 			}
 		}
-		pageSize := 18
-		if perPage > 0 {
+		pageSize := 8
+		if infiniteScroll {
+			pageSize = 64
+		} else if perPage > 0 {
 			pageSize = perPage
 		}
 		total := len(orderedSchematics)
@@ -452,7 +492,9 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		if maxHorizontal > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("maxhz=%d", maxHorizontal))
 		}
-		if perPage > 0 {
+		if infiniteScroll {
+			queryParts = append(queryParts, "per_page=infinite")
+		} else if perPage > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("per_page=%d", perPage))
 		}
 		if minDimX > 0 {
@@ -475,7 +517,19 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		}
 		if len(selectedMods) > 0 {
 			queryParts = append(queryParts, fmt.Sprintf("mods=%s", strings.Join(selectedMods, ",")))
+			if modMatch == "all" {
+				queryParts = append(queryParts, "mod_match=all")
+			}
 		}
+
+		viewMode := e.Request.URL.Query().Get("view")
+		if viewMode != "list" {
+			viewMode = "grid"
+		}
+		if viewMode == "list" {
+			queryParts = append(queryParts, "view=list")
+		}
+
 		// Build query-param pagination URLs (works with both path-based and HTMX ?q= requests)
 		buildPageURL := func(p int) string {
 			parts := make([]string, 0, len(queryParts)+2)
@@ -501,14 +555,6 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		// SEO canonical & prev/next
 		canonicalURL := fmt.Sprintf("https://createmod.com%s", buildPageURL(page))
 		seoNoIndex := page > 20
-
-		viewMode := e.Request.URL.Query().Get("view")
-		if viewMode != "list" {
-			viewMode = "grid"
-		}
-		if viewMode == "list" {
-			queryParts = append(queryParts, "view=list")
-		}
 
 		totalPages := 0
 		if pageSize > 0 {
@@ -558,11 +604,13 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			MaxHorizontal:     maxHorizontal,
 			SelectedMods:      selectedMods,
 			AllMods:           allMods,
+			ModMatch:          modMatch,
 			MaxBlockCountAll:  maxStats.BlockCount,
 			MaxDimXAll:        maxStats.DimX,
 			MaxDimYAll:        maxStats.DimY,
 			MaxDimZAll:        maxStats.DimZ,
 			MaxHorizontalAll:  max(maxStats.DimX, maxStats.DimZ),
+			InfiniteScroll:    infiniteScroll,
 			PerPage:           pageSize,
 		}
 		d.Populate(e)
@@ -712,6 +760,9 @@ func SearchPostHandler(service *cache.Service, registry *server.Registry, appSto
 		}
 		if modsParam != "" {
 			redirectURL += "&mods=" + modsParam
+			if e.Request.FormValue("mod_match") == "all" {
+				redirectURL += "&mod_match=all"
+			}
 		}
 		return e.Redirect(http.StatusTemporaryRedirect, LangRedirectURL(e, redirectURL))
 	}

@@ -39,7 +39,8 @@
 {{template "foot.html" .}}
 <script>
 (function(){
-  var seconds = 10;
+  var duration = 10;
+  var endTime = Date.now() + duration * 1000;
   var el = document.getElementById('ext-countdown');
   var link = document.getElementById('ext-continue');
   var timerId = null;
@@ -52,31 +53,32 @@
 
   function tick(){
     if (stopped) return;
-    // If the interstitial elements are no longer in the DOM (HTMX swapped the
-    // page), or the user navigated away via back button, abort.
     if (!document.getElementById('ext-countdown')) { stop(); return; }
-    seconds -= 1;
-    if (el) { el.textContent = String(seconds); }
-    if (seconds <= 0) {
+    var remaining = Math.ceil((endTime - Date.now()) / 1000);
+    if (remaining <= 0) {
       stop();
+      if (el) { el.textContent = '0'; }
       if (link && link.href) { window.location.href = link.href; }
     } else {
+      if (el) { el.textContent = String(remaining); }
       timerId = setTimeout(tick, 1000);
     }
   }
   timerId = setTimeout(tick, 1000);
 
-  // Stop timer when user clicks the continue link
   if (link) {
     link.addEventListener('click', function() { stop(); });
   }
 
-  // Stop timer when HTMX navigates away (user clicks back or another link)
   document.body.addEventListener('htmx:beforeSwap', function() { stop(); });
 
-  // Stop timer when the page is hidden (browser back/forward, tab switch)
+  // When tab becomes visible again, catch up to real elapsed time
   document.addEventListener('visibilitychange', function() {
-    if (document.hidden) { stop(); }
+    if (stopped) return;
+    if (!document.hidden) {
+      if (timerId) { clearTimeout(timerId); timerId = null; }
+      tick();
+    }
   });
   window.addEventListener('pagehide', function() { stop(); });
 })();

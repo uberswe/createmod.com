@@ -5,101 +5,184 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
-        <div class="d-flex gap-3">
-        <div class="flex-grow-1 min-width-0">
+        <!-- Mod header -->
         <div class="mb-3 d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
-              <div class="mb-1">
-                <a href="/mods" class="text-secondary text-decoration-none">&larr; {{ T .Language "All Mods" }}</a>
+          <div class="mb-1">
+            <a href="/mods" class="text-secondary text-decoration-none">&larr; {{ T .Language "All Mods" }}</a>
+          </div>
+          <div class="d-flex align-items-center gap-3 mb-1">
+            {{ if .Mod.IconURL }}<img src="{{ .Mod.IconURL }}" alt="" class="mod-detail-icon" loading="lazy">{{ end }}
+            <div>
+              <h2 class="page-title mb-1">{{ .Mod.Name }}</h2>
+              {{ if .Mod.Description }}<div class="text-secondary">{{ .Mod.Description }}</div>
+              {{ else }}<div class="text-secondary">{{ .Subtitle }}</div>{{ end }}
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                {{ if $.IsAuthenticated }}
+                <button class="btn btn-sm btn-outline-primary follow-mod-btn" data-mod-slug="{{ .Mod.Slug }}"
+                        onclick="followMod(this, '{{ .Mod.Slug }}')">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                  {{ T .Language "Follow" }}
+                </button>
+                {{ end }}
+                {{ if .Mod.ModrinthURL }}
+                <a href="{{ .Mod.ModrinthURL }}" class="btn btn-sm btn-modrinth" target="_blank" rel="noopener">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                  {{ T .Language "Download on Modrinth" }}
+                </a>
+                {{ end }}
+                {{ if .Mod.CurseForgeURL }}
+                <a href="{{ .Mod.CurseForgeURL }}" class="btn btn-sm btn-curseforge" target="_blank" rel="noopener">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                  {{ T .Language "Download on CurseForge" }}
+                </a>
+                {{ end }}
               </div>
-              <div class="d-flex align-items-center gap-3 mb-1">
-                {{ if .Mod.IconURL }}<img src="{{ .Mod.IconURL }}" alt="" class="mod-detail-icon" loading="lazy">{{ end }}
-                <div>
-                  <h2 class="page-title mb-1">{{ .Mod.Name }}</h2>
-                  {{ if .Mod.Description }}<div class="text-secondary">{{ .Mod.Description }}</div>
-                  {{ else }}<div class="text-secondary">{{ .Subtitle }}</div>{{ end }}
-                  <div class="d-flex flex-wrap gap-2 mt-2">
-                    {{ if $.IsAuthenticated }}
-                    <button class="btn btn-sm btn-outline-primary follow-mod-btn" data-mod-slug="{{ .Mod.Slug }}"
-                            onclick="followMod(this, '{{ .Mod.Slug }}')">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
-                      {{ T .Language "Follow" }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Layout: results + ad rail -->
+        <div class="search-layout-wide">
+          <div class="search-center-wide">
+            {{template "mod_filters.html" .}}
+
+            <div id="mod-results">
+              <!-- Tabs -->
+              <div class="mod-tabs mb-3">
+                <button type="button" class="mod-tab{{ if eq .ActiveTab "trending" }} active{{ end }}" onclick="setModTab('trending')">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></svg>
+                  {{ T .Language "Trending" }}
+                </button>
+                <button type="button" class="mod-tab{{ if eq .ActiveTab "rated" }} active{{ end }}" onclick="setModTab('rated')">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/></svg>
+                  {{ T .Language "Highest rated" }}
+                </button>
+                <button type="button" class="mod-tab{{ if eq .ActiveTab "latest" }} active{{ end }}" onclick="setModTab('latest')">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 7l0 5l3 3"/></svg>
+                  {{ T .Language "Latest" }}
+                </button>
+              </div>
+
+              <!-- Results header -->
+              <div class="search-results-header">
+                <div class="text-secondary small">
+                  {{ if eq .SearchResultCount 0 }}
+                    {{ T .Language "No results found" }}
+                  {{ else }}
+                    {{ .SearchResultCount }} {{ T .Language "schematics found in" }} {{ .SearchSpeed }}s
+                  {{ end }}
+                </div>
+                <div class="search-results-controls d-none d-md-flex">
+                  {{ if and (not .InfiniteScroll) (or .HasPrev .HasNext) }}
+                  <ul class="pagination mb-0">
+                    {{ if .HasPrev }}
+                    <li class="page-item">
+                      <a class="page-link page-link-arrow" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></a>
+                    </li>
+                    {{ else }}
+                    <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></span></li>
+                    {{ end }}
+                    <li class="page-item"><span class="page-link page-link-info">{{ T .Language "Page" }} {{ .Page }}/{{ .TotalPages }}</span></li>
+                    {{ if .HasNext }}
+                    <li class="page-item">
+                      <a class="page-link page-link-arrow" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></a>
+                    </li>
+                    {{ else }}
+                    <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></span></li>
+                    {{ end }}
+                  </ul>
+                  <span class="search-controls-divider"></span>
+                  {{ end }}
+                  <label class="search-per-page-label">{{ T .Language "Per page" }}</label>
+                  <select class="form-select mod-per-page-select" aria-label="{{ T .Language "Results per page" }}">
+                    <option value="24" {{ if eq .PerPage 24 }}selected{{ end }}>24</option>
+                    <option value="48" {{ if eq .PerPage 48 }}selected{{ end }}>48</option>
+                    <option value="96" {{ if eq .PerPage 96 }}selected{{ end }}>96</option>
+                    <option value="infinite" {{ if .InfiniteScroll }}selected{{ end }}>&#x221e; {{ T .Language "Scroll" }}</option>
+                  </select>
+                  <span class="search-controls-divider"></span>
+                  <div class="search-view-toggle">
+                    <button type="button" class="view-btn{{ if eq .ViewMode "grid" }} active{{ end }}" onclick="setModViewMode('grid')" aria-label="Grid view" title="Grid view">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/></svg>
                     </button>
-                    {{ end }}
-                    {{ if .Mod.ModrinthURL }}
-                    <a href="{{ .Mod.ModrinthURL }}" class="btn btn-sm btn-modrinth" target="_blank" rel="noopener">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
-                      {{ T .Language "Download on Modrinth" }}
-                    </a>
-                    {{ end }}
-                    {{ if .Mod.CurseForgeURL }}
-                    <a href="{{ .Mod.CurseForgeURL }}" class="btn btn-sm btn-curseforge" target="_blank" rel="noopener">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
-                      {{ T .Language "Download on CurseForge" }}
-                    </a>
-                    {{ end }}
+                    <button type="button" class="view-btn{{ if eq .ViewMode "list" }} active{{ end }}" onclick="setModViewMode('list')" aria-label="List view" title="List view">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-        <div class="mb-3">
-          <form action="/search" method="get" class="input-group">
-            <input type="text" name="q" class="form-control" placeholder="{{ T .Language "Search schematics in" }} {{ .Mod.Name }}..." aria-label="{{ T .Language "Search" }}">
-            <input type="hidden" name="mod" value="{{ .Mod.Slug }}">
-            <button class="btn btn-primary" type="submit">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
-            </button>
-          </form>
-        </div>
-        <div id="mod-results">
-          <h3 class="mb-3">{{ .Subtitle }}</h3>
-          <div class="row row-cards">
-            {{range .Schematics}}
-            <div class="col-lg-4 col-md-6 col-12 mb-3">
-              {{template "schematic_card.html" .}}
-            </div>
-            {{end}}
-          </div>
-          {{ if not .Schematics }}
-          <div class="row mt-4">
-            <div class="col-md-6 m-auto">
-              <div class="alert alert-info" role="alert">
-                {{ T .Language "No schematics found for this mod." }}
+
+              <!-- Results grid -->
+              {{ if eq .ViewMode "list" }}
+              <div id="mod-grid">
+                {{range $i, $s := .Schematics }}
+                  <div class="mb-2" data-schematic-id="{{ $s.ID }}">
+                  {{template "schematic_card_list.html" $s}}
+                  </div>
+                {{end}}
               </div>
+              {{ else }}
+              <div class="row row-cards" id="mod-grid">
+                {{range $i, $s := .Schematics }}
+                  <div class="col-xl-3 col-lg-4 col-md-6 col-12 mb-3" data-schematic-id="{{ $s.ID }}">
+                  {{template "schematic_card.html" $s}}
+                  </div>
+                {{end}}
+              </div>
+              {{ end }}
+
+              {{ if not .Schematics }}
+              <div class="card card-body mb-4">
+                <h3 class="card-title">{{ T .Language "No schematics found for this mod." }}</h3>
+                <ul class="text-secondary">
+                  <li>{{ T .Language "Try different or fewer keywords" }}</li>
+                  {{ if or (ne .Category "all") (ne .MinecraftVersion "all") (ne .CreateVersion "all") }}
+                  <li>{{ T .Language "Try removing some filters" }} &mdash; <a href="/mods/{{ .Mod.Slug }}">{{ T .Language "Clear all filters" }}</a></li>
+                  {{ end }}
+                </ul>
+              </div>
+              {{ end }}
+
+              <!-- Mobile ad -->
+              <div id="moddetail-mobile" class="d-xl-none mt-3 mb-3 text-center"></div>
+
+              {{ if .InfiniteScroll }}
+                {{ if .HasNext }}
+                <div class="text-center mt-4" id="mod-infinite-scroll-sentinel" data-next-url="{{ .NextURL }}">
+                  <div class="spinner-border spinner-border-sm text-secondary" role="status"><span class="visually-hidden">Loading...</span></div>
+                </div>
+                {{ end }}
+              {{ else }}
+                {{ if or .HasPrev .HasNext }}
+                <div class="d-flex justify-content-center mt-4">
+                  <ul class="pagination">
+                    {{ if .HasPrev }}
+                    <li class="page-item">
+                      <a class="page-link page-link-arrow" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></a>
+                    </li>
+                    {{ else }}
+                    <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></span></li>
+                    {{ end }}
+                    <li class="page-item"><span class="page-link page-link-info">{{ T .Language "Page" }} {{ .Page }}/{{ .TotalPages }}</span></li>
+                    {{ if .HasNext }}
+                    <li class="page-item">
+                      <a class="page-link page-link-arrow" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></a>
+                    </li>
+                    {{ else }}
+                    <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></span></li>
+                    {{ end }}
+                  </ul>
+                </div>
+                {{ end }}
+              {{ end }}
             </div>
           </div>
-          {{ end }}
-          <!-- Mobile ad (above pagination on smaller screens) -->
-          <div id="moddetail-mobile" class="d-xl-none mt-3 mb-3 text-center"></div>
-          <div class="d-flex justify-content-center mt-4">
-            <ul class="pagination">
-              {{ if .HasPrev }}
-              <li class="page-item">
-                <a class="page-link" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "Previous" }}</a>
-              </li>
-              {{ else }}
-              <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
-              {{ end }}
-              <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 0 }} / {{ .TotalPages }}{{ end }}</span></li>
-              {{ if .HasNext }}
-              <li class="page-item">
-                <a class="page-link" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "Next" }}</a>
-              </li>
-              {{ else }}
-              <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>
-              {{ end }}
-            </ul>
-          </div>
-        </div>
-        </div>
-        <!-- Ad Rail (desktop only) -->
-        <div class="ad-rail d-none d-xl-block">
+
+          <!-- Right: Ad rail (desktop only) -->
+          <div class="search-ad-rail-wide d-none d-xl-block">
             <div id="moddetail-video-nc-top-right" class="mb-3"></div>
             <div id="moddetail-sticky-adrail" class="mb-3"></div>
-        </div>
+          </div>
         </div>
       </div>
     </main>
@@ -122,6 +205,75 @@ function followMod(btn, slug) {
     }
   });
 }
+
+function setModTab(tab) {
+  var input = document.getElementById('mod-tab-input');
+  if (input) {
+    input.value = tab;
+    var form = document.getElementById('mod-filter-form');
+    if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
+  }
+}
+
+function setModViewMode(mode) {
+  var input = document.getElementById('mod-view-input');
+  if (input) {
+    input.value = mode;
+    var form = document.getElementById('mod-filter-form');
+    if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
+  }
+}
+
+document.addEventListener('change', function(e) {
+  if (!e.target.classList.contains('mod-per-page-select')) return;
+  var hidden = document.getElementById('mod-per-page-input');
+  if (hidden) hidden.value = e.target.value;
+  var form = document.getElementById('mod-filter-form');
+  if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
+});
+
+// Infinite scroll
+(function() {
+  var loading = false;
+  var observer = null;
+  function loadMore(sentinel) {
+    if (loading) return;
+    var nextURL = sentinel.getAttribute('data-next-url');
+    if (!nextURL) return;
+    loading = true;
+    fetch(nextURL)
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var newGrid = doc.getElementById('mod-grid');
+        var newSentinel = doc.getElementById('mod-infinite-scroll-sentinel');
+        var grid = document.getElementById('mod-grid');
+        if (newGrid && grid) {
+          var items = newGrid.children;
+          while (items.length > 0) { grid.appendChild(items[0]); }
+        }
+        if (newSentinel && newSentinel.getAttribute('data-next-url')) {
+          sentinel.setAttribute('data-next-url', newSentinel.getAttribute('data-next-url'));
+          loading = false;
+        } else {
+          sentinel.remove();
+          if (observer) observer.disconnect();
+        }
+      })
+      .catch(function() { loading = false; });
+  }
+  function observe() {
+    var sentinel = document.getElementById('mod-infinite-scroll-sentinel');
+    if (!sentinel) return;
+    if (observer) observer.disconnect();
+    observer = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting) { loadMore(sentinel); }
+    }, { rootMargin: '200px' });
+    observer.observe(sentinel);
+  }
+  observe();
+  document.addEventListener('htmx:afterSettle', function() { setTimeout(observe, 100); });
+})();
 </script>
 <script>
 window['nitroAds'].createAd('moddetail-video-nc-top-right', {

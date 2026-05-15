@@ -1,5 +1,119 @@
 {{template "head.html" .}}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/css/tom-select.min.css" crossorigin="anonymous">
+<style>
+.ts-wrapper .ts-control {
+  background: var(--cm-bg-surface, #ffffff);
+  border: 1px solid var(--cm-border-color);
+  border-radius: 0.4rem;
+  color: var(--cm-body-color);
+  box-shadow: none;
+  min-height: 2rem;
+  padding: 0.2rem 0.4rem;
+}
+.ts-wrapper.focus .ts-control {
+  border-color: var(--cm-primary);
+  box-shadow: 0 0 0 2px rgba(191, 144, 69, 0.15);
+}
+.ts-wrapper .ts-control input,
+.ts-wrapper .ts-control input[placeholder] {
+  color: var(--cm-body-color);
+}
+.ts-wrapper.multi .ts-control > div,
+.ts-wrapper.multi.plugin-remove_button .ts-control > div,
+.ts-wrapper.plugin-remove_button:not(.rtl) .item {
+  background: rgba(var(--cm-primary-rgb, 191, 144, 69), 0.2) !important;
+  color: var(--cm-primary) !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.3rem !important;
+  margin: 0.1rem 0.15rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.2rem !important;
+}
+.ts-wrapper.multi .ts-control > div .remove,
+.ts-wrapper.plugin-remove_button:not(.rtl) .item .remove,
+.ts-wrapper.plugin-remove_button .item .remove {
+  color: var(--cm-primary) !important;
+  border: none !important;
+  border-left: none !important;
+  background: none !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  min-width: 1.15rem !important;
+  min-height: 1.15rem !important;
+  max-width: 1.15rem !important;
+  max-height: 1.15rem !important;
+  transition: background 0.15s ease;
+  text-indent: 0 !important;
+  padding-top: 1px !important;
+}
+.ts-wrapper.multi .ts-control > div .remove:hover,
+.ts-wrapper.plugin-remove_button .item .remove:hover {
+  background: rgba(var(--cm-primary-rgb, 191, 144, 69), 0.3) !important;
+  color: var(--cm-body-color) !important;
+}
+.ts-dropdown,
+.ts-dropdown.single,
+.ts-dropdown.multi {
+  background: var(--cm-bg-surface, #ffffff);
+  border: 1px solid var(--cm-border-color);
+  border-radius: 0.4rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--cm-body-color);
+}
+.ts-dropdown .ts-dropdown-content > .option,
+.ts-dropdown .option {
+  background: transparent;
+  color: var(--cm-body-color);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.ts-dropdown .ts-dropdown-content > .option .highlight,
+.ts-dropdown .option .highlight {
+  background: none;
+  color: var(--cm-primary);
+  font-weight: 600;
+}
+.ts-dropdown .ts-dropdown-content > .option:hover,
+.ts-dropdown .ts-dropdown-content > .option.active,
+.ts-dropdown .option:hover,
+.ts-dropdown .active {
+  background: var(--cm-primary);
+  color: #ffffff;
+}
+.ts-dropdown .option:hover .highlight,
+.ts-dropdown .option.active .highlight,
+.ts-dropdown .active .highlight {
+  color: #ffffff;
+}
+[data-cm-theme=dark] .ts-wrapper .ts-control {
+  background: var(--cm-bg-surface, #1f2121);
+}
+[data-cm-theme=dark] .ts-dropdown,
+[data-cm-theme=dark] .ts-dropdown.single,
+[data-cm-theme=dark] .ts-dropdown.multi {
+  background: var(--cm-bg-surface, #1f2121);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+</style>
 <div class="page">
     {{template "sidebar.html" .}}
     <div class="page-wrapper">
@@ -12,41 +126,15 @@
                     <p class="text-secondary mb-0">{{ T .Language "Find community-built schematics by name, mod, or tag." }}</p>
                 </div>
 
-                <!-- Filter bar (includes search input) -->
-                {{template "search_filters.html" .}}
-
-                <!-- Active filter pills -->
-                {{ if or (ne .Category "all") (gt (len .SelectedTags) 0) (ne .MinecraftVersion "all") (ne .CreateVersion "all") (gt (len .SelectedMods) 0) (ne .Rating -1) }}
-                <div class="search-active-filters">
-                    <span class="active-filters-label">{{ T .Language "Active filters" }}</span>
-                    {{ if ne .Category "all" }}
-                    <button type="button" class="search-filter-pill" onclick="removeFilter('category','all')">{{ .Category }} <span class="pill-remove">&times;</span></button>
-                    {{ end }}
-                    {{ range .SelectedTags }}
-                    <button type="button" class="search-filter-pill" onclick="removeTagFilter('{{ . }}')">{{ . }} <span class="pill-remove">&times;</span></button>
-                    {{ end }}
-                    {{ if ne .MinecraftVersion "all" }}
-                    <button type="button" class="search-filter-pill" onclick="removeFilter('mcv','all')">MC {{ .MinecraftVersion }} <span class="pill-remove">&times;</span></button>
-                    {{ end }}
-                    {{ if ne .CreateVersion "all" }}
-                    <button type="button" class="search-filter-pill" onclick="removeFilter('cv','all')">Create {{ .CreateVersionDisplay }} <span class="pill-remove">&times;</span></button>
-                    {{ end }}
-                    {{ range .SelectedMods }}
-                    <button type="button" class="search-filter-pill" onclick="removeModFilter('{{ . }}')">{{ . }} <span class="pill-remove">&times;</span></button>
-                    {{ end }}
-                    {{ if ne .Rating -1 }}
-                    <button type="button" class="search-filter-pill" onclick="removeRatingFilter()">{{ .Rating }}+ {{ T .Language "stars" }} <span class="pill-remove">&times;</span></button>
-                    {{ end }}
-                    <a href="/search/{{ .TermSlug }}" class="clear-all-link">{{ T .Language "Clear all" }}</a>
-                </div>
-                {{ end }}
-
                 <!-- Results layout: full width + ad rail -->
                 <div class="search-layout-wide">
                     <!-- Results -->
                     <div class="search-center-wide">
+                        <!-- Filter bar (includes search input) -->
+                        {{template "search_filters.html" .}}
+
                         <div id="search-results">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="search-results-header">
                                 <div class="text-secondary small">
                                     {{ if eq .SearchResultCount 0 }}
                                         {{ T .Language "No results found" }}
@@ -54,20 +142,48 @@
                                         {{ .SearchResultCount }} {{ T .Language "schematics found in" }} {{ .SearchSpeed }}s
                                     {{ end }}
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    {{ if and .IsAuthenticated (ne .Term "") }}
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="save-search-btn" onclick="saveSearchAlert()">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-plus" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 1 1 4 0a7 7 0 0 1 4 6v1" /><path d="M9 17v1a3 3 0 0 0 3.51 2.957" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
-                                        {{ T .Language "Save Search" }}
-                                    </button>
+                                {{ if and .IsAuthenticated (ne .Term "") }}
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="save-search-btn" onclick="saveSearchAlert()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-plus" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 1 1 4 0a7 7 0 0 1 4 6v1" /><path d="M9 17v1a3 3 0 0 0 3.51 2.957" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+                                    {{ T .Language "Save Search" }}
+                                </button>
+                                {{ end }}
+                                <div class="search-results-controls d-none d-md-flex">
+                                    {{ if and (not .InfiniteScroll) (or .HasPrev .HasNext) }}
+                                    <ul class="pagination mb-0">
+                                        {{ if .HasPrev }}
+                                        <li class="page-item">
+                                            <a class="page-link page-link-arrow" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></a>
+                                        </li>
+                                        {{ else }}
+                                        <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></span></li>
+                                        {{ end }}
+                                        <li class="page-item"><span class="page-link page-link-info">{{ T .Language "Page" }} {{ .Page }}/{{ .TotalPages }}</span></li>
+                                        {{ if .HasNext }}
+                                        <li class="page-item">
+                                            <a class="page-link page-link-arrow" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></a>
+                                        </li>
+                                        {{ else }}
+                                        <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></span></li>
+                                        {{ end }}
+                                    </ul>
+                                    <span class="search-controls-divider"></span>
                                     {{ end }}
-                                    <span class="text-secondary small d-none d-md-inline">{{ T .Language "View" }}:</span>
-                                    <div class="search-view-toggle d-none d-md-inline-flex">
+                                    <label class="search-per-page-label">{{ T .Language "Per page" }}</label>
+                                    <select class="form-select search-per-page-select" aria-label="{{ T .Language "Results per page" }}">
+                                        <option value="8" {{ if eq .PerPage 8 }}selected{{ end }}>8</option>
+                                        <option value="16" {{ if eq .PerPage 16 }}selected{{ end }}>16</option>
+                                        <option value="32" {{ if eq .PerPage 32 }}selected{{ end }}>32</option>
+                                        <option value="64" {{ if eq .PerPage 64 }}selected{{ end }}>64</option>
+                                        <option value="infinite" {{ if .InfiniteScroll }}selected{{ end }}>&#x221e; {{ T .Language "Scroll" }}</option>
+                                    </select>
+                                    <span class="search-controls-divider"></span>
+                                    <div class="search-view-toggle">
                                         <button type="button" class="view-btn{{ if eq .ViewMode "grid" }} active{{ end }}" onclick="setViewMode('grid')" aria-label="Grid view" title="Grid view">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M4 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M14 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/></svg>
                                         </button>
                                         <button type="button" class="view-btn{{ if eq .ViewMode "list" }} active{{ end }}" onclick="setViewMode('list')" aria-label="List view" title="List view">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
                                         </button>
                                     </div>
                                 </div>
@@ -84,9 +200,6 @@
                                     <li><a href="/search">{{ T .Language "Browse all schematics" }}</a></li>
                                 </ul>
                             </div>
-                            {{ end }}
-                            {{ if gt .SearchResultCount 0 }}
-                            {{template "search_pagination.html" .}}
                             {{ end }}
                             {{ if eq .ViewMode "list" }}
                             <div id="search-grid">
@@ -105,15 +218,14 @@
                                 {{end}}
                             </div>
                             {{ end }}
-                            {{ if .HasNext }}
-                            <div class="text-center mt-4" id="infinite-scroll-sentinel">
-                                <a href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-grid" hx-select="#search-grid > div" hx-swap="beforeend" hx-trigger="revealed" hx-push-url="false" class="btn btn-outline-secondary" id="load-more-btn">
-                                    {{ T .Language "Load More" }}
-                                </a>
-                            </div>
-                            {{ end }}
-                            {{ if not .HasNext }}
-                            {{template "search_pagination.html" .}}
+                            {{ if .InfiniteScroll }}
+                                {{ if .HasNext }}
+                                <div class="text-center mt-4" id="infinite-scroll-sentinel" data-next-url="{{ .NextURL }}">
+                                    <div class="spinner-border spinner-border-sm text-secondary" role="status"><span class="visually-hidden">Loading...</span></div>
+                                </div>
+                                {{ end }}
+                            {{ else }}
+                                {{template "search_pagination.html" .}}
                             {{ end }}
                         </div>
                     </div>
@@ -164,72 +276,75 @@
                 "mediaQuery": "(min-width: 1200px)"
             });
 
-            // Infinite scroll: when the sentinel is revealed and HTMX loads more,
-            // update the sentinel with the next page URL
-            document.addEventListener('htmx:afterSwap', function(evt) {
-                if (evt.detail.target && evt.detail.target.id === 'search-grid') {
+            // Infinite scroll via IntersectionObserver
+            (function() {
+                var loading = false;
+                var observer = null;
+
+                function loadMore(sentinel) {
+                    if (loading) return;
+                    var nextURL = sentinel.getAttribute('data-next-url');
+                    if (!nextURL) return;
+                    loading = true;
+
+                    fetch(nextURL)
+                        .then(function(r) { return r.text(); })
+                        .then(function(html) {
+                            var doc = new DOMParser().parseFromString(html, 'text/html');
+                            var newGrid = doc.getElementById('search-grid');
+                            var newSentinel = doc.getElementById('infinite-scroll-sentinel');
+                            var grid = document.getElementById('search-grid');
+
+                            if (newGrid && grid) {
+                                var items = newGrid.children;
+                                while (items.length > 0) {
+                                    grid.appendChild(items[0]);
+                                }
+                            }
+
+                            if (newSentinel && newSentinel.getAttribute('data-next-url')) {
+                                sentinel.setAttribute('data-next-url', newSentinel.getAttribute('data-next-url'));
+                                loading = false;
+                            } else {
+                                sentinel.remove();
+                                if (observer) observer.disconnect();
+                            }
+                        })
+                        .catch(function() { loading = false; });
+                }
+
+                function observe() {
                     var sentinel = document.getElementById('infinite-scroll-sentinel');
                     if (!sentinel) return;
-                    var btn = document.getElementById('load-more-btn');
-                    if (!btn) return;
-                    var currentURL = btn.getAttribute('hx-get') || btn.getAttribute('href');
-                    if (!currentURL) return;
-                    var urlObj = new URL(currentURL, window.location.origin);
-                    var currentPage = parseInt(urlObj.searchParams.get('page') || urlObj.searchParams.get('p') || '2');
-                    urlObj.searchParams.set('page', currentPage + 1);
-                    var nextURL = urlObj.pathname + urlObj.search;
-                    btn.setAttribute('href', nextURL);
-                    btn.setAttribute('hx-get', nextURL);
-                    htmx.process(btn);
-                    var newItems = evt.detail.target.querySelectorAll('[data-schematic-id]');
-                    if (newItems.length === 0) {
-                        sentinel.remove();
-                    }
+                    if (observer) observer.disconnect();
+                    observer = new IntersectionObserver(function(entries) {
+                        if (entries[0].isIntersecting) {
+                            loadMore(sentinel);
+                        }
+                    }, { rootMargin: '200px' });
+                    observer.observe(sentinel);
+                }
+
+                observe();
+                document.addEventListener('htmx:afterSettle', function() {
+                    setTimeout(observe, 100);
+                });
+            })();
+
+            // Non-infinite-scroll HTMX afterSwap (for other swap events)
+            document.addEventListener('htmx:afterSwap', function(evt) {
+                if (false) {
                 }
             });
 
-            // Filter pill removal helpers
-            function removeFilter(name, resetValue) {
-                var el = document.querySelector('#advanced-search-form [name="' + name + '"]');
-                if (el) {
-                    el.value = resetValue;
-                    el.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            }
-            function removeTagFilter(tag) {
-                var el = document.getElementById('search-tag-select');
-                if (el && el.tomselect) {
-                    el.tomselect.removeItem(tag);
-                    el.tomselect.refreshOptions(false);
-                } else if (el) {
-                    for (var i = 0; i < el.options.length; i++) {
-                        if (el.options[i].value === tag) el.options[i].selected = false;
-                    }
-                    el.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            }
-            function removeModFilter(mod) {
-                var el = document.getElementById('search-mod-select');
-                if (el && el.tomselect) {
-                    el.tomselect.removeItem(mod);
-                    el.tomselect.refreshOptions(false);
-                } else if (el) {
-                    for (var i = 0; i < el.options.length; i++) {
-                        if (el.options[i].value === mod) el.options[i].selected = false;
-                    }
-                    el.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            }
-            function removeRatingFilter() {
-                var hidden = document.getElementById('rating-value');
-                var slider = document.getElementById('rating-slider');
-                var label = document.getElementById('rating-label');
-                if (hidden) hidden.value = '-1';
-                if (slider) slider.value = '0';
-                if (label) label.textContent = '{{ T .Language "Any rating" }}';
+            // Per-page select (outside form DOM, syncs to hidden input inside form)
+            document.addEventListener('change', function(e) {
+                if (!e.target.classList.contains('search-per-page-select')) return;
+                var hidden = document.getElementById('search-per-page-input');
+                if (hidden) hidden.value = e.target.value;
                 var form = document.getElementById('advanced-search-form');
                 if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
-            }
+            });
 
             // View mode toggle
             function setViewMode(mode) {
@@ -280,9 +395,8 @@
         </script>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.complete.min.js" defer crossorigin="anonymous" onload="if(typeof initTomSelects==='function') initTomSelects();"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() { if (typeof initTomSelects === 'function') initTomSelects(); });
 document.addEventListener('htmx:afterSettle', function() { if (typeof initTomSelects === 'function') initTomSelects(); });
 </script>
 <script>

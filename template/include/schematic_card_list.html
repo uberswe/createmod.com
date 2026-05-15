@@ -4,7 +4,7 @@
     <img loading="lazy" src="{{ PlaceholderImg .ID }}" alt="" class="object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:0;">
     {{ if ne .FeaturedImage "" }}
     <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=240x136"
-         alt="Featured image of {{ .Title }}" class="img-fluid object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:1;"
+         alt="Featured image of {{ .Title }}" class="object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:1;"
          onerror="this.style.display='none'">
     {{ end }}
     {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:4px;left:4px;z-index:1;font-size:.6rem;">Paid</span>{{ end }}
@@ -37,6 +37,9 @@
       {{ end }}
       {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-blue">{{ T $.Language $tag.Name }}</span>{{ end }}{{ end }}
     </div>
+    {{ if ne .Excerpt "" }}
+    <p class="text-secondary small mb-0 mt-1 search-list-excerpt">{{ .Excerpt }}</p>
+    {{ end }}
   </div>
 </a>
 {{end}}

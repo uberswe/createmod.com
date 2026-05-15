@@ -102,3 +102,7 @@ LIMIT $1 OFFSET $2;
 -- name: CountActiveUsers :one
 SELECT COUNT(*) FROM users
 WHERE deleted IS NULL;
+
+-- name: GetUserPointsRank :one
+SELECT COUNT(*) + 1 FROM users u
+WHERE u.deleted IS NULL AND u.points > (SELECT u2.points FROM users u2 WHERE u2.id = $1);

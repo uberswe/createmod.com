@@ -25,7 +25,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"slices"
+
 	"sort"
 	"strings"
 	"sync"
@@ -62,6 +62,7 @@ type SchematicData struct {
 	UserCollections []CollectionOption
 	Materials       []nbtparser.Material
 	BloxelizerURL   string
+	ShulkrURL       string
 	Mods            []string
 	ModInfoList     []ModInfo
 	// IsAdmin is true when the viewer is an administrator.
@@ -255,6 +256,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			host := e.Request.Host
 			fileURL := fmt.Sprintf("%s://%s/api/files/schematics/%s/%s", scheme, host, d.Schematic.ID, url.PathEscape(s.SchematicFile))
 			d.BloxelizerURL = "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
+				d.ShulkrURL = "https://www.shulkr.com/?url=" + url.QueryEscape(fileURL)
 		}
 
 		// Load collections for the current user (for Add to collection dropdown)
@@ -606,6 +608,8 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		FeaturedImage:        s.FeaturedImage,
 		Gallery:              s.Gallery,
 		HasGallery:           len(s.Gallery) > 0,
+		RotationImages:       s.RotationImages,
+		HasRotationImages:    len(s.RotationImages) > 0,
 		Title:                s.Title,
 		Name:                 s.Name,
 		Video:                s.Video,
@@ -636,6 +640,7 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		Mods:                 mods,
 		DetectedLanguage:     s.DetectedLanguage,
 		ModerationState:      s.ModerationState,
+		ShortCode:            s.ShortCode,
 	}
 
 	return result
@@ -893,6 +898,8 @@ func mapSchematicFromBatch(
 		FeaturedImage:        s.FeaturedImage,
 		Gallery:              s.Gallery,
 		HasGallery:           len(s.Gallery) > 0,
+		RotationImages:       s.RotationImages,
+		HasRotationImages:    len(s.RotationImages) > 0,
 		Title:                s.Title,
 		Name:                 s.Name,
 		Video:                s.Video,
@@ -923,6 +930,7 @@ func mapSchematicFromBatch(
 		Mods:                 mods,
 		DetectedLanguage:     s.DetectedLanguage,
 		ModerationState:      s.ModerationState,
+		ShortCode:            s.ShortCode,
 	}
 }
 
@@ -1000,27 +1008,70 @@ func findSchematicCommentsFromStore(appStore *store.Store, schematicID string, t
 		return t1.Before(t2)
 	})
 
-	// Build comments with nesting (same logic as MapResultsToComment)
-	var comments []models.Comment
+	// Build a lookup of comment author names for "reply to" labels
+	authorByID := make(map[string]string, len(dbComments))
 	for _, c := range dbComments {
-		if c.ParentID != "" {
-			for i := range comments {
-				if c.ParentID == comments[i].ID {
-					com := mapStoreComment(c, storeComments)
-					com.Indent = 1
-					if i+1 == len(comments) {
-						comments = append(comments, com)
-					} else {
-						comments = slices.Insert(comments, i+1, com)
-						comments[i+1].Indent = 1
-					}
-					break
-				}
+		for _, sc := range storeComments {
+			if sc.ID == c.ID {
+				authorByID[c.ID] = sc.AuthorUsername
+				break
 			}
-		} else {
-			comments = append(comments, mapStoreComment(c, storeComments))
 		}
 	}
+
+	// Build threaded comment tree: group children by parent, then flatten
+	// depth-first so replies appear directly under their parent.
+	const maxDepth = 5
+	childrenOf := make(map[string][]models.DatabaseComment)
+	var roots []models.DatabaseComment
+	for _, c := range dbComments {
+		if c.ParentID == "" {
+			roots = append(roots, c)
+		} else {
+			childrenOf[c.ParentID] = append(childrenOf[c.ParentID], c)
+		}
+	}
+
+	// Compute depth for each comment to cap nesting at maxDepth
+	depthOf := make(map[string]int, len(dbComments))
+	for _, r := range roots {
+		depthOf[r.ID] = 0
+	}
+	// BFS to assign depths
+	queue := append([]models.DatabaseComment{}, roots...)
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, child := range childrenOf[cur.ID] {
+			d := depthOf[cur.ID] + 1
+			if d > maxDepth {
+				d = maxDepth
+			}
+			depthOf[child.ID] = d
+			queue = append(queue, child)
+		}
+	}
+
+	var comments []models.Comment
+	var flatten func(nodes []models.DatabaseComment, depth int)
+	flatten = func(nodes []models.DatabaseComment, depth int) {
+		for _, c := range nodes {
+			com := mapStoreComment(c, storeComments)
+			com.Indent = depth
+			if c.ParentID != "" {
+				com.ReplyToAuthor = authorByID[c.ParentID]
+			}
+			comments = append(comments, com)
+			if kids, ok := childrenOf[c.ID]; ok {
+				nextDepth := depth + 1
+				if nextDepth > maxDepth {
+					nextDepth = maxDepth
+				}
+				flatten(kids, nextDepth)
+			}
+		}
+	}
+	flatten(roots, 0)
 
 	// Apply translations when a translation exists and differs from the original.
 	if translationSvc != nil && cacheService != nil && targetLang != "" {
@@ -1168,13 +1219,10 @@ func countSchematicViewStore(appStore *store.Store, schematicID string, discordS
 			switch totalViews {
 			case 100:
 				award("views_100")
-				_ = appStore.Users.UpdateUserPoints(bgCtx, authorID, 5)
 			case 1000:
 				award("views_1000")
-				_ = appStore.Users.UpdateUserPoints(bgCtx, authorID, 25)
 			case 10000:
 				award("views_10000")
-				_ = appStore.Users.UpdateUserPoints(bgCtx, authorID, 100)
 			}
 		}()
 	}

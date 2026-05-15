@@ -36,14 +36,6 @@
                     </select>
                     {{ if ne .Category "all" }}<span class="filter-badge">1</span>{{ end }}
                 </div>
-                <div class="search-filter-item search-filter-item-tags">
-                    <select id="search-tag-select" name="tag" multiple placeholder="{{ T .Language "Tags..." }}" aria-label="{{ T .Language "Tags" }}" style="display:none">
-                        {{ range .TagsWithCount }}
-                        <option value="{{ .Key }}" {{ if tagSelected $.SelectedTags .Key }}selected{{ end }}>{{ .Name }} ({{ .Count }})</option>
-                        {{ end }}
-                    </select>
-                    {{ if gt (len .SelectedTags) 0 }}<span class="filter-badge">{{ len .SelectedTags }}</span>{{ end }}
-                </div>
                 <div class="search-filter-item">
                     <select name="mcv" class="form-select" aria-label="{{ T .Language "Minecraft Version" }}">
                         <option value="all" {{ if eq .MinecraftVersion "all" }}selected{{ end }}>{{ T .Language "MC Version" }}</option>
@@ -67,23 +59,14 @@
                     </select>
                     {{ if ne .CreateVersion "all" }}<span class="filter-badge">1</span>{{ end }}
                 </div>
-                <button class="btn btn-outline-secondary btn-more-filters" type="button" data-cm-toggle="collapse" data-cm-target="#search-more-filters" aria-expanded="false" aria-controls="search-more-filters">
+                <button class="btn btn-outline-secondary btn-more-filters" type="button" data-cm-toggle="collapse" data-cm-target="#search-more-filters" aria-expanded="{{ if or (gt (len .SelectedTags) 0) (gt (len .SelectedMods) 0) (ne .Rating -1) }}true{{ else }}false{{ end }}" aria-controls="search-more-filters">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z"/></svg>
                     {{ T .Language "More filters" }}
                 </button>
             </div>
-            <div class="collapse" id="search-more-filters">
+            <div class="collapse{{ if or (gt (len .SelectedTags) 0) (gt (len .SelectedMods) 0) (ne .Rating -1) }} show{{ end }}" id="search-more-filters">
                 <div class="search-more-filters">
                     <div class="filter-grid">
-                        <div>
-                            <label class="form-label small text-secondary mb-1">{{ T .Language "Results per page" }}</label>
-                            <select name="per_page" class="form-select form-select-sm">
-                                <option value="8" {{ if eq .PerPage 8 }}selected{{ end }}>8</option>
-                                <option value="16" {{ if eq .PerPage 16 }}selected{{ end }}>16</option>
-                                <option value="32" {{ if eq .PerPage 32 }}selected{{ end }}>32</option>
-                                <option value="64" {{ if eq .PerPage 64 }}selected{{ end }}>64</option>
-                            </select>
-                        </div>
                         <div>
                             <label class="form-label small text-secondary mb-1">{{ T .Language "Minimum Rating" }}</label>
                             <input type="hidden" name="rating" id="rating-value" value="{{ .Rating }}">
@@ -122,14 +105,26 @@
                             </div>
                         </div>
                         {{ end }}
+                        <div>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Tags" }}</label>
+                            <select id="search-tag-select" name="tag" multiple placeholder="{{ T .Language "Search tags..." }}" aria-label="{{ T .Language "Tags" }}">
+                                {{ range .TagsWithCount }}
+                                <option value="{{ .Key }}" {{ if tagSelected $.SelectedTags .Key }}selected{{ end }}>{{ .Name }} ({{ .Count }})</option>
+                                {{ end }}
+                            </select>
+                        </div>
                         {{ if gt (len .AllMods) 0 }}
                         <div>
                             <label class="form-label small text-secondary mb-1">{{ T .Language "Mods" }}</label>
-                            <select id="search-mod-select" name="mod" multiple class="form-select form-select-sm" placeholder="{{ T .Language "Select mods..." }}">
+                            <select id="search-mod-select" name="mod" multiple placeholder="{{ T .Language "Search mods..." }}" aria-label="{{ T .Language "Mods" }}">
                                 {{ range .AllMods }}
                                 <option value="{{ .Namespace }}" {{ if tagSelected $.SelectedMods .Namespace }}selected{{ end }}>{{ .DisplayName }} ({{ .Count }})</option>
                                 {{ end }}
                             </select>
+                            <label class="form-check small mt-1 mb-0">
+                                <input class="form-check-input" type="checkbox" name="mod_match" value="all" {{ if eq .ModMatch "all" }}checked{{ end }}>
+                                <span class="form-check-label">{{ T .Language "Has only these mods" }}</span>
+                            </label>
                         </div>
                         {{ end }}
                     </div>
@@ -137,6 +132,7 @@
             </div>
         </div>
         <input type="hidden" name="view" id="search-view-input" value="{{ .ViewMode }}">
+        <input type="hidden" name="per_page" id="search-per-page-input" value="{{ if .InfiniteScroll }}infinite{{ else if and (ne .PerPage 0) (ne .PerPage 8) }}{{ .PerPage }}{{ else }}8{{ end }}">
     </form>
     <script>
     function updateRangeLabel(id, minVal, maxVal, globalMax) {
@@ -156,15 +152,44 @@
     }
     function initTomSelects() {
       if (typeof TomSelect === 'undefined') return;
+      var triggerFormChange = function() {
+        var form = document.getElementById('advanced-search-form');
+        if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
+      };
+      var tsOpts = {
+        plugins: ['remove_button'],
+        maxOptions: 10,
+        onChange: triggerFormChange,
+        openOnFocus: false
+      };
       var tagEl = document.getElementById('search-tag-select');
       if (tagEl && !tagEl.tomselect) {
-        new TomSelect(tagEl, { plugins: ['remove_button'], maxOptions: 200 });
+        new TomSelect(tagEl, tsOpts);
       }
       var modEl = document.getElementById('search-mod-select');
       if (modEl && !modEl.tomselect) {
-        new TomSelect(modEl, { plugins: ['remove_button'], maxOptions: 200 });
+        new TomSelect(modEl, tsOpts);
       }
     }
+    // Defer Tom Select init until More Filters is visible (collapse is display:none initially)
+    (function() {
+      var moreFilters = document.getElementById('search-more-filters');
+      if (!moreFilters) return;
+      var observer = new MutationObserver(function(mutations) {
+        for (var i = 0; i < mutations.length; i++) {
+          if (moreFilters.classList.contains('show') || moreFilters.classList.contains('collapsing')) {
+            observer.disconnect();
+            if (typeof initTomSelects === 'function') initTomSelects();
+            break;
+          }
+        }
+      });
+      observer.observe(moreFilters, { attributes: true, attributeFilter: ['class'] });
+      // If already open (e.g. HTMX re-render with filters active), init immediately
+      if (moreFilters.classList.contains('show')) {
+        if (typeof initTomSelects === 'function') initTomSelects();
+      }
+    })();
     (function(){
       if (window._cmFilterTrack) return;
       window._cmFilterTrack = true;

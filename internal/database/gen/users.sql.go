@@ -223,6 +223,18 @@ func (q *Queries) GetUserIsContributor(ctx context.Context, authorID *string) (b
 	return is_contributor, err
 }
 
+const getUserPointsRank = `-- name: GetUserPointsRank :one
+SELECT COUNT(*) + 1 FROM users u
+WHERE u.deleted IS NULL AND u.points > (SELECT u2.points FROM users u2 WHERE u2.id = $1)
+`
+
+func (q *Queries) GetUserPointsRank(ctx context.Context, id string) (int32, error) {
+	row := q.db.QueryRow(ctx, getUserPointsRank, id)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const listAdminEmails = `-- name: ListAdminEmails :many
 SELECT email FROM users WHERE is_admin = true AND deleted IS NULL
 `

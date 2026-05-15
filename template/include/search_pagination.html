@@ -1,10 +1,7 @@
 {{define "search_pagination.html"}}
 {{ if or .HasPrev .HasNext }}
-<nav class="d-flex flex-column align-items-center mt-4 gap-2" aria-label="Search results pagination">
-    <div class="text-secondary small">
-        {{ .SearchResultCount }} {{ T .Language "results" }}
-    </div>
-    <ul class="pagination">
+<nav class="d-flex justify-content-center mt-4" aria-label="Search results pagination">
+    <ul class="pagination mb-0">
         {{ if .HasPrev }}
         <li class="page-item">
             <a class="page-link" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true">{{ T .Language "Previous" }}</a>

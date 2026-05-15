@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const countTempUploadImagesByToken = `-- name: CountTempUploadImagesByToken :one
@@ -21,9 +22,9 @@ func (q *Queries) CountTempUploadImagesByToken(ctx context.Context, token string
 }
 
 const createTempUploadImage = `-- name: CreateTempUploadImage :one
-INSERT INTO temp_upload_images (token, filename, size, s3_key, sort_order)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, token, filename, size, s3_key, sort_order, created
+INSERT INTO temp_upload_images (token, filename, size, s3_key, sort_order, category)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, token, filename, size, s3_key, sort_order, category, created
 `
 
 type CreateTempUploadImageParams struct {
@@ -32,17 +33,30 @@ type CreateTempUploadImageParams struct {
 	Size      int64  `json:"size"`
 	S3Key     string `json:"s3_key"`
 	SortOrder int32  `json:"sort_order"`
+	Category  string `json:"category"`
 }
 
-func (q *Queries) CreateTempUploadImage(ctx context.Context, arg CreateTempUploadImageParams) (TempUploadImage, error) {
+type CreateTempUploadImageRow struct {
+	ID        string    `json:"id"`
+	Token     string    `json:"token"`
+	Filename  string    `json:"filename"`
+	Size      int64     `json:"size"`
+	S3Key     string    `json:"s3_key"`
+	SortOrder int32     `json:"sort_order"`
+	Category  string    `json:"category"`
+	Created   time.Time `json:"created"`
+}
+
+func (q *Queries) CreateTempUploadImage(ctx context.Context, arg CreateTempUploadImageParams) (CreateTempUploadImageRow, error) {
 	row := q.db.QueryRow(ctx, createTempUploadImage,
 		arg.Token,
 		arg.Filename,
 		arg.Size,
 		arg.S3Key,
 		arg.SortOrder,
+		arg.Category,
 	)
-	var i TempUploadImage
+	var i CreateTempUploadImageRow
 	err := row.Scan(
 		&i.ID,
 		&i.Token,
@@ -50,6 +64,7 @@ func (q *Queries) CreateTempUploadImage(ctx context.Context, arg CreateTempUploa
 		&i.Size,
 		&i.S3Key,
 		&i.SortOrder,
+		&i.Category,
 		&i.Created,
 	)
 	return i, err
@@ -74,21 +89,32 @@ func (q *Queries) DeleteTempUploadImagesByToken(ctx context.Context, token strin
 }
 
 const listTempUploadImagesByToken = `-- name: ListTempUploadImagesByToken :many
-SELECT id, token, filename, size, s3_key, sort_order, created
+SELECT id, token, filename, size, s3_key, sort_order, category, created
 FROM temp_upload_images
 WHERE token = $1
 ORDER BY sort_order ASC
 `
 
-func (q *Queries) ListTempUploadImagesByToken(ctx context.Context, token string) ([]TempUploadImage, error) {
+type ListTempUploadImagesByTokenRow struct {
+	ID        string    `json:"id"`
+	Token     string    `json:"token"`
+	Filename  string    `json:"filename"`
+	Size      int64     `json:"size"`
+	S3Key     string    `json:"s3_key"`
+	SortOrder int32     `json:"sort_order"`
+	Category  string    `json:"category"`
+	Created   time.Time `json:"created"`
+}
+
+func (q *Queries) ListTempUploadImagesByToken(ctx context.Context, token string) ([]ListTempUploadImagesByTokenRow, error) {
 	rows, err := q.db.Query(ctx, listTempUploadImagesByToken, token)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []TempUploadImage{}
+	items := []ListTempUploadImagesByTokenRow{}
 	for rows.Next() {
-		var i TempUploadImage
+		var i ListTempUploadImagesByTokenRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Token,
@@ -96,6 +122,59 @@ func (q *Queries) ListTempUploadImagesByToken(ctx context.Context, token string)
 			&i.Size,
 			&i.S3Key,
 			&i.SortOrder,
+			&i.Category,
+			&i.Created,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTempUploadImagesByTokenAndCategory = `-- name: ListTempUploadImagesByTokenAndCategory :many
+SELECT id, token, filename, size, s3_key, sort_order, category, created
+FROM temp_upload_images
+WHERE token = $1 AND category = $2
+ORDER BY sort_order ASC
+`
+
+type ListTempUploadImagesByTokenAndCategoryParams struct {
+	Token    string `json:"token"`
+	Category string `json:"category"`
+}
+
+type ListTempUploadImagesByTokenAndCategoryRow struct {
+	ID        string    `json:"id"`
+	Token     string    `json:"token"`
+	Filename  string    `json:"filename"`
+	Size      int64     `json:"size"`
+	S3Key     string    `json:"s3_key"`
+	SortOrder int32     `json:"sort_order"`
+	Category  string    `json:"category"`
+	Created   time.Time `json:"created"`
+}
+
+func (q *Queries) ListTempUploadImagesByTokenAndCategory(ctx context.Context, arg ListTempUploadImagesByTokenAndCategoryParams) ([]ListTempUploadImagesByTokenAndCategoryRow, error) {
+	rows, err := q.db.Query(ctx, listTempUploadImagesByTokenAndCategory, arg.Token, arg.Category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTempUploadImagesByTokenAndCategoryRow{}
+	for rows.Next() {
+		var i ListTempUploadImagesByTokenAndCategoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Token,
+			&i.Filename,
+			&i.Size,
+			&i.S3Key,
+			&i.SortOrder,
+			&i.Category,
 			&i.Created,
 		); err != nil {
 			return nil, err

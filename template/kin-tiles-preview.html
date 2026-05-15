@@ -1,0 +1,90 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide py-4">
+                <h1 class="mb-1">Kin Tiles Preview</h1>
+                <p class="text-secondary mb-4">Ad-fallback tiles shown when NitroPay is blocked. Only visible when DEV=true.</p>
+
+                <h2 class="mb-3">Static tiles (9 variants)</h2>
+                <div id="tile-grid" class="row g-3 mb-5"></div>
+
+                <h2 class="mb-3">Live server tile (API data)</h2>
+                <div class="row g-3 mb-5">
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <p class="text-secondary mb-1" style="font-size:.75rem">srv-live &middot; CreateModServers.com (API)</p>
+                        <div style="max-width:300px">
+                            {{ if .LiveServers }}
+                            <a class="kin-tile" href="https://createmodservers.com" rel="noopener" target="_blank" hx-boost="false">
+                                <div class="kin-body" style="padding-bottom:4px">
+                                    <div class="kin-eyebrow">Online right now</div>
+                                    <h3>Find a Create Mod server to play on.</h3>
+                                </div>
+                                <div class="kin-list">
+                                    {{ range .LiveServers }}
+                                    <div class="row">
+                                        <span class="dot"></span>
+                                        <span class="name">{{ .Name }}</span>
+                                        <span class="players">{{ .PlayersOnline }} online</span>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                <div class="kin-body" style="padding-top:6px">
+                                    <div class="kin-foot" style="margin-top:4px;padding-top:8px">
+                                        <span class="url">createmodservers.com</span>
+                                        <svg viewBox="0 0 24 24" width="16" height="16" class="arrow"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>
+                                    </div>
+                                </div>
+                            </a>
+                            {{ else }}
+                            <div class="kin-tile" style="opacity:0.5;text-align:center;padding:32px 16px">
+                                <p class="text-secondary" style="margin:0">No live server data available.</p>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}
+<script>
+(function() {
+    var tiles = window._kinTilesForPreview || [];
+    var names = [
+        'srv-a · CreateModServers.com',
+        'srv-b · CreateModServers.com (mock)',
+        'srv-c · CreateModServers.com',
+        'sch-a · schematics.gg',
+        'sch-b · schematics.gg',
+        'sch-c · schematics.gg',
+        'blk-a · BlocksItems.com',
+        'blk-b · BlocksItems.com',
+        'blk-c · BlocksItems.com'
+    ];
+    var grid = document.getElementById('tile-grid');
+    for (var i = 0; i < tiles.length; i++) {
+        var col = document.createElement('div');
+        col.className = 'col-12 col-md-6 col-xl-4';
+        var label = document.createElement('p');
+        label.className = 'text-secondary mb-1';
+        label.style.fontSize = '.75rem';
+        label.textContent = names[i] || ('tile-' + i);
+        col.appendChild(label);
+        var wrap = document.createElement('div');
+        wrap.style.maxWidth = '300px';
+        wrap.insertAdjacentHTML('afterbegin', tiles[i]);
+        var tile = wrap.querySelector('.kin-tile');
+        if (tile) {
+            tile.setAttribute('target', '_blank');
+            tile.setAttribute('hx-boost', 'false');
+        }
+        col.appendChild(wrap);
+        grid.appendChild(col);
+    }
+})();
+</script>

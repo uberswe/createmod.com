@@ -1,8 +1,14 @@
 <div id="comments-list">
     {{range .Comments}}
     <div class="col-12 mb-2">
-        <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
+        <div class="card card-sm comment-thread-{{ .Indent }}">
             <div class="card-body">
+                {{ if .ReplyToAuthor }}
+                <div class="comment-reply-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                    {{ T $.Language "replying to" }} {{ .ReplyToAuthor }}
+                </div>
+                {{ end }}
                 <div class="text-secondary">
                     {{ if .IsTranslated }}
                     <div class="comment-translated" data-comment-id="{{ .ID }}">

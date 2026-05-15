@@ -89,10 +89,20 @@
                         {{ if .FileURL }}
                         <div class="card mb-3">
                             <div class="card-body text-center">
-                                <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
-                                    View in 3D on Bloxelizer
-                                </a>
+                                <div class="dropdown w-100">
+                                    <button class="btn btn-outline-primary w-100 dropdown-toggle" type="button" data-cm-toggle="dropdown">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
+                                        {{ T .Language "View in 3D" }}
+                                    </button>
+                                    <div class="dropdown-menu w-100">
+                                        <a id="shulkr-link" href="#" class="dropdown-item" target="_blank" rel="noopener">
+                                            {{ T .Language "Shulkr" }}
+                                        </a>
+                                        <a id="bloxelizer-link" href="#" class="dropdown-item" target="_blank" rel="noopener">
+                                            {{ T .Language "Bloxelizer" }}
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         {{ end }}
@@ -167,9 +177,15 @@
                                         </button>
                                     </div>
                                 </div>
-                                <a href="/u/{{ .Token }}/publish" hx-boost="false" class="btn btn-primary w-100">
+                                <a href="/u/{{ .Token }}/publish" hx-boost="false" class="btn btn-primary w-100 mb-2">
                                     {{ T .Language "Publish Schematic" }}
                                 </a>
+                                <form method="POST" action="/u/{{ .Token }}/delete" id="delete-draft-form">
+                                    <button type="button" class="btn btn-outline-danger w-100" onclick="confirmDeleteDraft()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
+                                        {{ T .Language "Delete Draft" }}
+                                    </button>
+                                </form>
                                 {{ else }}
                                 {{ if .FileURL }}
                                 <a href="/u/{{ .Token }}/download" download="{{ .Filename }}" hx-boost="false" class="btn btn-primary w-100 mb-3">
@@ -187,8 +203,154 @@
 
                     </div>
 
-                    <!-- Right column: Materials -->
+                    <!-- Right column: 3D Preview + Materials -->
                     <div class="col-lg-7 col-xl-8">
+                        {{ if .HasRotationImages }}
+                        <div class="card mb-3">
+                            <div class="rotation-viewer" id="rotation-viewer">
+                                <div class="ratio ratio-16x9">
+                                    <img id="rotation-img" src="{{ index .RotationImages 0 }}" alt="360° view" class="object-fit-cover" style="user-select:none;-webkit-user-drag:none;">
+                                    <div class="rotation-loading" id="rotation-loading" style="display:none;">
+                                        <div class="rotation-spinner"></div>
+                                        <div class="rotation-loading-pct" id="rotation-loading-pct">0%</div>
+                                        <div class="rotation-loading-text">{{ T .Language "rotation.loading" }}</div>
+                                    </div>
+                                </div>
+                                <div class="rotation-controls" id="rotation-controls">
+                                    <button type="button" class="rotation-play-btn" id="rotation-play" title="{{ T .Language "rotation.auto_rotate" }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" id="rotation-play-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" id="rotation-pause-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M6 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/><path d="M14 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/></svg>
+                                    </button>
+                                    <input type="range" class="rotation-slider" id="rotation-slider" min="0" max="0" value="0" step="1">
+                                    <span class="rotation-badge">360°</span>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                        (function(){
+                            var urls = [{{ range $i, $img := .RotationImages }}{{ if $i }},{{ end }}"{{ $img }}"{{ end }}];
+                            var total = urls.length;
+                            var images = new Array(total);
+                            var loaded = 0;
+                            var allLoaded = false;
+                            var loadStarted = false;
+                            var playing = false;
+                            var animFrame = null;
+                            var currentIndex = 0;
+
+                            var imgEl = document.getElementById('rotation-img');
+                            var slider = document.getElementById('rotation-slider');
+                            var playBtn = document.getElementById('rotation-play');
+                            var playIcon = document.getElementById('rotation-play-icon');
+                            var pauseIcon = document.getElementById('rotation-pause-icon');
+                            var loadingEl = document.getElementById('rotation-loading');
+                            var loadingPct = document.getElementById('rotation-loading-pct');
+                            var viewer = document.getElementById('rotation-viewer');
+
+                            slider.max = total - 1;
+                            images[0] = new Image();
+                            images[0].src = urls[0];
+
+                            function loadAllFrames(cb) {
+                                if (loadStarted) return;
+                                loadStarted = true;
+                                loadingEl.style.display = '';
+                                loaded = 1;
+                                for (var i = 1; i < total; i++) {
+                                    (function(idx) {
+                                        var img = new Image();
+                                        img.onload = img.onerror = function() {
+                                            loaded++;
+                                            loadingPct.textContent = Math.round(loaded / total * 100) + '%';
+                                            if (loaded >= total) {
+                                                allLoaded = true;
+                                                loadingEl.style.display = 'none';
+                                                if (cb) cb();
+                                            }
+                                        };
+                                        img.src = urls[idx];
+                                        images[idx] = img;
+                                    })(i);
+                                }
+                            }
+
+                            function showFrame(idx) {
+                                currentIndex = idx;
+                                imgEl.src = images[idx] && images[idx].src ? images[idx].src : urls[idx];
+                                slider.value = idx;
+                            }
+
+                            function startPlaying() {
+                                playing = true;
+                                playIcon.style.display = 'none';
+                                pauseIcon.style.display = '';
+                                var lastTime = 0;
+                                var interval = 1000 / 30;
+                                function tick(ts) {
+                                    if (!playing) return;
+                                    if (ts - lastTime >= interval) {
+                                        lastTime = ts;
+                                        currentIndex = (currentIndex + 1) % total;
+                                        showFrame(currentIndex);
+                                    }
+                                    animFrame = requestAnimationFrame(tick);
+                                }
+                                animFrame = requestAnimationFrame(tick);
+                            }
+
+                            function stopPlaying() {
+                                playing = false;
+                                playIcon.style.display = '';
+                                pauseIcon.style.display = 'none';
+                                if (animFrame) cancelAnimationFrame(animFrame);
+                            }
+
+                            playBtn.addEventListener('click', function() {
+                                if (playing) { stopPlaying(); return; }
+                                if (!allLoaded) {
+                                    loadAllFrames(function() { startPlaying(); });
+                                } else {
+                                    startPlaying();
+                                }
+                            });
+
+                            slider.addEventListener('input', function() {
+                                stopPlaying();
+                                if (!loadStarted) loadAllFrames(null);
+                                showFrame(parseInt(slider.value, 10));
+                            });
+
+                            var dragging = false, dragStartX = 0, dragStartIndex = 0;
+                            viewer.addEventListener('mousedown', function(ev) {
+                                if (ev.target === slider || ev.target.closest('.rotation-play-btn')) return;
+                                dragging = true; dragStartX = ev.clientX; dragStartIndex = currentIndex;
+                                stopPlaying();
+                                if (!loadStarted) loadAllFrames(null);
+                                ev.preventDefault();
+                            });
+                            document.addEventListener('mousemove', function(ev) {
+                                if (!dragging) return;
+                                var dx = ev.clientX - dragStartX;
+                                var step = Math.round(dx / (viewer.offsetWidth / total));
+                                showFrame(((dragStartIndex + step) % total + total) % total);
+                            });
+                            document.addEventListener('mouseup', function() { dragging = false; });
+                            viewer.addEventListener('touchstart', function(ev) {
+                                if (ev.target === slider || ev.target.closest('.rotation-play-btn')) return;
+                                dragging = true; dragStartX = ev.touches[0].clientX; dragStartIndex = currentIndex;
+                                stopPlaying();
+                                if (!loadStarted) loadAllFrames(null);
+                            }, {passive: true});
+                            document.addEventListener('touchmove', function(ev) {
+                                if (!dragging) return;
+                                var dx = ev.touches[0].clientX - dragStartX;
+                                var step = Math.round(dx / (viewer.offsetWidth / total));
+                                showFrame(((dragStartIndex + step) % total + total) % total);
+                            }, {passive: true});
+                            document.addEventListener('touchend', function() { dragging = false; });
+                        })();
+                        </script>
+                        {{ end }}
                         {{ if .ParsedMaterials }}
                         <div class="card mb-3">
                             <div class="card-header d-flex align-items-center">
@@ -311,18 +473,23 @@
 <script>
 var blockNameMap = {};
 
-document.addEventListener("DOMContentLoaded", function() {
+function initUploadPreview() {
     // Set share link value
     var shareLink = document.getElementById('share-link');
-    if (shareLink) {
+    if (shareLink && !shareLink.value) {
         shareLink.value = location.origin + '/u/{{ .Token }}';
     }
 
-    // Set Bloxelizer link
+    // Set 3D viewer links
     {{ if .FileURL }}
+    var fileURL = location.origin + '{{ .FileURL }}';
+    var shulkrLink = document.getElementById('shulkr-link');
+    if (shulkrLink && shulkrLink.getAttribute('href') === '#') {
+        shulkrLink.href = 'https://www.shulkr.com/?url=' + encodeURIComponent(fileURL);
+    }
     var bloxLink = document.getElementById('bloxelizer-link');
-    if (bloxLink) {
-        bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(location.origin + '{{ .FileURL }}');
+    if (bloxLink && bloxLink.getAttribute('href') === '#') {
+        bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(fileURL);
     }
     {{ end }}
 
@@ -378,7 +545,10 @@ document.addEventListener("DOMContentLoaded", function() {
         var raw = parseInt(sizeEl.textContent, 10);
         if (!isNaN(raw)) sizeEl.textContent = formatBytes(raw);
     }
-});
+}
+document.addEventListener("DOMContentLoaded", initUploadPreview);
+document.addEventListener("htmx:afterSettle", initUploadPreview);
+initUploadPreview();
 
 // Format mod namespace badges into readable names
 (function() {
@@ -389,6 +559,12 @@ document.addEventListener("DOMContentLoaded", function() {
         badge.textContent = modId.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
     });
 })();
+
+function confirmDeleteDraft() {
+    if (confirm('{{ T .Language "delete_draft.confirm" }}')) {
+        document.getElementById('delete-draft-form').submit();
+    }
+}
 
 function copyShareLink() {
     var input = document.getElementById('share-link');

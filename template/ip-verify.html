@@ -1,0 +1,41 @@
+{{ template "head.html" . }}
+<main class="page page-center">
+    <div class="container container-tight py-4">
+        <div class="text-center mb-4">
+            <a href="/" class="navbar-brand">
+                <img src="/assets/x/logo.png" alt="CreateMod.com">
+            </a>
+        </div>
+        <div class="card card-md">
+            <div class="card-body">
+                <h2 class="h2 text-center mb-4">{{ T .Language "Verify Your Identity" }}</h2>
+                {{ if .Error }}
+                <div class="alert alert-danger">{{ .Error }}</div>
+                {{ end }}
+                {{ if .Success }}
+                <div class="alert alert-success">{{ .Success }}</div>
+                {{ end }}
+                <p class="text-secondary text-center">{{ T .Language "We sent a verification code to your email. Enter it below to continue." }}</p>
+                <form method="post" action="/auth/verify-ip" hx-boost="false">
+                    <div class="mb-3">
+                        <input name="code" type="text" class="form-control form-control-lg text-center" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" required autofocus>
+                    </div>
+                    <div class="form-footer">
+                        <button type="submit" class="btn btn-primary w-100">{{ T .Language "Verify" }}</button>
+                    </div>
+                </form>
+            </div>
+            <div class="hr-text">{{ T .Language "or" }}</div>
+            <div class="card-body">
+                <form method="post" action="/auth/verify-ip/resend" hx-boost="false">
+                    <button type="submit" class="btn btn-ghost-secondary w-100">{{ T .Language "Resend code" }}</button>
+                </form>
+            </div>
+        </div>
+        <div class="text-center text-secondary mt-3">
+            <a href="/login">{{ T .Language "Back to login" }}</a>
+        </div>
+    </div>
+</main>
+{{template "footer.html" .}}
+{{template "foot.html" .}}

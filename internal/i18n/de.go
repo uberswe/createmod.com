@@ -307,6 +307,21 @@ var LangDE = map[string]string{
 	"How to earn points":                       "Wie man Punkte verdient",
 	"Points history":                           "Punkteverlauf",
 	"No points earned yet":                     "Noch keine Punkte verdient. Fang an beizutragen!",
+	"pts":                                      "Pkt.",
+	"points.action.upload":                     "Ein Schema hochladen",
+	"points.action.comment":                    "Ein Schema kommentieren",
+	"points.action.rating4":                    "Schema erhält 4+ Sterne Bewertung",
+	"points.action.downloads100":               "Schema erreicht 100 Downloads",
+	"points.action.views10k":                   "Schema erreicht 10.000 Aufrufe",
+	"points.action.first_comment":              "Schreibe deinen ersten Kommentar",
+	"points.action.views100":                   "Schema erreicht 100 Aufrufe",
+	"points.action.views1k":                    "Schema erreicht 1.000 Aufrufe",
+	"points.action.views10k_milestone":         "Schema erreicht 10.000 Aufrufe (Meilenstein)",
+	"Repeatable":                               "Wiederholbar",
+	"One-time":                                 "Einmalig",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Verdiene Punkte, indem du zur Community beiträgst. Lade Schemas hoch, kommentiere und mach mit, um im Ranking aufzusteigen!",
+	"topcreators.antispam":                     "Das Spammen von Schemas, Kommentaren oder jede andere absichtliche Punktemanipulation führt zu einem Bann.",
 	"Achievements":                             "Erfolge",
 	"This user has not posted any schematics.": "Dieser Benutzer hat noch keine Schematics veröffentlicht.",
 
@@ -787,4 +802,18 @@ var LangDE = map[string]string{
 	"block_search_placeholder":  "Block suchen...",
 	"replacements":              "Ersetzungen",
 
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "360°-Ansicht wird geladen",
+	"rotation.auto_rotate":      "Automatisch drehen",
+	"rotation.how":              "Wie funktioniert das?",
+	"rotation.tooltip.line1":    "Diese 360°-Vorschau besteht aus %s Bildern, die rund um den Schematic aufgenommen wurden.",
+	"rotation.tooltip.line2":    "Möchtest du eine 3D-Vorschau wie diese für deine eigenen Bauten erstellen? Lade deinen Schematic mit dem Create Schematic Helper Mod hoch.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Nach links scrollen",
+	"gallery.scroll_right": "Nach rechts scrollen",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Kategorie auswählen",
+	"delete_draft.confirm": "Bist du sicher, dass du diesen Entwurf löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
 }

@@ -180,7 +180,7 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf("dim_z <= %d", q.MaxDimZ))
 	}
 
-	// Mod filter: pre-filter to schematics containing at least the selected mods.
+	// Mod filter: require all selected mods to be present
 	for _, mod := range q.Mods {
 		parts = append(parts, fmt.Sprintf(`mod_names = "%s"`, escapeMeiliString(mod)))
 	}
