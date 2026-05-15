@@ -20,11 +20,13 @@ GROUP BY hour
 ORDER BY hour;
 
 -- name: HourlyViewStats :many
-SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, SUM(count)::BIGINT AS count
+SELECT
+  (substring(period,1,4)||'-'||substring(period,5,2)||'-'||substring(period,7,2)||' '||substring(period,9,2))::TEXT AS hour,
+  SUM(count)::BIGINT AS count
 FROM schematic_views
-WHERE created > $1
-GROUP BY hour
-ORDER BY hour;
+WHERE type = '5' AND created > $1
+GROUP BY period
+ORDER BY period;
 
 -- name: HourlyDownloadStats :many
 SELECT to_char(created, 'YYYY-MM-DD HH24') AS hour, COUNT(*) AS count
