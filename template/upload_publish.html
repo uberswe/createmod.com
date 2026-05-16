@@ -168,6 +168,7 @@
                                 {{ end }}
 
                                 <div class="mt-4">
+                                    <p class="text-secondary small mb-3">{{ T .Language "By publishing, you agree that your upload follows the" }} <a href="{{ LangURL .Language "/rules" }}">{{ T .Language "rules" }}</a>.</p>
                                     <div id="publish-error" class="alert alert-danger mt-2 mb-2" style="display: none;" role="alert"></div>
                                     <button class="btn btn-primary w-100" id="publish-schematic-btn">
                                         Publish

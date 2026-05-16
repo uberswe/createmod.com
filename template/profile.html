@@ -21,9 +21,6 @@
                                     {{ if .HasSchematics }}
                                     <span class="badge bg-green" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
                                     {{ end }}
-                                    {{ if .HasBadges }}
-                                    {{ template "user_badges.html" .DisplayBadges }}
-                                    {{ end }}
                                 </div>
                                 <div class="d-flex align-items-center gap-3 text-secondary">
                                     <span>{{ .FollowerCount }} {{ T .Language "followers" }}</span>
@@ -46,25 +43,25 @@
                                 {{ end }}
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-12 col-md-8">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Usage" }}</h3></div>
+                        <div class="row mb-3 g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Stats" }}</h3></div>
                                     <div class="card-body">
                                         <div class="row g-3">
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Total schematics" }}</div>
                                                 <div class="h3 mb-0">{{ .SchematicCount }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Total views" }}</div>
                                                 <div class="h3 mb-0">{{ .TotalViews }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Total downloads" }}</div>
                                                 <div class="h3 mb-0">{{ .TotalDownloads }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Points" }}</div>
                                                 <div class="h3 mb-0">{{ .Points }}</div>
                                             </div>
@@ -83,21 +80,39 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {{ if .HasSocialLinks }}
-                        <div class="row mb-3">
-                            <div class="col-12 col-md-8">
-                                <div class="d-flex flex-wrap gap-2">
-                                    {{ range .SocialLinks }}
-                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-twitch{{ else if eq .Platform "patreon" }}btn-patreon{{ else if eq .Platform "reddit" }}btn-warning{{ else }}btn-secondary{{ end }}">
-                                        {{ if eq .Platform "youtube" }}YouTube{{ else if eq .Platform "twitch" }}Twitch{{ else if eq .Platform "patreon" }}Patreon{{ else if eq .Platform "reddit" }}Reddit{{ else }}{{ .Platform }}{{ end }}{{ if .Username }} &middot; {{ .Username }}{{ end }}{{ if .Verified }} ✓{{ end }}
-                                    </a>
-                                    {{ end }}
+                            <div class="col-12 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Socials" }}</h3></div>
+                                    <div class="card-body">
+                                        {{ if .HasSocialLinks }}
+                                        <div class="d-flex flex-column gap-2">
+                                            {{ range .SocialLinks }}
+                                            <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-twitch{{ else if eq .Platform "patreon" }}btn-patreon{{ else if eq .Platform "reddit" }}btn-warning{{ else }}btn-secondary{{ end }} d-flex align-items-center gap-2">
+                                                {{ if eq .Platform "youtube" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z"/><path d="M10 9l5 3l-5 3z"/></svg>
+                                                YouTube{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "twitch" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/><path d="M16 8l0 4"/><path d="M12 8l0 4"/></svg>
+                                                Twitch{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "patreon" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                                Patreon{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "reddit" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
+                                                Reddit{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else }}
+                                                {{ .Platform }}{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ end }}
+                                            </a>
+                                            {{ end }}
+                                        </div>
+                                        {{ else }}
+                                        <p class="text-secondary mb-0">{{ T .Language "No social links defined." }}</p>
+                                        {{ end }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {{ end }}
 
                         <!-- Mobile ad (smaller screens) -->
                         <div id="profile-mobile" class="d-xl-none mb-3 text-center"></div>

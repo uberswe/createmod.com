@@ -278,6 +278,7 @@ type Querier interface {
 	ListCommentsWithoutTranslation(ctx context.Context, arg ListCommentsWithoutTranslationParams) ([]ListCommentsWithoutTranslationRow, error)
 	ListConfirmedSubscribers(ctx context.Context, type_ string) ([]NewsletterSubscriber, error)
 	ListConfirmedSubscribersByFrequency(ctx context.Context, arg ListConfirmedSubscribersByFrequencyParams) ([]NewsletterSubscriber, error)
+	ListDirtySearchTerms(ctx context.Context, dollar_1 []string) ([]string, error)
 	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
 	ListExternalAuthsByProvider(ctx context.Context, provider string) ([]ExternalAuth, error)
 	ListExternalAuthsByUser(ctx context.Context, userID string) ([]ExternalAuth, error)

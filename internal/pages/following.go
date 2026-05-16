@@ -89,19 +89,52 @@ func FollowingHandler(cacheService *cache.Service, registry *server.Registry, ap
 			}
 		}
 
-		followedUserIDs, err := appStore.Follows.ListFollowedUserIDs(ctx, userID)
-		if err != nil || len(followedUserIDs) == 0 {
-			html, err := registry.LoadFiles(followingTemplates...).Render(d)
-			if err != nil {
-				return err
+		var allSchematics []models.Schematic
+		seen := make(map[string]bool)
+		addUnique := func(items []models.Schematic, limit int) {
+			for _, s := range items {
+				if seen[s.ID] {
+					continue
+				}
+				seen[s.ID] = true
+				allSchematics = append(allSchematics, s)
+				if limit > 0 && len(allSchematics) >= limit {
+					return
+				}
 			}
-			return e.HTML(http.StatusOK, html)
 		}
 
-		var allSchematics []models.Schematic
-		for _, fid := range followedUserIDs {
-			schematics := findAuthorSchematicsFromStore(appStore, cacheService, "", fid, 20)
-			allSchematics = append(allSchematics, schematics...)
+		for _, f := range follows {
+			switch f.FollowType {
+			case "user":
+				schematics := findAuthorSchematicsFromStore(appStore, cacheService, "", f.TargetID, 20)
+				addUnique(schematics, 0)
+			case "category":
+				catSchematics, err := appStore.Schematics.ListByCategoryIDs(ctx, []string{f.TargetID}, nil, 16)
+				if err == nil {
+					addUnique(MapStoreSchematics(appStore, catSchematics, cacheService), 0)
+				}
+			case "trending":
+				trending := getAllTrendingSchematicsForWindow(appStore, cacheService, 30)
+				if len(trending) > 16 {
+					trending = trending[:16]
+				}
+				addUnique(trending, 0)
+			case "latest":
+				if latest, ok := cacheService.GetSchematics(cache.LatestSchematicsKey); ok {
+					if len(latest) > 16 {
+						latest = latest[:16]
+					}
+					addUnique(latest, 0)
+				}
+			case "highest_rated":
+				if rated, ok := cacheService.GetSchematics(cache.HighestRatedSchematicsKey); ok {
+					if len(rated) > 16 {
+						rated = rated[:16]
+					}
+					addUnique(rated, 0)
+				}
+			}
 		}
 
 		sort.Slice(allSchematics, func(i, j int) bool {

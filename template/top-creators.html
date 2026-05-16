@@ -37,9 +37,6 @@
                                     <img class="avatar avatar-sm avatar-rounded" src="{{ .AvatarURL }}" alt="{{ .User.Username }}">
                                     <span class="leaderboard-name">{{ .User.Username }}</span>
                                 </a>
-                                <span class="leaderboard-badges">
-                                    {{ template "user_badges.html" .DisplayBadges }}
-                                </span>
                                 <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
                                 <span class="leaderboard-links">
                                     {{ range .SocialLinks }}
@@ -98,9 +95,6 @@
                                     <img class="avatar avatar-sm avatar-rounded" src="{{ .AvatarURL }}" alt="{{ .User.Username }}">
                                     <span class="leaderboard-name">{{ .User.Username }}</span>
                                 </a>
-                                <span class="leaderboard-badges">
-                                    {{ template "user_badges.html" .DisplayBadges }}
-                                </span>
                                 <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
                                 <span class="leaderboard-links">
                                     {{ range .SocialLinks }}

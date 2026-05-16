@@ -115,25 +115,8 @@
       '<div class="kin-body">' +
         '<div class="kin-eyebrow">Looking for a server?</div>' +
         '<h3>Find a Create Mod server to play on.</h3>' +
-        '<p>Browse player counts, mod versions, and difficulty from a curated list of public servers.</p>' +
+        '<p>Browse player counts, mod versions, and join info from a curated list of public servers.</p>' +
         '<div class="kin-foot"><span class="url">createmodservers.com</span>' + arrow + '</div>' +
-      '</div>' +
-    '</a>',
-
-    // srv-b: Mock server list
-    '<a class="kin-tile" href="https://createmodservers.com" rel="noopener">' +
-      '<div class="kin-body" style="padding-bottom:4px">' +
-        '<div class="kin-eyebrow">Online right now</div>' +
-        '<h3>Find a Create Mod server to play on.</h3>' +
-      '</div>' +
-      '<div class="kin-list">' +
-        '<div class="row"><span class="dot"></span><span class="name">Andesite Anarchy</span><span class="players">47/100</span></div>' +
-        '<div class="row"><span class="dot"></span><span class="name">Brass &amp; Cogs SMP</span><span class="players">112/250</span></div>' +
-        '<div class="row"><span class="dot"></span><span class="name">Schematica Realms</span><span class="players">23/64</span></div>' +
-        '<div class="row"><span class="dot"></span><span class="name">Steam Punks</span><span class="players">8/50</span></div>' +
-      '</div>' +
-      '<div class="kin-body" style="padding-top:6px">' +
-        '<div class="kin-foot" style="margin-top:4px;padding-top:8px"><span class="url">createmodservers.com</span>' + arrow + '</div>' +
       '</div>' +
     '</a>',
 
@@ -147,7 +130,7 @@
         '</div>' +
       '</div>' +
       '<div class="kin-body" style="padding-top:10px">' +
-        '<p>A directory of public Create-mod servers with player counts, versions, and join info.</p>' +
+        '<p>A directory of public Create-mod servers with player counts, versions, and more.</p>' +
         '<div class="kin-foot"><span class="url">createmodservers.com</span>' + arrow + '</div>' +
       '</div>' +
     '</a>',
@@ -304,7 +287,7 @@
   function fetchLiveServers() {
     if (liveFetched) return;
     liveFetched = true;
-    fetch('https://createmodservers.com/api/v1/servers?sort=votes&per_page=5')
+    fetch('https://www.createmodservers.com/api/v1/servers?sort=votes&per_page=5')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data && data.servers) {
@@ -361,9 +344,8 @@
     if (fillRan) return;
     fillRan = true;
     handleAdblock();
+    fetchLiveServers();
   }
-
-  fetchLiveServers();
 
   document.addEventListener('np.detect', function(e) {
     if (e.detail && e.detail.blocking) {

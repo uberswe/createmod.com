@@ -65,6 +65,7 @@ type IndexData struct {
 	TrendingHasNext  bool
 	HighestHasNext   bool
 	CategorySections []CategorySection
+	FollowedSet      map[string]bool
 }
 
 func indexHTMLCacheKey(lang string) string {
@@ -276,6 +277,14 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			CategorySections: categorySections,
 		}
 		d.Populate(e)
+		d.FollowedSet = make(map[string]bool)
+		if userID := authenticatedUserID(e); userID != "" {
+			if follows, err := appStore.Follows.ListByUser(e.Request.Context(), userID); err == nil {
+				for _, f := range follows {
+					d.FollowedSet[f.FollowType+":"+f.TargetID] = true
+				}
+			}
+		}
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 		translateSchematicTitles(d.Trending, translationService, cacheService, d.Language)
 		translateSchematicTitles(d.HighestRated, translationService, cacheService, d.Language)

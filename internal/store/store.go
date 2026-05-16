@@ -1057,6 +1057,7 @@ type SearchTrackingStore interface {
 	DailySearchTermVolume(ctx context.Context, since time.Time, terms []string) ([]SearchTermDailyCount, error)
 	UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error
 	ListCleanSearchTerms(ctx context.Context, terms []string) ([]string, error)
+	ListDirtySearchTerms(ctx context.Context, terms []string) ([]string, error)
 	ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error)
 	ListTopZeroResultQueries(ctx context.Context, limit int) ([]ZeroResultQuery, error)
 	ListTopSuccessfulQueries(ctx context.Context, limit int) ([]string, error)

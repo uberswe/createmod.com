@@ -47,7 +47,7 @@ func getLiveServers() []LiveServer {
 
 func fetchLiveServersFromAPI() []LiveServer {
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("https://createmodservers.com/api/v1/servers?sort=votes&per_page=5")
+	resp, err := client.Get("https://www.createmodservers.com/api/v1/servers?sort=votes&per_page=5")
 	if err != nil {
 		return nil
 	}

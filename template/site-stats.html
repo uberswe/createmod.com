@@ -22,7 +22,7 @@
                         <div class="card card-sm">
                             <div class="card-body">
                                 <div class="subheader">{{ T .Language "Total Published Schematics" }}</div>
-                                <div class="h1 mb-0">{{ .TotalSchematics }}</div>
+                                <div class="h1 mb-0 cm-fmt-num">{{ .TotalSchematics }}</div>
                             </div>
                         </div>
                     </div>
@@ -30,23 +30,23 @@
                         <div class="card card-sm">
                             <div class="card-body">
                                 <div class="subheader">{{ T .Language "Unpublished Drafts" }}</div>
-                                <div class="h1 mb-0">{{ .TotalDrafts }}</div>
+                                <div class="h1 mb-0 cm-fmt-num">{{ .TotalDrafts }}</div>
                             </div>
                         </div>
                     </div>
                     <div class="col-6 col-lg-3">
                         <div class="card card-sm">
                             <div class="card-body">
-                                <div class="subheader">{{ T .Language "Views (30d)" }}</div>
-                                <div class="h1 mb-0">{{ .TotalViews30d }}</div>
+                                <div class="subheader">{{ T .Language "Schematic Views (30d)" }}</div>
+                                <div class="h1 mb-0 cm-fmt-num">{{ .TotalViews30d }}</div>
                             </div>
                         </div>
                     </div>
                     <div class="col-6 col-lg-3">
                         <div class="card card-sm">
                             <div class="card-body">
-                                <div class="subheader">{{ T .Language "Downloads (30d)" }}</div>
-                                <div class="h1 mb-0">{{ .TotalDownloads30d }}</div>
+                                <div class="subheader">{{ T .Language "Schematic Downloads (30d)" }}</div>
+                                <div class="h1 mb-0 cm-fmt-num">{{ .TotalDownloads30d }}</div>
                             </div>
                         </div>
                     </div>
@@ -64,13 +64,13 @@
                 <div class="row row-deck row-cards mb-3">
                     <div class="col-lg-6">
                         <div class="card">
-                            <div class="card-header"><h3 class="card-title">{{ T .Language "Views per Hour" }}</h3></div>
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Schematic Views per Hour" }}</h3></div>
                             <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-views" style="min-height:250px;width:100%;"></div></div>
                         </div>
                     </div>
                     <div class="col-lg-6">
                         <div class="card">
-                            <div class="card-header"><h3 class="card-title">{{ T .Language "Downloads per Hour" }}</h3></div>
+                            <div class="card-header"><h3 class="card-title">{{ T .Language "Schematic Downloads per Hour" }}</h3></div>
                             <div class="card-body" style="overflow:hidden;min-width:0;"><div id="chart-downloads" style="min-height:250px;width:100%;"></div></div>
                         </div>
                     </div>
@@ -89,11 +89,11 @@
                     <div class="mb-3">
                         <div class="btn-group" role="group">
                             <button type="button" class="btn {{ if eq .ActiveWindow "7d" }}btn-primary{{ else }}btn-outline-secondary{{ end }}"
-                                    hx-get="{{ LangURL .Language "/stats" }}?window=7d" hx-target="#search-stats-section" hx-swap="innerHTML" hx-push-url="true" hx-boost="false">
+                                    hx-get="{{ LangURL .Language "/stats" }}?window=7d" hx-target="#search-stats-section" hx-select="#search-stats-section" hx-swap="outerHTML" hx-push-url="true" hx-boost="false">
                                 {{ T .Language "7 Days" }}
                             </button>
                             <button type="button" class="btn {{ if eq .ActiveWindow "30d" }}btn-primary{{ else }}btn-outline-secondary{{ end }}"
-                                    hx-get="{{ LangURL .Language "/stats" }}?window=30d" hx-target="#search-stats-section" hx-swap="innerHTML" hx-push-url="true" hx-boost="false">
+                                    hx-get="{{ LangURL .Language "/stats" }}?window=30d" hx-target="#search-stats-section" hx-select="#search-stats-section" hx-swap="outerHTML" hx-push-url="true" hx-boost="false">
                                 {{ T .Language "30 Days" }}
                             </button>
                         </div>
@@ -133,7 +133,7 @@
                                                 <tr>
                                                     <td class="text-secondary">{{ add $i 1 }}</td>
                                                     <td><a href="{{ LangURL $.Language "/search" }}?q={{ $s.Query }}">{{ $s.Query }}</a></td>
-                                                    <td class="text-end">{{ $s.SearchCount }}</td>
+                                                    <td class="text-end cm-fmt-num">{{ $s.SearchCount }}</td>
                                                 </tr>
                                                 {{ end }}
                                             </tbody>
@@ -160,7 +160,7 @@
                                                 <tr>
                                                     <td class="text-secondary">{{ add $i 1 }}</td>
                                                     <td><a href="{{ LangURL $.Language (printf "/schematics/%s" $s.Name) }}">{{ $s.Title }}</a></td>
-                                                    <td class="text-end">{{ $s.TotalViews }}</td>
+                                                    <td class="text-end cm-fmt-num">{{ $s.TotalViews }}</td>
                                                 </tr>
                                                 {{ end }}
                                             </tbody>
@@ -173,6 +173,11 @@
 
                     <script>
                     (function() {
+                        function fmtNum(v) {
+                            if (v == null || v === '') return '0';
+                            var n = typeof v === 'string' ? Number(v.replace(/,/g, '')) : Number(v);
+                            return isNaN(n) ? '0' : n.toLocaleString();
+                        }
                         function initSearchCharts() {
                             if (typeof ApexCharts === 'undefined') return;
                             ['chart-search-volume', 'chart-trending-terms'].forEach(function(id) {
@@ -188,8 +193,8 @@
                                 stroke: { curve: 'smooth', width: 2 },
                                 grid: { borderColor: grid, strokeDashArray: 4 },
                                 xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
-                                yaxis: { min: 0, labels: { style: { colors: fg } } },
-                                tooltip: { theme: isDark ? 'dark' : 'light' }
+                                yaxis: { min: 0, labels: { style: { colors: fg }, formatter: fmtNum } },
+                                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: fmtNum } }
                             };
                             function renderChart(el, opts) { var c = new ApexCharts(el, opts); el._apexChart = c; c.render(); }
                             var svEl = document.getElementById('chart-search-volume');
@@ -210,10 +215,10 @@
                                         fill: { opacity: 1 },
                                         grid: { borderColor: grid, strokeDashArray: 4 },
                                         xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
-                                        yaxis: { min: 0, labels: { style: { colors: fg } } },
-                                        tooltip: { theme: isDark ? 'dark' : 'light' },
+                                        yaxis: { min: 0, labels: { style: { colors: fg }, formatter: fmtNum } },
+                                        tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: fmtNum } },
                                         series: trendData,
-                                        legend: { show: true, position: 'bottom', labels: { colors: fg } }
+                                        legend: { show: true, position: 'bottom', labels: { colors: fg }, itemMargin: { horizontal: 12, vertical: 6 } }
                                     });
                                 }
                             }
@@ -233,6 +238,15 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
 <script>
 (function() {
+    function fmtNum(v) {
+        if (v == null || v === '') return '0';
+        var n = typeof v === 'string' ? Number(v.replace(/,/g, '')) : Number(v);
+        return isNaN(n) ? '0' : n.toLocaleString();
+    }
+    document.querySelectorAll('.cm-fmt-num').forEach(function(el) {
+        var raw = el.textContent.trim();
+        if (raw !== '') el.textContent = fmtNum(raw);
+    });
     function initSiteCharts() {
         if (typeof ApexCharts === 'undefined') return;
         ['chart-uploads', 'chart-views', 'chart-downloads'].forEach(function(id) {
@@ -248,8 +262,8 @@
             stroke: { curve: 'smooth', width: 2 },
             grid: { borderColor: grid, strokeDashArray: 4 },
             xaxis: { type: 'category', labels: { show: true, rotate: 0, hideOverlappingLabels: true, maxHeight: 40, style: { colors: fg, fontSize: '10px' } }, tickAmount: 6 },
-            yaxis: { min: 0, labels: { style: { colors: fg } } },
-            tooltip: { theme: isDark ? 'dark' : 'light' }
+            yaxis: { min: 0, labels: { style: { colors: fg }, formatter: fmtNum } },
+            tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: fmtNum } }
         };
         function renderChart(el, opts) { var c = new ApexCharts(el, opts); el._apexChart = c; c.render(); }
         var uploadsEl = document.getElementById('chart-uploads');
@@ -282,7 +296,13 @@
         var s = document.querySelector('script[src*="apexcharts"]');
         if (s) { s.onload = initSiteCharts; }
     }
-    document.addEventListener('htmx:afterSettle', initSiteCharts);
+    document.addEventListener('htmx:afterSettle', function() {
+        document.querySelectorAll('.cm-fmt-num').forEach(function(el) {
+            var raw = el.textContent.trim();
+            if (raw !== '') el.textContent = fmtNum(raw);
+        });
+        initSiteCharts();
+    });
 })();
 </script>
 {{template "foot.html" .}}

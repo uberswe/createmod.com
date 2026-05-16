@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4752C4"/>
+      <stop offset="100%" stop-color="#7289DA"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="400" fill="url(#bg)"/>
+  <rect width="1600" height="400" fill="url(#shine)"/>
+
+  <!-- Decorative dots pattern -->
+  <g fill="#fff" opacity="0.06">
+    <circle cx="80" cy="40" r="4"/><circle cx="80" cy="80" r="4"/><circle cx="80" cy="120" r="4"/><circle cx="80" cy="160" r="4"/><circle cx="80" cy="200" r="4"/><circle cx="80" cy="240" r="4"/><circle cx="80" cy="280" r="4"/><circle cx="80" cy="320" r="4"/><circle cx="80" cy="360" r="4"/>
+    <circle cx="120" cy="40" r="4"/><circle cx="120" cy="80" r="4"/><circle cx="120" cy="120" r="4"/><circle cx="120" cy="160" r="4"/><circle cx="120" cy="200" r="4"/><circle cx="120" cy="240" r="4"/><circle cx="120" cy="280" r="4"/><circle cx="120" cy="320" r="4"/><circle cx="120" cy="360" r="4"/>
+    <circle cx="160" cy="40" r="4"/><circle cx="160" cy="80" r="4"/><circle cx="160" cy="120" r="4"/><circle cx="160" cy="160" r="4"/><circle cx="160" cy="200" r="4"/><circle cx="160" cy="240" r="4"/><circle cx="160" cy="280" r="4"/><circle cx="160" cy="320" r="4"/><circle cx="160" cy="360" r="4"/>
+    <circle cx="1440" cy="40" r="4"/><circle cx="1440" cy="80" r="4"/><circle cx="1440" cy="120" r="4"/><circle cx="1440" cy="160" r="4"/><circle cx="1440" cy="200" r="4"/><circle cx="1440" cy="240" r="4"/><circle cx="1440" cy="280" r="4"/><circle cx="1440" cy="320" r="4"/><circle cx="1440" cy="360" r="4"/>
+    <circle cx="1480" cy="40" r="4"/><circle cx="1480" cy="80" r="4"/><circle cx="1480" cy="120" r="4"/><circle cx="1480" cy="160" r="4"/><circle cx="1480" cy="200" r="4"/><circle cx="1480" cy="240" r="4"/><circle cx="1480" cy="280" r="4"/><circle cx="1480" cy="320" r="4"/><circle cx="1480" cy="360" r="4"/>
+    <circle cx="1520" cy="40" r="4"/><circle cx="1520" cy="80" r="4"/><circle cx="1520" cy="120" r="4"/><circle cx="1520" cy="160" r="4"/><circle cx="1520" cy="200" r="4"/><circle cx="1520" cy="240" r="4"/><circle cx="1520" cy="280" r="4"/><circle cx="1520" cy="320" r="4"/><circle cx="1520" cy="360" r="4"/>
+  </g>
+
+  <!-- Discord logo (gamepad icon) -->
+  <g transform="translate(700, 100) scale(4.2)" fill="#fff" opacity="0.92">
+    <path d="M40.634 6.985c-3.126-1.434-6.48-2.494-9.984-3.098a.068.068 0 0 0-.072.034c-.43.767-.908 1.768-1.243 2.554a36.7 36.7 0 0 0-11.01 0C17.99 5.689 17.5 4.72 17.058 3.92a.071.071 0 0 0-.072-.034c-3.504.604-6.858 1.664-9.984 3.1a.064.064 0 0 0-.03.025C1.018 16.047-.61 24.827.19 33.502a.075.075 0 0 0 .029.051c4.1 3.01 8.07 4.84 11.966 6.05a.071.071 0 0 0 .077-.026c.922-1.258 1.743-2.586 2.45-3.98a.07.07 0 0 0-.038-.097c-1.302-.494-2.543-1.098-3.732-1.793a.07.07 0 0 1-.007-.116c.251-.188.502-.383.741-.58a.068.068 0 0 1 .071-.01c7.83 3.575 16.306 3.575 24.047 0a.068.068 0 0 1 .072.009c.24.197.49.393.742.582a.07.07 0 0 1-.005.116c-1.19.695-2.432 1.298-3.734 1.792a.07.07 0 0 0-.037.098c.717 1.393 1.538 2.72 2.448 3.979a.07.07 0 0 0 .078.027c3.908-1.21 7.878-3.04 11.978-6.05a.073.073 0 0 0 .028-.05c.952-9.85-1.595-18.404-6.752-25.993a.058.058 0 0 0-.028-.026zM16.128 27.85c-2.25 0-4.105-2.065-4.105-4.603 0-2.538 1.818-4.603 4.105-4.603 2.3 0 4.13 2.078 4.105 4.603 0 2.538-1.818 4.603-4.105 4.603zm15.18 0c-2.25 0-4.105-2.065-4.105-4.603 0-2.538 1.818-4.603 4.105-4.603 2.3 0 4.13 2.078 4.105 4.603 0 2.538-1.818 4.603-4.105 4.603z"/>
+  </g>
+
+  <!-- Webhook arrow motif -->
+  <g stroke="#fff" stroke-width="2.5" fill="none" opacity="0.18">
+    <path d="M340 200 L440 200" stroke-linecap="round"/>
+    <path d="M420 185 L440 200 L420 215" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1160 200 L1260 200" stroke-linecap="round"/>
+    <path d="M1240 185 L1260 200 L1240 215" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Subtle gear accents -->
+  <g stroke="#fff" stroke-width="1.5" fill="none" opacity="0.1">
+    <circle cx="280" cy="120" r="20"/>
+    <circle cx="280" cy="120" r="10"/>
+    <line x1="280" y1="96" x2="280" y2="104"/>
+    <line x1="280" y1="136" x2="280" y2="144"/>
+    <line x1="256" y1="120" x2="264" y2="120"/>
+    <line x1="296" y1="120" x2="304" y2="120"/>
+    <circle cx="1320" cy="280" r="20"/>
+    <circle cx="1320" cy="280" r="10"/>
+    <line x1="1320" y1="256" x2="1320" y2="264"/>
+    <line x1="1320" y1="296" x2="1320" y2="304"/>
+    <line x1="1296" y1="280" x2="1304" y2="280"/>
+    <line x1="1336" y1="280" x2="1344" y2="280"/>
+  </g>
+</svg>

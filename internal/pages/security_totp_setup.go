@@ -6,8 +6,10 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/store"
 	"crypto/rand"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/hex"
+	tmpl "html/template"
 	"image/png"
 	"net/http"
 	"strings"
@@ -27,7 +29,7 @@ var totpBackupCodesTemplates = append([]string{
 
 type TOTPSetupData struct {
 	DefaultData
-	QRCodeDataURI string
+	QRCodeDataURI tmpl.URL
 	ManualKey     string
 	Error         string
 }
@@ -51,9 +53,14 @@ func TOTPSetupHandler(registry *server.Registry, cacheService *cache.Service, ap
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings/security"))
 		}
 
+		accountName := user.Email
+		if accountName == "" {
+			accountName = user.Username
+		}
+
 		key, err := totp.Generate(totp.GenerateOpts{
 			Issuer:      "CreateMod.com",
-			AccountName: user.Email,
+			AccountName: accountName,
 		})
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to generate TOTP secret")
@@ -85,7 +92,7 @@ func TOTPSetupHandler(registry *server.Registry, cacheService *cache.Service, ap
 		qrDataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 
 		d := TOTPSetupData{
-			QRCodeDataURI: qrDataURI,
+			QRCodeDataURI: tmpl.URL(qrDataURI),
 			ManualKey:     key.Secret(),
 		}
 		d.Populate(e)
@@ -237,15 +244,26 @@ func renderTOTPSetupError(e *server.RequestEvent, registry *server.Registry, cac
 	}
 
 	user, _ := appStore.Users.GetUserByID(ctx, userID)
-	email := ""
+	accountName := ""
 	if user != nil {
-		email = user.Email
+		accountName = user.Email
+		if accountName == "" {
+			accountName = user.Username
+		}
+	}
+	if accountName == "" {
+		accountName = userID
+	}
+
+	rawSecret, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(secret)
+	if err != nil {
+		return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings/security/totp/setup"))
 	}
 
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "CreateMod.com",
-		AccountName: email,
-		Secret:      []byte(secret),
+		AccountName: accountName,
+		Secret:      rawSecret,
 	})
 	if err != nil {
 		return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings/security/totp/setup"))
@@ -257,7 +275,7 @@ func renderTOTPSetupError(e *server.RequestEvent, registry *server.Registry, cac
 	qrDataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 
 	d := TOTPSetupData{
-		QRCodeDataURI: qrDataURI,
+		QRCodeDataURI: tmpl.URL(qrDataURI),
 		ManualKey:     secret,
 		Error:         msg,
 	}

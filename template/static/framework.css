@@ -1218,6 +1218,7 @@ textarea.form-control { min-height: calc(1.4285714286em + 0.875rem + 2px); }
   --cm-dropdown-bg: var(--cm-bg-surface, #fff);
   --cm-dropdown-border-color: var(--cm-border-color);
   position: absolute;
+  top: 100%;
   z-index: 1000;
   display: none;
   min-width: var(--cm-dropdown-min-width);

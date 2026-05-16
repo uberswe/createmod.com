@@ -714,6 +714,31 @@ func (q *Queries) ListCleanSearchTerms(ctx context.Context, dollar_1 []string) (
 	return items, nil
 }
 
+const listDirtySearchTerms = `-- name: ListDirtySearchTerms :many
+SELECT query FROM search_term_moderation
+WHERE is_clean = false AND query = ANY($1::text[])
+`
+
+func (q *Queries) ListDirtySearchTerms(ctx context.Context, dollar_1 []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listDirtySearchTerms, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var query string
+		if err := rows.Scan(&query); err != nil {
+			return nil, err
+		}
+		items = append(items, query)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExternalAuthsByProvider = `-- name: ListExternalAuthsByProvider :many
 SELECT id, user_id, provider, provider_id, created, updated, access_token_encrypted, refresh_token_encrypted, token_expiry, username, avatar_url, metadata FROM external_auths WHERE provider = $1
 `

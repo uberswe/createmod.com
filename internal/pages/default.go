@@ -18,6 +18,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/mail"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -64,6 +65,7 @@ type DefaultData struct {
 	MicrosoftOAuthEnabled  bool
 	SteamOAuthEnabled      bool
 	OAuthError             string
+	IsDev                  bool
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
@@ -151,6 +153,7 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	d.GoogleOAuthEnabled = GoogleOAuthEnabled()
 	d.MicrosoftOAuthEnabled = MicrosoftOAuthEnabled()
 	d.SteamOAuthEnabled = SteamOAuthEnabled()
+	d.IsDev = os.Getenv("DEV") == "true"
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {

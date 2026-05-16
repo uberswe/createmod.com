@@ -34,7 +34,7 @@
                   <div class="card-title h4 text-truncate">{{ .Title }}</div>
                   <div class="btn-list">
                     <a class="btn btn-primary" href="{{ SignedOutURL .VideoURL "video" .SchematicURL }}">{{ T $root.Language "View on YouTube" }}</a>
-                    <a class="btn" href="{{ .SchematicURL }}">{{ T $root.Language "View schematic" }}</a>
+                    <a class="btn btn-outline-secondary" href="{{ .SchematicURL }}">{{ T $root.Language "View schematic" }}</a>
                   </div>
                 </div>
               </div>

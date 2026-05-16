@@ -481,7 +481,11 @@ SELECT s.id, s.name, s.title, s.featured_image,
 FROM schematics s
 LEFT JOIN schematic_views sv ON sv.schematic_id = s.id AND sv.type = '4' AND sv.period = 'total'
 LEFT JOIN (
-    SELECT schematic_id, COUNT(*) AS dl_count FROM schematic_downloads GROUP BY schematic_id
+    SELECT sd.schematic_id, COUNT(*) AS dl_count
+    FROM schematic_downloads sd
+    JOIN schematics s2 ON s2.id = sd.schematic_id
+    WHERE s2.author_id = $1 AND s2.deleted IS NULL
+    GROUP BY sd.schematic_id
 ) dl ON dl.schematic_id = s.id
 WHERE s.author_id = $1 AND s.deleted IS NULL
 ORDER BY s.created DESC

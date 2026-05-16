@@ -11,7 +11,8 @@
                         <div class="d-flex align-items-center mb-3">
                             <h2 class="mb-0"><a href="/trending" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
                             {{ if .IsAuthenticated }}
-                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="trending" data-target-id="trending" title="{{ T .Language "Follow" }}">
+                            {{ $ft := index .FollowedSet "trending:trending" }}
+                            <button class="btn btn-sm {{ if $ft }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="trending" data-target-id="trending" data-followed="{{ if $ft }}true{{ else }}false{{ end }}" title="{{ if $ft }}{{ T .Language "Following" }}{{ else }}{{ T .Language "Follow" }}{{ end }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
@@ -38,7 +39,8 @@
                         <div class="d-flex align-items-center mb-3 mt-4">
                             <h2 class="mb-0"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} &rarr;</a></h2>
                             {{ if .IsAuthenticated }}
-                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="latest" data-target-id="latest" title="{{ T .Language "Follow" }}">
+                            {{ $fl := index .FollowedSet "latest:latest" }}
+                            <button class="btn btn-sm {{ if $fl }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="latest" data-target-id="latest" data-followed="{{ if $fl }}true{{ else }}false{{ end }}" title="{{ if $fl }}{{ T .Language "Following" }}{{ else }}{{ T .Language "Follow" }}{{ end }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
@@ -65,7 +67,8 @@
                         <div class="d-flex align-items-center mb-3 mt-4">
                             <h2 class="mb-0"><a href="/highest-scores" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
                             {{ if .IsAuthenticated }}
-                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="highest_rated" data-target-id="highest_rated" title="{{ T .Language "Follow" }}">
+                            {{ $fh := index .FollowedSet "highest_rated:highest_rated" }}
+                            <button class="btn btn-sm {{ if $fh }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="highest_rated" data-target-id="highest_rated" data-followed="{{ if $fh }}true{{ else }}false{{ end }}" title="{{ if $fh }}{{ T .Language "Following" }}{{ else }}{{ T .Language "Follow" }}{{ end }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
@@ -94,7 +97,8 @@
                         <div class="d-flex align-items-center mb-3 mt-4">
                             <h3 class="mb-0"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ T $.Language .Category.Name }} &rarr;</a></h3>
                             {{ if $.IsAuthenticated }}
-                            <button class="btn btn-sm btn-ghost-primary ms-2 follow-btn" data-follow-type="category" data-target-id="{{ .Category.ID }}" title="{{ T $.Language "Follow" }}">
+                            {{ $fc := index $.FollowedSet (printf "category:%s" .Category.ID) }}
+                            <button class="btn btn-sm {{ if $fc }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="category" data-target-id="{{ .Category.ID }}" data-followed="{{ if $fc }}true{{ else }}false{{ end }}" title="{{ if $fc }}{{ T $.Language "Following" }}{{ else }}{{ T $.Language "Follow" }}{{ end }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                             </button>
                             {{ end }}
@@ -126,22 +130,52 @@
     </div>
 </div>
 {{template "foot.html" .}}
+<style>
+.follow-btn{position:relative}
+.follow-tooltip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%) translateY(4px);background:var(--cm-bg-surface,#1a1a2e);color:var(--cm-text,#e0e0e0);border:1px solid var(--cm-border,#2a2a3e);padding:4px 10px;border-radius:6px;font-size:.8rem;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:10}
+.follow-tooltip.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+</style>
 <script>
 (function() {
+  function showTooltip(btn, text) {
+    var existing = btn.querySelector('.follow-tooltip');
+    if (existing) existing.remove();
+    var tip = document.createElement('div');
+    tip.className = 'follow-tooltip';
+    tip.textContent = text;
+    btn.appendChild(tip);
+    requestAnimationFrame(function() { tip.classList.add('show'); });
+    setTimeout(function() {
+      tip.classList.remove('show');
+      setTimeout(function() { tip.remove(); }, 200);
+    }, 1500);
+  }
+
   document.querySelectorAll('.follow-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var followType = btn.dataset.followType;
       var targetId = btn.dataset.targetId;
+      var isFollowed = btn.dataset.followed === 'true';
+
       fetch('/api/follows', {
-        method: 'POST',
+        method: isFollowed ? 'DELETE' : 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({follow_type: followType, target_id: targetId, email_frequency: 'daily'})
       }).then(function(resp) {
         if (resp.ok) {
-          btn.classList.remove('btn-ghost-primary');
-          btn.classList.add('btn-primary');
-          btn.disabled = true;
-          btn.title = 'Following';
+          if (isFollowed) {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-ghost-primary');
+            btn.dataset.followed = 'false';
+            btn.title = '{{ T .Language "Follow" }}';
+            showTooltip(btn, '{{ T .Language "Unfollowed!" }}');
+          } else {
+            btn.classList.remove('btn-ghost-primary');
+            btn.classList.add('btn-primary');
+            btn.dataset.followed = 'true';
+            btn.title = '{{ T .Language "Following" }}';
+            showTooltip(btn, '{{ T .Language "Followed!" }}');
+          }
         }
       });
     });

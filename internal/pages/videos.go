@@ -80,8 +80,7 @@ func youtubeThumb(id string) string {
 	if id == "" {
 		return ""
 	}
-	// mqdefault is 320x180 (16:9) — avoids black bars that hqdefault (4:3) causes
-	return "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"
+	return "https://i.ytimg.com/vi/" + id + "/hq720.jpg"
 }
 
 // computeTrendingVideos fetches schematics with videos and sorts them by

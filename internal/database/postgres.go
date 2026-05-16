@@ -3368,6 +3368,10 @@ func (st *SearchTrackingStoreImpl) ListCleanSearchTerms(ctx context.Context, ter
 	return st.q.ListCleanSearchTerms(ctx, terms)
 }
 
+func (st *SearchTrackingStoreImpl) ListDirtySearchTerms(ctx context.Context, terms []string) ([]string, error) {
+	return st.q.ListDirtySearchTerms(ctx, terms)
+}
+
 func (st *SearchTrackingStoreImpl) ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error) {
 	rows, err := st.q.ListUncheckedSearchTerms(ctx, db.ListUncheckedSearchTermsParams{
 		Terms: terms,

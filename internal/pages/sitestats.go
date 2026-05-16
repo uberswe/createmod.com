@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"createmod/internal/server"
+	"sync"
 )
 
 var siteStatsTemplates = append([]string{
@@ -102,8 +103,22 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		}
 
 		if global.Views == "" {
-			hViews, _ := appStore.Stats.HourlyStats(ctx, "schematic_views", since30d)
-			hDownloads, _ := appStore.Stats.HourlyStats(ctx, "schematic_downloads", since30d)
+			var hViews, hDownloads []store.HourlyStat
+			var ratio float64
+			var wg sync.WaitGroup
+			wg.Add(3)
+			go func() { defer wg.Done(); hViews, _ = appStore.Stats.HourlyStats(ctx, "schematic_views", since30d) }()
+			go func() { defer wg.Done(); hDownloads, _ = appStore.Stats.HourlyStats(ctx, "schematic_downloads", since30d) }()
+			go func() {
+				defer wg.Done()
+				if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
+					ratio = cached
+				} else {
+					ratio, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
+					cacheService.SetFloat("site_avg_vd_ratio_v2", ratio)
+				}
+			}()
+			wg.Wait()
 
 			var tv, td int
 			for _, v := range hViews {
@@ -113,14 +128,6 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 				td += int(dl.Count)
 			}
 
-			var ratio float64
-			if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
-				ratio = cached
-			} else {
-				ratio, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
-				cacheService.SetFloat("site_avg_vd_ratio_v2", ratio)
-			}
-
 			global = cachedGlobal{
 				Views:      hourlyStatsJSON(hViews),
 				Downloads:  hourlyStatsJSON(hDownloads),
@@ -128,7 +135,7 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 				TotalDL:    td,
 				VDRatio:    fmt.Sprintf("%.2f%%", ratio*100),
 			}
-			cacheService.SetWithTTL(cacheKey, global, 15*time.Minute)
+			cacheService.SetWithTTL(cacheKey, global, 30*time.Minute)
 		}
 
 		d.HourlyViewsJSON = html.JS(global.Views)
@@ -150,11 +157,15 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 			}
 		}
 		if counts.DailyUploads == "" {
-			counts.TotalSchematics, _ = appStore.Schematics.CountApproved(ctx)
-			counts.TotalDrafts, _ = appStore.TempUploads.CountAll(ctx)
-			daily, _ := appStore.Stats.DailySchematicUploads(ctx, since30d)
+			var daily []store.DailyCount
+			var wgC sync.WaitGroup
+			wgC.Add(3)
+			go func() { defer wgC.Done(); counts.TotalSchematics, _ = appStore.Schematics.CountApproved(ctx) }()
+			go func() { defer wgC.Done(); counts.TotalDrafts, _ = appStore.TempUploads.CountAll(ctx) }()
+			go func() { defer wgC.Done(); daily, _ = appStore.Stats.DailySchematicUploads(ctx, since30d) }()
+			wgC.Wait()
 			counts.DailyUploads = dailyCountsJSON(daily)
-			cacheService.SetWithTTL(countsCacheKey, counts, 15*time.Minute)
+			cacheService.SetWithTTL(countsCacheKey, counts, 30*time.Minute)
 		}
 		d.TotalSchematics = counts.TotalSchematics
 		d.TotalDrafts = counts.TotalDrafts
@@ -164,8 +175,17 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.ShowYourStatsLink = userID != ""
 
 		if userID != "" {
-			cutoff := now.AddDate(0, -3, 0)
-			hasRecent, _ := appStore.SearchTracking.HasRecentApprovedUpload(ctx, userID, cutoff)
+			recentUploadKey := fmt.Sprintf("site_stats_recent_upload_%s", userID)
+			hasRecent := false
+			if cached, found := cacheService.Get(recentUploadKey); found {
+				if b, ok := cached.(bool); ok {
+					hasRecent = b
+				}
+			} else {
+				cutoff := now.AddDate(0, -3, 0)
+				hasRecent, _ = appStore.SearchTracking.HasRecentApprovedUpload(ctx, userID, cutoff)
+				cacheService.SetWithTTL(recentUploadKey, hasRecent, 30*time.Minute)
+			}
 			d.CanViewSearchStats = hasRecent
 			if !hasRecent {
 				d.SearchStatsNotice = i18n.T(d.Language, "Search and page statistics are available to creators with at least one approved upload in the last 3 months.")
@@ -191,19 +211,19 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 
 			if d.TopSearches == nil {
 				raw, _ := appStore.SearchTracking.ListTopSearchesSince(ctx, windowSince, 200)
+				var candidates []SiteSearchEntry
 				if len(raw) > 0 {
 					terms := make([]string, len(raw))
 					for i, r := range raw {
 						terms[i] = r.Query
 					}
-					clean, _ := appStore.SearchTracking.ListCleanSearchTerms(ctx, terms)
-					cleanSet := make(map[string]bool, len(clean))
-					for _, c := range clean {
-						cleanSet[c] = true
+					dirty, _ := appStore.SearchTracking.ListDirtySearchTerms(ctx, terms)
+					dirtySet := make(map[string]bool, len(dirty))
+					for _, d := range dirty {
+						dirtySet[d] = true
 					}
-					var candidates []SiteSearchEntry
 					for _, r := range raw {
-						if cleanSet[r.Query] && len(r.Query) >= 3 {
+						if !dirtySet[r.Query] && len(r.Query) >= 3 {
 							candidates = append(candidates, SiteSearchEntry{
 								Query:       r.Query,
 								SearchCount: r.ResultsCount,
@@ -214,8 +234,8 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 					if len(candidates) > 100 {
 						candidates = candidates[:100]
 					}
-					d.TopSearches = candidates
 				}
+				d.TopSearches = candidates
 				cacheService.SetWithTTL(searchCacheKey, d.TopSearches, 1*time.Hour)
 			}
 

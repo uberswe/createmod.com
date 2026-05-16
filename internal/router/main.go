@@ -460,8 +460,12 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/settings/webhooks", Adapt(pages.UserWebhookSaveHandler(p.CacheService, p.AppStore, webhookSecret)))
 	r.Post("/settings/webhooks/delete", Adapt(pages.UserWebhookDeleteHandler(p.AppStore)))
 	r.Get("/settings/statistics", Adapt(pages.UserStatsHandler(registry, p.CacheService, p.AppStore)))
-	r.Get("/settings/badges", Adapt(pages.UserBadgesHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/settings/badges", Adapt(pages.UserBadgesSaveHandler(p.AppStore)))
+	r.Get("/settings/badges", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/settings", http.StatusFound)
+	})
+	r.Post("/settings/badges", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/settings", http.StatusFound)
+	})
 	r.Post("/settings/social-links", Adapt(pages.SocialLinkSaveHandler(p.AppStore)))
 	r.Delete("/settings/social-links/{platform}", Adapt(pages.SocialLinkDeleteHandler(p.AppStore)))
 	r.Get("/settings/blacklist", Adapt(pages.BlacklistRequestHandler(registry, p.CacheService, p.AppStore)))

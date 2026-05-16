@@ -233,6 +233,10 @@ ON CONFLICT (query) DO UPDATE SET is_clean = EXCLUDED.is_clean, checked_at = NOW
 SELECT query FROM search_term_moderation
 WHERE is_clean = true AND query = ANY($1::text[]);
 
+-- name: ListDirtySearchTerms :many
+SELECT query FROM search_term_moderation
+WHERE is_clean = false AND query = ANY($1::text[]);
+
 -- name: ListUncheckedSearchTerms :many
 SELECT t.term AS query
 FROM unnest(@terms::text[]) AS t(term)

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"createmod/internal/server"
@@ -96,76 +97,130 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		ctx := context.Background()
 		now := time.Now().UTC()
 		start := now.AddDate(0, -11, 0)
-
-		// Monthly stats (existing)
-		monthlyStats, err := appStore.Stats.MonthlyUserStats(ctx, userID, 12)
-		var views, downloads []MonthlyDataPoint
-		if err == nil {
-			for _, s := range monthlyStats {
-				views = append(views, MonthlyDataPoint{
-					Period: s.Month,
-					Label:  periodToLabel(s.Month),
-					Total:  int(s.Views),
-				})
-				downloads = append(downloads, MonthlyDataPoint{
-					Period: s.Month,
-					Label:  periodToLabel(s.Month),
-					Total:  int(s.Downloads),
-				})
-			}
-		}
-
-		d.MonthlyViews = fillMissingMonths(views, start, now)
-		d.MonthlyDownloads = fillMissingMonths(downloads, start, now)
-		d.ViewLabelsJSON = html.JS(toJSONStringArray(d.MonthlyViews))
-		d.ViewValuesJSON = html.JS(toJSONIntArray(d.MonthlyViews))
-		d.DownloadLabelsJSON = html.JS(toJSONStringArray(d.MonthlyDownloads))
-		d.DownloadValuesJSON = html.JS(toJSONIntArray(d.MonthlyDownloads))
-
-		// Hourly aggregate stats (30 days)
 		since := now.AddDate(0, 0, -30)
 
-		cacheKey := fmt.Sprintf("user_analytics:%s", userID)
+		// --- Cached monthly stats (30 min TTL) ---
+		type cachedMonthly struct {
+			ViewLabels, ViewValues, DLLabels, DLValues string
+			Views, Downloads                           []MonthlyDataPoint
+		}
+		monthlyCacheKey := fmt.Sprintf("user_monthly_stats:%s", userID)
+		var monthly cachedMonthly
+		if cached, found := cacheService.Get(monthlyCacheKey); found {
+			if cm, ok := cached.(cachedMonthly); ok {
+				monthly = cm
+			}
+		}
+		needMonthly := monthly.ViewLabels == ""
+
+		// --- Cached hourly stats (15 min TTL) ---
+		hourlyCacheKey := fmt.Sprintf("user_analytics:%s", userID)
 		type cachedHourly struct {
 			Views, Downloads, VideoPlays, YTClicks, TimeOnPage, LayerViews string
 			TotalViews, TotalDownloads                                     int
 		}
-
 		var hourly cachedHourly
-		if cached, found := cacheService.Get(cacheKey); found {
+		if cached, found := cacheService.Get(hourlyCacheKey); found {
 			if ch, ok := cached.(cachedHourly); ok {
 				hourly = ch
 			}
 		}
+		needHourly := hourly.Views == ""
 
-		if hourly.Views == "" {
-			hViews, _ := appStore.Stats.HourlyUserViews(ctx, userID, since)
-			hDownloads, _ := appStore.Stats.HourlyUserDownloads(ctx, userID, since)
-			hVideoPlays, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventVideoPlay, since)
-			hYTClicks, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventYouTubeClick, since)
-			hTimeOnPage, _ := appStore.Stats.HourlyUserEventAvg(ctx, userID, store.EventTimeOnPage, since)
-			hLayerViews, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventLayerViewer, since)
-
-			var tv, td int
-			for _, v := range hViews {
-				tv += int(v.Count)
-			}
-			for _, dl := range hDownloads {
-				td += int(dl.Count)
-			}
-
-			hourly = cachedHourly{
-				Views:          hourlyStatsJSON(hViews),
-				Downloads:      hourlyStatsJSON(hDownloads),
-				VideoPlays:     hourlyStatsJSON(hVideoPlays),
-				YTClicks:       hourlyStatsJSON(hYTClicks),
-				TimeOnPage:     hourlyStatsJSON(hTimeOnPage),
-				LayerViews:     hourlyStatsJSON(hLayerViews),
-				TotalViews:     tv,
-				TotalDownloads: td,
-			}
-			cacheService.SetWithTTL(cacheKey, hourly, 15*time.Minute)
+		// --- Site VD ratio (shared cache) ---
+		var siteAvg float64
+		siteAvgCached := false
+		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
+			siteAvg = cached
+			siteAvgCached = true
 		}
+
+		// --- Run all uncached queries in parallel ---
+		var wg sync.WaitGroup
+		if needMonthly {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				monthlyStats, err := appStore.Stats.MonthlyUserStats(ctx, userID, 12)
+				var views, downloads []MonthlyDataPoint
+				if err == nil {
+					for _, s := range monthlyStats {
+						views = append(views, MonthlyDataPoint{
+							Period: s.Month,
+							Label:  periodToLabel(s.Month),
+							Total:  int(s.Views),
+						})
+						downloads = append(downloads, MonthlyDataPoint{
+							Period: s.Month,
+							Label:  periodToLabel(s.Month),
+							Total:  int(s.Downloads),
+						})
+					}
+				}
+				filled := fillMissingMonths(views, start, now)
+				filledDL := fillMissingMonths(downloads, start, now)
+				monthly = cachedMonthly{
+					ViewLabels: toJSONStringArray(filled),
+					ViewValues: toJSONIntArray(filled),
+					DLLabels:   toJSONStringArray(filledDL),
+					DLValues:   toJSONIntArray(filledDL),
+					Views:      filled,
+					Downloads:  filledDL,
+				}
+				cacheService.SetWithTTL(monthlyCacheKey, monthly, 30*time.Minute)
+			}()
+		}
+		if needHourly {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				var hViews, hDownloads, hVideoPlays, hYTClicks, hTimeOnPage, hLayerViews []store.HourlyStat
+				var hwg sync.WaitGroup
+				hwg.Add(6)
+				go func() { defer hwg.Done(); hViews, _ = appStore.Stats.HourlyUserViews(ctx, userID, since) }()
+				go func() { defer hwg.Done(); hDownloads, _ = appStore.Stats.HourlyUserDownloads(ctx, userID, since) }()
+				go func() { defer hwg.Done(); hVideoPlays, _ = appStore.Stats.HourlyUserEvents(ctx, userID, store.EventVideoPlay, since) }()
+				go func() { defer hwg.Done(); hYTClicks, _ = appStore.Stats.HourlyUserEvents(ctx, userID, store.EventYouTubeClick, since) }()
+				go func() { defer hwg.Done(); hTimeOnPage, _ = appStore.Stats.HourlyUserEventAvg(ctx, userID, store.EventTimeOnPage, since) }()
+				go func() { defer hwg.Done(); hLayerViews, _ = appStore.Stats.HourlyUserEvents(ctx, userID, store.EventLayerViewer, since) }()
+				hwg.Wait()
+
+				var tv, td int
+				for _, v := range hViews {
+					tv += int(v.Count)
+				}
+				for _, dl := range hDownloads {
+					td += int(dl.Count)
+				}
+				hourly = cachedHourly{
+					Views:          hourlyStatsJSON(hViews),
+					Downloads:      hourlyStatsJSON(hDownloads),
+					VideoPlays:     hourlyStatsJSON(hVideoPlays),
+					YTClicks:       hourlyStatsJSON(hYTClicks),
+					TimeOnPage:     hourlyStatsJSON(hTimeOnPage),
+					LayerViews:     hourlyStatsJSON(hLayerViews),
+					TotalViews:     tv,
+					TotalDownloads: td,
+				}
+				cacheService.SetWithTTL(hourlyCacheKey, hourly, 15*time.Minute)
+			}()
+		}
+		if !siteAvgCached {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				siteAvg, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
+				cacheService.SetFloat("site_avg_vd_ratio_v2", siteAvg)
+			}()
+		}
+		wg.Wait()
+
+		d.MonthlyViews = monthly.Views
+		d.MonthlyDownloads = monthly.Downloads
+		d.ViewLabelsJSON = html.JS(monthly.ViewLabels)
+		d.ViewValuesJSON = html.JS(monthly.ViewValues)
+		d.DownloadLabelsJSON = html.JS(monthly.DLLabels)
+		d.DownloadValuesJSON = html.JS(monthly.DLValues)
 
 		d.HourlyViewsJSON = html.JS(hourly.Views)
 		d.HourlyDownloadsJSON = html.JS(hourly.Downloads)
@@ -176,16 +231,7 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.TotalViews30d = hourly.TotalViews
 		d.TotalDownloads30d = hourly.TotalDownloads
 
-		// VD ratio
-		var siteAvg float64
-		if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
-			siteAvg = cached
-		} else {
-			siteAvg, _ = appStore.Stats.GetSiteAvgVDRatioSinceCutoff(ctx, HourlyTrackingCutoff)
-			cacheService.SetFloat("site_avg_vd_ratio_v2", siteAvg)
-		}
 		d.SiteAvgVDRatio = siteAvg
-
 		var vdRatio float64
 		if d.TotalViews30d > 0 {
 			vdRatio = float64(d.TotalDownloads30d) / float64(d.TotalViews30d)
@@ -193,7 +239,7 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.VDRatioPercent = fmt.Sprintf("%.2f%%", vdRatio*100)
 		d.VDRatioBetter = vdRatio >= siteAvg
 
-		// Schematic list with pagination
+		// --- Schematic list with pagination (cached 15 min) ---
 		d.PageSize = 20
 		pageStr := e.Request.URL.Query().Get("page")
 		d.Page, _ = strconv.Atoi(pageStr)
@@ -202,17 +248,41 @@ func UserStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		}
 		offset := (d.Page - 1) * d.PageSize
 
-		totalSchematics, _ := appStore.Stats.CountUserSchematics(ctx, userID)
-		d.TotalSchematics = totalSchematics
-		d.TotalPages = (totalSchematics + d.PageSize - 1) / d.PageSize
+		type cachedSchematicList struct {
+			Total int
+			Stats []store.SchematicStatsSummary
+		}
+		schemCacheKey := fmt.Sprintf("user_schem_stats:%s:%d", userID, d.Page)
+		var schemList cachedSchematicList
+		if cached, found := cacheService.Get(schemCacheKey); found {
+			if cl, ok := cached.(cachedSchematicList); ok {
+				schemList = cl
+			}
+		}
+		if schemList.Stats == nil {
+			var totalSchematics int
+			var schematicStats []store.SchematicStatsSummary
+			var slWg sync.WaitGroup
+			slWg.Add(2)
+			go func() { defer slWg.Done(); totalSchematics, _ = appStore.Stats.CountUserSchematics(ctx, userID) }()
+			go func() { defer slWg.Done(); schematicStats, _ = appStore.Stats.ListSchematicStats(ctx, userID, d.PageSize, offset) }()
+			slWg.Wait()
+			schemList = cachedSchematicList{Total: totalSchematics, Stats: schematicStats}
+			if schemList.Stats == nil {
+				schemList.Stats = []store.SchematicStatsSummary{}
+			}
+			cacheService.SetWithTTL(schemCacheKey, schemList, 15*time.Minute)
+		}
+
+		d.TotalSchematics = schemList.Total
+		d.TotalPages = (schemList.Total + d.PageSize - 1) / d.PageSize
 		d.HasPrevPage = d.Page > 1
 		d.HasNextPage = d.Page < d.TotalPages
 		d.PrevPage = d.Page - 1
 		d.NextPage = d.Page + 1
 
-		schematicStats, _ := appStore.Stats.ListSchematicStats(ctx, userID, d.PageSize, offset)
 		cutoff := HourlyTrackingCutoff
-		for _, s := range schematicStats {
+		for _, s := range schemList.Stats {
 			var ratio float64
 			if s.Views > 0 {
 				ratio = float64(s.Downloads) / float64(s.Views)
