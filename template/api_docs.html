@@ -7,159 +7,222 @@
       <div class="container-wide">
 
         <!-- Hero -->
-        <div class="api-hero mb-3">
-          <h1 class="mb-2">{{ T .Language "API Documentation" }}</h1>
-          <p class="text-secondary mb-2">{{ T .Language "Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically." }}</p>
-          <code class="api-base-url">{{ T .Language "Base URL" }}: https://createmod.com</code>
-          <div class="mt-2">
-            <a href="/api/openapi.json" class="btn btn-sm btn-outline-secondary" target="_blank" hx-boost="false">OpenAPI Spec (JSON)</a>
+        <section class="apidocs-hero">
+          <h1>
+            <span class="brass-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M14 4l-4 16"/></svg>
+            </span>
+            {{ T .Language "API Documentation" }}
+          </h1>
+          <p class="lede">{{ T .Language "Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically. The API is REST-style, returns JSON, and is rate-limited per key." }}</p>
+
+          <div class="apidocs-hero-meta">
+            <span class="apidocs-url-chip">
+              <span class="label">{{ T .Language "Base URL" }}</span>
+              <span class="val">https://createmod.com</span>
+            </span>
+            <a href="/api/openapi.json" class="apidocs-hero-link" target="_blank" hx-boost="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 17l3 -3l3 3"/><path d="M12 14l0 6"/></svg>
+              OpenAPI Spec (JSON)
+            </a>
           </div>
-        </div>
 
-        <div class="api-usage-notice mb-4">
-          <strong>{{ T .Language "Usage policy" }}:</strong>
-          {{ T .Language "Bulk downloading schematics, building databases of site content, and using the API to create competing services are prohibited." }}
-          <a href="/terms-of-service">{{ T .Language "Terms of Service" }}</a> &middot;
-          <a href="mailto:hello@createmod.com">hello@createmod.com</a>
-        </div>
+          <div class="apidocs-policy">
+            <span class="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v2m0 4v.01"/><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75"/></svg>
+            </span>
+            <div>
+              <strong>{{ T .Language "Usage policy" }}.</strong>
+              {{ T .Language "Bulk downloading schematics, building databases of site content, and using the API to create competing services are prohibited." }}
+              <a href="/terms-of-service">{{ T .Language "Terms of Service" }}</a><span class="dot">&middot;</span><a href="mailto:hello@createmod.com">hello@createmod.com</a>
+            </div>
+          </div>
+        </section>
 
-        <div class="api-docs-layout">
-          <!-- Left Nav -->
-          <nav class="api-docs-nav">
-            <ul class="nav flex-column">
-              <li class="nav-item"><a class="nav-link" href="#authentication">{{ T .Language "Authentication" }}</a></li>
-              <li class="nav-item"><a class="nav-link" href="#rate-limits">{{ T .Language "Rate Limits" }}</a></li>
-              <li class="nav-item"><a class="nav-link" href="#errors">{{ T .Language "Error Codes" }}</a></li>
-              <li class="nav-item api-nav-divider"></li>
-              <li class="nav-item"><a class="nav-link" href="#list-schematics"><span class="api-method-badge api-method-get">GET</span> /api/schematics</a></li>
-              <li class="nav-item"><a class="nav-link" href="#get-schematic"><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}</a></li>
-              <li class="nav-item"><a class="nav-link" href="#upload-schematic"><span class="api-method-badge api-method-post">POST</span> /api/schematics/upload</a></li>
-              <li class="nav-item api-nav-divider"></li>
-              <li class="nav-item"><a class="nav-link" href="#schematic-stats"><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}/stats</a></li>
-              <li class="nav-item"><a class="nav-link" href="#user-stats"><span class="api-method-badge api-method-get">GET</span> /api/user/stats</a></li>
-            </ul>
-          </nav>
+        <!-- Docs Grid -->
+        <div class="apidocs-grid">
 
-          <!-- Main content -->
-          <div class="api-docs-content">
+          <!-- TOC -->
+          <aside class="apidocs-toc" aria-label="On this page">
+            <div class="toc-section">{{ T .Language "Getting Started" }}</div>
+            <a href="#authentication" class="toc-link">{{ T .Language "Authentication" }}</a>
+            <a href="#rate-limits" class="toc-link">{{ T .Language "Rate Limits" }}</a>
+            <a href="#error-codes" class="toc-link">{{ T .Language "Error Codes" }}</a>
 
-            <!-- Authentication + API Key card side by side -->
-            <section id="authentication" class="api-section api-section-with-panel">
-              <div class="api-section-docs">
-                <h2>{{ T .Language "Authentication" }}</h2>
-                <p>{{ T .Language "All API requests require an API key. Pass it via the" }} <code>X-API-Key</code> {{ T .Language "header." }}</p>
-                <div class="api-code-block">
-                  <pre><code>X-API-Key: your_api_key_here</code></pre>
-                </div>
-                <p>{{ T .Language "Generate API keys from your" }} <a href="/settings/api-keys">{{ T .Language "account settings" }}</a>. {{ T .Language "Keys are shown once at creation, store them securely." }}</p>
-              </div>
-              <div class="api-section-panel">
-                <div class="api-try-card">
-                  <h5>{{ T .Language "API Key" }}</h5>
-                  <div class="mb-2">
-                    <input type="text" class="form-control form-control-sm api-global-key" id="api-key-input" placeholder="your_api_key">
+            <div class="toc-section">{{ T .Language "Schematics" }}</div>
+            <a href="#get-schematics" class="toc-link"><span class="method-tag" style="--method-fg:#2fb344">GET</span><span class="path">/api/schematics</span></a>
+            <a href="#get-schematic" class="toc-link"><span class="method-tag" style="--method-fg:#2fb344">GET</span><span class="path">/api/schematics/{name}</span></a>
+            <a href="#post-upload" class="toc-link"><span class="method-tag" style="--method-fg:#4299e1">POST</span><span class="path">/api/schematics/upload</span></a>
+            <a href="#get-schematic-stats" class="toc-link"><span class="method-tag" style="--method-fg:#2fb344">GET</span><span class="path">/api/schematics/{name}/stats</span></a>
+
+            <div class="toc-section">{{ T .Language "User" }}</div>
+            <a href="#get-user-stats" class="toc-link"><span class="method-tag" style="--method-fg:#2fb344">GET</span><span class="path">/api/user/stats</span></a>
+          </aside>
+
+          <!-- Content -->
+          <div class="apidocs-content">
+
+            <!-- Authentication -->
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section" id="authentication">
+                  <h2>{{ T .Language "Authentication" }} <a class="anchor" href="#authentication">#</a></h2>
+                  <p class="desc">{{ T .Language "All API requests require an API key. Pass it via the" }} <code>X-API-Key</code> {{ T .Language "header. Keys are scoped to your account and inherit your user-level rate limits." }}</p>
+                  <div class="code-card">
+                    <div class="tabs"><span class="lang-tab active">HTTP</span><span class="tabs-spacer"></span><button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button></div>
+                    <pre data-lang="http">GET /api/schematics HTTP/1.1
+Host: createmod.com
+X-API-Key: your_api_key_here
+Accept: application/json</pre>
                   </div>
-                  {{ if .IsAuthenticated }}
-                  <button class="btn btn-sm btn-outline-primary w-100" id="generate-test-key" onclick="generateTestKey()">{{ T .Language "Generate test key" }}</button>
-                  {{ else }}
-                  <p class="text-secondary mb-0" style="font-size: 0.8rem;"><a href="/login">{{ T .Language "Log in" }}</a> {{ T .Language "to generate a test key instantly." }}</p>
-                  {{ end }}
+                  <p class="desc">{{ T .Language "Generate API keys from your" }} <a href="/settings/api-keys">{{ T .Language "account settings" }}</a>. {{ T .Language "Keys are shown once at creation, store them securely. Never embed keys in client-side code." }}</p>
+                </section>
+              </div>
+              <div class="row-tryit">
+                <div class="tryit">
+                  <div class="tryit-head">
+                    <span class="method method-get" style="font-size:10px;padding:2px 5px">KEY</span>
+                    <span class="path">{{ T .Language "Your API key" }}</span>
+                  </div>
+                  <div class="tryit-body">
+                    <div class="field">
+                      <label>X-API-Key</label>
+                      <input type="text" id="global-api-key" placeholder="your_api_key_here">
+                    </div>
+                    <button class="tryit-send" id="save-key">{{ T .Language "Save Key (this session)" }}</button>
+                    {{ if .IsAuthenticated }}
+                    <p style="font-size:11px;color:var(--cm-body-color-muted);margin:10px 0 0;line-height:1.5">
+                      {{ T .Language "Used to populate requests below. Stored only in this tab." }}
+                    </p>
+                    {{ else }}
+                    <p style="font-size:11px;color:var(--cm-body-color-muted);margin:10px 0 0;line-height:1.5">
+                      <a href="/login">{{ T .Language "Log in" }}</a> {{ T .Language "to generate a test key instantly." }}
+                    </p>
+                    {{ end }}
+                  </div>
                 </div>
               </div>
-            </section>
+            </div>
 
             <!-- Rate Limits -->
-            <section id="rate-limits" class="api-section">
-              <h2>{{ T .Language "Rate Limits" }}</h2>
-              <p>{{ T .Language "Each API key is limited to" }} <strong>120 {{ T .Language "requests per minute" }}</strong>. {{ T .Language "Exceeding the limit returns" }} <code>429 Too Many Requests</code> {{ T .Language "with a" }} <code>Retry-After</code> {{ T .Language "header indicating seconds to wait." }}</p>
-            </section>
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section" id="rate-limits">
+                  <h2>{{ T .Language "Rate Limits" }} <a class="anchor" href="#rate-limits">#</a></h2>
+                  <p class="desc">{{ T .Language "Each API key is limited to" }} <strong>120 {{ T .Language "requests per minute" }}</strong>. {{ T .Language "Exceeding the limit returns" }} <code>429 Too Many Requests</code> {{ T .Language "with a" }} <code>Retry-After</code> {{ T .Language "header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle." }}</p>
+                  <div class="code-card">
+                    <div class="tabs"><span class="lang-tab active">{{ T .Language "Response Headers" }}</span><span class="tabs-spacer"></span><button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button></div>
+                    <pre data-lang="http">X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 87
+X-RateLimit-Reset: 1747491600
+Retry-After: 12          <span class="tok-c"># only on 429</span></pre>
+                  </div>
+                </section>
+              </div>
+              <div class="row-tryit"></div>
+            </div>
 
             <!-- Error Codes -->
-            <section id="errors" class="api-section">
-              <h2>{{ T .Language "Error Codes" }}</h2>
-              <div class="table-responsive">
-                <table class="table api-param-table">
-                  <thead>
-                    <tr><th>{{ T .Language "Status" }}</th><th>{{ T .Language "Meaning" }}</th><th>{{ T .Language "Description" }}</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr><td><code>400</code></td><td>Bad Request</td><td>{{ T .Language "Invalid parameters or missing required fields" }}</td></tr>
-                    <tr><td><code>401</code></td><td>Unauthorized</td><td>{{ T .Language "Missing or invalid API key" }}</td></tr>
-                    <tr><td><code>404</code></td><td>Not Found</td><td>{{ T .Language "The requested resource does not exist" }}</td></tr>
-                    <tr><td><code>409</code></td><td>Conflict</td><td>{{ T .Language "Duplicate upload detected" }}</td></tr>
-                    <tr><td><code>429</code></td><td>Too Many Requests</td><td>{{ T .Language "Rate limit exceeded" }}</td></tr>
-                    <tr><td><code>500</code></td><td>Server Error</td><td>{{ T .Language "Internal server error" }}</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p>{{ T .Language "All error responses return JSON:" }}</p>
-              <div class="api-code-block"><pre><code>{"error": "description of the error"}</code></pre></div>
-            </section>
-
-            <!-- GET /api/schematics -->
-            <section id="list-schematics" class="api-section api-section-with-panel">
-              <div class="api-section-docs">
-                <div class="api-endpoint-header">
-                  <span class="api-method-badge api-method-get">GET</span>
-                  <code class="api-endpoint-url">/api/schematics</code>
-                </div>
-                <p>{{ T .Language "Search or list schematics. Returns newest schematics when no query is provided." }}</p>
-
-                <h4>{{ T .Language "Parameters" }}</h4>
-                <div class="table-responsive">
-                  <table class="table api-param-table">
-                    <thead>
-                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
-                    </thead>
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section" id="error-codes">
+                  <h2>{{ T .Language "Error Codes" }} <a class="anchor" href="#error-codes">#</a></h2>
+                  <p class="desc">{{ T .Language "The API uses conventional HTTP status codes." }} <code>2xx</code> {{ T .Language "indicates success," }} <code>4xx</code> {{ T .Language "a client-side problem, and" }} <code>5xx</code> {{ T .Language "a server-side problem." }}</p>
+                  <table class="errors-table">
+                    <thead><tr><th style="width:90px">{{ T .Language "Status" }}</th><th style="width:200px">{{ T .Language "Meaning" }}</th><th>{{ T .Language "Description" }}</th></tr></thead>
                     <tbody>
-                      <tr><td><code>query</code> / <code>q</code></td><td>string</td><td><span class="text-secondary">{{ T .Language "Optional" }}</span></td><td>{{ T .Language "Search term" }}</td></tr>
-                      <tr><td><code>page</code> / <code>p</code></td><td>integer</td><td><span class="text-secondary">{{ T .Language "Optional" }}</span></td><td>{{ T .Language "Page number (default: 1)" }}</td></tr>
+                      <tr><td><span class="status-pill c4xx">400</span></td><td class="meaning">Bad Request</td><td class="descr-cell">{{ T .Language "Invalid parameters or missing required fields" }}</td></tr>
+                      <tr><td><span class="status-pill c4xx">401</span></td><td class="meaning">Unauthorized</td><td class="descr-cell">{{ T .Language "Missing or invalid API key" }}</td></tr>
+                      <tr><td><span class="status-pill c4xx">404</span></td><td class="meaning">Not Found</td><td class="descr-cell">{{ T .Language "The requested resource does not exist" }}</td></tr>
+                      <tr><td><span class="status-pill c4xx">409</span></td><td class="meaning">Conflict</td><td class="descr-cell">{{ T .Language "Duplicate upload detected" }}</td></tr>
+                      <tr><td><span class="status-pill c4xx">429</span></td><td class="meaning">Too Many Requests</td><td class="descr-cell">{{ T .Language "Rate limit exceeded" }}</td></tr>
+                      <tr><td><span class="status-pill c5xx">500</span></td><td class="meaning">Server Error</td><td class="descr-cell">{{ T .Language "Internal server error" }}</td></tr>
                     </tbody>
                   </table>
-                </div>
-
-                <h4>{{ T .Language "Code Samples" }}</h4>
-                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-cm-toggle="pill" data-cm-target="#list-curl" type="button">curl</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#list-js" type="button">JavaScript</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#list-python" type="button">Python</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#list-go" type="button">Go</button></li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane fade show active" id="list-curl">
-                    <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
-  "https://createmod.com/api/schematics?query=windmill&amp;page=1"</code></pre></div>
+                  <p class="desc" style="margin-top:14px">{{ T .Language "All error responses return JSON with a single" }} <code>error</code> {{ T .Language "field describing the problem:" }}</p>
+                  <div class="code-card">
+                    <div class="tabs"><span class="lang-tab active">JSON</span><span class="tabs-spacer"></span><button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button></div>
+                    <pre data-lang="json">{"error": "description of the error"}</pre>
                   </div>
-                  <div class="tab-pane fade" id="list-js">
-                    <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics?query=windmill", {
-  headers: { "X-API-Key": "YOUR_KEY" }
-});
-const data = await resp.json();
-console.log(data.items);</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="list-python">
-                    <div class="api-code-block"><pre><code>import requests
+                </section>
+              </div>
+              <div class="row-tryit"></div>
+            </div>
 
-resp = requests.get(
+            <!-- GET /api/schematics -->
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section apidocs-endpoint" id="get-schematics">
+                  <div class="apidocs-endpoint-head">
+                    <span class="method method-get">GET</span>
+                    <h3>/api/schematics</h3>
+                  </div>
+                  <p class="desc">{{ T .Language "Search or list schematics. Returns newest schematics when no query is provided. Results are paginated with 24 items per page." }}</p>
+
+                  <div class="sub-h">{{ T .Language "Parameters" }}</div>
+                  <table class="params">
+                    <thead><tr><th style="width:18%">{{ T .Language "Parameter" }}</th><th style="width:14%">{{ T .Language "Type" }}</th><th style="width:14%">{{ T .Language "Required" }}</th><th>{{ T .Language "Description" }}</th></tr></thead>
+                    <tbody>
+                      <tr>
+                        <td><span class="name">query</span><span class="alias-sep">/</span><span class="name">q</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Search term" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">page</span><span class="alias-sep">/</span><span class="name">p</span></td>
+                        <td><span class="type">integer</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Page number" }}<small>Default: 1</small></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="sub-h">{{ T .Language "Request" }}</div>
+                  <div class="code-card">
+                    <div class="tabs">
+                      <button class="lang-tab active" data-tab="curl">curl</button>
+                      <button class="lang-tab" data-tab="js">JavaScript</button>
+                      <button class="lang-tab" data-tab="py">Python</button>
+                      <button class="lang-tab" data-tab="go">Go</button>
+                      <span class="tabs-spacer"></span>
+                      <button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button>
+                    </div>
+                    <pre data-lang="bash" data-tab-content="curl">curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/schematics?query=windmill&amp;page=1"</pre>
+                    <pre data-lang="js" data-tab-content="js" hidden>const res = await fetch(
+  "https://createmod.com/api/schematics?query=windmill&page=1",
+  { headers: { "X-API-Key": "YOUR_KEY" } }
+);
+const data = await res.json();
+console.log(data.items);</pre>
+                    <pre data-lang="py" data-tab-content="py" hidden>import requests
+
+res = requests.get(
     "https://createmod.com/api/schematics",
-    params={"query": "windmill"},
-    headers={"X-API-Key": "YOUR_KEY"}
+    headers={"X-API-Key": "YOUR_KEY"},
+    params={"query": "windmill", "page": 1},
 )
-data = resp.json()
-print(data["items"])</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="list-go">
-                    <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
-    "https://createmod.com/api/schematics?query=windmill", nil)
+print(res.json()["items"])</pre>
+                    <pre data-lang="go" data-tab-content="go" hidden>req, _ := http.NewRequest("GET",
+    "https://createmod.com/api/schematics?query=windmill&page=1", nil)
 req.Header.Set("X-API-Key", "YOUR_KEY")
-resp, _ := http.DefaultClient.Do(req)
-defer resp.Body.Close()
-// decode resp.Body as JSON</code></pre></div>
-                  </div>
-                </div>
 
-                <h4>{{ T .Language "Response" }}</h4>
-                <div class="api-code-block"><pre><code>{
+res, err := http.DefaultClient.Do(req)
+if err != nil {
+    log.Fatal(err)
+}
+defer res.Body.Close()</pre>
+                  </div>
+
+                  <div class="sub-h">{{ T .Language "Response" }}</div>
+                  <div class="code-card">
+                    <div class="status-row">
+                      <span class="dot"></span>
+                      <span class="code">200 OK</span>
+                      <span class="text">application/json</span>
+                    </div>
+                    <pre data-lang="json">{
   "items": [
     {
       "name": "windmill-farm",
@@ -179,324 +242,417 @@ defer resp.Body.Close()
   "hasNext": true,
   "total": 48,
   "term": "windmill"
-}</code></pre></div>
+}</pre>
+                  </div>
+                </section>
               </div>
-              <div class="api-section-panel">
-                <div class="api-try-card" id="try-panel-list">
-                  <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics</h6>
-                  <div class="mb-2">
-                    <label class="form-label">query</label>
-                    <input type="text" class="form-control form-control-sm" id="try-list-query" placeholder="windmill">
+              <div class="row-tryit">
+                <div class="tryit" data-tryit-anchor="get-schematics">
+                  <div class="tryit-head">
+                    <span class="method method-get" style="font-size:10px;padding:2px 5px">GET</span>
+                    <span class="path">/api/schematics</span>
                   </div>
-                  <div class="mb-2">
-                    <label class="form-label">page</label>
-                    <input type="number" class="form-control form-control-sm" id="try-list-page" value="1" min="1">
-                  </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryListSchematics()">{{ T .Language "Send Request" }}</button>
-                  <div class="api-try-response mt-2" id="try-list-response" style="display:none;">
-                    <pre class="api-code-block mb-0"><code id="try-list-output"></code></pre>
-                  </div>
+                  <form class="tryit-body" data-tryit="get-schematics">
+                    <div class="field"><label>query</label><input name="query" type="text" placeholder="windmill" value="windmill"></div>
+                    <div class="field"><label>page</label><input name="page" type="number" value="1" min="1"></div>
+                    <button type="submit" class="tryit-send">{{ T .Language "Send Request" }}</button>
+                  </form>
+                  <div class="tryit-response"></div>
                 </div>
               </div>
-            </section>
+            </div>
 
             <!-- GET /api/schematics/{name} -->
-            <section id="get-schematic" class="api-section api-section-with-panel">
-              <div class="api-section-docs">
-                <div class="api-endpoint-header">
-                  <span class="api-method-badge api-method-get">GET</span>
-                  <code class="api-endpoint-url">/api/schematics/{name}</code>
-                </div>
-                <p>{{ T .Language "Get detailed information about a single schematic by its URL name." }}</p>
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section apidocs-endpoint" id="get-schematic">
+                  <div class="apidocs-endpoint-head">
+                    <span class="method method-get">GET</span>
+                    <h3>/api/schematics/<span class="path-param">{name}</span></h3>
+                  </div>
+                  <p class="desc">{{ T .Language "Get detailed information about a single schematic by its URL name (slug)." }}</p>
 
-                <h4>{{ T .Language "Parameters" }}</h4>
-                <div class="table-responsive">
-                  <table class="table api-param-table">
-                    <thead>
-                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
-                    </thead>
+                  <div class="sub-h">{{ T .Language "Parameters" }}</div>
+                  <table class="params">
+                    <thead><tr><th style="width:18%">{{ T .Language "Parameter" }}</th><th style="width:14%">{{ T .Language "Type" }}</th><th style="width:14%">{{ T .Language "Required" }}</th><th>{{ T .Language "Description" }}</th></tr></thead>
                     <tbody>
-                      <tr><td><code>name</code></td><td>string</td><td><strong>{{ T .Language "Required" }}</strong></td><td>{{ T .Language "The URL slug of the schematic" }}</td></tr>
+                      <tr>
+                        <td><span class="name">name</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req required">{{ T .Language "Required" }}</span></td>
+                        <td class="descr">{{ T .Language "URL slug of the schematic (path parameter)." }}</td>
+                      </tr>
                     </tbody>
                   </table>
-                </div>
 
-                <h4>{{ T .Language "Code Samples" }}</h4>
-                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-cm-toggle="pill" data-cm-target="#detail-curl" type="button">curl</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#detail-js" type="button">JavaScript</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#detail-python" type="button">Python</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#detail-go" type="button">Go</button></li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane fade show active" id="detail-curl">
-                    <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
-  "https://createmod.com/api/schematics/windmill-farm"</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="detail-js">
-                    <div class="api-code-block"><pre><code>const resp = await fetch("https://createmod.com/api/schematics/windmill-farm", {
-  headers: { "X-API-Key": "YOUR_KEY" }
-});
-const schematic = await resp.json();
-console.log(schematic.title);</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="detail-python">
-                    <div class="api-code-block"><pre><code>import requests
+                  <div class="sub-h">{{ T .Language "Request" }}</div>
+                  <div class="code-card">
+                    <div class="tabs">
+                      <button class="lang-tab active" data-tab="curl">curl</button>
+                      <button class="lang-tab" data-tab="js">JavaScript</button>
+                      <button class="lang-tab" data-tab="py">Python</button>
+                      <button class="lang-tab" data-tab="go">Go</button>
+                      <span class="tabs-spacer"></span>
+                      <button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button>
+                    </div>
+                    <pre data-lang="bash" data-tab-content="curl">curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/schematics/windmill-farm"</pre>
+                    <pre data-lang="js" data-tab-content="js" hidden>const res = await fetch(
+  "https://createmod.com/api/schematics/windmill-farm",
+  { headers: { "X-API-Key": "YOUR_KEY" } }
+);
+const schematic = await res.json();</pre>
+                    <pre data-lang="py" data-tab-content="py" hidden>import requests
 
-resp = requests.get(
+res = requests.get(
     "https://createmod.com/api/schematics/windmill-farm",
-    headers={"X-API-Key": "YOUR_KEY"}
+    headers={"X-API-Key": "YOUR_KEY"},
 )
-schematic = resp.json()
-print(schematic["title"])</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="detail-go">
-                    <div class="api-code-block"><pre><code>req, _ := http.NewRequest("GET",
+schematic = res.json()</pre>
+                    <pre data-lang="go" data-tab-content="go" hidden>req, _ := http.NewRequest("GET",
     "https://createmod.com/api/schematics/windmill-farm", nil)
 req.Header.Set("X-API-Key", "YOUR_KEY")
-resp, _ := http.DefaultClient.Do(req)
-defer resp.Body.Close()
-// decode resp.Body as JSON</code></pre></div>
-                  </div>
-                </div>
 
-                <h4>{{ T .Language "Response" }}</h4>
-                <div class="api-code-block"><pre><code>{
+res, _ := http.DefaultClient.Do(req)
+defer res.Body.Close()</pre>
+                  </div>
+
+                  <div class="sub-h">{{ T .Language "Response" }}</div>
+                  <div class="code-card">
+                    <div class="status-row">
+                      <span class="dot"></span>
+                      <span class="code">200 OK</span>
+                      <span class="text">application/json</span>
+                    </div>
+                    <pre data-lang="json">{
   "name": "windmill-farm",
   "title": "Windmill Farm",
+  "description": "Fully automated windmill-powered wheat farm.",
   "author": "builder123",
-  "description": "A beautiful windmill farm...",
   "views": 1500,
   "downloads": 320,
   "rating": 4.5,
-  "images": ["..."],
-  "categories": ["automation"],
-  "tags": ["windmill", "farm"],
-  "materials": [
-    {"block_id": "create:shaft", "name": "Shaft", "count": 12}
+  "rating_count": 28,
+  "images": [
+    "/api/files/abc123/main.webp",
+    "/api/files/abc123/wide.webp"
   ],
-  "mods": ["create"],
-  "dimensions": {"x": 15, "y": 20, "z": 15},
-  "block_count": 450
-}</code></pre></div>
+  "categories": ["automation", "farming"],
+  "tags": ["windmill", "farm", "kelp-engine"],
+  "minecraft_version": "1.20.1",
+  "create_version": "0.5.1",
+  "file_size": 18437,
+  "created": "2026-03-15T10:30:00Z",
+  "updated": "2026-04-02T08:14:00Z"
+}</pre>
+                  </div>
+                </section>
               </div>
-              <div class="api-section-panel">
-                <div class="api-try-card" id="try-panel-detail">
-                  <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}</h6>
-                  <div class="mb-2">
-                    <label class="form-label">name</label>
-                    <input type="text" class="form-control form-control-sm" id="try-detail-name" placeholder="windmill-farm">
+              <div class="row-tryit">
+                <div class="tryit" data-tryit-anchor="get-schematic">
+                  <div class="tryit-head">
+                    <span class="method method-get" style="font-size:10px;padding:2px 5px">GET</span>
+                    <span class="path">/api/schematics/{name}</span>
                   </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryGetSchematic()">{{ T .Language "Send Request" }}</button>
-                  <div class="api-try-response mt-2" id="try-detail-response" style="display:none;">
-                    <pre class="api-code-block mb-0"><code id="try-detail-output"></code></pre>
-                  </div>
+                  <form class="tryit-body" data-tryit="get-schematic">
+                    <div class="field"><label>name <span class="req-star">*</span></label><input name="name" type="text" value="windmill-farm" required></div>
+                    <button type="submit" class="tryit-send">{{ T .Language "Send Request" }}</button>
+                  </form>
+                  <div class="tryit-response"></div>
                 </div>
               </div>
-            </section>
+            </div>
 
             <!-- POST /api/schematics/upload -->
-            <section id="upload-schematic" class="api-section api-section-with-panel">
-              <div class="api-section-docs">
-                <div class="api-endpoint-header">
-                  <span class="api-method-badge api-method-post">POST</span>
-                  <code class="api-endpoint-url">/api/schematics/upload</code>
-                </div>
-                <p>{{ T .Language "Upload a .nbt schematic file. Returns a preview token. The schematic is not published until you complete the publish flow via the web UI." }}</p>
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section apidocs-endpoint" id="post-upload">
+                  <div class="apidocs-endpoint-head">
+                    <span class="method method-post">POST</span>
+                    <h3>/api/schematics/upload</h3>
+                  </div>
+                  <p class="desc">{{ T .Language "Upload a new schematic. Send a" }} <code>multipart/form-data</code> {{ T .Language "request with the" }} <code>.nbt</code> {{ T .Language "file plus metadata. Duplicate file hashes return" }} <code>409</code>.</p>
 
-                <h4>{{ T .Language "Parameters" }}</h4>
-                <p class="text-secondary">{{ T .Language "Send as" }} <code>multipart/form-data</code></p>
-                <div class="table-responsive">
-                  <table class="table api-param-table">
-                    <thead>
-                      <tr><th>{{ T .Language "Field" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
-                    </thead>
+                  <div class="sub-h">{{ T .Language "Parameters" }}</div>
+                  <table class="params">
+                    <thead><tr><th style="width:18%">{{ T .Language "Field" }}</th><th style="width:14%">{{ T .Language "Type" }}</th><th style="width:14%">{{ T .Language "Required" }}</th><th>{{ T .Language "Description" }}</th></tr></thead>
                     <tbody>
-                      <tr><td><code>file</code> / <code>nbt</code></td><td>file</td><td><strong>{{ T .Language "Required" }}</strong></td><td>{{ T .Language "The .nbt schematic file (max 10MB)" }}</td></tr>
+                      <tr>
+                        <td><span class="name">file</span></td>
+                        <td><span class="type">file</span></td>
+                        <td><span class="req required">{{ T .Language "Required" }}</span></td>
+                        <td class="descr">{{ T .Language "The .nbt schematic file. Max 5 MB." }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">title</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req required">{{ T .Language "Required" }}</span></td>
+                        <td class="descr">{{ T .Language "Display title. 2-80 characters." }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">description</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Markdown supported. Max 4000 characters." }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">categories</span></td>
+                        <td><span class="type">string[]</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Up to 3 from the category list." }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">tags</span></td>
+                        <td><span class="type">string[]</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Up to 10 lowercase tags." }}</td>
+                      </tr>
                     </tbody>
                   </table>
-                </div>
 
-                <h4>{{ T .Language "Code Samples" }}</h4>
-                <ul class="nav nav-pills api-tabs mb-2" role="tablist">
-                  <li class="nav-item" role="presentation"><button class="nav-link active" data-cm-toggle="pill" data-cm-target="#upload-curl" type="button">curl</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#upload-js" type="button">JavaScript</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#upload-python" type="button">Python</button></li>
-                  <li class="nav-item" role="presentation"><button class="nav-link" data-cm-toggle="pill" data-cm-target="#upload-go" type="button">Go</button></li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane fade show active" id="upload-curl">
-                    <div class="api-code-block"><pre><code>curl -X POST \
+                  <div class="sub-h">{{ T .Language "Request" }}</div>
+                  <div class="code-card">
+                    <div class="tabs">
+                      <button class="lang-tab active" data-tab="curl">curl</button>
+                      <button class="lang-tab" data-tab="js">JavaScript</button>
+                      <button class="lang-tab" data-tab="py">Python</button>
+                      <button class="lang-tab" data-tab="go">Go</button>
+                      <span class="tabs-spacer"></span>
+                      <button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button>
+                    </div>
+                    <pre data-lang="bash" data-tab-content="curl">curl -X POST \
   -H "X-API-Key: YOUR_KEY" \
-  -F "file=@my_schematic.nbt" \
-  "https://createmod.com/api/schematics/upload"</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="upload-js">
-                    <div class="api-code-block"><pre><code>const form = new FormData();
+  -F "file=@windmill.nbt" \
+  -F "title=Windmill Farm" \
+  -F "description=Automated wheat farm." \
+  -F "categories[]=automation" \
+  -F "tags[]=windmill" -F "tags[]=farm" \
+  "https://createmod.com/api/schematics/upload"</pre>
+                    <pre data-lang="js" data-tab-content="js" hidden>const form = new FormData();
 form.append("file", fileInput.files[0]);
+form.append("title", "Windmill Farm");
+form.append("categories[]", "automation");
+form.append("tags[]", "windmill");
 
-const resp = await fetch("https://createmod.com/api/schematics/upload", {
-  method: "POST",
-  headers: { "X-API-Key": "YOUR_KEY" },
-  body: form
-});
-const data = await resp.json();
-console.log(data.token, data.url);</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="upload-python">
-                    <div class="api-code-block"><pre><code>import requests
+const res = await fetch(
+  "https://createmod.com/api/schematics/upload",
+  {
+    method: "POST",
+    headers: { "X-API-Key": "YOUR_KEY" },
+    body: form,
+  }
+);</pre>
+                    <pre data-lang="py" data-tab-content="py" hidden>import requests
 
-with open("my_schematic.nbt", "rb") as f:
-    resp = requests.post(
+with open("windmill.nbt", "rb") as f:
+    res = requests.post(
         "https://createmod.com/api/schematics/upload",
+        headers={"X-API-Key": "YOUR_KEY"},
         files={"file": f},
-        headers={"X-API-Key": "YOUR_KEY"}
+        data={
+            "title": "Windmill Farm",
+            "categories[]": ["automation"],
+            "tags[]": ["windmill", "farm"],
+        },
     )
-data = resp.json()
-print(data["token"], data["url"])</code></pre></div>
-                  </div>
-                  <div class="tab-pane fade" id="upload-go">
-                    <div class="api-code-block"><pre><code>body := &amp;bytes.Buffer{}
-writer := multipart.NewWriter(body)
-part, _ := writer.CreateFormFile("file", "my_schematic.nbt")
-io.Copy(part, fileReader)
-writer.Close()
+print(res.json())</pre>
+                    <pre data-lang="go" data-tab-content="go" hidden>var buf bytes.Buffer
+w := multipart.NewWriter(&amp;buf)
+fw, _ := w.CreateFormFile("file", "windmill.nbt")
+io.Copy(fw, file)
+w.WriteField("title", "Windmill Farm")
+w.Close()
 
 req, _ := http.NewRequest("POST",
-    "https://createmod.com/api/schematics/upload", body)
+    "https://createmod.com/api/schematics/upload", &amp;buf)
 req.Header.Set("X-API-Key", "YOUR_KEY")
-req.Header.Set("Content-Type", writer.FormDataContentType())
-resp, _ := http.DefaultClient.Do(req)
-// decode resp.Body as JSON</code></pre></div>
+req.Header.Set("Content-Type", w.FormDataContentType())</pre>
                   </div>
-                </div>
 
-                <h4>{{ T .Language "Response" }}</h4>
-                <div class="api-code-block"><pre><code>{
-  "token": "a1b2c3d4e5f67890...",
-  "url": "/u/a1b2c3d4e5f67890...",
-  "checksum": "sha256...",
-  "filename": "my_schematic.nbt",
-  "size": 12345,
-  "dimensions": {"x": 10, "y": 20, "z": 30},
-  "block_count": 500,
-  "materials": [
-    {"block_id": "create:shaft", "name": "Shaft", "count": 12}
-  ],
-  "mods": ["create"]
-}</code></pre></div>
-              </div>
-              <div class="api-section-panel">
-                <div class="api-try-card" id="try-panel-upload">
-                  <h6><span class="api-method-badge api-method-post">POST</span> /api/schematics/upload</h6>
-                  <div class="mb-2">
-                    <label class="form-label">.nbt {{ T .Language "file" }}</label>
-                    <input type="file" class="form-control form-control-sm" id="try-upload-file" accept=".nbt">
-                  </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryUploadSchematic()">{{ T .Language "Send Request" }}</button>
-                  <div class="api-try-response mt-2" id="try-upload-response" style="display:none;">
-                    <pre class="api-code-block mb-0"><code id="try-upload-output"></code></pre>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- GET /api/schematics/{name}/stats -->
-            <section id="schematic-stats" class="api-section api-section-with-panel">
-              <div class="api-section-docs">
-                <div class="api-endpoint-header">
-                  <span class="api-method-badge api-method-get">GET</span>
-                  <code class="api-endpoint-url">/api/schematics/{name}/stats</code>
-                </div>
-                <p>{{ T .Language "Get hourly analytics for a schematic over the last 30 days. Only the schematic author can access this endpoint." }}</p>
-
-                <h4>{{ T .Language "Parameters" }}</h4>
-                <div class="table-responsive">
-                  <table class="table api-param-table">
-                    <thead>
-                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr><td><code>name</code></td><td>string</td><td><strong>{{ T .Language "Required" }}</strong></td><td>{{ T .Language "The URL slug of the schematic (path parameter)" }}</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <h4>{{ T .Language "Code Samples" }}</h4>
-                <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
-  "https://createmod.com/api/schematics/windmill-farm/stats"</code></pre></div>
-
-                <h4>{{ T .Language "Response" }}</h4>
-                <div class="api-code-block"><pre><code>{
+                  <div class="sub-h">{{ T .Language "Response" }}</div>
+                  <div class="code-card">
+                    <div class="status-row">
+                      <span class="dot" style="background:#4299e1"></span>
+                      <span class="code" style="color:#4299e1">201 Created</span>
+                      <span class="text">application/json</span>
+                    </div>
+                    <pre data-lang="json">{
   "name": "windmill-farm",
   "title": "Windmill Farm",
-  "total_views": 1500,
-  "total_downloads": 320,
-  "comments": 12,
-  "vd_ratio": 0.2133,
-  "site_avg_vd_ratio": 0.15,
-  "has_video": true,
-  "views": [{"hour": "2026-04-01 00", "count": 5}, ...],
-  "downloads": [{"hour": "2026-04-01 00", "count": 1}, ...],
-  "video_plays": [{"hour": "2026-04-01 00", "count": 0}, ...],
-  "yt_clicks": [{"hour": "2026-04-01 00", "count": 0}, ...],
-  "time_on_page": [{"hour": "2026-04-01 00", "count": 45}, ...],
-  "layer_views": [{"hour": "2026-04-01 00", "count": 3}, ...]
-}</code></pre></div>
-                <p class="text-secondary mt-2">{{ T .Language "Each array contains one entry per hour for 30 days (720 entries). Hours with no data have count 0. The time_on_page values are averages in seconds." }}</p>
+  "url": "https://createmod.com/schematics/windmill-farm",
+  "status": "pending_review",
+  "file_size": 18437,
+  "created": "2026-05-17T14:20:00Z"
+}</pre>
+                  </div>
+                </section>
               </div>
-              <div class="api-section-panel">
-                <div class="api-try-card" id="try-panel-schematic-stats">
-                  <h6><span class="api-method-badge api-method-get">GET</span> /api/schematics/{name}/stats</h6>
-                  <div class="mb-2">
-                    <label class="form-label">name</label>
-                    <input type="text" class="form-control form-control-sm" id="try-schematic-stats-name" placeholder="windmill-farm">
+              <div class="row-tryit">
+                <div class="tryit" data-tryit-anchor="post-upload">
+                  <div class="tryit-head">
+                    <span class="method method-post" style="font-size:10px;padding:2px 5px">POST</span>
+                    <span class="path">/api/schematics/upload</span>
                   </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="trySchematicStats()">{{ T .Language "Send Request" }}</button>
-                  <div class="api-try-response mt-2" id="try-schematic-stats-response" style="display:none;">
-                    <pre class="api-code-block mb-0"><code id="try-schematic-stats-output"></code></pre>
-                  </div>
+                  <form class="tryit-body" data-tryit="post-upload">
+                    <div class="field"><label>title <span class="req-star">*</span></label><input name="title" type="text" value="Windmill Farm" required></div>
+                    <div class="field"><label>file <span class="req-star">*</span></label><input name="file" type="file" accept=".nbt"></div>
+                    <div class="field"><label>tags (comma-separated)</label><input name="tags" type="text" value="windmill,farm"></div>
+                    <button type="submit" class="tryit-send">{{ T .Language "Upload" }}</button>
+                  </form>
+                  <div class="tryit-response"></div>
                 </div>
               </div>
-            </section>
+            </div>
 
-            <!-- GET /api/user/stats -->
-            <section id="user-stats" class="api-section api-section-with-panel">
-              <div class="api-section-docs">
-                <div class="api-endpoint-header">
-                  <span class="api-method-badge api-method-get">GET</span>
-                  <code class="api-endpoint-url">/api/user/stats</code>
-                </div>
-                <p>{{ T .Language "Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals." }}</p>
+            <!-- GET /api/schematics/{name}/stats -->
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section apidocs-endpoint" id="get-schematic-stats">
+                  <div class="apidocs-endpoint-head">
+                    <span class="method method-get">GET</span>
+                    <h3>/api/schematics/<span class="path-param">{name}</span>/stats</h3>
+                  </div>
+                  <p class="desc">{{ T .Language "Get hourly analytics for a single schematic over the last 30 days. Useful for charting views, downloads, and engagement on a schematic detail page." }}</p>
 
-                <h4>{{ T .Language "Parameters" }}</h4>
-                <div class="table-responsive">
-                  <table class="table api-param-table">
-                    <thead>
-                      <tr><th>{{ T .Language "Parameter" }}</th><th>{{ T .Language "Type" }}</th><th></th><th>{{ T .Language "Description" }}</th></tr>
-                    </thead>
+                  <div class="sub-h">{{ T .Language "Parameters" }}</div>
+                  <table class="params">
+                    <thead><tr><th style="width:18%">{{ T .Language "Parameter" }}</th><th style="width:14%">{{ T .Language "Type" }}</th><th style="width:14%">{{ T .Language "Required" }}</th><th>{{ T .Language "Description" }}</th></tr></thead>
                     <tbody>
-                      <tr><td><code>page</code></td><td>integer</td><td><span class="text-secondary">{{ T .Language "Optional" }}</span></td><td>{{ T .Language "Page number for the schematic list (default: 1)" }}</td></tr>
+                      <tr>
+                        <td><span class="name">name</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req required">{{ T .Language "Required" }}</span></td>
+                        <td class="descr">{{ T .Language "URL slug of the schematic (path parameter)." }}</td>
+                      </tr>
                     </tbody>
                   </table>
+
+                  <div class="sub-h">{{ T .Language "Request" }}</div>
+                  <div class="code-card">
+                    <div class="tabs">
+                      <button class="lang-tab active" data-tab="curl">curl</button>
+                      <button class="lang-tab" data-tab="js">JavaScript</button>
+                      <button class="lang-tab" data-tab="py">Python</button>
+                      <span class="tabs-spacer"></span>
+                      <button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button>
+                    </div>
+                    <pre data-lang="bash" data-tab-content="curl">curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/schematics/windmill-farm/stats"</pre>
+                    <pre data-lang="js" data-tab-content="js" hidden>const res = await fetch(
+  "https://createmod.com/api/schematics/windmill-farm/stats",
+  { headers: { "X-API-Key": "YOUR_KEY" } }
+);
+const stats = await res.json();</pre>
+                    <pre data-lang="py" data-tab-content="py" hidden>import requests
+
+res = requests.get(
+    "https://createmod.com/api/schematics/windmill-farm/stats",
+    headers={"X-API-Key": "YOUR_KEY"},
+)
+stats = res.json()</pre>
+                  </div>
+
+                  <div class="sub-h">{{ T .Language "Response" }}</div>
+                  <div class="code-card">
+                    <div class="status-row">
+                      <span class="dot"></span>
+                      <span class="code">200 OK</span>
+                      <span class="text">application/json</span>
+                    </div>
+                    <pre data-lang="json">{
+  "views":       [{"hour": "2026-04-01 00", "count": 42}, ...],
+  "downloads":   [{"hour": "2026-04-01 00", "count": 7},  ...],
+  "video_plays": [{"hour": "2026-04-01 00", "count": 0},  ...],
+  "yt_clicks":   [{"hour": "2026-04-01 00", "count": 0},  ...],
+  "time_on_page":[{"hour": "2026-04-01 00", "count": 45}, ...],
+  "layer_views": [{"hour": "2026-04-01 00", "count": 3},  ...]
+}</pre>
+                  </div>
+                  <p class="desc" style="margin-top:14px">{{ T .Language "Each array contains one entry per hour for 30 days (720 entries). Hours with no data have" }} <code>count: 0</code>. {{ T .Language "The" }} <code>time_on_page</code> {{ T .Language "values are averages in seconds." }}</p>
+                </section>
+              </div>
+              <div class="row-tryit">
+                <div class="tryit" data-tryit-anchor="get-schematic-stats">
+                  <div class="tryit-head">
+                    <span class="method method-get" style="font-size:10px;padding:2px 5px">GET</span>
+                    <span class="path">/api/schematics/{name}/stats</span>
+                  </div>
+                  <form class="tryit-body" data-tryit="get-schematic-stats">
+                    <div class="field"><label>name <span class="req-star">*</span></label><input name="name" type="text" value="windmill-farm" required></div>
+                    <button type="submit" class="tryit-send">{{ T .Language "Send Request" }}</button>
+                  </form>
+                  <div class="tryit-response"></div>
                 </div>
+              </div>
+            </div>
 
-                <h4>{{ T .Language "Code Samples" }}</h4>
-                <div class="api-code-block"><pre><code>curl -H "X-API-Key: YOUR_KEY" \
-  "https://createmod.com/api/user/stats?page=1"</code></pre></div>
+            <!-- GET /api/user/stats -->
+            <div class="endpoint-row">
+              <div class="row-main">
+                <section class="apidocs-section apidocs-endpoint" id="get-user-stats">
+                  <div class="apidocs-endpoint-head">
+                    <span class="method method-get">GET</span>
+                    <h3>/api/user/stats</h3>
+                  </div>
+                  <p class="desc">{{ T .Language "Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals." }}</p>
 
-                <h4>{{ T .Language "Response" }}</h4>
-                <div class="api-code-block"><pre><code>{
+                  <div class="sub-h">{{ T .Language "Parameters" }}</div>
+                  <table class="params">
+                    <thead><tr><th style="width:18%">{{ T .Language "Parameter" }}</th><th style="width:14%">{{ T .Language "Type" }}</th><th style="width:14%">{{ T .Language "Required" }}</th><th>{{ T .Language "Description" }}</th></tr></thead>
+                    <tbody>
+                      <tr>
+                        <td><span class="name">page</span></td>
+                        <td><span class="type">integer</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Page number for the schematic list" }}<small>Default: 1 &middot; Page size: 20</small></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="sub-h">{{ T .Language "Request" }}</div>
+                  <div class="code-card">
+                    <div class="tabs">
+                      <button class="lang-tab active" data-tab="curl">curl</button>
+                      <button class="lang-tab" data-tab="js">JavaScript</button>
+                      <button class="lang-tab" data-tab="py">Python</button>
+                      <span class="tabs-spacer"></span>
+                      <button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button>
+                    </div>
+                    <pre data-lang="bash" data-tab-content="curl">curl -H "X-API-Key: YOUR_KEY" \
+  "https://createmod.com/api/user/stats?page=1"</pre>
+                    <pre data-lang="js" data-tab-content="js" hidden>const res = await fetch(
+  "https://createmod.com/api/user/stats?page=1",
+  { headers: { "X-API-Key": "YOUR_KEY" } }
+);
+const data = await res.json();</pre>
+                    <pre data-lang="py" data-tab-content="py" hidden>import requests
+
+res = requests.get(
+    "https://createmod.com/api/user/stats",
+    headers={"X-API-Key": "YOUR_KEY"},
+    params={"page": 1},
+)
+data = res.json()</pre>
+                  </div>
+
+                  <div class="sub-h">{{ T .Language "Response" }}</div>
+                  <div class="code-card">
+                    <div class="status-row">
+                      <span class="dot"></span>
+                      <span class="code">200 OK</span>
+                      <span class="text">application/json</span>
+                    </div>
+                    <pre data-lang="json">{
   "total_views": 12500,
   "total_downloads": 2100,
   "vd_ratio": 0.168,
   "site_avg_vd_ratio": 0.15,
-  "views": [{"hour": "2026-04-01 00", "count": 42}, ...],
-  "downloads": [{"hour": "2026-04-01 00", "count": 7}, ...],
-  "video_plays": [...],
-  "yt_clicks": [...],
+  "views":        [{"hour": "2026-04-01 00", "count": 42}, ...],
+  "downloads":    [{"hour": "2026-04-01 00", "count": 7},  ...],
+  "video_plays":  [...],
+  "yt_clicks":    [...],
   "time_on_page": [...],
-  "layer_views": [...],
+  "layer_views":  [...],
   "schematics": [
     {
       "name": "windmill-farm",
@@ -513,116 +669,35 @@ resp, _ := http.DefaultClient.Do(req)
   "page_size": 20,
   "has_next": true,
   "has_prev": false
-}</code></pre></div>
+}</pre>
+                  </div>
+                </section>
               </div>
-              <div class="api-section-panel">
-                <div class="api-try-card" id="try-panel-user-stats">
-                  <h6><span class="api-method-badge api-method-get">GET</span> /api/user/stats</h6>
-                  <div class="mb-2">
-                    <label class="form-label">page</label>
-                    <input type="number" class="form-control form-control-sm" id="try-user-stats-page" value="1" min="1">
+              <div class="row-tryit">
+                <div class="tryit" data-tryit-anchor="get-user-stats">
+                  <div class="tryit-head">
+                    <span class="method method-get" style="font-size:10px;padding:2px 5px">GET</span>
+                    <span class="path">/api/user/stats</span>
                   </div>
-                  <button class="btn btn-primary btn-sm w-100" onclick="tryUserStats()">{{ T .Language "Send Request" }}</button>
-                  <div class="api-try-response mt-2" id="try-user-stats-response" style="display:none;">
-                    <pre class="api-code-block mb-0"><code id="try-user-stats-output"></code></pre>
-                  </div>
+                  <form class="tryit-body" data-tryit="get-user-stats">
+                    <div class="field"><label>page</label><input name="page" type="number" value="1" min="1"></div>
+                    <button type="submit" class="tryit-send">{{ T .Language "Send Request" }}</button>
+                  </form>
+                  <div class="tryit-response"></div>
                 </div>
               </div>
-            </section>
+            </div>
 
           </div>
         </div>
+
       </div>
     </main>
     {{template "footer.html" .}}
   </div>
 </div>
 
-<script>
-function getApiKey() {
-  var el = document.getElementById('api-key-input');
-  return el ? el.value.trim() : '';
-}
-
-function showResponse(outputId, responseId, status, data) {
-  var el = document.getElementById(outputId);
-  var container = document.getElementById(responseId);
-  el.textContent = 'HTTP ' + status + '\n' + JSON.stringify(data, null, 2);
-  container.style.display = 'block';
-}
-
-function generateTestKey() {
-  var btn = document.getElementById('generate-test-key');
-  btn.disabled = true;
-  btn.textContent = '...';
-  fetch('/api/keys/generate', { method: 'POST' })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      if (d.key) {
-        document.getElementById('api-key-input').value = d.key;
-        btn.textContent = '{{ T .Language "Key generated" }}';
-        btn.classList.remove('btn-outline-primary');
-        btn.classList.add('btn-outline-success');
-      } else {
-        btn.textContent = d.error || 'Error';
-        btn.classList.remove('btn-outline-primary');
-        btn.classList.add('btn-outline-danger');
-      }
-    })
-    .catch(function() {
-      btn.textContent = 'Error';
-      btn.classList.remove('btn-outline-primary');
-      btn.classList.add('btn-outline-danger');
-    });
-}
-
-function tryListSchematics() {
-  var key = getApiKey();
-  var query = document.getElementById('try-list-query').value;
-  var page = document.getElementById('try-list-page').value || '1';
-  var url = '/api/schematics?page=' + encodeURIComponent(page);
-  if (query) url += '&query=' + encodeURIComponent(query);
-  fetch(url, { headers: { 'X-API-Key': key } })
-    .then(function(r) { return r.json().then(function(d) { showResponse('try-list-output', 'try-list-response', r.status, d); }); })
-    .catch(function(e) { showResponse('try-list-output', 'try-list-response', 'ERR', { error: e.message }); });
-}
-
-function tryGetSchematic() {
-  var key = getApiKey();
-  var name = document.getElementById('try-detail-name').value;
-  if (!name) { alert('Enter a schematic name'); return; }
-  fetch('/api/schematics/' + encodeURIComponent(name), { headers: { 'X-API-Key': key } })
-    .then(function(r) { return r.json().then(function(d) { showResponse('try-detail-output', 'try-detail-response', r.status, d); }); })
-    .catch(function(e) { showResponse('try-detail-output', 'try-detail-response', 'ERR', { error: e.message }); });
-}
-
-function tryUploadSchematic() {
-  var key = getApiKey();
-  var fileInput = document.getElementById('try-upload-file');
-  if (!fileInput.files.length) { alert('Select a .nbt file'); return; }
-  var form = new FormData();
-  form.append('file', fileInput.files[0]);
-  fetch('/api/schematics/upload', { method: 'POST', headers: { 'X-API-Key': key }, body: form })
-    .then(function(r) { return r.json().then(function(d) { showResponse('try-upload-output', 'try-upload-response', r.status, d); }); })
-    .catch(function(e) { showResponse('try-upload-output', 'try-upload-response', 'ERR', { error: e.message }); });
-}
-
-function trySchematicStats() {
-  var key = getApiKey();
-  var name = document.getElementById('try-schematic-stats-name').value;
-  if (!name) { alert('Enter a schematic name'); return; }
-  fetch('/api/schematics/' + encodeURIComponent(name) + '/stats', { headers: { 'X-API-Key': key } })
-    .then(function(r) { return r.json().then(function(d) { showResponse('try-schematic-stats-output', 'try-schematic-stats-response', r.status, d); }); })
-    .catch(function(e) { showResponse('try-schematic-stats-output', 'try-schematic-stats-response', 'ERR', { error: e.message }); });
-}
-
-function tryUserStats() {
-  var key = getApiKey();
-  var page = document.getElementById('try-user-stats-page').value || '1';
-  fetch('/api/user/stats?page=' + encodeURIComponent(page), { headers: { 'X-API-Key': key } })
-    .then(function(r) { return r.json().then(function(d) { showResponse('try-user-stats-output', 'try-user-stats-response', r.status, d); }); })
-    .catch(function(e) { showResponse('try-user-stats-output', 'try-user-stats-response', 'ERR', { error: e.message }); });
-}
-</script>
+<script src="/assets/x/api-docs-highlight.js"></script>
+<script src="/assets/x/api-docs.js"></script>
 
 {{template "foot.html" .}}
