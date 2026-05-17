@@ -399,6 +399,8 @@ var LangPtBR = map[string]string{
 	"Add":                  "Adicionar",
 	"Easy Schematic Uploads": "Upload fácil de esquemáticos",
 	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Envie esquemáticos diretamente do Minecraft para o createmod.com com o mod Create: Schematic Upload. Salve um esquemático no jogo e receba um link compartilhável instantaneamente.",
+	"Get The Schematic Helper Mod": "Get The Schematic Helper Mod",
+	"Upload and download schematics directly in Minecraft. Save a schematic in-game and share it instantly, or download schematics from createmod.com straight into your world.": "Upload and download schematics directly in Minecraft. Save a schematic in-game and share it instantly, or download schematics from createmod.com straight into your world.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contato CreateMod.com",
