@@ -3,7 +3,7 @@ title: "Security Update, Rotation Images & More"
 date: 2026-05-17
 slug: security-update-rotation-images
 excerpt: "A major security hardening pass, rotation image support for schematics, improved search filters, and performance optimizations."
-image: "/assets/x/news/search-improvements.svg"
+image: "/assets/x/news/security-and-features.svg"
 ---
 
 We have been busy the past few weeks with a large update focused on security, new features, and performance.

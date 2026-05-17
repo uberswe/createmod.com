@@ -401,6 +401,8 @@ var LangEN = map[string]string{
 	"Add":                  "Add",
 	"Easy Schematic Uploads": "Easy Schematic Uploads",
 	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.",
+	"Get The Schematic Helper Mod": "Get The Schematic Helper Mod",
+	"Upload and download schematics directly in Minecraft. Save a schematic in-game and share it instantly, or download schematics from createmod.com straight into your world.": "Upload and download schematics directly in Minecraft. Save a schematic in-game and share it instantly, or download schematics from createmod.com straight into your world.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Contact CreateMod.com",

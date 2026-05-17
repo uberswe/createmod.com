@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f2121"/>
+      <stop offset="100%" stop-color="#2a2c2c"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <!-- Shield (security) -->
+  <path d="M250 120 L250 240 Q250 300 320 330 Q390 300 390 240 L390 120 L320 95 Z" fill="none" stroke="#bf9045" stroke-width="3"/>
+  <path d="M320 160 L320 250" stroke="#bf9045" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="320" cy="280" r="5" fill="#bf9045"/>
+  <rect x="308" y="175" width="24" height="50" rx="12" fill="none" stroke="#bf9045" stroke-width="3"/>
+  <!-- Checkmark inside shield -->
+  <path d="M298 210 L315 227 L345 190" fill="none" stroke="#bf9045" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+  <!-- Rotation arrows (360 images) -->
+  <circle cx="540" cy="180" r="55" fill="none" stroke="#626976" stroke-width="2" stroke-dasharray="8 4" opacity="0.5"/>
+  <path d="M540 125 Q600 125 600 180" fill="none" stroke="#bf9045" stroke-width="2.5" stroke-linecap="round"/>
+  <polygon points="598,168 606,180 592,180" fill="#bf9045"/>
+  <path d="M540 235 Q480 235 480 180" fill="none" stroke="#bf9045" stroke-width="2.5" stroke-linecap="round"/>
+  <polygon points="482,192 474,180 488,180" fill="#bf9045"/>
+  <!-- Small cube in rotation center -->
+  <path d="M540 165 L560 175 L560 195 L540 205 L520 195 L520 175 Z" fill="#bf9045" opacity="0.15" stroke="#bf9045" stroke-width="1.5"/>
+  <path d="M540 165 L540 185 L560 175" fill="none" stroke="#bf9045" stroke-width="1" opacity="0.5"/>
+  <path d="M540 185 L520 175" fill="none" stroke="#bf9045" stroke-width="1" opacity="0.5"/>
+  <!-- Chart bars (stats) -->
+  <rect x="460" y="300" width="20" height="40" rx="3" fill="#bf9045" opacity="0.3"/>
+  <rect x="490" y="285" width="20" height="55" rx="3" fill="#bf9045" opacity="0.4"/>
+  <rect x="520" y="270" width="20" height="70" rx="3" fill="#bf9045" opacity="0.5"/>
+  <rect x="550" y="260" width="20" height="80" rx="3" fill="#bf9045" opacity="0.6"/>
+  <rect x="580" y="250" width="20" height="90" rx="3" fill="#bf9045" opacity="0.7"/>
+  <rect x="610" y="275" width="20" height="65" rx="3" fill="#bf9045" opacity="0.5"/>
+  <!-- Gear (features) -->
+  <circle cx="680" cy="140" r="20" fill="none" stroke="#626976" stroke-width="2.5"/>
+  <circle cx="680" cy="140" r="8" fill="none" stroke="#626976" stroke-width="2"/>
+  <line x1="680" y1="115" x2="680" y2="122" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="680" y1="158" x2="680" y2="165" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="655" y1="140" x2="662" y2="140" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="698" y1="140" x2="705" y2="140" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="662" y1="122" x2="668" y2="128" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="692" y1="152" x2="698" y2="158" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="662" y1="158" x2="668" y2="152" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <line x1="692" y1="128" x2="698" y2="122" stroke="#626976" stroke-width="3" stroke-linecap="round"/>
+  <!-- Caption -->
+  <text x="400" y="400" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#626976">Security, Rotation Images &amp; More</text>
+</svg>

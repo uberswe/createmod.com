@@ -1955,6 +1955,8 @@ a.card-link:hover {
 .btn-modrinth:hover { background: #18c25f; color: #fff; }
 .btn-curseforge { background: #f16436; color: #fff; border: none; }
 .btn-curseforge:hover { background: #d9552d; color: #fff; }
+.btn-github { background: #24292e; color: #e6e6e6; border: none; }
+.btn-github:hover { background: #1b1f23; color: #fff; }
 
 /* ===== Generator overlay panel ===== */
 .generator-overlay {
