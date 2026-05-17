@@ -154,13 +154,23 @@
                                 </div>
                             </div>
 
-                            <!-- Bloxelizer 3D Viewer Link -->
-                            <div class="card mb-3" id="bloxelizer-card" style="display:none;">
+                            <!-- 3D Viewer Link -->
+                            <div class="card mb-3" id="viewer-3d-card" style="display:none;">
                                 <div class="card-body text-center">
-                                    <a id="bloxelizer-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
-                                        {{ T .Language "View in 3D on Bloxelizer" }}
-                                    </a>
+                                    <div class="dropdown w-100">
+                                        <button class="btn btn-outline-primary w-100 dropdown-toggle" type="button" data-cm-toggle="dropdown">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
+                                            {{ T .Language "View in 3D" }}
+                                        </button>
+                                        <div class="dropdown-menu w-100">
+                                            <a id="shulkr-link" href="#" class="dropdown-item" target="_blank" rel="noopener">
+                                                {{ T .Language "Shulkr" }}
+                                            </a>
+                                            <a id="bloxelizer-link" href="#" class="dropdown-item" target="_blank" rel="noopener">
+                                                {{ T .Language "Bloxelizer" }}
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -423,14 +433,16 @@ function renderResults(data) {
         publishBtn.href = data.url + '/publish';
     }
 
-    // Bloxelizer 3D viewer link
+    // 3D viewer links
     if (data.file_url) {
-        var bloxCard = document.getElementById('bloxelizer-card');
+        var viewerCard = document.getElementById('viewer-3d-card');
+        var shulkrLink = document.getElementById('shulkr-link');
         var bloxLink = document.getElementById('bloxelizer-link');
-        if (bloxCard && bloxLink) {
+        if (viewerCard) {
             var fullFileURL = location.origin + data.file_url;
-            bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(fullFileURL);
-            bloxCard.style.display = '';
+            if (shulkrLink) shulkrLink.href = 'https://www.shulkr.com/?url=' + encodeURIComponent(fullFileURL);
+            if (bloxLink) bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(fullFileURL);
+            viewerCard.style.display = '';
         }
     }
 
