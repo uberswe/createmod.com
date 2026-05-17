@@ -26,6 +26,7 @@ type SchematicsData struct {
 	Schematics []models.Schematic
 	Page       int
 	PageSize   int
+	TotalPages int
 	HasPrev    bool
 	HasNext    bool
 	PrevURL    string
