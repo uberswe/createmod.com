@@ -399,6 +399,8 @@ var LangRU = map[string]string{
 	"Add":                  "Добавить",
 	"Easy Schematic Uploads": "Простая загрузка схем",
 	"Upload schematics directly from Minecraft to createmod.com with the Create: Schematic Upload mod. Save a schematic in-game and get a shareable link instantly.": "Загружайте схемы напрямую из Minecraft на createmod.com с помощью мода Create: Schematic Upload. Сохраните схему в игре и мгновенно получите ссылку для обмена.",
+	"Get The Schematic Helper Mod": "Get The Schematic Helper Mod",
+	"Upload and download schematics directly in Minecraft. Save a schematic in-game and share it instantly, or download schematics from createmod.com straight into your world.": "Upload and download schematics directly in Minecraft. Save a schematic in-game and share it instantly, or download schematics from createmod.com straight into your world.",
 
 	// ── Contact ──
 	"Contact CreateMod.com":                                      "Связаться с CreateMod.com",
