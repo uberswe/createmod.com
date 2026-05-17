@@ -1,7 +1,7 @@
 -- Enable IP verification for existing email/password users (not OAuth-only) who don't have security settings yet
 INSERT INTO user_security_settings (id, user_id, new_ip_verification, totp_enabled, passkeys_enabled, created, updated)
 SELECT
-    substr(md5(random()::text), 1, 15),
+    substr(encode(gen_random_bytes(8), 'hex'), 1, 15),
     u.id,
     true,
     false,
