@@ -9,17 +9,27 @@ import (
 )
 
 var allowedPlatforms = map[string]bool{
-	"youtube": true,
-	"patreon": true,
-	"twitch":  true,
-	"reddit":  true,
+	"youtube":   true,
+	"patreon":   true,
+	"twitch":    true,
+	"reddit":    true,
+	"tiktok":    true,
+	"instagram": true,
+	"x":         true,
+	"threads":   true,
+	"bluesky":   true,
 }
 
 var platformDomains = map[string][]string{
-	"youtube": {"youtube.com", "youtu.be"},
-	"patreon": {"patreon.com"},
-	"twitch":  {"twitch.tv"},
-	"reddit":  {"reddit.com"},
+	"youtube":   {"youtube.com", "youtu.be"},
+	"patreon":   {"patreon.com"},
+	"twitch":    {"twitch.tv"},
+	"reddit":    {"reddit.com"},
+	"tiktok":    {"tiktok.com"},
+	"instagram": {"instagram.com"},
+	"x":         {"x.com", "twitter.com"},
+	"threads":   {"threads.net"},
+	"bluesky":   {"bsky.app"},
 }
 
 func SocialLinkSaveHandler(appStore *store.Store) func(e *server.RequestEvent) error {

@@ -3909,6 +3909,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		SearchAlerts:         &SearchAlertStoreImpl{q: q},
 		ZeroResults:          &ZeroResultStoreImpl{q: q},
 		Security:             &SecurityStoreImpl{q: q, pool: pool},
+		AdClicks:             &AdClickStoreImpl{q: q},
 	}
 }
 
@@ -4475,6 +4476,7 @@ var (
 	_ store.NewsletterStore          = (*NewsletterStoreImpl)(nil)
 	_ store.SearchAlertStore         = (*SearchAlertStoreImpl)(nil)
 	_ store.ZeroResultStore = (*ZeroResultStoreImpl)(nil)
+	_ store.AdClickStore    = (*AdClickStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------
@@ -6041,4 +6043,50 @@ func variationFromDB(row db.SchematicVariation) *store.SchematicVariation {
 		CreatedAt:    row.Created,
 		UpdatedAt:    row.Updated,
 	}
+}
+
+// --------------------------------------------------------------------------
+// AdClickStoreImpl
+// --------------------------------------------------------------------------
+
+type AdClickStoreImpl struct{ q *db.Queries }
+
+func (s *AdClickStoreImpl) RecordClick(ctx context.Context, adUnit, dest string) error {
+	period := time.Now().UTC().Format("20060102")
+	return s.q.UpsertAdClick(ctx, db.UpsertAdClickParams{
+		AdUnit: adUnit,
+		Dest:   dest,
+		Period: period,
+	})
+}
+
+func (s *AdClickStoreImpl) ListDaily(ctx context.Context) ([]store.AdClickStat, error) {
+	rows, err := s.q.ListDailyAdClicks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.AdClickStat, len(rows))
+	for i, r := range rows {
+		out[i] = store.AdClickStat{AdUnit: r.AdUnit, Dest: r.Dest, Period: r.Period, Count: r.Count}
+	}
+	return out, nil
+}
+
+func (s *AdClickStoreImpl) ListMonthly(ctx context.Context) ([]store.AdClickStat, error) {
+	rows, err := s.q.ListMonthlyAdClicks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.AdClickStat, len(rows))
+	for i, r := range rows {
+		out[i] = store.AdClickStat{AdUnit: r.AdUnit, Dest: r.Dest, Period: r.Period, Count: r.Count}
+	}
+	return out, nil
+}
+
+func (s *AdClickStoreImpl) RollupAndClean(ctx context.Context, cutoffDay string) error {
+	if err := s.q.RollupDailyToMonthly(ctx, cutoffDay); err != nil {
+		return err
+	}
+	return s.q.DeleteOldDailyAdClicks(ctx, cutoffDay)
 }

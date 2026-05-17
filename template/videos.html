@@ -5,6 +5,8 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
+        <div class="d-flex gap-3">
+        <div class="flex-grow-1 min-width-0">
         <div class="mb-3 d-print-none">
           <div class="row align-items-center">
             <div class="col">
@@ -19,8 +21,6 @@
             </div>
           </div>
         </div>
-        <div class="d-flex gap-3">
-        <div class="flex-grow-1 min-width-0">
         <div id="videos-results">
           {{ $root := . }}
           <div class="row row-cards">

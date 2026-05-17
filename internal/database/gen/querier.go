@@ -115,6 +115,7 @@ type Querier interface {
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteKnownIP(ctx context.Context, arg DeleteKnownIPParams) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
+	DeleteOldDailyAdClicks(ctx context.Context, period string) error
 	DeleteOldNotifications(ctx context.Context, created time.Time) error
 	DeleteOldSchematicEvents(ctx context.Context, created time.Time) (int64, error)
 	DeletePasskey(ctx context.Context, arg DeletePasskeyParams) error
@@ -278,6 +279,7 @@ type Querier interface {
 	ListCommentsWithoutTranslation(ctx context.Context, arg ListCommentsWithoutTranslationParams) ([]ListCommentsWithoutTranslationRow, error)
 	ListConfirmedSubscribers(ctx context.Context, type_ string) ([]NewsletterSubscriber, error)
 	ListConfirmedSubscribersByFrequency(ctx context.Context, arg ListConfirmedSubscribersByFrequencyParams) ([]NewsletterSubscriber, error)
+	ListDailyAdClicks(ctx context.Context) ([]ListDailyAdClicksRow, error)
 	ListDirtySearchTerms(ctx context.Context, dollar_1 []string) ([]string, error)
 	ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error)
 	ListExternalAuthsByProvider(ctx context.Context, provider string) ([]ExternalAuth, error)
@@ -305,6 +307,7 @@ type Querier interface {
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
 	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
 	ListModpacks(ctx context.Context) ([]Modpack, error)
+	ListMonthlyAdClicks(ctx context.Context) ([]ListMonthlyAdClicksRow, error)
 	ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error)
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
 	ListNewsletterIssues(ctx context.Context, arg ListNewsletterIssuesParams) ([]NewsletterIssue, error)
@@ -394,6 +397,7 @@ type Querier interface {
 	RestoreRatingsByUser(ctx context.Context, userID string) error
 	RestoreSchematicsByAuthor(ctx context.Context, authorID *string) error
 	RestoreUser(ctx context.Context, id string) error
+	RollupDailyToMonthly(ctx context.Context, period string) error
 	SchematicNameExists(ctx context.Context, name string) (bool, error)
 	SearchModpacks(ctx context.Context, arg SearchModpacksParams) ([]Modpack, error)
 	SetDisplayedBadge(ctx context.Context, arg SetDisplayedBadgeParams) error
@@ -447,6 +451,7 @@ type Querier interface {
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserPoints(ctx context.Context, arg UpdateUserPointsParams) error
 	UpdateUserWebhookURL(ctx context.Context, arg UpdateUserWebhookURLParams) error
+	UpsertAdClick(ctx context.Context, arg UpsertAdClickParams) error
 	UpsertCollectionTranslation(ctx context.Context, arg UpsertCollectionTranslationParams) (CollectionTranslation, error)
 	UpsertCommentTranslation(ctx context.Context, arg UpsertCommentTranslationParams) (CommentTranslation, error)
 	UpsertGuideTranslation(ctx context.Context, arg UpsertGuideTranslationParams) (GuideTranslation, error)

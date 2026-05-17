@@ -303,6 +303,7 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 		pageSize := 24
 		if infiniteScroll {
 			pageSize = 64

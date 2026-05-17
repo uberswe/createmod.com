@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f2121"/>
+      <stop offset="100%" stop-color="#2a2c2c"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <!-- Browser window -->
+  <rect x="180" y="90" width="440" height="280" rx="10" fill="none" stroke="#bf9045" stroke-width="2.5"/>
+  <rect x="180" y="90" width="440" height="35" rx="10" fill="#bf9045" opacity="0.15"/>
+  <circle cx="205" cy="108" r="5" fill="#d9534f" opacity="0.7"/>
+  <circle cx="225" cy="108" r="5" fill="#f0ad4e" opacity="0.7"/>
+  <circle cx="245" cy="108" r="5" fill="#5cb85c" opacity="0.7"/>
+  <!-- URL bar -->
+  <rect x="270" y="100" width="320" height="16" rx="8" fill="#2a2c2c"/>
+  <!-- Page content -->
+  <rect x="210" y="150" width="180" height="12" rx="3" fill="#bf9045" opacity="0.6"/>
+  <rect x="210" y="175" width="380" height="8" rx="2" fill="#626976" opacity="0.5"/>
+  <rect x="210" y="192" width="350" height="8" rx="2" fill="#626976" opacity="0.5"/>
+  <rect x="210" y="209" width="380" height="8" rx="2" fill="#626976" opacity="0.5"/>
+  <!-- Image placeholder -->
+  <rect x="210" y="235" width="170" height="110" rx="4" fill="#bf9045" opacity="0.2"/>
+  <rect x="400" y="235" width="190" height="8" rx="2" fill="#626976" opacity="0.5"/>
+  <rect x="400" y="252" width="170" height="8" rx="2" fill="#626976" opacity="0.5"/>
+  <rect x="400" y="269" width="190" height="8" rx="2" fill="#626976" opacity="0.5"/>
+  <!-- Refresh arrow -->
+  <path d="M640 200 a40 40 0 1 1 -10 -38" fill="none" stroke="#bf9045" stroke-width="3" stroke-linecap="round"/>
+  <path d="M627 155 l3 12 l12 -3" fill="none" stroke="#bf9045" stroke-width="3" stroke-linecap="round"/>
+  <text x="400" y="420" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#626976">Website Update</text>
+</svg>

@@ -3,6 +3,7 @@ title: "Website Update Announcement"
 date: 2022-07-22
 slug: website-update-announcement
 excerpt: "The website will undergo a large update soon with new features and improvements."
+image: "/assets/x/news/website-update.svg"
 ---
 
 The website will undergo a large update soon. Changes will be staggered and released upon completion not all at once.

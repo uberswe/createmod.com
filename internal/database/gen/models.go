@@ -21,6 +21,15 @@ type Achievement struct {
 	Updated     time.Time `json:"updated"`
 }
 
+type AdClick struct {
+	AdUnit  string    `json:"ad_unit"`
+	Dest    string    `json:"dest"`
+	Period  string    `json:"period"`
+	Count   int64     `json:"count"`
+	Created time.Time `json:"created"`
+	Updated time.Time `json:"updated"`
+}
+
 type ApiKey struct {
 	ID      string    `json:"id"`
 	UserID  string    `json:"user_id"`

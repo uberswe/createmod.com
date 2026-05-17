@@ -33,8 +33,6 @@ func Test_News_Template_Renders_With_Posts(t *testing.T) {
                 PostDate: time.Now(),
             },
         },
-        DailyViews: []DailyStat{{Day: "Mon", Date: "Mar 03", Count: 5}},
-        DailyDL:    []DailyStat{{Day: "Mon", Date: "Mar 03", Count: 3}},
     }
 
     out, err := r.LoadFiles(paths...).Render(d)

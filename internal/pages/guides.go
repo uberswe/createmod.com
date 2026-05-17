@@ -52,6 +52,7 @@ func GuidesHandler(registry *server.Registry, cacheService *cache.Service, outSe
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 		pageSize := 24
 		// Query filter
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))

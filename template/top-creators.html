@@ -37,7 +37,6 @@
                                     <img class="avatar avatar-sm avatar-rounded" src="{{ .AvatarURL }}" alt="{{ .User.Username }}">
                                     <span class="leaderboard-name">{{ .User.Username }}</span>
                                 </a>
-                                <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
                                 <span class="leaderboard-links">
                                     {{ range .SocialLinks }}
                                     <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" title="{{ .Platform }}" aria-label="{{ .Platform }}">
@@ -49,10 +48,21 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
                                         {{ else if eq .Platform "patreon" }}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                        {{ else if eq .Platform "tiktok" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.917v4.034a9.948 9.948 0 0 1 -5 -1.951v4.5a6.5 6.5 0 1 1 -8 -6.326v4.326a2.5 2.5 0 1 0 4 2v-11.5h4.083a6.005 6.005 0 0 0 4.917 4.917z"/></svg>
+                                        {{ else if eq .Platform "instagram" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><path d="M16.5 7.5v.01"/></svg>
+                                        {{ else if eq .Platform "x" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>
+                                        {{ else if eq .Platform "threads" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7.5c-1.333 -3 -3.667 -4.5 -7 -4.5c-5 0 -8 2.5 -8 9s3 9 8 9c2.5 0 4.5 -1 6 -3"/><path d="M12 16c-2.7 0 -4 -1 -4 -3.5s1.2 -3.5 4 -3.5c2 0 3.5 .5 4 3c.5 2.5 -.5 4.5 -4 4.5"/></svg>
+                                        {{ else if eq .Platform "bluesky" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.335 5.144c-1.654 -1.199 -4.335 -2.127 -4.335 .826c0 .59 .35 4.953 .556 5.661c.713 2.463 3.13 2.75 5.444 2.369c-4.045 .665 -4.889 3.208 -2.667 5.41c1.932 1.7 3.793 1.639 5.073 -.207c.853 -1.232 1.064 -2.006 1.594 -2.006s.741 .774 1.594 2.006c1.28 1.846 3.141 1.907 5.073 .207c2.222 -2.202 1.378 -4.745 -2.667 -5.41c2.314 .381 4.731 .094 5.444 -2.369c.206 -.708 .556 -5.071 .556 -5.661c0 -2.953 -2.681 -2.025 -4.335 -.826c-2.16 1.574 -3.24 3.96 -3.665 5.063c-.425 -1.103 -1.505 -3.489 -3.665 -5.063z"/></svg>
                                         {{ end }}
                                     </a>
                                     {{ end }}
                                 </span>
+                                <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
                             </div>
                             {{ end }}
                         </div>
@@ -95,7 +105,6 @@
                                     <img class="avatar avatar-sm avatar-rounded" src="{{ .AvatarURL }}" alt="{{ .User.Username }}">
                                     <span class="leaderboard-name">{{ .User.Username }}</span>
                                 </a>
-                                <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
                                 <span class="leaderboard-links">
                                     {{ range .SocialLinks }}
                                     <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" title="{{ .Platform }}" aria-label="{{ .Platform }}">
@@ -107,10 +116,21 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
                                         {{ else if eq .Platform "patreon" }}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                        {{ else if eq .Platform "tiktok" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.917v4.034a9.948 9.948 0 0 1 -5 -1.951v4.5a6.5 6.5 0 1 1 -8 -6.326v4.326a2.5 2.5 0 1 0 4 2v-11.5h4.083a6.005 6.005 0 0 0 4.917 4.917z"/></svg>
+                                        {{ else if eq .Platform "instagram" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><path d="M16.5 7.5v.01"/></svg>
+                                        {{ else if eq .Platform "x" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>
+                                        {{ else if eq .Platform "threads" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7.5c-1.333 -3 -3.667 -4.5 -7 -4.5c-5 0 -8 2.5 -8 9s3 9 8 9c2.5 0 4.5 -1 6 -3"/><path d="M12 16c-2.7 0 -4 -1 -4 -3.5s1.2 -3.5 4 -3.5c2 0 3.5 .5 4 3c.5 2.5 -.5 4.5 -4 4.5"/></svg>
+                                        {{ else if eq .Platform "bluesky" }}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.335 5.144c-1.654 -1.199 -4.335 -2.127 -4.335 .826c0 .59 .35 4.953 .556 5.661c.713 2.463 3.13 2.75 5.444 2.369c-4.045 .665 -4.889 3.208 -2.667 5.41c1.932 1.7 3.793 1.639 5.073 -.207c.853 -1.232 1.064 -2.006 1.594 -2.006s.741 .774 1.594 2.006c1.28 1.846 3.141 1.907 5.073 .207c2.222 -2.202 1.378 -4.745 -2.667 -5.41c2.314 .381 4.731 .094 5.444 -2.369c.206 -.708 .556 -5.071 .556 -5.661c0 -2.953 -2.681 -2.025 -4.335 -.826c-2.16 1.574 -3.24 3.96 -3.665 5.063c-.425 -1.103 -1.505 -3.489 -3.665 -5.063z"/></svg>
                                         {{ end }}
                                     </a>
                                     {{ end }}
                                 </span>
+                                <span class="leaderboard-points">{{ FormatNumber .User.Points }} {{ T $.Language "pts" }}</span>
                             </div>
                             {{ end }}
                         </div>

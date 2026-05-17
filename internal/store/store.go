@@ -1068,6 +1068,22 @@ type OutgoingClickStore interface {
 	RecordClick(ctx context.Context, url, source, sourceID string, userID *string) error
 }
 
+// AdClickStat represents a click count for an ad unit in a given period.
+type AdClickStat struct {
+	AdUnit string
+	Dest   string
+	Period string
+	Count  int64
+}
+
+// AdClickStore tracks clicks on ad units (NitroAds and kin-tiles).
+type AdClickStore interface {
+	RecordClick(ctx context.Context, adUnit, dest string) error
+	ListDaily(ctx context.Context) ([]AdClickStat, error)
+	ListMonthly(ctx context.Context) ([]AdClickStat, error)
+	RollupAndClean(ctx context.Context, cutoffDay string) error
+}
+
 // ContactStore handles contact form submissions.
 type ContactStore interface {
 	CreateSubmission(ctx context.Context, authorID *string, title, content, name string) error
@@ -1487,4 +1503,5 @@ type Store struct {
 	SearchAlerts         SearchAlertStore
 	ZeroResults          ZeroResultStore
 	Security             SecurityStore
+	AdClicks             AdClickStore
 }

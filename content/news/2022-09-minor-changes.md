@@ -3,6 +3,7 @@ title: "Minor Changes"
 date: 2022-09-29
 slug: minor-changes
 excerpt: "Support for Mod Version 0.5 and Game Version 1.19.X tagging."
+image: "/assets/x/news/minor-changes.svg"
 ---
 
 Site has been updated to allow for Mod Version (0.5 a-e) and for tagging with Game Version 1.19.X
