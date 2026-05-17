@@ -128,6 +128,10 @@
       });
   };
 
+  document.querySelectorAll('[data-passkey-show]').forEach(function(el) {
+    el.style.display = '';
+  });
+
   document.querySelectorAll('[data-passkey-register]').forEach(function(btn) {
     btn.style.display = '';
     btn.addEventListener('click', function() {

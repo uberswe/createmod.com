@@ -14,12 +14,6 @@ func securitySecret() string {
 	if s := os.Getenv("SECURITY_SECRET"); s != "" {
 		return s
 	}
-	if s := os.Getenv("WEBHOOK_SECRET"); s != "" {
-		return s
-	}
-	if s := os.Getenv("OUT_SECRET"); s != "" {
-		return s
-	}
 	slog.Warn("SECURITY_SECRET is not set — using insecure default; set SECURITY_SECRET in production")
 	return "createmod-security-default-insecure"
 }

@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"context"
 	"createmod/internal/server"
 	"createmod/internal/store"
 	"encoding/json"
@@ -33,12 +32,21 @@ func RatingUpsertHandler(appStore *store.Store) func(e *server.RequestEvent) err
 			return e.BadRequestError("schematic and rating (1-5) are required", nil)
 		}
 
-		ctx := context.Background()
+		intRating := int(body.Rating)
+		if float64(intRating) != body.Rating {
+			return e.BadRequestError("rating must be a whole number", nil)
+		}
+
+		ctx := e.Request.Context()
 
 		// Validate schematic exists
 		schem, err := appStore.Schematics.GetByID(ctx, body.SchematicID)
 		if err != nil || schem == nil {
 			return e.BadRequestError("invalid schematic", nil)
+		}
+
+		if schem.AuthorID == userID {
+			return e.ForbiddenError("cannot rate your own schematic", nil)
 		}
 
 		if err := appStore.ViewRatings.UpsertRating(ctx, userID, body.SchematicID, body.Rating); err != nil {

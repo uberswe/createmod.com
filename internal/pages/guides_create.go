@@ -14,6 +14,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"createmod/internal/server"
@@ -21,6 +22,18 @@ import (
 	"github.com/sunshineplan/imgconv"
 	"golang.org/x/image/draw"
 )
+
+// isValidExternalURL checks that a URL is either empty or uses http/https scheme.
+func isValidExternalURL(u string) bool {
+	if u == "" {
+		return true
+	}
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "http" || parsed.Scheme == "https"
+}
 
 var guidesNewTemplates = append([]string{
 	"./template/guides_new.html",
@@ -69,6 +82,12 @@ func GuidesCreateHandler(cacheService *cache.Service, appStore *store.Store, sto
 		content := strings.TrimSpace(e.Request.FormValue("content"))
 		video := strings.TrimSpace(e.Request.FormValue("video_url"))
 		link := strings.TrimSpace(e.Request.FormValue("external_url"))
+		if !isValidExternalURL(video) {
+			video = ""
+		}
+		if !isValidExternalURL(link) {
+			link = ""
+		}
 		if title == "" && content == "" {
 			dest := "/guides/new?error=missing_title_or_content"
 			if e.Request.Header.Get("HX-Request") != "" {

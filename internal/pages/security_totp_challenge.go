@@ -5,6 +5,7 @@ import (
 	"createmod/internal/i18n"
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"crypto/subtle"
 	"net/http"
 	"strings"
 
@@ -78,11 +79,22 @@ func TOTPChallengeVerifyHandler(registry *server.Registry, cacheService *cache.S
 		codeHash := hashCode(code)
 		backupCodes, _ := appStore.Security.ListTOTPBackupCodes(ctx, pending.UserID)
 		for _, bc := range backupCodes {
-			if !bc.Used && bc.CodeHash == codeHash {
+			if !bc.Used && subtle.ConstantTimeCompare([]byte(bc.CodeHash), []byte(codeHash)) == 1 {
 				_ = appStore.Security.MarkBackupCodeUsed(ctx, bc.ID)
 				return completeChallenge(e, appStore, sessStore, pending, "totp")
 			}
 		}
+
+		pending.FailCount++
+		if pending.FailCount >= 5 {
+			clearPendingAuthCookie(e)
+			if e.Request.Header.Get("HX-Request") != "" {
+				e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/login"))
+				return e.HTML(http.StatusNoContent, "")
+			}
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
+		}
+		_ = setPendingAuthCookie(e, *pending)
 
 		return renderTOTPChallengeError(e, registry, cacheService, appStore, i18n.T(preferredLanguageFromRequest(e.Request), "Invalid code. Please try again."))
 	}

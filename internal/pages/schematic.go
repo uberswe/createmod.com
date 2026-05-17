@@ -749,23 +749,30 @@ func MapStoreSchematicsNoCache(appStore *store.Store, schematics []store.Schemat
 
 // translateSchematicTitles replaces each schematic's title with its cached
 // translation when the viewer's language differs from the schematic's detected language.
-func translateSchematicTitles(schematics []models.Schematic, translationService *translation.Service, cacheService *cache.Service, targetLang string) {
+func translateSchematicTitles(schematics []models.Schematic, translationService *translation.Service, cacheService *cache.Service, targetLang string) bool {
+	allTranslated := true
 	for i := range schematics {
 		schematics[i].Language = targetLang
 	}
 	if translationService == nil || cacheService == nil || targetLang == "" {
-		return
+		return true
 	}
 	for i := range schematics {
 		detectedLang := schematics[i].DetectedLanguage
 		if detectedLang != "" && detectedLang == targetLang {
 			continue
 		}
+		if detectedLang == "" {
+			continue
+		}
 		t := translationService.GetTranslationCached(cacheService, schematics[i].ID, targetLang)
 		if t != nil && t.Title != "" {
 			schematics[i].Title = t.Title
+		} else {
+			allTranslated = false
 		}
 	}
+	return allTranslated
 }
 
 func setSchematicLanguage(schematics []models.Schematic, lang string) {

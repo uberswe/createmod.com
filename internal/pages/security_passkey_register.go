@@ -3,6 +3,7 @@ package pages
 import (
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -73,7 +74,8 @@ func PasskeyFinishRegistrationHandler(appStore *store.Store) func(e *server.Requ
 
 		credential, err := webAuthnInstance.FinishRegistration(user, *waSession, e.Request)
 		if err != nil {
-			return e.JSON(http.StatusBadRequest, map[string]string{"error": "registration verification failed"})
+			slog.Error("webauthn: finish registration failed", "error", err, "user", userID)
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": "registration verification failed: " + err.Error()})
 		}
 
 		friendlyName := e.Request.URL.Query().Get("name")

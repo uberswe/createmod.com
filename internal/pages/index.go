@@ -107,6 +107,7 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 		isHTMX := e.Request.Header.Get("HX-Request") != ""
 
 		windowDays := 7
@@ -285,11 +286,17 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 				}
 			}
 		}
-		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
-		translateSchematicTitles(d.Trending, translationService, cacheService, d.Language)
-		translateSchematicTitles(d.HighestRated, translationService, cacheService, d.Language)
+		allTranslated := translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
+		if !translateSchematicTitles(d.Trending, translationService, cacheService, d.Language) {
+			allTranslated = false
+		}
+		if !translateSchematicTitles(d.HighestRated, translationService, cacheService, d.Language) {
+			allTranslated = false
+		}
 		for i := range d.CategorySections {
-			translateSchematicTitles(d.CategorySections[i].Items, translationService, cacheService, d.Language)
+			if !translateSchematicTitles(d.CategorySections[i].Items, translationService, cacheService, d.Language) {
+				allTranslated = false
+			}
 		}
 		d.HideOutstream = true
 		d.Title = i18n.T(d.Language, "page.index.title")
@@ -305,10 +312,10 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		}
 
 		// Cache the rendered HTML for anonymous users (5-minute TTL).
-		// Only cache when all sections have data — if the data caches were
-		// cold (e.g. pod just started), the page may have been rendered with
-		// empty sections and we don't want to serve that for 5 minutes.
-		if !isAuth && len(latestSchematics) > 0 && len(trendingSchematics) > 0 && len(highestRated) > 0 && allCategorySectionsPopulated(categorySections) {
+		// Only cache when all sections have data and all translations are available.
+		// If translations are pending, skip caching to avoid serving foreign-language
+		// titles to users until the translation job catches up.
+		if !isAuth && allTranslated && len(latestSchematics) > 0 && len(trendingSchematics) > 0 && len(highestRated) > 0 && allCategorySectionsPopulated(categorySections) {
 			cacheService.SetWithTTL(indexHTMLCacheKeyWithWindow(d.Language, windowDays), html, indexHTMLCacheTTL)
 		}
 

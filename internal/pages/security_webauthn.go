@@ -87,13 +87,22 @@ func (u *webAuthnUser) WebAuthnCredentials() []webauthn.Credential {
 	return creds
 }
 
+type webAuthnSessionWrapper struct {
+	Session *webauthn.SessionData `json:"s"`
+	Exp     int64                 `json:"e"`
+}
+
 func encodeWebAuthnSession(session *webauthn.SessionData) (string, error) {
-	raw, err := json.Marshal(session)
+	wrapper := webAuthnSessionWrapper{
+		Session: session,
+		Exp:     time.Now().Add(webauthnSessionTTL).Unix(),
+	}
+	raw, err := json.Marshal(wrapper)
 	if err != nil {
 		return "", err
 	}
 	payload := base64.RawURLEncoding.EncodeToString(raw)
-	mac := hmac.New(sha256.New, oauthSigningSecret)
+	mac := hmac.New(sha256.New, webauthnSigningSecret)
 	mac.Write([]byte(payload))
 	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return payload + "." + sig, nil
@@ -104,7 +113,7 @@ func decodeWebAuthnSession(token string) (*webauthn.SessionData, error) {
 	if len(parts) != 2 {
 		return nil, errors.New("malformed token")
 	}
-	mac := hmac.New(sha256.New, oauthSigningSecret)
+	mac := hmac.New(sha256.New, webauthnSigningSecret)
 	mac.Write([]byte(parts[0]))
 	expected := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(expected), []byte(parts[1])) {
@@ -114,11 +123,14 @@ func decodeWebAuthnSession(token string) (*webauthn.SessionData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var s webauthn.SessionData
-	if err := json.Unmarshal(raw, &s); err != nil {
+	var wrapper webAuthnSessionWrapper
+	if err := json.Unmarshal(raw, &wrapper); err != nil {
 		return nil, err
 	}
-	return &s, nil
+	if time.Now().Unix() > wrapper.Exp {
+		return nil, errors.New("session expired")
+	}
+	return wrapper.Session, nil
 }
 
 func setWebAuthnSessionCookie(e *server.RequestEvent, session *webauthn.SessionData) error {

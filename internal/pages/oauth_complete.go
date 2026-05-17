@@ -36,15 +36,27 @@ const (
 	oauthPendingTTL    = 10 * time.Minute
 )
 
-// oauthSigningSecret is set at startup via SetOAuthSigningSecret. It signs
-// the pending-OAuth cookie so the payload can safely round-trip through
-// the user's browser (and survive pod switches across replicas).
+// oauthSigningSecret signs the pending-OAuth cookie.
 var oauthSigningSecret []byte
 
-// SetOAuthSigningSecret stores the secret used to HMAC-sign the pending
-// OAuth state cookie. Called once from router.Register at startup.
+// pendingAuthSigningSecret signs the auth-pending cookie (MFA state).
+var pendingAuthSigningSecret []byte
+
+// webauthnSigningSecret signs the webauthn-session cookie.
+var webauthnSigningSecret []byte
+
+// SetOAuthSigningSecret stores the base secret and derives per-purpose keys.
+// Called once from router.Register at startup.
 func SetOAuthSigningSecret(secret string) {
-	oauthSigningSecret = []byte(secret)
+	oauthSigningSecret = deriveSubkey(secret, "oauth-pending")
+	pendingAuthSigningSecret = deriveSubkey(secret, "auth-pending")
+	webauthnSigningSecret = deriveSubkey(secret, "webauthn-session")
+}
+
+func deriveSubkey(base, purpose string) []byte {
+	mac := hmac.New(sha256.New, []byte(base))
+	mac.Write([]byte(purpose))
+	return mac.Sum(nil)
 }
 
 // oauthPending is the payload encoded into the oauth-pending cookie after

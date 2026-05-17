@@ -15,7 +15,7 @@ func Test_Profile_Template_Usage_Section(t *testing.T) {
 	}
 	s := string(b)
 	must := []string{
-		"Usage",
+		"Stats",
 		"Total schematics",
 		"Total views",
 		"Total downloads",

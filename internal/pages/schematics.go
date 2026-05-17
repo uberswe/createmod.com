@@ -43,6 +43,7 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 
 		isAuth := authenticatedUserID(e) != ""
 		if !isAuth {
@@ -82,7 +83,7 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 		}
 
 		d.Populate(e)
-		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
+		allTranslated := translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"))
 		d.Title = i18n.T(d.Language, "page.schematics.title")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -97,7 +98,7 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 			return err
 		}
 
-		if !isAuth {
+		if !isAuth && allTranslated {
 			cacheService.SetWithTTL(cache.SchematicsListHTMLKey(page, d.Language), html, schematicsListHTMLCacheTTL)
 		}
 

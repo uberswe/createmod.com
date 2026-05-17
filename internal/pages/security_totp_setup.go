@@ -2,6 +2,7 @@ package pages
 
 import (
 	"bytes"
+	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
@@ -149,7 +150,7 @@ func TOTPSetupVerifyHandler(registry *server.Registry, cacheService *cache.Servi
 
 		backupCodes := make([]string, 10)
 		for i := range backupCodes {
-			b := make([]byte, 4)
+			b := make([]byte, 8)
 			_, _ = rand.Read(b)
 			raw := hex.EncodeToString(b)
 			backupCodes[i] = raw
@@ -194,8 +195,20 @@ func TOTPDisableHandler(appStore *store.Store) func(e *server.RequestEvent) erro
 			return e.String(http.StatusBadRequest, "invalid form")
 		}
 		code := strings.TrimSpace(e.Request.Form.Get("code"))
-		if code == "" {
+		password := e.Request.Form.Get("password")
+		if code == "" || password == "" {
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings/security"))
+		}
+
+		user, err := appStore.Users.GetUserByID(ctx, userID)
+		if err != nil {
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings/security"))
+		}
+		if matched, _ := auth.CheckPassword(user.PasswordHash, user.OldPassword, password); !matched {
+			if e.Request.Header.Get("HX-Request") != "" {
+				return e.String(http.StatusBadRequest, "Invalid password")
+			}
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/settings/security?error=invalid_password"))
 		}
 
 		userTOTP, err := appStore.Security.GetTOTP(ctx, userID)

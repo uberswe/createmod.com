@@ -21,11 +21,13 @@ const (
 )
 
 type pendingAuth struct {
-	UserID   string `json:"u"`
-	IP       string `json:"ip"`
-	ReturnTo string `json:"r"`
-	Needs    string `json:"n"`
-	Exp      int64  `json:"e"`
+	UserID      string `json:"u"`
+	IP          string `json:"ip"`
+	ReturnTo    string `json:"r"`
+	Needs       string `json:"n"`
+	Exp         int64  `json:"e"`
+	FailCount   int    `json:"fc"`
+	ResendCount int    `json:"rc"`
 }
 
 func encodePendingAuth(p pendingAuth) (string, error) {
@@ -34,7 +36,7 @@ func encodePendingAuth(p pendingAuth) (string, error) {
 		return "", err
 	}
 	payload := base64.RawURLEncoding.EncodeToString(raw)
-	mac := hmac.New(sha256.New, oauthSigningSecret)
+	mac := hmac.New(sha256.New, pendingAuthSigningSecret)
 	mac.Write([]byte(payload))
 	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return payload + "." + sig, nil
@@ -45,7 +47,7 @@ func decodePendingAuth(token string) (*pendingAuth, error) {
 	if len(parts) != 2 {
 		return nil, errors.New("malformed token")
 	}
-	mac := hmac.New(sha256.New, oauthSigningSecret)
+	mac := hmac.New(sha256.New, pendingAuthSigningSecret)
 	mac.Write([]byte(parts[0]))
 	expected := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	if !hmac.Equal([]byte(expected), []byte(parts[1])) {
@@ -134,6 +136,17 @@ func challengeURL(challenge string) string {
 }
 
 func completeChallenge(e *server.RequestEvent, appStore *store.Store, sessStore *session.Store, pending *pendingAuth, completed string) error {
+	// Verify the completed challenge was actually required
+	if pending.Needs == "" || !strings.Contains(pending.Needs, completed) {
+		clearPendingAuthCookie(e)
+		url := "/login"
+		if e.Request.Header.Get("HX-Request") != "" {
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, url))
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusFound, LangRedirectURL(e, url))
+	}
+
 	remaining := removeNeed(pending.Needs, completed)
 
 	if next := nextChallenge(remaining); next != "" {
@@ -160,10 +173,7 @@ func completeChallenge(e *server.RequestEvent, appStore *store.Store, sessStore 
 	secure := e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https")
 	session.SetCookie(e.Response, token, secure)
 
-	returnTo := pending.ReturnTo
-	if returnTo == "" {
-		returnTo = "/"
-	}
+	returnTo := safeRedirectPath(pending.ReturnTo, "/")
 	if e.Request.Header.Get("HX-Request") != "" {
 		e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, returnTo))
 		return e.HTML(http.StatusNoContent, "")

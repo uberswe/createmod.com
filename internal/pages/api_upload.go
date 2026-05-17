@@ -97,7 +97,7 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 			s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, converted, contentType); uploadErr != nil {
-					slog.Error("api upload: failed to upload rotation image to S3", "error", uploadErr, "token", token, "filename", filename)
+					slog.Error("api upload: failed to upload rotation image to S3", "error", uploadErr, "token", token[:8], "filename", filename)
 					return
 				}
 			}
@@ -111,7 +111,7 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 				Category:  "rotation",
 			}
 			if err := appStore.TempUploadImages.Create(ctx, img); err != nil {
-				slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token)
+				slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token[:8])
 				return
 			}
 
@@ -171,7 +171,7 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 		s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
 		if storageSvc != nil {
 			if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, data, contentType); uploadErr != nil {
-				slog.Error("api upload: failed to upload image to S3", "error", uploadErr, "token", token, "filename", filename)
+				slog.Error("api upload: failed to upload image to S3", "error", uploadErr, "token", token[:8], "filename", filename)
 				continue
 			}
 		}
@@ -185,7 +185,7 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 			Category:  category,
 		}
 		if err := appStore.TempUploadImages.Create(ctx, img); err != nil {
-			slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token)
+			slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token[:8])
 			continue
 		}
 
@@ -337,7 +337,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload NBT to S3 (API)", "error", err, "token", token)
+				slog.Error("failed to upload NBT to S3 (API)", "error", err, "token", token[:8])
 				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
@@ -365,7 +365,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
-			slog.Error("failed to persist temp upload (API)", "error", err, "token", token)
+			slog.Error("failed to persist temp upload (API)", "error", err, "token", token[:8])
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
@@ -521,7 +521,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload NBT to S3 (anonymous API)", "error", err, "token", token)
+				slog.Error("failed to upload NBT to S3 (anonymous API)", "error", err, "token", token[:8])
 				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
@@ -544,7 +544,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
-			slog.Error("failed to persist temp upload (anonymous API)", "error", err, "token", token)
+			slog.Error("failed to persist temp upload (anonymous API)", "error", err, "token", token[:8])
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 

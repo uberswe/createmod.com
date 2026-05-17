@@ -6,6 +6,7 @@ import (
 	"createmod/internal/mailer"
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"crypto/subtle"
 	"net/http"
 	"strings"
 
@@ -107,7 +108,17 @@ func IPVerificationVerifyHandler(appStore *store.Store, sessStore *session.Store
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/auth/verify-ip"))
 		}
 
-		if hashCode(code) != storedCode.CodeHash {
+		if subtle.ConstantTimeCompare([]byte(hashCode(code)), []byte(storedCode.CodeHash)) != 1 {
+			pending.FailCount++
+			if pending.FailCount >= 5 {
+				clearPendingAuthCookie(e)
+				if e.Request.Header.Get("HX-Request") != "" {
+					e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, "/login"))
+					return e.HTML(http.StatusNoContent, "")
+				}
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
+			}
+			_ = setPendingAuthCookie(e, *pending)
 			if e.Request.Header.Get("HX-Request") != "" {
 				return e.String(http.StatusBadRequest, "Invalid code. Please try again.")
 			}
@@ -127,6 +138,16 @@ func IPVerificationResendHandler(appStore *store.Store, mailService *mailer.Serv
 		if err != nil || pending == nil {
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
 		}
+
+		if pending.ResendCount >= 3 {
+			if e.Request.Header.Get("HX-Request") != "" {
+				return e.String(http.StatusTooManyRequests, "Too many resend attempts. Please try logging in again.")
+			}
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/auth/verify-ip"))
+		}
+
+		pending.ResendCount++
+		_ = setPendingAuthCookie(e, *pending)
 
 		ctx := e.Request.Context()
 		sendIPVerificationEmail(ctx, appStore, mailService, pending.UserID, pending.IP)

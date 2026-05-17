@@ -294,7 +294,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if err != nil {
 			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
-		if entry.UploadedBy != "" && entry.UploadedBy != userID {
+		if entry.UploadedBy != userID {
 			return e.String(http.StatusForbidden, "you do not own this upload")
 		}
 
@@ -410,11 +410,18 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			nameSlug = makeUniqueSlug(ctx, appStore, nameSlug)
 		}
 
+		// Atomically mark as processing to prevent duplicate submissions.
+		// This runs before any S3 work so that a concurrent request is
+		// rejected early (409 Conflict) without wasting storage operations.
+		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
+			return e.String(http.StatusConflict, "this upload is already being processed")
+		}
+
 		// --- Handle featured image ---
 		var featuredFilename string
 
 		// Check if featured image is a preloaded temp upload image
-		if preloadedFeatured := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloadedFeatured != "" {
+		if preloadedFeatured := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloadedFeatured != "" && !containsPathTraversal(preloadedFeatured) {
 			srcKey := s3CollectionTempUploads + "/" + token + "/" + preloadedFeatured
 			if storageSvc != nil {
 				dstKey := s3CollectionSchematics + "/" + schematicID + "/" + preloadedFeatured
@@ -458,7 +465,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if preloadedGallery := e.Request.Form["preloaded_images"]; len(preloadedGallery) > 0 && storageSvc != nil {
 			for _, filename := range preloadedGallery {
 				filename = strings.TrimSpace(filename)
-				if filename == "" {
+				if filename == "" || containsPathTraversal(filename) {
 					continue
 				}
 				srcKey := s3CollectionTempUploads + "/" + token + "/" + filename
@@ -520,7 +527,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 			for i, filename := range preloadedRotation {
 				filename = strings.TrimSpace(filename)
-				if filename == "" {
+				if filename == "" || containsPathTraversal(filename) {
 					continue
 				}
 				srcKey := s3CollectionTempUploads + "/" + token + "/" + filename
@@ -593,13 +600,6 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// --- Validate required featured image ---
 		if featuredFilename == "" {
 			return e.String(http.StatusBadRequest, "a schematic must have a featured image")
-		}
-
-		// Atomically mark as processing to prevent duplicate submissions.
-		// This is placed after all validation so that a validation failure
-		// does not lock the upload and block a corrected retry.
-		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
-			return e.String(http.StatusConflict, "this upload is already being processed")
 		}
 
 		// --- Create schematic record ---
@@ -1168,7 +1168,7 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload NBT to S3", "error", err, "token", token)
+				slog.Error("failed to upload NBT to S3", "error", err, "token", token[:8])
 				return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
@@ -1191,7 +1191,7 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
-			slog.Error("failed to persist temp upload", "error", err, "token", token)
+			slog.Error("failed to persist temp upload", "error", err, "token", token[:8])
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 

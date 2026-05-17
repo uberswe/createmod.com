@@ -64,10 +64,10 @@
                                         {{ end }}
                                         {{ if .WebAuthnEnabled }}
                                         <div class="d-flex gap-2 align-items-center">
-                                            <input type="text" id="passkey-name" class="form-control" style="max-width:200px;display:none" placeholder="{{ T .Language "Passkey name (optional)" }}" data-passkey-register>
+                                            <input type="text" id="passkey-name" class="form-control" style="max-width:200px;display:none" placeholder="{{ T .Language "Passkey name (optional)" }}" data-passkey-show>
                                             <button class="btn btn-primary" style="display:none" data-passkey-register>{{ T .Language "Register passkey" }}</button>
                                         </div>
-                                        <script src="/static/passkey.js"></script>
+                                        <script src="/assets/x/passkey.js"></script>
                                         {{ else }}
                                         <button class="btn btn-primary" disabled>{{ T .Language "Register passkey" }}</button>
                                         <p class="text-secondary mt-1">{{ T .Language "Passkeys are not configured on this server." }}</p>

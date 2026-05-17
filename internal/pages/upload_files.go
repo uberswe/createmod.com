@@ -163,14 +163,14 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 		nbtS3Key := s3CollectionTempUploadFiles + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload additional NBT to S3", "error", err, "token", token)
+				slog.Error("failed to upload additional NBT to S3", "error", err, "token", token[:8])
 				return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
 		tempFile.NbtS3Key = nbtS3Key
 
 		if err := appStore.TempUploadFiles.Create(e.Request.Context(), tempFile); err != nil {
-			slog.Error("failed to persist temp upload file", "error", err, "token", token)
+			slog.Error("failed to persist temp upload file", "error", err, "token", token[:8])
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save file record"})
 		}
 

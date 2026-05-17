@@ -193,8 +193,10 @@ func (d *DefaultData) populateFromSession(e *server.RequestEvent, user *session.
 
 // setPublicCacheControl overrides the default "no-cache, private" header for
 // anonymous page responses that are safe to cache in browsers and CDNs.
+// Uses s-maxage=0 to prevent CDN (Cloudflare) caching since language depends
+// on the cm_lang cookie, and Cloudflare ignores Vary: Cookie.
 func setPublicCacheControl(e *server.RequestEvent, maxAge int) {
-	e.Response.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d, stale-while-revalidate=%d", maxAge, maxAge*2))
+	e.Response.Header().Set("Cache-Control", fmt.Sprintf("public, s-maxage=0, max-age=%d, stale-while-revalidate=%d", maxAge, maxAge*2))
 	e.Response.Header().Set("Vary", "Cookie, Accept-Language")
 }
 
@@ -256,10 +258,21 @@ func allCategoriesFromStoreOnly(appStore *store.Store, cacheService *cache.Servi
 	return result
 }
 
+// clampPage caps a page number to a maximum value to prevent excessively large
+// pagination offsets that could harm database performance.
+func clampPage(page, max int) int {
+	if page > max {
+		return max
+	}
+	return page
+}
+
 // safeRedirectPath validates a return_to URL parameter to prevent open redirects.
 // Returns the path if it is a safe, relative path; otherwise returns fallback.
 func safeRedirectPath(returnTo, fallback string) string {
 	returnTo = strings.TrimSpace(returnTo)
+	returnTo = strings.ReplaceAll(returnTo, "\r", "")
+	returnTo = strings.ReplaceAll(returnTo, "\n", "")
 	if returnTo == "" {
 		return fallback
 	}
@@ -322,6 +335,10 @@ func randomHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func containsPathTraversal(filename string) bool {
+	return strings.Contains(filename, "/") || strings.Contains(filename, "\\") || strings.Contains(filename, "..")
 }
 
 // sanitizeContentDispositionFilename strips characters that could cause header injection

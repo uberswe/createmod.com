@@ -263,22 +263,61 @@
     var top = servers.filter(function(s) { return s.is_online; })
                      .slice(0, 3);
     if (top.length === 0) return null;
-    var rows = '';
+
+    var a = document.createElement('a');
+    a.className = 'kin-tile';
+    a.href = 'https://createmodservers.com';
+    a.rel = 'noopener';
+
+    var body1 = document.createElement('div');
+    body1.className = 'kin-body';
+    body1.style.paddingBottom = '4px';
+    var eyebrow = document.createElement('div');
+    eyebrow.className = 'kin-eyebrow';
+    eyebrow.textContent = 'Online right now';
+    var h3 = document.createElement('h3');
+    h3.textContent = 'Find a Create Mod server to play on.';
+    body1.appendChild(eyebrow);
+    body1.appendChild(h3);
+    a.appendChild(body1);
+
+    var list = document.createElement('div');
+    list.className = 'kin-list';
     for (var i = 0; i < top.length; i++) {
       var s = top[i];
-      rows += '<div class="row"><span class="dot"></span><span class="name">' + esc(s.name) +
-              '</span><span class="players">' + esc(String(s.players_online)) + ' online</span></div>';
+      var row = document.createElement('div');
+      row.className = 'row';
+      var dot = document.createElement('span');
+      dot.className = 'dot';
+      var name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = s.name;
+      var players = document.createElement('span');
+      players.className = 'players';
+      players.textContent = String(s.players_online) + ' online';
+      row.appendChild(dot);
+      row.appendChild(name);
+      row.appendChild(players);
+      list.appendChild(row);
     }
-    return '<a class="kin-tile" href="https://createmodservers.com" rel="noopener">' +
-      '<div class="kin-body" style="padding-bottom:4px">' +
-        '<div class="kin-eyebrow">Online right now</div>' +
-        '<h3>Find a Create Mod server to play on.</h3>' +
-      '</div>' +
-      '<div class="kin-list">' + rows + '</div>' +
-      '<div class="kin-body" style="padding-top:6px">' +
-        '<div class="kin-foot" style="margin-top:4px;padding-top:8px"><span class="url">createmodservers.com</span>' + arrow + '</div>' +
-      '</div>' +
-    '</a>';
+    a.appendChild(list);
+
+    var body2 = document.createElement('div');
+    body2.className = 'kin-body';
+    body2.style.paddingTop = '6px';
+    var foot = document.createElement('div');
+    foot.className = 'kin-foot';
+    foot.style.marginTop = '4px';
+    foot.style.paddingTop = '8px';
+    var urlSpan = document.createElement('span');
+    urlSpan.className = 'url';
+    urlSpan.textContent = 'createmodservers.com';
+    foot.appendChild(urlSpan);
+    foot.insertAdjacentHTML('beforeend', arrow);
+    body2.appendChild(foot);
+    a.appendChild(body2);
+
+    return a;
   }
 
   var liveTile = null;
@@ -309,9 +348,15 @@
     if (container.querySelector('.kin-tile')) return;
     var all = getAllTiles();
     var idx = Math.floor(Math.random() * all.length);
-    var wrapper = document.createElement('div');
-    wrapper.insertAdjacentHTML('afterbegin', all[idx]);
-    var tile = wrapper.firstChild;
+    var chosen = all[idx];
+    var tile;
+    if (typeof chosen === 'string') {
+      var wrapper = document.createElement('div');
+      wrapper.insertAdjacentHTML('afterbegin', chosen);
+      tile = wrapper.firstChild;
+    } else {
+      tile = chosen.cloneNode(true);
+    }
     if (tile) {
       tile.setAttribute('target', '_blank');
       tile.setAttribute('hx-boost', 'false');

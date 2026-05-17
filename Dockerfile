@@ -20,6 +20,11 @@ COPY . .
 # Build the Go app
 RUN go build -o main ./cmd/server/main.go
 
+# Run as non-root user
+RUN addgroup -S app && adduser -S app -G app
+RUN chown -R app:app /app
+USER app
+
 # Expose port 8080 to the outside world
 EXPOSE 8080
 

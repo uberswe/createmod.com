@@ -79,6 +79,9 @@ func SchematicAddToCollectionHandler(appStore *store.Store) func(e *server.Reque
 				}
 				return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, returnTo+"?error=collection_not_found"))
 			}
+			if coll.AuthorID == nil || *coll.AuthorID != authenticatedUserID(e) {
+				return e.ForbiddenError("you do not own this collection", nil)
+			}
 			collectionID = coll.ID
 		}
 

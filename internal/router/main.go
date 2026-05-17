@@ -27,6 +27,7 @@ import (
 	"io"
 	html "html/template"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -67,7 +68,7 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 				"status", 500,
 				"error", err.Error(),
 			)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 	}
 }
@@ -112,7 +113,32 @@ type RegisterParams struct {
 	DBPool             *pgxpool.Pool // used by readiness probe to verify DB connectivity
 }
 
+func validateSecrets() {
+	if strings.EqualFold(os.Getenv("DEV"), "true") {
+		return
+	}
+	missing := []string{}
+	if os.Getenv("SECURITY_SECRET") == "" {
+		missing = append(missing, "SECURITY_SECRET")
+	}
+	if os.Getenv("WEBHOOK_SECRET") == "" && os.Getenv("OUT_SECRET") == "" {
+		missing = append(missing, "WEBHOOK_SECRET or OUT_SECRET")
+	}
+	if os.Getenv("OAUTH_SIGN_SECRET") == "" && os.Getenv("OUT_SECRET") == "" {
+		missing = append(missing, "OAUTH_SIGN_SECRET or OUT_SECRET")
+	}
+	if os.Getenv("MOD_DOWNLOAD_SECRET") == "" {
+		missing = append(missing, "MOD_DOWNLOAD_SECRET")
+	}
+	if len(missing) > 0 {
+		slog.Error("FATAL: required secrets not set in production mode", "missing", missing)
+		os.Exit(1)
+	}
+}
+
 func Register(p RegisterParams) chi.Router {
+	validateSecrets()
+
 	registry := server.NewRegistry()
 
 	// Record which OAuth providers are configured so templates can hide
@@ -243,6 +269,7 @@ func Register(p RegisterParams) chi.Router {
 		maintenanceFlag.Store(true)
 	}
 	r.Use(requestIDMiddleware)
+	r.Use(maxBodyMiddleware(10 << 20))
 	r.Use(headMethodSupport)
 	r.Use(cleanDoubleSlashes)
 	r.Use(requestLogger)
@@ -282,7 +309,7 @@ func Register(p RegisterParams) chi.Router {
 	})
 
 	// Prometheus metrics endpoint
-	r.Handle("/metrics", promhttp.Handler())
+	r.Method("GET", "/metrics", metricsAuthMiddleware(promhttp.Handler()))
 
 	// Minecraft mod download API (HMAC-signed, XOR-encoded response)
 	modSecret := deriveModDownloadSecret()
@@ -350,11 +377,11 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/", Adapt(pages.IndexHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/api/index/click", Adapt(pages.IndexClickHandler()))
 	r.Get("/upload", Adapt(pages.UploadHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/upload/nbt", Adapt(pages.UploadNBTHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	// Private preview URL for temporary uploads
-	r.Get("/u/{token}", Adapt(pages.UploadPreviewHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)).Get("/u/{token}", Adapt(pages.UploadPreviewHandler(registry, p.CacheService, p.AppStore)))
 	// Download endpoint for temporary uploads
-	r.Get("/u/{token}/download", Adapt(pages.UploadDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Get("/u/{token}/download", Adapt(pages.UploadDownloadHandler(p.AppStore, p.StorageService)))
 	r.Post("/u/{token}/claim", Adapt(pages.UploadClaimHandler(p.AppStore)))
 	r.Post("/u/{token}/delete", Adapt(pages.UploadDeleteHandler(p.AppStore, p.StorageService)))
 	r.Post("/u/{token}/add-file", Adapt(pages.UploadAddFileHandler(p.AppStore, p.StorageService)))
@@ -397,7 +424,7 @@ func Register(p RegisterParams) chi.Router {
 	// Upload moderation pending confirmation page
 	r.Get("/upload/pending", Adapt(pages.UploadPendingHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/contact", Adapt(pages.ContactHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
 	// Comments and ratings API (replaces PB REST endpoints)
 	// Build comment moderation enqueuer
 	var enqueueCommentModeration pages.CommentModerationEnqueuer
@@ -420,6 +447,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/users/{id}/follow", Adapt(pages.UnfollowHandler(p.AppStore)))
 	analyticsRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
 	r.With(analyticsRateLimit).Post("/api/analytics", Adapt(pages.AnalyticsEventHandler(p.CacheService, p.AppStore)))
+	r.With(analyticsRateLimit).Post("/api/ad-click", Adapt(pages.AdClickHandler(p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
@@ -448,7 +476,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/privacy-policy", Adapt(pages.PrivacyPolicyHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings", Adapt(pages.UserSettingsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings/password", Adapt(pages.UserPasswordHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/settings/password", Adapt(pages.UserPasswordPostHandler(registry, p.CacheService, p.AppStore)))
+	r.Post("/settings/password", Adapt(pages.UserPasswordPostHandler(registry, p.CacheService, p.AppStore, p.SessionStore)))
 	r.Post("/settings/unlink-oauth", Adapt(pages.UnlinkOAuthHandler(p.AppStore)))
 	r.Get("/settings/points", Adapt(pages.UserPointsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings/gamification", func(w http.ResponseWriter, req *http.Request) {
@@ -459,6 +487,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/settings/webhooks", Adapt(pages.UserWebhooksHandler(registry, p.CacheService, p.AppStore, webhookSecret)))
 	r.Post("/settings/webhooks", Adapt(pages.UserWebhookSaveHandler(p.CacheService, p.AppStore, webhookSecret)))
 	r.Post("/settings/webhooks/delete", Adapt(pages.UserWebhookDeleteHandler(p.AppStore)))
+	r.Post("/settings/webhooks/test", Adapt(pages.UserWebhookTestHandler(p.AppStore, webhookSecret)))
 	r.Get("/settings/statistics", Adapt(pages.UserStatsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/settings/badges", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/settings", http.StatusFound)
@@ -485,34 +514,37 @@ func Register(p RegisterParams) chi.Router {
 	// Reports
 	reportRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Hour)
 	r.With(reportRateLimit).Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
-	// Admin
-	r.Get("/admin", Adapt(pages.AdminDashboardHandler(registry, p.CacheService, p.AppStore)))
-	r.Get("/admin/reports", Adapt(pages.AdminReportsHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore, p.MailService)))
-	r.Post("/admin/reports/{id}/delete-target", Adapt(pages.AdminReportDeleteTargetHandler(p.AppStore)))
-	r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
-	r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
-	r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService, p.StorageService, enqueueSearchUpsert)))
-	r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
-	r.Get("/admin/collections", Adapt(pages.AdminCollectionsHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/collections/{id}/delete", Adapt(pages.AdminCollectionDeleteHandler(p.CacheService, p.AppStore)))
-	r.Post("/admin/collections/{id}/unpublish", Adapt(pages.AdminCollectionUnpublishHandler(p.AppStore)))
-	r.Get("/admin/guides", Adapt(pages.AdminGuidesHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/guides/{id}/delete", Adapt(pages.AdminGuideDeleteHandler(p.AppStore)))
-	r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
-	r.Post("/admin/tags/{id}/reject", Adapt(pages.AdminTagRejectHandler(p.CacheService, p.AppStore)))
-	r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
-	r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))
-	r.Get("/admin/comments", Adapt(pages.AdminCommentsHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/comments/{id}/delete", Adapt(pages.AdminCommentDeleteHandler(p.AppStore)))
-	r.Post("/admin/comments/{id}/restore", Adapt(pages.AdminCommentRestoreHandler(p.AppStore)))
-	r.Post("/admin/comments/{id}/approve", Adapt(pages.AdminCommentApproveHandler(p.AppStore)))
-	r.Get("/admin/users", Adapt(pages.AdminUsersHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/admin/users/{id}/delete", Adapt(pages.AdminUserDeleteHandler(p.AppStore)))
-	r.Post("/admin/users/{id}/restore", Adapt(pages.AdminUserRestoreHandler(p.AppStore)))
+	// Admin (defense-in-depth: middleware enforces admin check in addition to per-handler checks)
+	r.Group(func(r chi.Router) {
+		r.Use(adminOnlyMiddleware)
+		r.Get("/admin", Adapt(pages.AdminDashboardHandler(registry, p.CacheService, p.AppStore)))
+		r.Get("/admin/reports", Adapt(pages.AdminReportsHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore, p.MailService)))
+		r.Post("/admin/reports/{id}/delete-target", Adapt(pages.AdminReportDeleteTargetHandler(p.AppStore)))
+		r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
+		r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
+		r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService, p.StorageService, enqueueSearchUpsert)))
+		r.Post("/admin/schematics/{id}/delete", Adapt(pages.AdminSchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
+		r.Get("/admin/collections", Adapt(pages.AdminCollectionsHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/collections/{id}/delete", Adapt(pages.AdminCollectionDeleteHandler(p.CacheService, p.AppStore)))
+		r.Post("/admin/collections/{id}/unpublish", Adapt(pages.AdminCollectionUnpublishHandler(p.AppStore)))
+		r.Get("/admin/guides", Adapt(pages.AdminGuidesHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/guides/{id}/delete", Adapt(pages.AdminGuideDeleteHandler(p.AppStore)))
+		r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
+		r.Post("/admin/tags/{id}/reject", Adapt(pages.AdminTagRejectHandler(p.CacheService, p.AppStore)))
+		r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
+		r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))
+		r.Get("/admin/comments", Adapt(pages.AdminCommentsHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/comments/{id}/delete", Adapt(pages.AdminCommentDeleteHandler(p.AppStore)))
+		r.Post("/admin/comments/{id}/restore", Adapt(pages.AdminCommentRestoreHandler(p.AppStore)))
+		r.Post("/admin/comments/{id}/approve", Adapt(pages.AdminCommentApproveHandler(p.AppStore)))
+		r.Get("/admin/users", Adapt(pages.AdminUsersHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/users/{id}/delete", Adapt(pages.AdminUserDeleteHandler(p.AppStore)))
+		r.Post("/admin/users/{id}/restore", Adapt(pages.AdminUserRestoreHandler(p.AppStore)))
+	})
 	// Auth — rate-limited to 10 POST requests per IP per minute
 	authRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)
 	r.Get("/login", Adapt(pages.LoginHandler(registry, p.AppStore)))
@@ -689,7 +721,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Put("/api/follows/frequency", Adapt(pages.UpdateFollowFrequencyHandler(p.AppStore)))
 
 	// Phase 4: Newsletters
-	r.Post("/api/newsletter/subscribe", Adapt(pages.NewsletterSubscribeHandler(p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/newsletter/subscribe", Adapt(pages.NewsletterSubscribeHandler(p.AppStore)))
 	r.Get("/unsubscribe", Adapt(pages.UnsubscribeHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/newsletters/{slug}", Adapt(pages.NewsletterViewHandler(registry, p.CacheService, p.AppStore)))
 
@@ -837,8 +869,10 @@ func legacySearchCompat(next http.Handler) http.Handler {
 	})
 }
 
+var httpClientWithTimeout = &http.Client{Timeout: 5 * time.Second}
+
 func getContent(url string) (string, error) {
-	resp, err := http.Get(url)
+	resp, err := httpClientWithTimeout.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("GET error: %v", err)
 	}
@@ -871,7 +905,7 @@ func RequestIDFromContext(ctx context.Context) string {
 func requestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-Id")
-		if id == "" {
+		if _, err := uuid.Parse(id); err != nil {
 			id = uuid.NewString()
 		}
 		ctx := context.WithValue(r.Context(), requestIDKey, id)
@@ -1046,8 +1080,8 @@ func csrfOriginCheck(next http.Handler) http.Handler {
 
 		// Check Origin header first (most reliable)
 		if origin := r.Header.Get("Origin"); origin != "" {
-			// Allow CORS-approved origins on API routes
-			if strings.HasPrefix(r.URL.Path, "/api/") && corsAllowedOrigins[origin] {
+			// Allow CORS-approved origins on API routes for safe methods only
+			if strings.HasPrefix(r.URL.Path, "/api/") && corsAllowedOrigins[origin] && safeMethods[r.Method] {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -1160,6 +1194,9 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		w.Header().Set("Content-Security-Policy", cspHeader)
 		w.Header().Set("Cache-Control", "no-cache, private")
+		if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
 
 		// CORS for allowed external origins on API routes
 		if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -1185,12 +1222,7 @@ func securityHeaders(next http.Handler) http.Handler {
 func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := r.RemoteAddr
-			// Use X-Forwarded-For if behind a proxy
-			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-				ip = strings.SplitN(forwarded, ",", 2)[0]
-				ip = strings.TrimSpace(ip)
-			}
+			ip := extractClientIP(r)
 			key := "auth:" + ip
 			if ok, _ := rl.Allow(r.Context(), key, limit, window); !ok {
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
@@ -1199,6 +1231,26 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func extractClientIP(r *http.Request) string {
+	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
+		return ip
+	}
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.IndexByte(xff, ','); i > 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 // deriveModDownloadSecret returns the shared secret for Minecraft mod download
@@ -1233,4 +1285,45 @@ func deriveOAuthSigningSecret() string {
 	slog.Warn("OAUTH_SIGN_SECRET environment variable is not set; using insecure default — set OAUTH_SIGN_SECRET in production")
 	h := sha256.Sum256([]byte("createmod-oauth-sign:default"))
 	return hex.EncodeToString(h[:])
+}
+
+func maxBodyMiddleware(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func adminOnlyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := session.UserFromContext(r.Context())
+		if user == nil || !user.IsAdmin {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func metricsAuthMiddleware(next http.Handler) http.Handler {
+	token := os.Getenv("METRICS_TOKEN")
+	isDev := strings.EqualFold(os.Getenv("DEV"), "true")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if token == "" {
+			if !isDev {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		} else {
+			if r.Header.Get("Authorization") != "Bearer "+token {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
