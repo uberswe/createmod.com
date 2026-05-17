@@ -22,8 +22,8 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.19.0
-	github.com/riverqueue/river v0.36.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.36.0
+	github.com/riverqueue/river v0.37.1
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.37.1
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.1
@@ -75,14 +75,14 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.36.0 // indirect
-	github.com/riverqueue/river/rivershared v0.36.0 // indirect
-	github.com/riverqueue/river/rivertype v0.36.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.37.1 // indirect
+	github.com/riverqueue/river/rivershared v0.37.1 // indirect
+	github.com/riverqueue/river/rivertype v0.37.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/sunshineplan/pdf v1.0.7 // indirect
-	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
