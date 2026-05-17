@@ -268,11 +268,11 @@
     {{template "footer.html" .}}
   </div>
 </div>
-<div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="confirm-delete-modal-title">
   <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-body">
-        <div class="modal-title">{{ T .Language "Are you sure?" }}</div>
+        <div class="modal-title" id="confirm-delete-modal-title">{{ T .Language "Are you sure?" }}</div>
         <div>{{ T .Language "This will soft-delete the schematic. It will no longer appear in public listings." }}</div>
       </div>
       <div class="modal-footer">

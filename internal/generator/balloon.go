@@ -19,6 +19,7 @@ type BalloonParams struct {
 	Hollow           bool    `json:"hollow"`
 	RibEnabled       bool    `json:"ribEnabled"`
 	RibSpacing       int     `json:"ribSpacing"`
+	RibOffset        int     `json:"ribOffset"`
 	KeelEnabled      bool    `json:"keelEnabled"`
 	KeelDepth        int     `json:"keelDepth"`
 	FinEnabled       bool    `json:"finEnabled"`
@@ -52,9 +53,9 @@ func (p *BalloonParams) Validate() error {
 		}
 	}
 
-	clampInt(&p.LengthX, 6, 120)
-	clampInt(&p.WidthZ, 4, 60)
-	clampInt(&p.HeightY, 4, 60)
+	clampInt(&p.LengthX, 6, 500)
+	clampInt(&p.WidthZ, 4, 250)
+	clampInt(&p.HeightY, 4, 250)
 	clampFloat(&p.CylinderMid, 0, 0.85)
 	clampFloat(&p.FrontTaper, 0, 1)
 	clampFloat(&p.RearTaper, 0, 1)
@@ -62,6 +63,7 @@ func (p *BalloonParams) Validate() error {
 	clampFloat(&p.BottomFlatten, 0, 0.5)
 	clampInt(&p.Shell, 1, 5)
 	clampInt(&p.RibSpacing, 2, 12)
+	clampInt(&p.RibOffset, 0, p.RibSpacing-1)
 	clampInt(&p.KeelDepth, 0, 10)
 	clampInt(&p.FinHeight, 2, 15)
 	clampInt(&p.FinLength, 3, 20)
@@ -241,11 +243,26 @@ func GenerateBalloon(p BalloonParams) (*GenerateResult, error) {
 	// in Minecraft, so partial-block smoothing would introduce a mismatched
 	// material and create visible holes on thin shells.
 
-	// Pass 3: Ribbing
+	// Pass 3: Ribbing — replace shell wool with log at rib columns, then back each rib with envelope
 	if p.RibEnabled && p.RibSpacing > 0 {
+		isRibCol := func(x int) bool {
+			return ((x-p.RibOffset)%p.RibSpacing+p.RibSpacing)%p.RibSpacing == 0
+		}
+		var ribPositions [][3]int
 		for pos, v := range grid {
-			if v.blockType == BlockWool && pos[0]%p.RibSpacing == 0 {
+			if v.blockType == BlockWool && isRibCol(pos[0]) {
 				v.blockType = BlockLog
+				ribPositions = append(ribPositions, pos)
+			}
+		}
+		if p.Hollow {
+			for _, pos := range ribPositions {
+				for _, d := range dirs {
+					nb := coordKey(pos[0]+d[0], pos[1]+d[1], pos[2]+d[2])
+					if grid[nb] == nil && insideSet[nb] {
+						grid[nb] = &voxel{blockType: BlockWool}
+					}
+				}
 			}
 		}
 	}

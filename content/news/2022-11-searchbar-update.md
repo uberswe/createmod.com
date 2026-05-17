@@ -3,6 +3,7 @@ title: "Searchbar Update"
 date: 2022-11-07
 slug: searchbar-update
 excerpt: "The search bar has been fixed with a new indexing system for faster results."
+image: "/assets/x/news/searchbar-update.svg"
 ---
 
 Search bar has been fixed!!! (i hope)

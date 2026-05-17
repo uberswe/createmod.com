@@ -109,6 +109,17 @@ func RegisterPostHandler(appStore *store.Store, sessStore *session.Store) func(e
 			return registerError(e, "Registration failed. Please try again.")
 		}
 
+		// Enable IP verification by default and mark current IP as known
+		_ = appStore.Security.UpsertSecuritySettings(ctx, &store.SecuritySettings{
+			UserID:            newUser.ID,
+			NewIPVerification: true,
+		})
+		_ = appStore.Security.UpsertKnownIP(ctx, &store.KnownIP{
+			UserID:    newUser.ID,
+			IPAddress: e.RealIP(),
+		})
+		_ = appStore.Security.VerifyKnownIP(ctx, newUser.ID, e.RealIP())
+
 		// Create session
 		token, err := sessStore.Create(ctx, newUser.ID)
 		if err != nil {

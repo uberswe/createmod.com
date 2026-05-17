@@ -2,7 +2,6 @@ package pages
 
 import (
 	"bytes"
-	"context"
 	"createmod/internal/cache"
 	"createmod/internal/generator"
 	"createmod/internal/generator/render"
@@ -278,35 +277,21 @@ var validHashPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
 
 // GeneratorPreviewHandler serves server-rendered isometric previews for generator hashes.
 // GET /api/generators/preview/{hash}
-func GeneratorPreviewHandler(storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func GeneratorPreviewHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		hash := chi.URLParam(e.Request, "hash")
 		if hash == "" || len(hash) > 300 || !validHashPattern.MatchString(hash) {
 			return e.BadRequestError("invalid hash", nil)
 		}
 
-		// ETag based on the hash (deterministic rendering)
 		etag := `"gen-` + hash[:min(len(hash), 16)] + `"`
 		e.Response.Header().Set("ETag", etag)
 		if match := e.Request.Header.Get("If-None-Match"); match == etag {
 			e.Response.WriteHeader(http.StatusNotModified)
 			return nil
 		}
-		e.Response.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		e.Response.Header().Set("Cache-Control", "public, max-age=86400")
 
-		// Try S3 cache
-		if storageSvc != nil {
-			if exists, _ := storageSvc.Exists(e.Request.Context(), "generator_previews", hash, "preview.png"); exists {
-				reader, err := storageSvc.Download(e.Request.Context(), "generator_previews", hash, "preview.png")
-				if err == nil {
-					defer reader.Close()
-					e.Response.Header().Set("Content-Type", "image/png")
-					return e.Stream(http.StatusOK, "image/png", reader)
-				}
-			}
-		}
-
-		// Generate on the fly
 		result, _, err := generator.DecodeHash(hash)
 		if err != nil {
 			return e.BadRequestError("invalid generator hash", nil)
@@ -322,16 +307,7 @@ func GeneratorPreviewHandler(storageSvc *storage.Service) func(e *server.Request
 			return e.InternalServerError("failed to encode image", nil)
 		}
 
-		pngData := buf.Bytes()
-
-		// Cache to S3 in background
-		if storageSvc != nil {
-			go func() {
-				_ = storageSvc.UploadBytes(context.Background(), "generator_previews", hash, "preview.png", pngData, "image/png")
-			}()
-		}
-
 		e.Response.Header().Set("Content-Type", "image/png")
-		return e.Blob(http.StatusOK, "image/png", pngData)
+		return e.Blob(http.StatusOK, "image/png", buf.Bytes())
 	}
 }

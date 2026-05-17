@@ -1,0 +1,43 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="row row-cards">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="row g-0">
+                                {{ template "settings_nav.html" . }}
+                                <div class="col-12 col-md-9 d-flex flex-column">
+                                    <div class="card-body" style="max-width:480px">
+                                        <h2 class="mb-2">{{ T .Language "Two-Factor Authentication Enabled" }}</h2>
+                                        <div class="alert alert-success mb-4">{{ T .Language "Two-factor authentication has been enabled for your account." }}</div>
+                                        <h3 class="mb-2">{{ T .Language "Backup Codes" }}</h3>
+                                        <p class="text-secondary">{{ T .Language "Save these backup codes in a safe place. Each code can only be used once. If you lose access to your authenticator app, you can use a backup code to sign in." }}</p>
+                                        <div class="card bg-dark-lt mb-4">
+                                            <div class="card-body">
+                                                <div class="row g-2" id="backup-codes">
+                                                    {{ range .BackupCodes }}
+                                                    <div class="col-6"><code class="fs-5">{{ . }}</code></div>
+                                                    {{ end }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('backup-codes').innerText.replace(/\s+/g,'\n').trim())">{{ T .Language "Copy codes" }}</button>
+                                            <a href="/settings/security" class="btn btn-primary">{{ T .Language "I've saved these codes" }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{template "foot.html" .}}

@@ -69,6 +69,7 @@ func CollectionsHandler(registry *server.Registry, cacheService *cache.Service, 
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 		pageSize := 24
 		// Optional search query
 		q := strings.TrimSpace(e.Request.URL.Query().Get("q"))

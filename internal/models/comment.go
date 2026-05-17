@@ -19,6 +19,7 @@ type Comment struct {
 	OriginalContent template.HTML
 	Approved        bool
 	ParentID        string
+	ReplyToAuthor   string
 	IsTranslated    bool
 }
 

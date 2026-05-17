@@ -307,6 +307,23 @@ var LangEN = map[string]string{
 	"How to earn points":                       "How to earn points",
 	"Points history":                           "Points history",
 	"No points earned yet":                     "No points earned yet. Start contributing to earn points!",
+	"pts":                                      "pts",
+	"points.action.upload":                     "Upload a schematic",
+	"points.action.comment":                    "Comment on a schematic",
+	"points.action.rating4":                    "Schematic receives 4+ star rating",
+	"points.action.downloads100":               "Schematic reaches 100 downloads",
+	"points.action.views10k":                   "Schematic reaches 10,000 views",
+	"points.action.first_comment":              "Post your first comment",
+	"points.action.views100":                   "Schematic reaches 100 views",
+	"points.action.views1k":                    "Schematic reaches 1,000 views",
+	"points.action.views10k_milestone":         "Schematic reaches 10,000 views (milestone)",
+	"Repeatable":                               "Repeatable",
+	"One-time":                                 "One-time",
+	"page.topcreators.description":             "Discover the top creators in the Create mod community, ranked by contribution points earned through uploads, engagement, and milestones.",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Earn points by contributing to the community. Upload schematics, comment, and participate to climb the leaderboard!",
+	"topcreators.antispam":                     "Spamming schematics, comments, or any other intentional point manipulation will result in a ban.",
+	"following.email.tooltip":                  "Email notification frequency. Change in subscription settings.",
 	"Achievements":                             "Achievements",
 	"This user has not posted any schematics.": "This user has not posted any schematics.",
 
@@ -810,4 +827,19 @@ var LangEN = map[string]string{
 	"no_replacement":            "No replacement",
 	"block_search_placeholder":  "Search for a block...",
 	"replacements":              "replacements",
+
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "Loading 360° view",
+	"rotation.auto_rotate":      "Auto-rotate",
+	"rotation.how":              "How does this work?",
+	"rotation.tooltip.line1":    "This 360° preview is made from %s images captured around the schematic.",
+	"rotation.tooltip.line2":    "Want to create a 3D preview like this for your own builds? Upload your schematic using the Create Schematic Helper mod.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Scroll left",
+	"gallery.scroll_right": "Scroll right",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Select a category",
+	"delete_draft.confirm": "Are you sure you want to delete this draft? This cannot be undone.",
 }

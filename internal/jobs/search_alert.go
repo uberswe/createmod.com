@@ -159,7 +159,8 @@ func (w *SearchAlertCheckWorker) findNewResults(ctx context.Context, alert store
 		filterParts = append(filterParts, filter)
 	}
 	if alertFilters.Category != "" {
-		filterParts = append(filterParts, fmt.Sprintf(`categories = "%s"`, alertFilters.Category))
+		escaped := strings.ReplaceAll(alertFilters.Category, `"`, `\"`)
+		filterParts = append(filterParts, fmt.Sprintf(`categories = "%s"`, escaped))
 	}
 
 	combinedFilter := strings.Join(filterParts, " AND ")

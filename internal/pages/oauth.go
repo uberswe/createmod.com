@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"createmod/internal/auth"
+	"createmod/internal/mailer"
 	"createmod/internal/session"
 	"createmod/internal/store"
 
@@ -92,7 +93,7 @@ func OAuthRedirectHandler(provider *auth.OAuthProvider) func(e *server.RequestEv
 }
 
 // OAuthCallbackHandler handles the OAuth callback, creating or linking user accounts.
-func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, sessStore *session.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if provider == nil {
 			return oauthLoginErrorRedirect(e, "not_configured")
@@ -175,7 +176,7 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 
 		// LOGIN FLOW — user is not authenticated
 		if err == nil && extAuth != nil {
-			return oauthCreateSession(e, appStore, sessStore, extAuth.UserID)
+			return maybeCreateSessionOrChallenge(e, appStore, sessStore, mailService, extAuth.UserID, "/")
 		}
 
 		// No existing link — check if user with same email exists
@@ -245,29 +246,8 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 			// Still log the user in even if linking fails
 		}
 
-		return oauthCreateSession(e, appStore, sessStore, userID)
+		return maybeCreateSessionOrChallenge(e, appStore, sessStore, mailService, userID, "/")
 	}
-}
-
-// oauthCreateSession creates a session and redirects to home.
-func oauthCreateSession(e *server.RequestEvent, appStore *store.Store, sessStore *session.Store, userID string) error {
-	ctx := e.Request.Context()
-
-	// Verify user still exists and isn't deleted
-	user, err := appStore.Users.GetUserByID(ctx, userID)
-	if err != nil || user == nil || user.Deleted != nil {
-		return oauthLoginErrorRedirect(e, "user_missing")
-	}
-
-	token, err := sessStore.Create(ctx, userID)
-	if err != nil {
-		return e.String(http.StatusInternalServerError, "failed to create session")
-	}
-
-	secure := e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https")
-	session.SetCookie(e.Response, token, secure)
-
-	return e.Redirect(http.StatusFound, LangRedirectURL(e, "/"))
 }
 
 // SteamRedirectHandler redirects to the Steam OpenID login page.
@@ -281,7 +261,7 @@ func SteamRedirectHandler(provider *auth.SteamProvider) func(e *server.RequestEv
 }
 
 // SteamCallbackHandler handles the Steam OpenID callback.
-func SteamCallbackHandler(provider *auth.SteamProvider, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
+func SteamCallbackHandler(provider *auth.SteamProvider, appStore *store.Store, sessStore *session.Store, mailService *mailer.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if provider == nil {
 			return oauthLoginErrorRedirect(e, "not_configured")
@@ -328,7 +308,7 @@ func SteamCallbackHandler(provider *auth.SteamProvider, appStore *store.Store, s
 		}
 
 		if err == nil && extAuth != nil {
-			return oauthCreateSession(e, appStore, sessStore, extAuth.UserID)
+			return maybeCreateSessionOrChallenge(e, appStore, sessStore, mailService, extAuth.UserID, "/")
 		}
 
 		username := sanitizeUsername(oauthUser.Username)
@@ -355,7 +335,7 @@ func SteamCallbackHandler(provider *auth.SteamProvider, appStore *store.Store, s
 			slog.Error("Steam auth link creation failed", "error", err)
 		}
 
-		return oauthCreateSession(e, appStore, sessStore, newUser.ID)
+		return maybeCreateSessionOrChallenge(e, appStore, sessStore, mailService, newUser.ID, "/")
 	}
 }
 

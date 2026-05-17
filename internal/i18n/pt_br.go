@@ -307,6 +307,21 @@ var LangPtBR = map[string]string{
 	"How to earn points":                       "Como ganhar pontos",
 	"Points history":                           "Historico de pontos",
 	"No points earned yet":                     "Nenhum ponto ganho ainda. Comece a contribuir!",
+	"pts":                                      "pts",
+	"points.action.upload":                     "Enviar um esquemático",
+	"points.action.comment":                    "Comentar em um esquemático",
+	"points.action.rating4":                    "Esquemático recebe avaliação de 4+ estrelas",
+	"points.action.downloads100":               "Esquemático atinge 100 downloads",
+	"points.action.views10k":                   "Esquemático atinge 10.000 visualizações",
+	"points.action.first_comment":              "Publique seu primeiro comentário",
+	"points.action.views100":                   "Esquemático atinge 100 visualizações",
+	"points.action.views1k":                    "Esquemático atinge 1.000 visualizações",
+	"points.action.views10k_milestone":         "Esquemático atinge 10.000 visualizações (marco)",
+	"Repeatable":                               "Repetível",
+	"One-time":                                 "Uma vez",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Ganhe pontos contribuindo com a comunidade. Envie esquemáticos, comente e participe para subir no ranking!",
+	"topcreators.antispam":                     "Spam de esquemáticos, comentários ou qualquer outra manipulação intencional de pontos resultará em banimento.",
 	"Achievements":                             "Conquistas",
 	"This user has not posted any schematics.": "Este usuário ainda não publicou nenhum esquemático.",
 
@@ -811,4 +826,19 @@ var LangPtBR = map[string]string{
 	"no_replacement":            "Sem substituição",
 	"block_search_placeholder":  "Buscar um bloco...",
 	"replacements":              "substituições",
+
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "Carregando visualização 360°",
+	"rotation.auto_rotate":      "Girar automaticamente",
+	"rotation.how":              "Como funciona?",
+	"rotation.tooltip.line1":    "Esta pré-visualização 360° é feita com %s imagens capturadas ao redor do esquema.",
+	"rotation.tooltip.line2":    "Quer criar uma pré-visualização 3D como esta para suas próprias construções? Envie seu esquema usando o mod Create Schematic Helper.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Rolar para a esquerda",
+	"gallery.scroll_right": "Rolar para a direita",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Selecione uma categoria",
+	"delete_draft.confirm": "Tem certeza de que deseja excluir este rascunho? Esta ação não pode ser desfeita.",
 }

@@ -391,9 +391,9 @@ func (s *Server) Start() {
 	httpServer := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
-		ReadTimeout:       30 * time.Second,
+		ReadTimeout:       5 * time.Minute,
 		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      60 * time.Second,
+		WriteTimeout:      5 * time.Minute,
 		IdleTimeout:       120 * time.Second,
 	}
 

@@ -24,6 +24,7 @@
                                                 <tr>
                                                     <th>{{ T .Language "Action" }}</th>
                                                     <th>{{ T .Language "Points" }}</th>
+                                                    <th>{{ T .Language "Type" }}</th>
                                                 </tr>
                                                 </thead>
                                                 <tbody>
@@ -31,6 +32,7 @@
                                                 <tr>
                                                     <td>{{ .Action }}</td>
                                                     <td><span class="badge bg-green">+{{ .Points }}</span></td>
+                                                    <td>{{ if .Repeatable }}<span class="badge bg-azure">{{ T $.Language "Repeatable" }}</span>{{ else }}<span class="badge bg-secondary">{{ T $.Language "One-time" }}</span>{{ end }}</td>
                                                 </tr>
                                                 {{ end }}
                                                 </tbody>

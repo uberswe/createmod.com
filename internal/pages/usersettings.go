@@ -115,8 +115,9 @@ func UnlinkOAuthHandler(appStore *store.Store) func(e *server.RequestEvent) erro
 		provider := strings.TrimSpace(e.Request.Form.Get("provider"))
 		password := strings.TrimSpace(e.Request.Form.Get("password"))
 
-		if provider != "github" && provider != "discord" {
-			return e.Redirect(http.StatusSeeOther, "/settings")
+		validProviders := map[string]bool{"github": true, "discord": true, "twitch": true, "patreon": true, "reddit": true, "google": true, "microsoft": true, "steam": true}
+		if !validProviders[provider] {
+			return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/settings"))
 		}
 
 		if password == "" {

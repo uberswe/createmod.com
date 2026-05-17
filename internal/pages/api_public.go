@@ -111,13 +111,9 @@ type apiListResponse struct {
 	Term     string             `json:"term,omitempty"`
 }
 
-// getAPIKeyFromRequest extracts API key from header or query param.
+// getAPIKeyFromRequest extracts API key from the X-API-Key header.
 func getAPIKeyFromRequest(r *http.Request) string {
-	key := strings.TrimSpace(r.Header.Get("X-API-Key"))
-	if key == "" {
-		key = strings.TrimSpace(r.URL.Query().Get("api_key"))
-	}
-	return key
+	return strings.TrimSpace(r.Header.Get("X-API-Key"))
 }
 
 // verifyAPIKeyFromStore looks up the API key by its last 8 characters,

@@ -12,6 +12,10 @@ var currentData = null;
 var cameraUserInteracted = false;
 var resizeHandler = null;
 var resizeObserver = null;
+var spinEnabled = false;
+var spinGroup = null;
+var blockContainer = null;
+var spinAxis = 'y';
 
 var WOOD_COLORS = {
   oak:      { plank: 0xb8945f, log: 0x6b5839 },
@@ -183,6 +187,10 @@ function onResize() {
 
 function animate() {
   animId = requestAnimationFrame(animate);
+  if (spinEnabled && spinGroup) {
+    if (spinAxis === 'z') spinGroup.rotation.z += 0.01;
+    else spinGroup.rotation.y += 0.01;
+  }
   if (controls) controls.update();
   if (renderer && scene && camera) renderer.render(scene, camera);
 }
@@ -198,11 +206,17 @@ function disposeObject(obj) {
 }
 
 function clearBlocks() {
+  var parent = blockContainer || spinGroup || scene;
   for (var i = 0; i < blockMeshes.length; i++) {
-    scene.remove(blockMeshes[i]);
+    parent.remove(blockMeshes[i]);
     disposeObject(blockMeshes[i]);
   }
   blockMeshes = [];
+  if (spinGroup) {
+    scene.remove(spinGroup);
+    spinGroup = null;
+    blockContainer = null;
+  }
 }
 
 function renderBlocks(data) {
@@ -215,6 +229,8 @@ function renderBlocks(data) {
 
   var materials = data.materials || {};
 
+  spinAxis = (materials.orientation === 'vertical') ? 'z' : 'y';
+
   var groups = {};
   for (var i = 0; i < blocks.length; i++) {
     var b = blocks[i];
@@ -226,6 +242,17 @@ function renderBlocks(data) {
   var cx = data.sizeX / 2;
   var cy = 0;
   var cz = data.sizeZ / 2;
+
+  var pivotX = (data.sizeX - 1) / 2 - cx;
+  var pivotY = (data.sizeY - 1) / 2 - cy;
+  var pivotZ = (data.sizeZ - 1) / 2 - cz;
+
+  spinGroup = new THREE.Group();
+  spinGroup.position.set(pivotX, pivotY, pivotZ);
+  blockContainer = new THREE.Group();
+  blockContainer.position.set(-pivotX, -pivotY, -pivotZ);
+  spinGroup.add(blockContainer);
+  scene.add(spinGroup);
 
   var boxGeo = new THREE.BoxGeometry(1, 1, 1);
   var slabGeo = new THREE.BoxGeometry(1, 0.5, 1);
@@ -365,7 +392,7 @@ function renderBlocks(data) {
           sMesh.setMatrixAt(sj, dummy.matrix);
         }
         sMesh.instanceMatrix.needsUpdate = true;
-        scene.add(sMesh);
+        blockContainer.add(sMesh);
         blockMeshes.push(sMesh);
         if (sArr.length <= 2000) {
           var stairEdgeGeo = new THREE.EdgesGeometry(sGeo);
@@ -391,7 +418,7 @@ function renderBlocks(data) {
           stairMergedGeo.setAttribute('position', new THREE.BufferAttribute(stairEdgePos, 3));
           var stairEdgeMat = new THREE.LineBasicMaterial({ color: 0x222222, opacity: 0.12, transparent: true });
           var stairEdgeLines = new THREE.LineSegments(stairMergedGeo, stairEdgeMat);
-          scene.add(stairEdgeLines);
+          blockContainer.add(stairEdgeLines);
           blockMeshes.push(stairEdgeLines);
           stairEdgeGeo.dispose();
         }
@@ -412,7 +439,7 @@ function renderBlocks(data) {
         postMesh.setMatrixAt(fi, dummy.matrix);
       }
       postMesh.instanceMatrix.needsUpdate = true;
-      scene.add(postMesh);
+      blockContainer.add(postMesh);
       blockMeshes.push(postMesh);
 
       // Instanced fence bars: collect all bar positions per axis
@@ -441,7 +468,7 @@ function renderBlocks(data) {
           barMesh.setMatrixAt(bi, dummy.matrix);
         }
         barMesh.instanceMatrix.needsUpdate = true;
-        scene.add(barMesh);
+        blockContainer.add(barMesh);
         blockMeshes.push(barMesh);
       }
 
@@ -463,7 +490,7 @@ function renderBlocks(data) {
         fenceMergedGeo.setAttribute('position', new THREE.BufferAttribute(fenceEdgePos, 3));
         var fenceEdgeMat = new THREE.LineBasicMaterial({ color: 0x222222, opacity: 0.12, transparent: true });
         var fenceEdgeLines = new THREE.LineSegments(fenceMergedGeo, fenceEdgeMat);
-        scene.add(fenceEdgeLines);
+        blockContainer.add(fenceEdgeLines);
         blockMeshes.push(fenceEdgeLines);
         fenceEdgeGeo.dispose();
       }
@@ -522,7 +549,7 @@ function renderBlocks(data) {
           tdMesh.setMatrixAt(tdj, dummy.matrix);
         }
         tdMesh.instanceMatrix.needsUpdate = true;
-        scene.add(tdMesh);
+        blockContainer.add(tdMesh);
         blockMeshes.push(tdMesh);
       }
       dummy.rotation.set(0, 0, 0);
@@ -548,7 +575,7 @@ function renderBlocks(data) {
       mesh.setMatrixAt(j, dummy.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
-    scene.add(mesh);
+    blockContainer.add(mesh);
     blockMeshes.push(mesh);
 
     // Block edge outlines — merge all edges into one LineSegments
@@ -578,7 +605,7 @@ function renderBlocks(data) {
       }
       var edgeMat = new THREE.LineBasicMaterial({ color: edgeColor, opacity: edgeOpacity, transparent: true });
       var edgeLines = new THREE.LineSegments(mergedEdgeGeo, edgeMat);
-      scene.add(edgeLines);
+      blockContainer.add(edgeLines);
       blockMeshes.push(edgeLines);
       edgeTemplate.dispose();
     }
@@ -856,6 +883,7 @@ var ENUM_MAPS = {
   envelopeMaterial: { wool:'w', envelope:'e' },
   frameMaterial: { wood:'w', andesite_casing:'a' },
   sternStyle: { round:'r', square:'s', pointed:'p' },
+  bowStyle: { 'default':'d', pointed:'pt', clipper:'cl', raked:'rk', plumb:'pl' },
   orientation: { horizontal:'h', vertical:'v' },
   color: COLOR_TO_CODE,
   wood: WOOD_TO_CODE
@@ -883,7 +911,8 @@ var SCHEMAS = {
     { k:'keelEnabled', t:'b' }, { k:'keelDepth', t:'i' }, { k:'finEnabled', t:'b' },
     { k:'sideFinEnabled', t:'b' }, { k:'finHeight', t:'i' }, { k:'finLength', t:'i' },
     { k:'envelopeMaterial', t:'e', m:'envelopeMaterial' }, { k:'envelopeColor', t:'e', m:'color' },
-    { k:'frameMaterial', t:'e', m:'frameMaterial' }, { k:'frameWoodType', t:'e', m:'wood' }
+    { k:'frameMaterial', t:'e', m:'frameMaterial' }, { k:'frameWoodType', t:'e', m:'wood' },
+    { k:'ribOffset', t:'i' }
   ],
   h: [
     { k:'woodType', t:'e', m:'wood' }, { k:'length', t:'i' }, { k:'beam', t:'i' },
@@ -899,7 +928,8 @@ var SCHEMAS = {
     { k:'castleHeight', t:'i' }, { k:'castleLength', t:'i' },
     { k:'forecastleHeight', t:'i' }, { k:'forecastleLength', t:'i' },
     { k:'hasGunPorts', t:'b' }, { k:'gunPortRow', t:'i' }, { k:'gunPortSpacing', t:'i' },
-    { k:'bowCurve', t:'f' }, { k:'sternOverhang', t:'f' }, { k:'midWidthBias', t:'f' }
+    { k:'bowCurve', t:'f' }, { k:'sternOverhang', t:'f' }, { k:'midWidthBias', t:'f' },
+    { k:'bowStyle', t:'e', m:'bowStyle' }
   ]
 };
 
@@ -1061,7 +1091,7 @@ function cleanup() {
   if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
   if (renderer) { renderer.dispose(); renderer = null; }
   scene = null; camera = null; controls = null; container = null;
-  currentData = null; cameraUserInteracted = false;
+  currentData = null; cameraUserInteracted = false; spinEnabled = false; spinGroup = null; blockContainer = null; spinAxis = 'y';
 }
 
 window.GeneratorApp = {
@@ -1077,6 +1107,8 @@ window.GeneratorApp = {
   toBase64Url: toBase64Url,
   fromBase64Url: fromBase64Url,
   capturePreview: capturePreview,
+  setSpinEnabled: function(v) { spinEnabled = !!v; },
+  isSpinEnabled: function() { return spinEnabled; },
   _cleanup: cleanup
 };
 

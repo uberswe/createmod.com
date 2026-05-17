@@ -63,6 +63,7 @@ window.setTheme=function(theme){
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project styles -->
     <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
+    <link rel="stylesheet" href="/assets/x/kin-tiles.css?v={{ AssetVer }}" />
     <!-- Editor (Tiptap) -->
     <link rel="stylesheet" href="/assets/x/editor.css?v={{ AssetVer }}" />
     <script src="/assets/x/editor.js?v={{ AssetVer }}" defer></script>
@@ -78,7 +79,7 @@ window.setTheme=function(theme){
     <script src="/assets/x/framework.js?v={{ AssetVer }}" defer></script>
 
     <script data-cfasync="false">window.nitroAds=window.nitroAds||{createAd:function(){return new Promise(e=>{window.nitroAds.queue.push(["createAd",arguments,e])})},addUserToken:function(){window.nitroAds.queue.push(["addUserToken",arguments])},queue:[]};</script>
-    <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js"></script>
+    <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js" onerror="window._nitroBlocked=true"></script>
     <script>
     // Reload once after the user accepts the NCMP cookie consent so that
     // NitroAds can render ads that were blocked before consent was given.
@@ -129,6 +130,26 @@ window.setTheme=function(theme){
           }).catch(function(){});
         });
       });
+    })();
+    </script>
+    <script>
+    (function(){
+      function trackAdClick(adUnit, dest) {
+        try {
+          navigator.sendBeacon('/api/ad-click', JSON.stringify({ad_unit: adUnit, dest: dest}));
+        } catch(e) {}
+      }
+      document.addEventListener('click', function(ev) {
+        var link = ev.target.closest('a.kin-tile');
+        if (link) {
+          trackAdClick('kin-' + (link.hostname || 'unknown').replace(/^www\./, ''), link.href || '');
+          return;
+        }
+        var adEl = ev.target.closest('[id*="-video-nc-"], [id*="-sticky-adrail"], [id*="-mobile"], [id*="outstream-player"]');
+        if (adEl) {
+          trackAdClick(adEl.id, '');
+        }
+      }, true);
     })();
     </script>
 

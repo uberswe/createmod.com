@@ -21,9 +21,6 @@
                                     {{ if .HasSchematics }}
                                     <span class="badge bg-green" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
                                     {{ end }}
-                                    {{ if .HasBadges }}
-                                    {{ template "user_badges.html" .DisplayBadges }}
-                                    {{ end }}
                                 </div>
                                 <div class="d-flex align-items-center gap-3 text-secondary">
                                     <span>{{ .FollowerCount }} {{ T .Language "followers" }}</span>
@@ -46,25 +43,25 @@
                                 {{ end }}
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-12 col-md-8">
-                                <div class="card">
-                                    <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Usage" }}</h3></div>
+                        <div class="row mb-3 g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Stats" }}</h3></div>
                                     <div class="card-body">
                                         <div class="row g-3">
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Total schematics" }}</div>
                                                 <div class="h3 mb-0">{{ .SchematicCount }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Total views" }}</div>
                                                 <div class="h3 mb-0">{{ .TotalViews }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Total downloads" }}</div>
                                                 <div class="h3 mb-0">{{ .TotalDownloads }}</div>
                                             </div>
-                                            <div class="col-12 col-md-3">
+                                            <div class="col-6">
                                                 <div class="text-secondary">{{ T .Language "Points" }}</div>
                                                 <div class="h3 mb-0">{{ .Points }}</div>
                                             </div>
@@ -83,21 +80,54 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {{ if .HasSocialLinks }}
-                        <div class="row mb-3">
-                            <div class="col-12 col-md-8">
-                                <div class="d-flex flex-wrap gap-2">
-                                    {{ range .SocialLinks }}
-                                    <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-purple{{ else if eq .Platform "patreon" }}btn-orange{{ else if eq .Platform "reddit" }}btn-warning{{ else }}btn-secondary{{ end }}">
-                                        {{ if eq .Platform "youtube" }}YouTube{{ else if eq .Platform "twitch" }}Twitch{{ else if eq .Platform "patreon" }}Patreon{{ else if eq .Platform "reddit" }}Reddit{{ else }}{{ .Platform }}{{ end }}{{ if .Username }} &middot; {{ .Username }}{{ end }}{{ if .Verified }} ✓{{ end }}
-                                    </a>
-                                    {{ end }}
+                            <div class="col-12 col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Socials" }}</h3></div>
+                                    <div class="card-body">
+                                        {{ if .HasSocialLinks }}
+                                        <div class="d-flex flex-column gap-2">
+                                            {{ range .SocialLinks }}
+                                            <a href="{{ .URL }}" target="_blank" rel="noopener noreferrer" class="btn {{ if eq .Platform "youtube" }}btn-danger{{ else if eq .Platform "twitch" }}btn-twitch{{ else if eq .Platform "patreon" }}btn-patreon{{ else if eq .Platform "reddit" }}btn-warning{{ else if eq .Platform "tiktok" }}btn-dark{{ else if eq .Platform "instagram" }}btn-pink{{ else if eq .Platform "x" }}btn-dark{{ else if eq .Platform "threads" }}btn-dark{{ else if eq .Platform "bluesky" }}btn-info{{ else }}btn-secondary{{ end }} d-flex align-items-center gap-2">
+                                                {{ if eq .Platform "youtube" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z"/><path d="M10 9l5 3l-5 3z"/></svg>
+                                                YouTube{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "twitch" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v11a1 1 0 0 0 1 1h2v4l4 -4h5.584c.266 0 .52 -.105 .707 -.293l2.415 -2.414c.187 -.188 .293 -.442 .293 -.708v-8.585a1 1 0 0 0 -1 -1h-14a1 1 0 0 0 -1 1z"/><path d="M16 8l0 4"/><path d="M12 8l0 4"/></svg>
+                                                Twitch{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "patreon" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h3v18h-3z"/><circle cx="15" cy="9.5" r="5.5"/></svg>
+                                                Patreon{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "reddit" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c2.648 0 5.028 .826 6.675 2.14a2.5 2.5 0 0 1 2.326 4.36c0 3.59 -4.03 6.5 -9 6.5c-4.875 0 -8.845 -2.8 -9 -6.294l-.001 -.206a2.5 2.5 0 0 1 2.326 -4.36c1.646 -1.313 4.026 -2.14 6.674 -2.14z"/></svg>
+                                                Reddit{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "tiktok" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.917v4.034a9.948 9.948 0 0 1 -5 -1.951v4.5a6.5 6.5 0 1 1 -8 -6.326v4.326a2.5 2.5 0 1 0 4 2v-11.5h4.083a6.005 6.005 0 0 0 4.917 4.917z"/></svg>
+                                                TikTok{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "instagram" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><path d="M16.5 7.5v.01"/></svg>
+                                                Instagram{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "x" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z"/><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772"/></svg>
+                                                X{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "threads" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7.5c-1.333 -3 -3.667 -4.5 -7 -4.5c-5 0 -8 2.5 -8 9s3 9 8 9c2.5 0 4.5 -1 6 -3"/><path d="M12 16c-2.7 0 -4 -1 -4 -3.5s1.2 -3.5 4 -3.5c2 0 3.5 .5 4 3c.5 2.5 -.5 4.5 -4 4.5"/></svg>
+                                                Threads{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else if eq .Platform "bluesky" }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.335 5.144c-1.654 -1.199 -4.335 -2.127 -4.335 .826c0 .59 .35 4.953 .556 5.661c.713 2.463 3.13 2.75 5.444 2.369c-4.045 .665 -4.889 3.208 -2.667 5.41c1.932 1.7 3.793 1.639 5.073 -.207c.853 -1.232 1.064 -2.006 1.594 -2.006s.741 .774 1.594 2.006c1.28 1.846 3.141 1.907 5.073 .207c2.222 -2.202 1.378 -4.745 -2.667 -5.41c2.314 .381 4.731 .094 5.444 -2.369c.206 -.708 .556 -5.071 .556 -5.661c0 -2.953 -2.681 -2.025 -4.335 -.826c-2.16 1.574 -3.24 3.96 -3.665 5.063c-.425 -1.103 -1.505 -3.489 -3.665 -5.063z"/></svg>
+                                                BlueSky{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ else }}
+                                                {{ .Platform }}{{ if .Username }} &middot; {{ .Username }}{{ end }}
+                                                {{ end }}
+                                            </a>
+                                            {{ end }}
+                                        </div>
+                                        {{ else }}
+                                        <p class="text-secondary mb-0">{{ T .Language "No social links defined." }}</p>
+                                        {{ end }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {{ end }}
 
                         <!-- Mobile ad (smaller screens) -->
                         <div id="profile-mobile" class="d-xl-none mb-3 text-center"></div>

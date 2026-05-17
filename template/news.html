@@ -5,264 +5,88 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="row g-3">
-                    <!-- Left column: News posts -->
-                    <div class="col-lg-8">
-                        <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
-                        {{ if .Posts }}
-                            {{ $root := . }}
-                            {{ range $i, $post := .Posts }}
-                            <div class="card news-card mb-3">
-                                <div class="card-body py-3">
-                                    <div class="d-flex align-items-start">
-                                        {{ if $post.Image }}
-                                        <div class="news-thumb me-3 flex-shrink-0">
-                                            <img src="{{ $post.Image }}" alt="" loading="lazy">
-                                        </div>
-                                        {{ else }}
-                                        <div class="news-thumb news-thumb-placeholder me-3 flex-shrink-0">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17"/><path d="M4 21h16"/><path d="M12 7v4"/><path d="M7.5 11h9"/></svg>
-                                        </div>
-                                        {{ end }}
-                                        <div class="flex-fill min-width-0">
-                                            <div class="d-flex align-items-center mb-1">
-                                                <h3 class="mb-0"><a href="{{ $post.URL }}" class="text-reset">{{ $post.Title }}</a></h3>
-                                                {{ if eq $i 0 }}
-                                                <span class="badge bg-green-lt ms-2">Latest</span>
-                                                {{ end }}
-                                            </div>
-                                            <div class="text-secondary news-excerpt">
-                                                {{ if $post.FirstParagraph }}
-                                                    {{ $post.FirstParagraph }}
-                                                {{ else if $post.Excerpt }}
-                                                    <p class="mb-0">{{ $post.Excerpt }}</p>
-                                                {{ end }}
-                                            </div>
-                                            <div class="text-secondary mt-1" style="font-size: 0.8rem;">
-                                                {{ DateOnly $post.PostDate }}
-                                            </div>
-                                        </div>
+                <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
+                {{ if .Posts }}
+                    {{ $root := . }}
+                    <div class="row row-cards">
+                        {{ range $i, $post := .Posts }}
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <a href="{{ $post.URL }}" class="card news-tile">
+                                <div class="news-tile-img">
+                                    {{ if $post.Image }}
+                                    <img src="{{ $post.Image }}" alt="{{ $post.Title }}" loading="lazy">
+                                    {{ else }}
+                                    <div class="news-tile-placeholder">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17"/><path d="M4 21h16"/><path d="M12 7v4"/><path d="M7.5 11h9"/></svg>
                                     </div>
+                                    {{ end }}
                                 </div>
-                            </div>
-                            {{ end }}
-                        {{ else }}
-                            <div class="card mb-3">
                                 <div class="card-body">
-                                    <h3>{{ T .Language "No news yet" }}</h3>
-                                    <p class="mb-0">{{ T .Language "There are no news posts available at the moment. Please check back later." }}</p>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <h3 class="card-title mb-0 text-truncate">{{ $post.Title }}</h3>
+                                        {{ if eq $i 0 }}
+                                        <span class="badge bg-green-lt flex-shrink-0">Latest</span>
+                                        {{ end }}
+                                    </div>
+                                    <p class="text-secondary mb-1 news-tile-excerpt">{{ $post.Excerpt }}</p>
+                                    <div class="text-secondary" style="font-size: 0.8rem;">{{ DateOnly $post.PostDate }}</div>
                                 </div>
-                            </div>
+                            </a>
+                        </div>
                         {{ end }}
                     </div>
-
-                    <!-- Right column: Site stats -->
-                    <div class="col-lg-4">
-                        <h2 class="page-title mb-3">{{ T .Language "Site Stats (7 days)" }}</h2>
-
-                        <!-- Views chart -->
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <h3 class="card-title">{{ T .Language "Views" }}</h3>
-                                <span class="ms-auto text-secondary">{{ .TotalViews7 }} {{ T .Language "total" }}</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="stats-chart" id="views-chart">
-                                    <div class="stats-bars">
-                                        {{ range .DailyViews }}
-                                        <div class="stats-bar-col" title="{{ .Date }}: {{ .Count }} views">
-                                            <div class="stats-bar" data-count="{{ .Count }}"></div>
-                                        </div>
-                                        {{ end }}
-                                    </div>
-                                    <div class="stats-labels">
-                                        {{ range .DailyViews }}
-                                        <span>{{ .Day }}</span>
-                                        {{ end }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Downloads chart -->
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <h3 class="card-title">{{ T .Language "Downloads" }}</h3>
-                                <span class="ms-auto text-secondary">{{ .TotalDL7 }} {{ T .Language "total" }}</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="stats-chart" id="downloads-chart">
-                                    <div class="stats-bars">
-                                        {{ range .DailyDL }}
-                                        <div class="stats-bar-col" title="{{ .Date }}: {{ .Count }} downloads">
-                                            <div class="stats-bar" data-count="{{ .Count }}"></div>
-                                        </div>
-                                        {{ end }}
-                                    </div>
-                                    <div class="stats-labels">
-                                        {{ range .DailyDL }}
-                                        <span>{{ .Day }}</span>
-                                        {{ end }}
-                                    </div>
-                                </div>
-                            </div>
+                {{ else }}
+                    <div class="card">
+                        <div class="card-body">
+                            <h3>{{ T .Language "No news yet" }}</h3>
+                            <p class="mb-0">{{ T .Language "There are no news posts available at the moment. Please check back later." }}</p>
                         </div>
                     </div>
-                </div>
-            </main>
-            {{template "footer.html" .}}
-        </div>
+                {{ end }}
+            </div>
+        </main>
+        {{template "footer.html" .}}
     </div>
-    {{template "foot.html" .}}
 </div>
 <style>
-.news-card {
-    position: relative;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    cursor: pointer;
-}
-.news-card:hover {
-    border-color: var(--cm-primary);
-    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-}
-.news-card h3 a {
+.news-tile {
     text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    height: 100%;
 }
-.news-card h3 a::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
+.news-tile:hover {
+    border-color: var(--cm-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
 }
-.news-card h3 a:hover {
-    color: var(--cm-primary) !important;
+.news-tile:hover .card-title {
+    color: var(--cm-primary);
 }
-.news-excerpt {
-    position: relative;
-    z-index: 1;
-}
-.news-excerpt a {
-    position: relative;
-    z-index: 1;
-}
-.news-excerpt p {
-    margin-bottom: 0;
-}
-.news-thumb {
-    width: 80px;
-    height: 80px;
-    border-radius: .375rem;
+.news-tile-img {
+    aspect-ratio: 16/9;
     overflow: hidden;
+    border-radius: var(--cm-card-border-radius, .375rem) var(--cm-card-border-radius, .375rem) 0 0;
 }
-.news-thumb img {
+.news-tile-img img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.news-thumb-placeholder {
+.news-tile-placeholder {
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--cm-bg-surface-secondary, #f1f5f9);
+    background: var(--cm-bg-surface-secondary, #2a2c2c);
     color: var(--cm-secondary, #626976);
 }
-.min-width-0 { min-width: 0; }
-@media (max-width: 575.98px) {
-    .news-thumb { width: 60px; height: 60px; }
-}
-.stats-chart { width: 100%; position: relative; }
-.stats-bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    height: 120px;
-    padding-bottom: 4px;
-}
-.stats-bar-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    height: 100%;
-    cursor: pointer;
-}
-.stats-bar-col:hover .stats-bar {
-    opacity: 0.8;
-}
-.stats-bar {
-    width: 100%;
-    min-height: 2px;
-    background: var(--cm-primary);
-    border-radius: 2px 2px 0 0;
-    transition: height 0.3s ease;
-}
-.stats-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 4px;
-    font-size: 0.7rem;
-    color: var(--cm-secondary);
-}
-.stats-tooltip {
-    position: absolute;
-    background: var(--cm-bg-surface, #fff);
-    color: var(--cm-body-color, #1e293b);
-    border: 1px solid var(--cm-border-color, #e6e7e9);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    pointer-events: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    z-index: 10;
-    transform: translateX(-50%);
-    display: none;
+.news-tile-excerpt {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 </style>
-<script>
-(function(){
-    document.querySelectorAll('.stats-chart').forEach(function(chart) {
-        var bars = chart.querySelectorAll('.stats-bar');
-        var cols = chart.querySelectorAll('.stats-bar-col');
-        var max = 0;
-        bars.forEach(function(b) {
-            var c = parseInt(b.getAttribute('data-count'), 10) || 0;
-            if (c > max) max = c;
-        });
-        bars.forEach(function(b) {
-            var c = parseInt(b.getAttribute('data-count'), 10) || 0;
-            var pct = max > 0 ? (c / max) * 100 : 0;
-            b.style.height = Math.max(pct, 2) + '%';
-        });
-
-        // Create a single tooltip element per chart
-        var tip = document.createElement('div');
-        tip.className = 'stats-tooltip';
-        chart.appendChild(tip);
-
-        cols.forEach(function(col) {
-            col.addEventListener('mouseenter', function() {
-                var t = col.getAttribute('title');
-                if (!t) return;
-                tip.textContent = t;
-                tip.style.display = 'block';
-                var chartRect = chart.getBoundingClientRect();
-                var colRect = col.getBoundingClientRect();
-                var left = (colRect.left + colRect.width / 2) - chartRect.left;
-                var bar = col.querySelector('.stats-bar');
-                var barH = bar ? bar.offsetHeight : 0;
-                var top = (colRect.top - chartRect.top) + (colRect.height - barH) - tip.offsetHeight - 6;
-                // Clamp horizontally within chart
-                var tipW = tip.offsetWidth;
-                if (left - tipW / 2 < 0) left = tipW / 2;
-                if (left + tipW / 2 > chartRect.width) left = chartRect.width - tipW / 2;
-                tip.style.left = left + 'px';
-                tip.style.top = Math.max(0, top) + 'px';
-            });
-            col.addEventListener('mouseleave', function() {
-                tip.style.display = 'none';
-            });
-        });
-    });
-})();
-</script>
+{{template "foot.html" .}}

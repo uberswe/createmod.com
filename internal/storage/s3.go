@@ -279,6 +279,43 @@ func (s *Service) DeleteRaw(ctx context.Context, key string) error {
 	return nil
 }
 
+// CopyRaw performs a server-side copy within the same bucket, avoiding download+upload.
+// Falls back to download+upload if the server-side copy fails (e.g. on Backblaze B2).
+func (s *Service) CopyRaw(ctx context.Context, srcKey, dstKey string) error {
+	start := time.Now()
+	src := minio.CopySrcOptions{Bucket: s.bucket, Object: srcKey}
+	dst := minio.CopyDestOptions{Bucket: s.bucket, Object: dstKey}
+	_, err := s.client.CopyObject(ctx, dst, src)
+	logSlowOp("CopyRaw", srcKey+" -> "+dstKey, start, err)
+	if err == nil {
+		return nil
+	}
+
+	obj, dlErr := s.client.GetObject(ctx, s.bucket, srcKey, minio.GetObjectOptions{})
+	if dlErr != nil {
+		return fmt.Errorf("copying %s to %s: CopyObject failed (%w), fallback download also failed: %v", srcKey, dstKey, err, dlErr)
+	}
+	info, statErr := obj.Stat()
+	if statErr != nil {
+		obj.Close()
+		return fmt.Errorf("copying %s to %s: CopyObject failed (%w), fallback stat failed: %v", srcKey, dstKey, err, statErr)
+	}
+	_, putErr := s.client.PutObject(ctx, s.bucket, dstKey, obj, info.Size, minio.PutObjectOptions{ContentType: info.ContentType})
+	obj.Close()
+	logSlowOp("CopyRaw(fallback)", srcKey+" -> "+dstKey, start, putErr)
+	if putErr != nil {
+		return fmt.Errorf("copying %s to %s: CopyObject failed (%w), fallback upload failed: %v", srcKey, dstKey, err, putErr)
+	}
+	return nil
+}
+
+// Copy performs a server-side copy using collection/recordID/filename paths.
+func (s *Service) Copy(ctx context.Context, srcCollection, srcRecordID, srcFilename, dstCollection, dstRecordID, dstFilename string) error {
+	srcKey := objectKey(srcCollection, srcRecordID, srcFilename)
+	dstKey := objectKey(dstCollection, dstRecordID, dstFilename)
+	return s.CopyRaw(ctx, srcKey, dstKey)
+}
+
 // Stat returns the object info (size, content-type, etc.) for a file in S3.
 func (s *Service) Stat(ctx context.Context, collection, recordID, filename string) (minio.ObjectInfo, error) {
 	key := objectKey(collection, recordID, filename)

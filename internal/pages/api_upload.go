@@ -18,18 +18,19 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 
 	"createmod/internal/server"
 )
 
-// maxUploadImages is the maximum number of images allowed per temp upload.
-const maxUploadImages = 10
+const (
+	maxGalleryImages  = 10
+	maxRotationImages = 130
+	maxImageSize      = 5 << 20
+)
 
-// maxImageSize is the maximum allowed size per image (5 MB).
-const maxImageSize = 5 << 20
-
-// allowedImageExts lists accepted image file extensions.
 var allowedImageExts = map[string]bool{
 	".jpg":  true,
 	".jpeg": true,
@@ -38,21 +39,115 @@ var allowedImageExts = map[string]bool{
 	".gif":  true,
 }
 
-// processUploadImages reads image files from the multipart form field "images",
-// converts them to WebP, uploads to S3, and creates TempUploadImage records.
-// Returns the list of image response entries for the JSON API response.
 func processUploadImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
+	return processFormImages(ctx, r, "images", "gallery", maxGalleryImages, token, appStore, storageSvc)
+}
+
+func processUploadRotationImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
 	if r.MultipartForm == nil || r.MultipartForm.File == nil {
 		return nil
 	}
-	imageHeaders, ok := r.MultipartForm.File["images"]
+	imageHeaders, ok := r.MultipartForm.File["rotation_images"]
+	if !ok || len(imageHeaders) == 0 {
+		return nil
+	}
+	if len(imageHeaders) > maxRotationImages {
+		imageHeaders = imageHeaders[:maxRotationImages]
+	}
+
+	type result struct {
+		index int
+		resp  uploadImageResponse
+	}
+
+	results := make([]result, 0, len(imageHeaders))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
+
+	for i, fh := range imageHeaders {
+		if fh.Size > maxImageSize {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(fh.Filename))
+		if !allowedImageExts[ext] {
+			continue
+		}
+		f, openErr := fh.Open()
+		if openErr != nil {
+			continue
+		}
+		data, readErr := io.ReadAll(f)
+		_ = f.Close()
+		if readErr != nil {
+			continue
+		}
+
+		idx := i
+		rawData := data
+		rawFilename := fmt.Sprintf("rot_%03d_%s", i, sanitizeFilename(fh.Filename))
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			converted, filename, contentType := convertToWebP(rawData, rawFilename)
+			s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
+			if storageSvc != nil {
+				if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, converted, contentType); uploadErr != nil {
+					slog.Error("api upload: failed to upload rotation image to S3", "error", uploadErr, "token", token[:8], "filename", filename)
+					return
+				}
+			}
+
+			img := &store.TempUploadImage{
+				Token:     token,
+				Filename:  filename,
+				Size:      int64(len(converted)),
+				S3Key:     s3Key,
+				SortOrder: idx,
+				Category:  "rotation",
+			}
+			if err := appStore.TempUploadImages.Create(ctx, img); err != nil {
+				slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token[:8])
+				return
+			}
+
+			mu.Lock()
+			results = append(results, result{
+				index: idx,
+				resp: uploadImageResponse{
+					Filename: filename,
+					URL:      "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(filename),
+				},
+			})
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+
+	sort.Slice(results, func(i, j int) bool { return results[i].index < results[j].index })
+	images := make([]uploadImageResponse, len(results))
+	for i, r := range results {
+		images[i] = r.resp
+	}
+	return images
+}
+
+func processFormImages(ctx context.Context, r *http.Request, formField, category string, maxImages int, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
+	if r.MultipartForm == nil || r.MultipartForm.File == nil {
+		return nil
+	}
+	imageHeaders, ok := r.MultipartForm.File[formField]
 	if !ok || len(imageHeaders) == 0 {
 		return nil
 	}
 
 	var images []uploadImageResponse
 	for i, fh := range imageHeaders {
-		if i >= maxUploadImages {
+		if i >= maxImages {
 			break
 		}
 		if fh.Size > maxImageSize {
@@ -76,7 +171,7 @@ func processUploadImages(ctx context.Context, r *http.Request, token string, app
 		s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
 		if storageSvc != nil {
 			if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, data, contentType); uploadErr != nil {
-				slog.Error("api upload: failed to upload image to S3", "error", uploadErr, "token", token, "filename", filename)
+				slog.Error("api upload: failed to upload image to S3", "error", uploadErr, "token", token[:8], "filename", filename)
 				continue
 			}
 		}
@@ -87,9 +182,10 @@ func processUploadImages(ctx context.Context, r *http.Request, token string, app
 			Size:      int64(len(data)),
 			S3Key:     s3Key,
 			SortOrder: i,
+			Category:  category,
 		}
 		if err := appStore.TempUploadImages.Create(ctx, img); err != nil {
-			slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token)
+			slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token[:8])
 			continue
 		}
 
@@ -129,7 +225,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 			}
 		}
 
-		_ = e.Request.ParseMultipartForm(maxUploadSize + 1<<20)
+		_ = e.Request.ParseMultipartForm(200 << 20)
 
 		// Read file from form (field name "file" or "nbt")
 		file, header, err := e.Request.FormFile("file")
@@ -241,7 +337,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload NBT to S3 (API)", "error", err, "token", token)
+				slog.Error("failed to upload NBT to S3 (API)", "error", err, "token", token[:8])
 				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
@@ -269,24 +365,26 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
-			slog.Error("failed to persist temp upload (API)", "error", err, "token", token)
+			slog.Error("failed to persist temp upload (API)", "error", err, "token", token[:8])
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
 		// Process optional image uploads
 		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
+		uploadedRotation := processUploadRotationImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
 
 		// Build response
 		resp := uploadNBTResponse{
-			Token:      token,
-			URL:        "/u/" + token,
-			Checksum:   checksum,
-			Filename:   safeFilename,
-			Size:       n,
-			BlockCount: blockCount,
-			Materials:  parsedMaterials,
-			Mods:       mods,
-			Images:     uploadedImages,
+			Token:          token,
+			URL:            "/u/" + token,
+			Checksum:       checksum,
+			Filename:       safeFilename,
+			Size:           n,
+			BlockCount:     blockCount,
+			Materials:      parsedMaterials,
+			Mods:           mods,
+			Images:         uploadedImages,
+			RotationImages: uploadedRotation,
 		}
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
@@ -316,7 +414,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
 
-		_ = e.Request.ParseMultipartForm(maxUploadSize + 1<<20)
+		_ = e.Request.ParseMultipartForm(200 << 20)
 
 		// Read file from form (field name "file" or "nbt")
 		file, header, err := e.Request.FormFile("file")
@@ -423,7 +521,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload NBT to S3 (anonymous API)", "error", err, "token", token)
+				slog.Error("failed to upload NBT to S3 (anonymous API)", "error", err, "token", token[:8])
 				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
@@ -446,24 +544,26 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
-			slog.Error("failed to persist temp upload (anonymous API)", "error", err, "token", token)
+			slog.Error("failed to persist temp upload (anonymous API)", "error", err, "token", token[:8])
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
 		// Process optional image uploads
 		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
+		uploadedRotation := processUploadRotationImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
 
 		// Build response
 		resp := uploadNBTResponse{
-			Token:      token,
-			URL:        "/u/" + token,
-			Checksum:   checksum,
-			Filename:   safeFilename,
-			Size:       n,
-			BlockCount: blockCount,
-			Materials:  parsedMaterials,
-			Mods:       mods,
-			Images:     uploadedImages,
+			Token:          token,
+			URL:            "/u/" + token,
+			Checksum:       checksum,
+			Filename:       safeFilename,
+			Size:           n,
+			BlockCount:     blockCount,
+			Materials:      parsedMaterials,
+			Mods:           mods,
+			Images:         uploadedImages,
+			RotationImages: uploadedRotation,
 		}
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY

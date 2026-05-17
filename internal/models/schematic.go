@@ -19,6 +19,8 @@ type Schematic struct {
 	FeaturedImage        string             `json:"featuredImage"`
 	HasGallery           bool               `json:"hasGallery"`
 	Gallery              []string           `json:"gallery"`
+	RotationImages       []string           `json:"rotationImages,omitempty"`
+	HasRotationImages    bool               `json:"hasRotationImages"`
 	Title                string             `json:"title"`
 	Name                 string             `json:"name"`
 	Video                string             `json:"video"`
@@ -48,6 +50,7 @@ type Schematic struct {
 	DimZ                 int                `json:"dimZ"`
 	Mods                 []string           `json:"mods"`
 	DetectedLanguage     string             `json:"detectedLanguage,omitempty"`
+	ShortCode            string             `json:"shortCode,omitempty"`
 	ModerationState      string             `json:"-"`
 	Language             string             `json:"-"`
 }

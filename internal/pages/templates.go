@@ -2,6 +2,8 @@ package pages
 
 import (
 	"createmod/internal/i18n"
+	"crypto/sha256"
+	"fmt"
 	html "html/template"
 	"net/url"
 	"regexp"
@@ -57,6 +59,14 @@ func NewTestRegistry() *server.Registry {
 			return YoutubeWatchURL(video)
 		},
 		"externalDomain": ExternalDomain,
+		"PlaceholderImg": func(id string) string {
+			themes := [8]string{"brass", "cobble", "copper", "forest", "night", "redst", "sand", "sky"}
+			h := sha256.Sum256([]byte(id))
+			idx := int(h[0]) % 64
+			theme := themes[idx/8]
+			num := idx%8 + 1
+			return fmt.Sprintf("/assets/x/placeholders/schematic-%s-%02d.svg", theme, num)
+		},
 		"LangFlag": func(code string) html.HTML {
 			return ""
 		},

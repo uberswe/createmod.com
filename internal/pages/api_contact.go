@@ -26,6 +26,9 @@ func ContactSubmitHandler(appStore *store.Store, mailService *mailer.Service) fu
 		if email == "" || content == "" {
 			return e.BadRequestError("email and content are required", nil)
 		}
+		if len(content) > 10000 {
+			return e.BadRequestError("content too long", nil)
+		}
 
 		// Save to database
 		userID := authenticatedUserID(e)

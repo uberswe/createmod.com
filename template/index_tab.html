@@ -1,14 +1,24 @@
-<div id="tab-panel-{{ .Tab }}" class="tab-panel">
+<div id="tab-panel-{{ .Tab }}" class="tab-panel" data-trending-section="{{ .Tab }}">
     <div class="row g-3">
         {{ range .Items }}
         {{template "schematic_card_small.html" .}}
         {{ end }}
     </div>
-    {{ if or .HasPrev .HasNext }}
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Previous</a>
-        <div class="text-secondary">Page {{ .Page }}</div>
-        <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" hx-push-url="false" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>Next</a>
-    </div>
-    {{ end }}
+</div>
+<div id="pagination-{{ .Tab }}" class="ms-auto" hx-swap-oob="true">
+{{ if or .HasPrev .HasNext }}
+    <ul class="pagination mb-0">
+        {{ if .HasPrev }}
+        <li class="page-item">
+            <a class="page-link" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Previous" }}</a>
+        </li>
+        {{ end }}
+        <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{ .Page }}</span></li>
+        {{ if .HasNext }}
+        <li class="page-item">
+            <a class="page-link" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#tab-panel-{{ .Tab }}" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
+        </li>
+        {{ end }}
+    </ul>
+{{ end }}
 </div>

@@ -43,6 +43,7 @@ func MySchematicsHandler(cacheService *cache.Service, registry *server.Registry,
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 		pageSize := 24
 		limit := pageSize + 1
 		offset := (page - 1) * pageSize

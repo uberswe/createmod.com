@@ -11,25 +11,24 @@
                             <div class="row g-0">
                                 {{ template "settings_nav.html" . }}
                                 <div class="col-12 col-md-9 d-flex flex-column">
-                                    <div class="card-body">
+                                    <div class="card-body" style="max-width: 640px;">
                                         <h2 class="mb-4">{{ T .Language "My Account" }}</h2>
+
                                         <h3 class="card-title">{{ T .Language "Profile Details" }}</h3>
-                                        <div class="row align-items-center mb-3">
-                                            <div class="col-auto">
-                                                {{ if .Avatar }}
-                                                <img class="avatar avatar-xl" src="{{ .Avatar }}" alt="{{ .Username }}">
-                                                {{ else }}
-                                                <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve" alt="{{ .Username }}">
-                                                {{ end }}
-                                            </div>
-                                            <div class="col-auto">We use Gravatar for profile pictures, <a href="https://gravatar.com/site/check/">change your avatar via the Gravatar website</a>.</div>
+                                        <div class="d-flex align-items-center gap-3 mb-3">
+                                            {{ if .Avatar }}
+                                            <img class="avatar avatar-xl" src="{{ .Avatar }}" alt="{{ .Username }}">
+                                            {{ else }}
+                                            <img class="avatar avatar-xl" src="https://mc-heads.net/avatar/Steve" alt="{{ .Username }}">
+                                            {{ end }}
+                                            <div class="text-secondary small">{{ T .Language "We use Gravatar for profile pictures." }} <a href="https://gravatar.com/site/check/">{{ T .Language "Change your avatar" }}</a></div>
                                         </div>
                                         <form id="profile-form" hx-patch="/api/users/{{ .UserID }}" hx-swap="none">
                                             <div class="mb-3">
                                                 <label class="form-label" for="settings-username">{{ T .Language "Username" }}</label>
-                                                <input id="settings-username" name="username" type="text" class="form-control" value="{{ .Username }}" required>
+                                                <input id="settings-username" name="username" type="text" class="form-control" value="{{ .Username }}" required style="max-width: 320px;">
                                             </div>
-                                            <div class="form-footer">
+                                            <div>
                                                 <button type="submit" class="btn btn-primary">{{ T .Language "Save changes" }}</button>
                                             </div>
                                         </form>
@@ -74,7 +73,8 @@
                                         </div>
                                         {{ end }}
                                         {{ if or .DiscordOAuthEnabled .GithubOAuthEnabled .TwitchOAuthEnabled .PatreonOAuthEnabled .RedditOAuthEnabled .GoogleOAuthEnabled .MicrosoftOAuthEnabled .SteamOAuthEnabled }}
-                                        <h3 class="card-title mt-4">{{ T .Language "Linked Accounts" }}</h3>
+                                        <hr class="my-4">
+                                        <h3 class="card-title">{{ T .Language "Linked Accounts" }}</h3>
                                         {{ if .GithubOAuthEnabled }}
                                         <div class="row g-3 mb-2">
                                             <div class="col-md">
@@ -209,28 +209,34 @@
                                         {{ end }}
                                         {{ end }}
 
-                                        <h3 class="card-title mt-4">{{ T .Language "Social Links" }}</h3>
-                                        <p class="card-subtitle">{{ T .Language "Add links to your social profiles that will appear on your profile page." }}</p>
+                                        <hr class="my-4">
+                                        <h3 class="card-title">{{ T .Language "Social Links" }}</h3>
+                                        <p class="card-subtitle mb-3">{{ T .Language "Add links to your social profiles that will appear on your profile page." }}</p>
                                         <form method="POST" action="/settings/social-links" class="mb-3">
                                             <div class="row g-2 align-items-end">
-                                                <div class="col-auto">
+                                                <div class="col-12 col-sm-auto">
                                                     <label class="form-label">{{ T .Language "Platform" }}</label>
                                                     <select name="platform" class="form-select form-select-sm">
                                                         <option value="youtube">YouTube</option>
                                                         <option value="twitch">Twitch</option>
                                                         <option value="patreon">Patreon</option>
                                                         <option value="reddit">Reddit</option>
+                                                        <option value="tiktok">TikTok</option>
+                                                        <option value="instagram">Instagram</option>
+                                                        <option value="x">X</option>
+                                                        <option value="threads">Threads</option>
+                                                        <option value="bluesky">BlueSky</option>
                                                     </select>
                                                 </div>
-                                                <div class="col">
+                                                <div class="col-12 col-sm">
                                                     <label class="form-label">{{ T .Language "URL" }}</label>
                                                     <input type="url" name="url" class="form-control form-control-sm" placeholder="https://...">
                                                 </div>
-                                                <div class="col-auto">
-                                                    <label class="form-label">{{ T .Language "Username" }}</label>
+                                                <div class="col-12 col-sm-auto">
+                                                    <label class="form-label">{{ T .Language "Display Name" }}</label>
                                                     <input type="text" name="username" class="form-control form-control-sm" placeholder="{{ T .Language "Optional" }}">
                                                 </div>
-                                                <div class="col-auto">
+                                                <div class="col-12 col-sm-auto">
                                                     <button type="submit" class="btn btn-primary btn-sm">{{ T .Language "Add" }}</button>
                                                 </div>
                                             </div>
@@ -249,17 +255,20 @@
                                         </div>
                                         {{ end }}
 
-                                        <h3 class="card-title mt-4">{{ T .Language "Password" }}</h3>
-                                        <p class="card-subtitle">{{ T .Language "If you need to change your password you can do so here." }}</p>
+                                        <hr class="my-4">
+                                        <h3 class="card-title">{{ T .Language "Password" }}</h3>
+                                        <p class="card-subtitle mb-3">{{ T .Language "If you need to change your password you can do so here." }}</p>
                                         <div>
                                             <a href="/settings/password" class="btn btn-primary">
                                                 {{ T .Language "Change Password" }}
                                             </a>
                                         </div>
-                                        <h3 class="card-title mt-4">{{ T .Language "Account Actions" }}</h3>
-                                        <p class="card-subtitle">{{ T .Language "You can delete your account permanently." }}</p>
+
+                                        <hr class="my-4">
+                                        <h3 class="card-title">{{ T .Language "Account Actions" }}</h3>
+                                        <p class="card-subtitle mb-3">{{ T .Language "Permanently delete your account and all associated data." }}</p>
                                         <div>
-                                            <button class="btn btn-danger w-100" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
+                                            <button class="btn btn-outline-danger" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
                                                 {{ T .Language "Delete Account" }}
                                             </button>
                                         </div>
@@ -271,11 +280,11 @@
                 </div>
             </div>
         </main>
-        <div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal modal-blur fade" id="confirm-delete-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="confirm-delete-modal-title">
             <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-body">
-                        <div class="modal-title">{{ T .Language "Are you sure?" }}</div>
+                        <div class="modal-title" id="confirm-delete-modal-title">{{ T .Language "Are you sure?" }}</div>
                         <div>{{ T .Language "If you proceed, you will no longer have access to your account. Your schematics will be removed." }}</div>
                     </div>
                     <div class="modal-footer">
@@ -288,12 +297,12 @@
             </div>
         </div>
         {{ if .LinkedGithub }}
-        <div class="modal modal-blur fade" id="unlink-github-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal modal-blur fade" id="unlink-github-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="unlink-github-modal-title">
             <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <form method="post" action="/settings/unlink-oauth" hx-boost="false">
                         <div class="modal-body">
-                            <div class="modal-title">{{ T .Language "Unlink GitHub" }}</div>
+                            <div class="modal-title" id="unlink-github-modal-title">{{ T .Language "Unlink GitHub" }}</div>
                             <div class="mb-3">{{ T .Language "Enter your password to confirm unlinking your GitHub account." }}</div>
                             <input type="hidden" name="provider" value="github">
                             <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">
@@ -308,12 +317,12 @@
         </div>
         {{ end }}
         {{ if .LinkedDiscord }}
-        <div class="modal modal-blur fade" id="unlink-discord-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal modal-blur fade" id="unlink-discord-modal" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="unlink-discord-modal-title">
             <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <form method="post" action="/settings/unlink-oauth" hx-boost="false">
                         <div class="modal-body">
-                            <div class="modal-title">{{ T .Language "Unlink Discord" }}</div>
+                            <div class="modal-title" id="unlink-discord-modal-title">{{ T .Language "Unlink Discord" }}</div>
                             <div class="mb-3">{{ T .Language "Enter your password to confirm unlinking your Discord account." }}</div>
                             <input type="hidden" name="provider" value="discord">
                             <input type="password" name="password" class="form-control" placeholder="{{ T .Language "Password" }}" required autocomplete="current-password">

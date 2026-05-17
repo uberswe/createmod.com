@@ -54,6 +54,7 @@ func TrendingPageHandler(cacheService *cache.Service, registry *server.Registry,
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 
 		limit := feedPageSize + 1
 		offset := (page - 1) * feedPageSize
@@ -115,6 +116,7 @@ func HighestScoresPageHandler(cacheService *cache.Service, registry *server.Regi
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 
 		limit := feedPageSize + 1
 		offset := (page - 1) * feedPageSize

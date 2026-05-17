@@ -36,6 +36,7 @@ func UsersHandler(registry *server.Registry, cacheService *cache.Service, appSto
 				page = v
 			}
 		}
+		page = clampPage(page, 1000)
 		pageSize := 48
 		limit := pageSize + 1
 		offset := (page - 1) * pageSize

@@ -85,13 +85,14 @@
                                     <div class="mb-3 col-md-12 col-lg-6">
                                         <label class="form-label required">Category</label>
                                         <select name="category" id="schematic-category" class="form-select">
+                                            <option value="">{{ T .Language "Select a category" }}</option>
                                             {{ range .Categories}}
                                             <option value="{{ .ID }}">{{ .Name }}</option>
                                             {{ end }}
                                         </select>
                                     </div>
                                     <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label">Tags</label>
+                                        <label class="form-label required">Tags</label>
                                         <select type="text" class="form-select" placeholder="Select tags" id="select-tags" value="" multiple>
                                             {{ range .Tags}}
                                             <option value="{{ .ID }}">{{ .Name }}</option>
@@ -167,6 +168,8 @@
                                 {{ end }}
 
                                 <div class="mt-4">
+                                    <p class="text-secondary small mb-3">{{ T .Language "By publishing, you agree that your upload follows the" }} <a href="{{ LangURL .Language "/rules" }}">{{ T .Language "rules" }}</a>.</p>
+                                    <div id="publish-error" class="alert alert-danger mt-2 mb-2" style="display: none;" role="alert"></div>
                                     <button class="btn btn-primary w-100" id="publish-schematic-btn">
                                         Publish
                                     </button>
@@ -195,61 +198,6 @@
     </div>
 </div>
 <style>
-    body .ts-control {
-        background: #ffffff !important;
-        border: none !important;
-        color: #1e293b !important;
-    }
-    body .ts-control input {
-        color: #1e293b !important;
-    }
-    body .ts-wrapper.multi .ts-control>div {
-        background: #bf9045 !important;
-        color: #ffffff !important;
-    }
-    body .ts-dropdown {
-        background: #ffffff !important;
-        color: #1e293b !important;
-    }
-    body .ts-dropdown .option {
-        color: #1e293b !important;
-    }
-    body .ts-dropdown .active {
-        background: #bf9045 !important;
-        color: #ffffff !important;
-    }
-    body .ts-dropdown .create {
-        color: #6b7280 !important;
-    }
-    body[data-cm-theme=dark] .ts-control {
-        background: #1f2121 !important;
-        border: none !important;
-        color: #e2e8f0 !important;
-    }
-    body[data-cm-theme=dark] .ts-control input {
-        color: #e2e8f0 !important;
-    }
-    body[data-cm-theme=dark] .ts-wrapper.multi .ts-control>div {
-        background: #bf9045 !important;
-        color: #ffffff !important;
-    }
-    body[data-cm-theme=dark] .ts-wrapper.single .ts-control .item {
-        color: #e2e8f0 !important;
-    }
-    body[data-cm-theme=dark] .ts-dropdown {
-        background: #1f2121 !important;
-        color: #e2e8f0 !important;
-    }
-    body[data-cm-theme=dark] .ts-dropdown .option {
-        color: #e2e8f0 !important;
-    }
-    body[data-cm-theme=dark] .ts-dropdown .active {
-        background: #bf9045 !important;
-        color: #ffffff !important;
-    }
-    body[data-cm-theme=dark] .ts-dropdown .create {
-        color: #9ca3af !important;
-    }
     /* Unified image upload area */
     .image-upload-grid {
         display: grid;
@@ -364,14 +312,8 @@ document.addEventListener("DOMContentLoaded", function () {
         },
     }));
     window.TomSelect && (new TomSelect(document.getElementById('schematic-category'), {
-        create: true,
-        createOnBlur: true,
         maxItems: 1,
-        render:{
-            option_create: function(data,escape) {
-                return '<div class="create">Suggest: <strong>' + escape(data.input) + '</strong>&hellip;</div>';
-            },
-        },
+        allowEmptyOption: true,
     }));
 });
 </script>
@@ -559,7 +501,22 @@ document.addEventListener("DOMContentLoaded", function() {
         return null;
     }
 
+    function showPublishError(msg) {
+        var errDiv = document.getElementById('publish-error');
+        if (errDiv) {
+            errDiv.textContent = msg;
+            errDiv.style.display = '';
+        }
+        if (typeof showToast === 'function') showToast(msg, 'danger');
+    }
+    function hidePublishError() {
+        var errDiv = document.getElementById('publish-error');
+        if (errDiv) errDiv.style.display = 'none';
+    }
+
     document.getElementById('publish-schematic-btn').addEventListener("click", function (e) {
+        e.preventDefault();
+        hidePublishError();
         var titleElement = document.getElementById("schematic-title");
         document.getElementById("publish-schematic-btn").disabled = true;
 
@@ -589,6 +546,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         }
+
+        // Append rotation images (preloaded via API, not user-editable)
+        {{ if .PreUploadedRotation }}
+        {{ range .PreUploadedRotation }}
+        formData.append("preloaded_rotation_images", "{{ .Filename }}");
+        {{ end }}
+        {{ end }}
 
         formData.append("title", titleElement.value);
         formData.append("author", "{{ .UserID }}");
@@ -626,6 +590,25 @@ document.addEventListener("DOMContentLoaded", function() {
         if (uploadedImages.length === 0) {
             errors.push("Please upload at least one image");
         }
+        if (!document.getElementById("schematic-category").value) {
+            errors.push("Please select a category");
+        }
+        var tagCount = 0;
+        var tagEl = document.getElementById("select-tags");
+        if (tagEl) {
+            for (var ti = 0; ti < tagEl.options.length; ti++) {
+                if (tagEl.options[ti].selected) tagCount++;
+            }
+        }
+        if (tagCount === 0) {
+            errors.push("Please select at least one tag");
+        }
+        if (!document.getElementById("create-version").value) {
+            errors.push("Please select a Create version");
+        }
+        if (!document.getElementById("minecraft-version").value) {
+            errors.push("Please select a Minecraft version");
+        }
 
         if (errors.length === 0) {
             var progressBar = document.getElementById("progress-upload");
@@ -634,6 +617,7 @@ document.addEventListener("DOMContentLoaded", function() {
             progressBar.classList.add("progress-bar-indeterminate");
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/u/' + token + '/make-public', true);
+            xhr.timeout = 120000;
             xhr.setRequestHeader('HX-Request', 'true');
             xhr.onload = function() {
                 progressBar.classList.remove("progress-bar-indeterminate");
@@ -647,19 +631,25 @@ document.addEventListener("DOMContentLoaded", function() {
                 } else {
                     document.getElementById("publish-schematic-btn").disabled = false;
                     var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
-                    if (typeof showToast === 'function') showToast(errMsg, 'danger');
+                    showPublishError(errMsg);
                 }
             };
             xhr.onerror = function() {
                 progressBar.classList.remove("progress-bar-indeterminate");
                 progressBar.style.display = "none";
                 document.getElementById("publish-schematic-btn").disabled = false;
-                if (typeof showToast === 'function') showToast('Network error. Please try again.', 'danger');
+                showPublishError('Network error. Please try again.');
+            };
+            xhr.ontimeout = function() {
+                progressBar.classList.remove("progress-bar-indeterminate");
+                progressBar.style.display = "none";
+                document.getElementById("publish-schematic-btn").disabled = false;
+                showPublishError('Request timed out. Please try again.');
             };
             xhr.send(formData);
         } else {
             document.getElementById("publish-schematic-btn").disabled = false;
-            if (typeof showToast === 'function') showToast(errors.join('. '), 'danger');
+            showPublishError(errors.join('. '));
         }
     });
 });

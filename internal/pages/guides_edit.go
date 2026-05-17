@@ -111,6 +111,12 @@ func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, sto
 		video := strings.TrimSpace(e.Request.FormValue("video_url"))
 		link := strings.TrimSpace(e.Request.FormValue("external_url"))
 		excerpt := strings.TrimSpace(e.Request.FormValue("excerpt"))
+		if !isValidExternalURL(video) {
+			video = ""
+		}
+		if !isValidExternalURL(link) {
+			link = ""
+		}
 
 		if moderationSvc != nil && (title != "" || content != "") {
 			modContent := fmt.Sprintf("Title: %s\nContent: %s", title, content)

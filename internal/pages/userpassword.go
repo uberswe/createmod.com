@@ -4,6 +4,7 @@ import (
 	"createmod/internal/auth"
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/session"
 	"createmod/internal/store"
 	"net/http"
 	"strings"
@@ -45,7 +46,7 @@ func UserPasswordHandler(registry *server.Registry, cacheService *cache.Service,
 	}
 }
 
-func UserPasswordPostHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func UserPasswordPostHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, sessStore *session.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
@@ -111,6 +112,14 @@ func UserPasswordPostHandler(registry *server.Registry, cacheService *cache.Serv
 
 		if err := appStore.Users.UpdateUserPassword(ctx, userID, newHash); err != nil {
 			return renderError("Failed to update password. Please try again.")
+		}
+
+		// Invalidate all existing sessions and create a new one for the current user
+		_ = sessStore.DeleteUserSessions(ctx, userID)
+		newToken, err := sessStore.Create(ctx, userID)
+		if err == nil {
+			secure := e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https")
+			session.SetCookie(e.Response, newToken, secure)
 		}
 
 		d.Success = true

@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: createmod
       POSTGRES_PASSWORD: localdev
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U createmod"]
       interval: 2s
@@ -44,6 +44,21 @@ services:
       exit 0
       "
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    ports:
+      - "7701:7700"
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: localdev
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
   mailhog:
     image: mailhog/mailhog:latest
     ports:
@@ -56,18 +71,16 @@ services:
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgres://createmod:localdev@postgres:5432/createmod?sslmode=disable
-      - S3_ENDPOINT=minio:9000
-      - S3_ACCESS_KEY=minioadmin
-      - S3_SECRET_KEY=minioadmin
-      - S3_BUCKET=createmod
-      - S3_USE_SSL=false
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
       - BASE_URL=http://localhost:8080
       - PORT=8080
       - DEV=true
       - CREATE_ADMIN=true
+      - AUTO_MIGRATE=true
       - LISTEN_ADDR=0.0.0.0:8080
+      - MEILISEARCH_URL=http://meilisearch:7700
+      - MEILISEARCH_KEY=localdev
       - SQLITE_PATH=/pb_data/data.db
     volumes:
       - ./pb_data:/pb_data
@@ -86,7 +99,10 @@ services:
         condition: service_completed_successfully
       mailhog:
         condition: service_started
+      meilisearch:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   minio_data:
+  meilisearch_data:

@@ -307,6 +307,21 @@ var LangFR = map[string]string{
 	"How to earn points":                       "Comment gagner des points",
 	"Points history":                           "Historique des points",
 	"No points earned yet":                     "Aucun point gagné pour le moment. Commencez à contribuer pour gagner des points !",
+	"pts":                                      "pts",
+	"points.action.upload":                     "Téléverser un schéma",
+	"points.action.comment":                    "Commenter un schéma",
+	"points.action.rating4":                    "Schéma reçoit une note de 4+ étoiles",
+	"points.action.downloads100":               "Schéma atteint 100 téléchargements",
+	"points.action.views10k":                   "Schéma atteint 10 000 vues",
+	"points.action.first_comment":              "Publiez votre premier commentaire",
+	"points.action.views100":                   "Schéma atteint 100 vues",
+	"points.action.views1k":                    "Schéma atteint 1 000 vues",
+	"points.action.views10k_milestone":         "Schéma atteint 10 000 vues (jalon)",
+	"Repeatable":                               "Répétable",
+	"One-time":                                 "Une fois",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Gagnez des points en contribuant à la communauté. Téléversez des schémas, commentez et participez pour grimper au classement !",
+	"topcreators.antispam":                     "Le spam de schémas, commentaires ou toute autre manipulation intentionnelle de points entraînera un bannissement.",
 	"Achievements":                             "Succès",
 	"This user has not posted any schematics.": "Cet utilisateur n'a pas encore publié de schematics.",
 
@@ -786,4 +801,19 @@ var LangFR = map[string]string{
 	"no_replacement":            "Pas de remplacement",
 	"block_search_placeholder":  "Rechercher un bloc...",
 	"replacements":              "remplacements",
+
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "Chargement de la vue 360°",
+	"rotation.auto_rotate":      "Rotation automatique",
+	"rotation.how":              "Comment ça marche ?",
+	"rotation.tooltip.line1":    "Cet aperçu 360° est composé de %s images capturées autour du schéma.",
+	"rotation.tooltip.line2":    "Vous voulez créer un aperçu 3D comme celui-ci pour vos propres constructions ? Téléchargez votre schéma en utilisant le mod Create Schematic Helper.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Défiler vers la gauche",
+	"gallery.scroll_right": "Défiler vers la droite",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Sélectionner une catégorie",
+	"delete_draft.confirm": "Êtes-vous sûr de vouloir supprimer ce brouillon ? Cette action est irréversible.",
 }

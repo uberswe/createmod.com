@@ -138,7 +138,13 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf(`minecraft_version = "%s"`, escapeMeiliString(q.MinecraftVersion)))
 	}
 
-	if q.CreateVersion != "" && q.CreateVersion != "all" {
+	if len(q.CreateVersions) > 0 {
+		var cvParts []string
+		for _, cv := range q.CreateVersions {
+			cvParts = append(cvParts, fmt.Sprintf(`"%s"`, escapeMeiliString(cv)))
+		}
+		parts = append(parts, fmt.Sprintf(`create_version IN [%s]`, strings.Join(cvParts, ", ")))
+	} else if q.CreateVersion != "" && q.CreateVersion != "all" {
 		parts = append(parts, fmt.Sprintf(`create_version = "%s"`, escapeMeiliString(q.CreateVersion)))
 	}
 
@@ -174,7 +180,7 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf("dim_z <= %d", q.MaxDimZ))
 	}
 
-	// Mod filter: pre-filter to schematics containing at least the selected mods.
+	// Mod filter: require all selected mods to be present
 	for _, mod := range q.Mods {
 		parts = append(parts, fmt.Sprintf(`mod_names = "%s"`, escapeMeiliString(mod)))
 	}

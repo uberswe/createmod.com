@@ -43,6 +43,7 @@ type HullParams struct {
 	GunPortRow       int     `json:"gunPortRow"`
 	GunPortSpacing   int     `json:"gunPortSpacing"`
 	MidWidthBias     float64 `json:"midWidthBias"`
+	BowStyle         string  `json:"bowStyle"`
 }
 
 func (p *HullParams) Validate() error {
@@ -66,9 +67,9 @@ func (p *HullParams) Validate() error {
 		}
 	}
 
-	clampInt(&p.Length, 20, 200)
-	clampInt(&p.Beam, 4, 40)
-	clampInt(&p.Depth, 3, 20)
+	clampInt(&p.Length, 20, 500)
+	clampInt(&p.Beam, 4, 100)
+	clampInt(&p.Depth, 3, 40)
 	clampFloat(&p.BottomPinch, 0.1, 0.7)
 	clampFloat(&p.HullFlare, 0, 0.6)
 	clampFloat(&p.FlareCurve, 1.2, 4.0)
@@ -77,7 +78,7 @@ func (p *HullParams) Validate() error {
 	clampFloat(&p.SheerCurve, 0, 0.75)
 	clampFloat(&p.SheerCurveExp, 1.0, 4.0)
 	clampInt(&p.BowLength, 2, 40)
-	clampFloat(&p.BowSharpness, 0.4, 2.5)
+	clampFloat(&p.BowSharpness, 0.4, 4.0)
 	clampFloat(&p.BowKeelRise, 0, 1.5)
 	clampInt(&p.BowKeelLength, 0, 40)
 	clampFloat(&p.BowCurve, -1.0, 1.0)
@@ -108,6 +109,10 @@ func (p *HullParams) Validate() error {
 	}
 	if p.SternStyle != "square" && p.SternStyle != "round" && p.SternStyle != "pointed" {
 		p.SternStyle = "round"
+	}
+	validBowStyles := map[string]bool{"default": true, "pointed": true, "clipper": true, "raked": true, "plumb": true}
+	if !validBowStyles[p.BowStyle] {
+		p.BowStyle = "default"
 	}
 	if p.BowLength > p.Length/2 {
 		p.BowLength = p.Length / 2
@@ -208,17 +213,35 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 		}
 		if zNorm >= bowStart {
 			t := (1 - zNorm) / math.Max(1-bowStart, 0.001)
-			// Smootherstep for a more gradual taper into the bow tip
 			st := t * t * t * (t*(t*6-15) + 10)
-			base := math.Pow(math.Max(st, 0), p.BowSharpness)
-			// BowCurve: negative = concave (clipper), positive = convex (bluff)
-			if p.BowCurve != 0 {
-				if p.BowCurve > 0 {
-					convex := math.Sqrt(math.Max(st, 0))
-					base = base*(1-p.BowCurve) + convex*p.BowCurve
+			var base float64
+			switch p.BowStyle {
+			case "pointed":
+				base = math.Pow(math.Max(st, 0), p.BowSharpness*1.5)
+			case "clipper":
+				base = st * st * st
+				if p.BowCurve < 0 {
+					base = base*(1+p.BowCurve) + math.Pow(st, 5)*(-p.BowCurve)
+				}
+			case "raked":
+				rakeT := math.Pow(st, 0.5)
+				base = math.Pow(rakeT, p.BowSharpness*0.8)
+			case "plumb":
+				if st < 0.15 {
+					base = st / 0.15 * 0.15
 				} else {
-					concave := st * st * st
-					base = base*(1+p.BowCurve) + concave*(-p.BowCurve)
+					base = 1.0
+				}
+			default:
+				base = math.Pow(math.Max(st, 0), p.BowSharpness)
+				if p.BowCurve != 0 {
+					if p.BowCurve > 0 {
+						convex := math.Sqrt(math.Max(st, 0))
+						base = base*(1-p.BowCurve) + convex*p.BowCurve
+					} else {
+						concave := st * st * st
+						base = base*(1+p.BowCurve) + concave*(-p.BowCurve)
+					}
 				}
 			}
 			return base

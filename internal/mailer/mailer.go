@@ -1,6 +1,7 @@
 package mailer
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/mail"
@@ -9,6 +10,12 @@ import (
 	"strconv"
 	"strings"
 )
+
+var headerReplacer = strings.NewReplacer("\r", "", "\n", "")
+
+func sanitizeHeader(s string) string {
+	return headerReplacer.Replace(s)
+}
 
 // Message represents an email message to send.
 type Message struct {
@@ -72,7 +79,7 @@ func (s *Service) Send(msg *Message) error {
 	var body strings.Builder
 	body.WriteString("From: " + from.String() + "\r\n")
 	body.WriteString("To: " + strings.Join(toAddrs, ", ") + "\r\n")
-	body.WriteString("Subject: " + msg.Subject + "\r\n")
+	body.WriteString("Subject: " + sanitizeHeader(msg.Subject) + "\r\n")
 	body.WriteString("MIME-Version: 1.0\r\n")
 	body.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
 	body.WriteString("\r\n")
@@ -80,6 +87,41 @@ func (s *Service) Send(msg *Message) error {
 
 	addr := fmt.Sprintf("%s:%d", s.smtpHost, s.smtpPort)
 	auth := smtp.PlainAuth("", s.smtpUsername, s.smtpPassword, s.smtpHost)
+
+	if s.smtpTLS {
+		conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.smtpHost})
+		if err != nil {
+			return fmt.Errorf("mailer: TLS dial failed: %w", err)
+		}
+		defer conn.Close()
+		client, err := smtp.NewClient(conn, s.smtpHost)
+		if err != nil {
+			return fmt.Errorf("mailer: SMTP client failed: %w", err)
+		}
+		defer client.Close()
+		if err := client.Auth(auth); err != nil {
+			return fmt.Errorf("mailer: auth failed: %w", err)
+		}
+		if err := client.Mail(from.Address); err != nil {
+			return fmt.Errorf("mailer: MAIL FROM failed: %w", err)
+		}
+		for _, to := range toAddrs {
+			if err := client.Rcpt(to); err != nil {
+				return fmt.Errorf("mailer: RCPT TO failed: %w", err)
+			}
+		}
+		w, err := client.Data()
+		if err != nil {
+			return fmt.Errorf("mailer: DATA failed: %w", err)
+		}
+		if _, err := w.Write([]byte(body.String())); err != nil {
+			return fmt.Errorf("mailer: write body failed: %w", err)
+		}
+		if err := w.Close(); err != nil {
+			return fmt.Errorf("mailer: close body failed: %w", err)
+		}
+		return client.Quit()
+	}
 
 	if err := smtp.SendMail(addr, auth, from.Address, toAddrs, []byte(body.String())); err != nil {
 		return fmt.Errorf("mailer: failed to send: %w", err)

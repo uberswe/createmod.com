@@ -51,7 +51,8 @@
   var paid = {{if .Paid}}true{{else}}false{{end}};
   var maxUses = 5;
   var usesLeft = maxUses;
-  var seconds = 10;
+  var duration = 10;
+  var endTime = Date.now() + duration * 1000;
   var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
   var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
   var hintEl = document.getElementById('download-hint');
@@ -115,19 +116,24 @@
       });
   }
 
+  function finish() {
+    stop();
+    if (el) { el.textContent = '0'; }
+    if (paid) {
+      if (link && link.href) { window.location.href = link.href; }
+    } else {
+      triggerDownload();
+    }
+  }
+
   function tick(){
     if (stopped) return;
     if (!document.getElementById('countdown') && !document.getElementById('countdown-ext')) { stop(); return; }
-    seconds -= 1;
-    if (el) { el.textContent = String(seconds); }
-    if (seconds <= 0) {
-      stop();
-      if (paid) {
-        if (link && link.href) { window.location.href = link.href; }
-      } else {
-        triggerDownload();
-      }
+    var remaining = Math.ceil((endTime - Date.now()) / 1000);
+    if (remaining <= 0) {
+      finish();
     } else {
+      if (el) { el.textContent = String(remaining); }
       timerId = setTimeout(tick, 1000);
     }
   }
@@ -141,12 +147,15 @@
     });
   }
 
-  // Stop timer when HTMX navigates away (user clicks back or another link)
   document.body.addEventListener('htmx:beforeSwap', function() { stop(); });
 
-  // Stop timer when the page is hidden (browser back/forward, tab switch)
+  // When tab becomes visible again, catch up to real elapsed time
   document.addEventListener('visibilitychange', function() {
-    if (document.hidden) { stop(); }
+    if (stopped) return;
+    if (!document.hidden) {
+      if (timerId) { clearTimeout(timerId); timerId = null; }
+      tick();
+    }
   });
   window.addEventListener('pagehide', function() { stop(); });
 })();

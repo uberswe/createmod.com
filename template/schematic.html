@@ -131,37 +131,255 @@
 
                         <!-- Image + Description -->
                         <div class="card card-sm mb-4">
-                            {{ if ne .Schematic.FeaturedImage "" }}
+                            {{ if .Schematic.HasRotationImages }}
+                            <!-- 360° Rotation Viewer -->
+                            <div class="rotation-viewer" id="rotation-viewer">
+                                <div class="ratio ratio-16x9">
+                                    <img id="rotation-img" src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape (index .Schematic.RotationImages 0) }}?thumb=960x540" alt="360° view of {{ .Schematic.Title }}" class="object-fit-cover" style="user-select:none;-webkit-user-drag:none;">
+                                    <div class="rotation-loading" id="rotation-loading" style="display:none;">
+                                        <div class="rotation-spinner"></div>
+                                        <div class="rotation-loading-pct" id="rotation-loading-pct">0%</div>
+                                        <div class="rotation-loading-text">{{ T .Language "rotation.loading" }}</div>
+                                    </div>
+                                </div>
+                                <div class="rotation-controls" id="rotation-controls">
+                                    <button type="button" class="rotation-play-btn" id="rotation-play" title="{{ T .Language "rotation.auto_rotate" }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" id="rotation-play-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" id="rotation-pause-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M6 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/><path d="M14 5m0 1a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1z"/></svg>
+                                    </button>
+                                    <input type="range" class="rotation-slider" id="rotation-slider" min="0" max="0" value="0" step="1">
+                                    <span class="rotation-badge">360°</span>
+                                    <span class="rotation-info-anchor" id="rotation-info-anchor">
+                                        <button type="button" class="rotation-info-toggle" id="rotation-info-toggle">{{ T .Language "rotation.how" }}</button>
+                                        <div class="rotation-tooltip" id="rotation-tooltip">
+                                            <p>{{ printf (T .Language "rotation.tooltip.line1") (printf "%d" (len .Schematic.RotationImages)) }}</p>
+                                            <p>{{ T .Language "rotation.tooltip.line2" }}</p>
+                                            <div class="rotation-tooltip-links">
+                                                <a href="https://www.curseforge.com/minecraft/mc-mods/create-schematic-helper" target="_blank" rel="noopener" class="btn btn-sm btn-curseforge">
+                                                    <svg class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M18.326 9.2145S23.2261 8.4418 24 6.1882h-7.5066V4.4H0l2.0318 2.3576V9.173s5.1267-.2665 7.1098 1.2372c2.7146 2.516-3.053 5.917-3.053 5.917L5.0995 19.6c1.5465-1.4726 4.494-3.3775 9.8983-3.2857-2.0565.65-4.1245 1.6651-5.7344 3.2857h10.9248l-1.0288-3.2726s-7.918-4.6688-.8336-7.1127z"/></svg>
+                                                    CurseForge
+                                                </a>
+                                                <a href="https://modrinth.com/mod/create-schematic-helper" target="_blank" rel="noopener" class="btn btn-sm btn-modrinth">
+                                                    <svg class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.252.004a11.78 11.768 0 0 0-8.92 3.73 11 10.999 0 0 0-2.17 3.11 11.37 11.359 0 0 0-1.16 5.169c0 1.42.17 2.5.6 3.77.24.759.77 1.899 1.17 2.529a12.3 12.298 0 0 0 8.85 5.639c.44.05 2.54.07 2.76.02.2-.04.22.1-.26-1.7l-.36-1.37-1.01-.06a8.5 8.489 0 0 1-5.18-1.8 5.34 5.34 0 0 1-1.3-1.26c0-.05.34-.28.74-.5a37.572 37.545 0 0 1 2.88-1.629c.03 0 .5.45 1.06.98l1 .97 2.07-.43 2.06-.43 1.47-1.47c.8-.8 1.48-1.5 1.48-1.52 0-.09-.42-1.63-.46-1.7-.04-.06-.2-.03-1.02.18-.53.13-1.2.3-1.45.4l-.48.15-.53.53-.53.53-.93.1-.93.07-.52-.5a2.7 2.7 0 0 1-.96-1.7l-.13-.6.43-.57c.68-.9.68-.9 1.46-1.1.4-.1.65-.2.83-.33.13-.099.65-.579 1.14-1.069l.9-.9-.7-.7-.7-.7-1.95.54c-1.07.3-1.96.53-1.97.53-.03 0-2.23 2.48-2.63 2.97l-.29.35.28 1.03c.16.56.3 1.16.31 1.34l.03.3-.34.23c-.37.23-2.22 1.3-2.84 1.63-.36.2-.37.2-.44.1-.08-.1-.23-.6-.32-1.03-.18-.86-.17-2.75.02-3.73a8.84 8.839 0 0 1 7.9-6.93c.43-.03.77-.08.78-.1.06-.17.5-2.999.47-3.039-.01-.02-.1-.02-.2-.03Zm3.68.67c-.2 0-.3.1-.37.38-.06.23-.46 2.42-.46 2.52 0 .04.1.11.22.16a8.51 8.499 0 0 1 2.99 2 8.38 8.379 0 0 1 2.16 3.449 6.9 6.9 0 0 1 .4 2.8c0 1.07 0 1.27-.1 1.73a9.37 9.369 0 0 1-1.76 3.769c-.32.4-.98 1.06-1.37 1.38-.38.32-1.54 1.1-1.7 1.14-.1.03-.1.06-.07.26.03.18.64 2.56.7 2.78l.06.06a12.07 12.058 0 0 0 7.27-9.4c.13-.77.13-2.58 0-3.4a11.96 11.948 0 0 0-5.73-8.578c-.7-.42-2.05-1.06-2.25-1.06Z"/></svg>
+                                                    Modrinth
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </span>
+                                </div>
+                            </div>
+                            <script>
+                            (function(){
+                                var urls = [{{ range $i, $img := .Schematic.RotationImages }}{{ if $i }},{{ end }}"/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape $img }}?thumb=960x540"{{ end }}];
+                                var total = urls.length;
+                                var images = new Array(total);
+                                var loaded = 0;
+                                var allLoaded = false;
+                                var loadStarted = false;
+                                var playing = false;
+                                var animFrame = null;
+                                var currentIndex = 0;
+
+                                var imgEl = document.getElementById('rotation-img');
+                                var slider = document.getElementById('rotation-slider');
+                                var playBtn = document.getElementById('rotation-play');
+                                var playIcon = document.getElementById('rotation-play-icon');
+                                var pauseIcon = document.getElementById('rotation-pause-icon');
+                                var loadingEl = document.getElementById('rotation-loading');
+                                var loadingPct = document.getElementById('rotation-loading-pct');
+                                var viewer = document.getElementById('rotation-viewer');
+                                var infoToggle = document.getElementById('rotation-info-toggle');
+                                var tooltip = document.getElementById('rotation-tooltip');
+
+                                slider.max = total - 1;
+                                images[0] = new Image();
+                                images[0].src = urls[0];
+
+                                infoToggle.addEventListener('click', function(ev) {
+                                    ev.stopPropagation();
+                                    tooltip.classList.toggle('active');
+                                });
+                                document.addEventListener('click', function(ev) {
+                                    if (tooltip.classList.contains('active') && !ev.target.closest('.rotation-info-anchor')) {
+                                        tooltip.classList.remove('active');
+                                    }
+                                });
+
+                                function loadAllFrames(cb) {
+                                    if (loadStarted) return;
+                                    loadStarted = true;
+                                    loadingEl.style.display = '';
+                                    loaded = 1;
+                                    for (var i = 1; i < total; i++) {
+                                        (function(idx) {
+                                            var img = new Image();
+                                            img.onload = img.onerror = function() {
+                                                loaded++;
+                                                loadingPct.textContent = Math.round(loaded / total * 100) + '%';
+                                                if (loaded >= total) {
+                                                    allLoaded = true;
+                                                    loadingEl.style.display = 'none';
+                                                    if (cb) cb();
+                                                }
+                                            };
+                                            img.src = urls[idx];
+                                            images[idx] = img;
+                                        })(i);
+                                    }
+                                }
+
+                                function showFrame(idx) {
+                                    currentIndex = idx;
+                                    if (images[idx] && images[idx].src) {
+                                        imgEl.src = images[idx].src;
+                                    } else {
+                                        imgEl.src = urls[idx];
+                                    }
+                                    slider.value = idx;
+                                }
+
+                                function startPlaying() {
+                                    playing = true;
+                                    playIcon.style.display = 'none';
+                                    pauseIcon.style.display = '';
+                                    var lastTime = 0;
+                                    var interval = 1000 / 30;
+                                    function tick(ts) {
+                                        if (!playing) return;
+                                        if (ts - lastTime >= interval) {
+                                            lastTime = ts;
+                                            currentIndex = (currentIndex + 1) % total;
+                                            showFrame(currentIndex);
+                                        }
+                                        animFrame = requestAnimationFrame(tick);
+                                    }
+                                    animFrame = requestAnimationFrame(tick);
+                                }
+
+                                function stopPlaying() {
+                                    playing = false;
+                                    playIcon.style.display = '';
+                                    pauseIcon.style.display = 'none';
+                                    if (animFrame) cancelAnimationFrame(animFrame);
+                                }
+
+                                playBtn.addEventListener('click', function() {
+                                    if (playing) { stopPlaying(); return; }
+                                    if (!allLoaded) {
+                                        loadAllFrames(function() { startPlaying(); });
+                                    } else {
+                                        startPlaying();
+                                    }
+                                });
+
+                                slider.addEventListener('input', function() {
+                                    stopPlaying();
+                                    if (!loadStarted) loadAllFrames(null);
+                                    showFrame(parseInt(slider.value, 10));
+                                });
+
+                                var dragging = false;
+                                var dragStartX = 0;
+                                var dragStartIndex = 0;
+                                viewer.addEventListener('mousedown', function(ev) {
+                                    if (ev.target === slider || ev.target.closest('.rotation-play-btn') || ev.target.closest('.rotation-info-anchor')) return;
+                                    dragging = true;
+                                    dragStartX = ev.clientX;
+                                    dragStartIndex = currentIndex;
+                                    stopPlaying();
+                                    if (!loadStarted) loadAllFrames(null);
+                                    ev.preventDefault();
+                                });
+                                document.addEventListener('mousemove', function(ev) {
+                                    if (!dragging) return;
+                                    var dx = ev.clientX - dragStartX;
+                                    var step = Math.round(dx / (viewer.offsetWidth / total));
+                                    var idx = ((dragStartIndex + step) % total + total) % total;
+                                    showFrame(idx);
+                                });
+                                document.addEventListener('mouseup', function() { dragging = false; });
+
+                                viewer.addEventListener('touchstart', function(ev) {
+                                    if (ev.target === slider || ev.target.closest('.rotation-play-btn') || ev.target.closest('.rotation-info-anchor')) return;
+                                    dragging = true;
+                                    dragStartX = ev.touches[0].clientX;
+                                    dragStartIndex = currentIndex;
+                                    stopPlaying();
+                                    if (!loadStarted) loadAllFrames(null);
+                                }, {passive: true});
+                                document.addEventListener('touchmove', function(ev) {
+                                    if (!dragging) return;
+                                    var dx = ev.touches[0].clientX - dragStartX;
+                                    var step = Math.round(dx / (viewer.offsetWidth / total));
+                                    var idx = ((dragStartIndex + step) % total + total) % total;
+                                    showFrame(idx);
+                                }, {passive: true});
+                                document.addEventListener('touchend', function() { dragging = false; });
+                            })();
+                            </script>
+                            {{ else if ne .Schematic.FeaturedImage "" }}
                             <a data-fslightbox="gallery" hx-boost="false"
                                href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}">
                                 <div class="ratio ratio-16x9">
+                                <img src="{{ PlaceholderImg .Schematic.ID }}" alt="" class="object-fit-cover" width="1920" height="1080" style="z-index:0;">
                                 <img
                                         src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540"
                                         srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
                                         sizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw"
-                                        class="card-img-top object-fit-cover" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high">
+                                        class="card-img-top object-fit-cover" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high" style="z-index:1;"
+                                        onerror="this.style.display='none'">
                                 </div>
                             </a>
                             {{ else }}
                             <div class="ratio ratio-16x9">
-                                <div class="d-flex align-items-center justify-content-center bg-secondary-lt text-secondary">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg" width="48" height="48" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg>
-                                </div>
+                                <img src="{{ PlaceholderImg .Schematic.ID }}" class="object-fit-cover" width="1920" height="1080" alt="">
                             </div>
                             {{ end }}
                             <div class="card-body">
-                                {{ if .Schematic.HasGallery}}
-                                <div class="row row-cols-6 g-3 mb-2">
-                                    {{ range .Schematic.Gallery }}
-                                    <div class="col">
-                                        <a data-fslightbox="gallery" hx-boost="false"
-                                           href="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}">
-                                            <div class="img-responsive img-responsive-1x1 rounded border"
-                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=150x150')"></div>
+                                {{/* Gallery thumbnails — horizontally scrollable strip */}}
+                                {{ if or .Schematic.HasGallery (and .Schematic.HasRotationImages (ne .Schematic.FeaturedImage "")) }}
+                                <div class="gallery-strip-wrapper">
+                                    <button class="gallery-strip-arrow gallery-strip-arrow-left" aria-label="{{ T .Language "gallery.scroll_left" }}" style="display:none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                    </button>
+                                    <div class="gallery-strip">
+                                        {{ if and .Schematic.HasRotationImages (ne .Schematic.FeaturedImage "") }}
+                                        <a class="gallery-strip-item" data-fslightbox="gallery" hx-boost="false"
+                                           href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}">
+                                            <div class="gallery-strip-thumb"
+                                                 style="background-image: url('/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=300x300')"></div>
                                         </a>
+                                        {{ end }}
+                                        {{ range .Schematic.Gallery }}
+                                        <a class="gallery-strip-item" data-fslightbox="gallery" hx-boost="false"
+                                           href="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}">
+                                            <div class="gallery-strip-thumb"
+                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=300x300')"></div>
+                                        </a>
+                                        {{ end }}
                                     </div>
-                                    {{ end }}
+                                    <button class="gallery-strip-arrow gallery-strip-arrow-right" aria-label="{{ T .Language "gallery.scroll_right" }}" style="display:none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                    </button>
                                 </div>
+                                <script>
+                                (function(){
+                                    var w = document.querySelector('.gallery-strip-wrapper');
+                                    if (!w) return;
+                                    var strip = w.querySelector('.gallery-strip');
+                                    var left = w.querySelector('.gallery-strip-arrow-left');
+                                    var right = w.querySelector('.gallery-strip-arrow-right');
+                                    function update() {
+                                        left.style.display = strip.scrollLeft > 4 ? '' : 'none';
+                                        right.style.display = strip.scrollLeft < strip.scrollWidth - strip.clientWidth - 4 ? '' : 'none';
+                                    }
+                                    left.addEventListener('click', function(){ strip.scrollBy({left: -240, behavior: 'smooth'}); });
+                                    right.addEventListener('click', function(){ strip.scrollBy({left: 240, behavior: 'smooth'}); });
+                                    strip.addEventListener('scroll', update);
+                                    new ResizeObserver(update).observe(strip);
+                                    update();
+                                })();
+                                </script>
                                 {{ end }}
                                 <!-- Action bar -->
                                 <div class="mt-3 pb-3 border-bottom">
@@ -182,11 +400,20 @@
                                             {{ T .Language "Copy Link" }}
                                         </a>
                                         {{ if .BloxelizerURL }}
-                                        <a href="{{ SignedOutURL .BloxelizerURL "schematic" .Schematic.Name }}" class="btn btn-outline-secondary" target="_blank" rel="noopener">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
-                                            {{ T .Language "View in 3D" }}
-                                            <small class="text-secondary ms-1" style="font-size:0.75em;">{{ T .Language "on Bloxelizer" }}</small>
-                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-outline-secondary dropdown-toggle" data-cm-toggle="dropdown">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
+                                                {{ T .Language "View in 3D" }}
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <a href="{{ SignedOutURL .ShulkrURL "schematic" .Schematic.Name }}" class="dropdown-item" target="_blank" rel="noopener">
+                                                    {{ T .Language "Shulkr" }}
+                                                </a>
+                                                <a href="{{ SignedOutURL .BloxelizerURL "schematic" .Schematic.Name }}" class="dropdown-item" target="_blank" rel="noopener">
+                                                    {{ T .Language "Bloxelizer" }}
+                                                </a>
+                                            </div>
+                                        </div>
                                         {{ end }}
                                         {{ if .Schematic.SchematicFile }}
                                         <a href="/schematics/{{ .Schematic.Name }}/guide" class="btn btn-outline-secondary">
@@ -202,6 +429,31 @@
                                         <a href="#" class="btn btn-outline-secondary" style="padding:.4rem .75rem;" data-cm-toggle="modal" data-cm-target="#reportModal">
                                             {{ T .Language "Report" }}
                                         </a>
+                                        {{ if .Schematic.ShortCode }}
+                                        <div class="short-code-wrapper" style="position:relative;">
+                                            <button type="button" class="btn btn-outline-secondary short-code-btn" style="padding:.4rem .75rem;" data-short-code="{{ .Schematic.ShortCode }}">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                                <code class="short-code-value">{{ .Schematic.ShortCode }}</code>
+                                                <span class="short-code-help">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                </span>
+                                            </button>
+                                            <span class="short-code-copied">{{ T .Language "Copied!" }}</span>
+                                            <div class="short-code-tooltip">
+                                                <p>{{ T .Language "Use this code with the Create Schematic Helper mod to download schematics directly into your Minecraft world." }}</p>
+                                                <div class="d-flex gap-2 mt-2">
+                                                    <a href="https://www.curseforge.com/minecraft/mc-mods/create-schematic-upload" class="btn btn-sm btn-curseforge" target="_blank" rel="noopener">
+                                                        <svg class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M18.326 9.2145S23.2261 8.4418 24 6.1882h-7.5066V4.4H0l2.0318 2.3576V9.173s5.1267-.2665 7.1098 1.2372c2.7146 2.516-3.053 5.917-3.053 5.917L5.0995 19.6c1.5465-1.4726 4.494-3.3775 9.8983-3.2857-2.0565.65-4.1245 1.6651-5.7344 3.2857h10.9248l-1.0288-3.2726s-7.918-4.6688-.8336-7.1127z"/></svg>
+                                                        CurseForge
+                                                    </a>
+                                                    <a href="https://modrinth.com/mod/create-schematic-upload" class="btn btn-sm btn-modrinth" target="_blank" rel="noopener">
+                                                        <svg class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.252.004a11.78 11.768 0 0 0-8.92 3.73 11 10.999 0 0 0-2.17 3.11 11.37 11.359 0 0 0-1.16 5.169c0 1.42.17 2.5.6 3.77.24.759.77 1.899 1.17 2.529a12.3 12.298 0 0 0 8.85 5.639c.44.05 2.54.07 2.76.02.2-.04.22.1-.26-1.7l-.36-1.37-1.01-.06a8.5 8.489 0 0 1-5.18-1.8 5.34 5.34 0 0 1-1.3-1.26c0-.05.34-.28.74-.5a37.572 37.545 0 0 1 2.88-1.629c.03 0 .5.45 1.06.98l1 .97 2.07-.43 2.06-.43 1.47-1.47c.8-.8 1.48-1.5 1.48-1.52 0-.09-.42-1.63-.46-1.7-.04-.06-.2-.03-1.02.18-.53.13-1.2.3-1.45.4l-.48.15-.53.53-.53.53-.93.1-.93.07-.52-.5a2.7 2.7 0 0 1-.96-1.7l-.13-.6.43-.57c.68-.9.68-.9 1.46-1.1.4-.1.65-.2.83-.33.13-.099.65-.579 1.14-1.069l.9-.9-.7-.7-.7-.7-1.95.54c-1.07.3-1.96.53-1.97.53-.03 0-2.23 2.48-2.63 2.97l-.29.35.28 1.03c.16.56.3 1.16.31 1.34l.03.3-.34.23c-.37.23-2.22 1.3-2.84 1.63-.36.2-.37.2-.44.1-.08-.1-.23-.6-.32-1.03-.18-.86-.17-2.75.02-3.73a8.84 8.839 0 0 1 7.9-6.93c.43-.03.77-.08.78-.1.06-.17.5-2.999.47-3.039-.01-.02-.1-.02-.2-.03Zm3.68.67c-.2 0-.3.1-.37.38-.06.23-.46 2.42-.46 2.52 0 .04.1.11.22.16a8.51 8.499 0 0 1 2.99 2 8.38 8.379 0 0 1 2.16 3.449 6.9 6.9 0 0 1 .4 2.8c0 1.07 0 1.27-.1 1.73a9.37 9.369 0 0 1-1.76 3.769c-.32.4-.98 1.06-1.37 1.38-.38.32-1.54 1.1-1.7 1.14-.1.03-.1.06-.07.26.03.18.64 2.56.7 2.78l.06.06a12.07 12.058 0 0 0 7.27-9.4c.13-.77.13-2.58 0-3.4a11.96 11.948 0 0 0-5.73-8.578c-.7-.42-2.05-1.06-2.25-1.06Z"/></svg>
+                                                        Modrinth
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {{ end }}
                                         {{ if .IsAuthor }}
                                         <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-outline-primary" style="padding:.4rem .75rem;" id="edit-btn">
                                             {{ T .Language "Edit" }}
@@ -390,8 +642,14 @@
                                 <div id="comments-list">
                                 {{range .Comments}}
                                 <div class="col-12 mb-2">
-                                    <div class="card card-sm{{ if eq .Indent 1 }} ms-md-4{{end }}">
+                                    <div class="card card-sm comment-thread-{{ .Indent }}">
                                         <div class="card-body">
+                                            {{ if .ReplyToAuthor }}
+                                            <div class="comment-reply-label">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                                                {{ T $.Language "replying to" }} {{ .ReplyToAuthor }}
+                                            </div>
+                                            {{ end }}
                                             <div class="text-secondary">
                                                 {{ if .IsTranslated }}
                                                 <div class="comment-translated" data-comment-id="{{ .ID }}">
@@ -486,13 +744,13 @@
                                                     </div>
                                                 </div>
                                                 <!-- Comment Report Modal -->
-                                                <div class="modal report-modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog">
+                                                <div class="modal report-modal" id="reportCommentModal-{{ .ID }}" tabindex="-1" role="dialog" aria-labelledby="reportCommentModal-{{ .ID }}-title">
                                                   <div class="modal-dialog modal-dialog-centered" role="document">
                                                     <div class="modal-content">
                                                       <div class="report-form-view">
                                                         <form class="report-form" method="post" action="/reports">
                                                           <div class="modal-header">
-                                                            <h5 class="modal-title">{{ T $.Language "Report Comment" }}</h5>
+                                                            <h5 class="modal-title" id="reportCommentModal-{{ .ID }}-title">{{ T $.Language "Report Comment" }}</h5>
                                                             <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="{{ T $.Language "Close" }}"></button>
                                                           </div>
                                                           <div class="modal-body">
@@ -590,8 +848,7 @@
                             <div id="player-youtube" data-plyr-provider="youtube"
                                  data-plyr-embed-id="{{ .Schematic.Video }}"></div>
                             <a href="{{ SignedOutURL (YouTubeWatchURL .Schematic.Video) }}"
-                               class="card-footer d-flex align-items-center justify-content-center gap-2 text-decoration-none py-3" id="yt-link"
-                               style="font-size:1.05rem;font-weight:600;color:#f0f0f0;background:rgba(180,40,40,0.25);border-top:1px solid rgba(180,40,40,0.3);">
+                               class="card-footer d-flex align-items-center justify-content-center gap-2 text-decoration-none py-3 yt-footer-link" id="yt-link">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z" /><path d="M10 9l5 3l-5 3z" /></svg>
                                 {{ T .Language "View on YouTube" }}
                             </a>
@@ -1122,6 +1379,34 @@ function copyMaterialsAsMarkdown() {
     }
 </script>
 <script>
+(function() {
+    document.querySelectorAll('.short-code-btn').forEach(function(btn) {
+        var wrapper = btn.closest('.short-code-wrapper');
+        var tooltip = wrapper.querySelector('.short-code-tooltip');
+        var copied = wrapper.querySelector('.short-code-copied');
+        var helpIcon = btn.querySelector('.short-code-help');
+
+        btn.addEventListener('click', function(ev) {
+            if (ev.target.closest('.short-code-help')) return;
+            navigator.clipboard.writeText(btn.dataset.shortCode);
+            copied.classList.add('show');
+            setTimeout(function() { copied.classList.remove('show'); }, 1500);
+        });
+
+        helpIcon.addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            tooltip.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function(ev) {
+            if (!wrapper.contains(ev.target)) {
+                tooltip.classList.remove('show');
+            }
+        });
+    });
+})();
+</script>
+<script>
     (function() {
         function initCommentEditor() {
             var el = document.querySelector('#tinymce-comment');
@@ -1392,13 +1677,13 @@ document.addEventListener('htmx:afterRequest', function(evt) {
 </script>
 
 <!-- Report Modal -->
-<div class="modal report-modal" id="reportModal" tabindex="-1" role="dialog">
+<div class="modal report-modal" id="reportModal" tabindex="-1" role="dialog" aria-labelledby="reportModal-title">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="report-form-view">
         <form class="report-form" method="post" action="/reports">
           <div class="modal-header">
-            <h5 class="modal-title">{{ T .Language "Report Schematic" }}</h5>
+            <h5 class="modal-title" id="reportModal-title">{{ T .Language "Report Schematic" }}</h5>
             <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="{{ T .Language "Close" }}"></button>
           </div>
           <div class="modal-body">

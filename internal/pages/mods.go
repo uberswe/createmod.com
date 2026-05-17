@@ -5,6 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/search"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"fmt"
@@ -29,6 +30,8 @@ var modsTemplates = append([]string{
 var modDetailTemplates = append([]string{
 	"./template/mod_detail.html",
 	"./template/include/schematic_card.html",
+	"./template/include/schematic_card_list.html",
+	"./template/include/mod_filters.html",
 }, commonTemplates...)
 
 // ModEntry represents a single mod with its display info and schematic count.
@@ -62,6 +65,35 @@ type ModDetailData struct {
 	PrevURL    string
 	NextURL    string
 	TotalCount int
+	TotalPages int
+
+	// Filter fields
+	Term                string
+	ActiveTab           string // "trending", "rated", "latest"
+	Category            string
+	MinecraftVersion    string
+	CreateVersion       string
+	Rating              int
+	MinBlockCount       int
+	MaxBlockCount       int
+	MinDimY             int
+	MaxDimY             int
+	MinHorizontal       int
+	MaxHorizontal       int
+	SearchResultCount   int
+	SearchSpeed         string
+
+	// Filter options
+	MinecraftVersions   []models.MinecraftVersion
+	CreateVersionGroups []CreateVersionGroup
+	MaxBlockCountAll    int
+	MaxDimYAll          int
+	MaxHorizontalAll    int
+
+	// View
+	ViewMode       string
+	PerPage        int
+	InfiniteScroll bool
 }
 
 const modsCacheKey = "mods_listing"
@@ -100,8 +132,9 @@ func ModsHandler(cacheService *cache.Service, registry *server.Registry, modMeta
 }
 
 // ModDetailHandler renders a specific mod's schematics at GET /mods/{slug}.
-func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, modMetaService interface{}, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
+func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Service, cacheService *cache.Service, registry *server.Registry, modMetaService interface{}, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		start := time.Now()
 		slug := e.Request.PathValue("slug")
 		if slug == "" {
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/mods"))
@@ -110,50 +143,8 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 			return e.NotFoundError("", nil)
 		}
 
-		page := 1
-		if p := e.Request.URL.Query().Get("p"); p != "" {
-			if v, err := strconv.Atoi(p); err == nil && v > 0 {
-				page = v
-			}
-		}
-		pageSize := 24
-		limit := pageSize + 1
-		offset := (page - 1) * pageSize
-
 		ctx := context.Background()
 		isVanilla := slug == "vanilla"
-		var storeSchematics []store.Schematic
-		var totalCount int
-		var err error
-
-		if isVanilla {
-			storeSchematics, totalCount, err = appStore.Schematics.ListVanilla(ctx, limit, offset)
-			if err != nil {
-				return err
-			}
-		} else {
-			// Check cache for total count (avoids expensive JSONB LATERAL COUNT on every request)
-			countCacheKey := fmt.Sprintf("mod_count:%s", slug)
-			if cached, ok := cacheService.Get(countCacheKey); ok {
-				totalCount = cached.(int)
-			} else {
-				totalCount, err = appStore.Schematics.CountByMod(ctx, slug)
-				if err != nil {
-					return err
-				}
-				cacheService.SetWithTTL(countCacheKey, totalCount, 30*time.Minute)
-			}
-			// Fetch paginated schematics (the ID query is fast)
-			storeSchematics, err = appStore.Schematics.ListByModPaginated(ctx, slug, limit, offset)
-			if err != nil {
-				return err
-			}
-		}
-
-		hasNext := len(storeSchematics) > pageSize
-		if hasNext {
-			storeSchematics = storeSchematics[:pageSize]
-		}
 
 		caser := cases.Title(language.English)
 		modName := caser.String(strings.ReplaceAll(slug, "_", " "))
@@ -164,11 +155,9 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 		mod := ModEntry{
 			Slug:      slug,
 			Name:      modName,
-			Count:     totalCount,
 			IsVanilla: isVanilla,
 		}
 
-		// Enrich with metadata from store
 		if !isVanilla {
 			meta, mErr := appStore.ModMetadata.GetByNamespace(ctx, slug)
 			if mErr == nil && meta != nil {
@@ -182,20 +171,276 @@ func ModDetailHandler(cacheService *cache.Service, registry *server.Registry, mo
 			}
 		}
 
+		q := e.Request.URL.Query()
+
+		// Parse tab (determines sort order)
+		activeTab := q.Get("tab")
+		if activeTab != "rated" && activeTab != "latest" {
+			activeTab = "trending"
+		}
+		var order int
+		switch activeTab {
+		case "rated":
+			order = search.HighestRatingOrder
+		case "latest":
+			order = search.NewestOrder
+		default:
+			order = search.TrendingOrder
+		}
+
+		// Parse search term
+		term := strings.TrimSpace(q.Get("q"))
+
+		// Parse filters
+		category := q.Get("category")
+		if category == "" {
+			category = "all"
+		}
+		mcVersion := q.Get("mcv")
+		if mcVersion == "" {
+			mcVersion = "all"
+		}
+		createVersion := q.Get("cv")
+		if createVersion == "" {
+			createVersion = "all"
+		}
+
+		rating := -1
+		if q.Get("rating") != "" {
+			if v, err := strconv.Atoi(q.Get("rating")); err == nil {
+				rating = v
+			}
+		}
+
+		parseIntParam := func(key string) int {
+			v := q.Get(key)
+			if v == "" {
+				return 0
+			}
+			n, err := strconv.Atoi(v)
+			if err != nil || n < 0 {
+				return 0
+			}
+			return n
+		}
+		minBlockCount := parseIntParam("minbc")
+		maxBlockCount := parseIntParam("maxbc")
+		minDimY := parseIntParam("miny")
+		maxDimY := parseIntParam("maxy")
+		minHorizontal := parseIntParam("minhz")
+		maxHorizontal := parseIntParam("maxhz")
+
+		// Per page / infinite scroll
+		infiniteScroll := q.Get("per_page") == "infinite"
+		perPage := parseIntParam("per_page")
+		if perPage != 8 && perPage != 16 && perPage != 32 && perPage != 64 {
+			perPage = 0
+		}
+		viewMode := q.Get("view")
+		if viewMode != "list" {
+			viewMode = "grid"
+		}
+
+		// Resolve mod display name for Meilisearch filter
+		var meiliModNames []string
+		if !isVanilla {
+			meiliModNames = []string{mod.Name}
+		}
+
+		// Expand major-version group selection
+		var createVersionList []string
+		if strings.HasPrefix(createVersion, "~") {
+			prefix := strings.TrimPrefix(createVersion, "~")
+			allCV := allCreatemodVersionsFromStore(appStore)
+			for _, cv := range allCV {
+				if createVersionMajor(cv.Version) == prefix {
+					createVersionList = append(createVersionList, cv.Version)
+				}
+			}
+		}
+
+		sq := search.SearchQuery{
+			Term:             term,
+			Order:            order,
+			Rating:           rating,
+			Category:         category,
+			MinecraftVersion: mcVersion,
+			CreateVersion:    createVersion,
+			CreateVersions:   createVersionList,
+			MinBlockCount:    minBlockCount,
+			MaxBlockCount:    maxBlockCount,
+			MinDimY:          minDimY,
+			MaxDimY:          maxDimY,
+			MinHorizontal:    minHorizontal,
+			MaxHorizontal:    maxHorizontal,
+			Mods:             meiliModNames,
+		}
+
+		ids, _ := searchEngine.Search(e.Request.Context(), sq)
+
+		storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
+		if err != nil {
+			return err
+		}
+		byID := make(map[string]store.Schematic, len(storeSchematics))
+		for _, s := range storeSchematics {
+			byID[s.ID] = s
+		}
+		orderedSchematics := make([]store.Schematic, 0, len(ids))
+		for _, id := range ids {
+			if s, ok := byID[id]; ok {
+				if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
+					continue
+				}
+				orderedSchematics = append(orderedSchematics, s)
+			}
+		}
+
+		// Pagination
+		page := 1
+		if p := q.Get("p"); p != "" {
+			if v, err := strconv.Atoi(p); err == nil && v > 0 {
+				page = v
+			}
+		}
+		page = clampPage(page, 1000)
+		pageSize := 24
+		if infiniteScroll {
+			pageSize = 64
+		} else if perPage > 0 {
+			pageSize = perPage
+		}
+		total := len(orderedSchematics)
+		maxPage := 0
+		if pageSize > 0 {
+			maxPage = (total + pageSize - 1) / pageSize
+		}
+		if maxPage > 0 && page > maxPage {
+			page = maxPage
+		}
+		startIdx := (page - 1) * pageSize
+		if startIdx < 0 {
+			startIdx = 0
+		}
+		endIdx := startIdx + pageSize
+		if endIdx > total {
+			endIdx = total
+		}
+		pageSlice := orderedSchematics
+		if total > 0 {
+			pageSlice = orderedSchematics[startIdx:endIdx]
+		}
+
+		// Build filter query string for pagination URLs
+		queryParts := []string{}
+		queryParts = append(queryParts, fmt.Sprintf("tab=%s", activeTab))
+		if term != "" {
+			queryParts = append(queryParts, fmt.Sprintf("q=%s", term))
+		}
+		if category != "all" {
+			queryParts = append(queryParts, fmt.Sprintf("category=%s", category))
+		}
+		if mcVersion != "all" {
+			queryParts = append(queryParts, fmt.Sprintf("mcv=%s", mcVersion))
+		}
+		if createVersion != "all" {
+			queryParts = append(queryParts, fmt.Sprintf("cv=%s", createVersion))
+		}
+		if rating > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("rating=%d", rating))
+		}
+		if minBlockCount > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("minbc=%d", minBlockCount))
+		}
+		if maxBlockCount > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxbc=%d", maxBlockCount))
+		}
+		if minHorizontal > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("minhz=%d", minHorizontal))
+		}
+		if maxHorizontal > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxhz=%d", maxHorizontal))
+		}
+		if minDimY > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("miny=%d", minDimY))
+		}
+		if maxDimY > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("maxy=%d", maxDimY))
+		}
+		if infiniteScroll {
+			queryParts = append(queryParts, "per_page=infinite")
+		} else if perPage > 0 {
+			queryParts = append(queryParts, fmt.Sprintf("per_page=%d", perPage))
+		}
+		if viewMode == "list" {
+			queryParts = append(queryParts, "view=list")
+		}
+
+		buildPageURL := func(p int) string {
+			parts := make([]string, 0, len(queryParts)+1)
+			parts = append(parts, queryParts...)
+			if p > 1 {
+				parts = append(parts, fmt.Sprintf("p=%d", p))
+			}
+			qs := ""
+			if len(parts) > 0 {
+				qs = "?" + strings.Join(parts, "&")
+			}
+			return fmt.Sprintf("/mods/%s%s", slug, qs)
+		}
+
+		prevURL := ""
+		nextURL := ""
+		if page > 1 {
+			prevURL = buildPageURL(page - 1)
+		}
+		if endIdx < total {
+			nextURL = buildPageURL(page + 1)
+		}
+
+		totalPages := 0
+		if pageSize > 0 {
+			totalPages = (total + pageSize - 1) / pageSize
+		}
+
+		maxStats := searchService.MaxStats()
+		cvAll := allCreatemodVersionsFromStore(appStore)
+
+		duration := time.Since(start)
 		d := ModDetailData{
-			Mod:        mod,
-			Schematics: MapStoreSchematics(appStore, storeSchematics, cacheService),
-			Page:       page,
-			HasPrev:    page > 1,
-			HasNext:    hasNext,
-			TotalCount: totalCount,
+			Mod:               mod,
+			Schematics:        MapStoreSchematics(appStore, pageSlice, cacheService),
+			Page:              page,
+			HasPrev:           prevURL != "",
+			HasNext:           nextURL != "",
+			PrevURL:           prevURL,
+			NextURL:           nextURL,
+			TotalCount:        total,
+			TotalPages:        totalPages,
+			Term:              term,
+			ActiveTab:         activeTab,
+			Category:          category,
+			MinecraftVersion:  mcVersion,
+			CreateVersion:     createVersion,
+			Rating:            rating,
+			MinBlockCount:     minBlockCount,
+			MaxBlockCount:     maxBlockCount,
+			MinDimY:           minDimY,
+			MaxDimY:           maxDimY,
+			MinHorizontal:     minHorizontal,
+			MaxHorizontal:     maxHorizontal,
+			SearchResultCount: total,
+			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
+			MinecraftVersions:   allMinecraftVersionsFromStore(appStore),
+			CreateVersionGroups: groupCreateVersions(cvAll),
+			MaxBlockCountAll:    maxStats.BlockCount,
+			MaxDimYAll:          maxStats.DimY,
+			MaxHorizontalAll:    max(maxStats.DimX, maxStats.DimZ),
+			ViewMode:            viewMode,
+			PerPage:             pageSize,
+			InfiniteScroll:      infiniteScroll,
 		}
-		if d.HasPrev {
-			d.PrevURL = fmt.Sprintf("/mods/%s?p=%d", slug, page-1)
-		}
-		if d.HasNext {
-			d.NextURL = fmt.Sprintf("/mods/%s?p=%d", slug, page+1)
-		}
+		mod.Count = total
 
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)

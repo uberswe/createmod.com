@@ -1,0 +1,155 @@
+{{define "mod_filters.html"}}
+<div id="mod-filters">
+    <form id="mod-filter-form" method="get" action="/mods/{{ .Mod.Slug }}" autocomplete="off"
+          hx-get="/mods/{{ .Mod.Slug }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML" hx-push-url="true"
+          hx-trigger="change">
+        <div class="search-filter-bar">
+            <div class="search-filter-row">
+                <div class="search-filter-input input-icon">
+                    <span class="input-icon-addon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                    </span>
+                    <input id="mod-search-input" type="text" value="{{ .Term }}" name="q" class="form-control" placeholder="{{ T .Language "Search schematics..." }}"
+                           aria-label="{{ T .Language "Search" }}" autocomplete="off"
+                           hx-get="/mods/{{ .Mod.Slug }}" hx-target="#mod-results" hx-select="#mod-results" hx-swap="outerHTML scroll:top" hx-push-url="true"
+                           hx-trigger="keyup changed delay:800ms, search" hx-include="closest form">
+                </div>
+                <div class="search-filter-item">
+                    <select name="category" class="form-select" aria-label="{{ T .Language "Category" }}">
+                        <option value="all" {{ if eq .Category "all" }}selected{{ end }}>{{ T .Language "Category" }}</option>
+                        {{ range .Categories}}
+                            <option value="{{ .Key }}" {{ if eq $.Category .Key }}selected{{ end }}>{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                    {{ if ne .Category "all" }}<span class="filter-badge">1</span>{{ end }}
+                </div>
+                <div class="search-filter-item">
+                    <select name="mcv" class="form-select" aria-label="{{ T .Language "Minecraft Version" }}">
+                        <option value="all" {{ if eq .MinecraftVersion "all" }}selected{{ end }}>{{ T .Language "MC Version" }}</option>
+                        {{ range .MinecraftVersions }}
+                        <option value="{{ .Version }}" {{ if eq $.MinecraftVersion .Version }}selected{{ end }}>{{ .Version }}</option>
+                        {{ end }}
+                    </select>
+                    {{ if ne .MinecraftVersion "all" }}<span class="filter-badge">1</span>{{ end }}
+                </div>
+                <div class="search-filter-item">
+                    <select name="cv" class="form-select" aria-label="{{ T .Language "Create Version" }}">
+                        <option value="all" {{ if eq .CreateVersion "all" }}selected{{ end }}>{{ T .Language "Create Version" }}</option>
+                        {{ range .CreateVersionGroups }}
+                        <optgroup label="{{ .Label }}">
+                            <option value="{{ .Value }}" {{ if eq $.CreateVersion .Value }}selected{{ end }}>{{ T $.Language "All" }} {{ .Label }}</option>
+                            {{ range .Versions }}
+                            <option value="{{ .Version }}" {{ if eq $.CreateVersion .Version }}selected{{ end }}>{{ .Version }}</option>
+                            {{ end }}
+                        </optgroup>
+                        {{ end }}
+                    </select>
+                    {{ if ne .CreateVersion "all" }}<span class="filter-badge">1</span>{{ end }}
+                </div>
+                <button class="btn btn-outline-secondary btn-more-filters" type="button" data-cm-toggle="collapse" data-cm-target="#mod-more-filters" aria-expanded="{{ if ne .Rating -1 }}true{{ else }}false{{ end }}" aria-controls="mod-more-filters">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z"/></svg>
+                    {{ T .Language "More filters" }}
+                </button>
+            </div>
+            <div class="collapse{{ if ne .Rating -1 }} show{{ end }}" id="mod-more-filters">
+                <div class="search-more-filters">
+                    <div class="filter-grid">
+                        <div>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Minimum Rating" }}</label>
+                            <input type="hidden" name="rating" id="mod-rating-value" value="{{ .Rating }}">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="range" class="form-range flex-grow-1" min="0" max="5" step="1"
+                                       value="{{ if eq .Rating -1 }}0{{ else }}{{ .Rating }}{{ end }}"
+                                       id="mod-rating-slider"
+                                       oninput="var v=parseInt(this.value);document.getElementById('mod-rating-value').value=v===0?-1:v;document.getElementById('mod-rating-label').textContent=v===0?'{{ T .Language "Any rating" }}':v+(v===1?' {{ T .Language "star" }}':' {{ T .Language "stars" }}');">
+                                <span id="mod-rating-label" class="text-secondary small" style="min-width:5em;">{{ if eq .Rating -1 }}{{ T .Language "Any rating" }}{{ else }}{{ .Rating }} {{ if eq .Rating 1 }}{{ T .Language "star" }}{{ else }}{{ T .Language "stars" }}{{ end }}{{ end }}</span>
+                            </div>
+                        </div>
+                        {{ if gt .MaxDimYAll 0 }}
+                        {{ if gt .MaxHorizontalAll 0 }}
+                        <div>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Horizontal Size" }} (X/Z): <span id="mod-hz-label">{{ if and (gt .MinHorizontal 0) (gt .MaxHorizontal 0) }}{{ .MinHorizontal }}–{{ .MaxHorizontal }}{{ else if gt .MinHorizontal 0 }}{{ .MinHorizontal }}+{{ else if gt .MaxHorizontal 0 }}0–{{ .MaxHorizontal }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="range" class="form-range flex-grow-1" name="minhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ .MinHorizontal }}" oninput="modUpdateRangeLabel('mod-hz',this.value,document.querySelector('#mod-filter-form [name=maxhz]').value,{{ .MaxHorizontalAll }})">
+                                <input type="range" class="form-range flex-grow-1" name="maxhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ if gt .MaxHorizontal 0 }}{{ .MaxHorizontal }}{{ else }}{{ .MaxHorizontalAll }}{{ end }}" oninput="modUpdateRangeLabel('mod-hz',document.querySelector('#mod-filter-form [name=minhz]').value,this.value,{{ .MaxHorizontalAll }})">
+                            </div>
+                        </div>
+                        {{ end }}
+                        <div>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y): <span id="mod-dimy-label">{{ if and (gt .MinDimY 0) (gt .MaxDimY 0) }}{{ .MinDimY }}–{{ .MaxDimY }}{{ else if gt .MinDimY 0 }}{{ .MinDimY }}+{{ else if gt .MaxDimY 0 }}0–{{ .MaxDimY }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="range" class="form-range flex-grow-1" name="miny" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ .MinDimY }}" oninput="modUpdateRangeLabel('mod-dimy',this.value,document.querySelector('#mod-filter-form [name=maxy]').value,{{ .MaxDimYAll }})">
+                                <input type="range" class="form-range flex-grow-1" name="maxy" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ if gt .MaxDimY 0 }}{{ .MaxDimY }}{{ else }}{{ .MaxDimYAll }}{{ end }}" oninput="modUpdateRangeLabel('mod-dimy',document.querySelector('#mod-filter-form [name=miny]').value,this.value,{{ .MaxDimYAll }})">
+                            </div>
+                        </div>
+                        {{ end }}
+                        {{ if gt .MaxBlockCountAll 0 }}
+                        <div>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Block Count" }}: <span id="mod-bc-label">{{ if and (gt .MinBlockCount 0) (gt .MaxBlockCount 0) }}{{ .MinBlockCount }}–{{ .MaxBlockCount }}{{ else if gt .MinBlockCount 0 }}{{ .MinBlockCount }}+{{ else if gt .MaxBlockCount 0 }}0–{{ .MaxBlockCount }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ .MinBlockCount }}" oninput="modUpdateRangeLabel('mod-bc',this.value,document.querySelector('#mod-filter-form [name=maxbc]').value,{{ .MaxBlockCountAll }})">
+                                <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="modUpdateRangeLabel('mod-bc',document.querySelector('#mod-filter-form [name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="tab" id="mod-tab-input" value="{{ .ActiveTab }}">
+        <input type="hidden" name="view" id="mod-view-input" value="{{ .ViewMode }}">
+        <input type="hidden" name="per_page" id="mod-per-page-input" value="{{ if .InfiniteScroll }}infinite{{ else if and (ne .PerPage 0) (ne .PerPage 24) }}{{ .PerPage }}{{ else }}24{{ end }}">
+    </form>
+    <script>
+    function modUpdateRangeLabel(id, minVal, maxVal, globalMax) {
+      var el = document.getElementById(id + '-label');
+      if (!el) return;
+      var mn = parseInt(minVal) || 0;
+      var mx = parseInt(maxVal) || 0;
+      if (mn === 0 && mx >= globalMax) {
+        el.textContent = '{{ T .Language "Any" }}';
+      } else if (mn > 0 && mx >= globalMax) {
+        el.textContent = mn + '+';
+      } else if (mn === 0 && mx < globalMax) {
+        el.textContent = '0–' + mx;
+      } else {
+        el.textContent = mn + '–' + mx;
+      }
+    }
+    (function(){
+      var form = document.getElementById('mod-filter-form');
+      if (form) {
+        form.querySelectorAll('input[type=range]').forEach(function(slider) {
+          slider.addEventListener('input', function(e) { e.stopPropagation(); });
+        });
+        form.addEventListener('htmx:configRequest', function(e) {
+          var p = e.detail.parameters;
+          var defaults = {category:'all',mcv:'all',cv:'all',rating:'-1',q:'',view:'grid',per_page:'24'};
+          for (var k in defaults) {
+            if (p[k] === defaults[k]) delete p[k];
+          }
+          var rangeDefaults = ['minhz','miny','minbc'];
+          rangeDefaults.forEach(function(k) { if (p[k] === '0') delete p[k]; });
+          var maxFields = {maxhz:'{{ .MaxHorizontalAll }}',maxy:'{{ .MaxDimYAll }}',maxbc:'{{ .MaxBlockCountAll }}'};
+          for (var mk in maxFields) {
+            if (p[mk] === '0' || p[mk] === maxFields[mk]) delete p[mk];
+          }
+          if (p.tab === 'trending') delete p.tab;
+        });
+      }
+      document.addEventListener('change', function(e) {
+        var f = e.target && e.target.closest && e.target.closest('#mod-filter-form');
+        if (!f) return;
+        var el = e.target;
+        if (el.type === 'range') {
+          var max = parseInt(el.max) || 0;
+          var val = parseInt(el.value) || 0;
+          if (el.name.indexOf('max') === 0 || el.name === 'maxbc' || el.name === 'maxy') {
+            if (val >= max) el.value = '0';
+          }
+        }
+      });
+    })();
+    </script>
+</div>
+{{end}}

@@ -48,7 +48,32 @@
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeAllDropdowns();
+    if (e.key === 'Escape') {
+      closeAllDropdowns();
+      return;
+    }
+
+    var openMenu = document.querySelector('.dropdown-menu.show');
+    if (!openMenu) return;
+
+    var items = Array.prototype.slice.call(openMenu.querySelectorAll('.dropdown-item:not(.disabled):not(:disabled)'));
+    if (!items.length) return;
+
+    var idx = items.indexOf(document.activeElement);
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(idx + 1) % items.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(idx - 1 + items.length) % items.length].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      items[0].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      items[items.length - 1].focus();
+    }
   });
 
   // =====================================================================
@@ -103,9 +128,15 @@
   // =====================================================================
   var activeModal = null;
   var modalBackdrop = null;
+  var modalPreviousFocus = null;
+  var modalTrapHandler = null;
+
+  var FOCUSABLE = 'a[href], button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
   function showModal(modalEl) {
     if (activeModal) hideModal(activeModal);
+
+    modalPreviousFocus = document.activeElement;
 
     modalBackdrop = document.createElement('div');
     modalBackdrop.className = 'modal-backdrop show';
@@ -115,9 +146,25 @@
     modalEl.offsetHeight; // force reflow
     modalEl.classList.add('show');
     modalEl.setAttribute('aria-modal', 'true');
-    modalEl.setAttribute('role', 'dialog');
     document.body.style.overflow = 'hidden';
     activeModal = modalEl;
+
+    var firstFocusable = modalEl.querySelector(FOCUSABLE);
+    if (firstFocusable) firstFocusable.focus();
+
+    modalTrapHandler = function (e) {
+      if (e.key !== 'Tab') return;
+      var focusables = Array.prototype.slice.call(modalEl.querySelectorAll(FOCUSABLE));
+      if (!focusables.length) return;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    modalEl.addEventListener('keydown', modalTrapHandler);
 
     modalBackdrop.addEventListener('click', function () {
       hideModal(modalEl);
@@ -132,7 +179,11 @@
     if (!modalEl) return;
     modalEl.classList.remove('show');
     modalEl.removeAttribute('aria-modal');
-    modalEl.removeAttribute('role');
+
+    if (modalTrapHandler) {
+      modalEl.removeEventListener('keydown', modalTrapHandler);
+      modalTrapHandler = null;
+    }
 
     setTimeout(function () {
       modalEl.style.display = 'none';
@@ -145,6 +196,11 @@
 
     document.body.style.overflow = '';
     activeModal = null;
+
+    if (modalPreviousFocus && modalPreviousFocus.focus) {
+      modalPreviousFocus.focus();
+      modalPreviousFocus = null;
+    }
 
     var event = new CustomEvent('hidden.bs.modal');
     modalEl.dispatchEvent(event);
@@ -288,21 +344,25 @@
   }
 
   document.addEventListener('mouseenter', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) showTooltipEl(target);
   }, true);
 
   document.addEventListener('mouseleave', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) hideTooltipEl();
   }, true);
 
   document.addEventListener('focusin', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) showTooltipEl(target);
   }, true);
 
   document.addEventListener('focusout', function (e) {
+    if (!e.target || !e.target.closest) return;
     var target = e.target.closest('[data-cm-toggle="tooltip"]');
     if (target) hideTooltipEl();
   }, true);
@@ -312,6 +372,7 @@
   // =====================================================================
   document.addEventListener('htmx:afterSettle', function () {
     closeAllDropdowns();
+    hideTooltipEl();
   });
 
 })();

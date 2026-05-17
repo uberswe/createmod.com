@@ -182,7 +182,10 @@ func (e *modDownloadError) Error() string { return e.message }
 func modDownloadSchematic(ctx context.Context, appStore *store.Store, storageSvc *storage.Service, rl ratelimit.Limiter, cacheService *cache.Service, slug string, clientIP string) ([]byte, error) {
 	s, err := appStore.Schematics.GetByName(ctx, slug)
 	if err != nil || s == nil || (s.Deleted != nil && !s.Deleted.IsZero()) {
-		return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}
+		s, err = appStore.Schematics.GetByShortCode(ctx, strings.ToUpper(slug))
+		if err != nil || s == nil || (s.Deleted != nil && !s.Deleted.IsZero()) {
+			return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}
+		}
 	}
 
 	if !store.IsPublicState(s.ModerationState) {

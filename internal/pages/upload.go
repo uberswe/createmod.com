@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -102,8 +103,9 @@ type UploadPublishData struct {
 	CreatemodVersions []models.CreatemodVersion
 	Tags              []models.SchematicTag
 	AdditionalFiles   []tempUploadFile    // extra NBT files (variations/sets)
-	PreUploadedImages []store.TempUploadImage // images uploaded via API
-	TrustedUser       bool                // true if user has previously approved schematics
+	PreUploadedImages    []store.TempUploadImage // gallery images uploaded via API
+	PreUploadedRotation  []store.TempUploadImage // rotation images uploaded via API
+	TrustedUser          bool                    // true if user has previously approved schematics
 }
 
 type UploadPreviewData struct {
@@ -120,10 +122,12 @@ type UploadPreviewData struct {
 	ParsedMaterials  []nbtparser.Material
 	DimX, DimY, DimZ int
 	Mods             []string
-	FileURL          string           // path to the NBT file in S3 storage
-	IsOwner          bool             // true if current user uploaded this
-	IsUnclaimed      bool             // true if UploadedBy is empty (no owner yet)
-	AdditionalFiles  []tempUploadFile // extra NBT files (variations/sets)
+	FileURL           string           // path to the NBT file in S3 storage
+	IsOwner           bool             // true if current user uploaded this
+	IsUnclaimed       bool             // true if UploadedBy is empty (no owner yet)
+	AdditionalFiles   []tempUploadFile // extra NBT files (variations/sets)
+	RotationImages    []string         // rotation image URLs for 360° viewer
+	HasRotationImages bool
 }
 
 func UploadHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -290,7 +294,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if err != nil {
 			return e.String(http.StatusNotFound, "invalid or expired token")
 		}
-		if entry.UploadedBy != "" && entry.UploadedBy != userID {
+		if entry.UploadedBy != userID {
 			return e.String(http.StatusForbidden, "you do not own this upload")
 		}
 
@@ -406,27 +410,25 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			nameSlug = makeUniqueSlug(ctx, appStore, nameSlug)
 		}
 
+		// Atomically mark as processing to prevent duplicate submissions.
+		// This runs before any S3 work so that a concurrent request is
+		// rejected early (409 Conflict) without wasting storage operations.
+		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
+			return e.String(http.StatusConflict, "this upload is already being processed")
+		}
+
 		// --- Handle featured image ---
 		var featuredFilename string
 
 		// Check if featured image is a preloaded temp upload image
-		if preloadedFeatured := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloadedFeatured != "" {
-			// Copy from temp uploads S3 to schematics S3
+		if preloadedFeatured := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloadedFeatured != "" && !containsPathTraversal(preloadedFeatured) {
 			srcKey := s3CollectionTempUploads + "/" + token + "/" + preloadedFeatured
 			if storageSvc != nil {
-				reader, dlErr := storageSvc.DownloadRaw(ctx, srcKey)
-				if dlErr == nil {
-					imgData, readErr := io.ReadAll(reader)
-					_ = reader.Close()
-					if readErr == nil {
-						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, preloadedFeatured, imgData, "image/webp"); uploadErr != nil {
-							slog.Error("make-public: failed to copy preloaded featured image", "error", uploadErr)
-						} else {
-							featuredFilename = preloadedFeatured
-						}
-					}
+				dstKey := s3CollectionSchematics + "/" + schematicID + "/" + preloadedFeatured
+				if copyErr := storageSvc.CopyRaw(ctx, srcKey, dstKey); copyErr != nil {
+					slog.Error("make-public: failed to copy preloaded featured image", "error", copyErr, "key", srcKey)
 				} else {
-					slog.Error("make-public: failed to download preloaded featured image", "error", dlErr, "key", srcKey)
+					featuredFilename = preloadedFeatured
 				}
 			}
 		}
@@ -460,30 +462,19 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		galleryFilenames := []string{}
 
 		// Copy preloaded gallery images from temp uploads S3
-		if preloadedGallery := e.Request.Form["preloaded_images"]; len(preloadedGallery) > 0 {
+		if preloadedGallery := e.Request.Form["preloaded_images"]; len(preloadedGallery) > 0 && storageSvc != nil {
 			for _, filename := range preloadedGallery {
 				filename = strings.TrimSpace(filename)
-				if filename == "" {
+				if filename == "" || containsPathTraversal(filename) {
 					continue
 				}
 				srcKey := s3CollectionTempUploads + "/" + token + "/" + filename
-				if storageSvc != nil {
-					reader, dlErr := storageSvc.DownloadRaw(ctx, srcKey)
-					if dlErr != nil {
-						slog.Error("make-public: failed to download preloaded gallery image", "error", dlErr, "key", srcKey)
-						continue
-					}
-					imgData, readErr := io.ReadAll(reader)
-					_ = reader.Close()
-					if readErr != nil {
-						continue
-					}
-					if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, imgData, "image/webp"); uploadErr != nil {
-						slog.Error("make-public: failed to copy preloaded gallery image", "error", uploadErr)
-						continue
-					}
-					galleryFilenames = append(galleryFilenames, filename)
+				dstKey := s3CollectionSchematics + "/" + schematicID + "/" + filename
+				if copyErr := storageSvc.CopyRaw(ctx, srcKey, dstKey); copyErr != nil {
+					slog.Error("make-public: failed to copy preloaded gallery image", "error", copyErr, "key", srcKey)
+					continue
 				}
+				galleryFilenames = append(galleryFilenames, filename)
 			}
 		}
 
@@ -520,21 +511,60 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
+		// --- Handle rotation images (preloaded via API) ---
+		rotationFilenames := []string{}
+		if preloadedRotation := e.Request.Form["preloaded_rotation_images"]; len(preloadedRotation) > 0 && storageSvc != nil {
+			type rotResult struct {
+				idx      int
+				filename string
+				err      error
+			}
+			var validFiles []struct {
+				idx      int
+				filename string
+				srcKey   string
+				dstKey   string
+			}
+			for i, filename := range preloadedRotation {
+				filename = strings.TrimSpace(filename)
+				if filename == "" || containsPathTraversal(filename) {
+					continue
+				}
+				srcKey := s3CollectionTempUploads + "/" + token + "/" + filename
+				dstKey := s3CollectionSchematics + "/" + schematicID + "/" + filename
+				validFiles = append(validFiles, struct {
+					idx      int
+					filename string
+					srcKey   string
+					dstKey   string
+				}{i, filename, srcKey, dstKey})
+			}
+			results := make(chan rotResult, len(validFiles))
+			sem := make(chan struct{}, 20)
+			for _, vf := range validFiles {
+				sem <- struct{}{}
+				go func(idx int, filename, srcKey, dstKey string) {
+					defer func() { <-sem }()
+					err := storageSvc.CopyRaw(ctx, srcKey, dstKey)
+					results <- rotResult{idx: idx, filename: filename, err: err}
+				}(vf.idx, vf.filename, vf.srcKey, vf.dstKey)
+			}
+			for range validFiles {
+				r := <-results
+				if r.err != nil {
+					slog.Error("make-public: failed to copy rotation image", "error", r.err, "filename", r.filename)
+					continue
+				}
+				rotationFilenames = append(rotationFilenames, r.filename)
+			}
+			sort.Strings(rotationFilenames)
+		}
+
 		// --- Copy NBT file from temp to schematics ---
 		if entry.NbtS3Key != "" && storageSvc != nil {
-			reader, dlErr := storageSvc.DownloadRaw(ctx, entry.NbtS3Key)
-			if dlErr != nil {
-				slog.Error("make-public: failed to download temp NBT", "error", dlErr, "key", entry.NbtS3Key)
-				return e.String(http.StatusInternalServerError, "failed to retrieve uploaded file")
-			}
-			nbtData, readErr := io.ReadAll(reader)
-			_ = reader.Close()
-			if readErr != nil {
-				slog.Error("make-public: failed to read temp NBT", "error", readErr)
-				return e.String(http.StatusInternalServerError, "failed to read uploaded file")
-			}
-			if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, entry.Filename, nbtData, "application/octet-stream"); uploadErr != nil {
-				slog.Error("make-public: failed to upload NBT to schematics", "error", uploadErr)
+			dstKey := s3CollectionSchematics + "/" + schematicID + "/" + entry.Filename
+			if copyErr := storageSvc.CopyRaw(ctx, entry.NbtS3Key, dstKey); copyErr != nil {
+				slog.Error("make-public: failed to copy NBT to schematics", "error", copyErr, "key", entry.NbtS3Key)
 				return e.String(http.StatusInternalServerError, "failed to store schematic file")
 			}
 		}
@@ -545,22 +575,12 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			if tf.NbtS3Key == "" || storageSvc == nil {
 				continue
 			}
-			reader, dlErr := storageSvc.DownloadRaw(ctx, tf.NbtS3Key)
-			if dlErr != nil {
-				slog.Error("make-public: failed to download additional file", "error", dlErr, "key", tf.NbtS3Key)
-				continue
-			}
-			fileData, readErr := io.ReadAll(reader)
-			_ = reader.Close()
-			if readErr != nil {
-				slog.Error("make-public: failed to read additional file", "error", readErr)
-				continue
-			}
 
-			// Upload to schematics S3 prefix
+			// Server-side copy to schematics S3 prefix
 			s3Filename := schematicID + "_" + tf.Filename
-			if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, s3Filename, fileData, "application/octet-stream"); uploadErr != nil {
-				slog.Error("make-public: failed to upload additional file", "error", uploadErr)
+			dstKey := s3CollectionSchematics + "/" + schematicID + "/" + s3Filename
+			if copyErr := storageSvc.CopyRaw(ctx, tf.NbtS3Key, dstKey); copyErr != nil {
+				slog.Error("make-public: failed to copy additional file", "error", copyErr, "key", tf.NbtS3Key)
 				continue
 			}
 
@@ -582,13 +602,6 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.String(http.StatusBadRequest, "a schematic must have a featured image")
 		}
 
-		// Atomically mark as processing to prevent duplicate submissions.
-		// This is placed after all validation so that a validation failure
-		// does not lock the upload and block a corrected retry.
-		if err := appStore.TempUploads.MarkProcessing(ctx, token); err != nil {
-			return e.String(http.StatusConflict, "this upload is already being processed")
-		}
-
 		// --- Create schematic record ---
 		now := time.Now()
 		schem := &store.Schematic{
@@ -602,6 +615,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			Postdate:           &now,
 			FeaturedImage:      featuredFilename,
 			Gallery:            galleryFilenames,
+			RotationImages:     rotationFilenames,
 			SchematicFile:      entry.Filename,
 			Video:              video,
 			CreatemodVersionID: createmodVersionID,
@@ -621,6 +635,12 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if err := appStore.Schematics.Create(ctx, schem); err != nil {
 			slog.Error("make-public: failed to create schematic", "error", err, "title", title)
 			return e.String(http.StatusInternalServerError, "failed to create schematic")
+		}
+
+		if code := generateShortCode(ctx, appStore); code != "" {
+			if err := appStore.Schematics.SetShortCode(ctx, schematicID, code); err != nil {
+				slog.Warn("make-public: failed to set short code", "error", err, "id", schematicID)
+			}
 		}
 
 		if appStore.ModerationLog != nil {
@@ -866,6 +886,16 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		d.IsOwner = isOwner
 		d.IsUnclaimed = entry.UploadedBy == ""
 		d.AdditionalFiles = additionalFiles
+
+		// Load rotation images for 360° viewer
+		if rotImgs, rErr := appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation"); rErr == nil && len(rotImgs) > 0 {
+			rotURLs := make([]string, len(rotImgs))
+			for i, img := range rotImgs {
+				rotURLs[i] = "/api/files/" + img.S3Key
+			}
+			d.RotationImages = rotURLs
+			d.HasRotationImages = true
+		}
 		h, err := registry.LoadFiles(uploadPreviewTemplates...).Render(d)
 		if err != nil {
 			return err
@@ -895,6 +925,67 @@ func UploadClaimHandler(appStore *store.Store) func(e *server.RequestEvent) erro
 		}
 
 		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/u/"+token))
+	}
+}
+
+// UploadDeleteHandler deletes a draft (temp upload) and all its associated S3 files.
+// POST /u/{token}/delete
+func UploadDeleteHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		token := e.Request.PathValue("token")
+		if token == "" {
+			return e.String(http.StatusBadRequest, "missing token")
+		}
+
+		ctx := e.Request.Context()
+		userID := authenticatedUserID(e)
+
+		entry, err := appStore.TempUploads.GetByToken(ctx, token)
+		if err != nil {
+			return e.String(http.StatusNotFound, "invalid or expired token")
+		}
+		if entry.UploadedBy != userID {
+			return e.String(http.StatusForbidden, "you do not own this upload")
+		}
+
+		// Delete additional files from S3
+		if tempFiles, fErr := appStore.TempUploadFiles.ListByToken(ctx, token); fErr == nil {
+			for _, tf := range tempFiles {
+				if tf.NbtS3Key != "" && storageSvc != nil {
+					_ = storageSvc.DeleteRaw(ctx, tf.NbtS3Key)
+				}
+			}
+		}
+		_ = appStore.TempUploadFiles.DeleteByToken(ctx, token)
+
+		// Delete images from S3
+		if tempImages, iErr := appStore.TempUploadImages.ListByToken(ctx, token); iErr == nil {
+			for _, img := range tempImages {
+				if img.S3Key != "" && storageSvc != nil {
+					_ = storageSvc.DeleteRaw(ctx, img.S3Key)
+				}
+			}
+		}
+		_ = appStore.TempUploadImages.DeleteByToken(ctx, token)
+
+		// Delete NBT file from S3
+		if entry.NbtS3Key != "" && storageSvc != nil {
+			_ = storageSvc.DeleteRaw(ctx, entry.NbtS3Key)
+		}
+
+		// Delete the temp upload record
+		_ = appStore.TempUploads.Delete(ctx, token)
+
+		redirectURL := "/upload"
+		if e.Request.Header.Get("HX-Request") != "" {
+			e.Response.Header().Set("HX-Redirect", LangRedirectURL(e, redirectURL))
+			return e.HTML(http.StatusNoContent, "")
+		}
+		return e.Redirect(http.StatusSeeOther, LangRedirectURL(e, redirectURL))
 	}
 }
 
@@ -950,7 +1041,8 @@ type uploadNBTResponse struct {
 	BlockCount int                  `json:"block_count"`
 	Materials  []nbtparser.Material `json:"materials"`
 	Mods       []string             `json:"mods"`
-	Images     []uploadImageResponse `json:"images,omitempty"`
+	Images         []uploadImageResponse `json:"images,omitempty"`
+	RotationImages []uploadImageResponse `json:"rotation_images,omitempty"`
 }
 
 // UploadNBTHandler validates an uploaded .nbt file, parses stats, persists to
@@ -1076,7 +1168,7 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
 		if storageSvc != nil {
 			if err := storageSvc.UploadRawBytes(e.Request.Context(), nbtS3Key, data, "application/octet-stream"); err != nil {
-				slog.Error("failed to upload NBT to S3", "error", err, "token", token)
+				slog.Error("failed to upload NBT to S3", "error", err, "token", token[:8])
 				return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to store file"})
 			}
 		}
@@ -1099,7 +1191,7 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
-			slog.Error("failed to persist temp upload", "error", err, "token", token)
+			slog.Error("failed to persist temp upload", "error", err, "token", token[:8])
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save upload metadata"})
 		}
 
@@ -1204,6 +1296,30 @@ func allCreatemodVersionsFromStore(appStore *store.Store) []models.CreatemodVers
 
 func generateSchematicID() string {
 	return randomHex(8)[:15]
+}
+
+const shortCodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+func generateShortCode(ctx context.Context, appStore *store.Store) string {
+	for attempts := 0; attempts < 20; attempts++ {
+		length := 5
+		if attempts >= 10 {
+			length = 6
+		}
+		b := make([]byte, length)
+		_, _ = rand.Read(b)
+		code := make([]byte, length)
+		for i := range b {
+			code[i] = shortCodeAlphabet[int(b[i])%len(shortCodeAlphabet)]
+		}
+		candidate := string(code)
+		exists, err := appStore.Schematics.ShortCodeExists(ctx, candidate)
+		if err != nil || exists {
+			continue
+		}
+		return candidate
+	}
+	return ""
 }
 
 func allMinecraftVersionsFromStore(appStore *store.Store) []models.MinecraftVersion {

@@ -13,24 +13,22 @@
                         <div class="mb-4">
                             <div class="d-flex flex-wrap gap-2">
                                 {{ range .Follows }}
-                                <span class="badge bg-secondary-lt d-inline-flex align-items-center gap-1" id="follow-badge-{{ .ID }}">
+                                <span class="follow-tag d-inline-flex align-items-center gap-1" id="follow-badge-{{ .ID }}">
                                     {{ if eq .FollowType "user" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-inline" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
                                     {{ else if eq .FollowType "category" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-inline" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h6v6h-6z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6h-6z"/><path d="M17 17m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h6v6h-6z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6h-6z"/><path d="M17 17m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/></svg>
                                     {{ else if eq .FollowType "search" }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-inline" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
                                     {{ else }}
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-inline" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></svg>
                                     {{ end }}
-                                    {{ .FollowType }}: {{ .TargetID }}
-                                    <span class="text-muted">({{ .EmailFrequency }})</span>
+                                    {{ if .Link }}<a href="{{ .Link }}" class="follow-tag-link">{{ .DisplayName }}</a>{{ else }}{{ .DisplayName }}{{ end }}
+                                    <a href="/settings/subscriptions" class="follow-tag-freq" title="{{ T $.Language "following.email.tooltip" }}">{{ .EmailFrequency }}</a>
+                                    <button class="follow-tag-remove" hx-post="/following/unfollow" hx-vals='{"follow_type":"{{ .FollowType }}","target_id":"{{ .TargetID }}"}' hx-target="#follow-badge-{{ .ID }}" hx-swap="outerHTML" title="{{ T $.Language "Unfollow" }}">&times;</button>
                                 </span>
                                 {{ end }}
                             </div>
-                            <a href="/settings/subscriptions" class="btn btn-sm btn-outline-secondary mt-2">
-                                {{ T .Language "Manage Follows" }}
-                            </a>
                         </div>
                         {{ end }}
 

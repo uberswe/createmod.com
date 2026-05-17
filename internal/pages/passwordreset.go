@@ -199,15 +199,14 @@ func PasswordResetConfirmPostHandler(registry *server.Registry, appStore *store.
 		ctx := e.Request.Context()
 		tokenHash := hashToken(token)
 
-		// Look up token
+		// Atomically consume the token (prevents TOCTOU race)
 		var userID string
-		var tokenID string
 		err := resetPool.QueryRow(ctx,
-			`SELECT id, user_id FROM password_reset_tokens
+			`DELETE FROM password_reset_tokens
 			 WHERE token_hash = $1 AND expires_at > NOW()
-			 LIMIT 1`,
+			 RETURNING user_id`,
 			tokenHash,
-		).Scan(&tokenID, &userID)
+		).Scan(&userID)
 
 		if err != nil || userID == "" {
 			d.Error = "Invalid or expired reset link. Please request a new one."
@@ -238,10 +237,6 @@ func PasswordResetConfirmPostHandler(registry *server.Registry, appStore *store.
 			}
 			return e.HTML(http.StatusOK, html)
 		}
-
-		// Delete the used token
-		_, _ = resetPool.Exec(ctx,
-			`DELETE FROM password_reset_tokens WHERE id = $1`, tokenID)
 
 		// Invalidate all existing sessions for the user
 		_ = sessStore.DeleteUserSessions(ctx, userID)

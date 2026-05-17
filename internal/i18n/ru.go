@@ -307,6 +307,21 @@ var LangRU = map[string]string{
 	"How to earn points":                       "Как заработать очки",
 	"Points history":                           "История очков",
 	"No points earned yet":                     "Очки ещё не заработаны. Начните вносить вклад!",
+	"pts":                                      "очк.",
+	"points.action.upload":                     "Загрузить схему",
+	"points.action.comment":                    "Прокомментировать схему",
+	"points.action.rating4":                    "Схема получает оценку 4+ звезды",
+	"points.action.downloads100":               "Схема достигает 100 загрузок",
+	"points.action.views10k":                   "Схема достигает 10 000 просмотров",
+	"points.action.first_comment":              "Опубликуйте свой первый комментарий",
+	"points.action.views100":                   "Схема достигает 100 просмотров",
+	"points.action.views1k":                    "Схема достигает 1 000 просмотров",
+	"points.action.views10k_milestone":         "Схема достигает 10 000 просмотров (веха)",
+	"Repeatable":                               "Повторяемое",
+	"One-time":                                 "Одноразовое",
+	"topcreators.page.description":             "Discover the most active contributors in the Create mod community. Creators earn points by uploading schematics, engaging with others, and reaching milestones.",
+	"topcreators.points.description":           "Зарабатывайте очки, внося вклад в сообщество. Загружайте схемы, комментируйте и участвуйте, чтобы подняться в рейтинге!",
+	"topcreators.antispam":                     "Спам схемами, комментариями или любая другая намеренная манипуляция очками приведёт к бану.",
 	"Achievements":                             "Достижения",
 	"This user has not posted any schematics.": "Этот пользователь ещё не опубликовал ни одной схемы.",
 
@@ -788,4 +803,19 @@ var LangRU = map[string]string{
 	"no_replacement":            "Без замены",
 	"block_search_placeholder":  "Поиск блока...",
 	"replacements":              "замен",
+
+	// ── 360° Rotation Viewer ──
+	"rotation.loading":          "Загрузка обзора 360°",
+	"rotation.auto_rotate":      "Автоповорот",
+	"rotation.how":              "Как это работает?",
+	"rotation.tooltip.line1":    "Этот 360° превью создан из %s изображений, снятых вокруг схемы.",
+	"rotation.tooltip.line2":    "Хотите создать 3D превью для своих построек? Загрузите вашу схему с помощью мода Create Schematic Helper.",
+
+	// ── Gallery Strip ──
+	"gallery.scroll_left":  "Прокрутить влево",
+	"gallery.scroll_right": "Прокрутить вправо",
+
+	// ── Upload / Publish ──
+	"Select a category":   "Выберите категорию",
+	"delete_draft.confirm": "Вы уверены, что хотите удалить этот черновик? Это действие нельзя отменить.",
 }

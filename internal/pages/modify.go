@@ -141,6 +141,14 @@ func ModifyDownloadHandler(appStore *store.Store, storageService *storage.Servic
 			return e.NotFoundError("Schematic not found", nil)
 		}
 
+		// Must be published (moderated) or the user is the owner
+		userID := authenticatedUserID(e)
+		isOwner := userID != "" && s.AuthorID == userID
+		isPublished := s.Deleted == nil && (store.IsPublicState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
+		if !isPublished && !isOwner {
+			return e.NotFoundError("Schematic not found", nil)
+		}
+
 		if storageService == nil || s.SchematicFile == "" {
 			return e.BadRequestError("Schematic file not available", nil)
 		}
@@ -207,6 +215,14 @@ func ModifyPreviewHandler(appStore *store.Store, storageService *storage.Service
 		ctx := e.Request.Context()
 		s, err := appStore.Schematics.GetByID(ctx, schematicID)
 		if err != nil || s == nil {
+			return e.NotFoundError("Schematic not found", nil)
+		}
+
+		// Must be published (moderated) or the user is the owner
+		userID := authenticatedUserID(e)
+		isOwner := userID != "" && s.AuthorID == userID
+		isPublished := s.Deleted == nil && (store.IsPublicState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
+		if !isPublished && !isOwner {
 			return e.NotFoundError("Schematic not found", nil)
 		}
 

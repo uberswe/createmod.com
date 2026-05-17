@@ -102,6 +102,8 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		DetectedLanguage:   s.DetectedLanguage,
 		FeaturedImage:      s.FeaturedImage,
 		Gallery:            s.Gallery,
+		RotationImages:     s.RotationImages,
+		ShortCode:          s.ShortCode,
 		SchematicFile:      s.SchematicFile,
 		Video:              s.Video,
 		HasDependencies:    s.HasDependencies,
@@ -515,6 +517,11 @@ func (us *UserStoreImpl) CountActive(ctx context.Context) (int64, error) {
 	return us.q.CountActiveUsers(ctx)
 }
 
+func (us *UserStoreImpl) GetUserPointsRank(ctx context.Context, userID string) (int64, error) {
+	r, err := us.q.GetUserPointsRank(ctx, userID)
+	return int64(r), err
+}
+
 // ============================================================================
 // SessionStore implementation
 // ============================================================================
@@ -593,6 +600,26 @@ func (ps *PostgresStore) GetByName(ctx context.Context, name string) (*store.Sch
 
 func (ps *PostgresStore) NameExists(ctx context.Context, name string) (bool, error) {
 	return ps.q.SchematicNameExists(ctx, name)
+}
+
+func (ps *PostgresStore) GetByShortCode(ctx context.Context, code string) (*store.Schematic, error) {
+	row, err := ps.q.GetSchematicByShortCode(ctx, code)
+	if err != nil {
+		return nil, err
+	}
+	s := schematicFromDB(row)
+	return &s, nil
+}
+
+func (ps *PostgresStore) SetShortCode(ctx context.Context, id, code string) error {
+	return ps.q.SetSchematicShortCode(ctx, db.SetSchematicShortCodeParams{
+		ID:        id,
+		ShortCode: code,
+	})
+}
+
+func (ps *PostgresStore) ShortCodeExists(ctx context.Context, code string) (bool, error) {
+	return ps.q.ShortCodeExists(ctx, code)
 }
 
 func (ps *PostgresStore) ListApproved(ctx context.Context, limit, offset int) ([]store.Schematic, error) {
@@ -674,6 +701,8 @@ func (ps *PostgresStore) Create(ctx context.Context, s *store.Schematic) error {
 		DetectedLanguage:   s.DetectedLanguage,
 		FeaturedImage:      s.FeaturedImage,
 		Gallery:            s.Gallery,
+		RotationImages:     s.RotationImages,
+		ShortCode:          s.ShortCode,
 		SchematicFile:      s.SchematicFile,
 		Video:              s.Video,
 		HasDependencies:    s.HasDependencies,
@@ -708,6 +737,7 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		Content:            ptrStr(s.Content),
 		FeaturedImage:      ptrStr(s.FeaturedImage),
 		Gallery:            s.Gallery,
+		RotationImages:     s.RotationImages,
 		Video:              ptrStr(s.Video),
 		HasDependencies:    ptrBool(s.HasDependencies),
 		Dependencies:       ptrStr(s.Dependencies),
@@ -3338,6 +3368,10 @@ func (st *SearchTrackingStoreImpl) ListCleanSearchTerms(ctx context.Context, ter
 	return st.q.ListCleanSearchTerms(ctx, terms)
 }
 
+func (st *SearchTrackingStoreImpl) ListDirtySearchTerms(ctx context.Context, terms []string) ([]string, error) {
+	return st.q.ListDirtySearchTerms(ctx, terms)
+}
+
 func (st *SearchTrackingStoreImpl) ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error) {
 	rows, err := st.q.ListUncheckedSearchTerms(ctx, db.ListUncheckedSearchTermsParams{
 		Terms: terms,
@@ -3875,6 +3909,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		SearchAlerts:         &SearchAlertStoreImpl{q: q},
 		ZeroResults:          &ZeroResultStoreImpl{q: q},
 		Security:             &SecurityStoreImpl{q: q, pool: pool},
+		AdClicks:             &AdClickStoreImpl{q: q},
 	}
 }
 
@@ -4441,6 +4476,7 @@ var (
 	_ store.NewsletterStore          = (*NewsletterStoreImpl)(nil)
 	_ store.SearchAlertStore         = (*SearchAlertStoreImpl)(nil)
 	_ store.ZeroResultStore = (*ZeroResultStoreImpl)(nil)
+	_ store.AdClickStore    = (*AdClickStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------
@@ -5616,12 +5652,16 @@ func (s *TempUploadFileStoreImpl) DeleteByToken(ctx context.Context, token strin
 type TempUploadImageStoreImpl struct{ q *db.Queries }
 
 func (s *TempUploadImageStoreImpl) Create(ctx context.Context, img *store.TempUploadImage) error {
+	if img.Category == "" {
+		img.Category = "gallery"
+	}
 	row, err := s.q.CreateTempUploadImage(ctx, db.CreateTempUploadImageParams{
 		Token:     img.Token,
 		Filename:  img.Filename,
 		Size:      img.Size,
 		S3Key:     img.S3Key,
 		SortOrder: int32(img.SortOrder),
+		Category:  img.Category,
 	})
 	if err != nil {
 		return err
@@ -5645,6 +5685,31 @@ func (s *TempUploadImageStoreImpl) ListByToken(ctx context.Context, token string
 			Size:      r.Size,
 			S3Key:     r.S3Key,
 			SortOrder: int(r.SortOrder),
+			Category:  r.Category,
+			Created:   r.Created,
+		}
+	}
+	return result, nil
+}
+
+func (s *TempUploadImageStoreImpl) ListByTokenAndCategory(ctx context.Context, token, category string) ([]store.TempUploadImage, error) {
+	rows, err := s.q.ListTempUploadImagesByTokenAndCategory(ctx, db.ListTempUploadImagesByTokenAndCategoryParams{
+		Token:    token,
+		Category: category,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.TempUploadImage, len(rows))
+	for i, r := range rows {
+		result[i] = store.TempUploadImage{
+			ID:        r.ID,
+			Token:     r.Token,
+			Filename:  r.Filename,
+			Size:      r.Size,
+			S3Key:     r.S3Key,
+			SortOrder: int(r.SortOrder),
+			Category:  r.Category,
 			Created:   r.Created,
 		}
 	}
@@ -5978,4 +6043,50 @@ func variationFromDB(row db.SchematicVariation) *store.SchematicVariation {
 		CreatedAt:    row.Created,
 		UpdatedAt:    row.Updated,
 	}
+}
+
+// --------------------------------------------------------------------------
+// AdClickStoreImpl
+// --------------------------------------------------------------------------
+
+type AdClickStoreImpl struct{ q *db.Queries }
+
+func (s *AdClickStoreImpl) RecordClick(ctx context.Context, adUnit, dest string) error {
+	period := time.Now().UTC().Format("20060102")
+	return s.q.UpsertAdClick(ctx, db.UpsertAdClickParams{
+		AdUnit: adUnit,
+		Dest:   dest,
+		Period: period,
+	})
+}
+
+func (s *AdClickStoreImpl) ListDaily(ctx context.Context) ([]store.AdClickStat, error) {
+	rows, err := s.q.ListDailyAdClicks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.AdClickStat, len(rows))
+	for i, r := range rows {
+		out[i] = store.AdClickStat{AdUnit: r.AdUnit, Dest: r.Dest, Period: r.Period, Count: r.Count}
+	}
+	return out, nil
+}
+
+func (s *AdClickStoreImpl) ListMonthly(ctx context.Context) ([]store.AdClickStat, error) {
+	rows, err := s.q.ListMonthlyAdClicks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.AdClickStat, len(rows))
+	for i, r := range rows {
+		out[i] = store.AdClickStat{AdUnit: r.AdUnit, Dest: r.Dest, Period: r.Period, Count: r.Count}
+	}
+	return out, nil
+}
+
+func (s *AdClickStoreImpl) RollupAndClean(ctx context.Context, cutoffDay string) error {
+	if err := s.q.RollupDailyToMonthly(ctx, cutoffDay); err != nil {
+		return err
+	}
+	return s.q.DeleteOldDailyAdClicks(ctx, cutoffDay)
 }

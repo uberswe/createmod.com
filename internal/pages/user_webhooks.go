@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/gtuk/discordwebhook"
 )
 
 var userWebhooksTemplates = append([]string{
@@ -129,6 +131,46 @@ func UserWebhookSaveHandler(cacheService *cache.Service, appStore *store.Store, 
 		}
 
 		return webhookRedirect(e, "success", "Webhook saved successfully")
+	}
+}
+
+// UserWebhookTestHandler handles POST /settings/webhooks/test
+func UserWebhookTestHandler(appStore *store.Store, webhookSecret string) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if e.Request.Method != http.MethodPost {
+			return e.String(http.StatusMethodNotAllowed, "method not allowed")
+		}
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+
+		userID := authenticatedUserID(e)
+		ctx := e.Request.Context()
+
+		wh, err := appStore.Webhooks.GetByUserID(ctx, userID)
+		if err != nil || wh == nil {
+			return webhookRedirect(e, "error", "No webhook configured")
+		}
+
+		plainURL, err := webhook.Decrypt(wh.WebhookURLEncrypted, webhookSecret)
+		if err != nil {
+			return webhookRedirect(e, "error", "Failed to decrypt webhook URL")
+		}
+
+		username := "CreateMod.com"
+		content := "This is a test message from CreateMod.com. Your webhook is working correctly!"
+		message := discordwebhook.Message{
+			Username: &username,
+			Content:  &content,
+		}
+
+		if err := discordwebhook.SendMessage(plainURL, message); err != nil {
+			_ = appStore.Webhooks.IncrementFailure(ctx, wh.ID, err.Error())
+			return webhookRedirect(e, "error", "Test failed: "+err.Error())
+		}
+
+		_ = appStore.Webhooks.ResetFailures(ctx, wh.ID)
+		return webhookRedirect(e, "success", "Test message sent! Check your Discord channel.")
 	}
 }
 

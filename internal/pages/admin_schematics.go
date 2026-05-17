@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sym01/htmlsanitizer"
 )
 
 var adminSchematicsTemplates = append([]string{
@@ -311,7 +313,12 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 			schem.Title = title
 		}
 		if content := e.Request.FormValue("content"); content != "" {
-			schem.Content = content
+			sanitizer := htmlsanitizer.NewHTMLSanitizer()
+			if sanitized, err := sanitizer.SanitizeString(content); err == nil {
+				schem.Content = sanitized
+			} else {
+				schem.Content = content
+			}
 		}
 		adminVideo := strings.TrimSpace(e.Request.FormValue("video"))
 		if adminVideo != "" && !IsValidYouTubeVideo(adminVideo) {
@@ -365,7 +372,17 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 
 		// Moderation controls
 		if newState := e.Request.FormValue("moderation_state"); newState != "" {
-			schem.ModerationState = newState
+			validStates := map[string]bool{
+				store.ModerationAutoReview: true,
+				store.ModerationPublished:  true,
+				store.ModerationFlagged:    true,
+				store.ModerationApproved:   true,
+				store.ModerationRejected:   true,
+				store.ModerationDeleted:    true,
+			}
+			if validStates[newState] {
+				schem.ModerationState = newState
+			}
 		}
 		if reason := e.Request.FormValue("moderation_reason"); reason != "" {
 			schem.ModerationReason = reason

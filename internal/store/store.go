@@ -64,6 +64,8 @@ type Schematic struct {
 	DetectedLanguage   string
 	FeaturedImage      string
 	Gallery            []string
+	RotationImages     []string
+	ShortCode          string
 	SchematicFile      string
 	Video              string
 	HasDependencies    bool
@@ -708,6 +710,7 @@ type UserStore interface {
 	CountForAdmin(ctx context.Context, filter, search string) (int64, error)
 	ListTopByPoints(ctx context.Context, limit, offset int) ([]User, error)
 	CountActive(ctx context.Context) (int64, error)
+	GetUserPointsRank(ctx context.Context, userID string) (int64, error)
 }
 
 // SessionStore handles session persistence.
@@ -756,6 +759,9 @@ type ModerationChatStore interface {
 type SchematicStore interface {
 	GetByID(ctx context.Context, id string) (*Schematic, error)
 	GetByName(ctx context.Context, name string) (*Schematic, error)
+	GetByShortCode(ctx context.Context, code string) (*Schematic, error)
+	SetShortCode(ctx context.Context, id, code string) error
+	ShortCodeExists(ctx context.Context, code string) (bool, error)
 	NameExists(ctx context.Context, name string) (bool, error)
 	ListApproved(ctx context.Context, limit, offset int) ([]Schematic, error)
 	CountApproved(ctx context.Context) (int64, error)
@@ -1051,6 +1057,7 @@ type SearchTrackingStore interface {
 	DailySearchTermVolume(ctx context.Context, since time.Time, terms []string) ([]SearchTermDailyCount, error)
 	UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error
 	ListCleanSearchTerms(ctx context.Context, terms []string) ([]string, error)
+	ListDirtySearchTerms(ctx context.Context, terms []string) ([]string, error)
 	ListUncheckedSearchTerms(ctx context.Context, terms []string, since time.Time) ([]string, error)
 	ListTopZeroResultQueries(ctx context.Context, limit int) ([]ZeroResultQuery, error)
 	ListTopSuccessfulQueries(ctx context.Context, limit int) ([]string, error)
@@ -1059,6 +1066,22 @@ type SearchTrackingStore interface {
 // OutgoingClickStore handles external link click tracking.
 type OutgoingClickStore interface {
 	RecordClick(ctx context.Context, url, source, sourceID string, userID *string) error
+}
+
+// AdClickStat represents a click count for an ad unit in a given period.
+type AdClickStat struct {
+	AdUnit string
+	Dest   string
+	Period string
+	Count  int64
+}
+
+// AdClickStore tracks clicks on ad units (NitroAds and kin-tiles).
+type AdClickStore interface {
+	RecordClick(ctx context.Context, adUnit, dest string) error
+	ListDaily(ctx context.Context) ([]AdClickStat, error)
+	ListMonthly(ctx context.Context) ([]AdClickStat, error)
+	RollupAndClean(ctx context.Context, cutoffDay string) error
 }
 
 // ContactStore handles contact form submissions.
@@ -1257,6 +1280,7 @@ type TempUploadImage struct {
 	Size      int64
 	S3Key     string
 	SortOrder int
+	Category  string
 	Created   time.Time
 }
 
@@ -1264,6 +1288,7 @@ type TempUploadImage struct {
 type TempUploadImageStore interface {
 	Create(ctx context.Context, img *TempUploadImage) error
 	ListByToken(ctx context.Context, token string) ([]TempUploadImage, error)
+	ListByTokenAndCategory(ctx context.Context, token, category string) ([]TempUploadImage, error)
 	Delete(ctx context.Context, id string) error
 	DeleteByToken(ctx context.Context, token string) error
 	CountByToken(ctx context.Context, token string) (int, error)
@@ -1478,4 +1503,5 @@ type Store struct {
 	SearchAlerts         SearchAlertStore
 	ZeroResults          ZeroResultStore
 	Security             SecurityStore
+	AdClicks             AdClickStore
 }

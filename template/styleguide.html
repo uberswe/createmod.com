@@ -1,0 +1,1006 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide py-4">
+                <h1 class="mb-1">Style Guide</h1>
+                <p class="text-secondary mb-4">Living reference of all UI components. Only visible when DEV=true.</p>
+
+                <nav class="mb-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="#colors" class="btn btn-sm btn-outline-secondary">Colors</a>
+                        <a href="#typography" class="btn btn-sm btn-outline-secondary">Typography</a>
+                        <a href="#buttons" class="btn btn-sm btn-outline-secondary">Buttons</a>
+                        <a href="#cards" class="btn btn-sm btn-outline-secondary">Cards</a>
+                        <a href="#forms" class="btn btn-sm btn-outline-secondary">Forms</a>
+                        <a href="#badges" class="btn btn-sm btn-outline-secondary">Badges</a>
+                        <a href="#alerts" class="btn btn-sm btn-outline-secondary">Alerts</a>
+                        <a href="#modals" class="btn btn-sm btn-outline-secondary">Modals</a>
+                        <a href="#dropdowns" class="btn btn-sm btn-outline-secondary">Dropdowns</a>
+                        <a href="#tables" class="btn btn-sm btn-outline-secondary">Tables</a>
+                        <a href="#avatars" class="btn btn-sm btn-outline-secondary">Avatars</a>
+                        <a href="#pagination" class="btn btn-sm btn-outline-secondary">Pagination</a>
+                        <a href="#empty" class="btn btn-sm btn-outline-secondary">Empty States</a>
+                        <a href="#spacing" class="btn btn-sm btn-outline-secondary">Spacing</a>
+                        <a href="#icons" class="btn btn-sm btn-outline-secondary">Icons</a>
+                    </div>
+                </nav>
+
+                <!-- ============================================================ -->
+                <!-- COLORS -->
+                <!-- ============================================================ -->
+                <section id="colors" class="mb-5">
+                    <h2 class="mb-3">Colors</h2>
+
+                    <h3 class="mb-2">Brand &amp; Semantic</h3>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-primary); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-primary<br>#bf9045</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: #9e7735; height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">btn-primary bg<br>#9e7735 (AA)</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-secondary); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-secondary<br>#6c7a91</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-success); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-success<br>#2fb344</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-danger); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-danger<br>#d63939</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-warning); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-warning<br>#f76707</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-info); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-info<br>#4299e1</small>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Surfaces</h3>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-body-bg); height: 64px; border-radius: .4rem; border: 1px solid var(--cm-border-color);"></div>
+                            <small class="text-secondary">--cm-body-bg<br>Page background</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-card-bg, var(--cm-bg-surface)); height: 64px; border-radius: .4rem; border: 1px solid var(--cm-border-color);"></div>
+                            <small class="text-secondary">--cm-card-bg<br>Card surface</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-bg-surface); height: 64px; border-radius: .4rem; border: 1px solid var(--cm-border-color);"></div>
+                            <small class="text-secondary">--cm-bg-surface<br>Header, sidebar</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-tertiary-bg); height: 64px; border-radius: .4rem; border: 1px solid var(--cm-border-color);"></div>
+                            <small class="text-secondary">--cm-tertiary-bg<br>Subtle fills</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: var(--cm-border-color); height: 64px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">--cm-border-color<br>Borders</small>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Third-Party Brand</h3>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: #0ea5e9; height: 48px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">btn-search<br>#0ea5e9</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: #1bd96a; height: 48px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">btn-modrinth<br>#1bd96a</small>
+                        </div>
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div style="background: #f16436; height: 48px; border-radius: .4rem;"></div>
+                            <small class="text-secondary">btn-curseforge<br>#f16436</small>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- TYPOGRAPHY -->
+                <!-- ============================================================ -->
+                <section id="typography" class="mb-5">
+                    <h2 class="mb-3">Typography</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <h1>Heading 1 &mdash; 1.5rem / 24px</h1>
+                            <h2>Heading 2 &mdash; 1.25rem / 20px</h2>
+                            <h3>Heading 3 &mdash; 1rem / 16px</h3>
+                            <h4>Heading 4 &mdash; 0.875rem / 14px</h4>
+                            <h5>Heading 5 &mdash; 0.75rem / 12px</h5>
+                            <h6>Heading 6 &mdash; 0.625rem / 10px</h6>
+                            <hr>
+                            <p>Body text at 0.875rem (14px), weight 400, line-height 1.43. The quick brown fox jumps over the lazy dog. This is a <a href="#">link styled with brand gold</a> and this is <strong>bold text</strong> and <em>italic text</em>.</p>
+                            <p class="text-secondary">Secondary text color for less emphasis.</p>
+                            <p class="text-muted">Muted text for captions and hints.</p>
+                            <hr>
+                            <span class="fw-light">fw-light (300)</span> &middot;
+                            <span class="fw-normal">fw-normal (400)</span> &middot;
+                            <span class="fw-medium">fw-medium (500)</span> &middot;
+                            <span class="fw-semibold">fw-semibold (600)</span> &middot;
+                            <span class="fw-bold">fw-bold (700)</span>
+                            <hr>
+                            <code>Monospace: var(--cm-font-monospace)</code>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- BUTTONS -->
+                <!-- ============================================================ -->
+                <section id="buttons" class="mb-5">
+                    <h2 class="mb-3">Buttons</h2>
+
+                    <h3 class="mb-2">Solid</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-primary">Primary</button>
+                            <button class="btn btn-secondary">Secondary</button>
+                            <button class="btn btn-success">Success</button>
+                            <button class="btn btn-danger">Danger</button>
+                            <button class="btn btn-warning">Warning</button>
+                            <button class="btn btn-info">Info</button>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Outline</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-outline-primary">Primary</button>
+                            <button class="btn btn-outline-secondary">Secondary</button>
+                            <button class="btn btn-outline-success">Success</button>
+                            <button class="btn btn-outline-danger">Danger</button>
+                            <button class="btn btn-outline-warning">Warning</button>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Ghost</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-ghost-primary">Primary</button>
+                            <button class="btn btn-ghost-secondary">Secondary</button>
+                            <button class="btn btn-ghost-danger">Danger</button>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Sizes</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-primary btn-sm">Small</button>
+                            <button class="btn btn-primary">Default</button>
+                            <button class="btn btn-primary btn-lg">Large</button>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">States</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-primary" disabled>Disabled</button>
+                            <button class="btn btn-outline-secondary" disabled>Disabled Outline</button>
+                            <a class="btn btn-primary" href="#">Link Button</a>
+                            <button class="btn btn-primary w-100">Full Width (w-100)</button>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Icon Buttons</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-primary btn-icon" aria-label="Add">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+                            </button>
+                            <button class="btn btn-outline-secondary btn-icon" aria-label="Settings">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.066 2.573c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.573 1.066c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.066 -2.573c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+                            </button>
+                            <button class="btn btn-ghost-danger btn-icon" aria-label="Delete">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Button Group</h3>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                <button class="btn btn-sm btn-outline-secondary">Share</button>
+                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Brand Buttons</h3>
+                    <div class="card mb-3">
+                        <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-search">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                Search
+                            </button>
+                            <button class="btn btn-modrinth">Modrinth</button>
+                            <button class="btn btn-curseforge">CurseForge</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- CARDS -->
+                <!-- ============================================================ -->
+                <section id="cards" class="mb-5">
+                    <h2 class="mb-3">Cards</h2>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="card card-sm card-hover-lift">
+                                <div class="ratio ratio-16x9" style="background: var(--cm-tertiary-bg);">
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="48" height="48" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.3;"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <h4 class="card-title">Schematic Card (card-sm)</h4>
+                                    <div class="d-flex gap-3 text-secondary" style="font-size: 0.8rem;">
+                                        <span>4.5 rating</span>
+                                        <span>1,234 views</span>
+                                        <span>56 downloads</span>
+                                    </div>
+                                    <div class="mt-2 d-flex flex-wrap gap-1">
+                                        <span class="badge badge-outline text-blue">Decorations</span>
+                                        <span class="badge badge-outline text-secondary">medieval</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-md">
+                                <div class="card-header">
+                                    <h3 class="card-title">Card Medium (card-md)</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-0">Medium padding card, used for forms and important content areas.</p>
+                                </div>
+                                <div class="card-footer text-end">
+                                    <button class="btn btn-primary">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-featured card-hover-lift">
+                                <div class="ratio ratio-16x9" style="background: linear-gradient(135deg, #353838, #1f2121); position: relative;">
+                                    <div class="card-img-overlay d-flex flex-column justify-content-end p-3">
+                                        <h4 style="color: #fff;" class="mb-1">Featured Card</h4>
+                                        <small style="color: rgba(255,255,255,0.7);">Gold bottom border + lift on hover</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="mb-2">Card with Table</h3>
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h3 class="card-title">Card Table</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter card-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Example Item</td>
+                                        <td><span class="badge bg-success">Active</span></td>
+                                        <td><button class="btn btn-sm btn-outline-secondary">Edit</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Another Item</td>
+                                        <td><span class="badge bg-warning">Pending</span></td>
+                                        <td><button class="btn btn-sm btn-outline-danger">Remove</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- FORMS -->
+                <!-- ============================================================ -->
+                <section id="forms" class="mb-5">
+                    <h2 class="mb-3">Forms</h2>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">Text Inputs</h3></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Default Input</label>
+                                        <input type="text" class="form-control" placeholder="Placeholder text">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Small Input</label>
+                                        <input type="text" class="form-control form-control-sm" placeholder="Smaller">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">With Hint</label>
+                                        <input type="email" class="form-control" placeholder="you@example.com">
+                                        <span class="form-hint">We'll never share your email.</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Invalid State</label>
+                                        <input type="text" class="form-control is-invalid" value="Bad input">
+                                        <div class="invalid-feedback">This field is required.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Valid State</label>
+                                        <input type="text" class="form-control is-valid" value="Good input">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Textarea</label>
+                                        <textarea class="form-control" rows="3" placeholder="Write something..."></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">Disabled</label>
+                                        <input type="text" class="form-control" disabled value="Cannot edit">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header"><h3 class="card-title">Selects &amp; Toggles</h3></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Select</label>
+                                        <select class="form-select">
+                                            <option>Choose an option</option>
+                                            <option>Option A</option>
+                                            <option>Option B</option>
+                                            <option>Option C</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Small Select</label>
+                                        <select class="form-select form-select-sm">
+                                            <option>12 per page</option>
+                                            <option>24 per page</option>
+                                            <option>48 per page</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Checkboxes</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="sg-check1" checked>
+                                            <label class="form-check-label" for="sg-check1">Checked</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="sg-check2">
+                                            <label class="form-check-label" for="sg-check2">Unchecked</label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Radio Buttons</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="sg-radio" id="sg-radio1" checked>
+                                            <label class="form-check-label" for="sg-radio1">Option A</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="sg-radio" id="sg-radio2">
+                                            <label class="form-check-label" for="sg-radio2">Option B</label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Switch Toggle</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="sg-switch1" checked>
+                                            <label class="form-check-label" for="sg-switch1">Enabled</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="sg-switch2">
+                                            <label class="form-check-label" for="sg-switch2">Disabled</label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">Range</label>
+                                        <input type="range" class="form-range" min="0" max="100" value="50">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-3">
+                                <div class="card-header"><h3 class="card-title">Range Sliders</h3></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Single Range</label>
+                                        <input type="range" class="form-range" min="0" max="5" step="1" value="3">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-secondary mb-1">Dual Range (min/max pattern)</label>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <input type="range" class="form-range flex-grow-1" min="0" max="500" step="1" value="50">
+                                            <input type="range" class="form-range flex-grow-1" min="0" max="500" step="1" value="350">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small text-secondary mb-1">With Label <span class="text-body">50–350</span></label>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <input type="range" class="form-range flex-grow-1" min="0" max="500" step="1" value="50">
+                                            <input type="range" class="form-range flex-grow-1" min="0" max="500" step="1" value="350">
+                                        </div>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">Disabled</label>
+                                        <input type="range" class="form-range" min="0" max="100" value="40" disabled>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-3">
+                                <div class="card-header"><h3 class="card-title">Search Filter Bar</h3></div>
+                                <div class="card-body">
+                                    <p class="text-secondary mb-3">The search page filter bar uses a horizontal row of controls that wraps on smaller screens. Filter items use <code>.form-select</code> for dropdowns and <code>.form-range</code> for sliders in the expandable "More filters" section.</p>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                        <div class="input-icon flex-grow-1" style="min-width: 200px;">
+                                            <span class="input-icon-addon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                            </span>
+                                            <input type="text" class="form-control" placeholder="Search schematics...">
+                                        </div>
+                                        <select class="form-select" style="width: auto;">
+                                            <option>Best match</option>
+                                            <option>Newest</option>
+                                            <option>Trending</option>
+                                        </select>
+                                        <select class="form-select" style="width: auto;">
+                                            <option>Category</option>
+                                            <option>Builds</option>
+                                            <option>Farms</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2.172a2 2 0 0 1 -.586 1.414l-4.414 4.414v7l-6 2v-8.5l-4.48 -4.928a2 2 0 0 1 -.52 -1.345v-2.227z"/></svg>
+                                            More filters
+                                        </button>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label small text-secondary mb-1">Minimum Rating</label>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="range" class="form-range flex-grow-1" min="0" max="5" step="1" value="3">
+                                                <span class="text-secondary small" style="min-width: 5em;">3 stars</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small text-secondary mb-1">Horizontal Size (X/Z)</label>
+                                            <div class="d-flex gap-2 align-items-center">
+                                                <input type="range" class="form-range flex-grow-1" min="0" max="200" step="1" value="20">
+                                                <input type="range" class="form-range flex-grow-1" min="0" max="200" step="1" value="150">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small text-secondary mb-1">Results per page</label>
+                                            <select class="form-select form-select-sm">
+                                                <option>8</option>
+                                                <option selected>16</option>
+                                                <option>32</option>
+                                                <option>64</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">Input Group</h3></div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="input-group">
+                                            <span class="input-group-text">@</span>
+                                            <input type="text" class="form-control" placeholder="username">
+                                        </div>
+                                    </div>
+                                    <div class="mb-0">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" placeholder="Search..." value="mechanical press">
+                                            <button class="btn btn-primary">Go</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- BADGES -->
+                <!-- ============================================================ -->
+                <section id="badges" class="mb-5">
+                    <h2 class="mb-3">Badges</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="mb-2">Solid</h3>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <span class="badge bg-primary">Primary</span>
+                                <span class="badge bg-secondary">Secondary</span>
+                                <span class="badge bg-success">Success</span>
+                                <span class="badge bg-danger">Danger</span>
+                                <span class="badge bg-warning">Warning</span>
+                                <span class="badge bg-info">Info</span>
+                            </div>
+                            <h3 class="mb-2">Outline (used for categories &amp; tags)</h3>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <span class="badge badge-outline text-blue">Category</span>
+                                <span class="badge badge-outline text-secondary">Tag</span>
+                                <span class="badge badge-outline text-green">Approved</span>
+                                <span class="badge badge-outline text-red">Rejected</span>
+                            </div>
+                            <h3 class="mb-2">Pill</h3>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <span class="badge badge-pill bg-primary">12</span>
+                                <span class="badge badge-pill bg-danger">3</span>
+                                <span class="badge badge-pill bg-secondary">99+</span>
+                            </div>
+                            <h3 class="mb-2">Light Backgrounds</h3>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge bg-primary-lt">Primary</span>
+                                <span class="badge bg-success-lt">Success</span>
+                                <span class="badge bg-danger-lt">Danger</span>
+                                <span class="badge bg-warning-lt">Warning</span>
+                                <span class="badge bg-info-lt">Info</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- ALERTS -->
+                <!-- ============================================================ -->
+                <section id="alerts" class="mb-5">
+                    <h2 class="mb-3">Alerts</h2>
+                    <div class="alert alert-success" role="alert">
+                        <div class="alert-title">Success</div>
+                        Your schematic has been published successfully.
+                    </div>
+                    <div class="alert alert-danger" role="alert">
+                        <div class="alert-title">Error</div>
+                        Something went wrong. Please try again.
+                    </div>
+                    <div class="alert alert-warning" role="alert">
+                        <div class="alert-title">Warning</div>
+                        This schematic is pending moderation review.
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        <div class="alert-title">Info</div>
+                        New features are available. Check the changelog.
+                    </div>
+                    <div class="alert alert-primary" role="alert">
+                        Primary alert without a title. Uses brand gold tint.
+                    </div>
+                    <div class="alert alert-important alert-danger" role="alert">
+                        <strong>Important alert</strong> &mdash; solid background variant (used in toasts).
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- MODALS -->
+                <!-- ============================================================ -->
+                <section id="modals" class="mb-5">
+                    <h2 class="mb-3">Modals</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <button class="btn btn-primary" data-cm-toggle="modal" data-cm-target="#sg-modal-default">Open Default Modal</button>
+                            <button class="btn btn-outline-secondary" data-cm-toggle="modal" data-cm-target="#sg-modal-danger">Open Danger Modal</button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="modal modal-blur" id="sg-modal-default" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="sg-modal-default-title">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="sg-modal-default-title">Default Modal</h5>
+                                <button type="button" class="btn-close" data-cm-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>This is a standard centered modal with header, body, and footer.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-link" data-cm-dismiss="modal">Cancel</button>
+                                <button class="btn btn-primary" data-cm-dismiss="modal">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal modal-blur" id="sg-modal-danger" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="sg-modal-danger-title">
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content">
+                            <div class="modal-status bg-danger"></div>
+                            <div class="modal-body text-center py-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="40" height="40" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+                                <h3 id="sg-modal-danger-title">Are you sure?</h3>
+                                <p class="text-secondary">This action cannot be undone.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-link" data-cm-dismiss="modal">Cancel</button>
+                                <button class="btn btn-danger" data-cm-dismiss="modal">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- DROPDOWNS -->
+                <!-- ============================================================ -->
+                <section id="dropdowns" class="mb-5">
+                    <h2 class="mb-3">Dropdowns</h2>
+                    <div class="card">
+                        <div class="card-body d-flex flex-wrap gap-3">
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" data-cm-toggle="dropdown">
+                                    Dropdown
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#">Action</a>
+                                    <a class="dropdown-item" href="#">Another action</a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="#">Separated link</a>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary dropdown-toggle" data-cm-toggle="dropdown">
+                                    With Header
+                                </button>
+                                <div class="dropdown-menu">
+                                    <span class="dropdown-header">Section</span>
+                                    <a class="dropdown-item" href="#">Item A</a>
+                                    <a class="dropdown-item" href="#">Item B</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- TABLES -->
+                <!-- ============================================================ -->
+                <section id="tables" class="mb-5">
+                    <h2 class="mb-3">Tables</h2>
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table table-vcenter table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Category</th>
+                                        <th>Downloads</th>
+                                        <th>Rating</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Steam Engine</strong></td>
+                                        <td><span class="badge badge-outline text-blue">Redstone</span></td>
+                                        <td>12,345</td>
+                                        <td>4.8</td>
+                                        <td><span class="badge bg-success">Published</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Windmill Farm</strong></td>
+                                        <td><span class="badge badge-outline text-blue">Farms</span></td>
+                                        <td>8,901</td>
+                                        <td>4.5</td>
+                                        <td><span class="badge bg-success">Published</span></td>
+                                    </tr>
+                                    <tr class="table-warning">
+                                        <td><strong>WIP Bridge</strong></td>
+                                        <td><span class="badge badge-outline text-blue">Structures</span></td>
+                                        <td>0</td>
+                                        <td>&mdash;</td>
+                                        <td><span class="badge bg-warning">Pending</span></td>
+                                    </tr>
+                                    <tr class="table-danger">
+                                        <td><strong>Flagged Build</strong></td>
+                                        <td><span class="badge badge-outline text-blue">Other</span></td>
+                                        <td>234</td>
+                                        <td>1.2</td>
+                                        <td><span class="badge bg-danger">Rejected</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- AVATARS -->
+                <!-- ============================================================ -->
+                <section id="avatars" class="mb-5">
+                    <h2 class="mb-3">Avatars</h2>
+                    <div class="card">
+                        <div class="card-body d-flex flex-wrap gap-3 align-items-end">
+                            <div class="text-center">
+                                <span class="avatar avatar-xs avatar-rounded" style="background: var(--cm-primary); color: #fff; font-size: 0.5rem;">XS</span>
+                                <div><small class="text-secondary">xs</small></div>
+                            </div>
+                            <div class="text-center">
+                                <span class="avatar avatar-sm avatar-rounded" style="background: var(--cm-info); color: #fff; font-size: 0.6rem;">SM</span>
+                                <div><small class="text-secondary">sm</small></div>
+                            </div>
+                            <div class="text-center">
+                                <span class="avatar avatar-rounded" style="background: var(--cm-success); color: #fff; font-size: 0.7rem;">MD</span>
+                                <div><small class="text-secondary">default</small></div>
+                            </div>
+                            <div class="text-center">
+                                <span class="avatar avatar-md avatar-rounded" style="background: var(--cm-warning); color: #fff;">MD</span>
+                                <div><small class="text-secondary">md</small></div>
+                            </div>
+                            <div class="text-center">
+                                <span class="avatar avatar-lg avatar-rounded" style="background: var(--cm-danger); color: #fff;">LG</span>
+                                <div><small class="text-secondary">lg</small></div>
+                            </div>
+                            <div class="text-center">
+                                <span class="avatar avatar-xl avatar-rounded" style="background: var(--cm-secondary); color: #fff;">XL</span>
+                                <div><small class="text-secondary">xl</small></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- PAGINATION -->
+                <!-- ============================================================ -->
+                <section id="pagination" class="mb-5">
+                    <h2 class="mb-3">Pagination</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="mb-2">HTMX-Style (public pages)</h3>
+                            <div class="d-flex justify-content-between mb-4">
+                                <button class="btn btn-outline-secondary btn-sm disabled" aria-disabled="true">Previous</button>
+                                <span class="text-secondary align-self-center" style="font-size: 0.85rem;">Page 1 of 24</span>
+                                <button class="btn btn-outline-secondary btn-sm">Next</button>
+                            </div>
+                            <h3 class="mb-2">Classic Pagination (admin pages)</h3>
+                            <ul class="pagination">
+                                <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item"><a class="page-link" href="#">&raquo;</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- EMPTY STATES -->
+                <!-- ============================================================ -->
+                <section id="empty" class="mb-5">
+                    <h2 class="mb-3">Empty States</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="empty">
+                                <div class="empty-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="40" height="40" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                </div>
+                                <p class="empty-title">No results found</p>
+                                <p class="empty-subtitle">Try adjusting your search filters or browse all schematics.</p>
+                                <div class="empty-action">
+                                    <button class="btn btn-primary">Browse All Schematics</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SPACING -->
+                <!-- ============================================================ -->
+                <section id="spacing" class="mb-5">
+                    <h2 class="mb-3">Spacing Scale</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex flex-column gap-2">
+                                <div class="d-flex align-items-center gap-3">
+                                    <code style="min-width: 40px;">1</code>
+                                    <div style="width: 0.25rem; height: 24px; background: var(--cm-primary); border-radius: 2px;"></div>
+                                    <span class="text-secondary">0.25rem (4px)</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <code style="min-width: 40px;">2</code>
+                                    <div style="width: 0.5rem; height: 24px; background: var(--cm-primary); border-radius: 2px;"></div>
+                                    <span class="text-secondary">0.5rem (8px)</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <code style="min-width: 40px;">3</code>
+                                    <div style="width: 1rem; height: 24px; background: var(--cm-primary); border-radius: 2px;"></div>
+                                    <span class="text-secondary">1rem (16px)</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <code style="min-width: 40px;">4</code>
+                                    <div style="width: 1.5rem; height: 24px; background: var(--cm-primary); border-radius: 2px;"></div>
+                                    <span class="text-secondary">1.5rem (24px)</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <code style="min-width: 40px;">5</code>
+                                    <div style="width: 3rem; height: 24px; background: var(--cm-primary); border-radius: 2px;"></div>
+                                    <span class="text-secondary">3rem (48px)</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <code style="min-width: 40px;">6</code>
+                                    <div style="width: 4rem; height: 24px; background: var(--cm-primary); border-radius: 2px;"></div>
+                                    <span class="text-secondary">4rem (64px)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- ICONS -->
+                <!-- ============================================================ -->
+                <section id="icons" class="mb-5">
+                    <h2 class="mb-3">Icons</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <p class="text-secondary mb-3">Inline SVG with <code>stroke="currentColor"</code>. Icons inherit text color. Set size via width/height attributes.</p>
+                            <div class="d-flex flex-wrap gap-4 align-items-end">
+                                <div class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/></svg>
+                                    <div><small class="text-secondary">14px</small></div>
+                                </div>
+                                <div class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/></svg>
+                                    <div><small class="text-secondary">20px</small></div>
+                                </div>
+                                <div class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/></svg>
+                                    <div><small class="text-secondary">24px</small></div>
+                                </div>
+                                <div class="text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="48" height="48" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/></svg>
+                                    <div><small class="text-secondary">48px</small></div>
+                                </div>
+                            </div>
+                            <hr>
+                            <h3 class="mb-2">Common Icons</h3>
+                            <div class="d-flex flex-wrap gap-3">
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                    <div><small class="text-secondary">Search</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+                                    <div><small class="text-secondary">Download</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 9l5 -5l5 5"/><path d="M12 4l0 12"/></svg>
+                                    <div><small class="text-secondary">Upload</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+                                    <div><small class="text-secondary">Plus</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+                                    <div><small class="text-secondary">Close</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4"/><path d="M12 3c7.2 0 9 1.8 9 9s-1.8 9 -9 9s-9 -1.8 -9 -9s1.8 -9 9 -9z"/></svg>
+                                    <div><small class="text-secondary">Check</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></svg>
+                                    <div><small class="text-secondary">More</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.066 2.573c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.573 1.066c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.066 -2.573c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+                                    <div><small class="text-secondary">Settings</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/></svg>
+                                    <div><small class="text-secondary">Star</small></div>
+                                </div>
+                                <div class="text-center" style="width: 60px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></svg>
+                                    <div><small class="text-secondary">Info</small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- ACCESSIBILITY -->
+                <!-- ============================================================ -->
+                <section id="a11y" class="mb-5">
+                    <h2 class="mb-3">Accessibility</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="mb-2">Focus Ring</h3>
+                            <p class="text-secondary mb-3">Tab through these elements to see the gold 2px focus ring. Uses <code>:focus-visible</code> so it only shows on keyboard navigation.</p>
+                            <div class="d-flex flex-wrap gap-2 mb-4">
+                                <a href="#">Link</a>
+                                <button class="btn btn-primary">Button</button>
+                                <button class="btn btn-outline-secondary">Outline</button>
+                                <input type="text" class="form-control" style="max-width: 200px;" placeholder="Input">
+                                <select class="form-select" style="max-width: 200px;"><option>Select</option></select>
+                            </div>
+                            <h3 class="mb-2">Reduced Motion</h3>
+                            <p class="text-secondary mb-0">
+                                When <code>prefers-reduced-motion: reduce</code> is active, all CSS animations and transitions are suppressed globally. Test by enabling "Reduce motion" in your OS accessibility settings.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- PROGRESS / SPINNERS -->
+                <!-- ============================================================ -->
+                <section id="progress" class="mb-5">
+                    <h2 class="mb-3">Progress &amp; Loading</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="mb-2">Progress Bar</h3>
+                            <div class="progress mb-3">
+                                <div class="progress-bar" style="width: 65%;" role="progressbar" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100">65%</div>
+                            </div>
+                            <div class="progress progress-sm mb-4">
+                                <div class="progress-bar bg-success" style="width: 40%;" role="progressbar"></div>
+                            </div>
+                            <h3 class="mb-2">Spinner</h3>
+                            <div class="d-flex gap-3 align-items-center">
+                                <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                                <div class="spinner-border spinner-border-sm text-secondary" role="status"><span class="visually-hidden">Loading...</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- LIST GROUP -->
+                <!-- ============================================================ -->
+                <section id="list-group" class="mb-5">
+                    <h2 class="mb-3">List Group</h2>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">Navigation List</h3></div>
+                                <div class="list-group list-group-flush">
+                                    <a href="#" class="list-group-item list-group-item-action active">Account Settings</a>
+                                    <a href="#" class="list-group-item list-group-item-action">Notifications</a>
+                                    <a href="#" class="list-group-item list-group-item-action">API Keys</a>
+                                    <a href="#" class="list-group-item list-group-item-action">Security</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><h3 class="card-title">Status Dot</h3></div>
+                                <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+                                    <span class="status-dot bg-success"></span> Online
+                                    <span class="status-dot bg-warning"></span> Away
+                                    <span class="status-dot bg-danger"></span> Offline
+                                    <span class="status-dot status-dot-animated bg-success"></span> Live
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{ template "foot.html" . }}

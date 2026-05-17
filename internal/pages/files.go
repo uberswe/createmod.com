@@ -89,7 +89,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			setCacheHeaders()
 			e.Response.Header().Set("Content-Type", contentType)
 			if strings.HasSuffix(strings.ToLower(filename), ".nbt") {
-				e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+				e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeContentDispositionFilename(filename)+"\"")
 			}
 			return e.Stream(http.StatusOK, contentType, reader)
 		}

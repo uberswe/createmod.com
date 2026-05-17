@@ -154,18 +154,18 @@
           <ul class="pagination">
             {{if gt .Page 1}}
             <li class="page-item">
-              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.PrevPage}}">Previous</a>
+              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.PrevPage}}">{{ T .Language "Previous" }}</a>
             </li>
             {{else}}
-            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
             {{end}}
-            <li class="page-item disabled"><span class="page-link">Page {{.Page}} of {{.TotalPages}}</span></li>
+            <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{.Page}} / {{.TotalPages}}</span></li>
             {{if lt .Page .TotalPages}}
             <li class="page-item">
-              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.NextPage}}">Next</a>
+              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.NextPage}}">{{ T .Language "Next" }}</a>
             </li>
             {{else}}
-            <li class="page-item disabled"><span class="page-link">Next</span></li>
+            <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>
             {{end}}
           </ul>
         </div>
