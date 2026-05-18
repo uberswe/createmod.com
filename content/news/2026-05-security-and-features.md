@@ -6,7 +6,11 @@ excerpt: "Follow your favorite creators and categories, 360 viewer for schematic
 image: "/assets/x/news/security-and-features.webp"
 ---
 
-We have been busy the past few weeks with a large update focused on new features, generators, and performance.
+We have been busy the past few weeks with a large update focused on new features, a UI overhaul, generators, and performance.
+
+## UI Overhaul
+
+The site has received a visual refresh with a focus on making better use of screen space. Most pages are now full width, giving schematics and content more room to breathe. Creator profile pages now prominently display social links so you can connect with builders across platforms.
 
 ## Follow Creators and Categories
 
@@ -22,7 +26,7 @@ Every schematic now gets a unique short code for easy sharing. These are short a
 
 ## Search and Mods
 
-The search page has been updated with improved filter controls including tag and mod dropdowns, a per-page selector, and better pagination. The mods section has been expanded with detailed mod pages showing compatible schematics.
+The search page has been updated with improved filter controls including tag and mod dropdowns, a per-page selector, and better pagination. Mod pages are now searchable and the mods section has been expanded with detailed mod pages showing compatible schematics.
 
 ## Top Creators
 
