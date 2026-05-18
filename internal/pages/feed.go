@@ -10,7 +10,9 @@ import (
 	"regexp"
 	"time"
 
+	"createmod/content"
 	"createmod/internal/cache"
+	"createmod/internal/news"
 	"createmod/internal/server"
 	"createmod/internal/store"
 )
@@ -197,6 +199,74 @@ func writeRSSResponse(e *server.RequestEvent, xmlData []byte) error {
 	e.Response.Header().Set("Cache-Control", "public, max-age=3600")
 	_, err := e.Response.Write(xmlData)
 	return err
+}
+
+const newsRSSCacheKey = "news_rss_feed"
+
+// NewsFeedHandler serves an RSS 2.0 feed of the news/changelog posts.
+func NewsFeedHandler(cacheService *cache.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if cached, ok := cacheService.Get(newsRSSCacheKey); ok {
+			if data, ok := cached.([]byte); ok {
+				return writeRSSResponse(e, data)
+			}
+		}
+
+		posts, err := news.LoadAll(content.NewsFS, "news")
+		if err != nil {
+			slog.Error("news RSS: failed to load posts", "error", err)
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to generate feed"}
+		}
+
+		items := make([]rssItem, 0, len(posts))
+		for _, p := range posts {
+			desc := p.Excerpt
+			if desc == "" {
+				desc = p.Title
+			}
+			items = append(items, rssItem{
+				Title:       p.Title,
+				Link:        "https://createmod.com" + p.URL,
+				Description: desc,
+				PubDate:     p.Date.UTC().Format(time.RFC1123Z),
+				GUID: rssGUID{
+					IsPermaLink: "true",
+					Value:       "https://createmod.com" + p.URL,
+				},
+			})
+		}
+
+		lastBuild := time.Now().UTC().Format(time.RFC1123Z)
+		if len(posts) > 0 {
+			lastBuild = posts[0].Date.UTC().Format(time.RFC1123Z)
+		}
+
+		feed := rssFeed{
+			Version: "2.0",
+			AtomNS:  "http://www.w3.org/2005/Atom",
+			DcNS:    "http://purl.org/dc/elements/1.1/",
+			Channel: rssChannel{
+				Title:         "CreateMod.com - News",
+				Link:          "https://createmod.com/news",
+				Description:   "Release notes, site changes, and community updates from CreateMod.com",
+				Language:      "en",
+				LastBuildDate: lastBuild,
+				AtomLink: atomLink{
+					Href: "https://createmod.com/news/rss.xml",
+					Rel:  "self",
+					Type: "application/rss+xml",
+				},
+				Items: items,
+			},
+		}
+
+		xmlData, err := renderRSSFeed(feed)
+		if err != nil {
+			return &server.APIError{Status: http.StatusInternalServerError, Message: "Failed to marshal feed"}
+		}
+		cacheService.SetWithTTL(newsRSSCacheKey, xmlData, 1*time.Hour)
+		return writeRSSResponse(e, xmlData)
+	}
 }
 
 // AuthorFeedHandler serves an RSS 2.0 feed of a specific author's schematics.

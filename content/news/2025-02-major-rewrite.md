@@ -2,6 +2,7 @@
 title: "Major Website Rewrite & Ownership Change"
 date: 2025-02-15
 slug: major-website-rewrite
+image: "/assets/x/news/major-rewrite.svg"
 excerpt: "CreateMod.com has undergone a full rewrite and is no longer running on Wordpress."
 ---
 

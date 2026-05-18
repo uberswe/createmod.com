@@ -2,6 +2,7 @@
 title: "March 2026 Site Update"
 date: 2026-03-08
 slug: march-2026-site-update
+image: "/assets/x/news/march-site-update.svg"
 excerpt: "A big update is here: faster page loads with HTMX, multi-language support, a new upload flow, auto-translated content, and much more."
 ---
 
@@ -71,7 +72,7 @@ For those interested in the technical side:
 - **Database migrated from SQLite to PostgreSQL** for better scalability
 - **Session-based authentication** replaces the previous token-based system
 - **Background job system** for search indexing, trending calculations, sitemap generation, and translations
-- **Dark mode flash fix** — the theme now loads instantly without a white flash
+- **Dark mode flash fix** - the theme now loads instantly without a white flash
 - Improved **schematic moderation** with AI-assisted content review
 - Full pagination overhaul
 - Various bugfixes and improvements
