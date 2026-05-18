@@ -1,20 +1,16 @@
 ---
-title: "Security Update, Rotation Images & More"
+title: "360 Viewer, Short Codes & Security Update"
 date: 2026-05-17
 slug: security-update-rotation-images
-excerpt: "A major security hardening pass, rotation image support for schematics, improved search filters, and performance optimizations."
+excerpt: "360 viewer for schematics, short codes for easy sharing, improved search filters, performance optimizations, and a major security hardening pass."
 image: "/assets/x/news/security-and-features.webp"
 ---
 
-We have been busy the past few weeks with a large update focused on security, new features, and performance.
+We have been busy the past few weeks with a large update focused on new features, performance, and security.
 
-## Security
+## 360 Viewer
 
-A comprehensive security review has been completed and all findings have been addressed. This includes improvements to authentication, access control, rate limiting, and input validation across the site.
-
-## Rotation Images
-
-Schematics now support 360-degree rotation images. When uploading a schematic you can add multiple angle shots that visitors can cycle through on the schematic page.
+Schematics now support a 360-degree viewer. When uploading a schematic you can add multiple angle shots that visitors can cycle through on the schematic page.
 
 ## Short Codes
 
@@ -42,5 +38,9 @@ The leaderboard page now shows 100 creators per page in a two-column layout with
 - New placeholder images for schematics without thumbnails
 - Added Meilisearch to local development setup
 - Dockerfile now runs as a non-root user
+
+## Security
+
+A comprehensive security review has been completed and all findings have been addressed. This includes improvements to authentication, access control, rate limiting, and input validation across the site.
 
 If you have feedback or run into issues, reach out on the [contact page](/contact).

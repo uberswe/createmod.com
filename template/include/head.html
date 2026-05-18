@@ -240,7 +240,15 @@ window.setTheme=function(theme){
           if (label) label.textContent = expanded ? 'Collapse' : 'Expand';
         });
 
-        // After HTMX swaps, re-apply sidebar state to the new DOM
+        // Re-apply sidebar-pinned on body immediately after HTMX swaps
+        // content, before the browser paints, to prevent a flash of
+        // incorrect margin on the page-wrapper.
+        document.addEventListener('htmx:afterSwap', function(){
+          if (window.innerWidth < 992) return;
+          var expanded = localStorage.getItem('sidebar-expanded') !== '0';
+          document.body.classList.toggle('sidebar-pinned', expanded);
+        });
+        // After HTMX settles, also sync the sidebar element classes
         document.addEventListener('htmx:afterSettle', function(){
           var sidebar = document.getElementById('sidebar-menu');
           if (!sidebar || window.innerWidth < 992) return;

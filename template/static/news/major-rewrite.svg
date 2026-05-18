@@ -1,0 +1,19 @@
+<svg viewBox="0 0 480 270" xmlns="http://www.w3.org/2000/svg">
+  <rect width="480" height="270" fill="#222422"/>
+  <g transform="translate(50 50)">
+    <rect width="380" height="170" rx="10" fill="#2d3030"/>
+    <text x="24" y="34" fill="rgba(220,225,231,0.6)" font-family="Inter,system-ui" font-size="10" letter-spacing="1.5" font-weight="600">VISITORS / MONTH</text>
+    <text x="24" y="66" fill="#dce1e7" font-family="Inter,system-ui" font-size="28" font-weight="700">204.77k</text>
+    <g transform="translate(180 50)">
+      <rect width="62" height="22" rx="11" fill="rgba(47,179,68,0.16)"/>
+      <text x="31" y="15" text-anchor="middle" fill="#5dc66c" font-family="Inter,system-ui" font-size="11" font-weight="700">&#x2191; 18%</text>
+    </g>
+    <g stroke="rgba(255,255,255,0.04)" stroke-width="1">
+      <path d="M 24 100 H 356 M 24 124 H 356 M 24 148 H 356"/>
+    </g>
+    <path d="M 24 138 L 60 130 L 96 134 L 132 118 L 168 126 L 204 108 L 240 116 L 276 100 L 312 108 L 348 86 L 356 90" fill="none" stroke="#d4a54e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 24 138 L 60 130 L 96 134 L 132 118 L 168 126 L 204 108 L 240 116 L 276 100 L 312 108 L 348 86 L 356 90 L 356 152 L 24 152 Z" fill="rgba(212,165,78,0.18)"/>
+    <circle cx="348" cy="86" r="4" fill="#d4a54e"/>
+    <circle cx="348" cy="86" r="2" fill="#1f2121"/>
+  </g>
+</svg>
