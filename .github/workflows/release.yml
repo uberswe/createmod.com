@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'deploy/prod-')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine version and generate changelog
+        id: version
+        run: |
+          # Find the latest release tag
+          LAST_TAG=$(git tag --sort=-version:refname --list 'v*' | head -1)
+
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous release tag found, using initial commit"
+            COMPARE_REF=$(git rev-list --max-parents=0 HEAD)
+            LAST_VERSION="0.0.0"
+          else
+            COMPARE_REF="$LAST_TAG"
+            LAST_VERSION="${LAST_TAG#v}"
+          fi
+
+          echo "Last tag: ${LAST_TAG:-none}"
+          echo "Comparing from: $COMPARE_REF"
+
+          # Calculate total lines changed (additions + deletions)
+          LINES_CHANGED=$(git diff --stat "$COMPARE_REF"..HEAD | tail -1 | grep -oP '\d+ insertion' | grep -oP '\d+' || echo 0)
+          LINES_DELETED=$(git diff --stat "$COMPARE_REF"..HEAD | tail -1 | grep -oP '\d+ deletion' | grep -oP '\d+' || echo 0)
+          TOTAL_LINES=$((LINES_CHANGED + LINES_DELETED))
+          echo "Total lines changed: $TOTAL_LINES"
+
+          # Parse current version
+          MAJOR=$(echo "$LAST_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$LAST_VERSION" | cut -d. -f2)
+          PATCH=$(echo "$LAST_VERSION" | cut -d. -f3)
+
+          # Determine bump level
+          if [ "$TOTAL_LINES" -ge 10000 ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            BUMP="major"
+          elif [ "$TOTAL_LINES" -ge 1000 ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            BUMP="minor"
+          else
+            PATCH=$((PATCH + 1))
+            BUMP="patch"
+          fi
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "Bump: $BUMP ($TOTAL_LINES lines changed) -> $NEW_VERSION"
+
+          # Collect commits since last release, excluding deploy/CI noise
+          CHANGELOG=$(git log --oneline "$COMPARE_REF"..HEAD \
+            --no-merges \
+            --grep='skip ci' --invert-grep \
+            --grep='update dev deployment' --invert-grep \
+            --grep='update prod deployment' --invert-grep \
+            | sed 's/^/- /')
+
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No notable changes"
+          fi
+
+          # Write outputs
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "total_lines=$TOTAL_LINES" >> "$GITHUB_OUTPUT"
+          echo "last_tag=${LAST_TAG:-none}" >> "$GITHUB_OUTPUT"
+
+          # Write changelog to file (multi-line safe)
+          {
+            echo 'changelog<<CHANGELOG_EOF'
+            echo "$CHANGELOG"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.version.outputs.new_version }}
+          BUMP: ${{ steps.version.outputs.bump }}
+          TOTAL_LINES: ${{ steps.version.outputs.total_lines }}
+          LAST_TAG: ${{ steps.version.outputs.last_tag }}
+          CHANGELOG: ${{ steps.version.outputs.changelog }}
+        run: |
+          BODY=$(cat <<EOF
+          ## What's Changed
+
+          ${CHANGELOG}
+
+          ---
+          **Release type:** ${BUMP} (${TOTAL_LINES} lines changed since ${LAST_TAG})
+          EOF
+          )
+
+          gh release create "$NEW_VERSION" \
+            --title "$NEW_VERSION" \
+            --notes "$BODY" \
+            --target "${{ github.sha }}"
