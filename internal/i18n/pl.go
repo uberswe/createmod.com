@@ -819,4 +819,58 @@ var LangPL = map[string]string{
 	// ── Upload / Publish ──
 	"Select a category":   "Wybierz kategorię",
 	"delete_draft.confirm": "Czy na pewno chcesz usunąć ten szkic? Tej operacji nie można cofnąć.",
+
+	// ── News ──
+	"CHANGELOG":            "DZIENNIK ZMIAN",
+	"RSS feed":             "Kanał RSS",
+	"Read the changelog":   "Przeczytaj dziennik zmian",
+	"posts":                "wpisy",
+	"Updates from the workshop - release notes, site changes, and shoutouts to the community.": "Aktualności z warsztatu - informacje o wydaniach, zmiany na stronie i podziękowania dla społeczności.",
+	"There are no news posts available at the moment. Please check back later.": "W tej chwili nie ma dostępnych wpisów. Sprawdź ponownie później.",
+
+	// ── Login ──
+	"Invalid username or password.": "Nieprawidłowa nazwa użytkownika lub hasło.",
+
+	// ── Following ──
+	"following.email.tooltip": "Częstotliwość powiadomień e-mail. Zmień w ustawieniach subskrypcji.",
+
+	// ── Top Creators ──
+	"page.topcreators.description": "Odkryj najlepszych twórców społeczności moda Create, uszeregowanych według punktów kontrybucji zdobytych za przesyłanie, zaangażowanie i osiągnięcia.",
+
+	// ── API Documentation ──
+	"Getting Started":      "Rozpoczęcie",
+	"Request":              "Żądanie",
+	"Response Headers":     "Nagłówki odpowiedzi",
+	"User":                 "Użytkownik",
+	"Your API key":         "Twój klucz API",
+	"Save Key (this session)": "Zapisz klucz (ta sesja)",
+	"Page number":          "Numer strony",
+	"Page number for the schematic list": "Numer strony listy schematów",
+	"Display title. 2-80 characters.": "Tytuł wyświetlany. 2-80 znaków.",
+	"Markdown supported. Max 4000 characters.": "Obsługiwany Markdown. Maksymalnie 4000 znaków.",
+	"Up to 10 lowercase tags.": "Do 10 tagów małymi literami.",
+	"Up to 3 from the category list.": "Do 3 z listy kategorii.",
+	"The .nbt schematic file. Max 5 MB.": "Plik schematu .nbt. Maksymalnie 5 MB.",
+	"Used to populate requests below. Stored only in this tab.": "Używany do wypełniania żądań poniżej. Przechowywany tylko w tej karcie.",
+	"Keys are shown once at creation, store them securely. Never embed keys in client-side code.": "Klucze są wyświetlane tylko raz przy tworzeniu, przechowuj je bezpiecznie. Nigdy nie umieszczaj kluczy w kodzie po stronie klienta.",
+	"Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically. The API is REST-style, returns JSON, and is rate-limited per key.": "Integruj się z CreateMod.com, aby programowo wyszukiwać, pobierać i przesyłać schematy. API jest w stylu REST, zwraca JSON i ma limit zapytań na klucz.",
+	"Search or list schematics. Returns newest schematics when no query is provided. Results are paginated with 24 items per page.": "Wyszukuj lub wyświetlaj schematy. Zwraca najnowsze schematy gdy nie podano zapytania. Wyniki są paginowane po 24 elementy na stronę.",
+	"Get detailed information about a single schematic by its URL name (slug).": "Pobierz szczegółowe informacje o schemacie po jego nazwie URL (slug).",
+	"Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals.": "Pobierz zagregowane godzinowe analizy ze wszystkich schematów oraz paginowaną listę z sumami dla każdego schematu.",
+	"Get hourly analytics for a single schematic over the last 30 days. Useful for charting views, downloads, and engagement on a schematic detail page.": "Pobierz godzinowe analizy pojedynczego schematu z ostatnich 30 dni. Przydatne do wykresów wyświetleń, pobrań i zaangażowania.",
+	"Upload a new schematic. Send a": "Prześlij nowy schemat. Wyślij",
+	"URL slug of the schematic (path parameter).": "Slug URL schematu (parametr ścieżki).",
+	"The API uses conventional HTTP status codes.": "API używa konwencjonalnych kodów statusu HTTP.",
+	"All error responses return JSON with a single": "Wszystkie odpowiedzi błędów zwracają JSON z pojedynczym",
+	"field describing the problem:": "polem opisującym problem:",
+	"indicates success,": "oznacza sukces,",
+	"a client-side problem, and": "problem po stronie klienta, a",
+	"a server-side problem.": "problem po stronie serwera.",
+	"The": "Nagłówek",
+	"header. Keys are scoped to your account and inherit your user-level rate limits.": "Klucze są powiązane z kontem i dziedziczą limity zapytań użytkownika.",
+	"header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle.": "nagłówek wskazujący sekundy oczekiwania. Każda odpowiedź zawiera nagłówki limitu zapytań.",
+	"request with the": "żądanie z",
+	"file plus metadata. Duplicate file hashes return": "plik plus metadane. Zduplikowane hashe plików zwracają",
+	"Each array contains one entry per hour for 30 days (720 entries). Hours with no data have": "Każda tablica zawiera jeden wpis na godzinę przez 30 dni (720 wpisów). Godziny bez danych mają",
+	"values are averages in seconds.": "wartości są średnimi w sekundach.",
 }

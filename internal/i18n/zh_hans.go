@@ -819,4 +819,58 @@ var LangZhHans = map[string]string{
 	// ── Upload / Publish ──
 	"Select a category":   "选择分类",
 	"delete_draft.confirm": "确定要删除此草稿吗？此操作无法撤消。",
+
+	// ── News ──
+	"CHANGELOG":            "更新日志",
+	"RSS feed":             "RSS 订阅",
+	"Read the changelog":   "阅读更新日志",
+	"posts":                "篇文章",
+	"Updates from the workshop - release notes, site changes, and shoutouts to the community.": "工坊更新 - 版本说明、站点变更及社区致谢。",
+	"There are no news posts available at the moment. Please check back later.": "目前没有可用的新闻。请稍后再来查看。",
+
+	// ── Login ──
+	"Invalid username or password.": "用户名或密码错误。",
+
+	// ── Following ──
+	"following.email.tooltip": "邮件通知频率。在订阅设置中更改。",
+
+	// ── Top Creators ──
+	"page.topcreators.description": "发现 Create 模组社区的顶尖创作者，按通过上传、互动和成就获得的贡献积分排名。",
+
+	// ── API Documentation ──
+	"Getting Started":      "快速开始",
+	"Request":              "请求",
+	"Response Headers":     "响应头",
+	"User":                 "用户",
+	"Your API key":         "您的 API 密钥",
+	"Save Key (this session)": "保存密钥（本次会话）",
+	"Page number":          "页码",
+	"Page number for the schematic list": "蓝图列表的页码",
+	"Display title. 2-80 characters.": "显示标题。2-80 个字符。",
+	"Markdown supported. Max 4000 characters.": "支持 Markdown。最多 4000 个字符。",
+	"Up to 10 lowercase tags.": "最多 10 个小写标签。",
+	"Up to 3 from the category list.": "从分类列表中最多选择 3 个。",
+	"The .nbt schematic file. Max 5 MB.": ".nbt 蓝图文件。最大 5 MB。",
+	"Used to populate requests below. Stored only in this tab.": "用于填充下方的请求。仅存储在此标签页中。",
+	"Keys are shown once at creation, store them securely. Never embed keys in client-side code.": "密钥仅在创建时显示一次，请安全保存。切勿将密钥嵌入客户端代码。",
+	"Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically. The API is REST-style, returns JSON, and is rate-limited per key.": "与 CreateMod.com 集成，以编程方式搜索、获取和上传蓝图。API 为 REST 风格，返回 JSON，按密钥限制请求频率。",
+	"Search or list schematics. Returns newest schematics when no query is provided. Results are paginated with 24 items per page.": "搜索或列出蓝图。未提供查询时返回最新蓝图。结果按每页 24 项分页。",
+	"Get detailed information about a single schematic by its URL name (slug).": "通过 URL 名称（slug）获取单个蓝图的详细信息。",
+	"Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals.": "获取所有蓝图的每小时汇总分析，以及带有每个蓝图总计的分页列表。",
+	"Get hourly analytics for a single schematic over the last 30 days. Useful for charting views, downloads, and engagement on a schematic detail page.": "获取单个蓝图最近 30 天的每小时分析。适用于制作浏览量、下载量和互动量图表。",
+	"Upload a new schematic. Send a": "上传新蓝图。发送",
+	"URL slug of the schematic (path parameter).": "蓝图的 URL slug（路径参数）。",
+	"The API uses conventional HTTP status codes.": "API 使用标准 HTTP 状态码。",
+	"All error responses return JSON with a single": "所有错误响应返回包含单个",
+	"field describing the problem:": "字段描述问题的 JSON：",
+	"indicates success,": "表示成功，",
+	"a client-side problem, and": "表示客户端问题，",
+	"a server-side problem.": "表示服务端问题。",
+	"The": "该",
+	"header. Keys are scoped to your account and inherit your user-level rate limits.": "头部。密钥绑定到您的账户并继承用户级别的请求限制。",
+	"header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle.": "头部指示等待秒数。每个响应都包含速率限制头部以便自我调节。",
+	"request with the": "请求，附带",
+	"file plus metadata. Duplicate file hashes return": "文件及元数据。重复的文件哈希值将返回",
+	"Each array contains one entry per hour for 30 days (720 entries). Hours with no data have": "每个数组包含 30 天内每小时一条记录（共 720 条）。无数据的小时",
+	"values are averages in seconds.": "值为以秒为单位的平均值。",
 }

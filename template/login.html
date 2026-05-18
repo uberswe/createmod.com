@@ -12,6 +12,9 @@
                 {{ if .OAuthError }}
                 <div class="alert alert-danger" role="alert">{{ .OAuthError }}</div>
                 {{ end }}
+                {{ if .LoginError }}
+                <div class="alert alert-danger" role="alert">{{ .LoginError }}</div>
+                {{ end }}
                 <form id="login-form" method="post" action="/login" autocomplete="off" novalidate hx-boost="false">
                     <div class="mb-3">
                         <label class="form-label">{{ T .Language "Email or username" }}</label>
