@@ -1,12 +1,16 @@
 ---
-title: "360 Viewer, Short Codes & Security Update"
+title: "Follow Creators, 360 Viewer, Short Codes & More"
 date: 2026-05-17
 slug: security-update-rotation-images
-excerpt: "360 viewer for schematics, short codes for easy sharing, improved search filters, performance optimizations, and a major security hardening pass."
+excerpt: "Follow your favorite creators and categories, 360 viewer for schematics, short codes for easy sharing, improved generators, and performance optimizations."
 image: "/assets/x/news/security-and-features.webp"
 ---
 
-We have been busy the past few weeks with a large update focused on new features, performance, and security.
+We have been busy the past few weeks with a large update focused on new features, generators, and performance.
+
+## Follow Creators and Categories
+
+You can now follow your favorite creators and categories. When you follow a creator or category you will see their latest uploads on your personalized feed, making it easier to stay up to date with the builds you care about.
 
 ## 360 Viewer
 
@@ -30,17 +34,15 @@ The leaderboard page now shows 100 creators per page in a two-column layout with
 - User stats page loads faster with parallelized queries and better caching
 - Fixed a bug where hourly view counts were inflated
 
+## Generators
+
+- Balloon generator now places envelopes on the inside of ribs and ribs can be offset
+- Ship hull generator has been improved with better hull shaping
+
 ## Other Improvements
 
 - Passkey registration UX fix
 - Dark mode styling fixes
-- Hull generator now supports ship presets
 - New placeholder images for schematics without thumbnails
-- Added Meilisearch to local development setup
-- Dockerfile now runs as a non-root user
-
-## Security
-
-A comprehensive security review has been completed and all findings have been addressed. This includes improvements to authentication, access control, rate limiting, and input validation across the site.
 
 If you have feedback or run into issues, reach out on the [contact page](/contact).
