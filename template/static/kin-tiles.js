@@ -326,11 +326,11 @@
   function fetchLiveServers() {
     if (liveFetched) return;
     liveFetched = true;
-    fetch('https://www.createmodservers.com/api/v1/servers?sort=votes&per_page=5')
+    fetch('/api/servers')
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data && data.servers) {
-          liveTile = buildServerTile(data.servers);
+        if (data && data.length) {
+          liveTile = buildServerTile(data);
         }
       })
       .catch(function() {});
