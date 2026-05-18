@@ -5,36 +5,76 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <h2 class="page-title mb-3">{{ T .Language "News" }}</h2>
                 {{ if .Posts }}
                     {{ $root := . }}
-                    <div class="row row-cards">
-                        {{ range $i, $post := .Posts }}
-                        <div class="col-12 col-sm-6 col-lg-4">
-                            <a href="{{ $post.URL }}" class="card news-tile">
-                                <div class="news-tile-img">
-                                    {{ if $post.Image }}
-                                    <img src="{{ $post.Image }}" alt="{{ $post.Title }}" loading="lazy">
-                                    {{ else }}
-                                    <div class="news-tile-placeholder">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17"/><path d="M4 21h16"/><path d="M12 7v4"/><path d="M7.5 11h9"/></svg>
-                                    </div>
-                                    {{ end }}
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <h3 class="card-title mb-0 text-truncate">{{ $post.Title }}</h3>
-                                        {{ if eq $i 0 }}
-                                        <span class="badge bg-green-lt flex-shrink-0">Latest</span>
-                                        {{ end }}
-                                    </div>
-                                    <p class="text-secondary mb-1 news-tile-excerpt">{{ $post.Excerpt }}</p>
-                                    <div class="text-secondary" style="font-size: 0.8rem;">{{ DateOnly $post.PostDate }}</div>
-                                </div>
-                            </a>
+                    {{ $postCount := len .Posts }}
+
+                    <div class="news-page-header">
+                        <div>
+                            <div class="news-kicker">{{ T .Language "CHANGELOG" }}</div>
+                            <h1 class="news-page-title">{{ T .Language "News" }}</h1>
+                            <p class="news-page-sub">{{ T .Language "Updates from the workshop - release notes, site changes, and shoutouts to the community." }}</p>
                         </div>
+                        <div class="news-header-meta">
+                            <a class="news-chip" href="/news/rss.xml">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="19" r="1"/><path d="M4 4a16 16 0 0 1 16 16"/><path d="M4 11a9 9 0 0 1 9 9"/></svg>
+                                {{ T .Language "RSS feed" }}
+                            </a>
+                            <span class="news-chip news-chip-muted">{{ printf "%d %s" $postCount (T .Language "posts") }}</span>
+                        </div>
+                    </div>
+
+                    {{ with index .Posts 0 }}
+                    <a class="news-featured" href="{{ .URL }}">
+                        <div class="news-featured-img">
+                            {{ if .Image }}
+                            <img src="{{ .Image }}" alt="{{ .Title }}" loading="lazy">
+                            {{ else }}
+                            <div class="news-tile-placeholder">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 6h3a1 1 0 0 1 1 1v11a2 2 0 0 1 -4 0v-13a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1v12a3 3 0 0 0 3 3h11"/><path d="M8 8l4 0"/><path d="M8 12l4 0"/><path d="M8 16l4 0"/></svg>
+                            </div>
+                            {{ end }}
+                        </div>
+                        <div class="news-featured-body">
+                            <div class="news-featured-meta">
+                                <span class="news-pill-latest">{{ T $root.Language "Latest" }}</span>
+                                <time>{{ NewsDate .PostDate }}</time>
+                            </div>
+                            <h2 class="news-featured-title">{{ .Title }}</h2>
+                            <p class="news-featured-excerpt">{{ .Excerpt }}</p>
+                            <span class="news-read-more">
+                                {{ T $root.Language "Read the changelog" }}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M13 6l6 6l-6 6"/></svg>
+                            </span>
+                        </div>
+                    </a>
+                    {{ end }}
+
+                    {{ if gt $postCount 1 }}
+                    <div class="news-grid">
+                        {{ range $i, $post := .Posts }}
+                        {{ if gt $i 0 }}
+                        <a class="news-card" href="{{ $post.URL }}">
+                            <div class="news-card-img">
+                                {{ if $post.Image }}
+                                <img src="{{ $post.Image }}" alt="{{ $post.Title }}" loading="lazy">
+                                {{ else }}
+                                <div class="news-tile-placeholder">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 6h3a1 1 0 0 1 1 1v11a2 2 0 0 1 -4 0v-13a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1v12a3 3 0 0 0 3 3h11"/><path d="M8 8l4 0"/><path d="M8 12l4 0"/><path d="M8 16l4 0"/></svg>
+                                </div>
+                                {{ end }}
+                            </div>
+                            <div class="news-card-body">
+                                <h3>{{ $post.Title }}</h3>
+                                <p>{{ $post.Excerpt }}</p>
+                                <time>{{ NewsDate $post.PostDate }}</time>
+                            </div>
+                        </a>
+                        {{ end }}
                         {{ end }}
                     </div>
+                    {{ end }}
+
                 {{ else }}
                     <div class="card">
                         <div class="card-body">
@@ -49,30 +89,233 @@
     </div>
 </div>
 <style>
-.news-tile {
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    height: 100%;
+/* ---- News page header ---- */
+.news-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 18px 0 24px;
+    border-bottom: 1px solid var(--cm-border-color, #2e2e2e);
+    margin-bottom: 28px;
 }
-.news-tile:hover {
-    border-color: var(--cm-primary);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
-}
-.news-tile:hover .card-title {
+.news-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
     color: var(--cm-primary);
+    margin-bottom: 8px;
 }
-.news-tile-img {
-    aspect-ratio: 16/9;
+.news-page-title {
+    font-size: 34px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+.news-page-sub {
+    margin: 10px 0 0;
+    color: var(--cm-text-muted, rgba(220,225,231,0.7));
+    font-size: 14px;
+    max-width: 56ch;
+}
+.news-header-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.news-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cm-primary);
+    background: rgba(191,144,69,0.12);
+    border: 1px solid rgba(191,144,69,0.4);
+    border-radius: 999px;
+    text-decoration: none;
+    transition: background 0.12s ease;
+}
+.news-chip svg { width: 14px; height: 14px; }
+.news-chip:hover { background: rgba(191,144,69,0.2); color: var(--cm-primary); }
+.news-chip-muted {
+    background: transparent;
+    color: var(--cm-text-muted, rgba(220,225,231,0.5));
+    border-color: var(--cm-border-color, #3a3a3a);
+}
+
+/* ---- Featured hero card ---- */
+.news-featured {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    background: var(--cm-card-bg, #2a2c2c);
+    border: 1px solid var(--cm-card-border, rgba(179,132,57,0.55));
+    border-radius: var(--cm-card-border-radius, 10px);
     overflow: hidden;
-    border-radius: var(--cm-card-border-radius, .375rem) var(--cm-card-border-radius, .375rem) 0 0;
+    margin-bottom: 36px;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.news-tile-img img {
+.news-featured:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.36), 0 4px 8px rgba(0,0,0,0.24);
+    border-color: var(--cm-primary);
+    color: inherit;
+}
+.news-featured:hover .news-featured-title { color: var(--cm-primary); }
+.news-featured:hover .news-read-more { color: var(--cm-primary-hover, #e5b96b); }
+.news-featured:hover .news-read-more svg { transform: translateX(3px); }
+.news-featured:hover .news-featured-img img { transform: scale(1.03); }
+
+.news-featured-img {
+    position: relative;
+    overflow: hidden;
+    min-height: 360px;
+    background: #1c1e1f;
+}
+.news-featured-img img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.25s ease;
 }
+
+.news-featured-body {
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+}
+.news-featured-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--cm-text-muted, rgba(220,225,231,0.7));
+    font-size: 12px;
+}
+.news-pill-latest {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: rgba(47,179,68,0.16);
+    color: #5dc66c;
+    border: 1px solid rgba(47,179,68,0.45);
+}
+.news-featured-title {
+    font-size: 30px;
+    line-height: 1.15;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.3px;
+    transition: color 0.15s ease;
+}
+.news-featured-excerpt {
+    margin: 0;
+    color: var(--cm-text-muted, rgba(220,225,231,0.7));
+    font-size: 15px;
+    line-height: 1.55;
+}
+.news-read-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--cm-primary);
+}
+.news-read-more svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+}
+
+/* ---- Card grid ---- */
+.news-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+.news-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--cm-card-bg, #2a2c2c);
+    border: 1px solid var(--cm-card-border, rgba(179,132,57,0.55));
+    border-radius: var(--cm-card-border-radius, 10px);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.36), 0 4px 8px rgba(0,0,0,0.24);
+    border-color: var(--cm-primary);
+    color: inherit;
+}
+.news-card:hover h3 { color: var(--cm-primary); }
+.news-card:hover .news-card-img img { transform: scale(1.03); }
+
+.news-card-img {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: #1c1e1f;
+}
+.news-card-img img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+}
+
+.news-card-body {
+    padding: 16px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+.news-card-body h3 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 600;
+    transition: color 0.12s ease;
+    text-wrap: balance;
+}
+.news-card-body p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--cm-text-muted, rgba(220,225,231,0.7));
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.news-card-body time {
+    margin-top: auto;
+    padding-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--cm-text-muted, rgba(220,225,231,0.5));
+    text-transform: uppercase;
+}
+
 .news-tile-placeholder {
     width: 100%;
     height: 100%;
@@ -82,11 +325,19 @@
     background: var(--cm-bg-surface-secondary, #2a2c2c);
     color: var(--cm-secondary, #626976);
 }
-.news-tile-excerpt {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+
+/* ---- Responsive ---- */
+@media (max-width: 1100px) {
+    .news-grid { grid-template-columns: repeat(2, 1fr); }
+    .news-featured { grid-template-columns: 1fr; }
+    .news-featured-img { min-height: 240px; }
+}
+@media (max-width: 680px) {
+    .news-grid { grid-template-columns: 1fr; }
+    .news-page-header { flex-direction: column; align-items: flex-start; }
+    .news-header-meta { width: 100%; }
+    .news-featured-body { padding: 24px; }
+    .news-featured-title { font-size: 22px; }
 }
 </style>
 {{template "foot.html" .}}

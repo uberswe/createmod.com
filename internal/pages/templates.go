@@ -33,6 +33,7 @@ func NewTestRegistry() *server.Registry {
 		"AssetVer":  func() string { return "test" },
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
+		"NewsDate":  func(t time.Time) string { return t.UTC().Format("January 2, 2006") },
 		"T":         func(lang, key string) string { return i18n.T(lang, key) },
 		"ToLower":   strings.ToLower,
 		"mod":       func(i, j int) bool { return i%j == 0 },

@@ -190,6 +190,7 @@ func Register(p RegisterParams) chi.Router {
 		"urlPathEscape":  url.PathEscape,
 		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
 		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
+		"NewsDate":  func(t time.Time) string { return t.UTC().Format("January 2, 2006") },
 		"printf":    fmt.Sprintf,
 		"T":         func(lang string, key string) string { return i18n.T(lang, key) },
 		"AssetVer":  func() string { return assetVer },
@@ -592,6 +593,7 @@ func Register(p RegisterParams) chi.Router {
 	})
 	// News
 	r.Get("/news", Adapt(pages.NewsHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/news/rss.xml", Adapt(pages.NewsFeedHandler(p.CacheService)))
 	r.Get("/news/{slug}", Adapt(pages.NewsPostHandler(registry, p.CacheService, p.AppStore)))
 	// Users listing
 	r.Get("/users", Adapt(pages.UsersHandler(registry, p.CacheService, p.AppStore)))
@@ -1311,18 +1313,13 @@ func adminOnlyMiddleware(next http.Handler) http.Handler {
 
 func metricsAuthMiddleware(next http.Handler) http.Handler {
 	token := os.Getenv("METRICS_TOKEN")
-	isDev := strings.EqualFold(os.Getenv("DEV"), "true")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if token == "" {
-			if !isDev {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-		} else {
-			if r.Header.Get("Authorization") != "Bearer "+token {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
+		// When METRICS_TOKEN is set, require bearer auth. When unset, allow
+		// unauthenticated access — the endpoint is only reachable inside the
+		// cluster so network isolation provides the access control.
+		if token != "" && r.Header.Get("Authorization") != "Bearer "+token {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})

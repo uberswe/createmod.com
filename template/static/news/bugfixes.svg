@@ -1,31 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1f2121"/>
-      <stop offset="100%" stop-color="#2a2c2c"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="450" fill="url(#bg)"/>
-  <!-- Bug body -->
-  <ellipse cx="400" cy="230" rx="50" ry="60" fill="none" stroke="#bf9045" stroke-width="2.5"/>
-  <line x1="400" y1="170" x2="400" y2="290" stroke="#bf9045" stroke-width="1.5"/>
-  <line x1="350" y1="230" x2="450" y2="230" stroke="#bf9045" stroke-width="1.5"/>
-  <!-- Bug legs -->
-  <path d="M350 210 l-30 -20" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <path d="M350 250 l-30 20" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <path d="M450 210 l30 -20" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <path d="M450 250 l30 20" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <path d="M350 230 l-35 0" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <path d="M450 230 l35 0" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <!-- Antennae -->
-  <path d="M385 172 l-15 -25" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <path d="M415 172 l15 -25" stroke="#bf9045" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="370" cy="145" r="4" fill="#bf9045"/>
-  <circle cx="430" cy="145" r="4" fill="#bf9045"/>
-  <!-- X mark (bug squashed) -->
-  <path d="M360 195 l80 70" stroke="#d9534f" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
-  <path d="M440 195 l-80 70" stroke="#d9534f" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
-  <!-- Checkmark -->
-  <path d="M540 300 l15 15 l30 -35" fill="none" stroke="#5cb85c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="400" y="380" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#626976">Bug Fixes</text>
+<svg viewBox="0 0 480 270" xmlns="http://www.w3.org/2000/svg">
+  <rect width="480" height="270" fill="#222422"/>
+  <circle cx="240" cy="135" r="100" fill="#bf9045" opacity="0.06"/>
+  <circle cx="240" cy="135" r="68" fill="#bf9045" opacity="0.10"/>
+  <g transform="translate(240 135)">
+    <circle r="58" fill="#bf9045"/>
+    <path d="M -22 2 L -6 20 L 26 -16" fill="none" stroke="#1f2121" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>
