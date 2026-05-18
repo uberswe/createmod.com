@@ -225,6 +225,21 @@ a:hover {
 .hr-text { display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0; font-size: 0.8rem; color: var(--cm-secondary-color); }
 .hr-text::before, .hr-text::after { content: ''; flex: 1; border-top: 1px solid var(--cm-border-color); }
 
+/* OAuth login buttons */
+.btn-oauth {
+  background: var(--cm-bg-surface);
+  border: 1px solid var(--cm-border-color);
+  color: var(--cm-body-color);
+}
+.btn-oauth:hover {
+  background: var(--cm-bg-surface-2, #353838);
+  border-color: var(--cm-primary);
+  color: var(--cm-body-color);
+}
+.btn-oauth .icon { color: var(--cm-body-color); }
+.btn-oauth .icon.text-discord { color: #5865f2; }
+.btn-oauth .icon.text-github { color: var(--cm-body-color); }
+
 .subheader { font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cm-secondary-color); margin-bottom: 0.5rem; }
 
 .form-footer { margin-top: 1.5rem; }
