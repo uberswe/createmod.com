@@ -372,12 +372,25 @@
     return false;
   }
 
+  function removeTileIfAdLoaded(slot) {
+    if (!slot) return;
+    var observer = new MutationObserver(function() {
+      if (slotHasAd(slot)) {
+        var tile = slot.querySelector('.kin-tile');
+        if (tile) tile.remove();
+        observer.disconnect();
+      }
+    });
+    observer.observe(slot, { childList: true, subtree: true });
+  }
+
   function handleAdblock() {
     if (document.querySelector('.kin-tile')) return;
     var slots = document.querySelectorAll('[id*="sticky-adrail"]');
     for (var i = 0; i < slots.length; i++) {
       if (!slotHasAd(slots[i]) && slots[i].offsetParent !== null) {
         insertTile(slots[i]);
+        removeTileIfAdLoaded(slots[i]);
         return;
       }
     }
@@ -401,8 +414,4 @@
   if (window._nitroBlocked) {
     fillEmptySlots();
   }
-
-  setTimeout(function() {
-    fillEmptySlots();
-  }, 3000);
 })();
