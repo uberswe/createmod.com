@@ -755,6 +755,7 @@ var LangEN = map[string]string{
 	"Invalid email":    "Invalid email",
 	"Invalid password": "Invalid password",
 	"Invalid username": "Invalid username",
+	"Invalid username or password.": "Invalid username or password.",
 	"You must agree to the Terms Of Service": "You must agree to the Terms Of Service",
 
 	// ── Admin: Schematic Edit ──

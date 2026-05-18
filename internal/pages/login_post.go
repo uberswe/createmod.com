@@ -24,7 +24,7 @@ func LoginPostHandler(appStore *store.Store, sessStore *session.Store, mailServi
 			if e.Request.Header.Get("HX-Request") != "" {
 				return e.String(http.StatusBadRequest, "missing credentials")
 			}
-			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
+			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login?error=credentials"))
 		}
 
 		return loginWithStore(e, appStore, sessStore, mailService, identity, password)
@@ -66,5 +66,5 @@ func loginFailed(e *server.RequestEvent) error {
 	if e.Request.Header.Get("HX-Request") != "" {
 		return e.String(http.StatusUnauthorized, "invalid username or password")
 	}
-	return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
+	return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login?error=credentials"))
 }

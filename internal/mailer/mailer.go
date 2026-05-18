@@ -87,9 +87,11 @@ func (s *Service) Send(msg *Message) error {
 
 	addr := fmt.Sprintf("%s:%d", s.smtpHost, s.smtpPort)
 	auth := smtp.PlainAuth("", s.smtpUsername, s.smtpPassword, s.smtpHost)
+	tlsConfig := &tls.Config{ServerName: s.smtpHost}
 
-	if s.smtpTLS {
-		conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.smtpHost})
+	if s.smtpTLS && s.smtpPort == 465 {
+		// Implicit TLS (port 465): connect with TLS from the start.
+		conn, err := tls.Dial("tcp", addr, tlsConfig)
 		if err != nil {
 			return fmt.Errorf("mailer: TLS dial failed: %w", err)
 		}
@@ -123,10 +125,40 @@ func (s *Service) Send(msg *Message) error {
 		return client.Quit()
 	}
 
-	if err := smtp.SendMail(addr, auth, from.Address, toAddrs, []byte(body.String())); err != nil {
-		return fmt.Errorf("mailer: failed to send: %w", err)
+	// STARTTLS (port 587, 2525, etc.): connect plain, upgrade if available.
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return fmt.Errorf("mailer: dial failed: %w", err)
 	}
-	return nil
+	defer client.Close()
+
+	if s.smtpTLS {
+		if err := client.StartTLS(tlsConfig); err != nil {
+			return fmt.Errorf("mailer: STARTTLS failed: %w", err)
+		}
+	}
+	if err := client.Auth(auth); err != nil {
+		return fmt.Errorf("mailer: auth failed: %w", err)
+	}
+	if err := client.Mail(from.Address); err != nil {
+		return fmt.Errorf("mailer: MAIL FROM failed: %w", err)
+	}
+	for _, to := range toAddrs {
+		if err := client.Rcpt(to); err != nil {
+			return fmt.Errorf("mailer: RCPT TO failed: %w", err)
+		}
+	}
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("mailer: DATA failed: %w", err)
+	}
+	if _, err := w.Write([]byte(body.String())); err != nil {
+		return fmt.Errorf("mailer: write body failed: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("mailer: close body failed: %w", err)
+	}
+	return client.Quit()
 }
 
 // DefaultFrom returns a mail.Address with the configured sender identity.

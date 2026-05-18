@@ -15,6 +15,7 @@ var loginTemplates = append([]string{
 
 type LoginData struct {
 	DefaultData
+	LoginError string
 }
 
 func LoginHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -27,6 +28,9 @@ func LoginHandler(registry *server.Registry, appStore *store.Store) func(e *serv
 		d.Slug = "/login"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.OAuthError = oauthErrorMessage(d.Language, e.Request.URL.Query().Get("oauth_error"))
+		if e.Request.URL.Query().Get("error") == "credentials" {
+			d.LoginError = i18n.T(d.Language, "Invalid username or password.")
+		}
 		html, err := registry.LoadFiles(loginTemplates...).Render(d)
 		if err != nil {
 			return err
