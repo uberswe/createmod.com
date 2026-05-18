@@ -73,6 +73,16 @@ func fetchLiveServersFromAPI() []LiveServer {
 	return online
 }
 
+func LiveServersAPIHandler() func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		servers := getLiveServers()
+		if servers == nil {
+			servers = []LiveServer{}
+		}
+		return e.JSON(http.StatusOK, servers)
+	}
+}
+
 func KinTilesPreviewHandler(registry *server.Registry) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		d := KinTilesPreviewData{}

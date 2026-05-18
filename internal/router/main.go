@@ -699,6 +699,7 @@ func Register(p RegisterParams) chi.Router {
 	r.With(downloadRateLimit).Post("/api/generators/propeller/download", Adapt(pages.GeneratorDownloadHandler("propeller")))
 	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))
 	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
+	r.Get("/api/servers", Adapt(pages.LiveServersAPIHandler()))
 	// User
 	r.Get("/following", Adapt(pages.FollowingHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/following/unfollow", Adapt(pages.FollowingUnfollowHandler(p.AppStore)))

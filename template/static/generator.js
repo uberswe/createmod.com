@@ -168,9 +168,11 @@ function initScene(containerId) {
 
   if (!window._genCleanupInit) {
     window._genCleanupInit = true;
-    document.addEventListener('htmx:beforeSwap', function() {
-      if (window.GeneratorApp && window.GeneratorApp._cleanup) {
-        window.GeneratorApp._cleanup();
+    document.addEventListener('htmx:beforeSwap', function(evt) {
+      if (evt.detail && evt.detail.target === document.body) {
+        if (window.GeneratorApp && window.GeneratorApp._cleanup) {
+          window.GeneratorApp._cleanup();
+        }
       }
     });
   }
