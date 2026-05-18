@@ -818,4 +818,58 @@ var LangES = map[string]string{
 	// ── Upload / Publish ──
 	"Select a category":   "Selecciona una categoría",
 	"delete_draft.confirm": "¿Estás seguro de que quieres eliminar este borrador? Esta acción no se puede deshacer.",
+
+	// ── News ──
+	"CHANGELOG":            "REGISTRO DE CAMBIOS",
+	"RSS feed":             "Canal RSS",
+	"Read the changelog":   "Leer el registro de cambios",
+	"posts":                "publicaciones",
+	"Updates from the workshop - release notes, site changes, and shoutouts to the community.": "Actualizaciones del taller - notas de versión, cambios en el sitio y menciones a la comunidad.",
+	"There are no news posts available at the moment. Please check back later.": "No hay publicaciones disponibles en este momento. Por favor, vuelve más tarde.",
+
+	// ── Login ──
+	"Invalid username or password.": "Nombre de usuario o contraseña incorrectos.",
+
+	// ── Following ──
+	"following.email.tooltip": "Frecuencia de notificación por correo. Cambia en los ajustes de suscripción.",
+
+	// ── Top Creators ──
+	"page.topcreators.description": "Descubre los mejores creadores de la comunidad del mod Create, clasificados por puntos de contribución obtenidos a través de subidas, interacciones y logros.",
+
+	// ── API Documentation ──
+	"Getting Started":      "Primeros pasos",
+	"Request":              "Solicitud",
+	"Response Headers":     "Cabeceras de respuesta",
+	"User":                 "Usuario",
+	"Your API key":         "Tu clave de API",
+	"Save Key (this session)": "Guardar clave (esta sesión)",
+	"Page number":          "Número de página",
+	"Page number for the schematic list": "Número de página para la lista de esquemas",
+	"Display title. 2-80 characters.": "Título visible. 2-80 caracteres.",
+	"Markdown supported. Max 4000 characters.": "Se admite Markdown. Máximo 4000 caracteres.",
+	"Up to 10 lowercase tags.": "Hasta 10 etiquetas en minúsculas.",
+	"Up to 3 from the category list.": "Hasta 3 de la lista de categorías.",
+	"The .nbt schematic file. Max 5 MB.": "El archivo de esquema .nbt. Máximo 5 MB.",
+	"Used to populate requests below. Stored only in this tab.": "Se usa para completar las solicitudes a continuación. Solo se almacena en esta pestaña.",
+	"Keys are shown once at creation, store them securely. Never embed keys in client-side code.": "Las claves se muestran una vez al crearlas, guárdalas de forma segura. Nunca incluyas claves en código del lado del cliente.",
+	"Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically. The API is REST-style, returns JSON, and is rate-limited per key.": "Integra con CreateMod.com para buscar, obtener y subir esquemas de forma programática. La API es estilo REST, devuelve JSON y tiene límite de peticiones por clave.",
+	"Search or list schematics. Returns newest schematics when no query is provided. Results are paginated with 24 items per page.": "Busca o lista esquemas. Devuelve los esquemas más recientes cuando no se proporciona consulta. Los resultados están paginados con 24 elementos por página.",
+	"Get detailed information about a single schematic by its URL name (slug).": "Obtén información detallada de un esquema por su nombre de URL (slug).",
+	"Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals.": "Obtén analíticas horarias agregadas de todos tus esquemas, más una lista paginada con totales por esquema.",
+	"Get hourly analytics for a single schematic over the last 30 days. Useful for charting views, downloads, and engagement on a schematic detail page.": "Obtén analíticas horarias de un esquema durante los últimos 30 días. Útil para graficar vistas, descargas e interacción en la página de detalle.",
+	"Upload a new schematic. Send a": "Sube un nuevo esquema. Envía una",
+	"URL slug of the schematic (path parameter).": "Slug de URL del esquema (parámetro de ruta).",
+	"The API uses conventional HTTP status codes.": "La API usa códigos de estado HTTP convencionales.",
+	"All error responses return JSON with a single": "Todas las respuestas de error devuelven JSON con un solo",
+	"field describing the problem:": "campo que describe el problema:",
+	"indicates success,": "indica éxito,",
+	"a client-side problem, and": "un problema del lado del cliente, y",
+	"a server-side problem.": "un problema del lado del servidor.",
+	"The": "El",
+	"header. Keys are scoped to your account and inherit your user-level rate limits.": "cabecera. Las claves están vinculadas a tu cuenta y heredan tus límites de velocidad.",
+	"header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle.": "cabecera que indica los segundos de espera. Cada respuesta incluye cabeceras de límite de velocidad para que puedas autorregularte.",
+	"request with the": "solicitud con el",
+	"file plus metadata. Duplicate file hashes return": "archivo más metadatos. Los hashes de archivo duplicados devuelven",
+	"Each array contains one entry per hour for 30 days (720 entries). Hours with no data have": "Cada array contiene una entrada por hora durante 30 días (720 entradas). Las horas sin datos tienen",
+	"values are averages in seconds.": "los valores son promedios en segundos.",
 }

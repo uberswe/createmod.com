@@ -820,4 +820,58 @@ var LangRU = map[string]string{
 	// ── Upload / Publish ──
 	"Select a category":   "Выберите категорию",
 	"delete_draft.confirm": "Вы уверены, что хотите удалить этот черновик? Это действие нельзя отменить.",
+
+	// ── News ──
+	"CHANGELOG":            "ЖУРНАЛ ИЗМЕНЕНИЙ",
+	"RSS feed":             "RSS-канал",
+	"Read the changelog":   "Читать журнал изменений",
+	"posts":                "записей",
+	"Updates from the workshop - release notes, site changes, and shoutouts to the community.": "Новости из мастерской - заметки о выпусках, изменения на сайте и благодарности сообществу.",
+	"There are no news posts available at the moment. Please check back later.": "На данный момент нет доступных записей. Пожалуйста, загляните позже.",
+
+	// ── Login ──
+	"Invalid username or password.": "Неверное имя пользователя или пароль.",
+
+	// ── Following ──
+	"following.email.tooltip": "Частота уведомлений по электронной почте. Измените в настройках подписки.",
+
+	// ── Top Creators ──
+	"page.topcreators.description": "Откройте для себя лучших создателей сообщества мода Create, ранжированных по очкам вклада за загрузки, активность и достижения.",
+
+	// ── API Documentation ──
+	"Getting Started":      "Начало работы",
+	"Request":              "Запрос",
+	"Response Headers":     "Заголовки ответа",
+	"User":                 "Пользователь",
+	"Your API key":         "Ваш ключ API",
+	"Save Key (this session)": "Сохранить ключ (эта сессия)",
+	"Page number":          "Номер страницы",
+	"Page number for the schematic list": "Номер страницы для списка схем",
+	"Display title. 2-80 characters.": "Отображаемое название. 2-80 символов.",
+	"Markdown supported. Max 4000 characters.": "Поддерживается Markdown. Максимум 4000 символов.",
+	"Up to 10 lowercase tags.": "До 10 тегов в нижнем регистре.",
+	"Up to 3 from the category list.": "До 3 из списка категорий.",
+	"The .nbt schematic file. Max 5 MB.": "Файл схемы .nbt. Максимум 5 МБ.",
+	"Used to populate requests below. Stored only in this tab.": "Используется для заполнения запросов ниже. Хранится только в этой вкладке.",
+	"Keys are shown once at creation, store them securely. Never embed keys in client-side code.": "Ключи показываются один раз при создании, храните их надёжно. Никогда не встраивайте ключи в клиентский код.",
+	"Integrate with CreateMod.com to search, retrieve, and upload schematics programmatically. The API is REST-style, returns JSON, and is rate-limited per key.": "Интегрируйтесь с CreateMod.com для программного поиска, получения и загрузки схем. API в стиле REST, возвращает JSON и имеет лимит запросов на ключ.",
+	"Search or list schematics. Returns newest schematics when no query is provided. Results are paginated with 24 items per page.": "Поиск или список схем. Возвращает новейшие схемы без запроса. Результаты пагинированы по 24 элемента на страницу.",
+	"Get detailed information about a single schematic by its URL name (slug).": "Получить подробную информацию о схеме по её URL-имени (slug).",
+	"Get aggregate hourly analytics across all your schematics, plus a paginated list of schematics with per-schematic totals.": "Получите агрегированную почасовую аналитику по всем схемам, а также пагинированный список с итогами по каждой схеме.",
+	"Get hourly analytics for a single schematic over the last 30 days. Useful for charting views, downloads, and engagement on a schematic detail page.": "Получите почасовую аналитику схемы за последние 30 дней. Полезно для графиков просмотров, загрузок и активности.",
+	"Upload a new schematic. Send a": "Загрузить новую схему. Отправьте",
+	"URL slug of the schematic (path parameter).": "URL-slug схемы (параметр пути).",
+	"The API uses conventional HTTP status codes.": "API использует стандартные коды состояния HTTP.",
+	"All error responses return JSON with a single": "Все ответы с ошибками возвращают JSON с единственным",
+	"field describing the problem:": "полем, описывающим проблему:",
+	"indicates success,": "означает успех,",
+	"a client-side problem, and": "проблему на стороне клиента, а",
+	"a server-side problem.": "проблему на стороне сервера.",
+	"The": "Заголовок",
+	"header. Keys are scoped to your account and inherit your user-level rate limits.": "Ключи привязаны к вашему аккаунту и наследуют ваши лимиты запросов.",
+	"header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle.": "заголовок, указывающий секунды ожидания. Каждый ответ включает заголовки лимита запросов для саморегулирования.",
+	"request with the": "запрос с",
+	"file plus metadata. Duplicate file hashes return": "файл плюс метаданные. Дублирующиеся хеши файлов возвращают",
+	"Each array contains one entry per hour for 30 days (720 entries). Hours with no data have": "Каждый массив содержит одну запись в час за 30 дней (720 записей). Часы без данных имеют",
+	"values are averages in seconds.": "значения являются средними в секундах.",
 }
