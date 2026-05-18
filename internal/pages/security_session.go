@@ -57,7 +57,7 @@ func maybeCreateSessionOrChallenge(e *server.RequestEvent, appStore *store.Store
 		}
 
 		if contains(needs, "ip") {
-			sendIPVerificationEmail(ctx, appStore, mailService, userID, e.RealIP())
+			go sendIPVerificationEmail(appStore, mailService, userID, e.RealIP())
 		}
 
 		first := needs[0]
@@ -97,10 +97,13 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func sendIPVerificationEmail(ctx context.Context, appStore *store.Store, mailService *mailer.Service, userID, ipAddress string) {
+func sendIPVerificationEmail(appStore *store.Store, mailService *mailer.Service, userID, ipAddress string) {
 	if mailService == nil {
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	user, err := appStore.Users.GetUserByID(ctx, userID)
 	if err != nil || user == nil || user.Email == "" {
@@ -125,17 +128,15 @@ func sendIPVerificationEmail(ctx context.Context, appStore *store.Store, mailSer
 		return
 	}
 
+	body := "Your verification code is: <strong>" + raw + "</strong>" +
+		"<br><br>This code expires in 15 minutes." +
+		"<br><br>If you didn't try to log in, please change your password immediately."
+
 	msg := &mailer.Message{
-		From: mailService.DefaultFrom(),
-		To:   []mail.Address{{Address: user.Email}},
+		From:    mailService.DefaultFrom(),
+		To:      []mail.Address{{Address: user.Email}},
 		Subject: "CreateMod.com - Verify your login",
-		HTML: mailer.EmailHTML(
-			"Login Verification",
-			"",
-			"",
-			"",
-			"Your verification code is: <strong>"+raw+"</strong><br><br>This code expires in 15 minutes. If you didn't try to log in, please change your password immediately.",
-		),
+		HTML:    mailer.EmailHTMLRaw("Login Verification", "", "", "", body),
 	}
 	if err := mailService.Send(msg); err != nil {
 		slog.Error("ip verification: failed to send email", "error", err)

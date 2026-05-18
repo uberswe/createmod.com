@@ -28,6 +28,7 @@ type pendingAuth struct {
 	Exp         int64  `json:"e"`
 	FailCount   int    `json:"fc"`
 	ResendCount int    `json:"rc"`
+	LastResend  int64  `json:"lr,omitempty"`
 }
 
 func encodePendingAuth(p pendingAuth) (string, error) {

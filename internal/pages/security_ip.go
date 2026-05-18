@@ -9,6 +9,7 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"strings"
+	"time"
 
 	"createmod/internal/server"
 )
@@ -139,18 +140,30 @@ func IPVerificationResendHandler(appStore *store.Store, mailService *mailer.Serv
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/login"))
 		}
 
-		if pending.ResendCount >= 3 {
+		cooldowns := []int64{60, 300, 600, 1200}
+		idx := pending.ResendCount
+		if idx >= len(cooldowns) {
 			if e.Request.Header.Get("HX-Request") != "" {
 				return e.String(http.StatusTooManyRequests, "Too many resend attempts. Please try logging in again.")
 			}
 			return e.Redirect(http.StatusFound, LangRedirectURL(e, "/auth/verify-ip"))
 		}
 
+		if idx > 0 && pending.LastResend > 0 {
+			wait := cooldowns[idx-1]
+			if time.Now().Unix()-pending.LastResend < wait {
+				if e.Request.Header.Get("HX-Request") != "" {
+					return e.String(http.StatusTooManyRequests, "Please wait before requesting another code.")
+				}
+				return e.Redirect(http.StatusFound, LangRedirectURL(e, "/auth/verify-ip"))
+			}
+		}
+
 		pending.ResendCount++
+		pending.LastResend = time.Now().Unix()
 		_ = setPendingAuthCookie(e, *pending)
 
-		ctx := e.Request.Context()
-		sendIPVerificationEmail(ctx, appStore, mailService, pending.UserID, pending.IP)
+		go sendIPVerificationEmail(appStore, mailService, pending.UserID, pending.IP)
 
 		if e.Request.Header.Get("HX-Request") != "" {
 			return e.String(http.StatusOK, "Verification code sent.")
