@@ -228,7 +228,9 @@
   justify-content: center;
 }
 
-/* Ensure tile is visible inside sticky-adrail slot */
+/* Ensure tile is visible inside sticky-adrail slot but always behind ads */
 [id*="sticky-adrail"] .kin-tile {
   display: block;
+  position: relative;
+  z-index: 0;
 }
