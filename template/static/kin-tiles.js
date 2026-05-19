@@ -400,13 +400,4 @@
   }
 
   fetchLiveServers();
-  fillSlots();
-  observeAdrails();
-
-  document.addEventListener('htmx:afterSettle', function(evt) {
-    if (evt.detail && evt.detail.target === document.body) {
-      fillSlots();
-      observeAdrails();
-    }
-  });
 })();
