@@ -278,22 +278,22 @@ func ExtractMaterials(data []byte) ([]Material, error) {
 		return SanitizeMaterials(mats), nil
 	}
 
-	// Count blocks by palette state
-	stateCounts := make(map[int]int)
-	for _, block := range std.Blocks {
-		stateCounts[block.State]++
-	}
-
-	// Map palette states to block names
+	// Count blocks by palette name, extracting copycat materials from NBT.
 	blockCounts := make(map[string]int)
-	for state, count := range stateCounts {
-		if palette, ok := std.Palette[state]; ok {
-			name := palette.Name
-			// Filter out air blocks
-			if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" {
-				continue
+	for _, block := range std.Blocks {
+		palette, ok := std.Palette[block.State]
+		if !ok {
+			continue
+		}
+		name := palette.Name
+		if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" {
+			continue
+		}
+		blockCounts[name]++
+		if isCopycatBlock(name) {
+			if mat := extractCopycatMaterial(block.NBT); mat != "" {
+				blockCounts[mat]++
 			}
-			blockCounts[name] += count
 		}
 	}
 
@@ -383,20 +383,14 @@ func extractMaterialsFromMap(decoded interface{}) ([]Material, error) {
 		return nil, fmt.Errorf("blocks is not an array")
 	}
 
-	// Count blocks per state
-	stateCounts := make(map[int]int)
+	// Count blocks per palette name, extracting copycat materials from NBT.
+	blockCounts := make(map[string]int)
 	for _, block := range blocksSlice {
 		bm, ok := block.(map[string]interface{})
 		if !ok {
 			continue
 		}
 		state := toInt(bm["state"])
-		stateCounts[state]++
-	}
-
-	// Map states to block names and aggregate
-	blockCounts := make(map[string]int)
-	for state, count := range stateCounts {
 		name := ""
 		if state >= 0 && state < len(paletteNames) {
 			name = paletteNames[state]
@@ -404,11 +398,15 @@ func extractMaterialsFromMap(decoded interface{}) ([]Material, error) {
 		if name == "" {
 			name = fmt.Sprintf("unknown:%d", state)
 		}
-		// Filter air
 		if name == "minecraft:air" || name == "minecraft:cave_air" || name == "minecraft:void_air" {
 			continue
 		}
-		blockCounts[name] += count
+		blockCounts[name]++
+		if isCopycatBlock(name) {
+			if mat := extractCopycatMaterial(bm["nbt"]); mat != "" {
+				blockCounts[mat]++
+			}
+		}
 	}
 
 	materials := make([]Material, 0, len(blockCounts))
@@ -422,6 +420,42 @@ func extractMaterialsFromMap(decoded interface{}) ([]Material, error) {
 		return materials[i].Count > materials[j].Count
 	})
 	return materials, nil
+}
+
+// isCopycatBlock returns true for Create mod copycat block types.
+func isCopycatBlock(name string) bool {
+	return strings.HasPrefix(name, "create:copycat_")
+}
+
+// extractCopycatMaterial reads the mimicked block from a copycat's NBT data.
+// Create mod stores it as Material -> Name (a block state compound with a Name field).
+func extractCopycatMaterial(nbt interface{}) string {
+	m := toMap(nbt)
+	if m == nil {
+		return ""
+	}
+	mat := toMap(m["Material"])
+	if mat == nil {
+		return ""
+	}
+	if name, ok := mat["Name"].(string); ok && ValidateBlockID(name) {
+		return name
+	}
+	return ""
+}
+
+// toMap extracts a map[string]interface{} from a value, dereferencing pointers.
+func toMap(v interface{}) map[string]interface{} {
+	if v == nil {
+		return nil
+	}
+	if ptr, ok := v.(*interface{}); ok && ptr != nil {
+		return toMap(*ptr)
+	}
+	if m, ok := v.(map[string]interface{}); ok {
+		return m
+	}
+	return nil
 }
 
 // extractStatsFromMap is the fallback for ExtractStats using raw map data.
