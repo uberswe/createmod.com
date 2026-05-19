@@ -175,20 +175,24 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.ShowYourStatsLink = userID != ""
 
 		if userID != "" {
-			recentUploadKey := fmt.Sprintf("site_stats_recent_upload_%s", userID)
-			hasRecent := false
-			if cached, found := cacheService.Get(recentUploadKey); found {
-				if b, ok := cached.(bool); ok {
-					hasRecent = b
-				}
+			if isSuperAdmin(e) {
+				d.CanViewSearchStats = true
 			} else {
-				cutoff := now.AddDate(0, -3, 0)
-				hasRecent, _ = appStore.SearchTracking.HasRecentApprovedUpload(ctx, userID, cutoff)
-				cacheService.SetWithTTL(recentUploadKey, hasRecent, 30*time.Minute)
-			}
-			d.CanViewSearchStats = hasRecent
-			if !hasRecent {
-				d.SearchStatsNotice = i18n.T(d.Language, "Search and page statistics are available to creators with at least one approved upload in the last 3 months.")
+				recentUploadKey := fmt.Sprintf("site_stats_recent_upload_%s", userID)
+				hasRecent := false
+				if cached, found := cacheService.Get(recentUploadKey); found {
+					if b, ok := cached.(bool); ok {
+						hasRecent = b
+					}
+				} else {
+					cutoff := now.AddDate(0, -3, 0)
+					hasRecent, _ = appStore.SearchTracking.HasRecentApprovedUpload(ctx, userID, cutoff)
+					cacheService.SetWithTTL(recentUploadKey, hasRecent, 30*time.Minute)
+				}
+				d.CanViewSearchStats = hasRecent
+				if !hasRecent {
+					d.SearchStatsNotice = i18n.T(d.Language, "Search and page statistics are available to creators with at least one approved upload in the last 3 months.")
+				}
 			}
 		} else {
 			d.SearchStatsNotice = i18n.T(d.Language, "Log in to view search and page statistics. This feature is available to creators with at least one approved upload in the last 3 months.")
