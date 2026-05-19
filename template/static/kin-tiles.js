@@ -350,35 +350,24 @@
     }
   }
 
-  var railSelectors = [
-    '.ad-rail',
-    '.ad-rail-sm',
-    '.generator-ad-rail',
-    '.generator-ad-rail-sm',
-    '.search-ad-rail-wide',
-    '.search-ad-rail',
-    '.guide-ad-rail',
-    '.guide-ad-rail-sm'
-  ];
-
-  function findAdRails() {
-    return document.querySelectorAll(railSelectors.join(','));
+  function findStickyAdrails() {
+    return document.querySelectorAll('[id*="sticky-adrail"]');
   }
 
-  function ensureKinSlot(rail) {
-    var slot = rail.querySelector('.kin-slot');
+  function ensureKinSlot(container) {
+    var slot = container.querySelector('.kin-slot');
     if (slot) return slot;
     slot = document.createElement('div');
     slot.className = 'kin-slot';
-    rail.appendChild(slot);
+    container.appendChild(slot);
     return slot;
   }
 
   function fillSlots() {
-    var rails = findAdRails();
-    for (var i = 0; i < rails.length; i++) {
-      if (rails[i].offsetParent === null) continue;
-      var slot = ensureKinSlot(rails[i]);
+    var adrails = findStickyAdrails();
+    for (var i = 0; i < adrails.length; i++) {
+      if (adrails[i].offsetParent === null) continue;
+      var slot = ensureKinSlot(adrails[i]);
       insertTile(slot);
     }
   }
