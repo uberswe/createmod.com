@@ -109,7 +109,6 @@
   var pixelDataSvg = buildPixelDataSvg();
 
   var staticTiles = [
-    // srv-a: Pixel scene + headline + URL strip
     '<a class="kin-tile" href="https://createmodservers.com" rel="noopener">' +
       pixelServersSvg +
       '<div class="kin-body">' +
@@ -120,7 +119,6 @@
       '</div>' +
     '</a>',
 
-    // srv-c: Icon-led compact
     '<a class="kin-tile" href="https://createmodservers.com" rel="noopener">' +
       '<div class="kin-iconrow">' +
         '<div class="mark"><svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4m0 3a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3z"/><path d="M3 14m0 3a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3z"/><path d="M7 8l0 .01"/><path d="M7 18l0 .01"/></svg></div>' +
@@ -135,7 +133,6 @@
       '</div>' +
     '</a>',
 
-    // sch-a: Pixel block stack + lead text
     '<a class="kin-tile" href="https://schematics.gg" rel="noopener">' +
       pixelBlocksSvg +
       '<div class="kin-body">' +
@@ -147,7 +144,6 @@
       '</div>' +
     '</a>',
 
-    // sch-b: Format chips
     '<a class="kin-tile" href="https://schematics.gg" rel="noopener">' +
       '<div class="kin-body" style="padding-bottom:4px">' +
         '<div class="kin-eyebrow">Coming soon</div>' +
@@ -168,7 +164,6 @@
       '</div>' +
     '</a>',
 
-    // sch-c: Blueprint hero
     '<a class="kin-tile" href="https://schematics.gg" rel="noopener">' +
       '<div class="kin-blueprint">' +
         '<svg viewBox="0 0 200 90" width="100%" height="90" style="display:block">' +
@@ -201,7 +196,6 @@
       '</div>' +
     '</a>',
 
-    // blk-a: API code snippet
     '<a class="kin-tile" href="https://blocksitems.com" rel="noopener">' +
       '<div class="kin-code">' +
         'GET <span class="meth">blocksitems.com</span>/api/blocks/create:brass_block\n' +
@@ -220,7 +214,6 @@
       '</div>' +
     '</a>',
 
-    // blk-b: Pixel data grid
     '<a class="kin-tile" href="https://blocksitems.com" rel="noopener">' +
       pixelDataSvg +
       '<div class="kin-body">' +
@@ -231,7 +224,6 @@
       '</div>' +
     '</a>',
 
-    // blk-c: Database rows
     '<a class="kin-tile" href="https://blocksitems.com" rel="noopener">' +
       '<div class="kin-body" style="padding-bottom:2px">' +
         '<div class="kin-eyebrow">Open Data</div>' +
@@ -252,12 +244,6 @@
   ];
 
   window._kinTilesForPreview = staticTiles;
-
-  function esc(s) {
-    var d = document.createElement('span');
-    d.textContent = s;
-    return d.innerHTML;
-  }
 
   function buildServerTile(servers) {
     var top = servers.filter(function(s) { return s.is_online; })
@@ -364,54 +350,56 @@
     }
   }
 
-  function slotHasAd(el) {
-    var iframes = el.querySelectorAll('iframe');
-    for (var i = 0; i < iframes.length; i++) {
-      if (iframes[i].offsetHeight > 10) return true;
+  var railSelectors = [
+    '.ad-rail',
+    '.ad-rail-sm',
+    '.generator-ad-rail',
+    '.generator-ad-rail-sm',
+    '.search-ad-rail-wide',
+    '.search-ad-rail',
+    '.guide-ad-rail',
+    '.guide-ad-rail-sm'
+  ];
+
+  function findAdRails() {
+    return document.querySelectorAll(railSelectors.join(','));
+  }
+
+  function ensureKinSlot(rail) {
+    var slot = rail.querySelector('.kin-slot');
+    if (slot) return slot;
+    slot = document.createElement('div');
+    slot.className = 'kin-slot';
+    rail.appendChild(slot);
+    return slot;
+  }
+
+  function fillSlots() {
+    var rails = findAdRails();
+    for (var i = 0; i < rails.length; i++) {
+      if (rails[i].offsetParent === null) continue;
+      var slot = ensureKinSlot(rails[i]);
+      insertTile(slot);
     }
-    return false;
   }
 
-  function removeTileIfAdLoaded(slot) {
-    if (!slot) return;
-    var observer = new MutationObserver(function() {
-      if (slotHasAd(slot)) {
-        var tile = slot.querySelector('.kin-tile');
-        if (tile) tile.remove();
-        observer.disconnect();
-      }
-    });
-    observer.observe(slot, { childList: true, subtree: true });
-  }
+  fetchLiveServers();
 
-  function handleAdblock() {
-    if (document.querySelector('.kin-tile')) return;
-    var slots = document.querySelectorAll('[id*="sticky-adrail"]');
-    for (var i = 0; i < slots.length; i++) {
-      if (!slotHasAd(slots[i]) && slots[i].offsetParent !== null) {
-        insertTile(slots[i]);
-        removeTileIfAdLoaded(slots[i]);
-        return;
-      }
+  setTimeout(fillSlots, 3000);
+
+  document.addEventListener('htmx:afterSettle', function(evt) {
+    if (evt.detail && evt.detail.target === document.body) {
+      setTimeout(fillSlots, 3000);
     }
-  }
-
-  var fillRan = false;
-
-  function fillEmptySlots() {
-    if (fillRan) return;
-    fillRan = true;
-    handleAdblock();
-    fetchLiveServers();
-  }
+  });
 
   document.addEventListener('np.detect', function(e) {
     if (e.detail && e.detail.blocking) {
-      fillEmptySlots();
+      fillSlots();
     }
   });
 
   if (window._nitroBlocked) {
-    fillEmptySlots();
+    fillSlots();
   }
 })();

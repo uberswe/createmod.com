@@ -432,10 +432,10 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-/* Only the last child in the rail is sticky. Preceding slots (e.g. the
+/* The sticky-adrail child is sticky. Preceding slots (e.g. the
    video-nc ad) scroll with the page so they don't stack on top of the
    sticky-stack adrail at the same top offset. */
-.ad-rail > div:last-child {
+.ad-rail > [id*="sticky-adrail"] {
   position: sticky;
   top: 110px;
   z-index: 1;
@@ -509,7 +509,7 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-.ad-rail-sm > div:last-child {
+.ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
   top: 110px;
   z-index: 1;
@@ -538,7 +538,7 @@ a:hover {
   width: 300px;
 }
 
-.generator-ad-rail > div:last-child {
+.generator-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
   top: 110px;
 }
@@ -551,7 +551,7 @@ a:hover {
   width: 160px;
 }
 
-.generator-ad-rail-sm > div:last-child {
+.generator-ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
   top: 110px;
 }
@@ -1033,7 +1033,7 @@ body.sidebar-open::after {
   flex-shrink: 0;
   align-self: start;
 }
-.search-ad-rail-wide > div:last-child {
+.search-ad-rail-wide > [id*="sticky-adrail"] {
   position: sticky;
   top: 110px;
   z-index: 1;
@@ -1053,7 +1053,7 @@ body.sidebar-open::after {
   flex-shrink: 0;
   align-self: stretch;
 }
-.search-ad-rail > div:last-child {
+.search-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
   top: 110px;
   z-index: 1;
@@ -2082,9 +2082,9 @@ body.sidebar-ready .generator-overlay {
 }
 
 .generator-ad-rail { position: absolute; top: 16px; right: 16px; z-index: 10; width: 300px; }
-.generator-ad-rail > div:last-child { position: sticky; top: 110px; }
+.generator-ad-rail > [id*="sticky-adrail"] { position: sticky; top: 110px; }
 .generator-ad-rail-sm { position: absolute; top: 16px; right: 16px; z-index: 10; width: 160px; }
-.generator-ad-rail-sm > div:last-child { position: sticky; top: 110px; }
+.generator-ad-rail-sm > [id*="sticky-adrail"] { position: sticky; top: 110px; }
 
 /* ===== Generator navigation bar ===== */
 .breadcrumb-overlay { position: absolute; z-index: 15; left: 0; right: 0; margin-top: 0; padding: 6px 1rem; pointer-events: none; }

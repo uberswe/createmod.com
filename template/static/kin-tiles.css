@@ -228,7 +228,12 @@
   justify-content: center;
 }
 
-/* Ensure tile is visible inside sticky-adrail slot but always behind ads */
+/* Kin-slot container sits below NitroPay ads in the ad rail */
+.kin-slot {
+  margin-top: 12px;
+}
+
+/* Ensure tile is visible inside sticky-adrail slot */
 [id*="sticky-adrail"] .kin-tile {
   display: block;
   position: relative;
