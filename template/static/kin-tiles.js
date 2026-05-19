@@ -384,22 +384,11 @@
   }
 
   fetchLiveServers();
-
-  setTimeout(fillSlots, 3000);
+  fillSlots();
 
   document.addEventListener('htmx:afterSettle', function(evt) {
     if (evt.detail && evt.detail.target === document.body) {
-      setTimeout(fillSlots, 3000);
-    }
-  });
-
-  document.addEventListener('np.detect', function(e) {
-    if (e.detail && e.detail.blocking) {
       fillSlots();
     }
   });
-
-  if (window._nitroBlocked) {
-    fillSlots();
-  }
 })();
