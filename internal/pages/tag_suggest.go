@@ -4,14 +4,12 @@ import (
 	"context"
 	"createmod/internal/store"
 	"log/slog"
-	"regexp"
 	"strings"
 
 	"github.com/gosimple/slug"
 )
 
-// idPattern matches existing PocketBase-style IDs (15-char alphanumeric).
-var idPattern = regexp.MustCompile(`^[a-z0-9]{15}$`)
+const maxTagNameLen = 50
 
 // resolveTagIDs takes a list of form values that may be existing tag IDs or new tag names.
 // For new names, it creates a pending tag (public=false) in the database.
@@ -24,12 +22,15 @@ func resolveTagIDs(ctx context.Context, appStore *store.Store, values []string) 
 			continue
 		}
 
-		// If it looks like an existing ID, verify it exists.
-		if idPattern.MatchString(v) {
-			if _, err := appStore.Tags.GetByID(ctx, v); err == nil {
-				ids = append(ids, v)
-				continue
-			}
+		// Try as an existing tag ID first (covers any ID format).
+		if _, err := appStore.Tags.GetByID(ctx, v); err == nil {
+			ids = append(ids, v)
+			continue
+		}
+
+		// Reject names that are too long.
+		if len(v) > maxTagNameLen {
+			continue
 		}
 
 		// Treat as a new tag name suggestion.
@@ -71,12 +72,15 @@ func resolveCategoryIDs(ctx context.Context, appStore *store.Store, values []str
 			continue
 		}
 
-		// If it looks like an existing ID, verify it exists.
-		if idPattern.MatchString(v) {
-			if _, err := appStore.Categories.GetByID(ctx, v); err == nil {
-				ids = append(ids, v)
-				continue
-			}
+		// Try as an existing category ID first (covers any ID format).
+		if _, err := appStore.Categories.GetByID(ctx, v); err == nil {
+			ids = append(ids, v)
+			continue
+		}
+
+		// Reject names that are too long.
+		if len(v) > maxTagNameLen {
+			continue
 		}
 
 		// Treat as a new category name suggestion.

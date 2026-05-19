@@ -240,6 +240,13 @@ window.setTheme=function(theme){
           if (label) label.textContent = expanded ? 'Collapse' : 'Expand';
         });
 
+        // Re-apply theme attribute on body after HTMX swaps to prevent
+        // mixed light/dark elements when the new body arrives without it.
+        document.addEventListener('htmx:afterSwap', function(){
+          var t = document.documentElement.getAttribute('data-cm-theme');
+          if (t && document.body) document.body.setAttribute('data-cm-theme', t);
+        });
+
         // Re-apply sidebar-pinned on body immediately after HTMX swaps
         // content, before the browser paints, to prevent a flash of
         // incorrect margin on the page-wrapper.
