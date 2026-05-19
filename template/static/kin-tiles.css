@@ -114,7 +114,7 @@
 .kin-list .dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--cm-success, #2fb344);
-  box-shadow: 0 0 0 3px rgba(47,179,68,.15);
+  flex-shrink: 0;
 }
 .kin-list .players {
   font-family: var(--cm-font-mono, monospace);
@@ -228,7 +228,7 @@
   justify-content: center;
 }
 
-/* Kin-slot container sits below NitroPay ads in the ad rail */
+/* Kin-slot container inside the sticky-adrail, below NitroPay ads */
 .kin-slot {
   margin-top: 12px;
 }
