@@ -2,17 +2,16 @@ import { test, expect } from '@playwright/test';
 
 // Test that the ad rail CSS is correctly applied so NitroPay sticky-stack works.
 // The outer .ad-rail uses align-self:stretch for full height,
-// while only the LAST inner > div uses position:sticky to stay visible
-// during scroll. Preceding slots (e.g. the video-nc ad) scroll with the
-// page — making every child sticky caused them to stack on each other at
-// the same top offset.
+// while only the [id*="sticky-adrail"] child uses position:sticky to stay
+// visible during scroll. Preceding slots (e.g. the video-nc ad) and trailing
+// slots (e.g. kin-tile containers) scroll with the page.
 // Uses /explore because it always renders .ad-rail (the homepage does not have one).
 // In CI no ad scripts load, so we verify computed styles rather than visible content.
 
 test.describe('Ad rail stickiness', () => {
   test.use({ viewport: { width: 1400, height: 900 } });
 
-  test('only the last inner div of the ad rail is sticky', async ({ page, baseURL }) => {
+  test('only the sticky-adrail child of the ad rail is sticky', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
@@ -21,21 +20,29 @@ test.describe('Ad rail stickiness', () => {
     const adRail = page.locator('.ad-rail').first();
     await expect(adRail).toBeAttached({ timeout: 10000 });
 
-    // Verify the last inner child is sticky and preceding ones are not.
-    const innerStyles = await adRail.evaluate((el) => {
+    // Verify only the sticky-adrail child is sticky and all others are not.
+    const result = await adRail.evaluate((el) => {
       const children = el.querySelectorAll(':scope > div');
-      return Array.from(children).map((child) => {
+      const styles = Array.from(children).map((child) => {
         const style = window.getComputedStyle(child);
-        return { position: style.position, top: style.top };
+        return { id: child.id, position: style.position, top: style.top };
       });
+      const stickyAdrail = el.querySelector(':scope > [id*="sticky-adrail"]');
+      const stickyStyle = stickyAdrail ? window.getComputedStyle(stickyAdrail) : null;
+      return {
+        childStyles: styles,
+        hasStickyAdrail: !!stickyAdrail,
+        stickyPosition: stickyStyle?.position,
+        stickyTop: stickyStyle?.top,
+      };
     });
 
-    expect(innerStyles.length).toBeGreaterThan(0);
-    const last = innerStyles[innerStyles.length - 1];
-    expect(last.position).toBe('sticky');
-    expect(last.top).toBe('110px');
-    for (let i = 0; i < innerStyles.length - 1; i++) {
-      expect(innerStyles[i].position).not.toBe('sticky');
+    expect(result.hasStickyAdrail).toBe(true);
+    expect(result.stickyPosition).toBe('sticky');
+    expect(result.stickyTop).toBe('110px');
+    for (const child of result.childStyles) {
+      if (child.id.includes('sticky-adrail')) continue;
+      expect(child.position).not.toBe('sticky');
     }
   });
 
