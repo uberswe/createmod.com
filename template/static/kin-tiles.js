@@ -356,9 +356,10 @@
 
   function ensureKinSlot(container) {
     var slot = container.querySelector('.kin-slot');
-    if (slot) return slot;
-    slot = document.createElement('div');
-    slot.className = 'kin-slot';
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.className = 'kin-slot';
+    }
     container.appendChild(slot);
     return slot;
   }
@@ -372,12 +373,40 @@
     }
   }
 
+  function keepSlotsLast() {
+    var adrails = findStickyAdrails();
+    for (var i = 0; i < adrails.length; i++) {
+      var slot = adrails[i].querySelector('.kin-slot');
+      if (slot && slot !== adrails[i].lastElementChild) {
+        adrails[i].appendChild(slot);
+      }
+    }
+  }
+
+  function observeAdrails() {
+    if (typeof MutationObserver === 'undefined') return;
+    var adrails = findStickyAdrails();
+    for (var i = 0; i < adrails.length; i++) {
+      (function(rail) {
+        var obs = new MutationObserver(function() {
+          var slot = rail.querySelector('.kin-slot');
+          if (slot && slot !== rail.lastElementChild) {
+            rail.appendChild(slot);
+          }
+        });
+        obs.observe(rail, { childList: true });
+      })(adrails[i]);
+    }
+  }
+
   fetchLiveServers();
   fillSlots();
+  observeAdrails();
 
   document.addEventListener('htmx:afterSettle', function(evt) {
     if (evt.detail && evt.detail.target === document.body) {
       fillSlots();
+      observeAdrails();
     }
   });
 })();
