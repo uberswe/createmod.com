@@ -438,11 +438,13 @@ a:hover {
 .ad-rail > div:last-child {
   position: sticky;
   top: 110px;
+  z-index: 1;
 }
 /* Sticky-stack sits below the video-nc so both pin without overlapping.
    --video-nc-height is updated by JS once the video-nc ad renders. */
 .ad-rail > #schematic-sticky-adrail {
   top: calc(110px + var(--video-nc-height, 200px) + 1rem);
+  z-index: 1;
 }
 
 /***************
@@ -510,6 +512,7 @@ a:hover {
 .ad-rail-sm > div:last-child {
   position: sticky;
   top: 110px;
+  z-index: 1;
 }
 
 /***************
@@ -1033,6 +1036,7 @@ body.sidebar-open::after {
 .search-ad-rail-wide > div:last-child {
   position: sticky;
   top: 110px;
+  z-index: 1;
 }
 
 .search-sidebar {
@@ -1052,6 +1056,7 @@ body.sidebar-open::after {
 .search-ad-rail > div:last-child {
   position: sticky;
   top: 110px;
+  z-index: 1;
 }
 
 .search-hero {
