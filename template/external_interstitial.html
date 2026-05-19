@@ -70,7 +70,9 @@
     link.addEventListener('click', function() { stop(); });
   }
 
-  document.body.addEventListener('htmx:beforeSwap', function() { stop(); });
+  document.body.addEventListener('htmx:beforeSwap', function(evt) {
+    if (evt.detail && evt.detail.target === document.body) { stop(); }
+  });
 
   // When tab becomes visible again, catch up to real elapsed time
   document.addEventListener('visibilitychange', function() {
