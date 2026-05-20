@@ -230,10 +230,19 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 		minHorizontal := parseIntParam("minhz")
 		maxHorizontal := parseIntParam("maxhz")
 
-		// Per page / infinite scroll
-		infiniteScroll := q.Get("per_page") == "infinite"
-		perPage := parseIntParam("per_page")
-		if perPage != 8 && perPage != 16 && perPage != 32 && perPage != 64 {
+		// Per page / infinite scroll (query param overrides cookie)
+		perPageRaw := q.Get("per_page")
+		if perPageRaw == "" {
+			if c, err := e.Request.Cookie("cm_per_page_mod"); err == nil {
+				perPageRaw = c.Value
+			}
+		}
+		infiniteScroll := perPageRaw == "infinite"
+		perPage := 0
+		if v, err := strconv.Atoi(perPageRaw); err == nil {
+			perPage = v
+		}
+		if perPage != 24 && perPage != 48 && perPage != 96 {
 			perPage = 0
 		}
 		viewMode := q.Get("view")

@@ -263,11 +263,20 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		minHorizontal := parseIntParam("minhz")
 		maxHorizontal := parseIntParam("maxhz")
 
-		// Parse per_page
-		infiniteScroll := e.Request.URL.Query().Get("per_page") == "infinite"
-		perPage := parseIntParam("per_page")
+		// Parse per_page (query param overrides cookie)
+		perPageRaw := e.Request.URL.Query().Get("per_page")
+		if perPageRaw == "" {
+			if c, err := e.Request.Cookie("cm_per_page_search"); err == nil {
+				perPageRaw = c.Value
+			}
+		}
+		infiniteScroll := perPageRaw == "infinite"
+		perPage := 0
+		if v, err := strconv.Atoi(perPageRaw); err == nil {
+			perPage = v
+		}
 		if perPage != 8 && perPage != 16 && perPage != 32 && perPage != 64 {
-			perPage = 0 // will use default pageSize
+			perPage = 0
 		}
 
 		// Parse mod filter (comma-separated "mods" param or multiple "mod" checkbox params)
