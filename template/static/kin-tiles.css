@@ -111,11 +111,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kin-list .dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--cm-success, #2fb344);
-  flex-shrink: 0;
-}
 .kin-list .players {
   font-family: var(--cm-font-mono, monospace);
   font-size: 11px;
