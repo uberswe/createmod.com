@@ -228,6 +228,7 @@ document.addEventListener('change', function(e) {
   if (!e.target.classList.contains('mod-per-page-select')) return;
   var hidden = document.getElementById('mod-per-page-input');
   if (hidden) hidden.value = e.target.value;
+  document.cookie = 'cm_per_page_mod=' + e.target.value + ';path=/;max-age=31536000;SameSite=Lax';
   var form = document.getElementById('mod-filter-form');
   if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
 });

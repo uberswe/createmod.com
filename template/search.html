@@ -342,6 +342,7 @@
                 if (!e.target.classList.contains('search-per-page-select')) return;
                 var hidden = document.getElementById('search-per-page-input');
                 if (hidden) hidden.value = e.target.value;
+                document.cookie = 'cm_per_page_search=' + e.target.value + ';path=/;max-age=31536000;SameSite=Lax';
                 var form = document.getElementById('advanced-search-form');
                 if (form) form.dispatchEvent(new Event('change', {bubbles: true}));
             });

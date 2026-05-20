@@ -400,4 +400,21 @@
   }
 
   fetchLiveServers();
+
+  function init() {
+    setTimeout(function() {
+      fillSlots();
+      observeAdrails();
+    }, 1500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  document.addEventListener('htmx:afterSettle', function() {
+    setTimeout(fillSlots, 1500);
+  });
 })();

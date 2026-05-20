@@ -302,6 +302,27 @@ func (s *Server) Start() {
 			pages.WarmVideosCache(s.cacheService, s.store)
 		}()
 
+		// Pre-warm site stats search cache on every pod. Uses a random
+		// initial delay (0–5 min) so pods don't all hit the DB at once,
+		// then refreshes every 30 minutes.
+		go func() {
+			jitter := time.Duration(rand.Intn(300)) * time.Second
+			time.Sleep(jitter)
+			ctx := context.Background()
+			pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "30d")
+			pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "7d")
+			slog.Info("site stats cache warmed (initial)", "jitter", jitter.Round(time.Second))
+
+			ticker := time.NewTicker(30 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				ctx := context.Background()
+				pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "30d")
+				pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "7d")
+				slog.Info("site stats cache warmed (periodic)")
+			}
+		}()
+
 		// Load in-memory search index from S3 cache for fast startup.
 		// The full DB rebuild and Meilisearch sync are handled by the
 		// SearchIndexWorker River job (RunOnStart: true, every 10 min),
