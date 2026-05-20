@@ -77,7 +77,7 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 // Called once at startup so templates can append ?v=<hash> for cache-busting.
 func computeAssetVersion() string {
 	h := sha256.New()
-	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/kin-tiles.js", "./template/static/kin-tiles.css"} {
+	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/kin-tiles.js", "./template/static/kin-tiles.css", "./template/static/dev-ads.js"} {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			h.Write(data)
@@ -1291,14 +1291,27 @@ func deriveOAuthSigningSecret() string {
 }
 
 func maxBodyMiddleware(maxBytes int64) func(http.Handler) http.Handler {
+	const uploadMax int64 = 50 << 20
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Body != nil {
-				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+				limit := maxBytes
+				if r.Method == http.MethodPost && isUploadRoute(r.URL.Path) {
+					limit = uploadMax
+				}
+				r.Body = http.MaxBytesReader(w, r.Body, limit)
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func isUploadRoute(path string) bool {
+	switch path {
+	case "/upload/nbt", "/api/schematics/upload", "/api/schematics/upload-anonymous", "/api/images/upload":
+		return true
+	}
+	return strings.HasSuffix(path, "/add-file")
 }
 
 func adminOnlyMiddleware(next http.Handler) http.Handler {

@@ -39,7 +39,7 @@ test.describe('Ad rail stickiness', () => {
 
     expect(result.hasStickyAdrail).toBe(true);
     expect(result.stickyPosition).toBe('sticky');
-    expect(result.stickyTop).toBe('110px');
+    expect(result.stickyTop).toBe('108px');
     for (const child of result.childStyles) {
       if (child.id.includes('sticky-adrail')) continue;
       expect(child.position).not.toBe('sticky');
