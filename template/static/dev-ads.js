@@ -128,32 +128,6 @@
       'STICKY AD STACK', id, w + ' × ' + h
     ]));
 
-    if (!isNarrow) {
-      renderKinSlot(container.parentElement || container);
-    }
-  }
-
-  function renderKinSlot(parent) {
-    var tiles = window._kinTilesForPreview;
-    if (!tiles || !tiles.length || !parent) return;
-    if (parent.querySelector(':scope > .kin-slot')) return;
-
-    var slot = document.createElement('div');
-    slot.className = 'kin-slot';
-
-    var idx = Math.floor(Math.random() * tiles.length);
-    var chosen = tiles[idx];
-    if (typeof chosen === 'string') {
-      var wrapper = document.createElement('div');
-      wrapper.insertAdjacentHTML('afterbegin', chosen);
-      var tile = wrapper.firstChild;
-      if (tile) {
-        tile.setAttribute('target', '_blank');
-        tile.setAttribute('hx-boost', 'false');
-        slot.appendChild(tile);
-      }
-    }
-    parent.appendChild(slot);
   }
 
   function renderFloating(id) {

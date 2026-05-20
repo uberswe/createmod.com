@@ -228,14 +228,13 @@
   justify-content: center;
 }
 
-/* Kin-slot container inside the sticky-adrail, below NitroPay ads */
-.kin-slot {
-  margin-top: 12px;
+/* Sticky-adrails use flex so kin-slot can be ordered last */
+[id*="sticky-adrail"] {
+  display: flex;
+  flex-direction: column;
 }
 
-/* Ensure tile is visible inside sticky-adrail slot */
-[id*="sticky-adrail"] .kin-tile {
-  display: block;
-  position: relative;
-  z-index: 0;
+.kin-slot {
+  order: 9999;
+  margin-top: 12px;
 }
