@@ -129,13 +129,14 @@
     ]));
 
     if (!isNarrow) {
-      renderKinSlot(container);
+      renderKinSlot(container.parentElement || container);
     }
   }
 
-  function renderKinSlot(container) {
+  function renderKinSlot(parent) {
     var tiles = window._kinTilesForPreview;
-    if (!tiles || !tiles.length) return;
+    if (!tiles || !tiles.length || !parent) return;
+    if (parent.querySelector(':scope > .kin-slot')) return;
 
     var slot = document.createElement('div');
     slot.className = 'kin-slot';
@@ -152,7 +153,7 @@
         slot.appendChild(tile);
       }
     }
-    container.appendChild(slot);
+    parent.appendChild(slot);
   }
 
   function renderFloating(id) {

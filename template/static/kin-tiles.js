@@ -350,62 +350,27 @@
     }
   }
 
-  function findStickyAdrails() {
-    return document.querySelectorAll('[id*="sticky-adrail"]');
-  }
-
-  function ensureKinSlot(container) {
-    var slot = container.querySelector('.kin-slot');
-    if (!slot) {
-      slot = document.createElement('div');
-      slot.className = 'kin-slot';
-    }
-    container.appendChild(slot);
-    return slot;
-  }
-
   function fillSlots() {
-    var adrails = findStickyAdrails();
+    var adrails = document.querySelectorAll('[id*="sticky-adrail"]');
     for (var i = 0; i < adrails.length; i++) {
-      if (adrails[i].offsetParent === null) continue;
-      var slot = ensureKinSlot(adrails[i]);
-      insertTile(slot);
-    }
-  }
-
-  function keepSlotsLast() {
-    var adrails = findStickyAdrails();
-    for (var i = 0; i < adrails.length; i++) {
-      var slot = adrails[i].querySelector('.kin-slot');
-      if (slot && slot !== adrails[i].lastElementChild) {
-        adrails[i].appendChild(slot);
+      var rail = adrails[i];
+      if (rail.offsetParent === null) continue;
+      var parent = rail.parentElement;
+      if (!parent) continue;
+      var slot = parent.querySelector(':scope > .kin-slot');
+      if (!slot) {
+        slot = document.createElement('div');
+        slot.className = 'kin-slot';
+        parent.appendChild(slot);
       }
-    }
-  }
-
-  function observeAdrails() {
-    if (typeof MutationObserver === 'undefined') return;
-    var adrails = findStickyAdrails();
-    for (var i = 0; i < adrails.length; i++) {
-      (function(rail) {
-        var obs = new MutationObserver(function() {
-          var slot = rail.querySelector('.kin-slot');
-          if (slot && slot !== rail.lastElementChild) {
-            rail.appendChild(slot);
-          }
-        });
-        obs.observe(rail, { childList: true });
-      })(adrails[i]);
+      insertTile(slot);
     }
   }
 
   fetchLiveServers();
 
   function init() {
-    setTimeout(function() {
-      fillSlots();
-      observeAdrails();
-    }, 1500);
+    setTimeout(fillSlots, 1500);
   }
 
   if (document.readyState === 'loading') {
