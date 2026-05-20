@@ -1,8 +1,11 @@
 package pages
 
 import (
+	"fmt"
+	"html"
 	"html/template"
 	mrand "math/rand/v2"
+	"strings"
 )
 
 const kinArrow = `<svg viewBox="0 0 24 24" width="16" height="16" class="arrow"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>`
@@ -65,7 +68,44 @@ var kinTiles = []template.HTML{
 		`<div class="kin-body" style="padding-top:8px"><p style="font-size:11.5px">Open database &middot; free API &middot; 100k+ blocks &amp; items.</p><div class="kin-foot"><span class="url">blocksitems.com</span>` + kinArrow + `</div></div></a>`),
 }
 
+func buildLiveServerTile(servers []LiveServer) template.HTML {
+	if len(servers) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<a class="kin-tile" href="https://createmodservers.com" target="_blank" rel="noopener" hx-boost="false">`)
+	b.WriteString(`<div class="kin-body" style="padding-bottom:4px"><div class="kin-eyebrow">Online right now</div>`)
+	b.WriteString(`<h3>Find a Create Mod server to play on.</h3></div>`)
+	b.WriteString(`<div class="kin-list">`)
+	for _, s := range servers {
+		b.WriteString(`<div class="row">`)
+		b.WriteString(`<svg viewBox="0 0 8 8" width="8" height="8" style="flex-shrink:0"><circle cx="4" cy="4" r="4" fill="#2fb344"/></svg>`)
+		b.WriteString(`<span class="name">`)
+		b.WriteString(html.EscapeString(s.Name))
+		b.WriteString(`</span><span class="players">`)
+		b.WriteString(fmt.Sprintf("%d online", s.PlayersOnline))
+		b.WriteString(`</span></div>`)
+	}
+	b.WriteString(`</div>`)
+	b.WriteString(`<div class="kin-body" style="padding-top:6px"><div class="kin-foot" style="margin-top:4px;padding-top:8px">`)
+	b.WriteString(`<span class="url">createmodservers.com</span>`)
+	b.WriteString(kinArrow)
+	b.WriteString(`</div></div></a>`)
+	return template.HTML(b.String())
+}
+
 func randomKinTileHTML() template.HTML {
+	servers := getLiveServers()
+	liveTile := buildLiveServerTile(servers)
+
+	if liveTile != "" {
+		total := len(kinTiles) + 1
+		idx := mrand.IntN(total)
+		if idx == len(kinTiles) {
+			return template.HTML(`<div class="kin-slot">`) + liveTile + `</div>`
+		}
+	}
+
 	idx := mrand.IntN(len(kinTiles))
 	return template.HTML(`<div class="kin-slot">`) + kinTiles[idx] + `</div>`
 }

@@ -77,7 +77,7 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 // Called once at startup so templates can append ?v=<hash> for cache-busting.
 func computeAssetVersion() string {
 	h := sha256.New()
-	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/kin-tiles.js", "./template/static/kin-tiles.css", "./template/static/dev-ads.js"} {
+	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/kin-tiles.css", "./template/static/dev-ads.js"} {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			h.Write(data)
