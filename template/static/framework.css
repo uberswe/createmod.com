@@ -134,6 +134,7 @@ th { text-align: inherit; }
 .row {
   display: flex;
   flex-wrap: wrap;
+  margin-top: calc(-1 * var(--cm-gutter-y, 0));
   margin-right: calc(-0.5 * var(--cm-gutter-x, 1.5rem));
   margin-left: calc(-0.5 * var(--cm-gutter-x, 1.5rem));
 }
@@ -1630,7 +1631,7 @@ textarea.form-control { min-height: calc(1.4285714286em + 0.875rem + 2px); }
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem 0;
+  padding: 0.75rem 0;
 }
 .page-body-flush { padding: 0; }
 .page-center {

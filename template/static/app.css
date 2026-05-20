@@ -437,14 +437,9 @@ a:hover {
    sticky-stack adrail at the same top offset. */
 .ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 110px;
+  top: 108px;
   z-index: 1;
-}
-/* Sticky-stack sits below the video-nc so both pin without overlapping.
-   --video-nc-height is updated by JS once the video-nc ad renders. */
-.ad-rail > #schematic-sticky-adrail {
-  top: calc(110px + var(--video-nc-height, 200px) + 1rem);
-  z-index: 1;
+  min-height: 800px;
 }
 
 /***************
@@ -511,8 +506,9 @@ a:hover {
 }
 .ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
-  top: 110px;
+  top: 108px;
   z-index: 1;
+  min-height: 800px;
 }
 
 /***************
@@ -540,7 +536,7 @@ a:hover {
 
 .generator-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 110px;
+  top: 108px;
 }
 
 .generator-ad-rail-sm {
@@ -553,7 +549,7 @@ a:hover {
 
 .generator-ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
-  top: 110px;
+  top: 108px;
 }
 
 /***************
@@ -1035,7 +1031,7 @@ body.sidebar-open::after {
 }
 .search-ad-rail-wide > [id*="sticky-adrail"] {
   position: sticky;
-  top: 110px;
+  top: 108px;
   z-index: 1;
 }
 
@@ -1055,7 +1051,7 @@ body.sidebar-open::after {
 }
 .search-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 110px;
+  top: 108px;
   z-index: 1;
 }
 
@@ -2082,9 +2078,9 @@ body.sidebar-ready .generator-overlay {
 }
 
 .generator-ad-rail { position: absolute; top: 16px; right: 16px; z-index: 10; width: 300px; }
-.generator-ad-rail > [id*="sticky-adrail"] { position: sticky; top: 110px; }
+.generator-ad-rail > [id*="sticky-adrail"] { position: sticky; top: 108px; }
 .generator-ad-rail-sm { position: absolute; top: 16px; right: 16px; z-index: 10; width: 160px; }
-.generator-ad-rail-sm > [id*="sticky-adrail"] { position: sticky; top: 110px; }
+.generator-ad-rail-sm > [id*="sticky-adrail"] { position: sticky; top: 108px; }
 
 /* ===== Generator navigation bar ===== */
 .breadcrumb-overlay { position: absolute; z-index: 15; left: 0; right: 0; margin-top: 0; padding: 6px 1rem; pointer-events: none; }
@@ -2275,8 +2271,8 @@ body.sidebar-ready .generator-overlay {
 }
 .guide-share-bar .gen-share-group { flex: 1; }
 .guide-share-bar .gen-share-group input { flex: 1; width: auto; }
-.guide-ad-rail { width: 300px; flex-shrink: 0; position: sticky; top: 80px; }
-.guide-ad-rail-sm { width: 160px; flex-shrink: 0; position: sticky; top: 80px; }
+.guide-ad-rail { width: 300px; flex-shrink: 0; position: sticky; top: 108px; }
+.guide-ad-rail-sm { width: 160px; flex-shrink: 0; position: sticky; top: 108px; }
 @media (max-width: 991.98px) {
     .guide-page-layout { flex-direction: column; }
     .guide-share-bar { flex-direction: column; gap: 8px; }
