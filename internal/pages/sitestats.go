@@ -34,6 +34,16 @@ type TopViewedEntry struct {
 	TotalViews    int64
 }
 
+// CachedSearchStats holds all search-related stats for a given time window.
+// Stored under a single cache key per window so the background warming job
+// can populate everything in one pass.
+type CachedSearchStats struct {
+	TopSearches      []SiteSearchEntry
+	TopSchematics    []TopViewedEntry
+	SearchVolumeJSON string
+	TrendingJSON     string
+}
+
 type SiteStatsData struct {
 	DefaultData
 
@@ -80,13 +90,6 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 			window = "30d"
 		}
 		d.ActiveWindow = window
-
-		var windowSince time.Time
-		if window == "7d" {
-			windowSince = now.AddDate(0, 0, -7)
-		} else {
-			windowSince = since30d
-		}
 
 		type cachedGlobal struct {
 			Views, Downloads       string
@@ -199,101 +202,11 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		}
 
 		if d.CanViewSearchStats {
-			searchCacheKey := fmt.Sprintf("site_stats_searches_%s", window)
-			schemCacheKey := fmt.Sprintf("site_stats_schematics_%s", window)
-
-			if cached, found := cacheService.Get(searchCacheKey); found {
-				if entries, ok := cached.([]SiteSearchEntry); ok {
-					d.TopSearches = entries
-				}
-			}
-			if cached, found := cacheService.Get(schemCacheKey); found {
-				if entries, ok := cached.([]TopViewedEntry); ok {
-					d.TopSchematics = entries
-				}
-			}
-
-			if d.TopSearches == nil {
-				raw, _ := appStore.SearchTracking.ListTopSearchesSince(ctx, windowSince, 200)
-				var candidates []SiteSearchEntry
-				if len(raw) > 0 {
-					terms := make([]string, len(raw))
-					for i, r := range raw {
-						terms[i] = r.Query
-					}
-					dirty, _ := appStore.SearchTracking.ListDirtySearchTerms(ctx, terms)
-					dirtySet := make(map[string]bool, len(dirty))
-					for _, d := range dirty {
-						dirtySet[d] = true
-					}
-					for _, r := range raw {
-						if !dirtySet[r.Query] && len(r.Query) >= 3 {
-							candidates = append(candidates, SiteSearchEntry{
-								Query:       r.Query,
-								SearchCount: r.ResultsCount,
-							})
-						}
-					}
-					candidates = filterPrefixQueries(candidates)
-					if len(candidates) > 100 {
-						candidates = candidates[:100]
-					}
-				}
-				d.TopSearches = candidates
-				cacheService.SetWithTTL(searchCacheKey, d.TopSearches, 1*time.Hour)
-			}
-
-			if d.TopSchematics == nil {
-				topSchem, _ := appStore.SearchTracking.ListTopViewedSchematicsSince(ctx, windowSince, 100)
-				entries := make([]TopViewedEntry, len(topSchem))
-				for i, s := range topSchem {
-					entries[i] = TopViewedEntry{
-						ID:            s.ID,
-						Name:          s.Name,
-						Title:         s.Title,
-						FeaturedImage: s.FeaturedImage,
-						TotalViews:    s.TotalViews,
-					}
-				}
-				d.TopSchematics = entries
-				cacheService.SetWithTTL(schemCacheKey, d.TopSchematics, 1*time.Hour)
-			}
-
-			volCacheKey := fmt.Sprintf("site_stats_search_vol_%s", window)
-			if cached, found := cacheService.Get(volCacheKey); found {
-				if js, ok := cached.(string); ok {
-					d.SearchVolumeJSON = html.JS(js)
-				}
-			}
-			if d.SearchVolumeJSON == "" {
-				vol, _ := appStore.SearchTracking.DailySearchVolume(ctx, windowSince)
-				d.SearchVolumeJSON = html.JS(dailyCountsJSON(vol))
-				cacheService.SetWithTTL(volCacheKey, string(d.SearchVolumeJSON), 1*time.Hour)
-			}
-
-			trendCacheKey := fmt.Sprintf("site_stats_trending_%s", window)
-			if cached, found := cacheService.Get(trendCacheKey); found {
-				if js, ok := cached.(string); ok {
-					d.TrendingSearchTermsJSON = html.JS(js)
-				}
-			}
-			if d.TrendingSearchTermsJSON == "" {
-				if len(d.TopSearches) > 0 {
-					limit := 10
-					if len(d.TopSearches) < limit {
-						limit = len(d.TopSearches)
-					}
-					terms := make([]string, limit)
-					for i := 0; i < limit; i++ {
-						terms[i] = d.TopSearches[i].Query
-					}
-					termVol, _ := appStore.SearchTracking.DailySearchTermVolume(ctx, windowSince, terms)
-					d.TrendingSearchTermsJSON = html.JS(searchTermSeriesJSON(terms, termVol))
-				} else {
-					d.TrendingSearchTermsJSON = html.JS("[]")
-				}
-				cacheService.SetWithTTL(trendCacheKey, string(d.TrendingSearchTermsJSON), 1*time.Hour)
-			}
+			stats := WarmSearchStatsCache(ctx, cacheService, appStore, window)
+			d.TopSearches = stats.TopSearches
+			d.TopSchematics = stats.TopSchematics
+			d.SearchVolumeJSON = html.JS(stats.SearchVolumeJSON)
+			d.TrendingSearchTermsJSON = html.JS(stats.TrendingJSON)
 		}
 
 		out, err := registry.LoadFiles(siteStatsTemplates...).Render(d)
@@ -341,6 +254,123 @@ func searchTermSeriesJSON(terms []string, data []store.SearchTermDailyCount) str
 
 	b, _ := json.Marshal(result)
 	return string(b)
+}
+
+// SearchStatsCacheKey returns the cache key for a given time window.
+func SearchStatsCacheKey(window string) string {
+	return fmt.Sprintf("site_stats_search_all_%s", window)
+}
+
+// WarmSearchStatsCache computes search stats for the given window, using the
+// cache if available. On cache miss it runs all queries in parallel and stores
+// the result for 1 hour. Called by both the HTTP handler and the background
+// warming job.
+func WarmSearchStatsCache(ctx context.Context, cacheService *cache.Service, appStore *store.Store, window string) CachedSearchStats {
+	cacheKey := SearchStatsCacheKey(window)
+	if cached, found := cacheService.Get(cacheKey); found {
+		if stats, ok := cached.(CachedSearchStats); ok {
+			return stats
+		}
+	}
+
+	now := time.Now().UTC()
+	var windowSince time.Time
+	if window == "7d" {
+		windowSince = now.AddDate(0, 0, -7)
+	} else {
+		windowSince = now.AddDate(0, 0, -30)
+	}
+
+	var topSearches []SiteSearchEntry
+	var topSchematics []TopViewedEntry
+	var volJSON string
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	// Group A: top searches (sequential chain internally)
+	go func() {
+		defer wg.Done()
+		raw, _ := appStore.SearchTracking.ListTopSearchesSince(ctx, windowSince, 200)
+		if len(raw) == 0 {
+			return
+		}
+		terms := make([]string, len(raw))
+		for i, r := range raw {
+			terms[i] = r.Query
+		}
+		dirty, _ := appStore.SearchTracking.ListDirtySearchTerms(ctx, terms)
+		dirtySet := make(map[string]bool, len(dirty))
+		for _, d := range dirty {
+			dirtySet[d] = true
+		}
+		var candidates []SiteSearchEntry
+		for _, r := range raw {
+			if !dirtySet[r.Query] && len(r.Query) >= 3 {
+				candidates = append(candidates, SiteSearchEntry{
+					Query:       r.Query,
+					SearchCount: r.ResultsCount,
+				})
+			}
+		}
+		candidates = filterPrefixQueries(candidates)
+		if len(candidates) > 100 {
+			candidates = candidates[:100]
+		}
+		topSearches = candidates
+	}()
+
+	// Group B: top viewed schematics (independent)
+	go func() {
+		defer wg.Done()
+		topSchem, _ := appStore.SearchTracking.ListTopViewedSchematicsSince(ctx, windowSince, 100)
+		entries := make([]TopViewedEntry, len(topSchem))
+		for i, s := range topSchem {
+			entries[i] = TopViewedEntry{
+				ID:            s.ID,
+				Name:          s.Name,
+				Title:         s.Title,
+				FeaturedImage: s.FeaturedImage,
+				TotalViews:    s.TotalViews,
+			}
+		}
+		topSchematics = entries
+	}()
+
+	// Group C: daily search volume (independent)
+	go func() {
+		defer wg.Done()
+		vol, _ := appStore.SearchTracking.DailySearchVolume(ctx, windowSince)
+		volJSON = dailyCountsJSON(vol)
+	}()
+
+	wg.Wait()
+
+	// Trending term volume depends on topSearches, so it runs after the WaitGroup.
+	var trendJSON string
+	if len(topSearches) > 0 {
+		limit := 10
+		if len(topSearches) < limit {
+			limit = len(topSearches)
+		}
+		terms := make([]string, limit)
+		for i := 0; i < limit; i++ {
+			terms[i] = topSearches[i].Query
+		}
+		termVol, _ := appStore.SearchTracking.DailySearchTermVolume(ctx, windowSince, terms)
+		trendJSON = searchTermSeriesJSON(terms, termVol)
+	} else {
+		trendJSON = "[]"
+	}
+
+	result := CachedSearchStats{
+		TopSearches:      topSearches,
+		TopSchematics:    topSchematics,
+		SearchVolumeJSON: volJSON,
+		TrendingJSON:     trendJSON,
+	}
+	cacheService.SetWithTTL(cacheKey, result, 1*time.Hour)
+	return result
 }
 
 // filterPrefixQueries removes queries that are likely typing prefixes of a
