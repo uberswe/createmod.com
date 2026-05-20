@@ -66,6 +66,7 @@ type DefaultData struct {
 	SteamOAuthEnabled      bool
 	OAuthError             string
 	IsDev                  bool
+	KinTileHTML            template.HTML
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
@@ -154,6 +155,7 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	d.MicrosoftOAuthEnabled = MicrosoftOAuthEnabled()
 	d.SteamOAuthEnabled = SteamOAuthEnabled()
 	d.IsDev = os.Getenv("DEV") == "true"
+	d.KinTileHTML = randomKinTileHTML()
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {

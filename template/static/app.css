@@ -439,7 +439,7 @@ a:hover {
   position: sticky;
   top: 108px;
   z-index: 1;
-  min-height: 800px;
+  min-height: 100vh;
 }
 
 /***************
@@ -508,7 +508,7 @@ a:hover {
   position: sticky;
   top: 108px;
   z-index: 1;
-  min-height: 800px;
+  min-height: 100vh;
 }
 
 /***************
