@@ -537,6 +537,8 @@ a:hover {
 .generator-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
   top: 108px;
+  height: calc(100vh - 108px);
+  overflow: hidden;
 }
 
 .generator-ad-rail-sm {
@@ -550,6 +552,8 @@ a:hover {
 .generator-ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
   top: 108px;
+  height: calc(100vh - 108px);
+  overflow: hidden;
 }
 
 /***************
@@ -1053,6 +1057,8 @@ body.sidebar-open::after {
   position: sticky;
   top: 108px;
   z-index: 1;
+  height: calc(100vh - 108px);
+  overflow: hidden;
 }
 
 .search-hero {
@@ -2078,9 +2084,9 @@ body.sidebar-ready .generator-overlay {
 }
 
 .generator-ad-rail { position: absolute; top: 16px; right: 16px; z-index: 10; width: 300px; }
-.generator-ad-rail > [id*="sticky-adrail"] { position: sticky; top: 108px; }
+.generator-ad-rail > [id*="sticky-adrail"] { position: sticky; top: 108px; height: calc(100vh - 108px); overflow: hidden; }
 .generator-ad-rail-sm { position: absolute; top: 16px; right: 16px; z-index: 10; width: 160px; }
-.generator-ad-rail-sm > [id*="sticky-adrail"] { position: sticky; top: 108px; }
+.generator-ad-rail-sm > [id*="sticky-adrail"] { position: sticky; top: 108px; height: calc(100vh - 108px); overflow: hidden; }
 
 /* ===== Generator navigation bar ===== */
 .breadcrumb-overlay { position: absolute; z-index: 15; left: 0; right: 0; margin-top: 0; padding: 6px 1rem; pointer-events: none; }
