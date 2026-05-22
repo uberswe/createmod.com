@@ -118,6 +118,13 @@
     setupVideoNcFloat(container, id);
   }
 
+  function renderSmartFlex(container, id) {
+    var w = 300, h = 600;
+    container.appendChild(makePlaceholder(w, h, [
+      'SMART FLEX AD', id, w + ' × ' + h
+    ]));
+  }
+
   function renderStickyStack(container, id) {
     var isNarrow = !!(container.closest('.ad-rail-sm') ||
                       container.closest('.generator-ad-rail-sm'));
@@ -188,6 +195,9 @@
     switch (format) {
       case 'video-nc':
         renderVideoNc(container, id);
+        break;
+      case 'smart-flex':
+        renderSmartFlex(container, id);
         break;
       case 'sticky-stack':
         renderStickyStack(container, id);
