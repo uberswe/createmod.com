@@ -45,6 +45,7 @@ type DefaultData struct {
 	Avatar          template.URL
 	HasAvatar       bool
 	IsContributor   bool
+	IsAdmin         bool
 	Language        string
 	LangPrefix      string
 	CanonicalURL    string
@@ -189,8 +190,7 @@ func (d *DefaultData) populateFromSession(e *server.RequestEvent, user *session.
 		d.Avatar = template.URL(url)
 	}
 	d.HasAvatar = d.Avatar != ""
-	// Contributor status - check has no direct store access here, so left for handler to set
-	// TODO: This will be set by handlers with store access
+	d.IsAdmin = user.IsAdmin
 }
 
 // setPublicCacheControl overrides the default "no-cache, private" header for

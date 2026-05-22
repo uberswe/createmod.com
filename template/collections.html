@@ -87,7 +87,7 @@
             <div id="collections-sticky-adrail-lg" class="mb-3"></div>
           </div>
           <div class="ad-rail d-none d-xl-block">
-            <div id="collections-video-nc-top-right" class="mb-3"></div>
+            {{if .IsAdmin}}<div id="collections-smart-flex" class="mb-3"></div>{{else}}<div id="collections-video-nc-top-right" class="mb-3"></div>{{end}}
             <div id="collections-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
           </div>
         </div>
@@ -100,6 +100,20 @@
 
 <!-- Ad Scripts -->
 <script>
+{{if .IsAdmin}}
+window['nitroAds'].createAd('collections-smart-flex', {
+  "format": "smart-flex",
+  "keywords": "minecraft,create-mod,collections",
+  "targeting": { "pageType": "collections" },
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "mediaQuery": "(min-width: 1200px)"
+});
+{{else}}
 window['nitroAds'].createAd('collections-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,collections",
@@ -112,6 +126,7 @@ window['nitroAds'].createAd('collections-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
+{{end}}
 window['nitroAds'].createAd('collections-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,

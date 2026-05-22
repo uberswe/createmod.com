@@ -51,7 +51,7 @@
 
         <!-- Ad Rail (desktop only) -->
         <div class="ad-rail d-none d-xl-block">
-            <div id="videos-video-nc-top-right" class="mb-3"></div>
+            {{if .IsAdmin}}<div id="videos-smart-flex" class="mb-3"></div>{{else}}<div id="videos-video-nc-top-right" class="mb-3"></div>{{end}}
             <div id="videos-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
         </div>
         </div><!-- /d-flex -->
@@ -64,6 +64,20 @@
 </div>
 <script>
 if (window['nitroAds']) {
+{{if .IsAdmin}}
+  window['nitroAds'].createAd('videos-smart-flex', {
+    "format": "smart-flex",
+    "keywords": "minecraft,create-mod,videos",
+    "targeting": { "pageType": "videos" },
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 1200px)"
+  });
+  {{else}}
   window['nitroAds'].createAd('videos-video-nc-top-right', {
     "format": "video-nc",
     "keywords": "minecraft,create-mod,videos",
@@ -76,6 +90,7 @@ if (window['nitroAds']) {
     },
     "mediaQuery": "(min-width: 1200px)"
   });
+  {{end}}
   window['nitroAds'].createAd('videos-sticky-adrail', {
     "refreshLimit": 10,
     "refreshTime": 45,
