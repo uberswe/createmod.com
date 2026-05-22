@@ -9,6 +9,7 @@ require (
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-ego/gse v1.0.2
+	github.com/go-webauthn/webauthn v0.17.3
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
@@ -20,10 +21,11 @@ require (
 	github.com/mergestat/timediff v0.0.4
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.19.0
-	github.com/riverqueue/river v0.37.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.37.1
+	github.com/riverqueue/river v0.38.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.38.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.14
 	github.com/sym01/htmlsanitizer v1.1.1
@@ -49,7 +51,6 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/go-webauthn/webauthn v0.17.3 // indirect
 	github.com/go-webauthn/x v0.2.5 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
@@ -71,13 +72,12 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/pquerna/otp v1.5.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.37.1 // indirect
-	github.com/riverqueue/river/rivershared v0.37.1 // indirect
-	github.com/riverqueue/river/rivertype v0.37.1 // indirect
+	github.com/riverqueue/river/riverdriver v0.38.0 // indirect
+	github.com/riverqueue/river/rivershared v0.38.0 // indirect
+	github.com/riverqueue/river/rivertype v0.38.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
