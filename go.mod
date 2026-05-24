@@ -7,7 +7,7 @@ require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/disintegration/imaging v1.6.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-ego/gse v1.0.2
 	github.com/go-webauthn/webauthn v0.17.3
 	github.com/golang-migrate/migrate/v4 v4.19.1
