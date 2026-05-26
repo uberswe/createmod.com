@@ -149,7 +149,7 @@ window.setTheme=function(theme){
           trackAdClick('kin-' + (link.hostname || 'unknown').replace(/^www\./, ''), link.href || '');
           return;
         }
-        var adEl = ev.target.closest('[id*="-video-nc-"], [id*="-smart-flex"], [id*="-sticky-adrail"], [id*="-mobile"], [id*="outstream-player"]');
+        var adEl = ev.target.closest('[id*="-video-nc-"], [id*="-sticky-adrail"], [id*="-mobile"], [id*="outstream-player"]');
         if (adEl) {
           trackAdClick(adEl.id, '');
         }
