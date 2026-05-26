@@ -220,7 +220,7 @@ func (q *Queries) ListModpacks(ctx context.Context) ([]Modpack, error) {
 }
 
 const listSchematicsByModpack = `-- name: ListSchematicsByModpack :many
-SELECT s.id, s.author_id, s.name, s.title, s.description, s.excerpt, s.content, s.postdate, s.modified, s.detected_language, s.featured_image, s.gallery, s.schematic_file, s.video, s.has_dependencies, s.dependencies, s.createmod_version_id, s.minecraft_version_id, s.views, s.downloads, s.block_count, s.dim_x, s.dim_y, s.dim_z, s.materials, s.mods, s.paid, s.featured, s.ai_description, s.moderation_reason, s.scheduled_at, s.deleted, s.deleted_at, s.old_id, s.status, s.type, s.created, s.updated, s.external_url, s.trending_score, s.avg_rating, s.rating_count, s.moderation_state, s.rotation_images, s.short_code FROM schematics s
+SELECT s.id, s.author_id, s.name, s.title, s.description, s.excerpt, s.content, s.postdate, s.modified, s.detected_language, s.featured_image, s.gallery, s.schematic_file, s.video, s.has_dependencies, s.dependencies, s.createmod_version_id, s.minecraft_version_id, s.views, s.downloads, s.block_count, s.dim_x, s.dim_y, s.dim_z, s.materials, s.mods, s.paid, s.featured, s.ai_description, s.moderation_reason, s.scheduled_at, s.deleted, s.deleted_at, s.old_id, s.status, s.type, s.created, s.updated, s.external_url, s.trending_score, s.avg_rating, s.rating_count, s.moderation_state, s.rotation_images, s.short_code, s.rotation_disabled FROM schematics s
 JOIN schematics_modpacks sm ON sm.schematic_id = s.id
 WHERE sm.modpack_id = $1
   AND s.moderation_state IN ('published', 'approved')
@@ -290,6 +290,7 @@ func (q *Queries) ListSchematicsByModpack(ctx context.Context, arg ListSchematic
 			&i.ModerationState,
 			&i.RotationImages,
 			&i.ShortCode,
+			&i.RotationDisabled,
 		); err != nil {
 			return nil, err
 		}
