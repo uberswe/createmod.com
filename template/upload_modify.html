@@ -118,7 +118,7 @@
                     </div>
                     <!-- Wide 300px rail for xl+ (1200px+) -->
                     <div class="ad-rail d-none d-xl-block">
-                        {{if .IsAdmin}}<div id="upload-modify-smart-flex" class="mb-3"></div>{{else}}<div id="upload-modify-video-nc-top-right" class="mb-3"></div>{{end}}
+                        <div id="upload-modify-video-nc-top-right" class="mb-3"></div>
                         <div id="upload-modify-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
                     </div>
                 </div><!-- /d-flex -->
@@ -475,20 +475,7 @@
 
 <!-- Ad Scripts -->
 <script>
-{{ if .IsAdmin }}
-window['nitroAds'].createAd('upload-modify-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,modify,blocks,upload",
-  "targeting": { "pageType": "modify" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{ else }}
+// Video NC ad (desktop only)
 window['nitroAds'].createAd('upload-modify-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,modify,blocks,upload",
@@ -501,7 +488,6 @@ window['nitroAds'].createAd('upload-modify-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{ end }}
 // Narrow ad rail (lg only: 992-1199px)
 window['nitroAds'].createAd('upload-modify-sticky-adrail-lg', {
   "refreshLimit": 10,

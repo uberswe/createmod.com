@@ -65,6 +65,7 @@ type Schematic struct {
 	FeaturedImage      string
 	Gallery            []string
 	RotationImages     []string
+	RotationDisabled   bool
 	ShortCode          string
 	SchematicFile      string
 	Video              string

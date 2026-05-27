@@ -152,6 +152,20 @@
                                     </div>
                                 </div>
 
+                                {{ if .HasRotationImages }}
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="mb-3">
+                                            <label class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="rotation-disabled" {{ if .RotationDisabled }}checked{{ end }}>
+                                                <span class="form-check-label">Disable 360° Viewer</span>
+                                            </label>
+                                            <small class="form-hint d-block text-secondary">When enabled, the 360° rotation viewer will be hidden on the schematic page.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{ end }}
+
                                 <!-- Additional Videos -->
                                 <div class="row mt-4">
                                     <div class="col-12">
@@ -770,6 +784,10 @@
         formData.append("createmod_version", document.getElementById("create-version").value);
         formData.append("minecraft_version", document.getElementById("minecraft-version").value);
         formData.append("video", document.getElementById("video").value);
+        var rotDisabledEl = document.getElementById("rotation-disabled");
+        if (rotDisabledEl) {
+            formData.append("rotation_disabled", rotDisabledEl.checked ? "true" : "false");
+        }
 
         if (!titleElement.value) {
             titleElement.classList.add("is-invalid");
