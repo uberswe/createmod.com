@@ -175,6 +175,8 @@ github.com/riverqueue/river v0.37.1 h1:lZgXooqtGulMrItWFzhEDLeSBWoiJ3ZmKofKkHgBO
 github.com/riverqueue/river v0.37.1/go.mod h1:+5tefuBbaBRWiIEWOIyQexwQwhPVX23tsWgomIAcP88=
 github.com/riverqueue/river v0.38.0 h1:BMj+1RnlsfuTbjJEnkc/Xi4fxojVWnn5bfgoxEFYgBI=
 github.com/riverqueue/river v0.38.0/go.mod h1:RHOG3jOMbWx/VjVwcCUHZrHMINqjOES/Xsjaia6WUZk=
+github.com/riverqueue/river v0.39.0 h1:VsoPJ8KTx7SvWQGWtdLjKxw15IjnYHj3xKb0UA+7200=
+github.com/riverqueue/river v0.39.0/go.mod h1:YeHQKKQDakPapXgNarXUp3o3XGp8fXp5HiBmsn2FOHg=
 github.com/riverqueue/river/riverdriver v0.35.1 h1:zJx8SaQdMP7zVEfd8SDoe8KjVHCXoXoFfzt6v+SJtQg=
 github.com/riverqueue/river/riverdriver v0.35.1/go.mod h1:Y+rQzz0uvh+pQI+mzJh3qgAGGNxestOWgjKa7mob87w=
 github.com/riverqueue/river/riverdriver v0.36.0 h1:47u5Zs1I29KDpPn+5mCtVVeCFXSsI7LFwPZdsD0jEp0=
@@ -183,6 +185,8 @@ github.com/riverqueue/river/riverdriver v0.37.1 h1:IXV2xdS+LvsBvrJK+/GOy9s/a8P+9
 github.com/riverqueue/river/riverdriver v0.37.1/go.mod h1:e7x1Q9gUFpbtKJ6/K4qpGxPT1ayc9NGlknZbwl0Re14=
 github.com/riverqueue/river/riverdriver v0.38.0 h1:+AkjySeW2cufHt3bQjI0ysy7IWr3yCzn/rimfhTEvgA=
 github.com/riverqueue/river/riverdriver v0.38.0/go.mod h1:/WB4HGM8/5Nocyi/mILkG+sywjSMUdQWkMOxZoDXot0=
+github.com/riverqueue/river/riverdriver v0.39.0 h1:Vze5DtNJkxStjIlbDDwtxqk9wB2THn1RKEk5C5CZgFg=
+github.com/riverqueue/river/riverdriver v0.39.0/go.mod h1:gZVyHaUIN6eDbdUu3p2mnS/wxmXYxO2li8YTs5hUA2g=
 github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1 h1:GL+ztwpXgIqBin/3wNzq8h1/H8befxl61/DlLvVCAAY=
 github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1/go.mod h1:5Llh5ONCFsW67dLm5+OelSWTKhliQ989JLbVMwyuN2U=
 github.com/riverqueue/river/riverdriver/riverpgxv5 v0.36.0 h1:le4f8G9cw2gCTGwXpIJcxQrB2IMyusrSAG7C5+pkYp0=
@@ -191,6 +195,8 @@ github.com/riverqueue/river/riverdriver/riverpgxv5 v0.37.1 h1:dja9aBIEZTRk+gX+38
 github.com/riverqueue/river/riverdriver/riverpgxv5 v0.37.1/go.mod h1:48ij+FKRcarxG2fDscCreFLUiDXs+u6Wxjx5/TntKKU=
 github.com/riverqueue/river/riverdriver/riverpgxv5 v0.38.0 h1:74OZQ/NUJidQFwdYfyLJpz+0mIAVL1wfm4HXw/cq2yo=
 github.com/riverqueue/river/riverdriver/riverpgxv5 v0.38.0/go.mod h1:1YXDHlGeZINnogO0kyRwdJGi7D7MHRSB4fWbMvtXzK0=
+github.com/riverqueue/river/riverdriver/riverpgxv5 v0.39.0 h1:pIwYuKUUakIyVlmI2g5J4U/Hf8+e+ih0hGRDH1sA+x8=
+github.com/riverqueue/river/riverdriver/riverpgxv5 v0.39.0/go.mod h1:veubJH/FDM9Q27zLKfSicMVe6OptARFFnHOKvLo47+w=
 github.com/riverqueue/river/rivershared v0.35.1 h1:XEHf7yj35p5Os5r6K08q9BVaAKsvWhP9hfxEr+MwXqg=
 github.com/riverqueue/river/rivershared v0.35.1/go.mod h1:YqVk7bZoojLsx58kyQ6ZU2FHP91HP4whVj6MTCtih/c=
 github.com/riverqueue/river/rivershared v0.36.0 h1:Xd4q1YzgzJrn+opalu/tpuCCchv4uvcCf1CBh/VYk0E=
@@ -199,6 +205,8 @@ github.com/riverqueue/river/rivershared v0.37.1 h1:lvsxy9RAU+f1gRQ8+B4lVylyb184z
 github.com/riverqueue/river/rivershared v0.37.1/go.mod h1:NAJdSXrjUjqdudLGCEm5heD2YRccClI9I9Yq+F3fyQM=
 github.com/riverqueue/river/rivershared v0.38.0 h1:4CEapzm+oIl7TF04vgQGzp+mc5GvYmgWnDTTdDX8nhY=
 github.com/riverqueue/river/rivershared v0.38.0/go.mod h1:F+GbFAVFFphMK69zkGpc3jt2MreS50wfL9GbnIUa1bw=
+github.com/riverqueue/river/rivershared v0.39.0 h1:Ca5fe4Atbvb8cAq09YUzAi/G5ZslthjuYLpAvtNrHTg=
+github.com/riverqueue/river/rivershared v0.39.0/go.mod h1:RtEsdSKHtewWUUVAC6TS+U+8bDiVweiVr483Jtm6epc=
 github.com/riverqueue/river/rivertype v0.35.1 h1:7SfjZ3Hkr7gRjItMHAUzJBAHIqx41yS/4yjVPQVtNfM=
 github.com/riverqueue/river/rivertype v0.35.1/go.mod h1:D1Ad+EaZiaXbQbJcJcfeicXJMBKno0n6UcfKI5Q7DIQ=
 github.com/riverqueue/river/rivertype v0.36.0 h1:+4ZEA+kHYBXesMkB7QqsK3z1twWDX0L9DQ1UZeTc22Y=
@@ -207,6 +215,8 @@ github.com/riverqueue/river/rivertype v0.37.1 h1:XZlhRR+c4RIgTTR//mJUZGAR26FNAHl
 github.com/riverqueue/river/rivertype v0.37.1/go.mod h1:D1Ad+EaZiaXbQbJcJcfeicXJMBKno0n6UcfKI5Q7DIQ=
 github.com/riverqueue/river/rivertype v0.38.0 h1:Tzu0OhRojFhuwcARVz7C2lYG8wE4zH+HdJNynL6foA0=
 github.com/riverqueue/river/rivertype v0.38.0/go.mod h1:D1Ad+EaZiaXbQbJcJcfeicXJMBKno0n6UcfKI5Q7DIQ=
+github.com/riverqueue/river/rivertype v0.39.0 h1:0jHUTRDR1kdzbgXc6lN1B93WxolZyqPvqpYE+r0+R4o=
+github.com/riverqueue/river/rivertype v0.39.0/go.mod h1:D1Ad+EaZiaXbQbJcJcfeicXJMBKno0n6UcfKI5Q7DIQ=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
 github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
