@@ -27,7 +27,7 @@ require (
 	github.com/riverqueue/river v0.38.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.38.0
 	github.com/sabloger/sitemap-generator v1.3.0
-	github.com/sunshineplan/imgconv v1.1.14
+	github.com/sunshineplan/imgconv v1.1.15
 	github.com/sym01/htmlsanitizer v1.1.1
 	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.8.2
@@ -41,7 +41,7 @@ require (
 )
 
 require (
-	github.com/HugoSmits86/nativewebp v1.1.0 // indirect
+	github.com/HugoSmits86/nativewebp v1.3.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
@@ -81,7 +81,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/sunshineplan/pdf v1.0.7 // indirect
+	github.com/sunshineplan/pdf v1.0.8 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

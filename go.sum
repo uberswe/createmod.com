@@ -2,6 +2,8 @@ github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/HugoSmits86/nativewebp v1.1.0 h1:4V8ftAa8nY7F4I2qof7A74qf2Fjnl3zSdllpnwpCG+E=
 github.com/HugoSmits86/nativewebp v1.1.0/go.mod h1:YNQuWenlVmSUUASVNhTDwf4d7FwYQGbGhklC8p72Vr8=
+github.com/HugoSmits86/nativewebp v1.3.0 h1:n1egtEzSV4KwFtealr7dzdYq1wI/uj/bOQ/QcTcIyVE=
+github.com/HugoSmits86/nativewebp v1.3.0/go.mod h1:YNQuWenlVmSUUASVNhTDwf4d7FwYQGbGhklC8p72Vr8=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Tnze/go-mc v1.20.2 h1:arHCE/WxLCxY73C/4ZNLdOymRYtdwoXE05ohB7HVN6Q=
@@ -226,8 +228,12 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/sunshineplan/imgconv v1.1.14 h1:XBdC93R/5w6piUIoNZi5x011RDrkNRVv6ej4PdsoUQ0=
 github.com/sunshineplan/imgconv v1.1.14/go.mod h1:0E6bQ6wSjHLjY+H4mU5erwyEunx4TTVbC6pCY6q4AOs=
+github.com/sunshineplan/imgconv v1.1.15 h1:LhAlqt8WULFiyVsoU2up/ROoSv4i06reIaYDA4h7/Hw=
+github.com/sunshineplan/imgconv v1.1.15/go.mod h1:8HqFvGWaOCMgy1wOKCUViyeGw3VmP6BssJB2UX7I7ME=
 github.com/sunshineplan/pdf v1.0.7 h1:62xlc079jh4tGLDjiihyyhwVFkn0IsxLyDpHplbG9Ew=
 github.com/sunshineplan/pdf v1.0.7/go.mod h1:QsEmZCWBE3uFK8PCrM0pua1WDWLNU77YusiDEcY56OQ=
+github.com/sunshineplan/pdf v1.0.8 h1:5/HWBjgPX/3WGe+GHkC0KxUS43pd/jqfZ0F+u9pDiG8=
+github.com/sunshineplan/pdf v1.0.8/go.mod h1:pvucuW/bqRdicCSIm3RNjnyYXkNFXVIvJ8ePLCeK2s8=
 github.com/sym01/htmlsanitizer v1.1.1 h1:Ij/6oqXYeChzR7nUU1nvKnoNFBHgUohkR9ZeXLHgJRw=
 github.com/sym01/htmlsanitizer v1.1.1/go.mod h1:8etY+ZAXvm2ZbeGZbWZDSYiPoi8SX2AUavMvccUU+hA=
 github.com/tidwall/gjson v1.14.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
