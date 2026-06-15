@@ -444,8 +444,10 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 					if allowedImageExts[ext] {
 						data, readErr := io.ReadAll(file)
 						if readErr == nil {
-							data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
-							if storageSvc != nil {
+							data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(header.Filename))
+							if convErr != nil {
+								slog.Warn("make-public: skipping oversized featured image", "error", convErr, "id", schematicID)
+							} else if storageSvc != nil {
 								if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 									slog.Error("make-public: failed to upload featured image", "error", uploadErr)
 								} else {
@@ -499,7 +501,11 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 					if readErr != nil {
 						continue
 					}
-					data, filename, contentType := convertToWebP(data, sanitizeFilename(fh.Filename))
+					data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(fh.Filename))
+					if convErr != nil {
+						slog.Warn("make-public: skipping oversized gallery image", "error", convErr, "id", schematicID, "file", fh.Filename)
+						continue
+					}
 					if storageSvc != nil {
 						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 							slog.Error("make-public: failed to upload gallery image", "error", uploadErr)

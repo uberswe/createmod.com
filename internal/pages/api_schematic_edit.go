@@ -10,6 +10,7 @@ import (
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"createmod/internal/server"
+	"github.com/disintegration/imaging"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/sunshineplan/imgconv"
 	"github.com/sym01/htmlsanitizer"
@@ -254,7 +256,10 @@ func SchematicUpdateHandler(
 			}
 
 			oldFeatured := schem.FeaturedImage
-			data, filename, contentType := convertToWebP(data, sanitizeFilename(header.Filename))
+			data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(header.Filename))
+			if errors.Is(convErr, errImageTooLarge) {
+				return e.BadRequestError("featured image resolution is too large", nil)
+			}
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 					slog.Error("schematic update: failed to upload featured image to S3", "error", uploadErr, "id", schematicID)
@@ -349,7 +354,11 @@ func SchematicUpdateHandler(
 						continue
 					}
 
-					data, filename, contentType := convertToWebP(data, sanitizeFilename(fh.Filename))
+					data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(fh.Filename))
+					if convErr != nil {
+						slog.Warn("schematic update: skipping oversized gallery image", "error", convErr, "id", schematicID, "file", fh.Filename)
+						continue
+					}
 					if storageSvc != nil {
 						if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 							slog.Error("schematic update: failed to upload gallery image to S3", "error", uploadErr, "id", schematicID)
@@ -483,18 +492,52 @@ func SchematicDeleteHandler(
 	}
 }
 
-// convertToWebP converts image data to WebP format. GIF files are skipped (may be animated).
-// Returns the (possibly converted) data, filename, and content type.
-// Falls back to the original if conversion fails.
-func convertToWebP(data []byte, filename string) ([]byte, string, string) {
+const (
+	// maxDecodePixels is the hard ceiling on image resolution we will decode.
+	// Decoding allocates roughly width*height*4 bytes of uncompressed pixels, so
+	// a small compressed file (a "decompression bomb") can expand to gigabytes
+	// and OOM the pod. Anything above this is rejected before the full decode.
+	// 60 MP (~9500x6300) comfortably covers 8K screenshots while capping a single
+	// decode at ~240 MB.
+	maxDecodePixels = 60_000_000
+	// maxStoredDimension bounds the longest edge of stored images. Larger images
+	// are downscaled before WebP encoding so we don't keep needlessly huge files.
+	maxStoredDimension = 4096
+)
+
+// errImageTooLarge is returned when an image's pixel dimensions exceed
+// maxDecodePixels. Callers should skip/reject the image rather than decode it.
+var errImageTooLarge = errors.New("image resolution too large")
+
+// convertToWebP converts image data to WebP format. GIF and WebP files are
+// passed through unchanged (GIF may be animated; WebP is already the target).
+// Returns the (possibly converted) data, filename, and content type. Falls back
+// to the original bytes if conversion fails. Returns errImageTooLarge if the
+// image exceeds maxDecodePixels, in which case the data return is nil.
+func convertToWebP(data []byte, filename string) ([]byte, string, string, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
+
+	// Cheap, header-only dimension read so we can reject decompression bombs
+	// before allocating the full bitmap. DecodeConfig may fail for formats we
+	// don't re-encode (e.g. WebP); in that case we fall through to passthrough.
+	if cfg, _, cfgErr := imgconv.DecodeConfig(bytes.NewReader(data)); cfgErr == nil {
+		if int64(cfg.Width)*int64(cfg.Height) > maxDecodePixels {
+			return nil, "", "", errImageTooLarge
+		}
+	}
+
 	if ext == ".gif" || ext == ".webp" {
-		return data, filename, http.DetectContentType(data)
+		return data, filename, http.DetectContentType(data), nil
 	}
 
 	img, err := imgconv.Decode(bytes.NewReader(data))
 	if err != nil {
-		return data, filename, http.DetectContentType(data)
+		return data, filename, http.DetectContentType(data), nil
+	}
+
+	// Downscale oversized images (preserving aspect ratio) before encoding.
+	if b := img.Bounds(); b.Dx() > maxStoredDimension || b.Dy() > maxStoredDimension {
+		img = imaging.Fit(img, maxStoredDimension, maxStoredDimension, imaging.Lanczos)
 	}
 
 	var out bytes.Buffer
@@ -503,12 +546,12 @@ func convertToWebP(data []byte, filename string) ([]byte, string, string) {
 		Format:       imgconv.WEBP,
 		EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
 	}); err != nil {
-		return data, filename, http.DetectContentType(data)
+		return data, filename, http.DetectContentType(data), nil
 	}
 	_ = bw.Flush()
 
 	baseName := strings.TrimSuffix(filename, filepath.Ext(filename))
-	return out.Bytes(), baseName + ".webp", "image/webp"
+	return out.Bytes(), baseName + ".webp", "image/webp", nil
 }
 
 // buildSchematicSnapshot captures the current state of a schematic for version history.
