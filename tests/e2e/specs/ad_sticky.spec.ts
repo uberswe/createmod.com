@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 // Test that the ad rail CSS is correctly applied so NitroPay sticky-stack works.
 // The outer .ad-rail uses align-self:stretch for full height,
 // while only the [id*="sticky-adrail"] child uses position:sticky to stay
-// visible during scroll. Preceding slots (e.g. the video-nc ad) and trailing
-// slots (e.g. kin-tile containers) scroll with the page.
+// visible during scroll. Preceding slots (e.g. the video-nc ad) scroll with
+// the page.
 // Uses /explore because it always renders .ad-rail (the homepage does not have one).
 // In CI no ad scripts load, so we verify computed styles rather than visible content.
 

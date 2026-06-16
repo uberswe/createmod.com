@@ -63,7 +63,6 @@ window.setTheme=function(theme){
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project styles -->
     <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
-    <link rel="stylesheet" href="/assets/x/kin-tiles.css?v={{ AssetVer }}" />
     <!-- Editor (Tiptap) -->
     <link rel="stylesheet" href="/assets/x/editor.css?v={{ AssetVer }}" />
     <script src="/assets/x/editor.js?v={{ AssetVer }}" defer></script>
@@ -144,11 +143,6 @@ window.setTheme=function(theme){
         } catch(e) {}
       }
       document.addEventListener('click', function(ev) {
-        var link = ev.target.closest('a.kin-tile');
-        if (link) {
-          trackAdClick('kin-' + (link.hostname || 'unknown').replace(/^www\./, ''), link.href || '');
-          return;
-        }
         var adEl = ev.target.closest('[id*="-video-nc-"], [id*="-smart-flex"], [id*="-sticky-adrail"], [id*="-mobile"], [id*="outstream-player"]');
         if (adEl) {
           trackAdClick(adEl.id, '');
@@ -268,6 +262,9 @@ window.setTheme=function(theme){
           document.body.classList.toggle('sidebar-pinned', expanded);
           var label = document.getElementById('sidebar-toggle-label');
           if (label) label.textContent = expanded ? 'Collapse' : 'Expand';
+        });
+        document.addEventListener('htmx:pushedIntoHistory', function(){
+          window.scrollTo(0, 0);
         });
       }
     } catch(_) {}

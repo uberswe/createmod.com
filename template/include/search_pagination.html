@@ -2,6 +2,11 @@
 {{ if or .HasPrev .HasNext }}
 <nav class="d-flex justify-content-center mt-4" aria-label="Search results pagination">
     <ul class="pagination mb-0">
+        {{ if gt .Page 1 }}
+        <li class="page-item">
+            <a class="page-link" href="{{ .FirstURL }}" hx-get="{{ .FirstURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true">{{ T .Language "First" }}</a>
+        </li>
+        {{ end }}
         {{ if .HasPrev }}
         <li class="page-item">
             <a class="page-link" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true">{{ T .Language "Previous" }}</a>
@@ -9,13 +14,18 @@
         {{ else }}
         <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
         {{ end }}
-        <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 0 }} / {{ .TotalPages }}{{ end }}</span></li>
+        <li class="page-item"><span class="page-link page-jump-trigger" data-page-jump data-current-page="{{ .Page }}" data-total-pages="{{ .TotalPages }}" data-page-param="p">{{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 0 }} / {{ .TotalPages }}{{ end }}</span></li>
         {{ if .HasNext }}
         <li class="page-item">
             <a class="page-link" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true">{{ T .Language "Next" }}</a>
         </li>
         {{ else }}
         <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>
+        {{ end }}
+        {{ if and (gt .TotalPages 0) (lt .Page .TotalPages) }}
+        <li class="page-item">
+            <a class="page-link" href="{{ .LastURL }}" hx-get="{{ .LastURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true">{{ T .Language "Last" }}</a>
+        </li>
         {{ end }}
     </ul>
 </nav>

@@ -17,6 +17,11 @@
                     <div id="schematics-mobile" class="d-xl-none mt-3 mb-3 text-center"></div>
                     <div class="d-flex justify-content-center mt-4">
                         <ul class="pagination">
+                            {{ if gt .Page 1 }}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ .FirstURL }}" hx-get="{{ .FirstURL }}" hx-target="#schematics-results" hx-select="#schematics-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "First" }}</a>
+                            </li>
+                            {{ end }}
                             {{ if .HasPrev }}
                             <li class="page-item">
                                 <a class="page-link" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#schematics-results" hx-select="#schematics-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "Previous" }}</a>
@@ -24,13 +29,18 @@
                             {{ else }}
                             <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
                             {{ end }}
-                            <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 0 }} / {{ .TotalPages }}{{ end }}</span></li>
+                            <li class="page-item"><span class="page-link page-jump-trigger" data-page-jump data-current-page="{{ .Page }}" data-total-pages="{{ .TotalPages }}" data-page-param="p">{{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 0 }} / {{ .TotalPages }}{{ end }}</span></li>
                             {{ if .HasNext }}
                             <li class="page-item">
                                 <a class="page-link" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#schematics-results" hx-select="#schematics-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "Next" }}</a>
                             </li>
                             {{ else }}
                             <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>
+                            {{ end }}
+                            {{ if and (gt .TotalPages 0) (lt .Page .TotalPages) }}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ .LastURL }}" hx-get="{{ .LastURL }}" hx-target="#schematics-results" hx-select="#schematics-results" hx-swap="outerHTML" hx-push-url="true">{{ T .Language "Last" }}</a>
+                            </li>
                             {{ end }}
                         </ul>
                     </div>
@@ -46,7 +56,7 @@
                 <!-- Ad Rail (desktop only) -->
                 <div class="ad-rail d-none d-xl-block">
                     {{if .IsAdmin}}<div id="schematics-smart-flex" class="mb-3"></div>{{else}}<div id="schematics-video-nc-top-right" class="mb-3"></div>{{end}}
-                    <div id="schematics-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
+                    <div id="schematics-sticky-adrail" class="mb-3"></div>
                 </div>
                 </div>
             </div>

@@ -1,6 +1,6 @@
 {{define "schematic_card_featured.html"}}
 <div class="col-md-4 col-12 mb-3">
-  <a href="/schematics/{{ .Name }}" class="d-block text-decoration-none">
+  <a href="{{ LangURL .Language "/schematics" }}/{{ .Name }}" class="d-block text-decoration-none">
     <div class="card card-featured card-hover-lift overflow-hidden">
       <div class="ratio ratio-16x9">
         <img loading="lazy" src="{{ PlaceholderImg .ID }}" alt="" class="object-fit-cover" width="640" height="360" style="z-index:0;">

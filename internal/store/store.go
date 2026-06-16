@@ -1076,7 +1076,7 @@ type AdClickStat struct {
 	Count  int64
 }
 
-// AdClickStore tracks clicks on ad units (NitroAds and kin-tiles).
+// AdClickStore tracks clicks on ad units (NitroAds).
 type AdClickStore interface {
 	RecordClick(ctx context.Context, adUnit, dest string) error
 	ListDaily(ctx context.Context) ([]AdClickStat, error)

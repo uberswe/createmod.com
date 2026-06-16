@@ -73,10 +73,12 @@
               {{ if not .Items }}
               <div class="text-secondary text-center py-4">{{ T .Language "No collections found." }}</div>
               {{ end }}
-              <div class="d-flex justify-content-between align-items-center mt-4">
+              <div class="d-flex justify-content-center align-items-center gap-2 mt-4">
+                <a {{ if gt .Page 1 }}href="{{ .FirstURL }}" hx-get="{{ .FirstURL }}" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "First" }}</a>
                 <a {{ if .HasPrev }}href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Previous" }}</a>
-                <div class="text-secondary">{{ T .Language "Page" }} {{ .Page }}</div>
+                <div class="text-secondary page-jump-trigger" data-page-jump data-current-page="{{ .Page }}" data-total-pages="{{ .TotalPages }}" data-page-param="p">{{ T .Language "Page" }} {{ .Page }}{{ if gt .TotalPages 1 }} / {{ .TotalPages }}{{ end }}</div>
                 <a {{ if .HasNext }}href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
+                <a {{ if and (gt .TotalPages 0) (lt .Page .TotalPages) }}href="{{ .LastURL }}" hx-get="{{ .LastURL }}" hx-target="#collections-results" hx-select="#collections-results" hx-swap="outerHTML" hx-push-url="true" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Last" }}</a>
               </div>
             </div>
             <!-- Mobile ad (below content on smaller screens) -->
@@ -88,7 +90,7 @@
           </div>
           <div class="ad-rail d-none d-xl-block">
             {{if .IsAdmin}}<div id="collections-smart-flex" class="mb-3"></div>{{else}}<div id="collections-video-nc-top-right" class="mb-3"></div>{{end}}
-            <div id="collections-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
+            <div id="collections-sticky-adrail" class="mb-3"></div>
           </div>
         </div>
       </div>

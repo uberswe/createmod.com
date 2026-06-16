@@ -64,6 +64,8 @@ type ModDetailData struct {
 	HasNext    bool
 	PrevURL    string
 	NextURL    string
+	FirstURL   string
+	LastURL    string
 	TotalCount int
 	TotalPages int
 
@@ -424,6 +426,8 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 			HasNext:           nextURL != "",
 			PrevURL:           prevURL,
 			NextURL:           nextURL,
+			FirstURL:          buildPageURL(1),
+			LastURL:           func() string { if totalPages > 0 { return buildPageURL(totalPages) }; return "" }(),
 			TotalCount:        total,
 			TotalPages:        totalPages,
 			Term:              term,
