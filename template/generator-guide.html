@@ -151,19 +151,11 @@
   }
 
   window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
-  {{ if .IsAdmin }}
-  window['nitroAds'].createAd('guide-smart-flex', {
-    "format": "smart-flex",
-    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
-    "mediaQuery": "(min-width: 1200px)"
-  });
-  {{ else }}
   window['nitroAds'].createAd('guide-video-nc', {
     "format": "video-nc",
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 1200px)"
   });
-  {{ end }}
   window['nitroAds'].createAd('guide-sticky-adrail-lg', {
     "refreshLimit": 10,
     "refreshTime": 45,
@@ -177,7 +169,6 @@
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  {{ if not .IsAdmin }}
   var guideVideoEl = document.getElementById('guide-video-nc');
   var guideAdRail = guideVideoEl && guideVideoEl.closest('.guide-ad-rail');
   var guideStickyTop = 110 + 200 + 16;
@@ -189,7 +180,6 @@
     new ResizeObserver(updateGuideOffset).observe(guideVideoEl);
     updateGuideOffset();
   }
-  {{ end }}
   window['nitroAds'].createAd('guide-sticky-adrail', {
     "refreshVisibleOnly": true,
     "format": "sticky-stack",

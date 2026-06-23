@@ -102,20 +102,6 @@
 
 <!-- Ad Scripts -->
 <script>
-{{if .IsAdmin}}
-window['nitroAds'].createAd('collections-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,collections",
-  "targeting": { "pageType": "collections" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{else}}
 window['nitroAds'].createAd('collections-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,collections",
@@ -128,7 +114,6 @@ window['nitroAds'].createAd('collections-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{end}}
 window['nitroAds'].createAd('collections-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,

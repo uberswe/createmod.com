@@ -35,6 +35,8 @@ type EditSchematicData struct {
 	Modpacks           []store.Modpack
 	AllModpacks        []store.Modpack
 	RedditLinks        []store.RedditLink
+	HasRotationImages  bool
+	RotationDisabled   bool
 }
 
 type SchematicTagWithSelected struct {
@@ -103,6 +105,9 @@ func EditSchematicHandler(cacheService *cache.Service, registry *server.Registry
 				})
 			}
 		}
+
+		d.HasRotationImages = len(storeSchematic.RotationImages) > 0
+		d.RotationDisabled = storeSchematic.RotationDisabled
 
 		if additionalFiles, afErr := appStore.SchematicFiles.ListBySchematicID(context.Background(), storeSchematic.ID); afErr == nil {
 			d.AdditionalFiles = additionalFiles

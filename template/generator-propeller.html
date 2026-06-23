@@ -283,19 +283,11 @@
 
   // Ads
   window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
-  {{ if .IsAdmin }}
-  window['nitroAds'].createAd('gen-smart-flex', {
-    "format": "smart-flex",
-    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
-    "mediaQuery": "(min-width: 1200px)"
-  });
-  {{ else }}
   window['nitroAds'].createAd('gen-video-nc', {
     "format": "video-nc",
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 1200px)"
   });
-  {{ end }}
   window['nitroAds'].createAd('gen-sticky-adrail-lg', {
     "refreshLimit": 10,
     "refreshTime": 45,
@@ -309,7 +301,6 @@
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  {{ if not .IsAdmin }}
   var videoNcEl = document.getElementById('gen-video-nc');
   var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
   var stickyStackTop = 110 + 200 + 16;
@@ -321,7 +312,6 @@
     new ResizeObserver(updateOffset).observe(videoNcEl);
     updateOffset();
   }
-  {{ end }}
   window['nitroAds'].createAd('gen-sticky-adrail', {
     "refreshVisibleOnly": true,
     "format": "sticky-stack",

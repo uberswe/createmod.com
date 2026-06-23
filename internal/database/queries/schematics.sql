@@ -74,13 +74,13 @@ INSERT INTO schematics (
     postdate, detected_language, featured_image, gallery, schematic_file,
     video, has_dependencies, dependencies, createmod_version_id,
     minecraft_version_id, block_count, dim_x, dim_y, dim_z,
-    materials, mods, paid, moderation_state, type, status, rotation_images, short_code
+    materials, mods, paid, moderation_state, type, status, rotation_images, short_code, rotation_disabled
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     $8, $9, $10, $11, $12,
     $13, $14, $15, $16,
     $17, $18, $19, $20, $21,
-    $22, $23, $24, $25, $26, $27, $28, $29
+    $22, $23, $24, $25, $26, $27, $28, $29, $30
 )
 RETURNING *;
 
@@ -113,7 +113,8 @@ UPDATE schematics SET
     external_url = COALESCE(sqlc.narg('external_url'), external_url),
     schematic_file = COALESCE(sqlc.narg('schematic_file'), schematic_file),
     short_code = COALESCE(sqlc.narg('short_code'), short_code),
-    created = COALESCE(sqlc.narg('created'), created)
+    created = COALESCE(sqlc.narg('created'), created),
+    rotation_disabled = COALESCE(sqlc.narg('rotation_disabled'), rotation_disabled)
 WHERE id = $1
 RETURNING *;
 

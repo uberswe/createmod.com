@@ -105,20 +105,6 @@
 {{template "foot.html" .}}
 {{if not .IsContributor}}
 <script>
-{{if .IsAdmin}}
-window['nitroAds'].createAd('guideshow-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,guide,tutorial",
-  "targeting": { "pageType": "guide" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{else}}
 window['nitroAds'].createAd('guideshow-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,guide,tutorial",
@@ -131,7 +117,6 @@ window['nitroAds'].createAd('guideshow-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{end}}
 window['nitroAds'].createAd('guideshow-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,

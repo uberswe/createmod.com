@@ -381,6 +381,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if paid {
 			externalURL = strings.TrimSpace(e.Request.FormValue("external_url"))
 		}
+		rotationDisabled := e.Request.FormValue("rotation_disabled") == "true"
 
 		// Scheduled publish
 		var scheduledAt *time.Time
@@ -622,6 +623,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			FeaturedImage:      featuredFilename,
 			Gallery:            galleryFilenames,
 			RotationImages:     rotationFilenames,
+			RotationDisabled:   rotationDisabled,
 			SchematicFile:      entry.Filename,
 			Video:              video,
 			CreatemodVersionID: createmodVersionID,

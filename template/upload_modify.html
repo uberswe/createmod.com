@@ -475,20 +475,7 @@
 
 <!-- Ad Scripts -->
 <script>
-{{ if .IsAdmin }}
-window['nitroAds'].createAd('upload-modify-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,modify,blocks,upload",
-  "targeting": { "pageType": "modify" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{ else }}
+// Video NC ad (desktop only)
 window['nitroAds'].createAd('upload-modify-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,modify,blocks,upload",
@@ -501,7 +488,6 @@ window['nitroAds'].createAd('upload-modify-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{ end }}
 // Narrow ad rail (lg only: 992-1199px)
 window['nitroAds'].createAd('upload-modify-sticky-adrail-lg', {
   "refreshLimit": 10,

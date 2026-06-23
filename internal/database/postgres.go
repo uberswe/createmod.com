@@ -103,6 +103,7 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		FeaturedImage:      s.FeaturedImage,
 		Gallery:            s.Gallery,
 		RotationImages:     s.RotationImages,
+		RotationDisabled:   s.RotationDisabled,
 		ShortCode:          s.ShortCode,
 		SchematicFile:      s.SchematicFile,
 		Video:              s.Video,
@@ -702,6 +703,7 @@ func (ps *PostgresStore) Create(ctx context.Context, s *store.Schematic) error {
 		FeaturedImage:      s.FeaturedImage,
 		Gallery:            s.Gallery,
 		RotationImages:     s.RotationImages,
+		RotationDisabled:   s.RotationDisabled,
 		ShortCode:          s.ShortCode,
 		SchematicFile:      s.SchematicFile,
 		Video:              s.Video,
@@ -758,6 +760,7 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		ExternalUrl:        ptrStr(s.ExternalURL),
 		SchematicFile:      ptrStr(s.SchematicFile),
 		Created:            toPgTimestamptz(s.CreatedOverride),
+		RotationDisabled:   ptrBool(s.RotationDisabled),
 	})
 	return err
 }

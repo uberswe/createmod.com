@@ -66,20 +66,6 @@
 </div>
 <script>
 if (window['nitroAds']) {
-{{if .IsAdmin}}
-  window['nitroAds'].createAd('videos-smart-flex', {
-    "format": "smart-flex",
-    "keywords": "minecraft,create-mod,videos",
-    "targeting": { "pageType": "videos" },
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-right"
-    },
-    "mediaQuery": "(min-width: 1200px)"
-  });
-  {{else}}
   window['nitroAds'].createAd('videos-video-nc-top-right', {
     "format": "video-nc",
     "keywords": "minecraft,create-mod,videos",
@@ -92,7 +78,6 @@ if (window['nitroAds']) {
     },
     "mediaQuery": "(min-width: 1200px)"
   });
-  {{end}}
   window['nitroAds'].createAd('videos-sticky-adrail', {
     "refreshLimit": 10,
     "refreshTime": 45,

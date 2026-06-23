@@ -7,9 +7,9 @@ require (
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/disintegration/imaging v1.6.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-ego/gse v1.0.2
-	github.com/go-webauthn/webauthn v0.17.3
+	github.com/go-webauthn/webauthn v0.17.4
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
@@ -51,7 +51,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/go-webauthn/x v0.2.5 // indirect
+	github.com/go-webauthn/x v0.2.6 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect

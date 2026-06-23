@@ -254,22 +254,9 @@
         </main>
         {{template "footer.html" .}}
         <script>
+            // Video NC ad (desktop only)
             var searchKw = 'minecraft,create-mod,search,schematics';
             var searchTarget = { "pageType": "search" };
-            {{ if .IsAdmin }}
-            window['nitroAds'].createAd('search-smart-flex', {
-                "format": "smart-flex",
-                "keywords": searchKw,
-                "targeting": searchTarget,
-                "report": {
-                    "enabled": true,
-                    "icon": true,
-                    "wording": "Report Ad",
-                    "position": "top-right"
-                },
-                "mediaQuery": "(min-width: 1200px)"
-            });
-            {{ else }}
             window['nitroAds'].createAd('search-video-nc-top-right', {
                 "format": "video-nc",
                 "keywords": searchKw,
@@ -282,7 +269,6 @@
                 },
                 "mediaQuery": "(min-width: 1200px)"
             });
-            {{ end }}
             window['nitroAds'].createAd('search-sticky-adrail-top', {
                 "refreshTime": 45,
                 "refreshVisibleOnly": true,

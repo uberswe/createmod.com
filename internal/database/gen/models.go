@@ -446,6 +446,7 @@ type Schematic struct {
 	ModerationState    string             `json:"moderation_state"`
 	RotationImages     []string           `json:"rotation_images"`
 	ShortCode          string             `json:"short_code"`
+	RotationDisabled   bool               `json:"rotation_disabled"`
 }
 
 type SchematicCategory struct {

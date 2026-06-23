@@ -87,6 +87,9 @@ func SchematicUpdateHandler(
 		removeImagesRaw := strings.TrimSpace(e.Request.FormValue("remove_images"))
 		removeFeaturedImage := e.Request.FormValue("remove_featured_image") == "true"
 		setFeaturedFromGallery := strings.TrimSpace(e.Request.FormValue("set_featured_from_gallery"))
+		if _, ok := e.Request.Form["rotation_disabled"]; ok {
+			schem.RotationDisabled = e.Request.FormValue("rotation_disabled") == "true"
+		}
 
 		// --- Apply text field updates ---
 		if title != "" {
