@@ -139,8 +139,8 @@
             <div id="collshow-sticky-adrail-lg" class="mb-3"></div>
           </div>
           <div class="ad-rail d-none d-xl-block">
-            <div id="collshow-video-nc-top-right" class="mb-3"></div>
-            <div id="collshow-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
+            {{if .IsAdmin}}<div id="collshow-smart-flex" class="mb-3"></div>{{else}}<div id="collshow-video-nc-top-right" class="mb-3"></div>{{end}}
+            <div id="collshow-sticky-adrail" class="mb-3"></div>
           </div>
         </div><!-- /d-flex -->
       </div>

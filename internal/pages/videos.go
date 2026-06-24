@@ -5,7 +5,6 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/store"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -36,11 +35,14 @@ type VideosData struct {
 	Videos   []VideoItem
 	Page     int
 	PageSize int
-	HasPrev  bool
-	HasNext  bool
-	PrevURL  string
-	NextURL  string
-	Query    string
+	HasPrev    bool
+	HasNext    bool
+	PrevURL    string
+	NextURL    string
+	FirstURL   string
+	LastURL    string
+	TotalPages int
+	Query      string
 }
 
 const videosCacheKey = "videos:trending"
@@ -285,25 +287,42 @@ func VideosHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		hasPrev := page > 1
 		hasNext := len(items) > end
 
+		totalPages := (len(items) + pageSize - 1) / pageSize
+		if totalPages < 1 {
+			totalPages = 1
+		}
+
+		buildVideosURL := func(p int) string {
+			u := "/videos"
+			sep := "?"
+			if p > 1 {
+				u += sep + "p=" + strconv.Itoa(p)
+				sep = "&"
+			}
+			if q != "" {
+				u += sep + "q=" + url.QueryEscape(q)
+			}
+			return u
+		}
+
 		d := VideosData{
-			Videos:   paged,
-			Page:     page,
-			PageSize: pageSize,
-			HasPrev:  hasPrev,
-			HasNext:  hasNext,
-			Query:    q,
+			Videos:     paged,
+			Page:       page,
+			PageSize:   pageSize,
+			HasPrev:    hasPrev,
+			HasNext:    hasNext,
+			TotalPages: totalPages,
+			Query:      q,
 		}
 		if d.HasPrev {
-			d.PrevURL = fmt.Sprintf("/videos?p=%d", page-1)
-			if q != "" {
-				d.PrevURL += "&q=" + url.QueryEscape(q)
-			}
+			d.PrevURL = buildVideosURL(page - 1)
 		}
 		if d.HasNext {
-			d.NextURL = fmt.Sprintf("/videos?p=%d", page+1)
-			if q != "" {
-				d.NextURL += "&q=" + url.QueryEscape(q)
-			}
+			d.NextURL = buildVideosURL(page + 1)
+		}
+		d.FirstURL = buildVideosURL(1)
+		if totalPages > 1 {
+			d.LastURL = buildVideosURL(totalPages)
 		}
 
 		d.Populate(e)

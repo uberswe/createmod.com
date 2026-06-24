@@ -30,6 +30,9 @@ type LivestreamsData struct {
 
 func LivestreamsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		if redirected, err := RedirectToPreferredLang(e); redirected || err != nil {
+			return err
+		}
 		d := LivestreamsData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Live Streams")

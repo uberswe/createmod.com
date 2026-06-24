@@ -392,8 +392,8 @@
 
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
-                        <div id="upload-preview-video-nc-top-right" class="mb-3"></div>
-                        <div id="upload-preview-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
+                        {{if .IsAdmin}}<div id="upload-preview-smart-flex" class="mb-3"></div>{{else}}<div id="upload-preview-video-nc-top-right" class="mb-3"></div>{{end}}
+                        <div id="upload-preview-sticky-adrail" class="mb-3"></div>
                     </div>
                 </div>
             </div>

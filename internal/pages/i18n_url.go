@@ -102,6 +102,40 @@ func StripLangPrefix(urlPath string) (lang string, stripped string) {
 	return "", urlPath
 }
 
+// RedirectToPreferredLang issues an uncacheable redirect to the language-prefixed
+// URL when a request for a bare (unprefixed) path carries a non-English cm_lang
+// cookie. This keeps every cacheable URL bound to a single language — bare paths
+// are canonical English, "/<prefix>/…" paths are that language — so a shared/CDN
+// cache can never serve one visitor's language to another (Cloudflare ignores
+// Vary: Cookie, so language must live in the URL, not a cookie).
+//
+// Returns true if a redirect was written; the caller must then return without
+// rendering. Only GET/HEAD navigations are redirected. Requests already on a
+// language-prefixed path (X-Createmod-Lang set by LangPrefixHandler) and English
+// visitors are left to render normally.
+func RedirectToPreferredLang(e *server.RequestEvent) (bool, error) {
+	r := e.Request
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return false, nil
+	}
+	if r.Header.Get("X-Createmod-Lang") != "" {
+		return false, nil // already on a language-prefixed URL
+	}
+	lang := preferredLanguageFromRequest(r)
+	if lang == "" || lang == "en" {
+		return false, nil // English is canonical for bare paths
+	}
+	target := PrefixedPath(lang, r.URL.Path)
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	// The response depends on the cm_lang cookie, so it must never be stored by a
+	// shared cache and handed to a visitor with a different cookie.
+	e.Response.Header().Set("Cache-Control", "private, no-store")
+	e.Response.Header().Set("Vary", "Cookie")
+	return true, e.Redirect(http.StatusFound, target)
+}
+
 // LangRedirectURL builds a language-prefixed redirect target using the
 // language detected from the request context (X-Createmod-Lang header).
 func LangRedirectURL(e *server.RequestEvent, path string) string {

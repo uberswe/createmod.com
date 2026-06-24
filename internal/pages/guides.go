@@ -33,11 +33,14 @@ type GuidesData struct {
 	Items    []GuideItem
 	Page     int
 	PageSize int
-	HasPrev  bool
-	HasNext  bool
-	PrevURL  string
-	NextURL  string
-	Query    string
+	HasPrev    bool
+	HasNext    bool
+	PrevURL    string
+	NextURL    string
+	FirstURL   string
+	LastURL    string
+	TotalPages int
+	Query      string
 }
 
 // GuidesHandler renders a simple listing of guides with pagination and optional search by title.
@@ -101,25 +104,42 @@ func GuidesHandler(registry *server.Registry, cacheService *cache.Service, outSe
 		hasPrev := page > 1
 		hasNext := len(items) > end
 
+		totalPages := (len(items) + pageSize - 1) / pageSize
+		if totalPages < 1 {
+			totalPages = 1
+		}
+
+		buildGuidesURL := func(p int) string {
+			u := "/guides"
+			sep := "?"
+			if p > 1 {
+				u += sep + "p=" + strconv.Itoa(p)
+				sep = "&"
+			}
+			if q != "" {
+				u += sep + "q=" + url.QueryEscape(q)
+			}
+			return u
+		}
+
 		d := GuidesData{
-			Items:    paged,
-			Page:     page,
-			PageSize: pageSize,
-			HasPrev:  hasPrev,
-			HasNext:  hasNext,
-			Query:    q,
+			Items:      paged,
+			Page:       page,
+			PageSize:   pageSize,
+			HasPrev:    hasPrev,
+			HasNext:    hasNext,
+			TotalPages: totalPages,
+			Query:      q,
 		}
 		if d.HasPrev {
-			d.PrevURL = "/guides?p=" + strconv.Itoa(page-1)
-			if q != "" {
-				d.PrevURL += "&q=" + url.QueryEscape(q)
-			}
+			d.PrevURL = buildGuidesURL(page - 1)
 		}
 		if d.HasNext {
-			d.NextURL = "/guides?p=" + strconv.Itoa(page+1)
-			if q != "" {
-				d.NextURL += "&q=" + url.QueryEscape(q)
-			}
+			d.NextURL = buildGuidesURL(page + 1)
+		}
+		d.FirstURL = buildGuidesURL(1)
+		if totalPages > 1 {
+			d.LastURL = buildGuidesURL(totalPages)
 		}
 
 		d.PopulateWithStore(e, appStore)

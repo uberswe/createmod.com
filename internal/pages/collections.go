@@ -41,12 +41,15 @@ type CollectionsData struct {
 	Tab      string
 	Page     int
 	PageSize int
-	HasPrev  bool
-	HasNext  bool
-	PrevURL  string
-	NextURL  string
-	Query    string
-	Sort     string
+	HasPrev    bool
+	HasNext    bool
+	PrevURL    string
+	NextURL    string
+	FirstURL   string
+	LastURL    string
+	TotalPages int
+	Query      string
+	Sort       string
 }
 
 // collectionTrendingScore computes a Reddit-style trending score for collections.
@@ -205,14 +208,20 @@ func renderCollectionsPage(e *server.RequestEvent, registry *server.Registry, ca
 	hasPrev := page > 1
 	hasNext := len(items) > end
 
+	totalPages := (len(items) + pageSize - 1) / pageSize
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
 	d := CollectionsData{
-		Items:    paged,
-		Tab:      tab,
-		Page:     page,
-		PageSize: pageSize,
-		HasPrev:  hasPrev,
-		HasNext:  hasNext,
-		Query:    q,
+		Items:      paged,
+		Tab:        tab,
+		Page:       page,
+		PageSize:   pageSize,
+		HasPrev:    hasPrev,
+		HasNext:    hasNext,
+		TotalPages: totalPages,
+		Query:      q,
 	}
 
 	buildURL := func(p int) string {
@@ -227,6 +236,10 @@ func renderCollectionsPage(e *server.RequestEvent, registry *server.Registry, ca
 	}
 	if d.HasNext {
 		d.NextURL = buildURL(page + 1)
+	}
+	d.FirstURL = buildURL(1)
+	if totalPages > 1 {
+		d.LastURL = buildURL(totalPages)
 	}
 
 	d.PopulateWithStore(e, appStore)

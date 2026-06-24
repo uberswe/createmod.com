@@ -52,6 +52,9 @@ func avatarURLForUser(u store.User) string {
 
 func TopCreatorsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		if redirected, err := RedirectToPreferredLang(e); redirected || err != nil {
+			return err
+		}
 		d := TopCreatorsData{}
 		d.Populate(e)
 		d.Title = i18n.T(d.Language, "Top Creators")

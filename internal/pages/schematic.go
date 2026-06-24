@@ -101,6 +101,9 @@ const schematicHTMLCacheTTL = 30 * time.Second
 
 func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Service, registry *server.Registry, discordService *discord.Service, translationService *translation.Service, appStore *store.Store, storageSvc *storage.Service, webhookSecret string) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		if redirected, err := RedirectToPreferredLang(e); redirected || err != nil {
+			return err
+		}
 		ctx := stdctx.Background()
 		name := e.Request.PathValue("name")
 

@@ -75,6 +75,8 @@ type SearchData struct {
 	HasNext              bool
 	PrevURL              string
 	NextURL              string
+	FirstURL             string
+	LastURL              string
 	ViewMode             string
 	MinBlockCount        int
 	MaxBlockCount        int
@@ -600,6 +602,8 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			HasNext:           nextURL != "",
 			PrevURL:           prevURL,
 			NextURL:           nextURL,
+			FirstURL:          buildPageURL(1),
+			LastURL:           func() string { if totalPages > 0 { return buildPageURL(totalPages) }; return "" }(),
 			ViewMode:          viewMode,
 			MinBlockCount:     minBlockCount,
 			MaxBlockCount:     maxBlockCount,

@@ -77,7 +77,7 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 // Called once at startup so templates can append ?v=<hash> for cache-busting.
 func computeAssetVersion() string {
 	h := sha256.New()
-	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/kin-tiles.css", "./template/static/dev-ads.js"} {
+	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/dev-ads.js"} {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			h.Write(data)
@@ -699,7 +699,6 @@ func Register(p RegisterParams) chi.Router {
 	r.With(downloadRateLimit).Post("/api/generators/propeller/download", Adapt(pages.GeneratorDownloadHandler("propeller")))
 	r.With(downloadRateLimit).Post("/api/generators/balloon/download", Adapt(pages.GeneratorDownloadHandler("balloon")))
 	r.With(downloadRateLimit).Post("/api/generators/hull/download", Adapt(pages.GeneratorDownloadHandler("hull")))
-	r.Get("/api/servers", Adapt(pages.LiveServersAPIHandler()))
 	// User
 	r.Get("/following", Adapt(pages.FollowingHandler(p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/following/unfollow", Adapt(pages.FollowingUnfollowHandler(p.AppStore)))
@@ -759,7 +758,6 @@ func Register(p RegisterParams) chi.Router {
 	// Dev-only routes
 	if os.Getenv("DEV") == "true" {
 		r.Get("/styleguide", Adapt(pages.StyleguideHandler(registry)))
-		r.Get("/kin-tiles", Adapt(pages.KinTilesPreviewHandler(registry)))
 	}
 
 	// Fallback
@@ -807,6 +805,15 @@ func cookieAuth(sessStore *session.Store) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
+
+			// Authenticated responses are personalized (username, follow state,
+			// admin controls). Force them private and unstorable so no shared/CDN
+			// cache can ever serve one user's page to another, and the browser does
+			// not retain a personalized page after logout. Handlers that serve
+			// cacheable public content guard their setPublicCacheControl call behind
+			// !isAuth, so this is not overridden for logged-in users. Static asset
+			// handlers set their own public caching after this and are unaffected.
+			w.Header().Set("Cache-Control", "private, no-store")
 
 			// Put session in request context for handlers
 			ctx := session.ContextWithSession(r.Context(), sess)
