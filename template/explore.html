@@ -60,8 +60,8 @@
 
                 <!-- Ad Rail (desktop only) -->
                 <div class="ad-rail d-none d-xl-block">
-                    <div id="explore-video-nc-top-right" class="mb-3"></div>
-                    <div id="explore-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
+                    {{if .IsAdmin}}<div id="explore-smart-flex" class="mb-3"></div>{{else}}<div id="explore-video-nc-top-right" class="mb-3"></div>{{end}}
+                    <div id="explore-sticky-adrail" class="mb-3"></div>
                 </div>
             </div>
         </main>

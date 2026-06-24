@@ -29,6 +29,11 @@ const (
 	maxGalleryImages  = 10
 	maxRotationImages = 130
 	maxImageSize      = 5 << 20
+	// maxUploadMemory bounds how much of a multipart upload is buffered in RAM;
+	// the remainder spills to temp files on disk. Individual files are capped at
+	// maxImageSize/maxUploadSize, so a small in-memory budget keeps concurrent
+	// uploads from accumulating large buffers and pushing the pod toward OOM.
+	maxUploadMemory = 32 << 20
 )
 
 var allowedImageExts = map[string]bool{
@@ -63,7 +68,9 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 	results := make([]result, 0, len(imageHeaders))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, 8)
+	// Limit concurrent image decodes: each decode can briefly allocate up to
+	// ~maxDecodePixels*4 bytes, so memory (not CPU) is the bottleneck here.
+	sem := make(chan struct{}, 3)
 
 	for i, fh := range imageHeaders {
 		if fh.Size > maxImageSize {
@@ -93,7 +100,11 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			converted, filename, contentType := convertToWebP(rawData, rawFilename)
+			converted, filename, contentType, convErr := convertToWebP(rawData, rawFilename)
+			if convErr != nil {
+				slog.Warn("api upload: skipping oversized rotation image", "error", convErr, "token", token[:8], "filename", rawFilename)
+				return
+			}
 			s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, converted, contentType); uploadErr != nil {
@@ -167,7 +178,11 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 			continue
 		}
 
-		data, filename, contentType := convertToWebP(data, sanitizeFilename(fh.Filename))
+		data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(fh.Filename))
+		if convErr != nil {
+			slog.Warn("api upload: skipping oversized image", "error", convErr, "token", token[:8], "filename", fh.Filename)
+			continue
+		}
 		s3Key := s3CollectionTempUploads + "/" + token + "/" + filename
 		if storageSvc != nil {
 			if uploadErr := storageSvc.UploadRawBytes(ctx, s3Key, data, contentType); uploadErr != nil {
@@ -225,7 +240,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 			}
 		}
 
-		_ = e.Request.ParseMultipartForm(200 << 20)
+		_ = e.Request.ParseMultipartForm(maxUploadMemory)
 
 		// Read file from form (field name "file" or "nbt")
 		file, header, err := e.Request.FormFile("file")
@@ -414,7 +429,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
 
-		_ = e.Request.ParseMultipartForm(200 << 20)
+		_ = e.Request.ParseMultipartForm(maxUploadMemory)
 
 		// Read file from form (field name "file" or "nbt")
 		file, header, err := e.Request.FormFile("file")

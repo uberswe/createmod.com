@@ -99,6 +99,9 @@ func detectLanguageFromRequest(r *http.Request) string {
 
 func IndexHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		if redirected, err := RedirectToPreferredLang(e); redirected || err != nil {
+			return err
+		}
 		q := e.Request.URL.Query()
 		tab := q.Get("tab")
 		page := 1
@@ -624,7 +627,16 @@ func getAllTrendingSchematicsForWindow(appStore *store.Store, cacheService *cach
 	if v == nil {
 		return nil
 	}
-	return v.([]models.Schematic)
+	src := v.([]models.Schematic)
+	// The singleflight result is shared by every concurrent waiter and aliases the
+	// slice stored in the cache. Callers translate titles in place
+	// (translateSchematicTitles mutates .Title/.Language), so without a per-caller
+	// copy two concurrent requests in different languages race and overwrite each
+	// other's — and the cache's — titles, surfacing as wrong-language titles until
+	// the cache warms and GetSchematics starts returning copies. Copy defensively.
+	cp := make([]models.Schematic, len(src))
+	copy(cp, src)
+	return cp
 }
 
 // getTrendingSchematicsPageFromStore returns a page of trending schematics from the PostgreSQL store (default 30-day window).

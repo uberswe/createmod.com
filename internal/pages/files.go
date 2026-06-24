@@ -130,8 +130,8 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			return e.String(http.StatusInternalServerError, "failed to read file")
 		}
 
-		// Decode image
-		srcImage, _, err := image.Decode(bytes.NewReader(originalData))
+		// Decode image (dimension-guarded against decompression bombs)
+		srcImage, err := decodeImageGuarded(originalData)
 		if err != nil {
 			return e.String(http.StatusNotFound, "file not found")
 		}
@@ -169,6 +169,20 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 	}
 }
 
+// decodeImageGuarded decodes image data after a cheap header-only dimension
+// check, rejecting images above maxDecodePixels before allocating the full
+// bitmap. This prevents a decompression bomb (a small file with huge pixel
+// dimensions) from OOM-killing the pod during thumbnail generation.
+func decodeImageGuarded(data []byte) (image.Image, error) {
+	if cfg, _, cfgErr := image.DecodeConfig(bytes.NewReader(data)); cfgErr == nil {
+		if int64(cfg.Width)*int64(cfg.Height) > maxDecodePixels {
+			return nil, errImageTooLarge
+		}
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	return img, err
+}
+
 // prewarmSizes are the thumbnail dimensions generated eagerly on upload.
 var prewarmSizes = [][2]int{
 	{320, 180},
@@ -197,7 +211,7 @@ func PrewarmThumbnails(storageSvc *storage.Service, schematicID, filename string
 		return
 	}
 
-	srcImage, _, err := image.Decode(bytes.NewReader(originalData))
+	srcImage, err := decodeImageGuarded(originalData)
 	if err != nil {
 		return
 	}

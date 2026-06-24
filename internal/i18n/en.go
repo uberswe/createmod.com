@@ -70,6 +70,8 @@ var LangEN = map[string]string{
 	// ── Pagination ──
 	"Previous": "Previous",
 	"Next":     "Next",
+	"First":    "First",
+	"Last":     "Last",
 	"Page":     "Page",
 	"of":       "of",
 	"results":  "results",

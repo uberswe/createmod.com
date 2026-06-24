@@ -1,9 +1,8 @@
 package pages
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -12,8 +11,6 @@ import (
 
 	"createmod/internal/server"
 	"createmod/internal/storage"
-
-	"github.com/sunshineplan/imgconv"
 )
 
 const maxImageUploadSize = 5 << 20 // 5MB
@@ -60,8 +57,7 @@ func ImageUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 
 		// Validate file extension
 		ext := strings.ToLower(filepath.Ext(header.Filename))
-		contentType, ok := allowedImageTypes[ext]
-		if !ok {
+		if _, ok := allowedImageTypes[ext]; !ok {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "unsupported file type (allowed: png, jpg, jpeg, webp, gif)"})
 		}
 
@@ -71,25 +67,10 @@ func ImageUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read file"})
 		}
 
-		// Convert to WebP (skip GIF and already-WebP files)
-		filename := sanitizeFilename(filepath.Base(header.Filename))
-		if ext != ".gif" && ext != ".webp" {
-			img, decErr := imgconv.Decode(bytes.NewReader(data))
-			if decErr == nil {
-				var out bytes.Buffer
-				bw := bufio.NewWriter(&out)
-				if encErr := imgconv.Write(bw, img, &imgconv.FormatOption{
-					Format:       imgconv.WEBP,
-					EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
-				}); encErr == nil {
-					_ = bw.Flush()
-					data = out.Bytes()
-					contentType = "image/webp"
-					// Replace extension with .webp
-					baseName := strings.TrimSuffix(filename, filepath.Ext(filename))
-					filename = baseName + ".webp"
-				}
-			}
+		// Convert to WebP (GIF and WebP pass through). Rejects decompression bombs.
+		data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(filepath.Base(header.Filename)))
+		if errors.Is(convErr, errImageTooLarge) {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "image resolution too large"})
 		}
 
 		// Generate unique ID

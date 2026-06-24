@@ -31,12 +31,17 @@ type SchematicsData struct {
 	HasNext    bool
 	PrevURL    string
 	NextURL    string
+	FirstURL   string
+	LastURL    string
 }
 
 const schematicsListHTMLCacheTTL = 30 * time.Second
 
 func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, appStore *store.Store, translationService *translation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		if redirected, err := RedirectToPreferredLang(e); redirected || err != nil {
+			return err
+		}
 		// Pagination params
 		page := 1
 		if p := e.Request.URL.Query().Get("p"); p != "" {
@@ -81,6 +86,13 @@ func SchematicsHandler(cacheService *cache.Service, registry *server.Registry, a
 		}
 		if d.HasNext {
 			d.NextURL = fmt.Sprintf("/schematics?p=%d", page+1)
+		}
+		if total, countErr := appStore.Schematics.CountApproved(context.Background()); countErr == nil && total > 0 {
+			d.TotalPages = (int(total) + pageSize - 1) / pageSize
+			d.FirstURL = "/schematics"
+			if d.TotalPages > 1 {
+				d.LastURL = fmt.Sprintf("/schematics?p=%d", d.TotalPages)
+			}
 		}
 
 		d.Populate(e)

@@ -1,0 +1,3 @@
+- Auto Scroll to the top of the page when going to a new page. Instantly go to the top, do not animate scroll to top during page switch.
+- Clicking on the page count on the top right of tha pages (eg 36/213) should open a small modal or dropdown so you can manually change/input a page number instead of going through the pages one by one.
+- A First and Last page button to easily navigate to the end and start.

@@ -55,8 +55,8 @@
                         </div>
                     </div>
                     <div class="guide-ad-rail d-none d-xl-block">
-                        <div id="guide-video-nc" class="mb-3"></div>
-                        <div id="guide-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
+                        {{if .IsAdmin}}<div id="guide-smart-flex" class="mb-3"></div>{{else}}<div id="guide-video-nc" class="mb-3"></div>{{end}}
+                        <div id="guide-sticky-adrail" class="mb-3"></div>
                     </div>
                     <div class="guide-ad-rail-sm d-none d-lg-block d-xl-none">
                         <div id="guide-sticky-adrail-lg" class="mb-3"></div>

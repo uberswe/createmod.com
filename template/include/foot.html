@@ -161,10 +161,74 @@ if (!window._searchScrollInit) {
     if (window.innerWidth >= 992) return;
     var el = evt.detail.target;
     if (el && el.id === 'search-results') {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.scrollIntoView({ behavior: 'instant', block: 'start' });
     }
   });
 }
+</script>
+<script>
+(function(){
+  if (window._pageJumpInit) return;
+  window._pageJumpInit = true;
+  var active = null;
+  function close() {
+    if (active) { active.remove(); active = null; }
+  }
+  function buildPopover(cur, total, param) {
+    var pop = document.createElement('div');
+    pop.className = 'page-jump-popover';
+    var form = document.createElement('form');
+    form.className = 'page-jump-form';
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'form-control form-control-sm page-jump-input';
+    input.min = '1';
+    input.max = String(total);
+    input.value = String(cur);
+    var span = document.createElement('span');
+    span.className = 'page-jump-of';
+    span.textContent = '/ ' + total;
+    var btn = document.createElement('button');
+    btn.type = 'submit';
+    btn.className = 'btn btn-sm btn-primary';
+    btn.textContent = 'Go';
+    form.appendChild(input);
+    form.appendChild(span);
+    form.appendChild(btn);
+    pop.appendChild(form);
+    form.addEventListener('submit', function(ev) {
+      ev.preventDefault();
+      var v = parseInt(input.value, 10);
+      if (isNaN(v) || v < 1) v = 1;
+      if (v > total) v = total;
+      var url = new URL(window.location.href);
+      if (v <= 1) { url.searchParams.delete(param); } else { url.searchParams.set(param, String(v)); }
+      close();
+      window.location.href = url.toString();
+    });
+    return { pop: pop, input: input };
+  }
+  document.addEventListener('click', function(e) {
+    var trigger = e.target.closest('[data-page-jump]');
+    if (!trigger) { close(); return; }
+    if (e.target.closest('.page-jump-popover')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (active && active._t === trigger) { close(); return; }
+    close();
+    var cur = parseInt(trigger.getAttribute('data-current-page'), 10) || 1;
+    var total = parseInt(trigger.getAttribute('data-total-pages'), 10) || 1;
+    var param = trigger.getAttribute('data-page-param') || 'p';
+    var result = buildPopover(cur, total, param);
+    result.pop._t = trigger;
+    trigger.appendChild(result.pop);
+    result.input.focus();
+    result.input.select();
+    active = result.pop;
+  });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
+  document.addEventListener('htmx:afterSettle', function() { close(); });
+})();
 </script>
 {{ if not .HideOutstream }}
 <!-- Floating outstream video player (bottom-right) — no container div needed;

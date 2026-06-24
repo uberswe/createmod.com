@@ -45,6 +45,7 @@ type DefaultData struct {
 	Avatar          template.URL
 	HasAvatar       bool
 	IsContributor   bool
+	IsAdmin         bool
 	Language        string
 	LangPrefix      string
 	CanonicalURL    string
@@ -66,7 +67,6 @@ type DefaultData struct {
 	SteamOAuthEnabled      bool
 	OAuthError             string
 	IsDev                  bool
-	KinTileHTML            template.HTML
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
@@ -155,7 +155,6 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	d.MicrosoftOAuthEnabled = MicrosoftOAuthEnabled()
 	d.SteamOAuthEnabled = SteamOAuthEnabled()
 	d.IsDev = os.Getenv("DEV") == "true"
-	d.KinTileHTML = randomKinTileHTML()
 
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {
@@ -189,14 +188,23 @@ func (d *DefaultData) populateFromSession(e *server.RequestEvent, user *session.
 		d.Avatar = template.URL(url)
 	}
 	d.HasAvatar = d.Avatar != ""
+	d.IsAdmin = user.IsAdmin
 	// Contributor status - check has no direct store access here, so left for handler to set
 	// TODO: This will be set by handlers with store access
 }
 
 // setPublicCacheControl overrides the default "no-cache, private" header for
 // anonymous page responses that are safe to cache in browsers and CDNs.
-// Uses s-maxage=0 to prevent CDN (Cloudflare) caching since language depends
-// on the cm_lang cookie, and Cloudflare ignores Vary: Cookie.
+//
+// These responses are language-independent of the cm_lang cookie: every
+// cacheable URL is bound to exactly one language — bare paths render canonical
+// English and "/<prefix>/…" paths render that language. Non-English visitors on
+// a bare path are redirected to their prefixed URL by RedirectToPreferredLang
+// (with private/no-store) before this is ever reached, so a shared/CDN cache can
+// no longer serve one visitor's language to another even though Cloudflare
+// ignores Vary: Cookie. s-maxage=0 is retained as a conservative default (origin
+// is shielded by the per-pod in-memory HTML cache); it can be raised to enable
+// CDN edge caching now that these responses are cookie-independent.
 func setPublicCacheControl(e *server.RequestEvent, maxAge int) {
 	e.Response.Header().Set("Cache-Control", fmt.Sprintf("public, s-maxage=0, max-age=%d, stale-while-revalidate=%d", maxAge, maxAge*2))
 	e.Response.Header().Set("Vary", "Cookie, Accept-Language")
