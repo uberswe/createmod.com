@@ -283,7 +283,7 @@ func CollectionsUpdateHandler(registry *server.Registry, cacheService *cache.Ser
 				if err != nil {
 					slog.Warn("collection publish moderation unavailable, allowing publish", "error", err, "id", coll.ID)
 				} else if !result.Approved {
-					return renderEditWithError(fmt.Sprintf("Content did not pass moderation: %s", result.Reason))
+					return renderEditWithError(ModerationHeldUserMessage)
 				}
 			}
 			coll.Published = true

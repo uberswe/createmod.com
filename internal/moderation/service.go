@@ -71,7 +71,11 @@ func (s *Service) CheckSchematic(title, description, featuredImagePath string) (
 	}, nil
 }
 
-// CheckContent is a generic function to check any content
+// CheckContent is a generic function to check any text content. When the
+// OpenAI Moderation API flags the text, a context-aware second pass
+// (ReviewModerationFlag) re-evaluates it to clear common false positives such
+// as gaming slang ("this build is the bomb"). The moderation endpoint itself
+// has no prompt, so this second pass is where nuance is applied.
 func (s *Service) CheckContent(content string) (*ModerationResult, error) {
 	// Send content to OpenAI moderation API
 	response, err := s.openaiClient.ModerateContent(content)
@@ -83,6 +87,22 @@ func (s *Service) CheckContent(content string) (*ModerationResult, error) {
 	if response.IsFlagged() {
 		// Get flagged categories
 		categories := response.GetFlaggedCategories()
+
+		// Second-pass, context-aware review to reduce false positives. On
+		// error this returns true (uphold), so a human still reviews it.
+		uphold, reviewErr := s.openaiClient.ReviewModerationFlag(content, categories)
+		if reviewErr != nil && s.logger != nil {
+			s.logger.Warn("moderation second-pass review failed, upholding flag",
+				"error", reviewErr, "categories", strings.Join(categories, ", "))
+		}
+		if !uphold {
+			if s.logger != nil {
+				s.logger.Debug("moderation flag cleared by second-pass review",
+					"categories", strings.Join(categories, ", "))
+			}
+			return &ModerationResult{Approved: true}, nil
+		}
+
 		reason := fmt.Sprintf("Content violates policy: %s", strings.Join(categories, ", "))
 
 		return &ModerationResult{

@@ -556,7 +556,7 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 	}
 
 	// Format the prompt as specified
-	prompt := fmt.Sprintf("Title: %s\nDescription: %s\n\nThis is a schematic for a minecraft build and your job is to determine if this is low effort spam or if it is an actual schematic being shared. Return only 'true' if it is an actual schematic and the reason as a string if it's not", title, description)
+	prompt := fmt.Sprintf("Title: %s\nDescription: %s\n\nThis text accompanies a shared Minecraft Create-mod schematic. Approve it unless it is obvious spam such as gibberish, advertising, links to unrelated sites, or clearly abusive content. A short, simple, or low-detail title and description is fine and must be approved — builders often write very little. Respond with exactly 'true' if it should be approved, otherwise a brief reason why it is spam.", title, description)
 
 	// Create the request
 	request := ChatCompletionRequest{
@@ -564,7 +564,7 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 		Messages: []ChatMessage{
 			{
 				Role:    "system",
-				Content: "You are a helpful assistant that evaluates Minecraft schematics.",
+				Content: "You are a lenient content classifier for CreateMod.com, a Minecraft Create-mod schematic community. You decide only whether a submission is obvious low-effort spam, not whether it is high quality. Err strongly on the side of approval.",
 			},
 			{
 				Role:    "user",
@@ -994,14 +994,14 @@ func (c *Client) CheckMinecraftBuildImage(imageURL string) (bool, string, error)
 		"messages": []map[string]interface{}{
 			{
 				"role":    "system",
-				"content": "You are a helpful assistant that evaluates Minecraft build images.",
+				"content": "You are a careful content classifier for CreateMod.com, a community where players share Minecraft 'Create' mod schematics and builds. You decide whether an uploaded image plausibly belongs on the site. Err strongly on the side of approval: only reject images that are clearly unrelated to Minecraft or the Create mod.",
 			},
 			{
 				"role": "user",
 				"content": []map[string]interface{}{
 					{
 						"type": "text",
-						"text": "This image is supposed to show a Minecraft schematic/build. Your job is to determine: 1) Does this image show Minecraft? 2) Does it show an actual build/structure, not just random blocks or spam? Return only 'true' if it is a valid Minecraft build, or a brief reason as a string if it's not valid (e.g., 'not a Minecraft image', 'just random blocks', 'spam/low effort').",
+						"text": "This image was uploaded to represent a Minecraft Create-mod schematic. Approve it if it plausibly relates to Minecraft or the Create mod in ANY form, including: in-game builds, structures, machines, contraptions, trains, factories and redstone; close-ups or wide shots; in-progress or unfinished builds; schematic holograms, previews or renders; and IN-GAME USER INTERFACE OR GUI SCREENSHOTS such as inventories, the Schematicannon, the schematic table, Ponder, JEI, or config and menu screens. UI and GUI screenshots from the game or its mods are valid and must be approved. Only reject if the image is clearly NOT related to Minecraft or the Create mod, for example a real-life photo, an unrelated anime or cartoon character, a meme, or an advertisement. Respond with exactly 'true' if it should be approved, otherwise a brief reason (a few words) why it is unrelated to Minecraft or the Create mod.",
 					},
 					{
 						"type": "image_url",
@@ -1100,6 +1100,97 @@ func (c *Client) CheckMinecraftBuildImage(imageURL string) (bool, string, error)
 		c.logger.Debug("Minecraft build image check failed", "reason", responseContent)
 	}
 	return false, responseContent, nil
+}
+
+// ModerationReviewSystemPrompt is the system prompt for the context-aware
+// second-pass moderation review (ReviewModerationFlag). It is intentionally
+// kept as an exported constant so it is easy to tune over time. Edit this to
+// adjust how lenient the false-positive review is.
+const ModerationReviewSystemPrompt = "You are a content-moderation reviewer for CreateMod.com, a friendly community where players share Minecraft 'Create' mod builds. An automated classifier has flagged a user's text. Decide whether it is a GENUINE violation of content policy (real sexual content, real hate speech, real harassment of a person or group, credible threats or incitement of real-world violence, or encouragement of self-harm) or a FALSE POSITIVE. Casual gaming and English slang is NOT a violation: figurative or enthusiastic phrases such as 'this is the bomb', 'this is fire', 'this build slaps', 'killer base', 'sick build', 'this blew my mind', 'I'm gonna destroy this boss', or 'this kills me' are positive or figurative and must be cleared. Hyperbole, excitement, and praise are allowed. Only uphold the flag when a reasonable human moderator would agree the text genuinely violates policy. Respond with exactly 'violation' to uphold the flag, or 'ok' to clear it."
+
+// ReviewModerationFlag is a context-aware second pass that reduces false
+// positives from the OpenAI Moderation API. The moderation endpoint is a fixed
+// classifier with no prompt, so harmless gaming slang ("this build is the
+// bomb", "this is fire", "killer base") is sometimes flagged for
+// violence/harassment. This method re-reads the text in the context of a
+// friendly Minecraft building community and decides whether the flag is a real
+// policy violation.
+//
+// It returns true to UPHOLD the flag (treat as a genuine violation) and false
+// to clear it (false positive). On a missing API key or any API error it
+// returns true so the flag is preserved and a human reviews the content
+// (fail safe).
+func (c *Client) ReviewModerationFlag(content string, categories []string) (bool, error) {
+	if c.apiKey == "" {
+		return true, fmt.Errorf("OpenAI API key is required")
+	}
+
+	userPrompt := fmt.Sprintf("Flagged categories: %s\n\nText:\n%s\n\nIs this a genuine policy violation or a false positive? Respond with exactly 'violation' or 'ok'.", strings.Join(categories, ", "), content)
+
+	request := ChatCompletionRequest{
+		Model: "gpt-4o",
+		Messages: []ChatMessage{
+			{Role: "system", Content: ModerationReviewSystemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+	}
+
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return true, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	if c.logger != nil {
+		c.logger.Info("OpenAI moderation review request", "endpoint", ChatCompletionEndpoint, "categories", strings.Join(categories, ", "))
+	}
+
+	req, err := http.NewRequest("POST", ChatCompletionEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return true, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if c.logger != nil {
+			c.logger.Error("Failed to send OpenAI moderation review request", "error", err.Error())
+		}
+		return true, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return true, fmt.Errorf("failed to read response body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		if c.logger != nil {
+			c.logger.Info("OpenAI moderation review response", "status_code", resp.StatusCode, "response_body", string(respBody))
+		}
+		return true, fmt.Errorf("OpenAI API returned status code %d", resp.StatusCode)
+	}
+
+	var completionResponse ChatCompletionResponse
+	if err := json.Unmarshal(respBody, &completionResponse); err != nil {
+		return true, fmt.Errorf("failed to decode response: %w", err)
+	}
+	if len(completionResponse.Choices) == 0 {
+		return true, fmt.Errorf("no choices in OpenAI response")
+	}
+
+	return upholdFromReviewAnswer(completionResponse.Choices[0].Message.Content), nil
+}
+
+// upholdFromReviewAnswer interprets the second-pass reviewer's answer. The flag
+// is cleared (returns false) only on an explicit "ok"; anything else — an
+// explicit "violation", or any unexpected/empty answer — preserves the flag
+// (returns true) so a human reviews the content.
+func upholdFromReviewAnswer(raw string) bool {
+	answer := strings.ToLower(strings.Trim(strings.TrimSpace(raw), "\"'`.! "))
+	if answer == "ok" || strings.HasPrefix(answer, "ok ") || strings.HasPrefix(answer, "ok,") {
+		return false
+	}
+	return true
 }
 
 // isAffirmativeTrue determines if the OpenAI response should be treated as approval (true)
