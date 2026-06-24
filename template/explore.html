@@ -60,7 +60,7 @@
 
                 <!-- Ad Rail (desktop only) -->
                 <div class="ad-rail d-none d-xl-block">
-                    {{if .IsAdmin}}<div id="explore-smart-flex" class="mb-3"></div>{{else}}<div id="explore-video-nc-top-right" class="mb-3"></div>{{end}}
+                    <div id="explore-video-nc-top-right" class="mb-3"></div>
                     <div id="explore-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
                 </div>
             </div>
@@ -70,20 +70,6 @@
 </div>
 {{template "foot.html" .}}
 <script>
-{{if .IsAdmin}}
-window['nitroAds'].createAd('explore-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,schematics,explore,discover",
-  "targeting": { "pageType": "explore" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{else}}
 window['nitroAds'].createAd('explore-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,schematics,explore,discover",
@@ -96,7 +82,6 @@ window['nitroAds'].createAd('explore-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{end}}
 window['nitroAds'].createAd('explore-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,

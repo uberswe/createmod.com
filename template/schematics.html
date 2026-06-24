@@ -45,7 +45,7 @@
                 </div>
                 <!-- Ad Rail (desktop only) -->
                 <div class="ad-rail d-none d-xl-block">
-                    {{if .IsAdmin}}<div id="schematics-smart-flex" class="mb-3"></div>{{else}}<div id="schematics-video-nc-top-right" class="mb-3"></div>{{end}}
+                    <div id="schematics-video-nc-top-right" class="mb-3"></div>
                     <div id="schematics-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
                 </div>
                 </div>
@@ -56,20 +56,6 @@
 </div>
 {{template "foot.html" .}}
 <script>
-{{if .IsAdmin}}
-window['nitroAds'].createAd('schematics-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,schematics,browse",
-  "targeting": { "pageType": "schematics" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{else}}
 window['nitroAds'].createAd('schematics-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,schematics,browse",
@@ -82,7 +68,6 @@ window['nitroAds'].createAd('schematics-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{end}}
 window['nitroAds'].createAd('schematics-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,

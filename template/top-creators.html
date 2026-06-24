@@ -151,7 +151,7 @@
             </div>
             <!-- Ad Rail (desktop only) -->
             <div class="ad-rail d-none d-xl-block">
-                {{if .IsAdmin}}<div id="topcreators-smart-flex" class="mb-3"></div>{{else}}<div id="topcreators-video-nc-top-right" class="mb-3"></div>{{end}}
+                <div id="topcreators-video-nc-top-right" class="mb-3"></div>
                 <div id="topcreators-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
             </div>
             </div>
@@ -166,20 +166,6 @@
 {{ template "footer.html" . }}
 {{ template "foot.html" . }}
 <script>
-{{if .IsAdmin}}
-window['nitroAds'].createAd('topcreators-smart-flex', {
-  "format": "smart-flex",
-  "keywords": "minecraft,create-mod,leaderboard,creators",
-  "targeting": { "pageType": "top-creators" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-{{else}}
 window['nitroAds'].createAd('topcreators-video-nc-top-right', {
   "format": "video-nc",
   "keywords": "minecraft,create-mod,leaderboard,creators",
@@ -192,7 +178,6 @@ window['nitroAds'].createAd('topcreators-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-{{end}}
 window['nitroAds'].createAd('topcreators-sticky-adrail', {
   "refreshLimit": 10,
   "refreshTime": 45,

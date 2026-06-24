@@ -124,6 +124,16 @@
                                            placeholder="Schematic Video URL">
                                 </div>
 
+                                {{ if .PreUploadedRotation }}
+                                <div class="mb-3">
+                                    <label class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="rotation-disabled">
+                                        <span class="form-check-label">Disable 360° Viewer</span>
+                                    </label>
+                                    <small class="form-hint">When enabled, the 360° rotation viewer will be hidden on the schematic page.</small>
+                                </div>
+                                {{ end }}
+
                                 <div class="mb-3">
                                     <label class="form-check form-switch">
                                         <input type="checkbox" class="form-check-input" id="schedule-toggle">
@@ -552,6 +562,10 @@ document.addEventListener("DOMContentLoaded", function() {
         {{ range .PreUploadedRotation }}
         formData.append("preloaded_rotation_images", "{{ .Filename }}");
         {{ end }}
+        var rotDisabledEl = document.getElementById("rotation-disabled");
+        if (rotDisabledEl && rotDisabledEl.checked) {
+            formData.append("rotation_disabled", "true");
+        }
         {{ end }}
 
         formData.append("title", titleElement.value);

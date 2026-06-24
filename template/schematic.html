@@ -1152,7 +1152,7 @@
                     </div>
                     <!-- Wide 300px rail for xl+ (1200px+) -->
                     <div class="ad-rail d-none d-xl-block">
-                        {{if .IsAdmin}}<div id="schematic-smart-flex" class="mb-3"></div>{{else}}<div id="schematic-video-nc-top-right" class="mb-3"></div>{{end}}
+                        <div id="schematic-video-nc-top-right" class="mb-3"></div>
                         <div id="schematic-sticky-adrail" class="mb-3">{{.KinTileHTML}}</div>
                     </div>
                 </div><!-- /d-flex -->
@@ -1581,20 +1581,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "modVersion": "{{ .Schematic.CreatemodVersion }}"
   };
 
-  {{ if .IsAdmin }}
-  window['nitroAds'].createAd('schematic-smart-flex', {
-    "format": "smart-flex",
-    "keywords": kwString,
-    "targeting": targeting,
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-right"
-    },
-    "mediaQuery": "(min-width: 1200px)"
-  });
-  {{ else }}
+  // Video NC ad (desktop only)
   window['nitroAds'].createAd('schematic-video-nc-top-right', {
     "format": "video-nc",
     "keywords": kwString,
@@ -1607,7 +1594,6 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 1200px)"
   });
-  {{ end }}
   // Narrow ad rail (lg only: 992-1199px)
   window['nitroAds'].createAd('schematic-sticky-adrail-lg', {
     "refreshLimit": 10,
@@ -1630,11 +1616,12 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  {{ if not .IsAdmin }}
+  // Keep the sticky-stack container offset in sync with the video-nc's actual
+  // rendered height so both pin below each other without overlapping.
   var videoNcEl = document.getElementById('schematic-video-nc-top-right');
   var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
-  var videoNcGap = 16;
-  var stickyStackTop = 110 + 200 + videoNcGap;
+  var videoNcGap = 16; // matches the mb-3 margin + 1rem in the CSS calc()
+  var stickyStackTop = 110 + 200 + videoNcGap; // fallback matches CSS default
   if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
     var updateOffset = function () {
       var h = videoNcEl.getBoundingClientRect().height;
@@ -1645,7 +1632,6 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     new ResizeObserver(updateOffset).observe(videoNcEl);
     updateOffset();
   }
-  {{ end }}
 
   // Wide ad rail — sticky-stack for long schematic pages (xl+: 1200px+)
   window['nitroAds'].createAd('schematic-sticky-adrail', {
@@ -1653,7 +1639,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "format": "sticky-stack",
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
-    "stickyStackOffset": {{ if .IsAdmin }}110{{ else }}stickyStackTop{{ end }},
+    "stickyStackOffset": stickyStackTop,
     "stickyStackResizable": false,
     "keywords": kwString,
     "targeting": targeting,
