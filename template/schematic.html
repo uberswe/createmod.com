@@ -30,10 +30,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
                         <div>
                             <h4 class="alert-title mb-0">{{ T .Language "Flagged for Review" }}</h4>
-                            <div class="text-secondary">{{ T .Language "Your schematic has been flagged for manual review by an administrator." }}</div>
-                            {{ if .ModerationReason }}
-                            <div class="text-secondary mt-1"><strong>{{ T .Language "Reason:" }}</strong> {{ .ModerationReason }}</div>
-                            {{ end }}
+                            <div class="text-secondary">{{ T .Language "Your submission was caught by automated moderation, a human moderator will review this within 48 hours before it is published and visible on the site." }}</div>
                         </div>
                     </div>
                 </div>
@@ -44,9 +41,6 @@
                         <div>
                             <h4 class="alert-title mb-0">{{ T .Language "Did Not Pass Moderation" }}</h4>
                             <div class="text-secondary">{{ T .Language "Your schematic did not pass moderation and is not publicly listed." }}</div>
-                            {{ if .ModerationReason }}
-                            <div class="text-secondary mt-1"><strong>{{ T .Language "Reason:" }}</strong> {{ .ModerationReason }}</div>
-                            {{ end }}
                             <div class="mt-2">
                                 <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-sm btn-outline-danger">{{ T .Language "Edit Schematic" }}</a>
                             </div>
