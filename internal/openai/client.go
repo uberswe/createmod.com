@@ -556,15 +556,15 @@ func (c *Client) CheckSchematicQuality(title, description string) (bool, string,
 	}
 
 	// Format the prompt as specified
-	prompt := fmt.Sprintf("Title: %s\nDescription: %s\n\nThis text accompanies a shared Minecraft Create-mod schematic. Approve it unless it is obvious spam such as gibberish, advertising, links to unrelated sites, or clearly abusive content. A short, simple, or low-detail title and description is fine and must be approved — builders often write very little. Respond with exactly 'true' if it should be approved, otherwise a brief reason why it is spam.", title, description)
+	prompt := fmt.Sprintf("Title: %s\nDescription: %s\n\nThis text accompanies a shared Minecraft Create-mod schematic. Respond with exactly 'true' ONLY if it clearly looks like a genuine schematic submission. Do NOT approve — return a brief reason instead — if it looks like a test or placeholder (e.g. 'test', 'asdf', 'untitled', 'aaa'), a joke, spam or advertising, or if it is off-topic for sharing a Minecraft build, such as roleplay/RP content, a request, or unrelated text. A short description is fine if it plainly describes a build, but anything test-like, placeholder, or off-topic must NOT be approved. When you are not confident it is a genuine build submission, do NOT approve. Respond with exactly 'true' to approve, otherwise a brief reason.", title, description)
 
 	// Create the request
 	request := ChatCompletionRequest{
-		Model: "gpt-3.5-turbo",
+		Model: "gpt-4o",
 		Messages: []ChatMessage{
 			{
 				Role:    "system",
-				Content: "You are a lenient content classifier for CreateMod.com, a Minecraft Create-mod schematic community. You decide only whether a submission is obvious low-effort spam, not whether it is high quality. Err strongly on the side of approval.",
+				Content: "You are a content reviewer for CreateMod.com, a community for sharing Minecraft Create-mod schematics. You decide whether a submission should be auto-published or held for a human moderator. Approve only submissions that clearly look like a genuine build being shared. When in doubt, do NOT approve — holding for human review is safe and expected.",
 			},
 			{
 				Role:    "user",
@@ -994,14 +994,14 @@ func (c *Client) CheckMinecraftBuildImage(imageURL string) (bool, string, error)
 		"messages": []map[string]interface{}{
 			{
 				"role":    "system",
-				"content": "You are a careful content classifier for CreateMod.com, a community where players share Minecraft 'Create' mod schematics and builds. You decide whether an uploaded image plausibly belongs on the site. Err strongly on the side of approval: only reject images that are clearly unrelated to Minecraft or the Create mod.",
+				"content": "You are a content reviewer for CreateMod.com, a community where players share Minecraft 'Create' mod schematics and builds. You decide whether an uploaded image should be auto-published or held for a human moderator. Approve only when the image clearly shows Minecraft. When you are not confident it shows Minecraft, do NOT approve — holding for human review is safe.",
 			},
 			{
 				"role": "user",
 				"content": []map[string]interface{}{
 					{
 						"type": "text",
-						"text": "This image was uploaded to represent a Minecraft Create-mod schematic. Approve it if it plausibly relates to Minecraft or the Create mod in ANY form, including: in-game builds, structures, machines, contraptions, trains, factories and redstone; close-ups or wide shots; in-progress or unfinished builds; schematic holograms, previews or renders; and IN-GAME USER INTERFACE OR GUI SCREENSHOTS such as inventories, the Schematicannon, the schematic table, Ponder, JEI, or config and menu screens. UI and GUI screenshots from the game or its mods are valid and must be approved. Only reject if the image is clearly NOT related to Minecraft or the Create mod, for example a real-life photo, an unrelated anime or cartoon character, a meme, or an advertisement. Respond with exactly 'true' if it should be approved, otherwise a brief reason (a few words) why it is unrelated to Minecraft or the Create mod.",
+						"text": "This image was uploaded to represent a Minecraft Create-mod schematic. Respond with exactly 'true' ONLY if it clearly shows Minecraft: an in-game build, structure, machine or contraption; redstone or Create mechanisms; a schematic preview or render that clearly depicts a Minecraft build; or a legitimate in-game Minecraft or mod USER INTERFACE / GUI screenshot (inventory, Schematicannon, schematic table, Ponder, JEI, config or menu screens). Such UI/GUI screenshots are valid and should be approved. Do NOT approve — return a brief reason instead — if the image is not clearly Minecraft, for example a real-life photo, an unrelated anime or cartoon character, a meme, an advertisement, or any image you cannot confidently identify as Minecraft. When you are not confident, do NOT approve. Respond with exactly 'true' to approve, otherwise a brief reason.",
 					},
 					{
 						"type": "image_url",
