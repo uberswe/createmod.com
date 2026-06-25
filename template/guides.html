@@ -60,8 +60,10 @@
         {{if not .IsContributor}}
         <div class="ad-rail d-none d-xl-block">
             {{if .IsAdmin}}<div id="guides-smart-flex" class="mb-3"></div>{{else}}<div id="guides-video-nc-top-right" class="mb-3"></div>{{end}}
-            <div id="guides-sticky-adrail-1" class="mb-3"></div>
-            <div id="guides-sticky-adrail-2" class="mb-3"></div>
+            <div class="ad-sticky-stack">
+              <div id="guides-sticky-adrail-1" class="mb-3"></div>
+              <div id="guides-sticky-adrail-2" class="mb-3"></div>
+            </div>
         </div>
         {{end}}
         </div><!-- /d-flex -->
@@ -119,7 +121,7 @@ window['nitroAds'].createAd('guides-sticky-adrail-2', {
   "format": "sticky-stack",
   "stickyStackLimit": 15,
   "stickyStackSpace": 2.5,
-  "stickyStackOffset": 674,
+  "stickyStackOffset": 8,
   "stickyStackResizable": false,
   "report": {
     "enabled": true,

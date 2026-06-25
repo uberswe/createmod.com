@@ -432,22 +432,21 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-/* Two stacked 300x600 sticky ads. The preceding video ad scrolls away and
-   adrail-1 rises to pin near the top of the viewport (8px; the header scrolls
-   away on desktop). adrail-2 pins below it, offset by adrail-1's max-height
-   plus the gap. Each slot is capped
-   at 650px with spacing underneath. (NitroPay's sticky-stack format manages the
-   live ad pinning via stickyStackOffset; these rules are the layout base and
-   the dev-ads fallback.) */
-.ad-rail > [id*="sticky-adrail"] {
+/* Two stacked 300x600 sticky ads share a single sticky wrapper (.ad-sticky-stack)
+   so they move as one unit: the two ads sit in normal flow inside it (adrail-1
+   above adrail-2, with a 1rem gap) and the whole group pins at the top of the
+   viewport. This keeps a constant gap and makes overlap impossible — unlike
+   independently-sticky ads, where the taller top ad overlaps the lower one
+   while it is still scrolling into place. The preceding video ad is outside the
+   wrapper and scrolls away. */
+.ad-rail .ad-sticky-stack,
+.search-ad-rail-wide .ad-sticky-stack {
   position: sticky;
   top: 8px;
   z-index: 1;
-  max-height: 650px;
-  margin-bottom: 1rem;
 }
-.ad-rail > [id$="-sticky-adrail-2"] {
-  top: calc(8px + 650px + 1rem);
+.ad-sticky-stack > [id*="sticky-adrail"] {
+  margin-bottom: 1rem;
 }
 
 /***************
@@ -1059,16 +1058,6 @@ body.sidebar-open::after {
      (align-self: start makes the rail only as tall as its content, so the
      second ad unsticks and scrolls away). */
   align-self: stretch;
-}
-.search-ad-rail-wide > [id*="sticky-adrail"] {
-  position: sticky;
-  top: 8px;
-  z-index: 1;
-  max-height: 650px;
-  margin-bottom: 1rem;
-}
-.search-ad-rail-wide > [id$="-sticky-adrail-2"] {
-  top: calc(8px + 650px + 1rem);
 }
 
 .search-sidebar {

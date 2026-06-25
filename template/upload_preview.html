@@ -393,8 +393,10 @@
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
                         {{if .IsAdmin}}<div id="upload-preview-smart-flex" class="mb-3"></div>{{else}}<div id="upload-preview-video-nc-top-right" class="mb-3"></div>{{end}}
-                        <div id="upload-preview-sticky-adrail-1" class="mb-3"></div>
-                        <div id="upload-preview-sticky-adrail-2" class="mb-3"></div>
+                        <div class="ad-sticky-stack">
+                          <div id="upload-preview-sticky-adrail-1" class="mb-3"></div>
+                          <div id="upload-preview-sticky-adrail-2" class="mb-3"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -762,7 +764,7 @@ window['nitroAds'].createAd('upload-preview-sticky-adrail-2', {
   "format": "sticky-stack",
   "stickyStackLimit": 15,
   "stickyStackSpace": 2.5,
-  "stickyStackOffset": 674,
+  "stickyStackOffset": 8,
   "stickyStackResizable": false,
   "report": {
     "enabled": true,
