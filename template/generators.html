@@ -69,8 +69,10 @@
                     <!-- Ad Rail (desktop only): video ad above two stacked 300x600 sticky ads -->
                     <div class="ad-rail d-none d-xl-block">
                         {{if .IsAdmin}}<div id="generators-smart-flex" class="mb-3"></div>{{else}}<div id="generators-video-nc-top-right" class="mb-3"></div>{{end}}
-                        <div id="generators-sticky-adrail-1" class="mb-3"></div>
-                        <div id="generators-sticky-adrail-2" class="mb-3"></div>
+                        <div class="ad-sticky-stack">
+                          <div id="generators-sticky-adrail-1" class="mb-3"></div>
+                          <div id="generators-sticky-adrail-2" class="mb-3"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -96,7 +98,7 @@ window['nitroAds'].createAd('generators-sticky-adrail-1', {
 });
 window['nitroAds'].createAd('generators-sticky-adrail-2', {
   "refreshLimit": 10, "refreshTime": 45, "refreshVisibleOnly": true, "renderVisibleOnly": true, "visibleMargin": 300,
-  "format": "sticky-stack", "stickyStackLimit": 15, "stickyStackSpace": 2.5, "stickyStackOffset": 674, "stickyStackResizable": false,
+  "format": "sticky-stack", "stickyStackLimit": 15, "stickyStackSpace": 2.5, "stickyStackOffset": 8, "stickyStackResizable": false,
   "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
   "keywords": "minecraft,create-mod,generators,schematics", "targeting": { "pageType": "generators" },
   "mediaQuery": "(min-width: 1200px)"
