@@ -1,49 +1,49 @@
 import { test, expect } from '@playwright/test';
 
-// Test that the ad rail CSS is correctly applied so NitroPay sticky-stack works.
-// The outer .ad-rail uses align-self:stretch for full height,
-// while only the [id*="sticky-adrail"] child uses position:sticky to stay
-// visible during scroll. Preceding slots (e.g. the video-nc ad) scroll with
-// the page.
-// Uses /explore because it always renders .ad-rail (the homepage does not have one).
-// In CI no ad scripts load, so we verify computed styles rather than visible content.
+// The desktop right rail is built client-side by adrail.js: each page has a
+// <div class="ad-rail ..." data-cm-adrail ...> container, and the helper appends
+// a video ad plus the A/B variant's sticky ad unit:
+//   Variant A -> a single ad whose id ends "_a_sticky"
+//   Variant B -> a .ad-sticky-stack wrapper holding two display ads
+// Either way the sticky element pins at top:8px while the video (and page)
+// scroll. Uses /explore because it always renders an .ad-rail.
+// In CI no real ad scripts load, but the helper still builds the DOM (it only
+// needs the nitroAds stub), so we can verify the computed sticky styles.
 
 test.describe('Ad rail stickiness', () => {
   test.use({ viewport: { width: 1400, height: 900 } });
 
-  test('only the sticky-adrail child of the ad rail is sticky', async ({ page, baseURL }) => {
+  test('the ad rail builds a sticky ad unit pinned near the top', async ({ page, baseURL }) => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
-    // The .ad-rail is hidden below xl breakpoint via d-none/d-xl-block.
-    // At 1400px wide it should be present in the DOM.
-    const adRail = page.locator('.ad-rail').first();
+    const adRail = page.locator('.ad-rail[data-cm-adrail]').first();
     await expect(adRail).toBeAttached({ timeout: 10000 });
 
-    // Verify only the sticky-adrail child is sticky and all others are not.
+    // adrail.js builds the rail on load — wait for the sticky unit to appear.
+    await page.waitForFunction(() => {
+      const r = document.querySelector('.ad-rail[data-cm-adrail]');
+      return !!(r && r.querySelector(':scope > [id$="_a_sticky"], :scope > .ad-sticky-stack'));
+    }, { timeout: 10000 });
+
     const result = await adRail.evaluate((el) => {
-      const children = el.querySelectorAll(':scope > div');
-      const styles = Array.from(children).map((child) => {
-        const style = window.getComputedStyle(child);
-        return { id: child.id, position: style.position, top: style.top };
-      });
-      const stickyAdrail = el.querySelector(':scope > [id*="sticky-adrail"]');
-      const stickyStyle = stickyAdrail ? window.getComputedStyle(stickyAdrail) : null;
+      const sticky = el.querySelector(':scope > [id$="_a_sticky"], :scope > .ad-sticky-stack');
+      const ss = sticky ? window.getComputedStyle(sticky) : null;
+      const video = el.querySelector('[id$="_video"]');
+      const vs = video ? window.getComputedStyle(video) : null;
       return {
-        childStyles: styles,
-        hasStickyAdrail: !!stickyAdrail,
-        stickyPosition: stickyStyle?.position,
-        stickyTop: stickyStyle?.top,
+        hasSticky: !!sticky,
+        stickyPosition: ss?.position,
+        stickyTop: ss?.top,
+        videoNotSticky: vs ? vs.position !== 'sticky' : true,
       };
     });
 
-    expect(result.hasStickyAdrail).toBe(true);
+    expect(result.hasSticky).toBe(true);
     expect(result.stickyPosition).toBe('sticky');
-    expect(result.stickyTop).toBe('108px');
-    for (const child of result.childStyles) {
-      if (child.id.includes('sticky-adrail')) continue;
-      expect(child.position).not.toBe('sticky');
-    }
+    expect(result.stickyTop).toBe('8px');
+    // The video slot scrolls with the page (not sticky).
+    expect(result.videoNotSticky).toBe(true);
   });
 
   test('ad rail outer container has correct layout styles', async ({ page, baseURL }) => {
@@ -53,7 +53,6 @@ test.describe('Ad rail stickiness', () => {
     const adRail = page.locator('.ad-rail').first();
     await expect(adRail).toBeAttached({ timeout: 10000 });
 
-    // Verify the outer .ad-rail has the correct CSS for stretch layout
     const outerStyles = await adRail.evaluate((el) => {
       const style = window.getComputedStyle(el);
       return {
@@ -70,7 +69,7 @@ test.describe('Ad rail stickiness', () => {
     expect(outerStyles.width).toBe('300px');
     // flex-shrink: 0 prevents the rail from collapsing
     expect(outerStyles.flexShrink).toBe('0');
-    // The outer container should NOT be sticky itself — the inner child handles stickiness
+    // The outer container is not sticky itself — the inner unit handles stickiness
     expect(outerStyles.position).not.toBe('sticky');
   });
 });

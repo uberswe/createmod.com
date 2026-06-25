@@ -1,23 +1,37 @@
 import { test, expect } from '@playwright/test';
 
-test('header and sidebar do not overlap', async ({ page, baseURL }) => {
+// On desktop the top header is in normal flow and scrolls away with the page,
+// while the left sidebar is fixed and full-height (starting at the very top).
+// They share the top-left corner, but the header is layered above the sidebar
+// (higher z-index) so there is no visual overlap.
+test('header is layered above the full-height sidebar at the top', async ({ page, baseURL }) => {
   const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
 
   // Take a screenshot of the top-left area showing header + sidebar
   await page.screenshot({ path: 'test-results/header-sidebar.png', clip: { x: 0, y: 0, width: 400, height: 300 } });
 
-  // Verify the sidebar starts below the header
-  const header = page.locator('.top-header');
-  const sidebar = page.locator('.sidebar-rail');
-  const headerBox = await header.boundingBox();
-  const sidebarBox = await sidebar.boundingBox();
+  const info = await page.evaluate(() => {
+    const h = document.querySelector('.top-header') as HTMLElement | null;
+    const s = document.querySelector('.sidebar-rail') as HTMLElement | null;
+    if (!h || !s) return null;
+    const hb = h.getBoundingClientRect();
+    const sb = s.getBoundingClientRect();
+    return {
+      headerTop: Math.round(hb.y),
+      sidebarTop: Math.round(sb.y),
+      headerZ: parseInt(window.getComputedStyle(h).zIndex) || 0,
+      sidebarZ: parseInt(window.getComputedStyle(s).zIndex) || 0,
+    };
+  });
 
-  console.log('Header bottom:', headerBox ? headerBox.y + headerBox.height : 'N/A');
-  console.log('Sidebar top:', sidebarBox?.y);
-
-  if (headerBox && sidebarBox) {
-    // Sidebar should start at or below the header bottom
-    expect(sidebarBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
+  console.log('header/sidebar:', JSON.stringify(info));
+  expect(info).not.toBeNull();
+  if (info) {
+    // Both anchor at the very top of the page.
+    expect(info.headerTop).toBeLessThanOrEqual(1);
+    expect(info.sidebarTop).toBeLessThanOrEqual(1);
+    // The header renders above the sidebar so the shared corner shows the header.
+    expect(info.headerZ).toBeGreaterThan(info.sidebarZ);
   }
 });
