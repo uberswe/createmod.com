@@ -432,14 +432,21 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-/* The sticky-adrail child is sticky. Preceding slots (e.g. the
-   video-nc ad) scroll with the page so they don't stack on top of the
-   sticky-stack adrail at the same top offset. */
+/* Two stacked 300x600 sticky ads. The preceding video ad scrolls away and
+   adrail-1 rises to pin just below the fixed header (108px). adrail-2 pins
+   below it, offset by adrail-1's max-height plus the gap. Each slot is capped
+   at 650px with spacing underneath. (NitroPay's sticky-stack format manages the
+   live ad pinning via stickyStackOffset; these rules are the layout base and
+   the dev-ads fallback.) */
 .ad-rail > [id*="sticky-adrail"] {
   position: sticky;
   top: 108px;
   z-index: 1;
-  height: calc(100vh - 108px);
+  max-height: 650px;
+  margin-bottom: 1rem;
+}
+.ad-rail > #schematic-sticky-adrail-2 {
+  top: calc(108px + 650px + 1rem);
 }
 
 /***************

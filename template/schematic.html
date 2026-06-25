@@ -1150,10 +1150,11 @@
                     <div class="ad-rail-sm d-none d-lg-block d-xl-none">
                         <div id="schematic-sticky-adrail-lg" class="mb-3"></div>
                     </div>
-                    <!-- Wide 300px rail for xl+ (1200px+) -->
+                    <!-- Wide 300px rail for xl+ (1200px+): video ad (scrolls away) above two stacked 300x600 sticky ads -->
                     <div class="ad-rail d-none d-xl-block">
                         {{if .IsAdmin}}<div id="schematic-smart-flex" class="mb-3"></div>{{else}}<div id="schematic-video-nc-top-right" class="mb-3"></div>{{end}}
-                        <div id="schematic-sticky-adrail" class="mb-3"></div>
+                        <div id="schematic-sticky-adrail-1" class="mb-3"></div>
+                        <div id="schematic-sticky-adrail-2" class="mb-3"></div>
                     </div>
                 </div><!-- /d-flex -->
 
@@ -1616,25 +1617,13 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  // Keep the sticky-stack container offset in sync with the video-nc's actual
-  // rendered height so both pin below each other without overlapping.
-  var videoNcEl = document.getElementById('schematic-video-nc-top-right');
-  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
-  var videoNcGap = 16; // matches the mb-3 margin + 1rem in the CSS calc()
-  var stickyStackTop = 110 + 200 + videoNcGap; // fallback matches CSS default
-  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
-    var updateOffset = function () {
-      var h = videoNcEl.getBoundingClientRect().height;
-      if (h > 0) {
-        adRailEl.style.setProperty('--video-nc-height', h + 'px');
-      }
-    };
-    new ResizeObserver(updateOffset).observe(videoNcEl);
-    updateOffset();
-  }
+  // Pin the sticky stack just below the fixed header (~108px). The video ad
+  // above it scrolls away and adrail-1 rises to fill the space. Both wide-rail
+  // ads share this offset so NitroPay stacks adrail-2 directly below adrail-1.
+  var stickyStackTop = 108;
 
-  // Wide ad rail — sticky-stack for long schematic pages (xl+: 1200px+)
-  window['nitroAds'].createAd('schematic-sticky-adrail', {
+  // Wide ad rail — two stacked 300x600 sticky ads for long schematic pages (xl+: 1200px+)
+  var wideStickyAd = {
     "refreshVisibleOnly": true,
     "format": "sticky-stack",
     "stickyStackLimit": 15,
@@ -1650,7 +1639,9 @@ document.addEventListener('htmx:afterRequest', function(evt) {
       "position": "top-right"
     },
     "mediaQuery": "(min-width: 1200px)"
-  });
+  };
+  window['nitroAds'].createAd('schematic-sticky-adrail-1', wideStickyAd);
+  window['nitroAds'].createAd('schematic-sticky-adrail-2', wideStickyAd);
   // Mobile ad (in-content on smaller screens)
   window['nitroAds'].createAd('schematic-mobile', {
     "refreshTime": 60,
