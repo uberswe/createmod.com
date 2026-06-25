@@ -150,12 +150,7 @@
             </div>
             </div>
             <!-- Ad Rail (desktop only) -->
-            <div class="ad-rail d-none d-xl-block">
-                {{if .IsAdmin}}<div id="topcreators-smart-flex" class="mb-3"></div>{{else}}<div id="topcreators-video-nc-top-right" class="mb-3"></div>{{end}}
-                <div class="ad-sticky-stack">
-                  <div id="topcreators-sticky-adrail-1" class="mb-3"></div>
-                  <div id="topcreators-sticky-adrail-2" class="mb-3"></div>
-                </div>
+            <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="topcreators" data-kw="minecraft,create-mod,leaderboard,creators" data-page="top-creators"></div>
             </div>
             </div>
             {{ else }}
@@ -169,60 +164,6 @@
 {{ template "footer.html" . }}
 {{ template "foot.html" . }}
 <script>
-window['nitroAds'].createAd('topcreators-video-nc-top-right', {
-  "format": "video-nc",
-  "keywords": "minecraft,create-mod,leaderboard,creators",
-  "targeting": { "pageType": "top-creators" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-window['nitroAds'].createAd('topcreators-sticky-adrail-1', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 8,
-  "stickyStackResizable": false,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "keywords": "minecraft,create-mod,leaderboard,creators",
-  "targeting": { "pageType": "top-creators" },
-  "mediaQuery": "(min-width: 1200px)"
-});
-window['nitroAds'].createAd('topcreators-sticky-adrail-2', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 8,
-  "stickyStackResizable": false,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "keywords": "minecraft,create-mod,leaderboard,creators",
-  "targeting": { "pageType": "top-creators" },
-  "mediaQuery": "(min-width: 1200px)"
-});
 window['nitroAds'].createAd('topcreators-mobile', {
   "refreshTime": 60,
   "refreshVisibleOnly": true,

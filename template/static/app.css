@@ -432,20 +432,21 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-/* Two stacked 300x600 sticky ads share a single sticky wrapper (.ad-sticky-stack)
-   so they move as one unit: the two ads sit in normal flow inside it (adrail-1
-   above adrail-2, with a 1rem gap) and the whole group pins at the top of the
-   viewport. This keeps a constant gap and makes overlap impossible — unlike
-   independently-sticky ads, where the taller top ad overlaps the lower one
-   while it is still scrolling into place. The preceding video ad is outside the
-   wrapper and scrolls away. */
+/* Right-rail ad sticking (built by adrail.js).
+   Variant B: two static display ads share one sticky wrapper (.ad-sticky-stack)
+   so they pin together as a unit and never overlap — they sit in normal flow
+   inside it (with a 1rem gap) and the group pins near the top of the viewport.
+   Variant A: the single sticky-stack ad (id ends "_a_sticky") pins the same way.
+   The video ad is outside both and scrolls away. */
 .ad-rail .ad-sticky-stack,
-.search-ad-rail-wide .ad-sticky-stack {
+.search-ad-rail-wide .ad-sticky-stack,
+.ad-rail > [id$="_a_sticky"],
+.search-ad-rail-wide > [id$="_a_sticky"] {
   position: sticky;
   top: 8px;
   z-index: 1;
 }
-.ad-sticky-stack > [id*="sticky-adrail"] {
+.ad-sticky-stack > [id*="_b_display"] {
   margin-bottom: 1rem;
 }
 

@@ -82,6 +82,9 @@ window.setTheme=function(theme){
     <script src="/assets/x/dev-ads.js?v={{ AssetVer }}" defer></script>
     {{ else }}
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js" onerror="window._nitroBlocked=true"></script>
+    {{ end }}
+    <script src="/assets/x/adrail.js?v={{ AssetVer }}" defer></script>
+    {{ if not .IsDev }}
     <script>
     // Reload once after the user accepts the NCMP cookie consent so that
     // NitroAds can render ads that were blocked before consent was given.
@@ -143,7 +146,7 @@ window.setTheme=function(theme){
         } catch(e) {}
       }
       document.addEventListener('click', function(ev) {
-        var adEl = ev.target.closest('[id*="-video-nc-"], [id*="-smart-flex"], [id*="-sticky-adrail"], [id*="-mobile"], [id*="outstream-player"]');
+        var adEl = ev.target.closest('[id*="-video-nc-"], [id*="_video"], [id*="-smart-flex"], [id*="-sticky-adrail"], [id*="_a_sticky"], [id*="_b_display"], [id*="-mobile"], [id*="outstream-player"]');
         if (adEl) {
           trackAdClick(adEl.id, '');
         }

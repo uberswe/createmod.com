@@ -54,12 +54,7 @@
                 </div>
                 </div>
                 <!-- Ad Rail (desktop only) -->
-                <div class="ad-rail d-none d-xl-block">
-                    {{if .IsAdmin}}<div id="schematics-smart-flex" class="mb-3"></div>{{else}}<div id="schematics-video-nc-top-right" class="mb-3"></div>{{end}}
-                    <div class="ad-sticky-stack">
-                      <div id="schematics-sticky-adrail-1" class="mb-3"></div>
-                      <div id="schematics-sticky-adrail-2" class="mb-3"></div>
-                    </div>
+                <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="schematics" data-kw="minecraft,create-mod,schematics,browse" data-page="schematics"></div>
                 </div>
                 </div>
             </div>
@@ -69,60 +64,6 @@
 </div>
 {{template "foot.html" .}}
 <script>
-window['nitroAds'].createAd('schematics-video-nc-top-right', {
-  "format": "video-nc",
-  "keywords": "minecraft,create-mod,schematics,browse",
-  "targeting": { "pageType": "schematics" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
-window['nitroAds'].createAd('schematics-sticky-adrail-1', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 8,
-  "stickyStackResizable": false,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "keywords": "minecraft,create-mod,schematics,browse",
-  "targeting": { "pageType": "schematics" },
-  "mediaQuery": "(min-width: 1200px)"
-});
-window['nitroAds'].createAd('schematics-sticky-adrail-2', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 8,
-  "stickyStackResizable": false,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "keywords": "minecraft,create-mod,schematics,browse",
-  "targeting": { "pageType": "schematics" },
-  "mediaQuery": "(min-width: 1200px)"
-});
 window['nitroAds'].createAd('schematics-mobile', {
   "refreshTime": 60,
   "refreshVisibleOnly": true,

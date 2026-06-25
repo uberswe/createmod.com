@@ -19,7 +19,7 @@ func Test_Videos_Template_Has_Expected_Elements(t *testing.T) {
 		"SignedOutURL",
 		"View on YouTube",
 		"View schematic",
-		"videos-sticky-adrail",
+		"data-cm-adrail",
 		"name=\"q\"",
 		"hx-target=\"#videos-results\"",
 		"hx-select=\"#videos-results\"",
