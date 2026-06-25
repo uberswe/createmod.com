@@ -161,7 +161,8 @@
                     <!-- Ad Rail (desktop only) -->
                     <div class="ad-rail d-none d-xl-block">
                         {{if .IsAdmin}}<div id="profile-smart-flex" class="mb-3"></div>{{else}}<div id="profile-video-nc-top-right" class="mb-3"></div>{{end}}
-                        <div id="profile-sticky-adrail" class="mb-3"></div>
+                        <div id="profile-sticky-adrail-1" class="mb-3"></div>
+                        <div id="profile-sticky-adrail-2" class="mb-3"></div>
                     </div>
                 </div>
             </div>
@@ -183,7 +184,7 @@ window['nitroAds'].createAd('profile-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-window['nitroAds'].createAd('profile-sticky-adrail', {
+window['nitroAds'].createAd('profile-sticky-adrail-1', {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
@@ -192,7 +193,28 @@ window['nitroAds'].createAd('profile-sticky-adrail', {
   "format": "sticky-stack",
   "stickyStackLimit": 15,
   "stickyStackSpace": 2.5,
-  "stickyStackOffset": 110,
+  "stickyStackOffset": 8,
+  "stickyStackResizable": false,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,profile,builder",
+  "targeting": { "pageType": "profile" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('profile-sticky-adrail-2', {
+  "refreshLimit": 10,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "format": "sticky-stack",
+  "stickyStackLimit": 15,
+  "stickyStackSpace": 2.5,
+  "stickyStackOffset": 8,
   "stickyStackResizable": false,
   "report": {
     "enabled": true,

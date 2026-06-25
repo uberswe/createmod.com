@@ -209,7 +209,8 @@
           <!-- Right: Ad rail (desktop only) -->
           <div class="search-ad-rail-wide d-none d-xl-block">
             {{if .IsAdmin}}<div id="moddetail-smart-flex" class="mb-3"></div>{{else}}<div id="moddetail-video-nc-top-right" class="mb-3"></div>{{end}}
-            <div id="moddetail-sticky-adrail" class="mb-3"></div>
+            <div id="moddetail-sticky-adrail-1" class="mb-3"></div>
+            <div id="moddetail-sticky-adrail-2" class="mb-3"></div>
           </div>
         </div>
       </div>
@@ -317,7 +318,7 @@ window['nitroAds'].createAd('moddetail-video-nc-top-right', {
   },
   "mediaQuery": "(min-width: 1200px)"
 });
-window['nitroAds'].createAd('moddetail-sticky-adrail', {
+var moddetailStickyAd = {
   "refreshLimit": 10,
   "refreshTime": 45,
   "refreshVisibleOnly": true,
@@ -326,7 +327,7 @@ window['nitroAds'].createAd('moddetail-sticky-adrail', {
   "format": "sticky-stack",
   "stickyStackLimit": 15,
   "stickyStackSpace": 2.5,
-  "stickyStackOffset": 110,
+  "stickyStackOffset": 8,
   "stickyStackResizable": false,
   "report": {
     "enabled": true,
@@ -337,7 +338,9 @@ window['nitroAds'].createAd('moddetail-sticky-adrail', {
   "keywords": "minecraft,create-mod,mod,addon",
   "targeting": { "pageType": "mod" },
   "mediaQuery": "(min-width: 1200px)"
-});
+};
+window['nitroAds'].createAd('moddetail-sticky-adrail-1', moddetailStickyAd);
+window['nitroAds'].createAd('moddetail-sticky-adrail-2', moddetailStickyAd);
 window['nitroAds'].createAd('moddetail-mobile', {
   "refreshTime": 60,
   "refreshVisibleOnly": true,

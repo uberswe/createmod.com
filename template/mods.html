@@ -5,6 +5,8 @@
     {{template "header.html" .}}
     <main class="page-body">
       <div class="container-wide">
+        <div class="d-flex gap-3">
+          <div class="flex-grow-1 min-width-0">
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
@@ -51,12 +53,43 @@
           </div>
         </div>
         {{ end }}
+          </div>
+          <!-- Ad Rail (desktop only): video ad above two stacked 300x600 sticky ads -->
+          <div class="ad-rail d-none d-xl-block">
+            {{if .IsAdmin}}<div id="mods-smart-flex" class="mb-3"></div>{{else}}<div id="mods-video-nc-top-right" class="mb-3"></div>{{end}}
+            <div id="mods-sticky-adrail-1" class="mb-3"></div>
+            <div id="mods-sticky-adrail-2" class="mb-3"></div>
+          </div>
+        </div>
       </div>
     </main>
     {{template "footer.html" .}}
   </div>
 </div>
 {{template "foot.html" .}}
+<script>
+window['nitroAds'].createAd('mods-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,mods,addons",
+  "targeting": { "pageType": "mods" },
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('mods-sticky-adrail-1', {
+  "refreshLimit": 10, "refreshTime": 45, "refreshVisibleOnly": true, "renderVisibleOnly": true, "visibleMargin": 300,
+  "format": "sticky-stack", "stickyStackLimit": 15, "stickyStackSpace": 2.5, "stickyStackOffset": 8, "stickyStackResizable": false,
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "keywords": "minecraft,create-mod,mods,addons", "targeting": { "pageType": "mods" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('mods-sticky-adrail-2', {
+  "refreshLimit": 10, "refreshTime": 45, "refreshVisibleOnly": true, "renderVisibleOnly": true, "visibleMargin": 300,
+  "format": "sticky-stack", "stickyStackLimit": 15, "stickyStackSpace": 2.5, "stickyStackOffset": 8, "stickyStackResizable": false,
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "keywords": "minecraft,create-mod,mods,addons", "targeting": { "pageType": "mods" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+</script>
 <script>
 (function() {
   var filter = document.getElementById('mod-filter');

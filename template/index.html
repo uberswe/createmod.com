@@ -123,6 +123,13 @@
                         {{ end }}
                     </div>
 
+                    <!-- Ad Rail (desktop only): video ad above two stacked 300x600 sticky ads -->
+                    <div class="ad-rail d-none d-xl-block">
+                        {{if .IsAdmin}}<div id="index-smart-flex" class="mb-3"></div>{{else}}<div id="index-video-nc-top-right" class="mb-3"></div>{{end}}
+                        <div id="index-sticky-adrail-1" class="mb-3"></div>
+                        <div id="index-sticky-adrail-2" class="mb-3"></div>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -130,6 +137,47 @@
     </div>
 </div>
 {{template "foot.html" .}}
+<script>
+window['nitroAds'].createAd('index-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,schematics,home",
+  "targeting": { "pageType": "index" },
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('index-sticky-adrail-1', {
+  "refreshLimit": 10,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "format": "sticky-stack",
+  "stickyStackLimit": 15,
+  "stickyStackSpace": 2.5,
+  "stickyStackOffset": 8,
+  "stickyStackResizable": false,
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "keywords": "minecraft,create-mod,schematics,home",
+  "targeting": { "pageType": "index" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('index-sticky-adrail-2', {
+  "refreshLimit": 10,
+  "refreshTime": 45,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "format": "sticky-stack",
+  "stickyStackLimit": 15,
+  "stickyStackSpace": 2.5,
+  "stickyStackOffset": 8,
+  "stickyStackResizable": false,
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "keywords": "minecraft,create-mod,schematics,home",
+  "targeting": { "pageType": "index" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+</script>
 <style>
 .follow-btn{position:relative}
 .follow-tooltip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%) translateY(4px);background:var(--cm-bg-surface,#1a1a2e);color:var(--cm-text,#e0e0e0);border:1px solid var(--cm-border,#2a2a3e);padding:4px 10px;border-radius:6px;font-size:.8rem;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:10}

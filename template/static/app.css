@@ -432,14 +432,22 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-/* The sticky-adrail child is sticky. Preceding slots (e.g. the
-   video-nc ad) scroll with the page so they don't stack on top of the
-   sticky-stack adrail at the same top offset. */
+/* Two stacked 300x600 sticky ads. The preceding video ad scrolls away and
+   adrail-1 rises to pin near the top of the viewport (8px; the header scrolls
+   away on desktop). adrail-2 pins below it, offset by adrail-1's max-height
+   plus the gap. Each slot is capped
+   at 650px with spacing underneath. (NitroPay's sticky-stack format manages the
+   live ad pinning via stickyStackOffset; these rules are the layout base and
+   the dev-ads fallback.) */
 .ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
-  height: calc(100vh - 108px);
+  max-height: 650px;
+  margin-bottom: 1rem;
+}
+.ad-rail > [id$="-sticky-adrail-2"] {
+  top: calc(8px + 650px + 1rem);
 }
 
 /***************
@@ -506,9 +514,9 @@ a:hover {
 }
 .ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
-  height: calc(100vh - 108px);
+  height: calc(100vh - 8px);
 }
 
 /***************
@@ -945,6 +953,22 @@ body.sidebar-pinned .page-wrapper {
   display: none;
 }
 
+/* Desktop (>=992px): the top header scrolls away with the page content while
+   the left sidebar stays pinned full-height. On smaller screens the header
+   stays fixed because it holds the hamburger that opens the (overlay) sidebar. */
+@media (min-width: 992px) {
+  .top-header {
+    position: static;
+  }
+  .sidebar-rail {
+    top: 0;
+  }
+  .page-wrapper {
+    margin-top: 0;
+    min-height: 100vh;
+  }
+}
+
 /***************
   Mobile sidebar
 ***************/
@@ -1035,8 +1059,13 @@ body.sidebar-open::after {
 }
 .search-ad-rail-wide > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
+  max-height: 650px;
+  margin-bottom: 1rem;
+}
+.search-ad-rail-wide > [id$="-sticky-adrail-2"] {
+  top: calc(8px + 650px + 1rem);
 }
 
 .search-sidebar {
@@ -1055,9 +1084,9 @@ body.sidebar-open::after {
 }
 .search-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
-  height: calc(100vh - 108px);
+  height: calc(100vh - 8px);
   overflow: hidden;
 }
 
