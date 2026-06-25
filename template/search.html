@@ -247,8 +247,10 @@
                     <!-- Right: Ad rail (desktop only) -->
                     <div class="search-ad-rail-wide d-none d-xl-block">
                         {{if .IsAdmin}}<div id="search-smart-flex" class="mb-3"></div>{{else}}<div id="search-video-nc-top-right" class="mb-3"></div>{{end}}
-                        <div id="search-sticky-adrail-1" class="mb-3"></div>
-                        <div id="search-sticky-adrail-2" class="mb-3"></div>
+                        <div class="ad-sticky-stack">
+                          <div id="search-sticky-adrail-1" class="mb-3"></div>
+                          <div id="search-sticky-adrail-2" class="mb-3"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -291,8 +293,7 @@
                 "mediaQuery": "(min-width: 1200px)"
             };
             window['nitroAds'].createAd('search-sticky-adrail-1', searchStickyAd);
-            // adrail-2 pins below adrail-1 (offset = adrail-1 top 8 + its max-height 650 + 1rem gap)
-            window['nitroAds'].createAd('search-sticky-adrail-2', Object.assign({}, searchStickyAd, { "stickyStackOffset": 674 }));
+  window['nitroAds'].createAd('search-sticky-adrail-2', searchStickyAd);
 
             // Infinite scroll via IntersectionObserver
             (function() {
