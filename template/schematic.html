@@ -1151,13 +1151,7 @@
                         <div id="schematic-sticky-adrail-lg" class="mb-3"></div>
                     </div>
                     <!-- Wide 300px rail for xl+ (1200px+): video ad (scrolls away) above two stacked 300x600 sticky ads -->
-                    <div class="ad-rail d-none d-xl-block">
-                        {{if .IsAdmin}}<div id="schematic-smart-flex" class="mb-3"></div>{{else}}<div id="schematic-video-nc-top-right" class="mb-3"></div>{{end}}
-                        <div class="ad-sticky-stack">
-                          <div id="schematic-sticky-adrail-1" class="mb-3"></div>
-                          <div id="schematic-sticky-adrail-2" class="mb-3"></div>
-                        </div>
-                    </div>
+                    <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="schematic" data-kw="minecraft,create-mod,schematic" data-page="schematic"></div>
                 </div><!-- /d-flex -->
 
             </div>
@@ -1584,19 +1578,6 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "modVersion": "{{ .Schematic.CreatemodVersion }}"
   };
 
-  // Video NC ad (desktop only)
-  window['nitroAds'].createAd('schematic-video-nc-top-right', {
-    "format": "video-nc",
-    "keywords": kwString,
-    "targeting": targeting,
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-right"
-    },
-    "mediaQuery": "(min-width: 1200px)"
-  });
   // Narrow ad rail (lg only: 992-1199px)
   window['nitroAds'].createAd('schematic-sticky-adrail-lg', {
     "refreshLimit": 10,
@@ -1619,32 +1600,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  // Pin the sticky stack near the top of the viewport (~8px). The header
-  // scrolls away on desktop and the video ad above scrolls off, so adrail-1
-  // rises to the top. Both wide-rail ads share this offset so NitroPay stacks
-  // adrail-2 directly below adrail-1.
-  var stickyStackTop = 8;
-
-  // Wide ad rail — two stacked 300x600 sticky ads for long schematic pages (xl+: 1200px+)
-  var wideStickyAd = {
-    "refreshVisibleOnly": true,
-    "format": "sticky-stack",
-    "stickyStackLimit": 15,
-    "stickyStackSpace": 2.5,
-    "stickyStackOffset": stickyStackTop,
-    "stickyStackResizable": false,
-    "keywords": kwString,
-    "targeting": targeting,
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-right"
-    },
-    "mediaQuery": "(min-width: 1200px)"
-  };
-  window['nitroAds'].createAd('schematic-sticky-adrail-1', wideStickyAd);
-  window['nitroAds'].createAd('schematic-sticky-adrail-2', wideStickyAd);
+  // Wide ad rail (xl+) is built by adrail.js via the data-cm-adrail container.
   // Mobile ad (in-content on smaller screens)
   window['nitroAds'].createAd('schematic-mobile', {
     "refreshTime": 60,

@@ -138,12 +138,7 @@
           <div class="ad-rail-sm d-none d-lg-block d-xl-none">
             <div id="collshow-sticky-adrail-lg" class="mb-3"></div>
           </div>
-          <div class="ad-rail d-none d-xl-block">
-            {{if .IsAdmin}}<div id="collshow-smart-flex" class="mb-3"></div>{{else}}<div id="collshow-video-nc-top-right" class="mb-3"></div>{{end}}
-            <div class="ad-sticky-stack">
-              <div id="collshow-sticky-adrail-1" class="mb-3"></div>
-              <div id="collshow-sticky-adrail-2" class="mb-3"></div>
-            </div>
+          <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="collshow" data-kw="minecraft,create-mod,collection" data-page="collection"></div>
           </div>
         </div><!-- /d-flex -->
       </div>
@@ -184,18 +179,6 @@ function copyShareLink() {
 
 <!-- Ad Scripts -->
 <script>
-window['nitroAds'].createAd('collshow-video-nc-top-right', {
-  "format": "video-nc",
-  "keywords": "minecraft,create-mod,collection",
-  "targeting": { "pageType": "collection" },
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "mediaQuery": "(min-width: 1200px)"
-});
 window['nitroAds'].createAd('collshow-sticky-adrail-lg', {
   "refreshLimit": 10,
   "refreshTime": 45,
@@ -216,48 +199,6 @@ window['nitroAds'].createAd('collshow-sticky-adrail-lg', {
   "keywords": "minecraft,create-mod,collection",
   "targeting": { "pageType": "collection" },
   "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
-});
-window['nitroAds'].createAd('collshow-sticky-adrail-1', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 8,
-  "stickyStackResizable": false,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "keywords": "minecraft,create-mod,collection",
-  "targeting": { "pageType": "collection" },
-  "mediaQuery": "(min-width: 1200px)"
-});
-window['nitroAds'].createAd('collshow-sticky-adrail-2', {
-  "refreshLimit": 10,
-  "refreshTime": 45,
-  "refreshVisibleOnly": true,
-  "renderVisibleOnly": true,
-  "visibleMargin": 300,
-  "format": "sticky-stack",
-  "stickyStackLimit": 15,
-  "stickyStackSpace": 2.5,
-  "stickyStackOffset": 8,
-  "stickyStackResizable": false,
-  "report": {
-    "enabled": true,
-    "icon": true,
-    "wording": "Report Ad",
-    "position": "top-right"
-  },
-  "keywords": "minecraft,create-mod,collection",
-  "targeting": { "pageType": "collection" },
-  "mediaQuery": "(min-width: 1200px)"
 });
 window['nitroAds'].createAd('collshow-mobile', {
   "refreshTime": 60,
