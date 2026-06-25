@@ -67,10 +67,13 @@ func ImageUploadHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read file"})
 		}
 
-		// Convert to WebP (GIF and WebP pass through). Rejects decompression bombs.
+		// Convert to WebP, stripping metadata. Rejects decompression bombs and animated GIFs.
 		data, filename, contentType, convErr := convertToWebP(data, sanitizeFilename(filepath.Base(header.Filename)))
 		if errors.Is(convErr, errImageTooLarge) {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "image resolution too large"})
+		}
+		if errors.Is(convErr, errAnimatedGIF) {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "animated GIFs are not allowed"})
 		}
 
 		// Generate unique ID

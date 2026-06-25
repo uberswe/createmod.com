@@ -263,6 +263,9 @@ func SchematicUpdateHandler(
 			if errors.Is(convErr, errImageTooLarge) {
 				return e.BadRequestError("featured image resolution is too large", nil)
 			}
+			if errors.Is(convErr, errAnimatedGIF) {
+				return e.BadRequestError("animated GIFs are not allowed", nil)
+			}
 			if storageSvc != nil {
 				if uploadErr := storageSvc.UploadBytes(ctx, s3CollectionSchematics, schematicID, filename, data, contentType); uploadErr != nil {
 					slog.Error("schematic update: failed to upload featured image to S3", "error", uploadErr, "id", schematicID)
@@ -512,11 +515,15 @@ const (
 // maxDecodePixels. Callers should skip/reject the image rather than decode it.
 var errImageTooLarge = errors.New("image resolution too large")
 
-// convertToWebP converts image data to WebP format. GIF and WebP files are
-// passed through unchanged (GIF may be animated; WebP is already the target).
-// Returns the (possibly converted) data, filename, and content type. Falls back
-// to the original bytes if conversion fails. Returns errImageTooLarge if the
-// image exceeds maxDecodePixels, in which case the data return is nil.
+// convertToWebP converts image data to WebP format. Embedded metadata
+// (EXIF/XMP/GPS/comments) is stripped before anything is stored. WebP files are
+// passed through after stripping (already the target format; preserves
+// animation); everything else is decoded and re-encoded to WebP. Animated GIFs
+// are rejected with errAnimatedGIF. Returns the (possibly converted) data,
+// filename, and content type. Falls back to the (stripped) original bytes if
+// re-encoding fails. Returns errImageTooLarge if the image exceeds
+// maxDecodePixels, or errAnimatedGIF for animated GIFs — in both cases the data
+// return is nil.
 func convertToWebP(data []byte, filename string) ([]byte, string, string, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 
@@ -529,7 +536,18 @@ func convertToWebP(data []byte, filename string) ([]byte, string, string, error)
 		}
 	}
 
-	if ext == ".gif" || ext == ".webp" {
+	// Animated GIFs are not allowed.
+	if ext == ".gif" && isAnimatedGIF(data) {
+		return nil, "", "", errAnimatedGIF
+	}
+
+	// Strip embedded metadata before any conversion or passthrough, so a user's
+	// original EXIF/GPS data is never stored or served.
+	data = stripImageMetadata(data)
+
+	// WebP is already the target format; serve the stripped bytes as-is. This
+	// preserves animated WebP, which we deliberately don't re-encode.
+	if ext == ".webp" {
 		return data, filename, http.DetectContentType(data), nil
 	}
 
