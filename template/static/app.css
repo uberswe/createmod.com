@@ -1055,7 +1055,10 @@ body.sidebar-open::after {
 .search-ad-rail-wide {
   min-width: 160px;
   flex-shrink: 0;
-  align-self: start;
+  /* Full height so both stacked sticky ads stay pinned while scrolling
+     (align-self: start makes the rail only as tall as its content, so the
+     second ad unsticks and scrolls away). */
+  align-self: stretch;
 }
 .search-ad-rail-wide > [id*="sticky-adrail"] {
   position: sticky;

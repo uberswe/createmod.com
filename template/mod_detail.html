@@ -340,7 +340,8 @@ var moddetailStickyAd = {
   "mediaQuery": "(min-width: 1200px)"
 };
 window['nitroAds'].createAd('moddetail-sticky-adrail-1', moddetailStickyAd);
-window['nitroAds'].createAd('moddetail-sticky-adrail-2', moddetailStickyAd);
+// adrail-2 pins below adrail-1 (offset = adrail-1 top 8 + its max-height 650 + 1rem gap)
+window['nitroAds'].createAd('moddetail-sticky-adrail-2', Object.assign({}, moddetailStickyAd, { "stickyStackOffset": 674 }));
 window['nitroAds'].createAd('moddetail-mobile', {
   "refreshTime": 60,
   "refreshVisibleOnly": true,
