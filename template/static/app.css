@@ -445,7 +445,7 @@ a:hover {
   max-height: 650px;
   margin-bottom: 1rem;
 }
-.ad-rail > #schematic-sticky-adrail-2 {
+.ad-rail > [id$="-sticky-adrail-2"] {
   top: calc(108px + 650px + 1rem);
 }
 
