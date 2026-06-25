@@ -291,7 +291,8 @@
                 "mediaQuery": "(min-width: 1200px)"
             };
             window['nitroAds'].createAd('search-sticky-adrail-1', searchStickyAd);
-            window['nitroAds'].createAd('search-sticky-adrail-2', searchStickyAd);
+            // adrail-2 pins below adrail-1 (offset = adrail-1 top 8 + its max-height 650 + 1rem gap)
+            window['nitroAds'].createAd('search-sticky-adrail-2', Object.assign({}, searchStickyAd, { "stickyStackOffset": 674 }));
 
             // Infinite scroll via IntersectionObserver
             (function() {

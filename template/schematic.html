@@ -1642,7 +1642,8 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "mediaQuery": "(min-width: 1200px)"
   };
   window['nitroAds'].createAd('schematic-sticky-adrail-1', wideStickyAd);
-  window['nitroAds'].createAd('schematic-sticky-adrail-2', wideStickyAd);
+  // adrail-2 pins below adrail-1 (offset = adrail-1 top 8 + its max-height 650 + 1rem gap)
+  window['nitroAds'].createAd('schematic-sticky-adrail-2', Object.assign({}, wideStickyAd, { "stickyStackOffset": 674 }));
   // Mobile ad (in-content on smaller screens)
   window['nitroAds'].createAd('schematic-mobile', {
     "refreshTime": 60,
