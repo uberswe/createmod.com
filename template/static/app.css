@@ -433,20 +433,21 @@ a:hover {
   align-self: stretch;
 }
 /* Two stacked 300x600 sticky ads. The preceding video ad scrolls away and
-   adrail-1 rises to pin just below the fixed header (108px). adrail-2 pins
-   below it, offset by adrail-1's max-height plus the gap. Each slot is capped
+   adrail-1 rises to pin near the top of the viewport (8px; the header scrolls
+   away on desktop). adrail-2 pins below it, offset by adrail-1's max-height
+   plus the gap. Each slot is capped
    at 650px with spacing underneath. (NitroPay's sticky-stack format manages the
    live ad pinning via stickyStackOffset; these rules are the layout base and
    the dev-ads fallback.) */
 .ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
   max-height: 650px;
   margin-bottom: 1rem;
 }
 .ad-rail > [id$="-sticky-adrail-2"] {
-  top: calc(108px + 650px + 1rem);
+  top: calc(8px + 650px + 1rem);
 }
 
 /***************
@@ -513,9 +514,9 @@ a:hover {
 }
 .ad-rail-sm > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
-  height: calc(100vh - 108px);
+  height: calc(100vh - 8px);
 }
 
 /***************
@@ -1058,7 +1059,7 @@ body.sidebar-open::after {
 }
 .search-ad-rail-wide > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
 }
 
@@ -1078,9 +1079,9 @@ body.sidebar-open::after {
 }
 .search-ad-rail > [id*="sticky-adrail"] {
   position: sticky;
-  top: 108px;
+  top: 8px;
   z-index: 1;
-  height: calc(100vh - 108px);
+  height: calc(100vh - 8px);
   overflow: hidden;
 }
 

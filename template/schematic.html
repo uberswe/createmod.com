@@ -1605,7 +1605,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "format": "sticky-stack",
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
-    "stickyStackOffset": 110,
+    "stickyStackOffset": 8,
     "stickyStackResizable": false,
     "keywords": kwString,
     "targeting": targeting,
@@ -1617,10 +1617,11 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  // Pin the sticky stack just below the fixed header (~108px). The video ad
-  // above it scrolls away and adrail-1 rises to fill the space. Both wide-rail
-  // ads share this offset so NitroPay stacks adrail-2 directly below adrail-1.
-  var stickyStackTop = 108;
+  // Pin the sticky stack near the top of the viewport (~8px). The header
+  // scrolls away on desktop and the video ad above scrolls off, so adrail-1
+  // rises to the top. Both wide-rail ads share this offset so NitroPay stacks
+  // adrail-2 directly below adrail-1.
+  var stickyStackTop = 8;
 
   // Wide ad rail — two stacked 300x600 sticky ads for long schematic pages (xl+: 1200px+)
   var wideStickyAd = {
