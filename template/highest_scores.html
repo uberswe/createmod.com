@@ -31,6 +31,14 @@
                             <a {{ if .HasNext }}href="{{ .NextURL }}" class="btn btn-outline-secondary"{{ else }}class="btn btn-outline-secondary disabled" tabindex="-1" aria-disabled="true"{{ end }}>{{ T .Language "Next" }}</a>
                         </div>
                     </div>
+
+                    <!-- Ad Rail (desktop only): video ad above two stacked 300x600 sticky ads -->
+                    <div class="ad-rail d-none d-xl-block">
+                        {{if .IsAdmin}}<div id="highscores-smart-flex" class="mb-3"></div>{{else}}<div id="highscores-video-nc-top-right" class="mb-3"></div>{{end}}
+                        <div id="highscores-sticky-adrail-1" class="mb-3"></div>
+                        <div id="highscores-sticky-adrail-2" class="mb-3"></div>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -38,3 +46,26 @@
     </div>
 </div>
 {{template "foot.html" .}}
+<script>
+window['nitroAds'].createAd('highscores-video-nc-top-right', {
+  "format": "video-nc",
+  "keywords": "minecraft,create-mod,schematics,highest-scores",
+  "targeting": { "pageType": "highest-scores" },
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('highscores-sticky-adrail-1', {
+  "refreshLimit": 10, "refreshTime": 45, "refreshVisibleOnly": true, "renderVisibleOnly": true, "visibleMargin": 300,
+  "format": "sticky-stack", "stickyStackLimit": 15, "stickyStackSpace": 2.5, "stickyStackOffset": 8, "stickyStackResizable": false,
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "keywords": "minecraft,create-mod,schematics,highest-scores", "targeting": { "pageType": "highest-scores" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+window['nitroAds'].createAd('highscores-sticky-adrail-2', {
+  "refreshLimit": 10, "refreshTime": 45, "refreshVisibleOnly": true, "renderVisibleOnly": true, "visibleMargin": 300,
+  "format": "sticky-stack", "stickyStackLimit": 15, "stickyStackSpace": 2.5, "stickyStackOffset": 8, "stickyStackResizable": false,
+  "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+  "keywords": "minecraft,create-mod,schematics,highest-scores", "targeting": { "pageType": "highest-scores" },
+  "mediaQuery": "(min-width: 1200px)"
+});
+</script>

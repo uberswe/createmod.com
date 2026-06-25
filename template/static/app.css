@@ -1061,6 +1061,11 @@ body.sidebar-open::after {
   position: sticky;
   top: 8px;
   z-index: 1;
+  max-height: 650px;
+  margin-bottom: 1rem;
+}
+.search-ad-rail-wide > [id$="-sticky-adrail-2"] {
+  top: calc(8px + 650px + 1rem);
 }
 
 .search-sidebar {
