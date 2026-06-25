@@ -952,6 +952,22 @@ body.sidebar-pinned .page-wrapper {
   display: none;
 }
 
+/* Desktop (>=992px): the top header scrolls away with the page content while
+   the left sidebar stays pinned full-height. On smaller screens the header
+   stays fixed because it holds the hamburger that opens the (overlay) sidebar. */
+@media (min-width: 992px) {
+  .top-header {
+    position: static;
+  }
+  .sidebar-rail {
+    top: 0;
+  }
+  .page-wrapper {
+    margin-top: 0;
+    min-height: 100vh;
+  }
+}
+
 /***************
   Mobile sidebar
 ***************/
