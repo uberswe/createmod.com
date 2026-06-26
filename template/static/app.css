@@ -432,22 +432,30 @@ a:hover {
   flex-shrink: 0;
   align-self: stretch;
 }
-/* Right-rail ad sticking (built by adrail.js).
-   Variant B: two static display ads share one sticky wrapper (.ad-sticky-stack)
+/* Right-rail ad sticking (built by adrail.js). The video ad is outside both and
+   scrolls away. */
+/* Variant B: two static display ads share one sticky wrapper (.ad-sticky-stack)
    so they pin together as a unit and never overlap — they sit in normal flow
-   inside it (with a 1rem gap) and the group pins near the top of the viewport.
-   Variant A: the single sticky-stack ad (id ends "_a_sticky") pins the same way.
-   The video ad is outside both and scrolls away. */
+   inside it (with a 1rem gap) and the group pins near the top of the viewport. */
 .ad-rail .ad-sticky-stack,
-.search-ad-rail-wide .ad-sticky-stack,
-.ad-rail > [id$="_a_sticky"],
-.search-ad-rail-wide > [id$="_a_sticky"] {
+.search-ad-rail-wide .ad-sticky-stack {
   position: sticky;
   top: 8px;
   z-index: 1;
 }
 .ad-sticky-stack > [id*="_b_display"] {
   margin-bottom: 1rem;
+}
+/* Variant A: the single NitroPay sticky-stack ad (id ends "_a_sticky"). It needs
+   a tall sticky container so the ad has room to stay pinned while scrolling —
+   without an explicit height the slot collapses (the ad lives in NitroPay's own
+   inner element) and scrolls away. */
+.ad-rail > [id$="_a_sticky"],
+.search-ad-rail-wide > [id$="_a_sticky"] {
+  position: sticky;
+  top: 8px;
+  z-index: 1;
+  height: calc(100vh - 8px);
 }
 
 /***************
