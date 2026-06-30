@@ -175,6 +175,54 @@ Retry-After: 12          <span class="tok-c"># only on 429</span></pre>
                         <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
                         <td class="descr">{{ T .Language "Page number" }}<small>Default: 1</small></td>
                       </tr>
+                      <tr>
+                        <td><span class="name">per_page</span></td>
+                        <td><span class="type">integer</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Results per page (8, 16, 24, 32, 64, 100)" }}<small>Default: 24</small></td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">sort</span></td>
+                        <td><span class="type">integer</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "1 best match, 2 newest, 3 oldest, 4 highest rated, 5 lowest rated, 6 most viewed, 7 least viewed, 8 trending" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">category</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Filter by category key" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">mcv</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Filter by Minecraft version" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">cv</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Filter by Create version" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">rating</span></td>
+                        <td><span class="type">integer</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Minimum rating (0 to 5)" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">tag</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Filter by tag key(s), comma-separated" }}</td>
+                      </tr>
+                      <tr>
+                        <td><span class="name">mod</span></td>
+                        <td><span class="type">string</span></td>
+                        <td><span class="req optional">{{ T .Language "Optional" }}</span></td>
+                        <td class="descr">{{ T .Language "Filter by required mod namespace, repeatable" }}</td>
+                      </tr>
                     </tbody>
                   </table>
 
