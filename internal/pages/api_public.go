@@ -102,13 +102,14 @@ func searchRateLimitAllow(rl ratelimit.Limiter, clientIP string, limit int) (boo
 
 // apiListResponse is the JSON shape for list/search responses.
 type apiListResponse struct {
-	Items    []models.Schematic `json:"items"`
-	Page     int                `json:"page"`
-	PageSize int                `json:"pageSize"`
-	HasPrev  bool               `json:"hasPrev"`
-	HasNext  bool               `json:"hasNext"`
-	Total    int                `json:"total"`
-	Term     string             `json:"term,omitempty"`
+	Items      []models.Schematic `json:"items"`
+	Page       int                `json:"page"`
+	PageSize   int                `json:"pageSize"`
+	HasPrev    bool               `json:"hasPrev"`
+	HasNext    bool               `json:"hasNext"`
+	Total      int                `json:"total"`
+	TotalPages int                `json:"totalPages"`
+	Term       string             `json:"term,omitempty"`
 }
 
 // getAPIKeyFromRequest extracts API key from the X-API-Key header.
@@ -233,71 +234,52 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 				page = n
 			}
 		}
-		pageSize := 24
+		pageSize := parseAPIPerPage(e.Request.URL.Query().Get("per_page"))
 
 		ctx := context.Background()
 		var items []models.Schematic
 		total := 0
 		hasNext := false
 
-		term := strings.ReplaceAll(strings.TrimSpace(q), "-", " ")
-		order := search.TrendingOrder
-		if term != "" {
-			order = search.BestMatchOrder
+		sq := parseAPISearchQuery(e, appStore, cacheService)
+		ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq)
+		if err != nil {
+			return e.String(http.StatusInternalServerError, "failed to fetch schematics")
 		}
-		sq := search.SearchQuery{
-			Term:     term,
-			Order:    order,
-			Rating:   -1,
-			Category: "all",
+		total = len(ordered)
+		start := (page - 1) * pageSize
+		if start < 0 {
+			start = 0
 		}
-		ids, _ := searchEngine.Search(ctx, sq)
-		if len(ids) > 0 {
-			storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
-			if err != nil {
-				return e.String(http.StatusInternalServerError, "failed to fetch schematics")
-			}
-			// Preserve search order
-			byID := make(map[string]store.Schematic, len(storeSchematics))
-			for _, s := range storeSchematics {
-				byID[s.ID] = s
-			}
-			ordered := make([]store.Schematic, 0, len(ids))
-			for _, id := range ids {
-				if s, ok := byID[id]; ok {
-					ordered = append(ordered, s)
-				}
-			}
-			total = len(ordered)
-			start := (page - 1) * pageSize
-			if start < 0 {
-				start = 0
-			}
-			end := start + pageSize
-			if end > total {
-				end = total
-			}
-			var cur []store.Schematic
-			if total > 0 && start < total {
-				cur = ordered[start:end]
-			}
-			hasNext = end < total
-			items = MapStoreSchematics(appStore, cur, cacheService)
+		end := start + pageSize
+		if end > total {
+			end = total
 		}
+		var cur []store.Schematic
+		if total > 0 && start < total {
+			cur = ordered[start:end]
+		}
+		hasNext = end < total
+		items = MapStoreSchematics(appStore, cur, cacheService)
 
 		// Strip internal file paths from public responses.
 		for i := range items {
 			items[i].SchematicFile = ""
 		}
 
+		totalPages := 0
+		if pageSize > 0 {
+			totalPages = (total + pageSize - 1) / pageSize
+		}
 		resp := apiListResponse{
-			Items:    items,
-			Page:     page,
-			PageSize: pageSize,
-			HasPrev:  page > 1,
-			HasNext:  hasNext,
-			Total:    total,
-			Term:     q,
+			Items:      items,
+			Page:       page,
+			PageSize:   pageSize,
+			HasPrev:    page > 1,
+			HasNext:    hasNext,
+			Total:      total,
+			TotalPages: totalPages,
+			Term:       q,
 		}
 
 		e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -307,6 +289,155 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 		}
 		return nil
 	}
+}
+
+// parseAPIPerPage clamps the per_page param to a small set of allowed sizes,
+// defaulting to 24.
+func parseAPIPerPage(raw string) int {
+	if raw == "" {
+		return 24
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 24
+	}
+	switch n {
+	case 8, 16, 24, 32, 64, 100:
+		return n
+	}
+	return 24
+}
+
+// parseAPISearchQuery builds a search.SearchQuery from the public list/search
+// query params, mirroring the website search handler (sort, category, mcv, cv,
+// rating, tag, mods). When no term and no sort are given it browses by trending.
+func parseAPISearchQuery(e *server.RequestEvent, appStore *store.Store, cacheService *cache.Service) search.SearchQuery {
+	get := e.Request.URL.Query().Get
+	q := get("query")
+	if q == "" {
+		q = get("q")
+	}
+	term := strings.ReplaceAll(strings.TrimSpace(q), "-", " ")
+
+	hasSort := get("sort") != ""
+	order := search.BestMatchOrder
+	if term == "" && !hasSort {
+		order = search.TrendingOrder
+	}
+	if hasSort {
+		if n, err := strconv.Atoi(get("sort")); err == nil {
+			order = n
+		}
+	}
+
+	rating := -1
+	if v := get("rating"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			rating = n
+		}
+	}
+	category := "all"
+	if v := get("category"); v != "" {
+		category = v
+	}
+	mcVersion := "all"
+	if v := get("mcv"); v != "" {
+		mcVersion = v
+	}
+	createVersion := "all"
+	if v := get("cv"); v != "" {
+		createVersion = v
+	}
+
+	var selectedTags []string
+	if tp := get("tag"); tp != "" && tp != "all" {
+		for _, t := range strings.Split(tp, ",") {
+			if t = strings.TrimSpace(t); t != "" {
+				selectedTags = append(selectedTags, t)
+			}
+		}
+	}
+
+	// Accept both comma-separated "mods" and repeated "mod" params, then resolve
+	// the mod namespaces to the display names the search index stores.
+	var selectedMods []string
+	if mp := get("mods"); mp != "" {
+		for _, m := range strings.Split(mp, ",") {
+			if m = strings.TrimSpace(m); m != "" {
+				selectedMods = append(selectedMods, m)
+			}
+		}
+	}
+	if len(selectedMods) == 0 {
+		for _, m := range e.Request.URL.Query()["mod"] {
+			if m = strings.TrimSpace(m); m != "" {
+				selectedMods = append(selectedMods, m)
+			}
+		}
+	}
+	var meiliModNames []string
+	if len(selectedMods) > 0 {
+		allMods := allModOptionsFromStore(appStore, cacheService)
+		nsToDisplay := make(map[string]string, len(allMods))
+		for _, mo := range allMods {
+			nsToDisplay[mo.Namespace] = mo.DisplayName
+		}
+		for _, ns := range selectedMods {
+			if dn, ok := nsToDisplay[ns]; ok {
+				meiliModNames = append(meiliModNames, dn)
+			}
+		}
+	}
+
+	// Expand a "~6.0" major-version group into its individual versions.
+	var createVersionList []string
+	if strings.HasPrefix(createVersion, "~") {
+		prefix := strings.TrimPrefix(createVersion, "~")
+		for _, cv := range allCreatemodVersionsFromStore(appStore) {
+			if createVersionMajor(cv.Version) == prefix {
+				createVersionList = append(createVersionList, cv.Version)
+			}
+		}
+	}
+
+	return search.SearchQuery{
+		Term:             term,
+		Order:            order,
+		Rating:           rating,
+		Category:         category,
+		Tags:             selectedTags,
+		MinecraftVersion: mcVersion,
+		CreateVersion:    createVersion,
+		CreateVersions:   createVersionList,
+		Mods:             meiliModNames,
+	}
+}
+
+// apiSearchResults runs a search and returns the matching public schematics in
+// search-result order (deleted and non-public states filtered out).
+func apiSearchResults(ctx context.Context, searchEngine search.SearchEngine, appStore *store.Store, cacheService *cache.Service, sq search.SearchQuery) ([]store.Schematic, error) {
+	ids, _ := searchEngine.Search(ctx, sq)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[string]store.Schematic, len(storeSchematics))
+	for _, s := range storeSchematics {
+		byID[s.ID] = s
+	}
+	ordered := make([]store.Schematic, 0, len(ids))
+	for _, id := range ids {
+		if s, ok := byID[id]; ok {
+			if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
+				continue
+			}
+			ordered = append(ordered, s)
+		}
+	}
+	return ordered, nil
 }
 
 // APISchematicDetailHandler serves GET /api/schematics/{name} returning one schematic by name.
