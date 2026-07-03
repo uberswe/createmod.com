@@ -25,7 +25,7 @@ const openAPISpec = `{
       "get": {
         "operationId": "listSchematics",
         "summary": "List or search schematics",
-        "description": "Returns schematics sorted by trending score, or by relevance when a search query is provided. Supports both API key and HMAC authentication.",
+        "description": "Returns schematics filtered and sorted by the given parameters. With no query and no sort it browses by trending; with a query it sorts by relevance. Supports both API key and HMAC authentication.",
         "tags": ["Schematics"],
         "security": [
           { "ApiKeyHeader": [] },
@@ -34,7 +34,15 @@ const openAPISpec = `{
         ],
         "parameters": [
           { "name": "query", "in": "query", "schema": { "type": "string" }, "description": "Search term (alias: q)" },
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 }, "description": "Page number (alias: p)" }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 }, "description": "Page number (alias: p)" },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "enum": [8, 16, 24, 32, 64, 100], "default": 24 }, "description": "Results per page" },
+          { "name": "sort", "in": "query", "schema": { "type": "integer", "enum": [1, 2, 3, 4, 5, 6, 7, 8], "default": 1 }, "description": "Sort order: 1 best match, 2 newest, 3 oldest, 4 highest rated, 5 lowest rated, 6 most viewed, 7 least viewed, 8 trending" },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by category key (default: all)" },
+          { "name": "mcv", "in": "query", "schema": { "type": "string" }, "description": "Filter by Minecraft version" },
+          { "name": "cv", "in": "query", "schema": { "type": "string" }, "description": "Filter by Create version (or a ~major group like ~6.0)" },
+          { "name": "rating", "in": "query", "schema": { "type": "integer", "minimum": 0, "maximum": 5 }, "description": "Minimum rating" },
+          { "name": "tag", "in": "query", "schema": { "type": "string" }, "description": "Filter by tag key(s), comma-separated" },
+          { "name": "mod", "in": "query", "schema": { "type": "string" }, "description": "Filter by required mod namespace; repeatable (or comma-separated via mods)" }
         ],
         "responses": {
           "200": {
@@ -72,6 +80,137 @@ const openAPISpec = `{
                 "schema": { "$ref": "#/components/schemas/Schematic" }
               }
             }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/home": {
+      "get": {
+        "operationId": "getHome",
+        "summary": "Home page rails",
+        "description": "Returns the trending, latest, and highest rated schematic rails shown on the home page. Supports both API key and HMAC authentication.",
+        "tags": ["Schematics"],
+        "security": [
+          { "ApiKeyHeader": [] },
+          { "ApiKeyQuery": [] },
+          { "HMACSignature": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Home rails",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HomeResponse" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/schematics/filters": {
+      "get": {
+        "operationId": "getFilters",
+        "summary": "Search filter options",
+        "description": "Returns the category, Minecraft version, Create version, tag, and mod option lists used by the search filters. Supports both API key and HMAC authentication.",
+        "tags": ["Schematics"],
+        "security": [
+          { "ApiKeyHeader": [] },
+          { "ApiKeyQuery": [] },
+          { "HMACSignature": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filter option lists",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FiltersResponse" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/schematics/changes": {
+      "get": {
+        "operationId": "getSchematicChanges",
+        "summary": "List changed schematics",
+        "description": "Returns schematics edited or removed after the given cursor, so external caches can invalidate precisely. Call without a cursor to get the current cursor (with an empty list) and initialise from now. Public (no API key).",
+        "tags": ["Schematics"],
+        "security": [],
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Opaque RFC3339 cursor from a previous response. Omit to get the current cursor only." }
+        ],
+        "responses": {
+          "200": {
+            "description": "Changed schematics after the cursor",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangesResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/schematics/stats": {
+      "get": {
+        "operationId": "getSchematicBulkStats",
+        "summary": "Bulk schematic counters",
+        "description": "Returns just the volatile counters (views, downloads, rating, comment count) for up to 100 schematics, so caches can keep content long-lived while refreshing counters often. Public.",
+        "tags": ["Schematics"],
+        "security": [],
+        "parameters": [
+          { "name": "names", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Comma-separated schematic slugs (max 100)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Counters for the requested schematics",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StatItem" } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/schematics/{name}/download": {
+      "get": {
+        "operationId": "downloadSchematic",
+        "summary": "Download a schematic file",
+        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Supports both API key and HMAC authentication.",
+        "tags": ["Schematics"],
+        "security": [
+          { "ApiKeyHeader": [] },
+          { "ApiKeyQuery": [] },
+          { "HMACSignature": [] }
+        ],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" }, "description": "The URL slug of the schematic" },
+          { "name": "f", "in": "query", "schema": { "type": "string" }, "description": "Optional variation file ID" }
+        ],
+        "responses": {
+          "302": { "description": "Redirect to the schematic file" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Paid schematic; use the external link", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/schematics/{name}/comments": {
+      "get": {
+        "operationId": "getSchematicComments",
+        "summary": "List schematic comments",
+        "description": "Returns the approved comment thread for a schematic. Supports both API key and HMAC authentication.",
+        "tags": ["Schematics"],
+        "security": [
+          { "ApiKeyHeader": [] },
+          { "ApiKeyQuery": [] },
+          { "HMACSignature": [] }
+        ],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" }, "description": "The URL slug of the schematic" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment thread",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CommentsResponse" } } }
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" },
@@ -305,9 +444,80 @@ const openAPISpec = `{
           "hasPrev": { "type": "boolean" },
           "hasNext": { "type": "boolean" },
           "total": { "type": "integer" },
+          "totalPages": { "type": "integer" },
           "term": { "type": "string" }
         },
-        "required": ["items", "page", "pageSize", "hasPrev", "hasNext", "total"]
+        "required": ["items", "page", "pageSize", "hasPrev", "hasNext", "total", "totalPages"]
+      },
+      "HomeResponse": {
+        "type": "object",
+        "properties": {
+          "trending": { "type": "array", "items": { "$ref": "#/components/schemas/Schematic" } },
+          "latest": { "type": "array", "items": { "$ref": "#/components/schemas/Schematic" } },
+          "highestRated": { "type": "array", "items": { "$ref": "#/components/schemas/Schematic" } }
+        },
+        "required": ["trending", "latest", "highestRated"]
+      },
+      "FiltersResponse": {
+        "type": "object",
+        "properties": {
+          "categories": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "name": { "type": "string" }, "count": { "type": "integer" } } } },
+          "minecraftVersions": { "type": "array", "items": { "type": "string" } },
+          "createVersions": { "type": "array", "items": { "type": "object", "properties": { "group": { "type": "string" }, "value": { "type": "string" }, "versions": { "type": "array", "items": { "type": "string" } } } } },
+          "tags": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "name": { "type": "string" }, "count": { "type": "integer" } } } },
+          "mods": { "type": "array", "items": { "type": "object", "properties": { "namespace": { "type": "string" }, "name": { "type": "string" }, "count": { "type": "integer" } } } }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "ID": { "type": "string" },
+          "Published": { "type": "string" },
+          "AuthorUsername": { "type": "string" },
+          "AuthorAvatar": { "type": "string" },
+          "Content": { "type": "string" },
+          "Indent": { "type": "integer" },
+          "ParentID": { "type": "string" },
+          "ReplyToAuthor": { "type": "string" }
+        }
+      },
+      "CommentsResponse": {
+        "type": "object",
+        "properties": {
+          "count": { "type": "integer" },
+          "comments": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } }
+        },
+        "required": ["count", "comments"]
+      },
+      "ChangesResponse": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "kind": { "type": "string", "enum": ["updated", "removed"] }
+              }
+            }
+          },
+          "cursor": { "type": "string", "format": "date-time", "description": "Pass this back as ?cursor= on the next call" },
+          "hasMore": { "type": "boolean" }
+        },
+        "required": ["changes", "cursor", "hasMore"]
+      },
+      "StatItem": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "views": { "type": "integer" },
+          "downloads": { "type": "integer" },
+          "rating": { "type": "number", "format": "float" },
+          "ratingCount": { "type": "integer" },
+          "commentCount": { "type": "integer" }
+        },
+        "required": ["name", "views", "downloads", "rating", "ratingCount", "commentCount"]
       },
       "UploadResponse": {
         "type": "object",

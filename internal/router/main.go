@@ -505,10 +505,18 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/api/openapi.json", Adapt(pages.OpenAPIHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
+	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.Get("/api/schematics/filters", Adapt(pages.APIFiltersHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
+		Get("/api/schematics/changes", Adapt(pages.APISchematicChangesHandler(p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
+		Get("/api/schematics/stats", Adapt(pages.APISchematicBulkStatsHandler(p.AppStore)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.Get("/api/schematics/{name}/download", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
 	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics/{name}/comments", Adapt(pages.APISchematicCommentsHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
