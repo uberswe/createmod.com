@@ -603,6 +603,74 @@ func (ps *PostgresStore) NameExists(ctx context.Context, name string) (bool, err
 	return ps.q.SchematicNameExists(ctx, name)
 }
 
+// ChangesSince returns schematics edited or removed after the given time, so an
+// external cache can invalidate them. Edits are read from the existing
+// schematic_versions history (every content change writes a version); removals
+// come from the deleted timestamp. Results are ordered by time so the caller
+// can page with the last returned At as the next cursor.
+func (ps *PostgresStore) ChangesSince(ctx context.Context, since time.Time, limit int) ([]store.SchematicChange, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 1000
+	}
+	rows, err := ps.pool.Query(ctx, `
+		SELECT name, kind, at FROM (
+			SELECT s.name AS name, 'updated' AS kind, sv.created AS at
+			FROM schematic_versions sv
+			JOIN schematics s ON s.id = sv.schematic_id
+			WHERE sv.created > $1
+			  AND s.deleted IS NULL
+			  AND s.moderation_state IN ('published', 'approved')
+			UNION ALL
+			SELECT s.name, 'removed', s.deleted
+			FROM schematics s
+			WHERE s.deleted > $1
+		) c
+		ORDER BY at ASC
+		LIMIT $2
+	`, since, limit)
+	if err != nil {
+		return nil, fmt.Errorf("querying changes: %w", err)
+	}
+	defer rows.Close()
+	var out []store.SchematicChange
+	for rows.Next() {
+		var c store.SchematicChange
+		if err := rows.Scan(&c.Name, &c.Kind, &c.At); err != nil {
+			return nil, fmt.Errorf("scanning change: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// StatsByNames returns the volatile counters for the given public schematics.
+func (ps *PostgresStore) StatsByNames(ctx context.Context, names []string) ([]store.SchematicStat, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	rows, err := ps.pool.Query(ctx, `
+		SELECT s.name, s.views, s.downloads, s.avg_rating, s.rating_count,
+		       (SELECT COUNT(*) FROM comments c WHERE c.schematic_id = s.id AND c.approved)::int
+		FROM schematics s
+		WHERE s.name = ANY($1)
+		  AND s.deleted IS NULL
+		  AND s.moderation_state IN ('published', 'approved')
+	`, names)
+	if err != nil {
+		return nil, fmt.Errorf("querying stats: %w", err)
+	}
+	defer rows.Close()
+	var out []store.SchematicStat
+	for rows.Next() {
+		var s store.SchematicStat
+		if err := rows.Scan(&s.Name, &s.Views, &s.Downloads, &s.AvgRating, &s.RatingCount, &s.CommentCount); err != nil {
+			return nil, fmt.Errorf("scanning stat: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 func (ps *PostgresStore) GetByShortCode(ctx context.Context, code string) (*store.Schematic, error) {
 	row, err := ps.q.GetSchematicByShortCode(ctx, code)
 	if err != nil {
