@@ -173,7 +173,7 @@ const openAPISpec = `{
       "get": {
         "operationId": "downloadSchematic",
         "summary": "Download a schematic file",
-        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Supports both API key and HMAC authentication.",
+        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Also available at the alias GET /api/download/{name}. Supports both API key and HMAC authentication.",
         "tags": ["Schematics"],
         "security": [
           { "ApiKeyHeader": [] },
