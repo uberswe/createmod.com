@@ -137,7 +137,7 @@ const openAPISpec = `{
         "tags": ["Schematics"],
         "security": [],
         "parameters": [
-          { "name": "cursor", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Opaque RFC3339 cursor from a previous response. Omit to get the current cursor only." }
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Opaque cursor token from a previous response. Omit to get the current cursor only." }
         ],
         "responses": {
           "200": {
@@ -501,7 +501,7 @@ const openAPISpec = `{
               }
             }
           },
-          "cursor": { "type": "string", "format": "date-time", "description": "Pass this back as ?cursor= on the next call" },
+          "cursor": { "type": "string", "description": "Opaque token; pass this back as ?cursor= on the next call" },
           "hasMore": { "type": "boolean" }
         },
         "required": ["changes", "cursor", "hasMore"]

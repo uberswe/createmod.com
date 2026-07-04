@@ -602,31 +602,42 @@ func (ps *PostgresStore) NameExists(ctx context.Context, name string) (bool, err
 	return ps.q.SchematicNameExists(ctx, name)
 }
 
-// ChangesSince returns schematics edited or removed after the given time, so an
-// external cache can invalidate them. Edits are read from the existing
-// schematic_versions history (every content change writes a version); removals
-// come from the deleted timestamp. Results are ordered by time so the caller
-// can page with the last returned At as the next cursor.
-func (ps *PostgresStore) ChangesSince(ctx context.Context, since time.Time, limit int) ([]store.SchematicChange, error) {
+// ChangesSince returns schematics edited or removed after the given keyset
+// position (sinceAt, sinceName, sinceKind), so an external cache can invalidate
+// them. Edits are read from the existing schematic_versions history (every
+// content change writes a version, collapsed to one row per schematic); removals
+// come from the deleted timestamp. Results are ordered by (at, name, kind); the
+// caller pages by passing the last returned row back as the next cursor.
+func (ps *PostgresStore) ChangesSince(ctx context.Context, sinceAt time.Time, sinceName, sinceKind string, limit int) ([]store.SchematicChange, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 1000
 	}
+	// Keyset pagination over a non-unique sort key (timestamps collide, e.g. a
+	// bulk author deletion stamps many rows with the same NOW()). The cursor is
+	// the compound (at, name, kind) of the last row returned; the inner branches
+	// range-scan from sinceAt (>=) and the outer row-value comparison excludes
+	// exactly the already-seen prefix, so no row sharing the boundary timestamp
+	// is skipped. The 'updated' branch collapses a schematic's multiple edits
+	// since the cursor to a single row (its latest edit) so a churny schematic
+	// can't flood the page.
 	rows, err := ps.pool.Query(ctx, `
 		SELECT name, kind, at FROM (
-			SELECT s.name AS name, 'updated' AS kind, sv.created AS at
+			SELECT s.name AS name, 'updated' AS kind, MAX(sv.created) AS at
 			FROM schematic_versions sv
 			JOIN schematics s ON s.id = sv.schematic_id
-			WHERE sv.created > $1
+			WHERE sv.created >= $1
 			  AND s.deleted IS NULL
 			  AND s.moderation_state IN ('published', 'approved')
+			GROUP BY s.name
 			UNION ALL
-			SELECT s.name, 'removed', s.deleted
+			SELECT s.name, 'removed' AS kind, s.deleted AS at
 			FROM schematics s
-			WHERE s.deleted > $1
+			WHERE s.deleted >= $1
 		) c
-		ORDER BY at ASC
-		LIMIT $2
-	`, since, limit)
+		WHERE (c.at, c.name, c.kind) > ($1, $2, $3)
+		ORDER BY c.at ASC, c.name ASC, c.kind ASC
+		LIMIT $4
+	`, sinceAt, sinceName, sinceKind, limit)
 	if err != nil {
 		return nil, fmt.Errorf("querying changes: %w", err)
 	}
