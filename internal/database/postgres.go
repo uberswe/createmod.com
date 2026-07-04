@@ -649,7 +649,7 @@ func (ps *PostgresStore) StatsByNames(ctx context.Context, names []string) ([]st
 	}
 	rows, err := ps.pool.Query(ctx, `
 		SELECT s.name, s.views, s.downloads, s.avg_rating, s.rating_count,
-		       (SELECT COUNT(*) FROM comments c WHERE c.schematic_id = s.id AND c.approved)::int
+		       (SELECT COUNT(*) FROM comments c WHERE c.schematic_id = s.id AND c.approved AND c.deleted IS NULL)::int
 		FROM schematics s
 		WHERE s.name = ANY($1)
 		  AND s.deleted IS NULL
