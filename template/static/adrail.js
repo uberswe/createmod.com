@@ -6,14 +6,33 @@
 // (search / mod_detail use .search-ad-rail-wide; the data-cm-adrail attribute
 // is what matters.)
 //
-// On each page view we randomly (~50/50) pick a variant:
+// Two variants exist:
 //   Variant A  -> video ad on top + ONE NitroPay sticky-stack ad.
 //   Variant B  -> video ad on top + TWO static display ads (300x600 / 300x250
 //                 / 160x600) that stick together as one unit.
 // The ad-unit ids encode the variant (e.g. mods_a_sticky, mods_b_display_1) so
 // NitroPay reporting can compare revenue/RPM between the two setups.
+//
+// The experiment is currently NOT splitting traffic: every page view renders
+// Variant B. Flip AD_RAIL_VARIANT below back to "ab" to resume the 50/50 test
+// (or "a" to force Variant A). See useVariantA().
 (function () {
   "use strict";
+
+  // A/B rollout control for the wide (xl+) ad rail. The full A/B test is kept
+  // implemented below; this single switch decides which variant ships, so we
+  // can re-run the experiment or flip variants without touching the logic:
+  //   "b"  -> force Variant B (two static display ads) for everyone  [current]
+  //   "a"  -> force Variant A (single NitroPay sticky-stack) for everyone
+  //   "ab" -> original ~50/50 random A/B split
+  var AD_RAIL_VARIANT = "b";
+
+  // useVariantA reports whether this page view should render Variant A.
+  function useVariantA() {
+    if (AD_RAIL_VARIANT === "a") return true;
+    if (AD_RAIL_VARIANT === "b") return false;
+    return Math.random() < 0.5; // "ab": run the live experiment
+  }
 
   function slot(id) {
     var d = document.createElement("div");
@@ -46,7 +65,7 @@
     rail.appendChild(slot(prefix + "_video"));
     nitro().createAd(prefix + "_video", Object.assign({ format: "video-nc" }, common));
 
-    if (Math.random() < 0.5) {
+    if (useVariantA()) {
       // Variant A: a single NitroPay sticky-stack ad.
       rail.appendChild(slot(prefix + "_a_sticky"));
       nitro().createAd(prefix + "_a_sticky", Object.assign({
