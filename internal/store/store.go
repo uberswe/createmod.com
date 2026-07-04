@@ -81,7 +81,6 @@ type Schematic struct {
 	DimZ               int
 	Materials          json.RawMessage
 	Mods               json.RawMessage
-	Paid               bool
 	ExternalURL        string
 	Featured           bool
 	AIDescription      string
@@ -231,6 +230,25 @@ type Report struct {
 type SchematicRating struct {
 	AvgRating   float64
 	RatingCount int
+}
+
+// SchematicChange reports a schematic that was updated or removed, derived from
+// the schematic_versions history and the deleted timestamp.
+type SchematicChange struct {
+	Name string
+	Kind string // "updated" or "removed"
+	At   time.Time
+}
+
+// SchematicStat holds the volatile counters for a schematic, fetched
+// separately from content so caches can refresh them on a short timer.
+type SchematicStat struct {
+	Name         string
+	Views        int
+	Downloads    int
+	AvgRating    float64
+	RatingCount  int
+	CommentCount int
 }
 
 // SchematicCategoryInfo holds category info for batch enrichment.
@@ -760,6 +778,8 @@ type ModerationChatStore interface {
 type SchematicStore interface {
 	GetByID(ctx context.Context, id string) (*Schematic, error)
 	GetByName(ctx context.Context, name string) (*Schematic, error)
+	ChangesSince(ctx context.Context, sinceAt time.Time, sinceName, sinceKind string, limit int) ([]SchematicChange, error)
+	StatsByNames(ctx context.Context, names []string) ([]SchematicStat, error)
 	GetByShortCode(ctx context.Context, code string) (*Schematic, error)
 	SetShortCode(ctx context.Context, id, code string) error
 	ShortCodeExists(ctx context.Context, code string) (bool, error)

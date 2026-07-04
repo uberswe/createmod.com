@@ -129,11 +129,51 @@ const openAPISpec = `{
         }
       }
     },
+    "/api/schematics/changes": {
+      "get": {
+        "operationId": "getSchematicChanges",
+        "summary": "List changed schematics",
+        "description": "Returns schematics edited or removed after the given cursor, so external caches can invalidate precisely. Call without a cursor to get the current cursor (with an empty list) and initialise from now. Public (no API key).",
+        "tags": ["Schematics"],
+        "security": [],
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Opaque cursor token from a previous response. Omit to get the current cursor only." }
+        ],
+        "responses": {
+          "200": {
+            "description": "Changed schematics after the cursor",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChangesResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/schematics/stats": {
+      "get": {
+        "operationId": "getSchematicBulkStats",
+        "summary": "Bulk schematic counters",
+        "description": "Returns just the volatile counters (views, downloads, rating, comment count) for up to 100 schematics, so caches can keep content long-lived while refreshing counters often. Public.",
+        "tags": ["Schematics"],
+        "security": [],
+        "parameters": [
+          { "name": "names", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Comma-separated schematic slugs (max 100)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Counters for the requested schematics",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StatItem" } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
     "/api/schematics/{name}/download": {
       "get": {
         "operationId": "downloadSchematic",
         "summary": "Download a schematic file",
-        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Supports both API key and HMAC authentication.",
+        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Also available at the alias GET /api/download/{name}. Supports both API key and HMAC authentication.",
         "tags": ["Schematics"],
         "security": [
           { "ApiKeyHeader": [] },
@@ -147,7 +187,6 @@ const openAPISpec = `{
         "responses": {
           "302": { "description": "Redirect to the schematic file" },
           "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "description": "Paid schematic; use the external link", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
           "429": { "$ref": "#/components/responses/RateLimited" }
         }
@@ -448,6 +487,36 @@ const openAPISpec = `{
           "comments": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } }
         },
         "required": ["count", "comments"]
+      },
+      "ChangesResponse": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "kind": { "type": "string", "enum": ["updated", "removed"] }
+              }
+            }
+          },
+          "cursor": { "type": "string", "description": "Opaque token; pass this back as ?cursor= on the next call" },
+          "hasMore": { "type": "boolean" }
+        },
+        "required": ["changes", "cursor", "hasMore"]
+      },
+      "StatItem": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "views": { "type": "integer" },
+          "downloads": { "type": "integer" },
+          "rating": { "type": "number", "format": "float" },
+          "ratingCount": { "type": "integer" },
+          "commentCount": { "type": "integer" }
+        },
+        "required": ["name", "views", "downloads", "rating", "ratingCount", "commentCount"]
       },
       "UploadResponse": {
         "type": "object",

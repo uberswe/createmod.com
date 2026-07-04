@@ -79,16 +79,6 @@
                       </select>
                     </div>
                   </div>
-                  <div class="mb-3">
-                    <label class="form-check form-switch">
-                      <input type="checkbox" class="form-check-input" name="paid" {{if .Schematic.Paid}}checked{{end}}>
-                      <span class="form-check-label">{{ T .Language "Paid schematic" }}</span>
-                    </label>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "External URL" }}</label>
-                    <input type="url" class="form-control" name="external_url" value="{{.Schematic.ExternalURL}}">
-                  </div>
                 </div>
               </div>
             </div>

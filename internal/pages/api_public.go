@@ -6,12 +6,12 @@ import (
 	"createmod/internal/models"
 	"createmod/internal/ratelimit"
 	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/store"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"createmod/internal/server"
 	"net/http"
 	"strconv"
 	"strings"
@@ -148,6 +148,45 @@ func writeJSON(e *server.RequestEvent, status int, data interface{}) error {
 	return json.NewEncoder(e.Response).Encode(data)
 }
 
+// serveCachedJSON writes a previously cached 200 JSON body for key and returns
+// true on a hit. The cache is per-pod and in-memory; callers pair it with
+// writeAndCacheJSON. Only non-personalized responses should be cached this way.
+func serveCachedJSON(e *server.RequestEvent, cacheService *cache.Service, key string) bool {
+	if cacheService == nil {
+		return false
+	}
+	v, ok := cacheService.Get(key)
+	if !ok {
+		return false
+	}
+	body, ok := v.([]byte)
+	if !ok {
+		return false
+	}
+	e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	e.Response.Header().Set("X-Cache", "HIT")
+	e.Response.WriteHeader(http.StatusOK)
+	_, _ = e.Response.Write(body)
+	return true
+}
+
+// writeAndCacheJSON marshals data once, caches the bytes under key for ttl
+// (per-pod, in-memory), and writes them as a 200 response.
+func writeAndCacheJSON(e *server.RequestEvent, cacheService *cache.Service, key string, ttl time.Duration, data interface{}) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	if cacheService != nil {
+		cacheService.SetWithTTL(key, body, ttl)
+	}
+	e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	e.Response.Header().Set("X-Cache", "MISS")
+	e.Response.WriteHeader(http.StatusOK)
+	_, err = e.Response.Write(body)
+	return err
+}
+
 // requireAPIKeyFromStore extracts and validates the API key from the request using store.
 func requireAPIKeyFromStore(appStore *store.Store, e *server.RequestEvent) (string, error) {
 	apiKey := getAPIKeyFromRequest(e.Request)
@@ -242,7 +281,7 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 		hasNext := false
 
 		sq := parseAPISearchQuery(e, appStore, cacheService)
-		ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq)
+		ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq, 0)
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to fetch schematics")
 		}
@@ -319,20 +358,24 @@ func parseAPISearchQuery(e *server.RequestEvent, appStore *store.Store, cacheSer
 	}
 	term := strings.ReplaceAll(strings.TrimSpace(q), "-", " ")
 
-	hasSort := get("sort") != ""
+	// Only treat sort as set when it parses to a valid order (1..8). An invalid
+	// or non-numeric sort is ignored so it can't override the trending default
+	// for empty-term browsing or silently produce arbitrary relevancy order.
 	order := search.BestMatchOrder
+	hasSort := false
+	if n, err := strconv.Atoi(get("sort")); err == nil && n >= search.BestMatchOrder && n <= search.TrendingOrder {
+		order = n
+		hasSort = true
+	}
 	if term == "" && !hasSort {
 		order = search.TrendingOrder
 	}
-	if hasSort {
-		if n, err := strconv.Atoi(get("sort")); err == nil {
-			order = n
-		}
-	}
 
+	// Rating filter only applies for a valid minimum in 0..5; anything else
+	// (e.g. rating=10) is ignored rather than silently matching nothing.
 	rating := -1
 	if v := get("rating"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 && n <= 5 {
 			rating = n
 		}
 	}
@@ -413,12 +456,28 @@ func parseAPISearchQuery(e *server.RequestEvent, appStore *store.Store, cacheSer
 	}
 }
 
+// searchFetchCushion is how many extra IDs beyond a caller's limit apiSearchResults
+// hydrates, so deleted/non-public rows filtered out afterwards rarely leave the
+// caller short of its requested count.
+const searchFetchCushion = 24
+
 // apiSearchResults runs a search and returns the matching public schematics in
 // search-result order (deleted and non-public states filtered out).
-func apiSearchResults(ctx context.Context, searchEngine search.SearchEngine, appStore *store.Store, cacheService *cache.Service, sq search.SearchQuery) ([]store.Schematic, error) {
+//
+// limit caps how many results are hydrated: when > 0, only the top IDs (plus a
+// small cushion to absorb filtered-out rows) are fetched from the store, so
+// callers that need just a rail of N items (e.g. the home page) don't pull the
+// full search result set — up to 5000 rows — from Postgres. Pass 0 to hydrate
+// everything (the list handler needs the full set to compute an accurate total).
+func apiSearchResults(ctx context.Context, searchEngine search.SearchEngine, appStore *store.Store, cacheService *cache.Service, sq search.SearchQuery, limit int) ([]store.Schematic, error) {
 	ids, _ := searchEngine.Search(ctx, sq)
 	if len(ids) == 0 {
 		return nil, nil
+	}
+	// Fetch a cushion beyond limit so deleted/non-public filtering below still
+	// leaves at least `limit` items in the common case.
+	if limit > 0 && len(ids) > limit+searchFetchCushion {
+		ids = ids[:limit+searchFetchCushion]
 	}
 	storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
 	if err != nil {
@@ -466,6 +525,11 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		if strings.TrimSpace(name) == "" {
 			return e.String(http.StatusBadRequest, "missing schematic name")
 		}
+		// Detail is the same for every caller; serve a short-lived cached body.
+		cacheKey := "api:schematic:" + name
+		if serveCachedJSON(e, cacheService, cacheKey) {
+			return nil
+		}
 		ctx := context.Background()
 		s, err := appStore.Schematics.GetByName(ctx, name)
 		if err != nil || s == nil {
@@ -482,11 +546,6 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 		item := MapStoreSchematicToModel(appStore, *s, cacheService)
 		item.SchematicFile = ""
-		e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-		e.Response.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(e.Response).Encode(item); err != nil {
-			return fmt.Errorf("encode json: %w", err)
-		}
-		return nil
+		return writeAndCacheJSON(e, cacheService, cacheKey, 120*time.Second, item)
 	}
 }

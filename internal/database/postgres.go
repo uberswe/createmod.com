@@ -119,7 +119,6 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		DimZ:               int(s.DimZ),
 		Materials:          json.RawMessage(s.Materials),
 		Mods:               json.RawMessage(s.Mods),
-		Paid:               s.Paid,
 		ExternalURL:        s.ExternalUrl,
 		Featured:           s.Featured,
 		AIDescription:      s.AiDescription,
@@ -603,6 +602,85 @@ func (ps *PostgresStore) NameExists(ctx context.Context, name string) (bool, err
 	return ps.q.SchematicNameExists(ctx, name)
 }
 
+// ChangesSince returns schematics edited or removed after the given keyset
+// position (sinceAt, sinceName, sinceKind), so an external cache can invalidate
+// them. Edits are read from the existing schematic_versions history (every
+// content change writes a version, collapsed to one row per schematic); removals
+// come from the deleted timestamp. Results are ordered by (at, name, kind); the
+// caller pages by passing the last returned row back as the next cursor.
+func (ps *PostgresStore) ChangesSince(ctx context.Context, sinceAt time.Time, sinceName, sinceKind string, limit int) ([]store.SchematicChange, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 1000
+	}
+	// Keyset pagination over a non-unique sort key (timestamps collide, e.g. a
+	// bulk author deletion stamps many rows with the same NOW()). The cursor is
+	// the compound (at, name, kind) of the last row returned; the inner branches
+	// range-scan from sinceAt (>=) and the outer row-value comparison excludes
+	// exactly the already-seen prefix, so no row sharing the boundary timestamp
+	// is skipped. The 'updated' branch collapses a schematic's multiple edits
+	// since the cursor to a single row (its latest edit) so a churny schematic
+	// can't flood the page.
+	rows, err := ps.pool.Query(ctx, `
+		SELECT name, kind, at FROM (
+			SELECT s.name AS name, 'updated' AS kind, MAX(sv.created) AS at
+			FROM schematic_versions sv
+			JOIN schematics s ON s.id = sv.schematic_id
+			WHERE sv.created >= $1
+			  AND s.deleted IS NULL
+			  AND s.moderation_state IN ('published', 'approved')
+			GROUP BY s.name
+			UNION ALL
+			SELECT s.name, 'removed' AS kind, s.deleted AS at
+			FROM schematics s
+			WHERE s.deleted >= $1
+		) c
+		WHERE (c.at, c.name, c.kind) > ($1, $2, $3)
+		ORDER BY c.at ASC, c.name ASC, c.kind ASC
+		LIMIT $4
+	`, sinceAt, sinceName, sinceKind, limit)
+	if err != nil {
+		return nil, fmt.Errorf("querying changes: %w", err)
+	}
+	defer rows.Close()
+	var out []store.SchematicChange
+	for rows.Next() {
+		var c store.SchematicChange
+		if err := rows.Scan(&c.Name, &c.Kind, &c.At); err != nil {
+			return nil, fmt.Errorf("scanning change: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// StatsByNames returns the volatile counters for the given public schematics.
+func (ps *PostgresStore) StatsByNames(ctx context.Context, names []string) ([]store.SchematicStat, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	rows, err := ps.pool.Query(ctx, `
+		SELECT s.name, s.views, s.downloads, s.avg_rating, s.rating_count,
+		       (SELECT COUNT(*) FROM comments c WHERE c.schematic_id = s.id AND c.approved AND c.deleted IS NULL)::int
+		FROM schematics s
+		WHERE s.name = ANY($1)
+		  AND s.deleted IS NULL
+		  AND s.moderation_state IN ('published', 'approved')
+	`, names)
+	if err != nil {
+		return nil, fmt.Errorf("querying stats: %w", err)
+	}
+	defer rows.Close()
+	var out []store.SchematicStat
+	for rows.Next() {
+		var s store.SchematicStat
+		if err := rows.Scan(&s.Name, &s.Views, &s.Downloads, &s.AvgRating, &s.RatingCount, &s.CommentCount); err != nil {
+			return nil, fmt.Errorf("scanning stat: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 func (ps *PostgresStore) GetByShortCode(ctx context.Context, code string) (*store.Schematic, error) {
 	row, err := ps.q.GetSchematicByShortCode(ctx, code)
 	if err != nil {
@@ -717,7 +795,6 @@ func (ps *PostgresStore) Create(ctx context.Context, s *store.Schematic) error {
 		DimZ:               int32(s.DimZ),
 		Materials:          json.RawMessage(s.Materials),
 		Mods:               json.RawMessage(s.Mods),
-		Paid:               s.Paid,
 		ModerationState:    s.ModerationState,
 		Type:               s.Type,
 		Status:             s.Status,
@@ -756,7 +833,6 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 		DimZ:               ptrInt32(int32(s.DimZ)),
 		Materials:          s.Materials,
 		Mods:               s.Mods,
-		Paid:               ptrBool(s.Paid),
 		ExternalUrl:        ptrStr(s.ExternalURL),
 		SchematicFile:      ptrStr(s.SchematicFile),
 		Created:            toPgTimestamptz(s.CreatedOverride),

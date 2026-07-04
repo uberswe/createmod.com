@@ -24,8 +24,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	html "html/template"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -109,7 +109,7 @@ type RegisterParams struct {
 	SteamAuth          *auth.SteamProvider
 	MailService        *mailer.Service
 	JobWorker          *jobs.Worker
-	MaintenanceMode    *atomic.Bool // runtime-togglable maintenance flag
+	MaintenanceMode    *atomic.Bool  // runtime-togglable maintenance flag
 	DBPool             *pgxpool.Pool // used by readiness probe to verify DB connectivity
 }
 
@@ -169,10 +169,10 @@ func Register(p RegisterParams) chi.Router {
 	outSecret := deriveOutSecret()
 
 	funcMap := html.FuncMap{
-		"ToLower":        strings.ToLower,
-		"mod":            func(i, j int) bool { return i%j == 0 },
-		"add":            func(a, b int) int { return a + b },
-		"sub":            func(a, b int) int { return a - b },
+		"ToLower": strings.ToLower,
+		"mod":     func(i, j int) bool { return i%j == 0 },
+		"add":     func(a, b int) int { return a + b },
+		"sub":     func(a, b int) int { return a - b },
 		"FormatNumber": func(n int) string {
 			s := fmt.Sprintf("%d", n)
 			if len(s) <= 3 {
@@ -187,13 +187,13 @@ func Register(p RegisterParams) chi.Router {
 			}
 			return string(result)
 		},
-		"urlPathEscape":  url.PathEscape,
-		"HumanDate": func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
-		"DateOnly":  func(t time.Time) string { return t.UTC().Format("2006-01-02") },
-		"NewsDate":  func(t time.Time) string { return t.UTC().Format("January 2, 2006") },
-		"printf":    fmt.Sprintf,
-		"T":         func(lang string, key string) string { return i18n.T(lang, key) },
-		"AssetVer":  func() string { return assetVer },
+		"urlPathEscape": url.PathEscape,
+		"HumanDate":     func(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 MST") },
+		"DateOnly":      func(t time.Time) string { return t.UTC().Format("2006-01-02") },
+		"NewsDate":      func(t time.Time) string { return t.UTC().Format("January 2, 2006") },
+		"printf":        fmt.Sprintf,
+		"T":             func(lang string, key string) string { return i18n.T(lang, key) },
+		"AssetVer":      func() string { return assetVer },
 		"SignedOutURL": func(rawURL string, args ...string) string {
 			if len(args) == 2 {
 				return outurl.BuildPathWithSource(rawURL, outSecret, args[0], args[1])
@@ -508,8 +508,14 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/filters", Adapt(pages.APIFiltersHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
+		Get("/api/schematics/changes", Adapt(pages.APISchematicChangesHandler(p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
+		Get("/api/schematics/stats", Adapt(pages.APISchematicBulkStatsHandler(p.AppStore)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/download", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	// Additive alias for the REST download route (same handler, same {name} param).
+	r.Get("/api/download/{name}", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
 	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics/{name}/comments", Adapt(pages.APISchematicCommentsHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))

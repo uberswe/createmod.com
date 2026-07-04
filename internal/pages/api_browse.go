@@ -10,6 +10,7 @@ import (
 	"createmod/internal/store"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // homeSegmentSize is how many schematics each home rail returns.
@@ -45,11 +46,11 @@ type apiFilterMod struct {
 
 // apiFiltersResponse is the JSON shape for GET /api/schematics/filters.
 type apiFiltersResponse struct {
-	Categories       []apiFilterCategory           `json:"categories"`
-	MinecraftVersions []string                     `json:"minecraftVersions"`
-	CreateVersions   []apiFilterCreateVersionGroup `json:"createVersions"`
-	Tags             []apiFilterCategory           `json:"tags"`
-	Mods             []apiFilterMod                `json:"mods"`
+	Categories        []apiFilterCategory           `json:"categories"`
+	MinecraftVersions []string                      `json:"minecraftVersions"`
+	CreateVersions    []apiFilterCreateVersionGroup `json:"createVersions"`
+	Tags              []apiFilterCategory           `json:"tags"`
+	Mods              []apiFilterMod                `json:"mods"`
 }
 
 // APIHomeHandler serves GET /api/home returning the trending / latest / highest
@@ -68,10 +69,18 @@ func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cach
 			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
 		}
 
+		// The home rails are identical for every caller; cache the assembled
+		// response briefly so we don't run the 3x search + hydrate fan-out on
+		// every request.
+		const cacheKey = "api:home:v1"
+		if serveCachedJSON(e, cacheService, cacheKey) {
+			return nil
+		}
+
 		ctx := context.Background()
 		segment := func(order int) []models.Schematic {
 			sq := search.SearchQuery{Term: "", Order: order, Rating: -1, Category: "all"}
-			ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq)
+			ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq, homeSegmentSize)
 			if err != nil || len(ordered) == 0 {
 				return []models.Schematic{}
 			}
@@ -90,7 +99,7 @@ func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cach
 			Latest:       segment(search.NewestOrder),
 			HighestRated: segment(search.HighestRatingOrder),
 		}
-		return writeJSON(e, http.StatusOK, resp)
+		return writeAndCacheJSON(e, cacheService, cacheKey, 60*time.Second, resp)
 	}
 }
 
@@ -108,6 +117,12 @@ func APIFiltersHandler(rl ratelimit.Limiter, cacheService *cache.Service, appSto
 		}
 		if !isHMAC {
 			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+		}
+
+		// Filter option lists change rarely and are the same for every caller.
+		const cacheKey = "api:filters:v1"
+		if serveCachedJSON(e, cacheService, cacheKey) {
+			return nil
 		}
 
 		categories := make([]apiFilterCategory, 0)
@@ -150,7 +165,7 @@ func APIFiltersHandler(rl ratelimit.Limiter, cacheService *cache.Service, appSto
 			Tags:              tags,
 			Mods:              mods,
 		}
-		return writeJSON(e, http.StatusOK, resp)
+		return writeAndCacheJSON(e, cacheService, cacheKey, 5*time.Minute, resp)
 	}
 }
 

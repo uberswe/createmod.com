@@ -250,8 +250,8 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		// Build enriched mod info list for display
 		d.ModInfoList = buildModInfoListFromStore(appStore, d.Mods, cacheService)
 
-		// Construct Bloxelizer URL (only for free schematics with a file)
-		if s.SchematicFile != "" && !d.Schematic.Paid {
+		// Construct Bloxelizer URL (only when the schematic has a file)
+		if s.SchematicFile != "" {
 			scheme := "http"
 			if e.Request.TLS != nil || strings.EqualFold(e.Request.Header.Get("X-Forwarded-Proto"), "https") {
 				scheme = "https"
@@ -632,7 +632,6 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		HasRating:            rating > 0,
 		SchematicFile:        schematicFile,
 		AIDescription:        s.AIDescription,
-		Paid:                 s.Paid,
 		Featured:             s.Featured,
 		Materials:            string(s.Materials),
 		ExternalURL:          s.ExternalURL,
@@ -929,7 +928,6 @@ func mapSchematicFromBatch(
 		HasRating:            rating > 0,
 		SchematicFile:        schematicFile,
 		AIDescription:        s.AIDescription,
-		Paid:                 s.Paid,
 		Featured:             s.Featured,
 		Materials:            string(s.Materials),
 		ExternalURL:          s.ExternalURL,

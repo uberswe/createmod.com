@@ -382,11 +382,6 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		if video != "" && !IsValidYouTubeVideo(video) {
 			return e.BadRequestError("video must be a valid YouTube link", nil)
 		}
-		paid := e.Request.FormValue("paid") == "true"
-		externalURL := ""
-		if paid {
-			externalURL = strings.TrimSpace(e.Request.FormValue("external_url"))
-		}
 		rotationDisabled := e.Request.FormValue("rotation_disabled") == "true"
 
 		// Scheduled publish
@@ -640,8 +635,6 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			DimZ:               entry.DimZ,
 			Materials:          entry.Materials,
 			Mods:               entry.Mods,
-			Paid:               paid,
-			ExternalURL:        externalURL,
 			ModerationState:    store.ModerationAutoReview,
 			ScheduledAt:        scheduledAt,
 		}
