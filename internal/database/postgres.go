@@ -2710,12 +2710,12 @@ func (vs *ViewRatingStoreImpl) RecordView(ctx context.Context, schematicID strin
 		typ    string
 		period string
 	}{
-		{"0", now.Format("20060102")},                    // daily: YYYYMMDD
-		{"1", fmt.Sprintf("%d%02d", year, week)},         // weekly: YYYYWW
-		{"2", now.Format("200601")},                      // monthly: YYYYMM
-		{"3", now.Format("2006")},                        // yearly: YYYY
-		{"4", "total"},                                    // all-time
-		{"5", now.Format("2006010215")},                   // hourly: YYYYMMDDHH
+		{"0", now.Format("20060102")},            // daily: YYYYMMDD
+		{"1", fmt.Sprintf("%d%02d", year, week)}, // weekly: YYYYWW
+		{"2", now.Format("200601")},              // monthly: YYYYMM
+		{"3", now.Format("2006")},                // yearly: YYYY
+		{"4", "total"},                           // all-time
+		{"5", now.Format("2006010215")},          // hourly: YYYYMMDDHH
 	}
 
 	for _, p := range periods {
@@ -3945,51 +3945,110 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 	q := db.New(pool)
 	ps := &PostgresStore{q: q, pool: pool}
 	return &store.Store{
-		Users:          &UserStoreImpl{q: q},
-		Sessions:       ps,
-		Schematics:     ps,
-		Categories:     &CategoryStoreImpl{q: q},
-		Tags:           &TagStoreImpl{q: q},
-		Comments:       &CommentStoreImpl{q: q},
-		Guides:         &GuideStoreImpl{q: q},
-		Collections:    &CollectionStoreImpl{q: q},
-		Achievements:   &AchievementStoreImpl{q: q},
-		Translations:   &TranslationStoreImpl{q: q},
-		ViewRatings:    &ViewRatingStoreImpl{q: q},
-		Versions:       &VersionStoreImpl{q: q},
-		APIKeys:        &APIKeyStoreImpl{q: q},
-		Auth:           &AuthStoreImpl{q: q},
-		Reports:        &ReportStoreImpl{q: q},
-		ModMetadata:    &ModMetadataStoreImpl{q: q},
-		VersionLookup:  &VersionLookupStoreImpl{q: q},
-		SearchTracking: &SearchTrackingStoreImpl{q: q},
-		OutgoingClicks: &OutgoingClickStoreImpl{q: q},
-		Contact:        &ContactStoreImpl{q: q},
-		Stats:           &StatsStoreImpl{q: q},
-		TempUploads:      &TempUploadStoreImpl{q: q},
-		TempUploadFiles:  &TempUploadFileStoreImpl{q: q},
-		TempUploadImages: &TempUploadImageStoreImpl{q: q},
-		NBTHashes:       &NBTHashStoreImpl{q: q},
-		DownloadTokens:  &DownloadTokenStoreImpl{q: q},
-		SchematicFiles:  &SchematicFileStoreImpl{q: q},
+		Users:               &UserStoreImpl{q: q},
+		Sessions:            ps,
+		Schematics:          ps,
+		Categories:          &CategoryStoreImpl{q: q},
+		Tags:                &TagStoreImpl{q: q},
+		Comments:            &CommentStoreImpl{q: q},
+		Guides:              &GuideStoreImpl{q: q},
+		Collections:         &CollectionStoreImpl{q: q},
+		Achievements:        &AchievementStoreImpl{q: q},
+		Translations:        &TranslationStoreImpl{q: q},
+		ViewRatings:         &ViewRatingStoreImpl{q: q},
+		Versions:            &VersionStoreImpl{q: q},
+		APIKeys:             &APIKeyStoreImpl{q: q},
+		Auth:                &AuthStoreImpl{q: q},
+		Reports:             &ReportStoreImpl{q: q},
+		ModMetadata:         &ModMetadataStoreImpl{q: q},
+		VersionLookup:       &VersionLookupStoreImpl{q: q},
+		SearchTracking:      &SearchTrackingStoreImpl{q: q},
+		OutgoingClicks:      &OutgoingClickStoreImpl{q: q},
+		Contact:             &ContactStoreImpl{q: q},
+		Stats:               &StatsStoreImpl{q: q},
+		TempUploads:         &TempUploadStoreImpl{q: q},
+		TempUploadFiles:     &TempUploadFileStoreImpl{q: q},
+		TempUploadImages:    &TempUploadImageStoreImpl{q: q},
+		NBTHashes:           &NBTHashStoreImpl{q: q},
+		DownloadTokens:      &DownloadTokenStoreImpl{q: q},
+		SchematicFiles:      &SchematicFileStoreImpl{q: q},
 		Webhooks:            &WebhookStoreImpl{q: q},
 		SchematicVariations: &SchematicVariationStoreImpl{q: q},
 		ModerationChats:     &ModerationChatStoreImpl{q: q},
 		ModerationLog:       &ModerationLogStoreImpl{q: q},
-		Badges:               &BadgeStoreImpl{q: q},
-		SocialLinks:          &SocialLinkStoreImpl{q: q},
-		Follows:              &FollowStoreImpl{q: q},
-		SchematicVideos:      &SchematicVideoStoreImpl{q: q},
-		References:           &ReferenceStoreImpl{q: q},
-		Modpacks:             &ModpackStoreImpl{q: q},
-		RedditLinks:          &RedditLinkStoreImpl{q: q},
-		Notifications:        &NotificationStoreImpl{q: q},
-		Newsletters:          &NewsletterStoreImpl{q: q},
-		SearchAlerts:         &SearchAlertStoreImpl{q: q},
-		ZeroResults:          &ZeroResultStoreImpl{q: q},
-		Security:             &SecurityStoreImpl{q: q, pool: pool},
-		AdClicks:             &AdClickStoreImpl{q: q},
+		Badges:              &BadgeStoreImpl{q: q},
+		SocialLinks:         &SocialLinkStoreImpl{q: q},
+		Follows:             &FollowStoreImpl{q: q},
+		SchematicVideos:     &SchematicVideoStoreImpl{q: q},
+		References:          &ReferenceStoreImpl{q: q},
+		Modpacks:            &ModpackStoreImpl{q: q},
+		RedditLinks:         &RedditLinkStoreImpl{q: q},
+		Notifications:       &NotificationStoreImpl{q: q},
+		Newsletters:         &NewsletterStoreImpl{q: q},
+		SearchAlerts:        &SearchAlertStoreImpl{q: q},
+		ZeroResults:         &ZeroResultStoreImpl{q: q},
+		Security:            &SecurityStoreImpl{q: q, pool: pool},
+		AdClicks:            &AdClickStoreImpl{q: q},
+		ModSecrets:          &ModSecretStoreImpl{pool: pool},
 	}
+}
+
+// ModSecretStoreImpl implements store.ModSecretStore over raw pgx.
+type ModSecretStoreImpl struct{ pool *pgxpool.Pool }
+
+func (m *ModSecretStoreImpl) ListActive(ctx context.Context) ([]string, error) {
+	rows, err := m.pool.Query(ctx, `SELECT secret FROM mod_secrets WHERE active ORDER BY created_at`)
+	if err != nil {
+		return nil, fmt.Errorf("listing active mod secrets: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (m *ModSecretStoreImpl) List(ctx context.Context) ([]store.ModSecret, error) {
+	rows, err := m.pool.Query(ctx, `
+		SELECT id, label, note, secret, active, created_by, created_at
+		FROM mod_secrets ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("listing mod secrets: %w", err)
+	}
+	defer rows.Close()
+	var out []store.ModSecret
+	for rows.Next() {
+		var s store.ModSecret
+		if err := rows.Scan(&s.ID, &s.Label, &s.Note, &s.Secret, &s.Active, &s.CreatedBy, &s.Created); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (m *ModSecretStoreImpl) Create(ctx context.Context, s *store.ModSecret) error {
+	return m.pool.QueryRow(ctx, `
+		INSERT INTO mod_secrets (label, note, secret, active, created_by)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at`,
+		s.Label, s.Note, s.Secret, s.Active, s.CreatedBy,
+	).Scan(&s.ID, &s.Created)
+}
+
+func (m *ModSecretStoreImpl) SetActive(ctx context.Context, id string, active bool) error {
+	_, err := m.pool.Exec(ctx, `UPDATE mod_secrets SET active = $2 WHERE id = $1`, id, active)
+	return err
+}
+
+func (m *ModSecretStoreImpl) Delete(ctx context.Context, id string) error {
+	_, err := m.pool.Exec(ctx, `DELETE FROM mod_secrets WHERE id = $1`, id)
+	return err
 }
 
 // --------------------------------------------------------------------------
@@ -4161,37 +4220,37 @@ var (
 
 // Ensure compile-time interface satisfaction for the separate impl types.
 var (
-	_ store.UserStore          = (*UserStoreImpl)(nil)
-	_ store.CategoryStore      = (*CategoryStoreImpl)(nil)
-	_ store.TagStore           = (*TagStoreImpl)(nil)
-	_ store.CommentStore       = (*CommentStoreImpl)(nil)
-	_ store.GuideStore         = (*GuideStoreImpl)(nil)
-	_ store.CollectionStore    = (*CollectionStoreImpl)(nil)
-	_ store.AchievementStore   = (*AchievementStoreImpl)(nil)
-	_ store.TranslationStore   = (*TranslationStoreImpl)(nil)
-	_ store.ViewRatingStore    = (*ViewRatingStoreImpl)(nil)
-	_ store.VersionStore       = (*VersionStoreImpl)(nil)
-	_ store.APIKeyStore        = (*APIKeyStoreImpl)(nil)
-	_ store.AuthStore          = (*AuthStoreImpl)(nil)
-	_ store.ReportStore        = (*ReportStoreImpl)(nil)
-	_ store.ModMetadataStore   = (*ModMetadataStoreImpl)(nil)
-	_ store.VersionLookupStore = (*VersionLookupStoreImpl)(nil)
-	_ store.SearchTrackingStore = (*SearchTrackingStoreImpl)(nil)
-	_ store.OutgoingClickStore = (*OutgoingClickStoreImpl)(nil)
-	_ store.ContactStore       = (*ContactStoreImpl)(nil)
-	_ store.StatsStore          = (*StatsStoreImpl)(nil)
-	_ store.TempUploadStore      = (*TempUploadStoreImpl)(nil)
-	_ store.TempUploadFileStore  = (*TempUploadFileStoreImpl)(nil)
-	_ store.TempUploadImageStore = (*TempUploadImageStoreImpl)(nil)
-	_ store.DownloadTokenStore  = (*DownloadTokenStoreImpl)(nil)
-	_ store.SchematicFileStore  = (*SchematicFileStoreImpl)(nil)
-	_ store.WebhookStore             = (*WebhookStoreImpl)(nil)
-	_ store.SchematicVariationStore  = (*SchematicVariationStoreImpl)(nil)
-	_ store.ModerationLogStore       = (*ModerationLogStoreImpl)(nil)
-	_ store.BadgeStore               = (*BadgeStoreImpl)(nil)
-	_ store.SocialLinkStore          = (*SocialLinkStoreImpl)(nil)
-	_ store.FollowStore              = (*FollowStoreImpl)(nil)
-	_ store.SecurityStore            = (*SecurityStoreImpl)(nil)
+	_ store.UserStore               = (*UserStoreImpl)(nil)
+	_ store.CategoryStore           = (*CategoryStoreImpl)(nil)
+	_ store.TagStore                = (*TagStoreImpl)(nil)
+	_ store.CommentStore            = (*CommentStoreImpl)(nil)
+	_ store.GuideStore              = (*GuideStoreImpl)(nil)
+	_ store.CollectionStore         = (*CollectionStoreImpl)(nil)
+	_ store.AchievementStore        = (*AchievementStoreImpl)(nil)
+	_ store.TranslationStore        = (*TranslationStoreImpl)(nil)
+	_ store.ViewRatingStore         = (*ViewRatingStoreImpl)(nil)
+	_ store.VersionStore            = (*VersionStoreImpl)(nil)
+	_ store.APIKeyStore             = (*APIKeyStoreImpl)(nil)
+	_ store.AuthStore               = (*AuthStoreImpl)(nil)
+	_ store.ReportStore             = (*ReportStoreImpl)(nil)
+	_ store.ModMetadataStore        = (*ModMetadataStoreImpl)(nil)
+	_ store.VersionLookupStore      = (*VersionLookupStoreImpl)(nil)
+	_ store.SearchTrackingStore     = (*SearchTrackingStoreImpl)(nil)
+	_ store.OutgoingClickStore      = (*OutgoingClickStoreImpl)(nil)
+	_ store.ContactStore            = (*ContactStoreImpl)(nil)
+	_ store.StatsStore              = (*StatsStoreImpl)(nil)
+	_ store.TempUploadStore         = (*TempUploadStoreImpl)(nil)
+	_ store.TempUploadFileStore     = (*TempUploadFileStoreImpl)(nil)
+	_ store.TempUploadImageStore    = (*TempUploadImageStoreImpl)(nil)
+	_ store.DownloadTokenStore      = (*DownloadTokenStoreImpl)(nil)
+	_ store.SchematicFileStore      = (*SchematicFileStoreImpl)(nil)
+	_ store.WebhookStore            = (*WebhookStoreImpl)(nil)
+	_ store.SchematicVariationStore = (*SchematicVariationStoreImpl)(nil)
+	_ store.ModerationLogStore      = (*ModerationLogStoreImpl)(nil)
+	_ store.BadgeStore              = (*BadgeStoreImpl)(nil)
+	_ store.SocialLinkStore         = (*SocialLinkStoreImpl)(nil)
+	_ store.FollowStore             = (*FollowStoreImpl)(nil)
+	_ store.SecurityStore           = (*SecurityStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------
@@ -4547,15 +4606,16 @@ func (s *SecurityStoreImpl) GetSecuritySettings(ctx context.Context, userID stri
 // --------------------------------------------------------------------------
 
 var (
-	_ store.SchematicVideoStore      = (*SchematicVideoStoreImpl)(nil)
-	_ store.ReferenceStore           = (*ReferenceStoreImpl)(nil)
-	_ store.ModpackStore             = (*ModpackStoreImpl)(nil)
-	_ store.RedditLinkStore          = (*RedditLinkStoreImpl)(nil)
-	_ store.NotificationStore        = (*NotificationStoreImpl)(nil)
-	_ store.NewsletterStore          = (*NewsletterStoreImpl)(nil)
-	_ store.SearchAlertStore         = (*SearchAlertStoreImpl)(nil)
-	_ store.ZeroResultStore = (*ZeroResultStoreImpl)(nil)
-	_ store.AdClickStore    = (*AdClickStoreImpl)(nil)
+	_ store.SchematicVideoStore = (*SchematicVideoStoreImpl)(nil)
+	_ store.ReferenceStore      = (*ReferenceStoreImpl)(nil)
+	_ store.ModpackStore        = (*ModpackStoreImpl)(nil)
+	_ store.RedditLinkStore     = (*RedditLinkStoreImpl)(nil)
+	_ store.NotificationStore   = (*NotificationStoreImpl)(nil)
+	_ store.NewsletterStore     = (*NewsletterStoreImpl)(nil)
+	_ store.SearchAlertStore    = (*SearchAlertStoreImpl)(nil)
+	_ store.ZeroResultStore     = (*ZeroResultStoreImpl)(nil)
+	_ store.AdClickStore        = (*AdClickStoreImpl)(nil)
+	_ store.ModSecretStore      = (*ModSecretStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------

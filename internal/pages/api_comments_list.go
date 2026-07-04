@@ -20,10 +20,10 @@ type apiCommentsResponse struct {
 
 // APISchematicCommentsHandler serves GET /api/schematics/{name}/comments,
 // returning the approved comment thread for a schematic. Auth: API key or HMAC.
-func APISchematicCommentsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
+func APISchematicCommentsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}/comments"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}

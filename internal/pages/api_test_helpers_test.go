@@ -107,6 +107,17 @@ func (f *fakeViewRatings) GetDownloadCount(ctx context.Context, schematicID stri
 	return f.downloads, nil
 }
 
+type fakeModSecrets struct {
+	store.ModSecretStore
+	active         []string
+	listActiveCall int
+}
+
+func (f *fakeModSecrets) ListActive(ctx context.Context) ([]string, error) {
+	f.listActiveCall++
+	return f.active, nil
+}
+
 type fakeComments struct {
 	store.CommentStore
 	bySchematic map[string][]store.Comment

@@ -193,7 +193,7 @@ func downloadDeps() (*store.Store, *fakeAPIKeys, *fakeViewRatings, string) {
 func TestAPIDownload(t *testing.T) {
 	t.Run("401 without auth", func(t *testing.T) {
 		appStore, _, _, _ := downloadDeps()
-		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore)
 		e, rec := newEvent("GET", "/api/schematics/gearbox/download", "", map[string]string{"name": "gearbox"})
 		_ = h(e)
 		if rec.Code != http.StatusUnauthorized {
@@ -203,7 +203,7 @@ func TestAPIDownload(t *testing.T) {
 
 	t.Run("404 for non-public schematic", func(t *testing.T) {
 		appStore, _, vr, key := downloadDeps()
-		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore)
 		e, rec := newEvent("GET", "/api/schematics/hidden/download", key, map[string]string{"name": "hidden"})
 		_ = h(e)
 		if rec.Code != http.StatusNotFound {
@@ -216,7 +216,7 @@ func TestAPIDownload(t *testing.T) {
 
 	t.Run("302 redirect and counts on success", func(t *testing.T) {
 		appStore, _, vr, key := downloadDeps()
-		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore)
 		e, rec := newEvent("GET", "/api/schematics/gearbox/download", key, map[string]string{"name": "gearbox"})
 		_ = h(e)
 		if rec.Code != http.StatusFound {
@@ -232,7 +232,7 @@ func TestAPIDownload(t *testing.T) {
 
 	t.Run("variation ?f= redirects and counts", func(t *testing.T) {
 		appStore, _, vr, key := downloadDeps()
-		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore)
 		e, rec := newEvent("GET", "/api/schematics/gearbox/download?f=var1", key, map[string]string{"name": "gearbox"})
 		_ = h(e)
 		if rec.Code != http.StatusFound {
@@ -248,7 +248,7 @@ func TestAPIDownload(t *testing.T) {
 
 	t.Run("bad ?f= is 404 and does NOT count (ordering fix)", func(t *testing.T) {
 		appStore, _, vr, key := downloadDeps()
-		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore)
 		e, rec := newEvent("GET", "/api/schematics/gearbox/download?f=nope", key, map[string]string{"name": "gearbox"})
 		_ = h(e)
 		if rec.Code != http.StatusNotFound {
@@ -261,7 +261,7 @@ func TestAPIDownload(t *testing.T) {
 
 	t.Run("missing file yields 404", func(t *testing.T) {
 		appStore, _, _, key := downloadDeps()
-		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+		h := APISchematicDownloadHandler(newFakeLimiter(), cache.New(), appStore)
 		e, rec := newEvent("GET", "/api/schematics/nofile/download", key, map[string]string{"name": "nofile"})
 		_ = h(e)
 		if rec.Code != http.StatusNotFound {
@@ -285,7 +285,7 @@ func TestAPIComments(t *testing.T) {
 			"hidden":  {ID: "id-h", Name: "hidden", ModerationState: store.ModerationRejected},
 		}},
 	}
-	h := APISchematicCommentsHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+	h := APISchematicCommentsHandler(newFakeLimiter(), cache.New(), appStore)
 
 	t.Run("401 without auth", func(t *testing.T) {
 		e, rec := newEvent("GET", "/api/schematics/gearbox/comments", "", map[string]string{"name": "gearbox"})
@@ -332,7 +332,7 @@ func TestAPICommentsCaching(t *testing.T) {
 		Comments:   comments,
 		Schematics: &fakeSchematics{byName: map[string]*store.Schematic{"warp": publicSchematic("id-w", "warp", "w.nbt")}},
 	}
-	h := APISchematicCommentsHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+	h := APISchematicCommentsHandler(newFakeLimiter(), cache.New(), appStore)
 
 	call := func() *httptest.ResponseRecorder {
 		e, rec := newEvent("GET", "/api/schematics/warp/comments", apiKey, map[string]string{"name": "warp"})

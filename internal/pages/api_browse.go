@@ -55,10 +55,10 @@ type apiFiltersResponse struct {
 
 // APIHomeHandler serves GET /api/home returning the trending / latest / highest
 // rated rails, mirroring the website home page. Auth: API key or HMAC.
-func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
+func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/home"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
@@ -105,10 +105,10 @@ func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cach
 
 // APIFiltersHandler serves GET /api/schematics/filters returning the option
 // lists used to populate the search filter UI. Auth: API key or HMAC.
-func APIFiltersHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
+func APIFiltersHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/filters"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}

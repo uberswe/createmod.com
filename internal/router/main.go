@@ -312,10 +312,12 @@ func Register(p RegisterParams) chi.Router {
 	// Prometheus metrics endpoint
 	r.Method("GET", "/metrics", metricsAuthMiddleware(promhttp.Handler()))
 
-	// Minecraft mod download API (HMAC-signed, XOR-encoded response)
-	modSecret := deriveModDownloadSecret()
+	// Minecraft mod download API (HMAC-signed, XOR-encoded response). Register
+	// the env-configured HMAC secrets once; admin-managed DB secrets are merged
+	// in at request time by the handlers.
+	pages.SetModSecrets(deriveModDownloadSecrets())
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)).
-		Post("/api/mod/download", Adapt(pages.ModDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
+		Post("/api/mod/download", Adapt(pages.ModDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 
 	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
 	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
@@ -505,21 +507,21 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/api/openapi.json", Adapt(pages.OpenAPIHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
-	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
-	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
-	r.Get("/api/schematics/filters", Adapt(pages.APIFiltersHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics/filters", Adapt(pages.APIFiltersHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
 		Get("/api/schematics/changes", Adapt(pages.APISchematicChangesHandler(p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
 		Get("/api/schematics/stats", Adapt(pages.APISchematicBulkStatsHandler(p.AppStore)))
-	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
-	r.Get("/api/schematics/{name}/download", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/schematics/{name}/download", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Additive alias for the REST download route (same handler, same {name} param).
-	r.Get("/api/download/{name}", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.Get("/api/download/{name}", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
 	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
-	r.Get("/api/schematics/{name}/comments", Adapt(pages.APISchematicCommentsHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
-	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, modSecret)))
+	r.Get("/api/schematics/{name}/comments", Adapt(pages.APISchematicCommentsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Reports
@@ -545,6 +547,10 @@ func Register(p RegisterParams) chi.Router {
 		r.Get("/admin/tags", Adapt(pages.AdminTagsHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/tags/{id}/approve", Adapt(pages.AdminTagApproveHandler(p.CacheService, p.AppStore)))
 		r.Post("/admin/tags/{id}/reject", Adapt(pages.AdminTagRejectHandler(p.CacheService, p.AppStore)))
+		r.Get("/admin/api-secrets", Adapt(pages.AdminModSecretsHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/api-secrets", Adapt(pages.AdminModSecretCreateHandler(p.CacheService, p.AppStore)))
+		r.Post("/admin/api-secrets/{id}/active", Adapt(pages.AdminModSecretActiveHandler(p.CacheService, p.AppStore)))
+		r.Post("/admin/api-secrets/{id}/delete", Adapt(pages.AdminModSecretDeleteHandler(p.CacheService, p.AppStore)))
 		r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
 		r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))
@@ -1273,15 +1279,38 @@ func extractClientIP(r *http.Request) string {
 	return host
 }
 
-// deriveModDownloadSecret returns the shared secret for Minecraft mod download
-// API request signing. Falls back to a deterministic insecure default for dev.
-func deriveModDownloadSecret() string {
-	if s := os.Getenv("MOD_DOWNLOAD_SECRET"); s != "" {
-		return s
+// deriveModDownloadSecrets returns the environment-configured HMAC shared
+// secrets for the mod / partner API. MOD_DOWNLOAD_SECRET is the primary single
+// secret; MOD_DOWNLOAD_SECRETS is an optional comma/space/newline-separated list
+// of additional accepted secrets. Admin-managed DB secrets are merged in
+// separately at request time. Falls back to a deterministic insecure default for
+// dev when nothing is configured.
+func deriveModDownloadSecrets() []string {
+	var out []string
+	seen := map[string]struct{}{}
+	add := func(s string) {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return
+		}
+		if _, ok := seen[s]; ok {
+			return
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
 	}
-	slog.Warn("MOD_DOWNLOAD_SECRET environment variable is not set; using insecure default — set MOD_DOWNLOAD_SECRET in production")
-	h := sha256.Sum256([]byte("createmod-mod-download:default"))
-	return hex.EncodeToString(h[:])
+	add(os.Getenv("MOD_DOWNLOAD_SECRET"))
+	for _, s := range strings.FieldsFunc(os.Getenv("MOD_DOWNLOAD_SECRETS"), func(r rune) bool {
+		return r == ',' || r == '\n' || r == ' ' || r == '\t'
+	}) {
+		add(s)
+	}
+	if len(out) == 0 {
+		slog.Warn("MOD_DOWNLOAD_SECRET / MOD_DOWNLOAD_SECRETS not set and no DB secrets — using insecure default; configure one in production")
+		h := sha256.Sum256([]byte("createmod-mod-download:default"))
+		out = append(out, hex.EncodeToString(h[:]))
+	}
+	return out
 }
 
 // deriveOutSecret returns a stable HMAC key for signing /out redirect URLs.
