@@ -6,12 +6,12 @@ import (
 	"createmod/internal/models"
 	"createmod/internal/ratelimit"
 	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/store"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"createmod/internal/server"
 	"net/http"
 	"strconv"
 	"strings"
@@ -146,6 +146,45 @@ func writeJSON(e *server.RequestEvent, status int, data interface{}) error {
 	e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 	e.Response.WriteHeader(status)
 	return json.NewEncoder(e.Response).Encode(data)
+}
+
+// serveCachedJSON writes a previously cached 200 JSON body for key and returns
+// true on a hit. The cache is per-pod and in-memory; callers pair it with
+// writeAndCacheJSON. Only non-personalized responses should be cached this way.
+func serveCachedJSON(e *server.RequestEvent, cacheService *cache.Service, key string) bool {
+	if cacheService == nil {
+		return false
+	}
+	v, ok := cacheService.Get(key)
+	if !ok {
+		return false
+	}
+	body, ok := v.([]byte)
+	if !ok {
+		return false
+	}
+	e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	e.Response.Header().Set("X-Cache", "HIT")
+	e.Response.WriteHeader(http.StatusOK)
+	_, _ = e.Response.Write(body)
+	return true
+}
+
+// writeAndCacheJSON marshals data once, caches the bytes under key for ttl
+// (per-pod, in-memory), and writes them as a 200 response.
+func writeAndCacheJSON(e *server.RequestEvent, cacheService *cache.Service, key string, ttl time.Duration, data interface{}) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	if cacheService != nil {
+		cacheService.SetWithTTL(key, body, ttl)
+	}
+	e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	e.Response.Header().Set("X-Cache", "MISS")
+	e.Response.WriteHeader(http.StatusOK)
+	_, err = e.Response.Write(body)
+	return err
 }
 
 // requireAPIKeyFromStore extracts and validates the API key from the request using store.
@@ -486,6 +525,11 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		if strings.TrimSpace(name) == "" {
 			return e.String(http.StatusBadRequest, "missing schematic name")
 		}
+		// Detail is the same for every caller; serve a short-lived cached body.
+		cacheKey := "api:schematic:" + name
+		if serveCachedJSON(e, cacheService, cacheKey) {
+			return nil
+		}
 		ctx := context.Background()
 		s, err := appStore.Schematics.GetByName(ctx, name)
 		if err != nil || s == nil {
@@ -502,11 +546,6 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 		item := MapStoreSchematicToModel(appStore, *s, cacheService)
 		item.SchematicFile = ""
-		e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-		e.Response.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(e.Response).Encode(item); err != nil {
-			return fmt.Errorf("encode json: %w", err)
-		}
-		return nil
+		return writeAndCacheJSON(e, cacheService, cacheKey, 120*time.Second, item)
 	}
 }

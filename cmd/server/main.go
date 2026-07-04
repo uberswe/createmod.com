@@ -14,24 +14,33 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivermigrate"
+
+	// Container-awareness (side-effect imports, run on init):
+	// automemlimit sets GOMEMLIMIT from the cgroup memory limit so the GC works
+	// harder as it approaches the limit instead of getting OOMKilled (the pods
+	// have hit the 4Gi limit before); automaxprocs sets GOMAXPROCS from the
+	// cgroup CPU quota so the runtime doesn't spin up a thread per host core and
+	// get throttled under the Kubernetes CPU limit.
+	_ "github.com/KimMachineGun/automemlimit"
+	_ "go.uber.org/automaxprocs"
 )
 
 const (
-	AutoMigrate         = "AUTO_MIGRATE"
-	CreateAdmin         = "CREATE_ADMIN"
-	DiscordWebhookUrl   = "DISCORD_WEBHOOK_URL"
-	OpenAIAPIKey        = "OPENAI_API_KEY"
-	CurseForgeAPIKey    = "CURSEFORGE_API_KEY"
-	DevEnv              = "DEV"
-	DatabaseURL         = "DATABASE_URL"
-	RedisURL            = "REDIS_URL"
-	S3Endpoint          = "S3_ENDPOINT"
-	S3AccessKey         = "S3_ACCESS_KEY"
-	S3SecretKey         = "S3_SECRET_KEY"
-	S3Bucket            = "S3_BUCKET"
-	S3UseSSL            = "S3_USE_SSL"
-	DiscordClientID     = "DISCORD_CLIENT_ID"
-	DiscordClientSecret = "DISCORD_CLIENT_SECRET"
+	AutoMigrate           = "AUTO_MIGRATE"
+	CreateAdmin           = "CREATE_ADMIN"
+	DiscordWebhookUrl     = "DISCORD_WEBHOOK_URL"
+	OpenAIAPIKey          = "OPENAI_API_KEY"
+	CurseForgeAPIKey      = "CURSEFORGE_API_KEY"
+	DevEnv                = "DEV"
+	DatabaseURL           = "DATABASE_URL"
+	RedisURL              = "REDIS_URL"
+	S3Endpoint            = "S3_ENDPOINT"
+	S3AccessKey           = "S3_ACCESS_KEY"
+	S3SecretKey           = "S3_SECRET_KEY"
+	S3Bucket              = "S3_BUCKET"
+	S3UseSSL              = "S3_USE_SSL"
+	DiscordClientID       = "DISCORD_CLIENT_ID"
+	DiscordClientSecret   = "DISCORD_CLIENT_SECRET"
 	GithubClientID        = "GITHUB_CLIENT_ID"
 	GithubClientSecret    = "GITHUB_CLIENT_SECRET"
 	TwitchClientID        = "TWITCH_CLIENT_ID"
@@ -90,16 +99,16 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})))
 
 	conf := server.Config{
-		Dev:                 getEnv(envFile, DevEnv) == "true",
-		AutoMigrate:         getEnv(envFile, AutoMigrate) == "true",
-		CreateAdmin:         getEnv(envFile, CreateAdmin) == "true",
-		DiscordWebhookUrl:   getEnv(envFile, DiscordWebhookUrl),
-		OpenAIApiKey:        getEnv(envFile, OpenAIAPIKey),
-		CurseForgeApiKey:    getEnv(envFile, CurseForgeAPIKey),
-		DatabaseURL:         getEnv(envFile, DatabaseURL),
-		RedisURL:            getEnv(envFile, RedisURL),
-		DiscordClientID:     getEnv(envFile, DiscordClientID),
-		DiscordClientSecret: getEnv(envFile, DiscordClientSecret),
+		Dev:                   getEnv(envFile, DevEnv) == "true",
+		AutoMigrate:           getEnv(envFile, AutoMigrate) == "true",
+		CreateAdmin:           getEnv(envFile, CreateAdmin) == "true",
+		DiscordWebhookUrl:     getEnv(envFile, DiscordWebhookUrl),
+		OpenAIApiKey:          getEnv(envFile, OpenAIAPIKey),
+		CurseForgeApiKey:      getEnv(envFile, CurseForgeAPIKey),
+		DatabaseURL:           getEnv(envFile, DatabaseURL),
+		RedisURL:              getEnv(envFile, RedisURL),
+		DiscordClientID:       getEnv(envFile, DiscordClientID),
+		DiscordClientSecret:   getEnv(envFile, DiscordClientSecret),
 		GithubClientID:        getEnv(envFile, GithubClientID),
 		GithubClientSecret:    getEnv(envFile, GithubClientSecret),
 		TwitchClientID:        getEnv(envFile, TwitchClientID),

@@ -9,6 +9,7 @@ import (
 	"createmod/internal/store"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // apiCommentsResponse is the JSON shape for GET /api/schematics/{name}/comments.
@@ -38,6 +39,12 @@ func APISchematicCommentsHandler(rl ratelimit.Limiter, cacheService *cache.Servi
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "missing schematic name"})
 		}
 
+		// Comment threads are the same for every caller; cache briefly.
+		cacheKey := "api:comments:" + name
+		if serveCachedJSON(e, cacheService, cacheKey) {
+			return nil
+		}
+
 		ctx := context.Background()
 		s, err := appStore.Schematics.GetByName(ctx, name)
 		if err != nil || s == nil || s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
@@ -48,6 +55,6 @@ func APISchematicCommentsHandler(rl ratelimit.Limiter, cacheService *cache.Servi
 		if comments == nil {
 			comments = []models.Comment{}
 		}
-		return writeJSON(e, http.StatusOK, apiCommentsResponse{Count: len(comments), Comments: comments})
+		return writeAndCacheJSON(e, cacheService, cacheKey, 60*time.Second, apiCommentsResponse{Count: len(comments), Comments: comments})
 	}
 }

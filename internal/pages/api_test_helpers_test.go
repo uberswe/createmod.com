@@ -110,9 +110,11 @@ func (f *fakeViewRatings) GetDownloadCount(ctx context.Context, schematicID stri
 type fakeComments struct {
 	store.CommentStore
 	bySchematic map[string][]store.Comment
+	listCalls   int
 }
 
 func (f *fakeComments) ListBySchematic(ctx context.Context, schematicID string) ([]store.Comment, error) {
+	f.listCalls++
 	return f.bySchematic[schematicID], nil
 }
 

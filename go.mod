@@ -3,6 +3,7 @@ module createmod
 go 1.25.0
 
 require (
+	github.com/KimMachineGun/automemlimit v0.7.5
 	github.com/Tnze/go-mc v1.20.2
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/disintegration/imaging v1.6.2
@@ -31,6 +32,7 @@ require (
 	github.com/sym01/htmlsanitizer v1.1.1
 	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.8.2
+	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.53.0
 	golang.org/x/image v0.43.0
 	golang.org/x/net v0.56.0
@@ -68,6 +70,7 @@ require (
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pdfcpu/pdfcpu v0.9.1 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

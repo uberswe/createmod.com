@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -318,6 +319,41 @@ func TestAPIComments(t *testing.T) {
 			t.Fatalf("comments should be a non-nil array")
 		}
 	})
+}
+
+// TestAPICommentsCaching proves the second identical request is served from the
+// per-pod cache and does not re-hit the store.
+func TestAPICommentsCaching(t *testing.T) {
+	keys := &fakeAPIKeys{byLast8: map[string]*store.APIKey{}}
+	apiKey := newAPIKey(keys, "k1")
+	comments := &fakeComments{bySchematic: map[string][]store.Comment{"warp": nil}}
+	appStore := &store.Store{
+		APIKeys:    keys,
+		Comments:   comments,
+		Schematics: &fakeSchematics{byName: map[string]*store.Schematic{"warp": publicSchematic("id-w", "warp", "w.nbt")}},
+	}
+	h := APISchematicCommentsHandler(newFakeLimiter(), cache.New(), appStore, testModSecret)
+
+	call := func() *httptest.ResponseRecorder {
+		e, rec := newEvent("GET", "/api/schematics/warp/comments", apiKey, map[string]string{"name": "warp"})
+		_ = h(e)
+		return rec
+	}
+
+	first := call()
+	if got := first.Header().Get("X-Cache"); got != "MISS" {
+		t.Fatalf("first call want X-Cache MISS, got %q", got)
+	}
+	second := call()
+	if got := second.Header().Get("X-Cache"); got != "HIT" {
+		t.Fatalf("second call want X-Cache HIT, got %q", got)
+	}
+	if comments.listCalls != 1 {
+		t.Fatalf("store should be hit once (second served from cache), got %d calls", comments.listCalls)
+	}
+	if first.Body.String() != second.Body.String() {
+		t.Fatalf("cached body differs from origin body")
+	}
 }
 
 // ---------------------------------------------------------------------------
