@@ -98,7 +98,7 @@ func xorEncode(data, key []byte) []byte {
 // ModDownloadHandler handles POST /api/mod/download.
 // It validates an HMAC-signed request from the Minecraft mod, looks up the
 // schematic or private upload, and returns the NBT bytes XOR-encoded.
-func ModDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, modSecret string) func(e *server.RequestEvent) error {
+func ModDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if storageSvc == nil {
 			return e.JSON(http.StatusServiceUnavailable, map[string]string{"error": "file storage not configured"})
@@ -118,8 +118,11 @@ func ModDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appSt
 			return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid type; use 'schematic' or 'upload'"})
 		}
 
-		// Validate HMAC signature.
-		if !validateModSignature(req.Message, req.Signature, modSecret) {
+		// Validate the HMAC signature against any accepted secret (env +
+		// admin-managed). Keep the matched secret so the response is XOR-encoded
+		// with the same secret the client signed with.
+		matchedSecret, ok := matchModSignature(req.Message, req.Signature, resolveModSecrets(appStore, cacheService))
+		if !ok {
 			return e.JSON(http.StatusForbidden, map[string]string{"error": "invalid signature"})
 		}
 
@@ -158,8 +161,8 @@ func ModDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appSt
 			return e.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to retrieve file"})
 		}
 
-		// XOR-encode the response.
-		xorKey := deriveXORKey(modSecret, timestamp)
+		// XOR-encode the response with the client's own secret.
+		xorKey := deriveXORKey(matchedSecret, timestamp)
 		encoded := xorEncode(fileBytes, xorKey)
 
 		e.Response.Header().Set("Content-Type", "application/octet-stream")

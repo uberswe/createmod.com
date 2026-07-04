@@ -470,7 +470,6 @@ type SearchAlert struct {
 	Updated          time.Time
 }
 
-
 // ZeroResultSuggestion represents a suggestion for zero-result queries.
 type ZeroResultSuggestion struct {
 	ID         string
@@ -551,12 +550,12 @@ type SecuritySettings struct {
 
 // APIKey represents a user API key.
 type APIKey struct {
-	ID       string
-	UserID   string
-	KeyHash  string
-	Label    string
-	Last8    string
-	Created  time.Time
+	ID      string
+	UserID  string
+	KeyHash string
+	Label   string
+	Last8   string
+	Created time.Time
 }
 
 // GameVersion represents a Minecraft or Create mod version entry.
@@ -1442,7 +1441,6 @@ type SearchAlertStore interface {
 	UpdateLastNotified(ctx context.Context, id string) error
 }
 
-
 // ZeroResultStore handles zero-result search suggestions.
 type ZeroResultStore interface {
 	Upsert(ctx context.Context, s *ZeroResultSuggestion) error
@@ -1480,6 +1478,30 @@ type SecurityStore interface {
 	GetSecuritySettings(ctx context.Context, userID string) (*SecuritySettings, error)
 }
 
+// ModSecret is a shared HMAC secret for the mod / partner API, managed in the
+// database via the admin area. The secret value is stored in plaintext because
+// HMAC verification needs the raw value (and the values are treated as public).
+type ModSecret struct {
+	ID        string
+	Label     string // short name
+	Note      string // free-text description of what it's used for
+	Secret    string // the shared secret value
+	Active    bool
+	CreatedBy string
+	Created   time.Time
+}
+
+// ModSecretStore manages admin-defined HMAC shared secrets.
+type ModSecretStore interface {
+	// ListActive returns the secret values of all active entries (hot path).
+	ListActive(ctx context.Context) ([]string, error)
+	// List returns all entries (for the admin UI), newest first.
+	List(ctx context.Context) ([]ModSecret, error)
+	Create(ctx context.Context, s *ModSecret) error
+	SetActive(ctx context.Context, id string, active bool) error
+	Delete(ctx context.Context, id string) error
+}
+
 type Store struct {
 	Users               UserStore
 	Sessions            SessionStore
@@ -1512,17 +1534,18 @@ type Store struct {
 	SchematicVariations SchematicVariationStore
 	ModerationChats     ModerationChatStore
 	ModerationLog       ModerationLogStore
-	Badges               BadgeStore
-	SocialLinks          SocialLinkStore
-	Follows              FollowStore
-	SchematicVideos      SchematicVideoStore
-	References           ReferenceStore
-	Modpacks             ModpackStore
-	RedditLinks          RedditLinkStore
-	Notifications        NotificationStore
-	Newsletters          NewsletterStore
-	SearchAlerts         SearchAlertStore
-	ZeroResults          ZeroResultStore
-	Security             SecurityStore
-	AdClicks             AdClickStore
+	Badges              BadgeStore
+	SocialLinks         SocialLinkStore
+	Follows             FollowStore
+	SchematicVideos     SchematicVideoStore
+	References          ReferenceStore
+	Modpacks            ModpackStore
+	RedditLinks         RedditLinkStore
+	Notifications       NotificationStore
+	Newsletters         NewsletterStore
+	SearchAlerts        SearchAlertStore
+	ZeroResults         ZeroResultStore
+	Security            SecurityStore
+	AdClicks            AdClickStore
+	ModSecrets          ModSecretStore
 }

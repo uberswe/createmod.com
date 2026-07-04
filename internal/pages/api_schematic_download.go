@@ -16,10 +16,10 @@ import (
 // It increments the download counter and redirects to the schematic's file so
 // API clients (e.g. the Brassworks Launcher) can fetch the .nbt directly.
 // Auth: API key or HMAC. An optional ?f={fileID} downloads a variation file.
-func APISchematicDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
+func APISchematicDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}/download"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}

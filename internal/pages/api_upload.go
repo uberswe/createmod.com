@@ -218,11 +218,11 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 // Accepts multipart/form-data with an .nbt file.
 // The upload goes through the same pipeline as web uploads -- returns a preview token, not a published schematic.
 // Uses PostgreSQL store for metadata and direct S3 for file storage.
-func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, modSecret string) func(e *server.RequestEvent) error {
+func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "POST /api/schematics/upload"
 
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}

@@ -26,16 +26,73 @@ type hmacAuth struct {
 	Identifier string
 }
 
+// envModSecrets holds the HMAC shared secrets configured via environment
+// (MOD_DOWNLOAD_SECRET[S]); the router sets it once at startup. Admin-managed
+// DB secrets are merged in at request time by resolveModSecrets.
+var envModSecrets []string
+
+// SetModSecrets records the environment-configured HMAC secrets. Called once at
+// startup from the router.
+func SetModSecrets(secrets []string) { envModSecrets = secrets }
+
+const (
+	modSecretsCacheKey = "modsecrets:active"
+	modSecretsCacheTTL = 60 * time.Second
+)
+
+// resolveModSecrets returns every currently-accepted HMAC secret: the static
+// environment secrets plus the active DB-managed secrets (cached per-pod so the
+// hot path doesn't hit Postgres on every request). Admin changes invalidate the
+// cache key, so they take effect immediately.
+func resolveModSecrets(appStore *store.Store, cacheService *cache.Service) []string {
+	secrets := append([]string(nil), envModSecrets...)
+	return append(secrets, activeDBModSecrets(appStore, cacheService)...)
+}
+
+func activeDBModSecrets(appStore *store.Store, cacheService *cache.Service) []string {
+	if appStore == nil || appStore.ModSecrets == nil {
+		return nil
+	}
+	if cacheService != nil {
+		if v, ok := cacheService.Get(modSecretsCacheKey); ok {
+			if list, ok := v.([]string); ok {
+				return list
+			}
+		}
+	}
+	list, err := appStore.ModSecrets.ListActive(context.Background())
+	if err != nil {
+		return nil
+	}
+	if cacheService != nil {
+		cacheService.SetWithTTL(modSecretsCacheKey, list, modSecretsCacheTTL)
+	}
+	return list
+}
+
+// matchModSignature returns the first secret in secrets that produces a valid
+// HMAC signature over message, so the caller can reuse that exact secret (the
+// mod-download response is XOR-encoded with the client's own secret). ok is
+// false when no secret matches.
+func matchModSignature(message, signature string, secrets []string) (string, bool) {
+	for _, s := range secrets {
+		if validateModSignature(message, signature, s) {
+			return s, true
+		}
+	}
+	return "", false
+}
+
 // authenticateHMAC checks for X-Mod-Message and X-Mod-Signature headers and
-// validates them against the shared secret. Returns the parsed auth info on
-// success, or nil if the headers are absent or invalid.
-func authenticateHMAC(r *http.Request, secret string) *hmacAuth {
+// validates them against any of the accepted shared secrets. Returns the parsed
+// auth info on success, or nil if the headers are absent or invalid.
+func authenticateHMAC(r *http.Request, secrets []string) *hmacAuth {
 	message := strings.TrimSpace(r.Header.Get("X-Mod-Message"))
 	signature := strings.TrimSpace(r.Header.Get("X-Mod-Signature"))
 	if message == "" || signature == "" {
 		return nil
 	}
-	if !validateModSignature(message, signature, secret) {
+	if _, ok := matchModSignature(message, signature, secrets); !ok {
 		return nil
 	}
 	timestamp, modVersion, mcUsername, identifier, err := parseModMessage(message, maxModTimestampAge)
@@ -54,7 +111,7 @@ func authenticateHMAC(r *http.Request, secret string) *hmacAuth {
 //   - keyID (non-empty for API key auth, empty for HMAC)
 //   - isHMAC (true if authenticated via HMAC)
 //   - error (non-nil if both auth methods failed; response already written)
-func requireAPIKeyOrHMAC(appStore *store.Store, e *server.RequestEvent, modSecret string) (string, bool, error) {
+func requireAPIKeyOrHMAC(appStore *store.Store, e *server.RequestEvent, cacheService *cache.Service) (string, bool, error) {
 	// Try API key first
 	apiKey := getAPIKeyFromRequest(e.Request)
 	if apiKey != "" {
@@ -64,8 +121,8 @@ func requireAPIKeyOrHMAC(appStore *store.Store, e *server.RequestEvent, modSecre
 		}
 	}
 
-	// Try HMAC
-	if auth := authenticateHMAC(e.Request, modSecret); auth != nil {
+	// Try HMAC against the env + admin-managed secrets.
+	if auth := authenticateHMAC(e.Request, resolveModSecrets(appStore, cacheService)); auth != nil {
 		return "", true, nil
 	}
 
@@ -238,10 +295,10 @@ func rateLimitAllow(rl ratelimit.Limiter, keyID string, limit int) (bool, int) {
 
 // APISchematicsListHandler serves GET /api/schematics as a simple JSON API for searching/listing schematics.
 // Accepts either X-API-Key or HMAC authentication (X-Mod-Message + X-Mod-Signature headers).
-func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
+func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
@@ -501,10 +558,10 @@ func apiSearchResults(ctx context.Context, searchEngine search.SearchEngine, app
 
 // APISchematicDetailHandler serves GET /api/schematics/{name} returning one schematic by name.
 // Accepts either X-API-Key or HMAC authentication (X-Mod-Message + X-Mod-Signature headers).
-func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, modSecret string) func(e *server.RequestEvent) error {
+func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, modSecret)
+		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
