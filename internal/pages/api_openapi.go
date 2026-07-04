@@ -137,7 +137,7 @@ const openAPISpec = `{
         "tags": ["Schematics"],
         "security": [],
         "parameters": [
-          { "name": "cursor", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Opaque RFC3339 cursor from a previous response. Omit to get the current cursor only." }
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Opaque cursor token from a previous response. Omit to get the current cursor only." }
         ],
         "responses": {
           "200": {
@@ -173,7 +173,7 @@ const openAPISpec = `{
       "get": {
         "operationId": "downloadSchematic",
         "summary": "Download a schematic file",
-        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Supports both API key and HMAC authentication.",
+        "description": "Counts the download and redirects to the schematic's .nbt file. Pass ?f={fileID} to download a variation file. Also available at the alias GET /api/download/{name}. Supports both API key and HMAC authentication.",
         "tags": ["Schematics"],
         "security": [
           { "ApiKeyHeader": [] },
@@ -187,7 +187,6 @@ const openAPISpec = `{
         "responses": {
           "302": { "description": "Redirect to the schematic file" },
           "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "description": "Paid schematic; use the external link", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
           "429": { "$ref": "#/components/responses/RateLimited" }
         }
@@ -502,7 +501,7 @@ const openAPISpec = `{
               }
             }
           },
-          "cursor": { "type": "string", "format": "date-time", "description": "Pass this back as ?cursor= on the next call" },
+          "cursor": { "type": "string", "description": "Opaque token; pass this back as ?cursor= on the next call" },
           "hasMore": { "type": "boolean" }
         },
         "required": ["changes", "cursor", "hasMore"]

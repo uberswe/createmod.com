@@ -40,7 +40,6 @@ type Schematic struct {
 	SchematicFile        string             `json:"schematicFile"`
 	RatingCount          int                `json:"ratingCount"`
 	AIDescription        string             `json:"aiDescription"`
-	Paid                 bool               `json:"paid"`
 	Featured             bool               `json:"featured"`
 	Materials            string             `json:"materials"`
 	ExternalURL          string             `json:"externalURL"`

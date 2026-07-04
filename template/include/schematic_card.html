@@ -10,13 +10,11 @@
            alt="Featured image of {{ .Title }}" class="object-fit-cover" width="640" height="360" style="z-index:1;"
            onerror="this.style.display='none'">
       {{ end }}
-      {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:8px;left:8px;z-index:1;">Paid</span>{{ end }}
     </div>
     <div class="card-body p-2">
       <div class="d-flex align-items-start justify-content-between">
         <h4 class="card-title mb-1 text-truncate" style="max-width: 80%;">
           {{ .Title }}
-          {{ if .Paid }}<span class="badge badge-outline text-red ms-1">Paid</span>{{ end }}
         </h4>
       </div>
       <div class="d-flex align-items-center gap-2 text-muted small">

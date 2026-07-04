@@ -7,13 +7,11 @@
          alt="Featured image of {{ .Title }}" class="object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:1;"
          onerror="this.style.display='none'">
     {{ end }}
-    {{ if .Paid }}<span class="badge bg-red" style="position:absolute;top:4px;left:4px;z-index:1;font-size:.6rem;">Paid</span>{{ end }}
   </div>
   <div class="d-flex flex-column justify-content-center ms-3 min-width-0 flex-grow-1">
     <div class="d-flex align-items-center gap-2">
       <h4 class="mb-0 text-truncate" style="font-size: 0.95rem;">
         {{ .Title }}
-        {{ if .Paid }}<span class="badge badge-outline text-red ms-1">Paid</span>{{ end }}
       </h4>
     </div>
     <div class="d-flex align-items-center gap-2 text-muted small mt-1">

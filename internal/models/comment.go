@@ -7,20 +7,20 @@ import (
 
 type Comment struct {
 	ID              string
-	Created         string
+	Created         string `json:"-"`
 	Published       string
-	Author          string
-	AuthorID        string
+	Author          string `json:"-"`
+	AuthorID        string `json:"-"`
 	AuthorUsername  string
-	AuthorHasAvatar bool
+	AuthorHasAvatar bool `json:"-"`
 	AuthorAvatar    string
 	Indent          int
 	Content         template.HTML
-	OriginalContent template.HTML
-	Approved        bool
+	OriginalContent template.HTML `json:"-"`
+	Approved        bool          `json:"-"`
 	ParentID        string
 	ReplyToAuthor   string
-	IsTranslated    bool
+	IsTranslated    bool `json:"-"`
 }
 
 type DatabaseComment struct {

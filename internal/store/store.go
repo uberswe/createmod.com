@@ -81,7 +81,6 @@ type Schematic struct {
 	DimZ               int
 	Materials          json.RawMessage
 	Mods               json.RawMessage
-	Paid               bool
 	ExternalURL        string
 	Featured           bool
 	AIDescription      string
@@ -779,7 +778,7 @@ type ModerationChatStore interface {
 type SchematicStore interface {
 	GetByID(ctx context.Context, id string) (*Schematic, error)
 	GetByName(ctx context.Context, name string) (*Schematic, error)
-	ChangesSince(ctx context.Context, since time.Time, limit int) ([]SchematicChange, error)
+	ChangesSince(ctx context.Context, sinceAt time.Time, sinceName, sinceKind string, limit int) ([]SchematicChange, error)
 	StatsByNames(ctx context.Context, names []string) ([]SchematicStat, error)
 	GetByShortCode(ctx context.Context, code string) (*Schematic, error)
 	SetShortCode(ctx context.Context, id, code string) error

@@ -16,12 +16,6 @@
             <div id="dlinterstitial-mobile" class="d-xl-none mb-3 text-center"></div>
             <div class="card">
               <div class="card-body text-center">
-                {{if .Paid}}
-                <h1 class="card-title">{{ T .Language "Preparing external link..." }}</h1>
-                <p class="text-secondary">{{ T .Language "You will be redirected in" }} <span id="countdown-ext" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
-                <p>{{ T .Language "If it doesn't, click the button below:" }}</p>
-                <a id="manual-link-ext" class="btn btn-primary" hx-boost="false" href="{{ SignedOutURL .ExternalURL "download" .Name }}" aria-label="Continue to seller">{{ T .Language "Continue to seller" }}</a>
-                {{else}}
                 <h1 class="card-title">{{ T .Language "Preparing your download..." }}</h1>
                 <p class="text-secondary">{{ T .Language "Your download will start automatically in" }} <span id="countdown" aria-live="polite">10</span> {{ T .Language "seconds." }}</p>
                 <p id="download-hint" style="display:none">{{ T .Language "If it doesn't, click the button below:" }}</p>
@@ -30,7 +24,6 @@
                 <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
                 <input type="hidden" id="token-id" value="{{ .TokenID }}">
                 {{ if .FileID }}<input type="hidden" id="file-id" value="{{ .FileID }}">{{ end }}
-                {{end}}
               </div>
             </div>
           </div>
@@ -48,13 +41,12 @@
 {{template "foot.html" .}}
 <script>
 (function(){
-  var paid = {{if .Paid}}true{{else}}false{{end}};
   var maxUses = 5;
   var usesLeft = maxUses;
   var duration = 10;
   var endTime = Date.now() + duration * 1000;
-  var el = document.getElementById('countdown') || document.getElementById('countdown-ext');
-  var link = document.getElementById('manual-link') || document.getElementById('manual-link-ext');
+  var el = document.getElementById('countdown');
+  var link = document.getElementById('manual-link');
   var hintEl = document.getElementById('download-hint');
   var remainingEl = document.getElementById('remaining-hint');
   var timerId = null;
@@ -119,16 +111,12 @@
   function finish() {
     stop();
     if (el) { el.textContent = '0'; }
-    if (paid) {
-      if (link && link.href) { window.location.href = link.href; }
-    } else {
-      triggerDownload();
-    }
+    triggerDownload();
   }
 
   function tick(){
     if (stopped) return;
-    if (!document.getElementById('countdown') && !document.getElementById('countdown-ext')) { stop(); return; }
+    if (!document.getElementById('countdown')) { stop(); return; }
     var remaining = Math.ceil((endTime - Date.now()) / 1000);
     if (remaining <= 0) {
       finish();
@@ -139,7 +127,7 @@
   }
   timerId = setTimeout(tick, 1000);
 
-  if (link && !paid) {
+  if (link) {
     link.addEventListener('click', function(ev) {
       ev.preventDefault();
       if (usesLeft <= 0) return;

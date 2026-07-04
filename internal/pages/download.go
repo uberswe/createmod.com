@@ -93,11 +93,6 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 			return e.Redirect(http.StatusFound, fileURL)
 		}
 
-		// Block site download for paid schematics (variations of paid schematics are still allowed above)
-		if s.Paid {
-			return e.String(http.StatusForbidden, "This schematic is paid; please use the external link on the schematic page.")
-		}
-
 		// Single file redirect
 		primary := strings.TrimSpace(s.SchematicFile)
 		if primary == "" {

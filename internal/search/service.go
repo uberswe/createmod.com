@@ -63,7 +63,6 @@ type schematicIndex struct {
 	Author           string
 	MinecraftVersion string
 	CreateVersion    string
-	Paid             bool
 	BlockNames       []string
 	ModNames         []string
 	BlockCount       int
@@ -71,7 +70,6 @@ type schematicIndex struct {
 	DimY             int
 	DimZ             int
 }
-
 
 // Ready returns true when the search index has been populated and is ready
 // to serve queries. Used by the readiness probe to delay traffic until the
@@ -174,7 +172,6 @@ func (s *Service) BuildIndex(schematics []models.Schematic, modDisplayNames map[
 		si.AIDescription = stripHtmlRegex(schematics[i].AIDescription)
 		si.MinecraftVersion = schematics[i].MinecraftVersion
 		si.CreateVersion = schematics[i].CreatemodVersion
-		si.Paid = schematics[i].Paid
 		si.BlockCount = schematics[i].BlockCount
 		si.DimX = schematics[i].DimX
 		si.DimY = schematics[i].DimY
