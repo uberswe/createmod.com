@@ -147,7 +147,6 @@ const openAPISpec = `{
         "responses": {
           "302": { "description": "Redirect to the schematic file" },
           "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "description": "Paid schematic; use the external link", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
           "429": { "$ref": "#/components/responses/RateLimited" }
         }

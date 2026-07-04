@@ -81,7 +81,6 @@ type Schematic struct {
 	DimZ               int
 	Materials          json.RawMessage
 	Mods               json.RawMessage
-	Paid               bool
 	ExternalURL        string
 	Featured           bool
 	AIDescription      string

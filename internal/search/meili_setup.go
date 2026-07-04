@@ -29,7 +29,6 @@ type MeiliDocument struct {
 	Rating           float64  `json:"rating"`
 	Views            int64    `json:"views"`
 	Downloads        int64    `json:"downloads"`
-	Paid             bool     `json:"paid"`
 	MinecraftVersion string   `json:"minecraft_version"`
 	CreateVersion    string   `json:"create_version"`
 	CreatedTimestamp  int64    `json:"created_timestamp"`
@@ -57,7 +56,7 @@ func EnsureMeiliIndexes(client meilisearch.ServiceManager) error {
 
 	filterableStr := []string{
 		"id", "categories", "minecraft_version", "create_version",
-		"tags", "rating", "paid", "views", "downloads", "created_timestamp",
+		"tags", "rating", "views", "downloads", "created_timestamp",
 		"block_count", "dim_x", "dim_y", "dim_z", "mod_names",
 		"trending_score", "rating_count", "modpack_ids",
 	}
@@ -373,7 +372,6 @@ func MapToMeiliDocuments(filterIndex []schematicIndex, trendingScores map[string
 			Rating:           si.Rating,
 			Views:            si.Views,
 			Downloads:        si.Downloads,
-			Paid:             si.Paid,
 			MinecraftVersion: si.MinecraftVersion,
 			CreateVersion:    si.CreateVersion,
 			CreatedTimestamp:  si.Created.Unix(),
@@ -437,7 +435,6 @@ func BuildSingleDocument(s models.Schematic, modDisplayNames map[string]string, 
 		Rating:           rating,
 		Views:            int64(s.Views),
 		Downloads:        int64(s.Downloads),
-		Paid:             s.Paid,
 		MinecraftVersion: s.MinecraftVersion,
 		CreateVersion:    s.CreatemodVersion,
 		CreatedTimestamp:  s.Created.Unix(),

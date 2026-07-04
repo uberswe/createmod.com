@@ -20,11 +20,9 @@ var downloadInterstitialTemplates = append([]string{
 
 type DownloadInterstitialData struct {
 	DefaultData
-	Name        string
-	TokenID     string
-	FileID      string
-	Paid        bool
-	ExternalURL string
+	Name    string
+	TokenID string
+	FileID  string
 }
 
 func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -34,14 +32,10 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 			return e.String(http.StatusBadRequest, "missing name")
 		}
 
-		// Try to load schematic to determine if it's paid and already published
-		paid := false
-		external := ""
+		// Load the schematic so we can validate a requested file variation.
 		var schematic *store.Schematic
 		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && store.IsPublicState(s.ModerationState) && (s.Deleted == nil || s.Deleted.IsZero()) {
 			schematic = s
-			paid = s.Paid
-			external = s.ExternalURL
 		}
 
 		fileID := e.Request.PathValue("fileID")
@@ -61,25 +55,18 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 		d.Name = name
 		d.FileID = fileID
 
-		if paid && external != "" && fileID == "" {
-			d.Paid = true
-			d.ExternalURL = external
-			d.Title = i18n.T(d.Language, "Preparing External Link")
-			d.Description = i18n.T(d.Language, "page.download.external.description")
-		} else {
-			token := randomHex(24)
-			dt := &store.DownloadToken{
-				Token:     token,
-				Name:      name,
-				ExpiresAt: time.Now().Add(2 * time.Minute),
-			}
-			if err := appStore.DownloadTokens.Create(context.Background(), dt); err != nil {
-				return e.String(http.StatusInternalServerError, "failed to create download token")
-			}
-			d.Title = i18n.T(d.Language, "Preparing Download")
-			d.Description = i18n.T(d.Language, "page.download.file.description")
-			d.TokenID = dt.ID
+		token := randomHex(24)
+		dt := &store.DownloadToken{
+			Token:     token,
+			Name:      name,
+			ExpiresAt: time.Now().Add(2 * time.Minute),
 		}
+		if err := appStore.DownloadTokens.Create(context.Background(), dt); err != nil {
+			return e.String(http.StatusInternalServerError, "failed to create download token")
+		}
+		d.Title = i18n.T(d.Language, "Preparing Download")
+		d.Description = i18n.T(d.Language, "page.download.file.description")
+		d.TokenID = dt.ID
 
 		html, err := registry.LoadFiles(downloadInterstitialTemplates...).Render(d)
 		if err != nil {

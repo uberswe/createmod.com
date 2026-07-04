@@ -129,20 +129,6 @@ func SchematicUpdateHandler(
 			schem.Video = video
 		}
 
-		// --- Paid / External URL ---
-		if paidStr := e.Request.FormValue("paid"); paidStr != "" {
-			schem.Paid = paidStr == "true"
-		}
-		if externalURL := strings.TrimSpace(e.Request.FormValue("external_url")); externalURL != "" {
-			schem.ExternalURL = externalURL
-		}
-		if !schem.Paid {
-			schem.ExternalURL = ""
-		}
-		if schem.Paid && schem.ExternalURL == "" {
-			return e.BadRequestError("paid schematics require an external URL", nil)
-		}
-
 		if createmodVersion != "" {
 			schem.CreatemodVersionID = &createmodVersion
 		} else if e.Request.FormValue("createmod_version") != "" {
@@ -601,7 +587,6 @@ func buildSchematicSnapshot(s *store.Schematic) map[string]any {
 		"dependencies":      s.Dependencies,
 		"createmod_version": cmVersionID,
 		"minecraft_version": mcVersionID,
-		"paid":              s.Paid,
 		"schematic_file":    s.SchematicFile,
 		"postdate":          postdate,
 		"updated":           s.Updated,
@@ -663,7 +648,6 @@ func computeSchematicDiff(prev map[string]any, newSchem *store.Schematic) []stri
 	cmpStr("video", newSchem.Video)
 	cmpBool("has_dependencies", newSchem.HasDependencies)
 	cmpStr("dependencies", newSchem.Dependencies)
-	cmpBool("paid", newSchem.Paid)
 	cmpStr("schematic_file", newSchem.SchematicFile)
 
 	cmVersionID := ""

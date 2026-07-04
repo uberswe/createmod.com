@@ -41,27 +41,23 @@ func APISchematicDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Servi
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "not found"})
 		}
 
-		// Count the download (best-effort, IP-deduped).
-		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
-
-		// Variation file download.
+		// Variation file download. Validate before counting so a bad file ID
+		// can't inflate the download counter.
 		if fileID := e.Request.URL.Query().Get("f"); fileID != "" {
 			sf, sfErr := appStore.SchematicFiles.GetByID(ctx, fileID)
 			if sfErr != nil || sf == nil || sf.SchematicID != s.ID {
 				return writeJSON(e, http.StatusNotFound, map[string]string{"error": "variation file not found"})
 			}
+			countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
 			return e.Redirect(http.StatusFound, fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(sf.Filename)))
-		}
-
-		// Paid schematics are only available via the external link on the page.
-		if s.Paid {
-			return writeJSON(e, http.StatusForbidden, map[string]string{"error": "this schematic is paid; use the external link on the schematic page"})
 		}
 
 		primary := strings.TrimSpace(s.SchematicFile)
 		if primary == "" {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic file not found"})
 		}
+		// Count the download (best-effort, IP-deduped) only once we know we can serve it.
+		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
 		return e.Redirect(http.StatusFound, fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(primary)))
 	}
 }

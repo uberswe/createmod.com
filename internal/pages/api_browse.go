@@ -71,7 +71,7 @@ func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cach
 		ctx := context.Background()
 		segment := func(order int) []models.Schematic {
 			sq := search.SearchQuery{Term: "", Order: order, Rating: -1, Category: "all"}
-			ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq)
+			ordered, err := apiSearchResults(ctx, searchEngine, appStore, cacheService, sq, homeSegmentSize)
 			if err != nil || len(ordered) == 0 {
 				return []models.Schematic{}
 			}

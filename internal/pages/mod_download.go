@@ -192,10 +192,6 @@ func modDownloadSchematic(ctx context.Context, appStore *store.Store, storageSvc
 		return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}
 	}
 
-	if s.Paid {
-		return nil, &modDownloadError{http.StatusForbidden, "paid schematic; use external link"}
-	}
-
 	primary := strings.TrimSpace(s.SchematicFile)
 	if primary == "" {
 		return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}

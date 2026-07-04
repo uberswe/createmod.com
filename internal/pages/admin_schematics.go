@@ -334,13 +334,6 @@ func AdminSchematicUpdateHandler(cacheService *cache.Service, appStore *store.St
 			schem.MinecraftVersionID = &mcv
 		}
 
-		// Paid / External URL
-		schem.Paid = e.Request.FormValue("paid") == "on"
-		schem.ExternalURL = strings.TrimSpace(e.Request.FormValue("external_url"))
-		if !schem.Paid {
-			schem.ExternalURL = ""
-		}
-
 		// Image removal
 		if e.Request.FormValue("remove_featured_image") == "true" && schem.FeaturedImage != "" {
 			if storageSvc != nil {
