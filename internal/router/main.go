@@ -508,6 +508,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/filters", Adapt(pages.APIFiltersHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
+		Get("/api/schematics/changes", Adapt(pages.APISchematicChangesHandler(p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).
+		Get("/api/schematics/stats", Adapt(pages.APISchematicBulkStatsHandler(p.AppStore)))
 	r.Get("/api/schematics/{name}", Adapt(pages.APISchematicDetailHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/download", Adapt(pages.APISchematicDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, modSecret)))
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
