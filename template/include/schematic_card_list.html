@@ -3,7 +3,7 @@
   <div class="flex-shrink-0" style="width: 120px; height: 68px; position:relative;">
     <img loading="lazy" src="{{ PlaceholderImg .ID }}" alt="" class="object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:0;">
     {{ if ne .FeaturedImage "" }}
-    <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=240x136"
+    <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=240x136&v=2"
          alt="Featured image of {{ .Title }}" class="object-fit-cover" width="120" height="68" style="position:absolute;inset:0;width:120px;height:68px;border-radius:.4rem;z-index:1;"
          onerror="this.style.display='none'">
     {{ end }}

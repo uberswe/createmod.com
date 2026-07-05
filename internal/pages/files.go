@@ -22,13 +22,22 @@ import (
 	"createmod/internal/storage"
 
 	"github.com/disintegration/imaging"
-	"github.com/sunshineplan/imgconv"
 )
 
 const (
 	maxThumbWidth  = 1920
 	maxThumbHeight = 1080
+
+	// thumbsVersion namespaces the S3 thumbnail cache. Bump it when the
+	// encoding changes so stale thumbnails regenerate lazily instead of
+	// being served forever. v2: lossless WebP -> lossy q80.
+	thumbsVersion = "v2"
 )
+
+// thumbS3Key returns the S3 key for a cached thumbnail.
+func thumbS3Key(s3Collection, recordID string, w, h int, filename string) string {
+	return fmt.Sprintf("_thumbs/%s/%s/%s/%dx%d_%s.webp", thumbsVersion, s3Collection, recordID, w, h, filename)
+}
 
 // FileServingHandler serves files from S3 with optional ?thumb=WxH image resizing.
 // URL pattern: GET /api/files/{collection}/{recordID}/{filename}
@@ -56,7 +65,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		// Compute ETag from path components (files are immutable by content hash)
 		etagInput := collection + "/" + recordID + "/" + filename
 		if thumbW > 0 || thumbH > 0 {
-			etagInput += fmt.Sprintf("?thumb=%dx%d", thumbW, thumbH)
+			etagInput += fmt.Sprintf("?thumb=%dx%d&%s", thumbW, thumbH, thumbsVersion)
 		}
 		h := sha256.Sum256([]byte(etagInput))
 		etag := `"` + hex.EncodeToString(h[:8]) + `"`
@@ -95,7 +104,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		}
 
 		// Thumbnail requested — check cache, generate if missing
-		thumbKey := fmt.Sprintf("_thumbs/%s/%s/%dx%d_%s.webp", s3Collection, recordID, thumbW, thumbH, filename)
+		thumbKey := thumbS3Key(s3Collection, recordID, thumbW, thumbH, filename)
 
 		// Try cached thumbnail first
 		ctx := e.Request.Context()
@@ -144,10 +153,7 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 		thumbContentType := "image/webp"
 
 		bw := bufio.NewWriter(&thumbBuf)
-		if err := imgconv.Write(bw, resized, &imgconv.FormatOption{
-			Format:       imgconv.WEBP,
-			EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
-		}); err != nil {
+		if err := encodeWebP(bw, resized); err != nil {
 			return e.String(http.StatusNotFound, "file not found")
 		}
 		_ = bw.Flush()
@@ -218,7 +224,7 @@ func PrewarmThumbnails(storageSvc *storage.Service, schematicID, filename string
 
 	for _, size := range prewarmSizes {
 		w, h := size[0], size[1]
-		thumbKey := fmt.Sprintf("_thumbs/%s/%s/%dx%d_%s.webp", s3Collection, schematicID, w, h, filename)
+		thumbKey := thumbS3Key(s3Collection, schematicID, w, h, filename)
 
 		if exists, _ := storageSvc.ExistsRaw(ctx, thumbKey); exists {
 			continue
@@ -228,10 +234,7 @@ func PrewarmThumbnails(storageSvc *storage.Service, schematicID, filename string
 
 		var buf bytes.Buffer
 		bw := bufio.NewWriter(&buf)
-		if err := imgconv.Write(bw, resized, &imgconv.FormatOption{
-			Format:       imgconv.WEBP,
-			EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
-		}); err != nil {
+		if err := encodeWebP(bw, resized); err != nil {
 			continue
 		}
 		_ = bw.Flush()

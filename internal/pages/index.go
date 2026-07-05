@@ -271,6 +271,16 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 			return iFull && !jFull
 		})
 
+		// The trending grid is the first section on the page; its first three
+		// rows (4 cards per row at desktop width) are above the fold and
+		// should not lazy-load.
+		for i := range trendingSchematics {
+			if i >= 12 {
+				break
+			}
+			trendingSchematics[i].EagerImage = true
+		}
+
 		d := IndexData{
 			Schematics:       latestSchematics,
 			Trending:         trendingSchematics,

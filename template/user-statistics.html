@@ -120,7 +120,7 @@
                                                     <tr class="cursor-pointer" onclick="window.location='/schematics/{{ .Name }}'">
                                                         <td class="w-1">
                                                             {{ if ne .FeaturedImage "" }}
-                                                            <span class="avatar" style="background-image: url(/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=40x40)"></span>
+                                                            <span class="avatar" style="background-image: url(/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=40x40&v=2)"></span>
                                                             {{ else }}
                                                             <span class="avatar">{{ slice .Title 0 1 }}</span>
                                                             {{ end }}

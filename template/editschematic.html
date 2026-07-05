@@ -99,14 +99,14 @@
                                             <div class="image-upload-grid" id="edit-image-grid">
                                                 {{ if .Schematic.FeaturedImage }}
                                                 <div class="image-upload-item is-featured existing-img" data-filename="{{ .Schematic.FeaturedImage }}" data-type="featured" title="Featured image">
-                                                    <img src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=200x200" alt="Featured image">
+                                                    <img src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=200x200&v=2" alt="Featured image">
                                                     <span class="featured-badge">Featured</span>
                                                     <button type="button" class="remove-btn" title="Remove image">&times;</button>
                                                 </div>
                                                 {{ end }}
                                                 {{ range .Schematic.Gallery }}
                                                 <div class="image-upload-item existing-img" data-filename="{{ . }}" data-type="gallery" title="Click to set as featured">
-                                                    <img src="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=200x200" alt="Gallery image">
+                                                    <img src="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=200x200&v=2" alt="Gallery image">
                                                     <button type="button" class="remove-btn" title="Remove image">&times;</button>
                                                 </div>
                                                 {{ end }}

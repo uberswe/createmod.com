@@ -2,10 +2,10 @@
 <a href="{{ LangURL .Language "/schematics" }}/{{ .Name }}" class="d-block text-decoration-none">
   <div class="card card-sm card-hover-lift overflow-hidden">
     <div class="card-body-borderless ratio ratio-16x9">
-      <img loading="lazy" src="{{ PlaceholderImg .ID }}" alt="" class="object-fit-cover" width="640" height="360" style="z-index:0;">
+      <img loading="{{ if .EagerImage }}eager{{ else }}lazy{{ end }}" src="{{ PlaceholderImg .ID }}" alt="" class="object-fit-cover" width="640" height="360" style="z-index:0;">
       {{ if ne .FeaturedImage "" }}
-      <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180"
-           srcset="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180 320w, /api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=640x360 640w"
+      <img loading="{{ if .EagerImage }}eager{{ else }}lazy{{ end }}"{{ if .EagerImage }} fetchpriority="high"{{ end }} src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180&v=2"
+           srcset="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180&v=2 320w, /api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=640x360&v=2 640w"
            sizes="(max-width: 767px) 100vw, (max-width: 991px) 50vw, (max-width: 1199px) 33vw, 25vw"
            alt="Featured image of {{ .Title }}" class="object-fit-cover" width="640" height="360" style="z-index:1;"
            onerror="this.style.display='none'">
