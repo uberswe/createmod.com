@@ -52,6 +52,9 @@ type Schematic struct {
 	ShortCode            string             `json:"shortCode,omitempty"`
 	ModerationState      string             `json:"-"`
 	Language             string             `json:"-"`
+	// EagerImage marks cards rendered above the fold: their thumbnails get
+	// loading="eager" fetchpriority="high" instead of lazy-loading.
+	EagerImage           bool               `json:"-"`
 }
 
 // ModerationChatMessage holds a single message in the moderation discussion thread.

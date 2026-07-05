@@ -79,10 +79,7 @@ func recoverYouTubeThumbnail(appStore *store.Store, storageSvc *storage.Service,
 
 		var out bytes.Buffer
 		bw := bufio.NewWriter(&out)
-		if err := imgconv.Write(bw, img, &imgconv.FormatOption{
-			Format:       imgconv.WEBP,
-			EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
-		}); err != nil {
+		if err := encodeWebP(bw, img); err != nil {
 			slog.Error("youtube thumbnail recovery: failed to encode WebP",
 				"schematic_id", schematicID, "error", err)
 			return

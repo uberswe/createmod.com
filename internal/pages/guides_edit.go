@@ -188,7 +188,7 @@ func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, sto
 			draw.CatmullRom.Scale(dst, dst.Bounds(), cropped, cropped.Bounds(), draw.Over, nil)
 			var out bytes.Buffer
 			bw := bufio.NewWriter(&out)
-			if err := imgconv.Write(bw, dst, &imgconv.FormatOption{Format: imgconv.WEBP, EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)}}); err != nil {
+			if err := encodeWebP(bw, dst); err != nil {
 				return e.String(http.StatusInternalServerError, "failed to encode banner image")
 			}
 			_ = bw.Flush()

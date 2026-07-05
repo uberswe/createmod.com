@@ -549,10 +549,7 @@ func convertToWebP(data []byte, filename string) ([]byte, string, string, error)
 
 	var out bytes.Buffer
 	bw := bufio.NewWriter(&out)
-	if err := imgconv.Write(bw, img, &imgconv.FormatOption{
-		Format:       imgconv.WEBP,
-		EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)},
-	}); err != nil {
+	if err := encodeWebP(bw, img); err != nil {
 		return data, filename, http.DetectContentType(data), nil
 	}
 	_ = bw.Flush()

@@ -125,7 +125,7 @@ func generateCollectionCollage(storageSvc *storage.Service, appStore *store.Stor
 
 	var out bytes.Buffer
 	bw := bufio.NewWriter(&out)
-	if err := imgconv.Write(bw, dst, &imgconv.FormatOption{Format: imgconv.WEBP, EncodeOption: []imgconv.EncodeOption{imgconv.Quality(80)}}); err != nil {
+	if err := encodeWebP(bw, dst); err != nil {
 		slog.Error("collage: failed to encode", "error", err)
 		return
 	}

@@ -1,8 +1,8 @@
 {{template "head.html" .}}
 <!-- Preload the LCP image so the browser starts fetching it immediately -->
 {{ if ne .Schematic.FeaturedImage "" }}
-<link rel="preload" as="image" href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540"
-      imagesrcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
+<link rel="preload" as="image" href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2"
+      imagesrcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360&v=2 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080&v=2 1920w"
       imagesizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw" fetchpriority="high">
 {{ end }}
 <!-- Non-critical page-specific CSS loaded async -->
@@ -129,7 +129,7 @@
                             <!-- 360° Rotation Viewer -->
                             <div class="rotation-viewer" id="rotation-viewer">
                                 <div class="ratio ratio-16x9">
-                                    <img id="rotation-img" src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape (index .Schematic.RotationImages 0) }}?thumb=960x540" alt="360° view of {{ .Schematic.Title }}" class="object-fit-cover" style="user-select:none;-webkit-user-drag:none;">
+                                    <img id="rotation-img" src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape (index .Schematic.RotationImages 0) }}?thumb=960x540&v=2" alt="360° view of {{ .Schematic.Title }}" class="object-fit-cover" style="user-select:none;-webkit-user-drag:none;">
                                     <div class="rotation-loading" id="rotation-loading" style="display:none;">
                                         <div class="rotation-spinner"></div>
                                         <div class="rotation-loading-pct" id="rotation-loading-pct">0%</div>
@@ -164,7 +164,7 @@
                             </div>
                             <script>
                             (function(){
-                                var urls = [{{ range $i, $img := .Schematic.RotationImages }}{{ if $i }},{{ end }}"/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape $img }}?thumb=960x540"{{ end }}];
+                                var urls = [{{ range $i, $img := .Schematic.RotationImages }}{{ if $i }},{{ end }}"/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape $img }}?thumb=960x540&v=2"{{ end }}];
                                 var total = urls.length;
                                 var images = new Array(total);
                                 var loaded = 0;
@@ -317,8 +317,8 @@
                                 <div class="ratio ratio-16x9">
                                 <img src="{{ PlaceholderImg .Schematic.ID }}" alt="" class="object-fit-cover" width="1920" height="1080" style="z-index:0;">
                                 <img
-                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540"
-                                        srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080 1920w"
+                                        src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2"
+                                        srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360&v=2 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080&v=2 1920w"
                                         sizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw"
                                         class="card-img-top object-fit-cover" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high" style="z-index:1;"
                                         onerror="this.style.display='none'">
@@ -341,14 +341,14 @@
                                         <a class="gallery-strip-item" data-fslightbox="gallery" hx-boost="false"
                                            href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}">
                                             <div class="gallery-strip-thumb"
-                                                 style="background-image: url('/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=300x300')"></div>
+                                                 style="background-image: url('/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=300x300&v=2')"></div>
                                         </a>
                                         {{ end }}
                                         {{ range .Schematic.Gallery }}
                                         <a class="gallery-strip-item" data-fslightbox="gallery" hx-boost="false"
                                            href="/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}">
                                             <div class="gallery-strip-thumb"
-                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=300x300')"></div>
+                                                 style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=300x300&v=2')"></div>
                                         </a>
                                         {{ end }}
                                     </div>
