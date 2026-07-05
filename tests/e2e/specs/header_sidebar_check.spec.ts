@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
 
-// On desktop the top header is in normal flow and scrolls away with the page,
-// while the left sidebar is fixed and full-height (starting at the very top).
-// They share the top-left corner, but the header is layered above the sidebar
-// (higher z-index) so there is no visual overlap.
-test('header is layered above the full-height sidebar at the top', async ({ page, baseURL }) => {
+// On desktop the top header is in normal flow and the left sidebar is fixed and
+// full-height (starting at the very top). They share the top-left corner. While
+// the rail is collapsed the header sits above it, but when the rail expands
+// (hover / pinned) it lifts ABOVE the header so the expanded menu covers the
+// logo instead of sliding behind it.
+test('expanded sidebar layers above the header (covers the logo)', async ({ page, baseURL }) => {
   const url = baseURL ?? 'http://localhost:8080';
   await page.goto(url + '/');
+
+  // Park the pointer away from the rail so the collapsed reading isn't a hover.
+  await page.mouse.move(600, 400);
 
   // Take a screenshot of the top-left area showing header + sidebar
   await page.screenshot({ path: 'test-results/header-sidebar.png', clip: { x: 0, y: 0, width: 400, height: 300 } });
@@ -17,11 +21,18 @@ test('header is layered above the full-height sidebar at the top', async ({ page
     if (!h || !s) return null;
     const hb = h.getBoundingClientRect();
     const sb = s.getBoundingClientRect();
+    const headerZ = parseInt(window.getComputedStyle(h).zIndex) || 0;
+    const collapsedZ = parseInt(window.getComputedStyle(s).zIndex) || 0;
+    // Expand the rail the same way hover does and read its stacking.
+    s.classList.add('sidebar-expanded');
+    const expandedZ = parseInt(window.getComputedStyle(s).zIndex) || 0;
+    s.classList.remove('sidebar-expanded');
     return {
       headerTop: Math.round(hb.y),
       sidebarTop: Math.round(sb.y),
-      headerZ: parseInt(window.getComputedStyle(h).zIndex) || 0,
-      sidebarZ: parseInt(window.getComputedStyle(s).zIndex) || 0,
+      headerZ,
+      collapsedZ,
+      expandedZ,
     };
   });
 
@@ -31,7 +42,9 @@ test('header is layered above the full-height sidebar at the top', async ({ page
     // Both anchor at the very top of the page.
     expect(info.headerTop).toBeLessThanOrEqual(1);
     expect(info.sidebarTop).toBeLessThanOrEqual(1);
-    // The header renders above the sidebar so the shared corner shows the header.
-    expect(info.headerZ).toBeGreaterThan(info.sidebarZ);
+    // Collapsed: the header is at least as high, so the rail doesn't cover it.
+    expect(info.headerZ).toBeGreaterThanOrEqual(info.collapsedZ);
+    // Expanded: the rail lifts above the header so it covers the logo.
+    expect(info.expandedZ).toBeGreaterThan(info.headerZ);
   }
 });
