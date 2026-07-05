@@ -58,15 +58,15 @@ type apiFiltersResponse struct {
 func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/home"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
+		key, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
-		if rejected := applyAPIRateLimit(e, rl, keyID, isHMAC); rejected {
+		if rejected := applyAPIRateLimit(e, rl, key, isHMAC); rejected {
 			return nil
 		}
 		if !isHMAC {
-			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+			defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
 		}
 
 		// The home rails are identical for every caller; cache the assembled
@@ -108,15 +108,15 @@ func APIHomeHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cach
 func APIFiltersHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/filters"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
+		key, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
-		if rejected := applyAPIRateLimit(e, rl, keyID, isHMAC); rejected {
+		if rejected := applyAPIRateLimit(e, rl, key, isHMAC); rejected {
 			return nil
 		}
 		if !isHMAC {
-			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+			defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
 		}
 
 		// Filter option lists change rarely and are the same for every caller.
@@ -170,8 +170,9 @@ func APIFiltersHandler(rl ratelimit.Limiter, cacheService *cache.Service, appSto
 }
 
 // applyAPIRateLimit enforces the standard API rate limit (HMAC: 100/min by IP,
-// API key: 120/min). It writes a 429 response and returns true when rejected.
-func applyAPIRateLimit(e *server.RequestEvent, rl ratelimit.Limiter, keyID string, isHMAC bool) bool {
+// API key: admin-assigned override or 120/min default). It writes a 429
+// response and returns true when rejected.
+func applyAPIRateLimit(e *server.RequestEvent, rl ratelimit.Limiter, key *store.APIKey, isHMAC bool) bool {
 	if isHMAC {
 		if ok, retry := searchRateLimitAllow(rl, e.RealIP(), 100); !ok {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
@@ -180,7 +181,7 @@ func applyAPIRateLimit(e *server.RequestEvent, rl ratelimit.Limiter, keyID strin
 		}
 		return false
 	}
-	if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+	if ok, retry := rateLimitAllow(rl, key.ID, effectiveRateLimit(key, defaultAPIRateLimitPerMinute)); !ok {
 		e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 		_ = writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		return true

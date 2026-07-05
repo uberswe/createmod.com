@@ -551,6 +551,8 @@ func Register(p RegisterParams) chi.Router {
 		r.Post("/admin/api-secrets", Adapt(pages.AdminModSecretCreateHandler(p.CacheService, p.AppStore)))
 		r.Post("/admin/api-secrets/{id}/active", Adapt(pages.AdminModSecretActiveHandler(p.CacheService, p.AppStore)))
 		r.Post("/admin/api-secrets/{id}/delete", Adapt(pages.AdminModSecretDeleteHandler(p.CacheService, p.AppStore)))
+		r.Get("/admin/api-keys", Adapt(pages.AdminAPIKeysHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/api-keys/{id}/rate-limit", Adapt(pages.AdminAPIKeyRateLimitHandler(p.AppStore)))
 		r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
 		r.Get("/admin/mods/{namespace}", Adapt(pages.AdminModEditHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/mods/{namespace}", Adapt(pages.AdminModUpdateHandler(p.AppStore)))

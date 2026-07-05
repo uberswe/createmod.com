@@ -23,15 +23,15 @@ type apiCommentsResponse struct {
 func APISchematicCommentsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}/comments"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
+		key, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
-		if rejected := applyAPIRateLimit(e, rl, keyID, isHMAC); rejected {
+		if rejected := applyAPIRateLimit(e, rl, key, isHMAC); rejected {
 			return nil
 		}
 		if !isHMAC {
-			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
+			defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
 		}
 
 		name := e.Request.PathValue("name")

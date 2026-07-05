@@ -220,12 +220,13 @@ func reportFromDB(r db.Report) store.Report {
 
 func apiKeyFromDB(k db.ApiKey) store.APIKey {
 	return store.APIKey{
-		ID:      k.ID,
-		UserID:  k.UserID,
-		KeyHash: k.KeyHash,
-		Label:   k.Label,
-		Last8:   k.Last8,
-		Created: k.Created,
+		ID:                 k.ID,
+		UserID:             k.UserID,
+		KeyHash:            k.KeyHash,
+		Label:              k.Label,
+		Last8:              k.Last8,
+		Created:            k.Created,
+		RateLimitPerMinute: int(k.RateLimitPerMinute),
 	}
 }
 
@@ -3031,6 +3032,56 @@ func (as *APIKeyStoreImpl) LogUsage(ctx context.Context, apiKeyID, endpoint stri
 		ApiKeyID: apiKeyID,
 		Endpoint: endpoint,
 	})
+}
+
+func (as *APIKeyStoreImpl) ListAllWithUsage(ctx context.Context) ([]store.AdminAPIKey, error) {
+	rows, err := as.q.ListAllAPIKeysWithUsage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.AdminAPIKey, len(rows))
+	for i, r := range rows {
+		result[i] = store.AdminAPIKey{
+			APIKey: store.APIKey{
+				ID:                 r.ID,
+				UserID:             r.UserID,
+				Label:              r.Label,
+				Last8:              r.Last8,
+				Created:            r.Created,
+				RateLimitPerMinute: int(r.RateLimitPerMinute),
+			},
+			Username:   r.Username,
+			UsageTotal: r.UsageTotal,
+			Usage24h:   r.Usage24h,
+			Usage7d:    r.Usage7d,
+			LastUsed:   r.LastUsed,
+		}
+	}
+	return result, nil
+}
+
+func (as *APIKeyStoreImpl) SetRateLimit(ctx context.Context, id string, perMinute int) error {
+	return as.q.UpdateAPIKeyRateLimit(ctx, db.UpdateAPIKeyRateLimitParams{
+		ID:                 id,
+		RateLimitPerMinute: int32(perMinute),
+	})
+}
+
+func (as *APIKeyStoreImpl) UsageByEndpoint(ctx context.Context) ([]store.APIKeyEndpointUsage, error) {
+	rows, err := as.q.ListAPIKeyUsageByEndpoint(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.APIKeyEndpointUsage, len(rows))
+	for i, r := range rows {
+		result[i] = store.APIKeyEndpointUsage{
+			APIKeyID: r.ApiKeyID,
+			Endpoint: r.Endpoint,
+			Requests: r.Requests,
+			LastUsed: r.LastUsed,
+		}
+	}
+	return result, nil
 }
 
 // AuthStoreImpl implements store.AuthStore.

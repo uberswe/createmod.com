@@ -222,7 +222,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 	return func(e *server.RequestEvent) error {
 		const endpoint = "POST /api/schematics/upload"
 
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
+		key, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
@@ -233,8 +233,8 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			}
 		} else {
-			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-			if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+			defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
+			if ok, retry := rateLimitAllow(rl, key.ID, effectiveRateLimit(key, defaultAPIRateLimitPerMinute)); !ok {
 				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			}

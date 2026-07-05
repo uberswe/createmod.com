@@ -255,11 +255,13 @@ type Querier interface {
 	IncrementSchematicDownloads(ctx context.Context, id string) error
 	IncrementWebhookFailure(ctx context.Context, arg IncrementWebhookFailureParams) error
 	IsFollowing(ctx context.Context, arg IsFollowingParams) (bool, error)
+	ListAPIKeyUsageByEndpoint(ctx context.Context) ([]ListAPIKeyUsageByEndpointRow, error)
 	ListAPIKeysByUser(ctx context.Context, userID string) ([]ApiKey, error)
 	ListAchievements(ctx context.Context) ([]Achievement, error)
 	ListActiveSearchAlerts(ctx context.Context, limit int32) ([]SearchAlert, error)
 	ListActiveUserWebhooks(ctx context.Context) ([]ListActiveUserWebhooksRow, error)
 	ListAdminEmails(ctx context.Context) ([]string, error)
+	ListAllAPIKeysWithUsage(ctx context.Context) ([]ListAllAPIKeysWithUsageRow, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)
@@ -420,6 +422,7 @@ type Querier interface {
 	UnsubscribeFollow(ctx context.Context, unsubscribeToken string) error
 	UnsubscribeNewsletter(ctx context.Context, unsubscribeToken string) error
 	UnsubscribeSearchAlert(ctx context.Context, unsubscribeToken string) error
+	UpdateAPIKeyRateLimit(ctx context.Context, arg UpdateAPIKeyRateLimitParams) error
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
 	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
 	UpdateFollowFrequency(ctx context.Context, arg UpdateFollowFrequencyParams) error
