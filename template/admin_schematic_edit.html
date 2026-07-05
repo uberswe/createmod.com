@@ -111,7 +111,7 @@
                   </div>
                   {{if .Schematic.FeaturedImage}}
                   <div class="mb-2">
-                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=200x200" class="img-fluid rounded" alt="thumbnail">
+                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=200x200&v=2" class="img-fluid rounded" alt="thumbnail">
                   </div>
                   {{end}}
                   <div class="mb-2">
@@ -127,7 +127,7 @@
                   <div class="mb-3">
                     <label class="form-label">{{ T .Language "Featured Image" }}</label>
                     <div class="d-flex align-items-start gap-2">
-                      <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=120x120" class="rounded" alt="Featured" style="max-width:120px;max-height:120px;">
+                      <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=120x120&v=2" class="rounded" alt="Featured" style="max-width:120px;max-height:120px;">
                       <label class="form-check">
                         <input type="checkbox" class="form-check-input" name="remove_featured_image" value="true">
                         <span class="form-check-label text-danger">{{ T .Language "Remove" }}</span>
@@ -141,7 +141,7 @@
                     <div class="d-flex flex-wrap gap-2">
                       {{range .Schematic.Gallery}}
                       <div class="position-relative">
-                        <img src="/api/files/schematics/{{$.Schematic.ID}}/{{urlPathEscape .}}?thumb=80x80" class="rounded" alt="Gallery" style="width:80px;height:80px;object-fit:cover;">
+                        <img src="/api/files/schematics/{{$.Schematic.ID}}/{{urlPathEscape .}}?thumb=80x80&v=2" class="rounded" alt="Gallery" style="width:80px;height:80px;object-fit:cover;">
                         <div class="mt-1">
                           <label class="form-check" style="font-size:0.75rem;">
                             <input type="checkbox" class="form-check-input" name="remove_gallery_images" value="{{.}}">

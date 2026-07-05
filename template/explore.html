@@ -44,7 +44,7 @@
                     {{range $i, $image := .Images }}
                         <a class="explore-item" href="/schematics/{{ $image.Name }}" title="{{ $image.Title }}">
                             <img class="lazy"
-                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ urlPathEscape $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0{{ else if eq $image.Size "md" }}?thumb=400x0{{ else }}?thumb=320x0{{ end }}"
+                                 data-src="/api/files/schematics/{{ $image.ID }}/{{ urlPathEscape $image.Image }}{{ if eq $image.Size "lg" }}?thumb=640x0&v=2{{ else if eq $image.Size "md" }}?thumb=400x0&v=2{{ else }}?thumb=320x0&v=2{{ end }}"
                                  alt="{{ $image.Title }}"
                                  onerror="this.parentElement.remove()">
                         </a>
@@ -81,9 +81,9 @@
   var loading = false;
 
   function thumbParam(size) {
-    if (size === 'lg') return '?thumb=640x0';
-    if (size === 'md') return '?thumb=400x0';
-    return '?thumb=320x0';
+    if (size === 'lg') return '?thumb=640x0&v=2';
+    if (size === 'md') return '?thumb=400x0&v=2';
+    return '?thumb=320x0&v=2';
   }
 
   function appendImages(images) {
