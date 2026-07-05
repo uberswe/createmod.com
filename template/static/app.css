@@ -720,13 +720,17 @@ a:hover {
 body.sidebar-ready .sidebar-rail {
   transition: width 0.2s ease;
 }
-/* Minimized (default): expand on hover */
+/* Minimized (default): expand on hover. Lift above the top-header (a flex item
+   with z-index 1050) so the hover-expanded panel sits on top of the logo
+   instead of sliding behind it. */
 .sidebar-rail:hover {
   width: 220px;
+  z-index: 1060;
 }
 /* Expanded (pinned open): always 220px, no hover needed */
 .sidebar-rail.sidebar-expanded {
   width: 220px;
+  z-index: 1060;
 }
 .sidebar-nav {
   flex: 1;
