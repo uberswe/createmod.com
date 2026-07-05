@@ -108,29 +108,29 @@ func authenticateHMAC(r *http.Request, secrets []string) *hmacAuth {
 }
 
 // requireAPIKeyOrHMAC tries API key auth first, then HMAC auth. Returns:
-//   - keyID (non-empty for API key auth, empty for HMAC)
+//   - key (non-nil for API key auth, nil for HMAC)
 //   - isHMAC (true if authenticated via HMAC)
 //   - error (non-nil if both auth methods failed; response already written)
-func requireAPIKeyOrHMAC(appStore *store.Store, e *server.RequestEvent, cacheService *cache.Service) (string, bool, error) {
+func requireAPIKeyOrHMAC(appStore *store.Store, e *server.RequestEvent, cacheService *cache.Service) (*store.APIKey, bool, error) {
 	// Try API key first
 	apiKey := getAPIKeyFromRequest(e.Request)
 	if apiKey != "" {
-		keyID, ok := verifyAPIKeyFromStore(appStore, apiKey)
+		key, ok := verifyAPIKeyFromStore(appStore, apiKey)
 		if ok {
-			return keyID, false, nil
+			return key, false, nil
 		}
 	}
 
 	// Try HMAC against the env + admin-managed secrets.
 	if auth := authenticateHMAC(e.Request, resolveModSecrets(appStore, cacheService)); auth != nil {
-		return "", true, nil
+		return nil, true, nil
 	}
 
 	// Neither worked
 	_ = writeJSON(e, http.StatusUnauthorized, map[string]string{
 		"error": "Authentication required. Use X-API-Key header or HMAC signature (X-Mod-Message + X-Mod-Signature)",
 	})
-	return "", false, fmt.Errorf("missing authentication")
+	return nil, false, fmt.Errorf("missing authentication")
 }
 
 // searchRateLimitAllow enforces a per-minute IP rate limit for HMAC-authenticated
@@ -176,9 +176,9 @@ func getAPIKeyFromRequest(r *http.Request) string {
 
 // verifyAPIKeyFromStore looks up the API key by its last 8 characters,
 // then verifies by comparing the full sha256 hash.
-func verifyAPIKeyFromStore(appStore *store.Store, plaintext string) (string, bool) {
+func verifyAPIKeyFromStore(appStore *store.Store, plaintext string) (*store.APIKey, bool) {
 	if strings.TrimSpace(plaintext) == "" {
-		return "", false
+		return nil, false
 	}
 	last8 := plaintext
 	if len(plaintext) >= 8 {
@@ -187,15 +187,15 @@ func verifyAPIKeyFromStore(appStore *store.Store, plaintext string) (string, boo
 	ctx := context.Background()
 	key, err := appStore.APIKeys.GetByLast8(ctx, last8)
 	if err != nil || key == nil {
-		return "", false
+		return nil, false
 	}
 	// Verify the full hash
 	sum := sha256.Sum256([]byte(plaintext))
 	hash := hex.EncodeToString(sum[:])
 	if key.KeyHash != hash {
-		return "", false
+		return nil, false
 	}
-	return key.ID, true
+	return key, true
 }
 
 // writeJSON is a small helper for JSON error/success responses.
@@ -245,28 +245,37 @@ func writeAndCacheJSON(e *server.RequestEvent, cacheService *cache.Service, key 
 }
 
 // requireAPIKeyFromStore extracts and validates the API key from the request using store.
-func requireAPIKeyFromStore(appStore *store.Store, e *server.RequestEvent) (string, error) {
+func requireAPIKeyFromStore(appStore *store.Store, e *server.RequestEvent) (*store.APIKey, error) {
 	apiKey := getAPIKeyFromRequest(e.Request)
 	if apiKey == "" {
 		_ = writeJSON(e, http.StatusUnauthorized, map[string]string{
 			"error": "API key required. Get one at /settings/api-keys",
 		})
-		return "", fmt.Errorf("missing api key")
+		return nil, fmt.Errorf("missing api key")
 	}
-	keyID, ok := verifyAPIKeyFromStore(appStore, apiKey)
+	key, ok := verifyAPIKeyFromStore(appStore, apiKey)
 	if !ok {
 		_ = writeJSON(e, http.StatusUnauthorized, map[string]string{
 			"error": "invalid API key",
 		})
-		return "", fmt.Errorf("invalid api key")
+		return nil, fmt.Errorf("invalid api key")
 	}
-	return keyID, nil
+	return key, nil
 }
 
 // recordAPIKeyUsageStore increments counters for the provided key id and endpoint.
 func recordAPIKeyUsageStore(appStore *store.Store, keyID string, endpoint string) {
 	ctx := context.Background()
 	_ = appStore.APIKeys.LogUsage(ctx, keyID, endpoint)
+}
+
+// effectiveRateLimit returns the admin-assigned per-key limit when one is
+// set, otherwise the endpoint's default limit.
+func effectiveRateLimit(key *store.APIKey, endpointDefault int) int {
+	if key != nil && key.RateLimitPerMinute > 0 {
+		return key.RateLimitPerMinute
+	}
+	return endpointDefault
 }
 
 // rateLimitAllow enforces a simple per-minute limit per API key id using the rate limiter.
@@ -298,7 +307,7 @@ func rateLimitAllow(rl ratelimit.Limiter, keyID string, limit int) (bool, int) {
 func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
+		key, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
@@ -309,8 +318,8 @@ func APISchematicsListHandler(searchEngine search.SearchEngine, rl ratelimit.Lim
 				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			}
 		} else {
-			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-			if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+			defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
+			if ok, retry := rateLimitAllow(rl, key.ID, effectiveRateLimit(key, defaultAPIRateLimitPerMinute)); !ok {
 				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			}
@@ -561,7 +570,7 @@ func apiSearchResults(ctx context.Context, searchEngine search.SearchEngine, app
 func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}"
-		keyID, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
+		key, isHMAC, err := requireAPIKeyOrHMAC(appStore, e, cacheService)
 		if err != nil {
 			return nil
 		}
@@ -572,8 +581,8 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			}
 		} else {
-			defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-			if ok, retry := rateLimitAllow(rl, keyID, 120); !ok {
+			defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
+			if ok, retry := rateLimitAllow(rl, key.ID, effectiveRateLimit(key, defaultAPIRateLimitPerMinute)); !ok {
 				e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 				return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			}

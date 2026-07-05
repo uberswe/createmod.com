@@ -1,0 +1,97 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <main class="page-body">
+      <div class="container-wide">
+        {{template "admin_nav.html" .}}
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin: API Keys</h2>
+              <div class="text-secondary">All user API keys with usage. Set a per-key rate limit to override the default of {{ .DefaultRateLimit }} requests/minute; 0 or blank restores the default.</div>
+            </div>
+          </div>
+        </div>
+
+        {{if not .IsAuthenticated}}
+          <div class="alert alert-danger">You must be logged in.</div>
+        {{end}}
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <h3 class="card-title">API keys ({{ len .Keys }})</h3>
+            <form method="get" action="/admin/api-keys" class="ms-auto d-flex gap-1">
+              <input type="text" class="form-control form-control-sm" name="q" value="{{ .Query }}" placeholder="Search user or label" style="width: 14rem;">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">Search</button>
+              {{ if .Query }}<a href="/admin/api-keys" class="btn btn-sm btn-ghost-secondary">Clear</a>{{ end }}
+            </form>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Label</th>
+                  <th>Key</th>
+                  <th>Created</th>
+                  <th>Last used</th>
+                  <th class="text-end">24h</th>
+                  <th class="text-end">7d</th>
+                  <th class="text-end">Total</th>
+                  <th>Rate limit/min</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .Keys}}
+                <tr>
+                  <td>
+                    {{ if .Username }}<a href="/user/{{ .Username }}">{{ .Username }}</a>{{ else }}<span class="text-secondary">unknown</span>{{ end }}
+                  </td>
+                  <td>{{ if .Label }}{{ .Label }}{{ else }}<span class="text-secondary">—</span>{{ end }}</td>
+                  <td><code>…{{ .Last8 }}</code></td>
+                  <td class="text-secondary">{{ .Created }}</td>
+                  <td class="text-secondary">{{ if .LastUsed }}{{ .LastUsed }}{{ else }}never{{ end }}</td>
+                  <td class="text-end">{{ .Usage24h }}</td>
+                  <td class="text-end">{{ .Usage7d }}</td>
+                  <td class="text-end">
+                    {{ .UsageTotal }}
+                    {{ if .Endpoints }}
+                    <details>
+                      <summary class="text-secondary small" style="cursor:pointer;">by endpoint (30d)</summary>
+                      <div class="small text-start mt-1">
+                        {{ range .Endpoints }}
+                        <div class="d-flex justify-content-between gap-2">
+                          <code>{{ .Endpoint }}</code><span>{{ .Requests }}</span>
+                        </div>
+                        {{ end }}
+                      </div>
+                    </details>
+                    {{ end }}
+                  </td>
+                  <td>
+                    <form method="post" action="/admin/api-keys/{{ .ID }}/rate-limit" class="d-flex gap-1 align-items-center">
+                      <input type="hidden" name="q" value="{{ $.Query }}">
+                      <input type="number" class="form-control form-control-sm" name="rate_limit" min="0" max="1000000"
+                             value="{{ if .RateLimit }}{{ .RateLimit }}{{ end }}" placeholder="default" style="width: 6.5rem;">
+                      <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                    </form>
+                    {{ if .RateLimit }}<span class="badge bg-yellow-lt mt-1">custom</span>{{ end }}
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="9" class="text-secondary">{{ if .Query }}No API keys match "{{ .Query }}".{{ else }}No API keys have been created yet.{{ end }}</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

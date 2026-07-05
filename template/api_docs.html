@@ -109,7 +109,7 @@ Accept: application/json</pre>
               <div class="row-main">
                 <section class="apidocs-section" id="rate-limits">
                   <h2>{{ T .Language "Rate Limits" }} <a class="anchor" href="#rate-limits">#</a></h2>
-                  <p class="desc">{{ T .Language "Each API key is limited to" }} <strong>120 {{ T .Language "requests per minute" }}</strong>. {{ T .Language "Exceeding the limit returns" }} <code>429 Too Many Requests</code> {{ T .Language "with a" }} <code>Retry-After</code> {{ T .Language "header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle." }}</p>
+                  <p class="desc">{{ T .Language "Each API key is limited to" }} <strong>120 {{ T .Language "requests per minute" }}</strong> {{ T .Language "by default; a different limit may be assigned to your key" }}. {{ T .Language "Exceeding the limit returns" }} <code>429 Too Many Requests</code> {{ T .Language "with a" }} <code>Retry-After</code> {{ T .Language "header indicating seconds to wait. Every response includes rate-limit headers so you can self-throttle." }}</p>
                   <div class="code-card">
                     <div class="tabs"><span class="lang-tab active">{{ T .Language "Response Headers" }}</span><span class="tabs-spacer"></span><button class="copy-btn" data-copy><span>{{ T .Language "Copy" }}</span></button></div>
                     <pre data-lang="http">X-RateLimit-Limit: 120

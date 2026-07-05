@@ -2,8 +2,6 @@ package pages
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"createmod/internal/cache"
 	"createmod/internal/ratelimit"
 	"createmod/internal/server"
@@ -82,26 +80,12 @@ func fillHourlyStats(stats []store.HourlyStat) []apiHourlyStat {
 	return result
 }
 
-func resolveAPIKeyUserID(appStore *store.Store, r *http.Request) (keyID, userID string, ok bool) {
+func resolveAPIKeyUserID(appStore *store.Store, r *http.Request) (key *store.APIKey, ok bool) {
 	plaintext := getAPIKeyFromRequest(r)
 	if plaintext == "" {
-		return "", "", false
+		return nil, false
 	}
-	last8 := plaintext
-	if len(plaintext) >= 8 {
-		last8 = plaintext[len(plaintext)-8:]
-	}
-	ctx := context.Background()
-	key, err := appStore.APIKeys.GetByLast8(ctx, last8)
-	if err != nil || key == nil {
-		return "", "", false
-	}
-	sum := sha256.Sum256([]byte(plaintext))
-	hash := hex.EncodeToString(sum[:])
-	if key.KeyHash != hash {
-		return "", "", false
-	}
-	return key.ID, key.UserID, true
+	return verifyAPIKeyFromStore(appStore, plaintext)
 }
 
 // APISchematicStatsHandler serves GET /api/schematics/{name}/stats.
@@ -109,14 +93,14 @@ func APISchematicStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service,
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/schematics/{name}/stats"
 
-		keyID, userID, ok := resolveAPIKeyUserID(appStore, e.Request)
+		key, ok := resolveAPIKeyUserID(appStore, e.Request)
 		if !ok {
 			return writeJSON(e, http.StatusUnauthorized, map[string]string{
 				"error": "API key required. Get one at /settings/api-keys",
 			})
 		}
-		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-		if allowed, retry := rateLimitAllow(rl, keyID, 120); !allowed {
+		defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
+		if allowed, retry := rateLimitAllow(rl, key.ID, effectiveRateLimit(key, defaultAPIRateLimitPerMinute)); !allowed {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
@@ -131,7 +115,7 @@ func APISchematicStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service,
 		if err != nil || schem == nil {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic not found"})
 		}
-		if schem.AuthorID != userID {
+		if schem.AuthorID != key.UserID {
 			return writeJSON(e, http.StatusForbidden, map[string]string{"error": "you do not own this schematic"})
 		}
 
@@ -199,14 +183,14 @@ func APIUserStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appS
 	return func(e *server.RequestEvent) error {
 		const endpoint = "GET /api/user/stats"
 
-		keyID, userID, ok := resolveAPIKeyUserID(appStore, e.Request)
+		key, ok := resolveAPIKeyUserID(appStore, e.Request)
 		if !ok {
 			return writeJSON(e, http.StatusUnauthorized, map[string]string{
 				"error": "API key required. Get one at /settings/api-keys",
 			})
 		}
-		defer func() { recordAPIKeyUsageStore(appStore, keyID, endpoint) }()
-		if allowed, retry := rateLimitAllow(rl, keyID, 120); !allowed {
+		defer func() { recordAPIKeyUsageStore(appStore, key.ID, endpoint) }()
+		if allowed, retry := rateLimitAllow(rl, key.ID, effectiveRateLimit(key, defaultAPIRateLimitPerMinute)); !allowed {
 			e.Response.Header().Set("Retry-After", fmt.Sprintf("%d", retry))
 			return writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 		}
@@ -214,12 +198,12 @@ func APIUserStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appS
 		ctx := context.Background()
 		since := time.Now().UTC().AddDate(0, 0, -30)
 
-		hViews, _ := appStore.Stats.HourlyUserViews(ctx, userID, since)
-		hDownloads, _ := appStore.Stats.HourlyUserDownloads(ctx, userID, since)
-		hVideoPlays, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventVideoPlay, since)
-		hYTClicks, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventYouTubeClick, since)
-		hTimeOnPage, _ := appStore.Stats.HourlyUserEventAvg(ctx, userID, store.EventTimeOnPage, since)
-		hLayerViews, _ := appStore.Stats.HourlyUserEvents(ctx, userID, store.EventLayerViewer, since)
+		hViews, _ := appStore.Stats.HourlyUserViews(ctx, key.UserID, since)
+		hDownloads, _ := appStore.Stats.HourlyUserDownloads(ctx, key.UserID, since)
+		hVideoPlays, _ := appStore.Stats.HourlyUserEvents(ctx, key.UserID, store.EventVideoPlay, since)
+		hYTClicks, _ := appStore.Stats.HourlyUserEvents(ctx, key.UserID, store.EventYouTubeClick, since)
+		hTimeOnPage, _ := appStore.Stats.HourlyUserEventAvg(ctx, key.UserID, store.EventTimeOnPage, since)
+		hLayerViews, _ := appStore.Stats.HourlyUserEvents(ctx, key.UserID, store.EventLayerViewer, since)
 
 		var totalViews, totalDownloads int
 		for _, v := range hViews {
@@ -251,8 +235,8 @@ func APIUserStatsHandler(rl ratelimit.Limiter, cacheService *cache.Service, appS
 		}
 		offset := (page - 1) * pageSize
 
-		totalSchematics, _ := appStore.Stats.CountUserSchematics(ctx, userID)
-		schematicStats, _ := appStore.Stats.ListSchematicStats(ctx, userID, pageSize, offset)
+		totalSchematics, _ := appStore.Stats.CountUserSchematics(ctx, key.UserID)
+		schematicStats, _ := appStore.Stats.ListSchematicStats(ctx, key.UserID, pageSize, offset)
 
 		schematics := make([]apiUserStatsSchematic, 0, len(schematicStats))
 		for _, s := range schematicStats {

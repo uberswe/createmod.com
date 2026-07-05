@@ -556,6 +556,28 @@ type APIKey struct {
 	Label   string
 	Last8   string
 	Created time.Time
+	// RateLimitPerMinute is an admin-assigned override applied to every API
+	// endpoint. 0 means "use the endpoint's default limit".
+	RateLimitPerMinute int
+}
+
+// AdminAPIKey is an API key with owner and usage information for the admin
+// overview page. LastUsed is the zero time when the key has never been used.
+type AdminAPIKey struct {
+	APIKey
+	Username   string
+	UsageTotal int64
+	Usage24h   int64
+	Usage7d    int64
+	LastUsed   time.Time
+}
+
+// APIKeyEndpointUsage is a per-endpoint request count for one API key.
+type APIKeyEndpointUsage struct {
+	APIKeyID string
+	Endpoint string
+	Requests int64
+	LastUsed time.Time
 }
 
 // GameVersion represents a Minecraft or Create mod version entry.
@@ -1025,6 +1047,15 @@ type APIKeyStore interface {
 	Create(ctx context.Context, k *APIKey) error
 	Delete(ctx context.Context, id, userID string) error
 	LogUsage(ctx context.Context, apiKeyID, endpoint string) error
+	// ListAllWithUsage returns every API key with owner username and usage
+	// aggregates, newest first. For the admin overview page.
+	ListAllWithUsage(ctx context.Context) ([]AdminAPIKey, error)
+	// SetRateLimit sets the per-minute rate limit override for a key
+	// (0 clears the override so endpoint defaults apply).
+	SetRateLimit(ctx context.Context, id string, perMinute int) error
+	// UsageByEndpoint returns per-endpoint request counts for all keys over
+	// the last 30 days.
+	UsageByEndpoint(ctx context.Context) ([]APIKeyEndpointUsage, error)
 }
 
 // AuthStore handles external auth providers (OAuth).

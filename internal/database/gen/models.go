@@ -31,13 +31,14 @@ type AdClick struct {
 }
 
 type ApiKey struct {
-	ID      string    `json:"id"`
-	UserID  string    `json:"user_id"`
-	KeyHash string    `json:"key_hash"`
-	Label   string    `json:"label"`
-	Last8   string    `json:"last8"`
-	Created time.Time `json:"created"`
-	Updated time.Time `json:"updated"`
+	ID                 string    `json:"id"`
+	UserID             string    `json:"user_id"`
+	KeyHash            string    `json:"key_hash"`
+	Label              string    `json:"label"`
+	Last8              string    `json:"last8"`
+	Created            time.Time `json:"created"`
+	Updated            time.Time `json:"updated"`
+	RateLimitPerMinute int32     `json:"rate_limit_per_minute"`
 }
 
 type ApiKeyUsage struct {
@@ -225,6 +226,16 @@ type ModMetadatum struct {
 	Created            time.Time          `json:"created"`
 	Updated            time.Time          `json:"updated"`
 	BlocksitemsMatched bool               `json:"blocksitems_matched"`
+}
+
+type ModSecret struct {
+	ID        string    `json:"id"`
+	Label     string    `json:"label"`
+	Note      string    `json:"note"`
+	Secret    string    `json:"secret"`
+	Active    bool      `json:"active"`
+	CreatedBy string    `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ModerationLog struct {
