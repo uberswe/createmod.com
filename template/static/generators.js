@@ -1047,14 +1047,16 @@ function generateHullV2(p) {
   var fullLo = Math.max(midLo, midCenter - pmHalf);
   var fullHi = Math.min(midHi, midCenter + pmHalf);
 
-  function planAt(zNorm) {
+  function planAt(zNorm, yNorm) {
     if (zNorm < midLo) {
       var t = zNorm / Math.max(midLo, 0.001);
       var st = sstep(t);
       if (doubleEnder) return Math.pow(st, bowSharpness);
       if (sternStyle === 'square') {
+        // Flat transom above the waterline only; the run tapers underneath.
         var f = Math.pow(st, sternSharpness);
-        return f < 0.72 ? 0.72 : f;
+        var floorF = lerp(0.12, 0.72, sstep(clamp01(yNorm)));
+        return f < floorF ? floorF : f;
       }
       if (sternStyle === 'round') return Math.pow(st, sternSharpness * 0.55);
       return Math.pow(st, sternSharpness);
@@ -1070,40 +1072,40 @@ function generateHullV2(p) {
     if (zNorm >= fullLo && zNorm <= fullHi) return 1;
     if (zNorm < fullLo) {
       var t3 = (zNorm - midLo) / Math.max(fullLo - midLo, 0.001);
-      return lerp(0.86, 1, sstep(t3));
+      return lerp(0.78, 1, sstep(t3));
     }
     var t4 = (midHi - zNorm) / Math.max(midHi - fullHi, 0.001);
-    return lerp(0.9, 1, sstep(t4));
+    return lerp(0.84, 1, sstep(t4));
   }
 
-  function fullnessToExp(f) { return 1.6 + f * 6.4; }
-  function sectionExpAt(zNorm) {
-    var midExp = fullnessToExp(midFullness);
-    var bowExp = fullnessToExp(midFullness * (1 - bowSectionV));
-    var sternExp = doubleEnder ? bowExp : fullnessToExp(lerp(sternFullness, midFullness, 0.35));
+  function fullnessToK(f) { return lerp(1.6, 0.55, clamp01(f)); }
+  function sectionKAt(zNorm) {
+    var midK = fullnessToK(midFullness);
+    var bowK = midK + bowSectionV * 0.9;
+    var sternK = doubleEnder ? bowK : fullnessToK(lerp(sternFullness, midFullness, 0.35));
     if (zNorm > midHi) {
       var t = (zNorm - midHi) / Math.max(1 - midHi, 0.001);
-      return lerp(midExp, bowExp, sstep(t));
+      return lerp(midK, bowK, sstep(t));
     }
     if (zNorm < midLo) {
       var t2 = (midLo - zNorm) / Math.max(midLo, 0.001);
-      return lerp(midExp, sternExp, sstep(t2));
+      return lerp(midK, sternK, sstep(t2));
     }
-    return midExp;
+    return midK;
   }
 
-  function sectionAt(yNorm, exp) {
+  var keelHalf = bottomPinch * 0.25;
+  function sectionAt(yNorm, k) {
     var yc = clamp01(yNorm);
-    var se = Math.pow(1 - Math.pow(1 - yc, exp), 1 / exp);
-    var body = lerp(se, yc, deadrise);
-    var base = bottomPinch + (1 - bottomPinch) * body;
+    var body = Math.pow(Math.sin(yc * Math.PI / 2), k + deadrise * 0.8);
+    var base = keelHalf + (1 - keelHalf) * body;
     var flare = hullFlare * Math.pow(yc, flareCurve);
     var tumble = tumblehome * Math.pow(yc, tumbleCurve);
     var above = yNorm - 1;
     if (above < 0) above = 0;
     var castleTaper = above * 0.32 + above * above * 0.18;
     var r = base + flare - tumble - castleTaper;
-    return r < 0.10 ? 0.10 : r;
+    return r < 0.06 ? 0.06 : r;
   }
 
   function deckYAtF(z) {
@@ -1171,7 +1173,7 @@ function generateHullV2(p) {
       if (zHi <= zLo) continue;
       if (z1 < zLo - 0.5 || z1 > zHi + 0.5) continue;
       var zNorm = clamp01((z1 - zLo) / (zHi - zLo));
-      var w = planAt(zNorm) * sectionAt(yNorm, sectionExpAt(zNorm)) * halfBeam;
+      var w = planAt(zNorm, yNorm) * sectionAt(yNorm, sectionKAt(zNorm)) * halfBeam;
       if (w < 0.15) continue;
       hw[y1][z1] = w;
     }

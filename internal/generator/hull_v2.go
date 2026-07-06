@@ -117,7 +117,10 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 	fullLo := math.Max(midLo, midCenter-pmHalf)
 	fullHi := math.Min(midHi, midCenter+pmHalf)
 
-	planAt := func(zNorm float64) float64 {
+	// The blend segments between the taper regions and the ParallelMidbody
+	// band start well below full beam (0.78/0.84) so the waterline is a
+	// continuous curve instead of taper-flat-taper.
+	planAt := func(zNorm, yNorm float64) float64 {
 		switch {
 		case zNorm < midLo: // run (stern taper)
 			t := zNorm / math.Max(midLo, 0.001)
@@ -127,9 +130,12 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			}
 			switch p.SternStyle {
 			case "square":
+				// The flat transom exists above the waterline only; the
+				// run tapers underneath like a round stern.
 				f := math.Pow(st, p.SternSharpness)
-				if f < 0.72 {
-					f = 0.72
+				floor := lerp(0.12, 0.72, smootherstep(clamp01(yNorm)))
+				if f < floor {
+					f = floor
 				}
 				return f
 			case "round":
@@ -149,49 +155,51 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			return base
 		case zNorm >= fullLo && zNorm <= fullHi:
 			return 1
-		case zNorm < fullLo: // ease from run to midbody
+		case zNorm < fullLo: // fair curve from run into the midbody
 			t := (zNorm - midLo) / math.Max(fullLo-midLo, 0.001)
-			return lerp(0.86, 1, smootherstep(t))
-		default: // ease from midbody to entrance
+			return lerp(0.78, 1, smootherstep(t))
+		default: // fair curve from midbody into the entrance
 			t := (midHi - zNorm) / math.Max(midHi-fullHi, 0.001)
-			return lerp(0.9, 1, smootherstep(t))
+			return lerp(0.84, 1, smootherstep(t))
 		}
 	}
 
 	// --- Section lofting ------------------------------------------------------
 
-	// Section fullness exponent at zNorm: V-ish at the bow, full midship,
-	// SternFullness aft. Fullness 0..1 maps to superellipse exponent 1.6..8.
-	fullnessToExp := func(f float64) float64 { return 1.6 + f*6.4 }
-	sectionExpAt := func(zNorm float64) float64 {
-		midExp := fullnessToExp(p.MidFullness)
-		bowExp := fullnessToExp(p.MidFullness * (1 - p.BowSectionV))
-		sternExp := fullnessToExp(lerp(p.SternFullness, p.MidFullness, 0.35))
+	// Section shape exponent k for w = sin(yc*pi/2)^k: k ~0.55 is a full,
+	// boxy section; k ~1.6 is a sharp V. The sine base makes topsides
+	// approach vertical at the deck while the bottom stays curved — the
+	// wineglass profile of real hulls. Deadrise sharpens the bottom;
+	// BowSectionV / SternFullness morph k along the length.
+	fullnessToK := func(f float64) float64 { return lerp(1.6, 0.55, clamp01(f)) }
+	sectionKAt := func(zNorm float64) float64 {
+		midK := fullnessToK(p.MidFullness)
+		bowK := midK + p.BowSectionV*0.9
+		sternK := fullnessToK(lerp(p.SternFullness, p.MidFullness, 0.35))
 		if p.DoubleEnder {
-			sternExp = bowExp
+			sternK = bowK
 		}
 		switch {
 		case zNorm > midHi:
 			t := (zNorm - midHi) / math.Max(1-midHi, 0.001)
-			return lerp(midExp, bowExp, smootherstep(t))
+			return lerp(midK, bowK, smootherstep(t))
 		case zNorm < midLo:
 			t := (midLo - zNorm) / math.Max(midLo, 0.001)
-			return lerp(midExp, sternExp, smootherstep(t))
+			return lerp(midK, sternK, smootherstep(t))
 		default:
-			return midExp
+			return midK
 		}
 	}
 
-	// Cross-section half-width factor at height yNorm (0 keel .. 1 deck) for
-	// a given fullness exponent: superellipse quadrant blended toward a pure
-	// V by Deadrise, plus flare and tumblehome. Above-deck (yNorm > 1)
-	// tapers like v1 castle sides.
-	sectionAt := func(yNorm, exp float64) float64 {
+	// Cross-section half-width factor at height yNorm (0 keel .. 1 deck).
+	// The keel flat is a fraction of v1's BottomPinch — a keel is a spine,
+	// not a barge floor. Flare and tumblehome adjust the topsides;
+	// above-deck (yNorm > 1) tapers like v1 castle sides.
+	keelHalf := p.BottomPinch * 0.25
+	sectionAt := func(yNorm, k float64) float64 {
 		yc := clamp01(yNorm)
-		se := math.Pow(1-math.Pow(1-yc, exp), 1/exp)
-		vee := yc // straight diagonal (pure V)
-		body := lerp(se, vee, p.Deadrise)
-		base := p.BottomPinch + (1-p.BottomPinch)*body
+		body := math.Pow(math.Sin(yc*math.Pi/2), k+p.Deadrise*0.8)
+		base := keelHalf + (1-keelHalf)*body
 		flare := p.HullFlare * math.Pow(yc, p.FlareCurve)
 		tumble := p.Tumblehome * math.Pow(yc, p.TumbleCurve)
 		above := yNorm - 1
@@ -200,8 +208,8 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		}
 		castleTaper := above*0.32 + above*above*0.18
 		r := base + flare - tumble - castleTaper
-		if r < 0.10 {
-			r = 0.10
+		if r < 0.06 {
+			r = 0.06
 		}
 		return r
 	}
@@ -309,7 +317,7 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			}
 			zNorm := clamp01((zf - zLo) / (zHi - zLo))
 
-			w := planAt(zNorm) * sectionAt(yNorm, sectionExpAt(zNorm)) * halfBeam
+			w := planAt(zNorm, yNorm) * sectionAt(yNorm, sectionKAt(zNorm)) * halfBeam
 			if w < 0.15 {
 				continue
 			}
