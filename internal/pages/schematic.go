@@ -91,47 +91,28 @@ type SchematicData struct {
 	RedditLinks []store.RedditLink
 }
 
-// SchematicJSONLD returns schema.org CreativeWork markup for the schematic,
-// including aggregate rating and video metadata when available. Rating markup
-// makes the page eligible for star rich results in search.
+// SchematicJSONLD returns schema.org markup for the schematic. Google only
+// permits aggregateRating (review snippets) on a fixed set of parent types —
+// CreativeWork is not one of them and triggers a Search Console "Invalid
+// object type" error. Rated schematics therefore emit Product (a supported
+// parent, with the rating and Product-valid properties only); unrated ones
+// emit the semantically richer CreativeWork (author, dateCreated) where no
+// snippet eligibility is at stake.
 func (d SchematicData) SchematicJSONLD() template.HTML {
 	s := d.Schematic
-	work := map[string]any{
-		"@context":   "https://schema.org",
-		"@type":      "CreativeWork",
-		"name":       s.Title,
-		"url":        fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, "/schematics/"+s.Name)),
-		"inLanguage": d.Language,
-	}
-	if d.Description != "" {
-		work["description"] = d.Description
-	}
-	if d.Thumbnail != "" {
-		work["image"] = d.Thumbnail
-	}
-	if !s.Created.IsZero() {
-		work["dateCreated"] = s.Created.Format(time.RFC3339)
-	}
-	if s.Author != nil && s.Author.Username != "" {
-		work["author"] = map[string]any{
-			"@type": "Person",
-			"name":  s.Author.Username,
-			"url":   "https://createmod.com/author/" + url.PathEscape(strings.ToLower(s.Author.Username)),
-		}
-	}
+
+	ratingValue := 0.0
 	if s.HasRating && s.RatingCount > 0 {
 		if rv, err := strconv.ParseFloat(s.Rating, 64); err == nil && rv > 0 {
-			work["aggregateRating"] = map[string]any{
-				"@type":       "AggregateRating",
-				"ratingValue": rv,
-				"ratingCount": s.RatingCount,
-				"bestRating":  5,
-				"worstRating": 1,
-			}
+			ratingValue = rv
 		}
 	}
+
+	pageURL := fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, "/schematics/"+s.Name))
+
+	var video map[string]any
 	if vid := youtubeID(s.Video); vid != "" {
-		video := map[string]any{
+		video = map[string]any{
 			"@type":        "VideoObject",
 			"name":         s.Title,
 			"thumbnailUrl": "https://img.youtube.com/vi/" + vid + "/hqdefault.jpg",
@@ -145,9 +126,62 @@ func (d SchematicData) SchematicJSONLD() template.HTML {
 			// creation date is the closest available signal.
 			video["uploadDate"] = s.Created.Format(time.RFC3339)
 		}
-		work["video"] = video
 	}
-	data, err := json.Marshal(work)
+
+	var node map[string]any
+	if ratingValue > 0 {
+		node = map[string]any{
+			"@context": "https://schema.org",
+			"@type":    "Product",
+			"name":     s.Title,
+			"url":      pageURL,
+			"aggregateRating": map[string]any{
+				"@type":       "AggregateRating",
+				"ratingValue": ratingValue,
+				"ratingCount": s.RatingCount,
+				"bestRating":  5,
+				"worstRating": 1,
+			},
+		}
+		if len(s.Categories) > 0 {
+			node["category"] = s.Categories[0].Name
+		}
+		if !s.Created.IsZero() {
+			node["releaseDate"] = s.Created.Format(time.RFC3339)
+		}
+		if video != nil {
+			node["subjectOf"] = video
+		}
+	} else {
+		node = map[string]any{
+			"@context":   "https://schema.org",
+			"@type":      "CreativeWork",
+			"name":       s.Title,
+			"url":        pageURL,
+			"inLanguage": d.Language,
+		}
+		if !s.Created.IsZero() {
+			node["dateCreated"] = s.Created.Format(time.RFC3339)
+		}
+		if s.Author != nil && s.Author.Username != "" {
+			node["author"] = map[string]any{
+				"@type": "Person",
+				"name":  s.Author.Username,
+				"url":   "https://createmod.com/author/" + url.PathEscape(strings.ToLower(s.Author.Username)),
+			}
+		}
+		if video != nil {
+			node["video"] = video
+		}
+	}
+	if d.Description != "" {
+		node["description"] = d.Description
+	}
+	if d.Thumbnail != "" {
+		node["image"] = d.Thumbnail
+	}
+
+	data, err := json.Marshal(node)
 	if err != nil {
 		return ""
 	}

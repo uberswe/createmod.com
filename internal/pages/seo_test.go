@@ -41,31 +41,48 @@ func Test_SchematicJSONLD(t *testing.T) {
 		Author:      &models.User{Username: "alice"},
 	}
 
+	// Rated schematics emit Product — the only way aggregateRating is a
+	// valid review-snippet parent for Google. CreativeWork parents trigger
+	// Search Console "Invalid object type" errors.
 	out := string(d.SchematicJSONLD())
 	for _, want := range []string{
-		`"@type":"CreativeWork"`,
+		`"@type":"Product"`,
 		`"name":"Super Farm"`,
 		`"aggregateRating"`,
 		`"ratingValue":4.5`,
 		`"ratingCount":12`,
 		`"@type":"VideoObject"`,
 		`"embedUrl":"https://www.youtube.com/embed/abc123DEF45"`,
-		`"author"`,
-		`"url":"https://createmod.com/author/alice"`,
 		`"url":"https://createmod.com/schematics/super-farm"`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("JSON-LD missing %s in %s", want, out)
 		}
 	}
+	if strings.Contains(out, `"@type":"CreativeWork"`) {
+		t.Errorf("rated schematic must not use CreativeWork as the rating parent")
+	}
+	// author is not a valid schema.org Product property
+	if strings.Contains(out, `"author"`) {
+		t.Errorf("Product markup must not carry an author property")
+	}
 
-	// Without rating or video, those blocks must be absent
+	// Without rating: CreativeWork with author, no rating markup
 	d.Schematic.HasRating = false
 	d.Schematic.RatingCount = 0
 	d.Schematic.Video = ""
 	out = string(d.SchematicJSONLD())
 	if strings.Contains(out, "aggregateRating") || strings.Contains(out, "VideoObject") {
 		t.Errorf("expected no rating/video markup, got %s", out)
+	}
+	for _, want := range []string{
+		`"@type":"CreativeWork"`,
+		`"author"`,
+		`"url":"https://createmod.com/author/alice"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("unrated JSON-LD missing %s in %s", want, out)
+		}
 	}
 
 	// French pages self-reference the prefixed URL
