@@ -348,7 +348,7 @@ func Register(p RegisterParams) chi.Router {
 	}))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("# Site-specific rules (Cloudflare prepends its managed block above)\nUser-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\n\nSitemap: https://createmod.com/sitemaps/sitemap.xml\n"))
+		w.Write([]byte("# Site-specific rules (Cloudflare prepends its managed block above)\nUser-agent: *\nDisallow: /_/\nDisallow: /get/\nDisallow: /out/\n# Schematic files are for players, not crawlers/agents (images under /api/files/ stay crawlable)\nDisallow: /api/files/*.nbt$\n\nSitemap: https://createmod.com/sitemaps/sitemap.xml\n"))
 	})
 	r.Get("/feed.xml", Adapt(pages.RSSFeedHandler(p.AppStore, p.CacheService)))
 	// Favicon redirect (browsers request /favicon.ico by default)
@@ -506,6 +506,8 @@ func Register(p RegisterParams) chi.Router {
 	// API Docs
 	r.Get("/api", Adapt(pages.APIDocsHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/api/openapi.json", Adapt(pages.OpenAPIHandler()))
+	// RFC 9727 API catalog for agent discovery (advertised via Link headers)
+	r.Get("/.well-known/api-catalog", Adapt(pages.APICatalogHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
 	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))

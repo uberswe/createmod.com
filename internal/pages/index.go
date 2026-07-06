@@ -123,10 +123,17 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		// Record page view metric
 		metrics.IndexPageViews.WithLabelValues(fmt.Sprintf("%d", windowDays)).Inc()
 
+		// RFC 8288 Link header pointing agents at API discovery resources
+		SetAgentDiscoveryLinkHeader(e)
+
+		// Agents negotiating markdown get a curated summary rather than the
+		// (cached) HTML page.
+		agentMarkdown := wantsMarkdown(e)
+
 		// For anonymous users, serve from rendered HTML cache (5-minute TTL).
 		// Authenticated pages contain user-specific data so are always rendered fresh.
 		isAuth := authenticatedUserID(e) != ""
-		if !isAuth {
+		if !isAuth && !agentMarkdown {
 			setPublicCacheControl(e, 30)
 			lang := detectLanguageFromRequest(e.Request)
 			htmlCacheKey := indexHTMLCacheKeyWithWindow(lang, windowDays)
@@ -318,6 +325,10 @@ func IndexHandler(cacheService *cache.Service, registry *server.Registry, appSto
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.SubCategory = "Home"
 		d.Categories = categories
+
+		if agentMarkdown {
+			return serveMarkdown(e, indexMarkdown(d))
+		}
 
 		html, err := registry.LoadFiles(indexTemplates...).Render(d)
 		if err != nil {

@@ -20,6 +20,7 @@ type APIDocsData struct {
 
 func APIDocsHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
+		SetAgentDiscoveryLinkHeader(e)
 		d := APIDocsData{}
 		d.Populate(e)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "API Documentation"))

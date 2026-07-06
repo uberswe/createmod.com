@@ -172,7 +172,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		name := e.Request.PathValue("name")
 
 		isAuth := authenticatedUserID(e) != ""
-		if !isAuth {
+		if !isAuth && !wantsMarkdown(e) {
 			setPublicCacheControl(e, 30)
 			lang := detectLanguageFromRequest(e.Request)
 			if cached, ok := cacheService.GetString(cache.SchematicHTMLKey(name, lang)); ok {
@@ -452,6 +452,12 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			if vid := youtubeID(s.Video); vid != "" {
 				recoverYouTubeThumbnail(appStore, storageSvc, cacheService, s.ID, vid)
 			}
+		}
+
+		// Agents negotiating markdown get a curated representation (metadata,
+		// description, materials — never the NBT structure or download URLs).
+		if wantsMarkdown(e) {
+			return serveMarkdown(e, schematicMarkdown(d))
 		}
 
 		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
