@@ -508,6 +508,13 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/openapi.json", Adapt(pages.OpenAPIHandler()))
 	// RFC 9727 API catalog for agent discovery (advertised via Link headers)
 	r.Get("/.well-known/api-catalog", Adapt(pages.APICatalogHandler()))
+	// MCP server (Streamable HTTP, read-only discovery tools) + server card
+	r.Post("/api/mcp", Adapt(pages.MCPHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/api/mcp", Adapt(pages.MCPHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/.well-known/mcp/server-card.json", Adapt(pages.MCPServerCardHandler()))
+	// Agent skills discovery (Agent Skills Discovery RFC)
+	r.Get("/.well-known/agent-skills/index.json", Adapt(pages.AgentSkillsIndexHandler()))
+	r.Get("/.well-known/agent-skills/{name}/SKILL.md", Adapt(pages.AgentSkillHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
 	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))

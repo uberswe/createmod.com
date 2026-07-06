@@ -88,6 +88,8 @@ window.setTheme=function(theme){
     <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js" onerror="window._nitroBlocked=true"></script>
     {{ end }}
     <script src="/assets/x/adrail.js?v={{ AssetVer }}" defer></script>
+    <!-- WebMCP: expose curated site tools to browser AI agents -->
+    <script src="/assets/x/webmcp.js?v={{ AssetVer }}" defer></script>
     {{ if not .IsDev }}
     <script>
     // Track NitroPay ad instances and clear them on HTMX navigation so

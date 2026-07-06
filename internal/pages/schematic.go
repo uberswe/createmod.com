@@ -91,29 +91,34 @@ type SchematicData struct {
 	RedditLinks []store.RedditLink
 }
 
-// SchematicJSONLD returns schema.org CreativeWork markup for the schematic,
-// including aggregate rating and video metadata when available. Rating markup
-// makes the page eligible for star rich results in search.
+// SchematicJSONLD returns schema.org markup for the schematic. Google only
+// permits aggregateRating (review snippets) on a fixed set of parent types;
+// plain CreativeWork is not one of them and triggers a Search Console
+// "Invalid object type" error. MediaObject is on the supported list and, as
+// a CreativeWork subtype, keeps author/video/dateCreated valid — so every
+// schematic emits one MediaObject node, with the rating attached when the
+// schematic has one.
 func (d SchematicData) SchematicJSONLD() template.HTML {
 	s := d.Schematic
-	work := map[string]any{
+
+	node := map[string]any{
 		"@context":   "https://schema.org",
-		"@type":      "CreativeWork",
+		"@type":      "MediaObject",
 		"name":       s.Title,
 		"url":        fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, "/schematics/"+s.Name)),
 		"inLanguage": d.Language,
 	}
 	if d.Description != "" {
-		work["description"] = d.Description
+		node["description"] = d.Description
 	}
 	if d.Thumbnail != "" {
-		work["image"] = d.Thumbnail
+		node["image"] = d.Thumbnail
 	}
 	if !s.Created.IsZero() {
-		work["dateCreated"] = s.Created.Format(time.RFC3339)
+		node["dateCreated"] = s.Created.Format(time.RFC3339)
 	}
 	if s.Author != nil && s.Author.Username != "" {
-		work["author"] = map[string]any{
+		node["author"] = map[string]any{
 			"@type": "Person",
 			"name":  s.Author.Username,
 			"url":   "https://createmod.com/author/" + url.PathEscape(strings.ToLower(s.Author.Username)),
@@ -121,7 +126,7 @@ func (d SchematicData) SchematicJSONLD() template.HTML {
 	}
 	if s.HasRating && s.RatingCount > 0 {
 		if rv, err := strconv.ParseFloat(s.Rating, 64); err == nil && rv > 0 {
-			work["aggregateRating"] = map[string]any{
+			node["aggregateRating"] = map[string]any{
 				"@type":       "AggregateRating",
 				"ratingValue": rv,
 				"ratingCount": s.RatingCount,
@@ -145,9 +150,10 @@ func (d SchematicData) SchematicJSONLD() template.HTML {
 			// creation date is the closest available signal.
 			video["uploadDate"] = s.Created.Format(time.RFC3339)
 		}
-		work["video"] = video
+		node["video"] = video
 	}
-	data, err := json.Marshal(work)
+
+	data, err := json.Marshal(node)
 	if err != nil {
 		return ""
 	}

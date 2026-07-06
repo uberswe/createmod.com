@@ -415,6 +415,20 @@
     refresh();
   }
 
+  // WebMCP page tool: agents configure this generator and get a shareable link.
+  window.CreateModAgentTools = window.CreateModAgentTools || [];
+  window.CreateModAgentTools.push({
+    name: 'configure-generator',
+    description: 'Configure the ship hull generator on this page, update the 3D preview, and return the shareable configuration link. Give the link to the user so they can preview and download the build themselves — never download the generated .nbt file. Numeric/boolean/string keys: woodType, length, beam, depth, bottomPinch, hullFlare, flareCurve, tumblehome, tumbleCurve, sheerCurve, sheerCurveExp, bowLength, bowSharpness, bowKeelRise, bowKeelLength, bowStyle, bowCurve, sternStyle, sternLength, sternSharpness, sternKeelRise, sternKeelLength, sternOverhang, keelCurve, midWidthBias, castleBlend, castleHeight, castleLength, forecastleHeight, forecastleLength, hasRailings, hasTrim, hasWindows, hasGunPorts, gunPortRow, gunPortSpacing.',
+    inputSchema: { type: 'object', properties: { params: { type: 'object', description: 'Parameter values to apply; unknown keys are ignored' } }, required: ['params'] },
+    execute: function (input) {
+      setParams((input && input.params) || {});
+      refresh();
+      var share = GeneratorApp.getShareURL('h', getParams());
+      return Promise.resolve({ content: [{ type: 'text', text: 'Hull configuration applied. Shareable link: ' + share }] });
+    }
+  });
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

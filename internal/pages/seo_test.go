@@ -41,9 +41,13 @@ func Test_SchematicJSONLD(t *testing.T) {
 		Author:      &models.User{Username: "alice"},
 	}
 
+	// aggregateRating is only valid under Google's supported review-snippet
+	// parent types. Plain CreativeWork is not one (Search Console "Invalid
+	// object type" error); MediaObject is, and being a CreativeWork subtype
+	// it keeps author/video/dateCreated valid.
 	out := string(d.SchematicJSONLD())
 	for _, want := range []string{
-		`"@type":"CreativeWork"`,
+		`"@type":"MediaObject"`,
 		`"name":"Super Farm"`,
 		`"aggregateRating"`,
 		`"ratingValue":4.5`,
@@ -58,6 +62,11 @@ func Test_SchematicJSONLD(t *testing.T) {
 			t.Errorf("JSON-LD missing %s in %s", want, out)
 		}
 	}
+	for _, banned := range []string{`"@type":"CreativeWork"`, `"@type":"Product"`} {
+		if strings.Contains(out, banned) {
+			t.Errorf("rating parent must be MediaObject, found %s", banned)
+		}
+	}
 
 	// Without rating or video, those blocks must be absent
 	d.Schematic.HasRating = false
@@ -66,6 +75,9 @@ func Test_SchematicJSONLD(t *testing.T) {
 	out = string(d.SchematicJSONLD())
 	if strings.Contains(out, "aggregateRating") || strings.Contains(out, "VideoObject") {
 		t.Errorf("expected no rating/video markup, got %s", out)
+	}
+	if !strings.Contains(out, `"@type":"MediaObject"`) || !strings.Contains(out, `"author"`) {
+		t.Errorf("unrated JSON-LD should still be a MediaObject with author, got %s", out)
 	}
 
 	// French pages self-reference the prefixed URL
