@@ -41,33 +41,34 @@ func Test_SchematicJSONLD(t *testing.T) {
 		Author:      &models.User{Username: "alice"},
 	}
 
-	// Rated schematics emit Product — the only way aggregateRating is a
-	// valid review-snippet parent for Google. CreativeWork parents trigger
-	// Search Console "Invalid object type" errors.
+	// aggregateRating is only valid under Google's supported review-snippet
+	// parent types. Plain CreativeWork is not one (Search Console "Invalid
+	// object type" error); MediaObject is, and being a CreativeWork subtype
+	// it keeps author/video/dateCreated valid.
 	out := string(d.SchematicJSONLD())
 	for _, want := range []string{
-		`"@type":"Product"`,
+		`"@type":"MediaObject"`,
 		`"name":"Super Farm"`,
 		`"aggregateRating"`,
 		`"ratingValue":4.5`,
 		`"ratingCount":12`,
 		`"@type":"VideoObject"`,
 		`"embedUrl":"https://www.youtube.com/embed/abc123DEF45"`,
+		`"author"`,
+		`"url":"https://createmod.com/author/alice"`,
 		`"url":"https://createmod.com/schematics/super-farm"`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("JSON-LD missing %s in %s", want, out)
 		}
 	}
-	if strings.Contains(out, `"@type":"CreativeWork"`) {
-		t.Errorf("rated schematic must not use CreativeWork as the rating parent")
-	}
-	// author is not a valid schema.org Product property
-	if strings.Contains(out, `"author"`) {
-		t.Errorf("Product markup must not carry an author property")
+	for _, banned := range []string{`"@type":"CreativeWork"`, `"@type":"Product"`} {
+		if strings.Contains(out, banned) {
+			t.Errorf("rating parent must be MediaObject, found %s", banned)
+		}
 	}
 
-	// Without rating: CreativeWork with author, no rating markup
+	// Without rating or video, those blocks must be absent
 	d.Schematic.HasRating = false
 	d.Schematic.RatingCount = 0
 	d.Schematic.Video = ""
@@ -75,14 +76,8 @@ func Test_SchematicJSONLD(t *testing.T) {
 	if strings.Contains(out, "aggregateRating") || strings.Contains(out, "VideoObject") {
 		t.Errorf("expected no rating/video markup, got %s", out)
 	}
-	for _, want := range []string{
-		`"@type":"CreativeWork"`,
-		`"author"`,
-		`"url":"https://createmod.com/author/alice"`,
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("unrated JSON-LD missing %s in %s", want, out)
-		}
+	if !strings.Contains(out, `"@type":"MediaObject"`) || !strings.Contains(out, `"author"`) {
+		t.Errorf("unrated JSON-LD should still be a MediaObject with author, got %s", out)
 	}
 
 	// French pages self-reference the prefixed URL
