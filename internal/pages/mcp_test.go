@@ -168,3 +168,30 @@ func Test_AgentSkills_Index_And_Digests(t *testing.T) {
 		t.Errorf("unknown skill should 404, got %d", nrec.Code)
 	}
 }
+
+func Test_AuthMD(t *testing.T) {
+	req := httptest.NewRequest("GET", "/auth.md", nil)
+	rec := httptest.NewRecorder()
+	if err := AuthMDHandler()(server.NewRequestEvent(rec, req)); err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if rec.Code != 200 {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/markdown") {
+		t.Errorf("expected text/markdown, got %s", ct)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"X-API-Key",
+		"/settings/api-keys",
+		"no autonomous agent registration",
+		"must not create accounts",
+		"Never download schematic (.nbt) files",
+		"120 requests/minute",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("auth.md missing %q", want)
+		}
+	}
+}

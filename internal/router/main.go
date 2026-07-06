@@ -515,6 +515,8 @@ func Register(p RegisterParams) chi.Router {
 	// Agent skills discovery (Agent Skills Discovery RFC)
 	r.Get("/.well-known/agent-skills/index.json", Adapt(pages.AgentSkillsIndexHandler()))
 	r.Get("/.well-known/agent-skills/{name}/SKILL.md", Adapt(pages.AgentSkillHandler()))
+	// Agent-facing authentication guide (auth.md convention)
+	r.Get("/auth.md", Adapt(pages.AuthMDHandler()))
 	// Public JSON API (beta) — supports both X-API-Key and HMAC authentication
 	r.Get("/api/home", Adapt(pages.APIHomeHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics", Adapt(pages.APISchematicsListHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))

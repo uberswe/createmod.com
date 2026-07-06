@@ -9,7 +9,7 @@ import (
 
 // agentDiscoveryLinkHeader advertises API discovery resources to agents via
 // an RFC 8288 Link header. Served on the homepage and the API docs page.
-const agentDiscoveryLinkHeader = `</.well-known/api-catalog>; rel="api-catalog", </api>; rel="service-doc", </api/openapi.json>; rel="service-desc"`
+const agentDiscoveryLinkHeader = `</.well-known/api-catalog>; rel="api-catalog", </api>; rel="service-doc", </api/openapi.json>; rel="service-desc", </auth.md>; rel="help"`
 
 // SetAgentDiscoveryLinkHeader adds the agent-discovery Link header to a response.
 func SetAgentDiscoveryLinkHeader(e *server.RequestEvent) {
