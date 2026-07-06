@@ -931,16 +931,25 @@ var SCHEMAS = {
     { k:'forecastleHeight', t:'i' }, { k:'forecastleLength', t:'i' },
     { k:'hasGunPorts', t:'b' }, { k:'gunPortRow', t:'i' }, { k:'gunPortSpacing', t:'i' },
     { k:'bowCurve', t:'f' }, { k:'sternOverhang', t:'f' }, { k:'midWidthBias', t:'f' },
-    { k:'bowStyle', t:'e', m:'bowStyle' }
+    { k:'bowStyle', t:'e', m:'bowStyle' },
+    // v2 (version >= 3) fields, appended — order frozen, mirrors Go schemaHull
+    { k:'deadrise', t:'f' }, { k:'midFullness', t:'f' }, { k:'bowSectionV', t:'f' },
+    { k:'sternFullness', t:'f' }, { k:'stemRake', t:'f' }, { k:'stemCurve', t:'f' },
+    { k:'sternRake', t:'f' }, { k:'rocker', t:'f' }, { k:'parallelMidbody', t:'f' },
+    { k:'stemPostHeight', t:'i' }, { k:'sternPostHeight', t:'i' },
+    { k:'doubleEnder', t:'b' }, { k:'closedHull', t:'b' }
   ]
 };
 
-var CURRENT_VERSION = 2;
+var CURRENT_VERSION = 3;
 
 function encodeCompact(prefix, params) {
   var schema = SCHEMAS[prefix];
   if (!schema) return '';
+  // Respect an explicit engine version (>= 2 so float x100 encoding holds);
+  // shared links must regenerate with the engine that produced them.
   var ver = CURRENT_VERSION;
+  if (params && params.version && params.version >= 2) ver = params.version;
   var vals = [prefix + ver];
   for (var i = 0; i < schema.length; i++) {
     var s = schema[i];

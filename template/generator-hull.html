@@ -43,6 +43,13 @@
                                 </div>
                             </div>
                             <div class="mb-2">
+                                <label class="form-label mb-0">Generator Engine</label>
+                                <select class="form-select form-select-sm gen-param" id="param-genVersion">
+                                    <option value="3" selected>v2 — lofted hulls (new)</option>
+                                    <option value="2">v1 — legacy</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
                                 <label class="form-label mb-0">Wood Type</label>
                                 <select class="form-select form-select-sm gen-param" id="param-woodType">
                                     <option value="oak">Oak</option>
@@ -105,6 +112,62 @@
                                     <option value="raked">Raked</option>
                                     <option value="plumb">Plumb (Modern)</option>
                                 </select>
+                            </div>
+                            <div id="v2ParamsGroup">
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stem Rake: <span id="val-stemRake">0.35</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-stemRake" min="0" max="1.2" value="0.35" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stem Curve: <span id="val-stemCurve">0.15</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-stemCurve" min="-1" max="1" value="0.15" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stern Rake: <span id="val-sternRake">0.35</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sternRake" min="0" max="1" value="0.35" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Keel Rocker: <span id="val-rocker">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-rocker" min="0" max="0.5" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Deadrise (V-bottom): <span id="val-deadrise">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-deadrise" min="0" max="0.7" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Midship Fullness: <span id="val-midFullness">0.65</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-midFullness" min="0.05" max="1" value="0.65" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Bow V-Sections: <span id="val-bowSectionV">0.55</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-bowSectionV" min="0.05" max="1" value="0.55" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stern Fullness: <span id="val-sternFullness">0.5</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sternFullness" min="0.05" max="1" value="0.5" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Parallel Midbody: <span id="val-parallelMidbody">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-parallelMidbody" min="0" max="0.6" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stem Post Height: <span id="val-stemPostHeight">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-stemPostHeight" min="0" max="8" value="0" step="1">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stern Post Height: <span id="val-sternPostHeight">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sternPostHeight" min="0" max="8" value="0" step="1">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input gen-param" type="checkbox" id="param-doubleEnder">
+                                        <span class="form-check-label">Double Ender</span>
+                                    </label>
+                                    <label class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input gen-param" type="checkbox" id="param-closedHull">
+                                        <span class="form-check-label">Closed Hull (Airship)</span>
+                                    </label>
+                                </div>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Bow Length: <span id="val-bowLength">10</span></label>
@@ -295,8 +358,8 @@
     yacht:    { woodType:'birch', length:34, beam:7, depth:4, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.1, tumbleCurve:3, sheerCurve:0.06, sheerCurveExp:2, bowLength:10, bowSharpness:2.2, bowKeelRise:0.35, bowKeelLength:9, bowCurve:-0.3, sternStyle:'round', sternLength:5, sternSharpness:0.8, sternKeelRise:0.1, sternKeelLength:4, sternOverhang:0, keelCurve:1.7, midWidthBias:0.15, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked' }
   };
 
-  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing'];
-  var CHECK_PARAMS = ['hasRailings','hasTrim','hasWindows','hasGunPorts'];
+  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing','stemRake','stemCurve','sternRake','rocker','deadrise','midFullness','bowSectionV','sternFullness','parallelMidbody','stemPostHeight','sternPostHeight'];
+  var CHECK_PARAMS = ['hasRailings','hasTrim','hasWindows','hasGunPorts','doubleEnder','closedHull'];
   var SELECT_PARAMS = ['sternStyle','woodType','bowStyle'];
 
   function updateGunPortVisibility() {
@@ -305,8 +368,14 @@
     document.getElementById('gunPortSpacingGroup').style.display = checked ? '' : 'none';
   }
 
+  function updateVersionVisibility() {
+    var v = parseInt(document.getElementById('param-genVersion').value, 10);
+    document.getElementById('v2ParamsGroup').style.display = v >= 3 ? '' : 'none';
+  }
+
   function getParams() {
     var p = {};
+    p.version = parseInt(document.getElementById('param-genVersion').value, 10) || 3;
     RANGE_PARAMS.forEach(function(k) {
       var el = document.getElementById('param-' + k);
       p[k] = el.step && el.step.indexOf('.') >= 0 ? parseFloat(el.value) : parseInt(el.value);
@@ -337,7 +406,14 @@
       var el = document.getElementById('param-' + k);
       if (el && p[k] !== undefined) el.value = p[k];
     });
+    // Loading a shared configuration restores its engine version; pre-v3
+    // links select the legacy engine so they reproduce exactly.
+    if (p.version !== undefined) {
+      var vSel = document.getElementById('param-genVersion');
+      if (vSel) vSel.value = p.version >= 3 ? '3' : '2';
+    }
     updateGunPortVisibility();
+    updateVersionVisibility();
   }
 
   function updateLabels() {
@@ -363,6 +439,7 @@
   function refresh() {
     updateLabels();
     updateGunPortVisibility();
+    updateVersionVisibility();
     updateShareURLs();
     GeneratorApp.generate('/api/generators/hull', getParams());
   }
