@@ -20,7 +20,7 @@
         <div class="mb-3">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="mb-1">{{ .GuideTitle }}</h2>
+              <h1 class="h2 mb-1">{{ .GuideTitle }}</h1>
               <div class="text-secondary">
                 {{ if .AuthorName }}{{ T .Language "By" }} <a href="/author/{{ .AuthorName | ToLower }}">{{ .AuthorName }}</a> · {{ end }}{{ T .Language "Views" }}: {{ .Views }}
               </div>

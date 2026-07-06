@@ -20,6 +20,7 @@ func FourOhFourHandler(registry *server.Registry, appStore *store.Store) func(e 
 		d.Title = i18n.T(d.Language, "Page Not Found")
 		d.Description = i18n.T(d.Language, "page.404.description")
 		d.Slug = "/404"
+		d.NoIndex = true
 		html, err := registry.LoadFiles(fourOhFourTemplates...).Render(d)
 		if err != nil {
 			return err

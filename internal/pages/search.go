@@ -47,6 +47,8 @@ type CreateVersionGroup struct {
 
 type SearchData struct {
 	DefaultData
+	// HeadingText overrides the visible h1 on category/tag landing pages.
+	HeadingText          string
 	Schematics           []models.Schematic
 	Tags                 []models.SchematicTag
 	TagsWithCount        []models.SchematicTagWithCount
@@ -563,9 +565,40 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			nextURL = buildPageURL(page + 1)
 		}
 
-		// SEO canonical & prev/next
-		canonicalURL := fmt.Sprintf("https://createmod.com%s", buildPageURL(page))
-		seoNoIndex := page > 20
+		// SEO classification: clean landings (bare search, single term, single
+		// category, single tag) are indexable and self-canonical; every other
+		// filter permutation is noindexed and canonicalizes to its dominant
+		// clean landing so ranking signals consolidate instead of fragmenting
+		// across facet combinations.
+		hasExtraFilters := rating > -1 || mcVersion != "all" || createVersion != "all" ||
+			minBlockCount > 0 || maxBlockCount > 0 || minHorizontal > 0 || maxHorizontal > 0 ||
+			minDimX > 0 || maxDimX > 0 || minDimY > 0 || maxDimY > 0 || minDimZ > 0 || maxDimZ > 0 ||
+			len(selectedMods) > 0 || hasSortParam || infiniteScroll || viewMode == "list" ||
+			e.Request.URL.Query().Get("per_page") != ""
+
+		isCleanTerm := slugTerm != "" && category == "all" && len(selectedTags) == 0 && !hasExtraFilters
+		isCleanCategory := slugTerm == "" && category != "all" && len(selectedTags) == 0 && !hasExtraFilters
+		isCleanTag := slugTerm == "" && category == "all" && len(selectedTags) == 1 && !hasExtraFilters
+		isCleanBare := slugTerm == "" && category == "all" && len(selectedTags) == 0 && !hasExtraFilters
+		isCleanLanding := isCleanTerm || isCleanCategory || isCleanTag || isCleanBare
+
+		canonicalPath := "/search"
+		switch {
+		case slugTerm != "":
+			canonicalPath = "/search?q=" + url.QueryEscape(slugTerm)
+		case category != "all":
+			canonicalPath = "/search?category=" + url.QueryEscape(category)
+		case len(selectedTags) > 0:
+			canonicalPath = "/search?tag=" + url.QueryEscape(selectedTags[0])
+		}
+		if isCleanLanding && page > 1 {
+			sep := "?"
+			if strings.Contains(canonicalPath, "?") {
+				sep = "&"
+			}
+			canonicalPath += fmt.Sprintf("%sp=%d", sep, page)
+		}
+		seoNoIndex := page > 20 || !isCleanLanding
 
 		totalPages := 0
 		if pageSize > 0 {
@@ -629,18 +662,50 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Search"))
-		// Dynamic title based on search context
-		if term != "" && page > 1 {
-			d.Title = fmt.Sprintf("%s "+i18n.T(d.Language, "Schematics - Page")+" %d", term, page)
-		} else if term != "" {
-			d.Title = fmt.Sprintf("%s "+i18n.T(d.Language, "Schematics"), term)
-		} else {
-			d.Title = i18n.T(d.Language, "Search")
-		}
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-		d.Description = fmt.Sprintf(i18n.T(d.Language, "page.search.description"), d.Term)
-		d.Slug = fmt.Sprintf("/search/%s", slugTerm)
-		d.CanonicalURL = canonicalURL
+
+		// Dynamic title, heading and description based on search context.
+		// Category and tag landings get keyword-rich copy so they can rank as
+		// browse pages instead of generic "Search" results.
+		catName := ""
+		if category != "all" {
+			for _, c := range d.Categories {
+				if c.Key == category {
+					catName = i18n.T(d.Language, c.Name)
+					break
+				}
+			}
+		}
+		tagName := ""
+		if len(selectedTags) == 1 {
+			for _, t := range d.Tags {
+				if t.Key == selectedTags[0] {
+					tagName = i18n.T(d.Language, t.Name)
+					break
+				}
+			}
+		}
+		switch {
+		case isCleanCategory && catName != "":
+			d.Title = fmt.Sprintf("%s %s", catName, i18n.T(d.Language, "Create Mod Schematics"))
+			d.HeadingText = d.Title
+			d.Description = truncateMetaDescription(fmt.Sprintf(i18n.T(d.Language, "Browse %d %s schematics for the Minecraft Create Mod. Download them for your world or share your own builds."), total, catName))
+		case isCleanTag && tagName != "":
+			d.Title = fmt.Sprintf("%s %s", tagName, i18n.T(d.Language, "Create Mod Schematics"))
+			d.HeadingText = d.Title
+			d.Description = truncateMetaDescription(fmt.Sprintf(i18n.T(d.Language, "Browse %d %s schematics for the Minecraft Create Mod. Download them for your world or share your own builds."), total, tagName))
+		case term != "":
+			d.Title = fmt.Sprintf("%s "+i18n.T(d.Language, "Schematics"), term)
+			d.Description = fmt.Sprintf(i18n.T(d.Language, "page.search.description"), d.Term)
+		default:
+			d.Title = i18n.T(d.Language, "Search")
+			d.Description = fmt.Sprintf(i18n.T(d.Language, "page.search.description"), d.Term)
+		}
+		if page > 1 {
+			d.Title = fmt.Sprintf("%s - %s %d", d.Title, i18n.T(d.Language, "Page"), page)
+		}
+		d.Slug = canonicalPath
+		d.CanonicalURL = fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, canonicalPath))
 		d.NoIndex = seoNoIndex
 		if prevURL != "" {
 			d.PrevPageURL = fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, prevURL))

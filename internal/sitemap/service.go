@@ -6,8 +6,8 @@ import (
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sabloger/sitemap-generator/smg"
@@ -35,10 +35,6 @@ func (s *Service) Generate(appStore *store.Store) {
 	if err != nil {
 		slog.Warn("sitemap: failed to list users", "error", err)
 	}
-	searches, err := appStore.SearchTracking.ListTopSearches(ctx, 10000)
-	if err != nil {
-		slog.Warn("sitemap: failed to list searches", "error", err)
-	}
 	guides, err := appStore.Guides.ListForSitemap(ctx)
 	if err != nil {
 		slog.Warn("sitemap: failed to list guides", "error", err)
@@ -64,7 +60,7 @@ func (s *Service) Generate(appStore *store.Store) {
 	smi := smg.NewSitemapIndex(true)
 	smi.SetCompress(false)
 	smi.SetSitemapIndexName("sitemap")
-	smi.SetHostname("https://www.createmod.com")
+	smi.SetHostname("https://createmod.com")
 	smi.SetOutputPath(tmpDir + "/")
 	smi.SetServerURI("/sitemaps/")
 
@@ -142,26 +138,8 @@ func (s *Service) Generate(appStore *store.Store) {
 		}
 	}
 
-	smSearches := smi.NewSitemap()
-	smSearches.SetName("searches")
-	smSearches.SetLastMod(&now)
-	smSearches.SetOutputPath(tmpDir + "/")
-
-	for i := range searches {
-		q := searches[i].Query
-		if q == "" {
-			continue
-		}
-		err := smSearches.Add(&smg.SitemapLoc{
-			Loc:        fmt.Sprintf("/search/%s", url.PathEscape(q)),
-			LastMod:    &now,
-			ChangeFreq: smg.Weekly,
-			Priority:   0.7,
-		})
-		if err != nil {
-			slog.Error("Unable to add SitemapLoc:", "error", err)
-		}
-	}
+	// Internal search-result pages are intentionally not included: Google
+	// discourages indexing internal search results (thin/duplicate content).
 
 	// Guides sitemap
 	if len(guides) > 0 {
@@ -238,6 +216,13 @@ func (s *Service) Generate(appStore *store.Store) {
 		slog.Error("Unable to Save Sitemap:", "error", err)
 	}
 
+	// Generate hreflang sitemaps with xhtml:link alternates for all languages,
+	// then reference them from the sitemap index so crawlers can discover them.
+	hreflangFiles := s.GenerateHreflang(appStore)
+	if err := appendSitemapIndexEntries(tmpDir+"/sitemap.xml", hreflangFiles); err != nil {
+		slog.Warn("sitemap: failed to append hreflang entries to index", "error", err)
+	}
+
 	// Upload all generated files to S3
 	s.uploadSitemapDir(ctx, tmpDir)
 
@@ -249,9 +234,29 @@ func (s *Service) Generate(appStore *store.Store) {
 	}
 
 	slog.Info("Sitemap generated", "filename", filename)
+}
 
-	// Generate hreflang sitemaps with xhtml:link alternates for all languages
-	s.GenerateHreflang(appStore)
+// appendSitemapIndexEntries inserts additional <sitemap> entries (e.g. the
+// hreflang sitemaps, which are generated outside the smg index) before the
+// closing tag of the sitemap index file.
+func appendSitemapIndexEntries(indexPath string, filenames []string) error {
+	if len(filenames) == 0 {
+		return nil
+	}
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		return err
+	}
+	var b strings.Builder
+	for _, name := range filenames {
+		b.WriteString(fmt.Sprintf("<sitemap><loc>https://createmod.com/sitemaps/%s</loc></sitemap>", name))
+	}
+	closing := "</sitemapindex>"
+	out := strings.Replace(string(data), closing, b.String()+closing, 1)
+	if out == string(data) {
+		return fmt.Errorf("closing sitemapindex tag not found in %s", indexPath)
+	}
+	return os.WriteFile(indexPath, []byte(out), 0644)
 }
 
 func addPage(now time.Time, pages *smg.Sitemap, s string, i float32, c smg.ChangeFreq) {

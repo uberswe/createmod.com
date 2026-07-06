@@ -49,9 +49,11 @@ type DefaultData struct {
 	Language        string
 	LangPrefix      string
 	CanonicalURL    string
-	PrevPageURL     string
-	NextPageURL     string
-	NoIndex         bool
+	// OGType overrides the Open Graph type; empty renders "website".
+	OGType      string
+	PrevPageURL string
+	NextPageURL string
+	NoIndex     bool
 	Breadcrumbs     []BreadcrumbItem
 	BreadcrumbOverlay  bool
 	HideOutstream      bool
@@ -191,6 +193,24 @@ func (d *DefaultData) populateFromSession(e *server.RequestEvent, user *session.
 	d.IsAdmin = user.IsAdmin
 	// Contributor status - check has no direct store access here, so left for handler to set
 	// TODO: This will be set by handlers with store access
+}
+
+// metaDescriptionMaxLen is the length search engines display before
+// truncating; longer descriptions get cut mid-sentence in SERPs.
+const metaDescriptionMaxLen = 155
+
+// truncateMetaDescription shortens s to metaDescriptionMaxLen, cutting at a
+// word boundary and appending an ellipsis when truncated.
+func truncateMetaDescription(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if len(s) <= metaDescriptionMaxLen {
+		return s
+	}
+	cut := s[:metaDescriptionMaxLen]
+	if idx := strings.LastIndex(cut, " "); idx > 80 {
+		cut = cut[:idx]
+	}
+	return strings.TrimRight(cut, " ,;:.") + "…"
 }
 
 // setPublicCacheControl overrides the default "no-cache, private" header for

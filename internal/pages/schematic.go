@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 
 	"sort"
 	"strings"
@@ -90,6 +91,69 @@ type SchematicData struct {
 	RedditLinks []store.RedditLink
 }
 
+// SchematicJSONLD returns schema.org CreativeWork markup for the schematic,
+// including aggregate rating and video metadata when available. Rating markup
+// makes the page eligible for star rich results in search.
+func (d SchematicData) SchematicJSONLD() template.HTML {
+	s := d.Schematic
+	work := map[string]any{
+		"@context":   "https://schema.org",
+		"@type":      "CreativeWork",
+		"name":       s.Title,
+		"url":        fmt.Sprintf("https://createmod.com%s", PrefixedPath(d.Language, "/schematics/"+s.Name)),
+		"inLanguage": d.Language,
+	}
+	if d.Description != "" {
+		work["description"] = d.Description
+	}
+	if d.Thumbnail != "" {
+		work["image"] = d.Thumbnail
+	}
+	if !s.Created.IsZero() {
+		work["dateCreated"] = s.Created.Format(time.RFC3339)
+	}
+	if s.Author != nil && s.Author.Username != "" {
+		work["author"] = map[string]any{
+			"@type": "Person",
+			"name":  s.Author.Username,
+			"url":   "https://createmod.com/author/" + url.PathEscape(strings.ToLower(s.Author.Username)),
+		}
+	}
+	if s.HasRating && s.RatingCount > 0 {
+		if rv, err := strconv.ParseFloat(s.Rating, 64); err == nil && rv > 0 {
+			work["aggregateRating"] = map[string]any{
+				"@type":       "AggregateRating",
+				"ratingValue": rv,
+				"ratingCount": s.RatingCount,
+				"bestRating":  5,
+				"worstRating": 1,
+			}
+		}
+	}
+	if vid := youtubeID(s.Video); vid != "" {
+		video := map[string]any{
+			"@type":        "VideoObject",
+			"name":         s.Title,
+			"thumbnailUrl": "https://img.youtube.com/vi/" + vid + "/hqdefault.jpg",
+			"embedUrl":     "https://www.youtube.com/embed/" + vid,
+		}
+		if d.Description != "" {
+			video["description"] = d.Description
+		}
+		if !s.Created.IsZero() {
+			// The actual video upload date is unknown; the schematic's
+			// creation date is the closest available signal.
+			video["uploadDate"] = s.Created.Format(time.RFC3339)
+		}
+		work["video"] = video
+	}
+	data, err := json.Marshal(work)
+	if err != nil {
+		return ""
+	}
+	return template.HTML(`<script type="application/ld+json">` + string(data) + `</script>`)
+}
+
 // ModInfo holds display info for a mod in the Required Mods section.
 type ModInfo struct {
 	Namespace string
@@ -108,7 +172,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		name := e.Request.PathValue("name")
 
 		isAuth := authenticatedUserID(e) != ""
-		if !isAuth {
+		if !isAuth && !wantsMarkdown(e) {
 			setPublicCacheControl(e, 30)
 			lang := detectLanguageFromRequest(e.Request)
 			if cached, ok := cacheService.GetString(cache.SchematicHTMLKey(name, lang)); ok {
@@ -379,7 +443,8 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 
 		d.Title = d.Schematic.Title
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
-		d.Description = strip.StripTags(d.Schematic.Content)
+		d.Description = truncateMetaDescription(strip.StripTags(d.Schematic.Content))
+		d.OGType = "article"
 
 		// If the schematic has no featured image but has a YouTube video,
 		// attempt to recover the thumbnail in the background.
@@ -387,6 +452,12 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			if vid := youtubeID(s.Video); vid != "" {
 				recoverYouTubeThumbnail(appStore, storageSvc, cacheService, s.ID, vid)
 			}
+		}
+
+		// Agents negotiating markdown get a curated representation (metadata,
+		// description, materials — never the NBT structure or download URLs).
+		if wantsMarkdown(e) {
+			return serveMarkdown(e, schematicMarkdown(d))
 		}
 
 		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())

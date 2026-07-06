@@ -35,7 +35,8 @@ func NewsPostHandler(registry *server.Registry, cacheService *cache.Service, app
 			post, err := news.LoadBySlug(content.NewsFS, "news", slug)
 			if err == nil && post != nil {
 				d.Title = post.Title
-				d.Description = post.Excerpt
+				d.Description = truncateMetaDescription(post.Excerpt)
+				d.OGType = "article"
 				d.Slug = post.URL
 				d.PostDate = post.Date.Format("January 2, 2006")
 				d.Content = post.Body

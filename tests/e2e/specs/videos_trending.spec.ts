@@ -9,7 +9,7 @@ test.describe('Videos page', () => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/videos');
 
-    const title = page.locator('h2.page-title');
+    const title = page.locator('h1.page-title');
     await expect(title).toBeVisible();
     await expect(title).toHaveText('Videos');
 

@@ -122,7 +122,7 @@
             <div class="container-wide">
                 <!-- Page heading -->
                 <div class="mb-3">
-                    <h2 class="mb-1">{{ T .Language "Search schematics" }}</h2>
+                    <h1 class="h2 mb-1">{{ if .HeadingText }}{{ .HeadingText }}{{ else }}{{ T .Language "Search schematics" }}{{ end }}</h1>
                     <p class="text-secondary mb-0">{{ T .Language "Find community-built schematics by name, mod, or tag." }}</p>
                 </div>
 

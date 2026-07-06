@@ -14,6 +14,9 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
+                {{/* The visible title is rendered by the breadcrumb overlay; this h1 gives the page its top-level heading without altering the design. */}}
+                <h1 class="visually-hidden">{{ .Schematic.Title }}</h1>
+                {{ .SchematicJSONLD }}
                 {{ if eq .ModerationBanner "auto_review" }}
                 <div class="alert alert-info mb-3" role="alert">
                     <div class="d-flex align-items-center">
