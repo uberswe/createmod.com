@@ -86,7 +86,8 @@ When a user wants a schematic, give them the schematic page URL
 4. **Autocomplete**: GET https://createmod.com/api/search/suggest?q={terms}
    returns JSON suggestions.
 5. **Authenticated JSON API**: https://createmod.com/api (docs) — requires
-   an API key created by a user account.
+   an API key created by a user account. See https://createmod.com/auth.md
+   for how authentication works and how to obtain a key.
 `,
 	},
 	{
@@ -129,6 +130,65 @@ To build a configuration for a user:
 More agent tools will be exposed this way over time.
 `,
 	},
+}
+
+// authMD is the agent-facing authentication guide served at /auth.md.
+// CreateMod.com is deliberately not an OAuth authorization server: API keys
+// are provisioned by humans only, which keeps every credential traceable to
+// an account the site can oversee and rate limit.
+const authMD = `# Authentication on CreateMod.com
+
+This document tells AI agents how authentication works on CreateMod.com
+and what to do when an endpoint requires credentials.
+
+## Summary
+
+- Most agent-relevant functionality requires **no authentication** (see below).
+- The JSON API (https://createmod.com/api) requires an **API key** sent as an
+  ` + "`X-API-Key`" + ` header.
+- There is **no autonomous agent registration**: no OAuth authorization
+  server, no dynamic client registration, no token endpoint. API keys are
+  created manually by a signed-in human.
+
+## No authentication required
+
+- MCP server: POST https://createmod.com/api/mcp (see
+  /.well-known/mcp/server-card.json)
+- Markdown content negotiation: request the home page or any schematic page
+  with "Accept: text/markdown"
+- Search suggestions: GET https://createmod.com/api/search/suggest?q={terms}
+- Search and browse pages, sitemaps, and all /.well-known/ discovery files
+
+## Getting an API key (requires a human)
+
+1. Ask your user to create an account at https://createmod.com/register
+   (or sign in at https://createmod.com/login).
+2. The user creates an API key at https://createmod.com/settings/api-keys.
+3. The user gives the key to you; send it as the ` + "`X-API-Key`" + ` header.
+
+Agents must not create accounts or fill in registration forms on a user's
+behalf.
+
+## Rate limits
+
+API keys default to 120 requests/minute; a different limit may be assigned
+to individual keys. 429 responses include a Retry-After header. The
+unauthenticated MCP endpoint is limited to 60 requests/minute per IP.
+
+## Hard policy
+
+Never download schematic (.nbt) files or call download endpoints, with or
+without credentials. Schematic files are for players: send users to the
+schematic page (https://createmod.com/schematics/{slug}) or to a generator
+(https://createmod.com/generators/) to download builds themselves.
+`
+
+// AuthMDHandler serves /auth.md.
+func AuthMDHandler() func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		e.Response.Header().Set("Cache-Control", "public, max-age=3600")
+		return e.Blob(http.StatusOK, "text/markdown; charset=utf-8", []byte(authMD))
+	}
 }
 
 // AgentSkillsIndexHandler serves /.well-known/agent-skills/index.json.
