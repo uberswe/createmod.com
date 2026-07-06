@@ -465,7 +465,8 @@
       btn.addEventListener('click', function(e) {
         e.preventDefault();
         var p = PRESETS[this.getAttribute('data-preset')];
-        if (p) { setParams(p); refresh(); }
+        // Presets are calibrated for the v2 engine
+        if (p) { setParams(Object.assign({ version: 3 }, p)); refresh(); }
       });
     });
 
