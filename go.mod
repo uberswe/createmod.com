@@ -9,7 +9,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/gen2brain/webp v0.6.4
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-ego/gse v1.0.2
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/golang-migrate/migrate/v4 v4.19.1
