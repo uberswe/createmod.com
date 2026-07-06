@@ -944,6 +944,7 @@ function generateHullV2(p) {
   var sternSharpness = clamp(p.sternSharpness || 0.7, 0.2, 2.0);
   var sternKeelRise = clamp(p.sternKeelRise || 0, 0, 1.5);
   var sternKeelLength = clamp(p.sternKeelLength || 0, 0, 30);
+  var sternOverhang = clamp(p.sternOverhang || 0, 0, 1.0);
   var keelCurveVal = clamp(p.keelCurve || 1.7, 0.7, 3.5);
   var castleBlend = clamp(p.castleBlend || 4, 2, 12);
   var hasRailings = !!p.hasRailings;
@@ -1108,9 +1109,11 @@ function generateHullV2(p) {
     return r < 0.06 ? 0.06 : r;
   }
 
-  function deckYAtF(z) {
+  // deckYAtFloat: continuous deck surface so the fitter can express sheer
+  // with slabs. Mirrors Go deckYAtFloat.
+  function deckYAtFloat(zf) {
     var y = depth;
-    var zNorm = z / Math.max(length - 1, 1);
+    var zNorm = zf / Math.max(length - 1, 1);
     if (sheerCurve > 0) {
       var t = Math.abs(zNorm - 0.5) * 2;
       y += sheerCurve * depth * Math.pow(t, sheerCurveExp);
@@ -1118,22 +1121,22 @@ function generateHullV2(p) {
     if (castleHeight > 0 && castleLength > 0) {
       var cL = castleLength;
       var blend = castleBlend;
-      var b1 = Math.floor(cL * 0.55);
+      var b1 = cL * 0.55;
       if (b1 < blend) blend = b1;
       if (blend < 2) blend = 2;
-      if (z < cL - blend) y += castleHeight;
-      else if (z < cL) {
-        var tc = (z - (cL - blend)) / blend;
+      if (zf < cL - blend) y += castleHeight;
+      else if (zf < cL) {
+        var tc = (zf - (cL - blend)) / blend;
         y += castleHeight * (1 - sstep(tc));
       }
     }
     if (forecastleHeight > 0 && forecastleLength > 0) {
       var fL = forecastleLength;
       var blend2 = castleBlend;
-      var b2 = Math.floor(fL * 0.55);
+      var b2 = fL * 0.55;
       if (b2 < blend2) blend2 = b2;
       if (blend2 < 2) blend2 = 2;
-      var zFromBow = L - 1 - z;
+      var zFromBow = (length - 1) - zf;
       if (zFromBow < fL - blend2) y += forecastleHeight;
       else if (zFromBow < fL) {
         var tf = (zFromBow - (fL - blend2)) / blend2;
@@ -1143,75 +1146,116 @@ function generateHullV2(p) {
     return y;
   }
 
+  // Continuous hull volume test. Mirrors Go insideAt.
+  function insideAt(xs, ys, zs) {
+    if (zs < -0.49 || zs > length - 0.51) return false;
+    var zNormBase = zs / Math.max(length - 1, 1);
+    if (zNormBase < 0) zNormBase = 0;
+    if (zNormBase > 1) zNormBase = 1;
+    if (ys < keelYAtF(zNormBase)) return false;
+    var yNorm;
+    if (closedHull) {
+      if (ys > 2 * depth) return false;
+      yNorm = ys / depth;
+      if (ys > depth) yNorm = (2 * depth - ys) / depth;
+      if (yNorm < 0) return false;
+    } else {
+      if (ys > deckYAtFloat(zs)) return false;
+      yNorm = ys / Math.max(depth, 1);
+    }
+    var sb = sternSetbackAt(yNorm);
+    var stk = stemSetbackAt(yNorm);
+    var zLo = sb, zHi = length - 1 - stk;
+    if (zHi <= zLo || zs < zLo || zs > zHi) return false;
+    var zN = clamp01((zs - zLo) / (zHi - zLo));
+    var w = planAt(zN, yNorm) * sectionAt(yNorm, sectionKAt(zN)) * halfBeam;
+    if (w < 0.15) return false;
+    return Math.abs(xs) <= w;
+  }
+
+  // --- Grid extents ---
   var maxDeckY = D;
   var deckYArr = new Array(L), keelYArr = new Array(L);
   for (var z0 = 0; z0 < L; z0++) {
-    deckYArr[z0] = Math.round(deckYAtF(z0));
+    deckYArr[z0] = Math.round(deckYAtFloat(z0));
     if (deckYArr[z0] > maxDeckY) maxDeckY = deckYArr[z0];
+    keelYArr[z0] = Math.round(keelYAtF(z0 / Math.max(length - 1, 1)));
   }
   var topY = closedHull ? 2 * D : maxDeckY;
+  var xMax = Math.ceil(halfBeam * (1 + hullFlare + sternOverhang)) + 2;
 
-  var hw = [];
-  for (var yh = 0; yh <= topY; yh++) {
-    hw[yh] = new Array(L);
-    for (var zh = 0; zh < L; zh++) hw[yh][zh] = -1;
-  }
-
-  for (var z1 = 0; z1 < L; z1++) {
-    var zNormBase = z1 / Math.max(length - 1, 1);
-    keelYArr[z1] = Math.round(keelYAtF(zNormBase));
-    var colTop = closedHull ? 2 * D : deckYArr[z1];
-    for (var y1 = keelYArr[z1]; y1 <= colTop && y1 <= topY; y1++) {
-      var yNorm = y1 / Math.max(depth, 1);
-      if (closedHull && y1 > D) {
-        yNorm = (2 * D - y1) / Math.max(depth, 1);
-        if (yNorm < 0) continue;
+  // --- Occupancy: corner grid + per-cell classification ---
+  var nxC = 2 * xMax + 2, nyC = topY + 2, nzC = L + 1;
+  var cornerArr = new Uint8Array(nxC * nyC * nzC);
+  function cIdx(i, j, k) { return (k * nyC + j) * nxC + i; }
+  for (var ck = 0; ck < nzC; ck++) {
+    for (var cj = 0; cj < nyC; cj++) {
+      for (var ci = 0; ci < nxC; ci++) {
+        cornerArr[cIdx(ci, cj, ck)] = insideAt((ci - xMax) - 0.5, cj - 0.5, ck - 0.5) ? 1 : 0;
       }
-      var sb = sternSetbackAt(yNorm);
-      var stk = stemSetbackAt(yNorm);
-      var zLo = sb, zHi = length - 1 - stk;
-      if (zHi <= zLo) continue;
-      if (z1 < zLo - 0.5 || z1 > zHi + 0.5) continue;
-      var zNorm = clamp01((z1 - zLo) / (zHi - zLo));
-      var w = planAt(zNorm, yNorm) * sectionAt(yNorm, sectionKAt(zNorm)) * halfBeam;
-      if (w < 0.15) continue;
-      hw[y1][z1] = w;
     }
   }
 
-  for (var y2 = 0; y2 <= topY; y2++) {
-    var sm = hw[y2].slice();
-    for (var z2 = 1; z2 < L - 1; z2++) {
-      var a = hw[y2][z2 - 1], b = hw[y2][z2], c = hw[y2][z2 + 1];
-      if (b < 0) continue;
-      if (a < 0) a = 0;
-      if (c < 0) c = 0;
-      sm[z2] = a * 0.25 + b * 0.5 + c * 0.25;
+  var CELL_EMPTY = 0, CELL_SOLID = 1, CELL_SURF = 2;
+  var cellArr = new Uint8Array((2 * xMax + 1) * (topY + 1) * L);
+  function cellAt(x, y, z) {
+    if (x < -xMax || x > xMax || y < 0 || y > topY || z < 0 || z >= L) return CELL_EMPTY;
+    return cellArr[(z * (topY + 1) + y) * (2 * xMax + 1) + (x + xMax)];
+  }
+  function setCellV(x, y, z, v) {
+    cellArr[(z * (topY + 1) + y) * (2 * xMax + 1) + (x + xMax)] = v;
+  }
+  for (var gz = 0; gz < L; gz++) {
+    for (var gy = 0; gy <= topY; gy++) {
+      for (var gx = -xMax; gx <= xMax; gx++) {
+        var inC = 0;
+        for (var dk = 0; dk <= 1; dk++)
+          for (var dj = 0; dj <= 1; dj++)
+            for (var di = 0; di <= 1; di++)
+              if (cornerArr[cIdx(gx + xMax + di, gy + dj, gz + dk)]) inC++;
+        if (inC === 8) setCellV(gx, gy, gz, CELL_SOLID);
+        else if (inC === 0) {
+          if (insideAt(gx, gy, gz)) setCellV(gx, gy, gz, CELL_SURF);
+        } else setCellV(gx, gy, gz, CELL_SURF);
+      }
     }
-    hw[y2] = sm;
   }
 
-  var inHull = {};
-  var hwInt = [];
-  for (var y3 = 0; y3 <= topY; y3++) {
-    hwInt[y3] = new Array(L);
-    for (var z3 = 0; z3 < L; z3++) hwInt[y3][z3] = -1;
+  // --- Shape fitting ---
+  function sideE(sx, sy, sz) { return sx >= 0; }
+  function sideW(sx, sy, sz) { return sx <= 0; }
+  function sideS(sx, sy, sz) { return sz >= 0; }
+  function sideN(sx, sy, sz) { return sz <= 0; }
+  function stairCand(facing, side, half) {
+    return {
+      type: BT.STAIR,
+      props: { facing: facing, half: half, shape: 'straight', waterlogged: 'false' },
+      test: half === 'bottom'
+        ? function (sx, sy, sz) { return sy <= 0 || side(sx, sy, sz); }
+        : function (sx, sy, sz) { return sy >= 0 || side(sx, sy, sz); },
+      penalty: 0.6
+    };
   }
-  function hKey(x, y, z) { return x + ',' + y + ',' + z; }
-  for (var y4 = 0; y4 <= topY; y4++) {
-    for (var z4 = 0; z4 < L; z4++) {
-      var w4 = hw[y4][z4];
-      if (w4 < 0.15) continue;
-      var maxX4 = Math.max(0, Math.round(w4 - 0.0001));
-      hwInt[y4][z4] = maxX4;
-      for (var x4 = -maxX4; x4 <= maxX4; x4++) inHull[hKey(x4, y4, z4)] = 1;
-    }
-  }
-  function hasHull(x, y, z) { return inHull[hKey(x, y, z)] === 1; }
-  function hwAt(y, z) {
-    if (y < 0 || y > topY || z < 0 || z >= L) return -1;
-    return hwInt[y][z];
-  }
+  var candidates = [
+    { type: -1, props: null, test: function () { return false; }, penalty: 3.0 },
+    { type: BT.PLANK, props: null, test: function () { return true; }, penalty: 0.0 },
+    { type: BT.SLAB_BOT, props: { type: 'bottom', waterlogged: 'false' }, test: function (sx, sy, sz) { return sy <= 0; }, penalty: 0.9 },
+    { type: BT.SLAB_TOP, props: { type: 'top', waterlogged: 'false' }, test: function (sx, sy, sz) { return sy >= 0; }, penalty: 0.9 },
+    stairCand('east', sideE, 'bottom'),
+    stairCand('west', sideW, 'bottom'),
+    stairCand('north', sideN, 'bottom'),
+    stairCand('south', sideS, 'bottom'),
+    stairCand('east', sideE, 'top'),
+    stairCand('west', sideW, 'top'),
+    stairCand('north', sideN, 'top'),
+    stairCand('south', sideS, 'top')
+  ];
+  var sampleOffsets = [];
+  var offVals = [-1 / 3, 0, 1 / 3];
+  for (var oi = 0; oi < 3; oi++)
+    for (var oj = 0; oj < 3; oj++)
+      for (var ok = 0; ok < 3; ok++)
+        sampleOffsets.push([offVals[oi], offVals[oj], offVals[ok]]);
 
   var blockMap = {};
   function bKey(x, y, z) { return x + ',' + y + ',' + z; }
@@ -1221,118 +1265,72 @@ function generateHullV2(p) {
     blockMap[bKey(x, y, z)] = b;
   }
   function getBlock(x, y, z) { return blockMap[bKey(x, y, z)]; }
-
-  for (var k5 in inHull) {
-    var pc = k5.split(',');
-    var x5 = +pc[0], y5 = +pc[1], z5 = +pc[2];
-    var exposed = !hasHull(x5-1,y5,z5) || !hasHull(x5+1,y5,z5) ||
-                  !hasHull(x5,y5-1,z5) || !hasHull(x5,y5+1,z5) ||
-                  !hasHull(x5,y5,z5-1) || !hasHull(x5,y5,z5+1);
-    var isDeck = !closedHull && y5 === deckYArr[z5];
-    if (exposed || isDeck) setBlock(x5, y5, z5, BT.PLANK);
+  function copyProps(m) {
+    if (!m) return null;
+    var out = {};
+    for (var k in m) out[k] = m[k];
+    return out;
   }
 
-  // Lateral stairs, both halves
-  for (var z6 = 0; z6 < L; z6++) {
-    for (var y6 = 0; y6 < topY; y6++) {
-      var hwHere = hwAt(y6, z6), hwUp = hwAt(y6 + 1, z6);
-      if (hwHere < 0 || hwUp < 0) continue;
-      if (hwUp > hwHere) {
-        for (var xN = hwHere + 1; xN <= hwUp; xN++) {
-          if (hasHull(xN, y6, z6) || getBlock(xN, y6, z6)) continue;
-          if (!hasHull(xN, y6 + 1, z6)) continue;
-          setBlock(xN, y6, z6, BT.STAIR, { facing:'east', half:'top', shape:'straight', waterlogged:'false' });
-          setBlock(-xN, y6, z6, BT.STAIR, { facing:'west', half:'top', shape:'straight', waterlogged:'false' });
+  for (var fz = 0; fz < L; fz++) {
+    for (var fy = 0; fy <= topY; fy++) {
+      for (var fx = -xMax; fx <= xMax; fx++) {
+        if (cellAt(fx, fy, fz) !== CELL_SURF) continue;
+        var occ = new Array(27);
+        var occCount = 0;
+        for (var s = 0; s < 27; s++) {
+          var o = sampleOffsets[s];
+          occ[s] = insideAt(fx + o[0], fy + o[1], fz + o[2]);
+          if (occ[s]) occCount++;
         }
-      } else if (hwUp < hwHere) {
-        for (var xM = hwUp + 1; xM <= hwHere; xM++) {
-          if (hasHull(xM, y6 + 1, z6) || getBlock(xM, y6 + 1, z6)) continue;
-          if (!hasHull(xM, y6, z6)) continue;
-          setBlock(xM, y6 + 1, z6, BT.STAIR, { facing:'east', half:'bottom', shape:'straight', waterlogged:'false' });
-          setBlock(-xM, y6 + 1, z6, BT.STAIR, { facing:'west', half:'bottom', shape:'straight', waterlogged:'false' });
+        if (occCount === 0) continue;
+        var bestIdx = 0, bestErr = Infinity;
+        for (var ci2 = 0; ci2 < candidates.length; ci2++) {
+          var cand = candidates[ci2];
+          var errSum = cand.penalty;
+          for (var s2 = 0; s2 < 27; s2++) {
+            var o2 = sampleOffsets[s2];
+            if (cand.test(o2[0], o2[1], o2[2]) !== occ[s2]) errSum++;
+          }
+          if (errSum < bestErr) { bestErr = errSum; bestIdx = ci2; }
         }
+        if (candidates[bestIdx].type === -1) continue;
+        setBlock(fx, fy, fz, candidates[bestIdx].type, copyProps(candidates[bestIdx].props));
       }
     }
   }
 
-  // Longitudinal taper stairs
-  function placeLongStair(x, y, z, facing) {
-    if (hasHull(x, y, z) || getBlock(x, y, z)) return;
-    setBlock(x, y, z, BT.STAIR, { facing:facing, half:'top', shape:'straight', waterlogged:'false' });
-  }
-  for (var y7 = 0; y7 <= topY; y7++) {
-    for (var z7 = 0; z7 < L; z7++) {
-      var hwThis = hwAt(y7, z7);
-      if (hwThis < 0) continue;
-      var hwF = hwAt(y7, z7 + 1);
-      if (hwF >= 0 && hwF < hwThis) {
-        for (var xf = hwF + 1; xf <= hwThis; xf++) {
-          placeLongStair(xf, y7, z7 + 1, 'south');
-          if (xf !== 0) placeLongStair(-xf, y7, z7 + 1, 'south');
-        }
-      }
-      var hwB = hwAt(y7, z7 - 1);
-      if (hwB >= 0 && hwB < hwThis && z7 > 0) {
-        for (var xb = hwB + 1; xb <= hwThis; xb++) {
-          placeLongStair(xb, y7, z7 - 1, 'north');
-          if (xb !== 0) placeLongStair(-xb, y7, z7 - 1, 'north');
-        }
+  // --- Shell + deck ---
+  for (var sz3 = 0; sz3 < L; sz3++) {
+    for (var sy3 = 0; sy3 <= topY; sy3++) {
+      for (var sx3 = -xMax; sx3 <= xMax; sx3++) {
+        if (cellAt(sx3, sy3, sz3) !== CELL_SOLID) continue;
+        var exposed = cellAt(sx3 - 1, sy3, sz3) !== CELL_SOLID || cellAt(sx3 + 1, sy3, sz3) !== CELL_SOLID ||
+                      cellAt(sx3, sy3 - 1, sz3) !== CELL_SOLID || cellAt(sx3, sy3 + 1, sz3) !== CELL_SOLID ||
+                      cellAt(sx3, sy3, sz3 - 1) !== CELL_SOLID || cellAt(sx3, sy3, sz3 + 1) !== CELL_SOLID;
+        var isDeck = !closedHull && sy3 === deckYArr[sz3];
+        if (exposed || isDeck) setBlock(sx3, sy3, sz3, BT.PLANK);
       }
     }
   }
 
-  // Keel/rocker steps
-  for (var z8 = 0; z8 < L - 1; z8++) {
-    var k0 = keelYArr[z8], k1 = keelYArr[z8 + 1];
-    if (k1 === k0) continue;
-    var yFill = k0 - 1, zFill = z8, facing8 = 'north', refZ = z8;
-    if (k1 > k0) { yFill = k1 - 1; zFill = z8 + 1; facing8 = 'south'; refZ = z8 + 1; }
-    var hwRef = hwAt(yFill + 1, refZ);
-    if (hwRef < 0) continue;
-    for (var x8 = -hwRef; x8 <= hwRef; x8++) {
-      if (hasHull(x8, yFill, zFill) || getBlock(x8, yFill, zFill)) continue;
-      setBlock(x8, yFill, zFill, BT.STAIR, { facing:facing8, half:'top', shape:'straight', waterlogged:'false' });
+  function hwAt(y, z) {
+    if (y < 0 || y > topY || z < 0 || z >= L) return -1;
+    for (var x = xMax; x >= 0; x--) {
+      var c = cellAt(x, y, z);
+      if (c === CELL_SOLID) return x;
+      if (c === CELL_SURF && getBlock(x, y, z)) return x;
     }
+    return -1;
   }
+  function hasHull(x, y, z) { return cellAt(x, y, z) === CELL_SOLID; }
+  function hKey(x, y, z) { return x + ',' + y + ',' + z; }
+  var inHull = {};
+  for (var hz = 0; hz < L; hz++)
+    for (var hy = 0; hy <= topY; hy++)
+      for (var hx = -xMax; hx <= xMax; hx++)
+        if (cellAt(hx, hy, hz) === CELL_SOLID) inHull[hKey(hx, hy, hz)] = 1;
 
-  // De-stack same-half stairs (deterministic order)
-  {
-    var stairList = [];
-    for (var ks in blockMap) {
-      if (blockMap[ks].type === BT.STAIR) stairList.push(blockMap[ks]);
-    }
-    stairList.sort(function (a, b) {
-      if (a.y !== b.y) return b.y - a.y;
-      if (a.z !== b.z) return a.z - b.z;
-      return a.x - b.x;
-    });
-    for (var si = 0; si < stairList.length; si++) {
-      var s = stairList[si];
-      var cur = getBlock(s.x, s.y, s.z);
-      var below = getBlock(s.x, s.y - 1, s.z);
-      if (cur && cur.type === BT.STAIR && below && below.type === BT.STAIR &&
-          below.props && cur.props && below.props.half === cur.props.half) {
-        setBlock(s.x, s.y, s.z, BT.PLANK);
-      }
-    }
-  }
-
-  // Deck-sheer slabs on 1-block steps
-  if (!closedHull) {
-    for (var z9 = 0; z9 < L - 1; z9++) {
-      var d0 = deckYArr[z9], d1 = deckYArr[z9 + 1];
-      if (d1 - d0 !== 1 && d0 - d1 !== 1) continue;
-      var zLow = z9, dLow = d0;
-      if (d1 < d0) { zLow = z9 + 1; dLow = d1; }
-      var hwHere9 = hwAt(dLow, zLow);
-      if (hwHere9 < 1) continue;
-      for (var x9 = -hwHere9 + 1; x9 <= hwHere9 - 1; x9++) {
-        if (!getBlock(x9, dLow + 1, zLow) && !hasHull(x9, dLow + 1, zLow)) {
-          setBlock(x9, dLow + 1, zLow, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
-        }
-      }
-    }
-  }
 
   // Stem/stern posts
   if (!closedHull) {
