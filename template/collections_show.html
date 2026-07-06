@@ -11,7 +11,7 @@
         <div class="mb-3">
           <div class="row align-items-center">
             <div class="col">
-              <h2 class="mb-1">{{ if .TitleText }}{{ .TitleText }}{{ else }}{{ T .Language "Collection" }}{{ end }}</h2>
+              <h1 class="h2 mb-1">{{ if .TitleText }}{{ .TitleText }}{{ else }}{{ T .Language "Collection" }}{{ end }}</h1>
               <div class="text-secondary">
                 {{ if .Featured }}<span class="badge bg-yellow-lt me-1">{{ T .Language "Featured" }}</span>{{ end }}
                 {{ if not .Published }}<span class="badge bg-secondary me-1">{{ T .Language "Private" }}</span>{{ end }}

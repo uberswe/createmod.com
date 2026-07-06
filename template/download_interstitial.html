@@ -169,8 +169,10 @@ if (window['nitroAds']) {
   ['dlinterstitial-sticky-adrail-left', 'dlinterstitial-sticky-adrail-right'].forEach(function(id) {
     window['nitroAds'].createAd(id, {
       "refreshLimit": 10,
-      "refreshTime": 30,
+      "refreshTime": 45,
       "refreshVisibleOnly": true,
+      "renderVisibleOnly": true,
+      "visibleMargin": 300,
       "format": "sticky-stack",
       "stickyStackLimit": 15,
       "stickyStackSpace": 2.5,
@@ -190,6 +192,8 @@ if (window['nitroAds']) {
   });
   window['nitroAds'].createAd('dlinterstitial-mobile', {
     "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
     "report": {
       "enabled": true,
       "icon": true,

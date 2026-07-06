@@ -22,24 +22,28 @@ window.setTheme=function(theme){
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
-    <title>CreateMod.com - {{ .Title }}</title>
+    <title>{{ .Title }} - CreateMod.com</title>
 
     {{ if .Description }}<meta name="description" content="{{ .Description }}">{{ end }}
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{{ if .OGType }}{{ .OGType }}{{ else }}website{{ end }}">
     <meta property="og:url" content="https://createmod.com{{ LangURL .Language .Slug }}">
     <meta property="og:title" content="{{ .Title }} - CreateMod.com">
     <meta property="og:description" content="{{ .Description }}">
-    <meta property="og:image" itemprop="image" content="{{ .Thumbnail }}">
+    {{ if .Thumbnail }}
+    <meta property="og:image" content="{{ .Thumbnail }}">
+    {{ else }}
+    <meta property="og:image" content="https://createmod.com/assets/x/logo_sq_lg.png">
     <meta property="og:image:width" content="709">
     <meta property="og:image:height" content="360">
+    {{ end }}
     <meta name="twitter:site" content="@uberswe">
     <meta name="twitter:title" content="{{ .Title }} - CreateMod.com">
     <meta name="twitter:description" content="{{ .Description }}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image:src" content="{{ .Thumbnail }}">
+    <meta name="twitter:image:src" content="{{ if .Thumbnail }}{{ .Thumbnail }}{{ else }}https://createmod.com/assets/x/logo_sq_lg.png{{ end }}">
 
 
-    {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ else }}<link rel="canonical" href="https://createmod.com{{ .Slug }}">{{ end }}
+    {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ else }}<link rel="canonical" href="https://createmod.com{{ LangURL .Language .Slug }}">{{ end }}
     {{ if .PrevPageURL }}<link rel="prev" href="{{ .PrevPageURL }}">{{ end }}
     {{ if .NextPageURL }}<link rel="next" href="{{ .NextPageURL }}">{{ end }}
     {{ $slug := .Slug }}{{ range Hreflangs $slug }}
@@ -85,36 +89,6 @@ window.setTheme=function(theme){
     {{ end }}
     <script src="/assets/x/adrail.js?v={{ AssetVer }}" defer></script>
     {{ if not .IsDev }}
-    <script>
-    // Reload once after the user accepts the NCMP cookie consent so that
-    // NitroAds can render ads that were blocked before consent was given.
-    // Uses sessionStorage to ensure we only reload once per browser session.
-    (function(){
-      if (window._ncmpConsentListenerAdded) return;
-      window._ncmpConsentListenerAdded = true;
-      function onApi() {
-        try {
-          __tcfapi('addEventListener', 2, function(tcData, success) {
-            if (!success) return;
-            if (tcData.eventStatus === 'useractioncomplete') {
-              try {
-                if (sessionStorage.getItem('ncmp_reloaded')) return;
-                sessionStorage.setItem('ncmp_reloaded', '1');
-              } catch(e) { return; }
-              window.location.reload();
-            }
-          });
-        } catch(e) {}
-      }
-      // __tcfapi may not exist yet (NCMP loads async), so poll briefly.
-      var attempts = 0;
-      var poll = setInterval(function() {
-        attempts++;
-        if (typeof __tcfapi === 'function') { clearInterval(poll); onApi(); }
-        else if (attempts > 50) { clearInterval(poll); }
-      }, 200);
-    })();
-    </script>
     <script>
     // Track NitroPay ad instances and clear them on HTMX navigation so
     // new page ad scripts can call createAd() on fresh DOM containers.

@@ -141,10 +141,11 @@ func GuidesShowHandler(registry *server.Registry, cacheService *cache.Service, t
 			d.Title = i18n.T(d.Language, "page.guide.title")
 		}
 		if d.Excerpt != "" {
-			d.Description = d.Excerpt
+			d.Description = truncateMetaDescription(d.Excerpt)
 		} else {
 			d.Description = i18n.T(d.Language, "page.guides_show.description")
 		}
+		d.OGType = "article"
 
 		html, err := registry.LoadFiles(guidesShowTemplates...).Render(d)
 		if err != nil {

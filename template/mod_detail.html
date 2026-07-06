@@ -13,7 +13,7 @@
           <div class="d-flex align-items-center gap-3 mb-1">
             {{ if .Mod.IconURL }}<img src="{{ .Mod.IconURL }}" alt="" class="mod-detail-icon" loading="lazy">{{ end }}
             <div>
-              <h2 class="page-title mb-1">{{ .Mod.Name }}</h2>
+              <h1 class="page-title h2 mb-1">{{ .Mod.Name }}</h1>
               {{ if .Mod.Description }}<div class="text-secondary">{{ .Mod.Description }}</div>
               {{ else }}<div class="text-secondary">{{ .Subtitle }}</div>{{ end }}
               <div class="d-flex flex-wrap gap-2 mt-2">

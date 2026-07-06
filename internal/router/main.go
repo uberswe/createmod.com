@@ -793,7 +793,7 @@ func legacyCategoryCompat(next http.Handler) http.Handler {
 		path := r.URL.Path
 		for _, match := range urlMatches {
 			if strings.HasPrefix(path, match) {
-				http.Redirect(w, r, fmt.Sprintf("/search/?category=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")), http.StatusMovedPermanently)
+				http.Redirect(w, r, fmt.Sprintf("/search?category=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")), http.StatusMovedPermanently)
 				return
 			}
 		}
@@ -869,14 +869,14 @@ func legacyTagCompat(next http.Handler) http.Handler {
 		path := r.URL.Path
 		for _, match := range urlMatches {
 			if strings.HasPrefix(path, match) {
-				http.Redirect(w, r, fmt.Sprintf("/search/?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")), http.StatusMovedPermanently)
+				http.Redirect(w, r, fmt.Sprintf("/search?tag=%s", strings.ReplaceAll(strings.Replace(path, match, "", 1), "/", "")), http.StatusMovedPermanently)
 				return
 			}
 		}
 		query := r.URL.Query()
 		for _, match := range queryMatches {
 			if query.Has(match) && query.Get(match) != "" {
-				http.Redirect(w, r, fmt.Sprintf("/search/?tag=%s", query.Get(match)), http.StatusMovedPermanently)
+				http.Redirect(w, r, fmt.Sprintf("/search?tag=%s", query.Get(match)), http.StatusMovedPermanently)
 				return
 			}
 		}
