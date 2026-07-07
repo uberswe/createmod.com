@@ -2869,3 +2869,70 @@ body.sidebar-ready .generator-overlay {
 .follow-tag-remove:hover {
   color: var(--cm-danger, #d63939);
 }
+
+/* ---- Shared download split button (download-split.js) ---- */
+.dl-split {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+.dl-split .dl-split-primary {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.dl-split .dl-split-toggle {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: 1px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.dl-split-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 240px;
+  background: var(--cm-card-bg, #353838);
+  border: 1px solid var(--cm-card-border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 0.25rem;
+  z-index: 1050;
+}
+.dl-split-menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+.dl-split-menu [role="menuitem"]:hover,
+.dl-split-menu [role="menuitem"]:focus {
+  background: var(--cm-btn-hover-bg, rgba(160, 166, 173, 0.15));
+  outline: none;
+}
+.dl-split-menu [role="menuitem"][aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.dl-split-menu .dl-split-note {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--cm-muted, #9ea5ad);
+}
+.dl-split-menu .dl-split-warn {
+  color: #f59f00;
+  flex: none;
+}
+.dl-split-menu button[role="menuitem"] {
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}

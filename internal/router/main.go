@@ -675,7 +675,7 @@ func Register(p RegisterParams) chi.Router {
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
-	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	// Download interstitial page
 	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/get/{name}/file/{fileID}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))

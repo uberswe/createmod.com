@@ -1,0 +1,40 @@
+{{/*
+  Shared download split button. Render with a DownloadSplit value:
+
+    .Primary      — {Label, Href, Attrs} for the main button
+    .Items        — []DownloadSplitItem {Label, Href, Note, Lossy, LossyTitle,
+                    Disabled, DisabledReason, Download}
+    .Language     — for T()
+
+  Behavior lives in template/static/download-split.js; styles in app.css
+  under .dl-split.
+*/}}
+{{ define "download_split.html" }}
+<div class="dl-split" data-dl-split>
+    <a class="btn dl-split-primary" style="background: var(--cm-primary); color: #fff; border: none;" href="{{ .Primary.Href }}" {{ if .Primary.Download }}download{{ end }}>
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
+        {{ .Primary.Label }}
+    </a>
+    <button type="button" class="btn dl-split-toggle" style="background: var(--cm-primary); color: #fff; border: none;" aria-haspopup="menu" aria-expanded="false" aria-label="{{ T .Language "More download formats" }}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+    </button>
+    <div class="dl-split-menu" role="menu" hidden>
+        {{ range .Items }}
+        {{ if .Disabled }}
+        <span role="menuitem" aria-disabled="true" title="{{ .DisabledReason }}" tabindex="-1">
+            {{ .Label }}
+            <span class="dl-split-note">{{ .DisabledReason }}</span>
+        </span>
+        {{ else }}
+        <a role="menuitem" href="{{ .Href }}" {{ if .Download }}download{{ end }} tabindex="-1" {{ if .Lossy }}title="{{ .LossyTitle }}"{{ end }}>
+            {{ .Label }}
+            {{ if .Lossy }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm dl-split-warn" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+            {{ end }}
+            {{ if .Note }}<span class="dl-split-note">{{ .Note }}</span>{{ end }}
+        </a>
+        {{ end }}
+        {{ end }}
+    </div>
+</div>
+{{ end }}

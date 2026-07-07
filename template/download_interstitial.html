@@ -23,7 +23,8 @@
                 <p id="remaining-hint" class="text-secondary small mt-2" style="display:none"></p>
                 <p id="download-error" class="text-danger mt-2" style="display:none">{{ T .Language "Failed to prepare download. Please try again." }}</p>
                 <input type="hidden" id="token-id" value="{{ .TokenID }}">
-                {{ if .FileID }}<input type="hidden" id="file-id" value="{{ .FileID }}">{{ end }}
+                {{ if .FileID }}<input type="hidden" id="file-id" value="{{ .FileID }}">
+<input type="hidden" id="format-id" value="{{ .Format }}">{{ end }}
               </div>
             </div>
           </div>
@@ -61,8 +62,12 @@
     var tokenID = document.getElementById('token-id');
     if (!tokenID || !tokenID.value) return null;
     var fileEl = document.getElementById('file-id');
+    var formatEl = document.getElementById('format-id');
     var path = '/api/download-url/' + encodeURIComponent(tokenID.value);
-    if (fileEl && fileEl.value) { path += '?f=' + encodeURIComponent(fileEl.value); }
+    var qs = [];
+    if (fileEl && fileEl.value) { qs.push('f=' + encodeURIComponent(fileEl.value)); }
+    if (formatEl && formatEl.value) { qs.push('fmt=' + encodeURIComponent(formatEl.value)); }
+    if (qs.length) { path += '?' + qs.join('&'); }
     return path;
   }
 

@@ -10,6 +10,7 @@ import (
 
 	"createmod/internal/cache"
 	"createmod/internal/ratelimit"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 
 	"createmod/internal/server"
@@ -45,7 +46,7 @@ func downloadRateLimitAllow(rl ratelimit.Limiter, clientIP string) (bool, int) {
 
 // DownloadHandler redirects to the schematic file and increments a download counter.
 // Requires a valid one-time token (?t=) issued by the interstitial page.
-func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		if name == "" {
@@ -91,6 +92,12 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 			}
 			fileURL := fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(sf.Filename))
 			return e.Redirect(http.StatusFound, fileURL)
+		}
+
+		// Alternate format download (converted from the primary .nbt via the
+		// normalized schematic library, cached in S3)
+		if format := e.Request.URL.Query().Get("format"); format != "" && format != "nbt" {
+			return serveConvertedSchematic(e, storageSvc, s, format)
 		}
 
 		// Single file redirect
