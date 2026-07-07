@@ -500,9 +500,28 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 				if occCount == 0 {
 					continue
 				}
+				// Diagonal surfaces fit top-half and bottom-half stairs with
+				// identical error; break the tie toward the half holding the
+				// cell's occupied mass so steps ascend the way the surface does.
+				topMass, botMass := 0, 0
+				for s := 0; s < 27; s++ {
+					if occ[s] {
+						if sampleOffsets[s][1] > 0 {
+							topMass++
+						} else if sampleOffsets[s][1] < 0 {
+							botMass++
+						}
+					}
+				}
+				preferTop := topMass >= botMass
 				bestIdx, bestErr := 0, math.MaxFloat64
 				for ci, cand := range candidates {
 					errSum := cand.penalty
+					if h, isStair := cand.props["half"]; isStair && cand.name == "stairs" {
+						if (h == "top") != preferTop {
+							errSum += 0.3
+						}
+					}
 					for s := 0; s < 27; s++ {
 						o := sampleOffsets[s]
 						if cand.test(o[0], o[1], o[2]) != occ[s] {
@@ -539,6 +558,41 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 				if exposed || isDeck {
 					set(x, y, z, "planks", nil)
 				}
+			}
+		}
+	}
+
+	// De-stack: runs of same-facing same-half stairs on steep surfaces read
+	// as serrated walls; keep the lowest stair of each run and plank the rest
+	// (v1's proven rule). Deterministic order.
+	{
+		type se struct{ x, y, z int }
+		var stairs []se
+		for k, b := range blocks {
+			if b.name == "stairs" {
+				stairs = append(stairs, se{k[0], k[1], k[2]})
+			}
+		}
+		sortStairs := func(a, b se) bool {
+			if a.y != b.y {
+				return a.y > b.y
+			}
+			if a.z != b.z {
+				return a.z < b.z
+			}
+			return a.x < b.x
+		}
+		for i := 1; i < len(stairs); i++ {
+			for j := i; j > 0 && sortStairs(stairs[j], stairs[j-1]); j-- {
+				stairs[j], stairs[j-1] = stairs[j-1], stairs[j]
+			}
+		}
+		for _, s := range stairs {
+			b := get(s.x, s.y, s.z)
+			below := get(s.x, s.y-1, s.z)
+			if b != nil && b.name == "stairs" && below != nil && below.name == "stairs" &&
+				below.props["half"] == b.props["half"] && below.props["facing"] == b.props["facing"] {
+				set(s.x, s.y, s.z, "planks", nil)
 			}
 		}
 	}

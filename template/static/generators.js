@@ -1290,10 +1290,22 @@ function generateHullV2(p) {
           if (occ[s]) occCount++;
         }
         if (occCount === 0) continue;
+        // Tie-break stair halves toward the cell's occupied mass (mirrors Go).
+        var topMass = 0, botMass = 0;
+        for (var sm = 0; sm < 27; sm++) {
+          if (occ[sm]) {
+            if (sampleOffsets[sm][1] > 0) topMass++;
+            else if (sampleOffsets[sm][1] < 0) botMass++;
+          }
+        }
+        var preferTop = topMass >= botMass;
         var bestIdx = 0, bestErr = Infinity;
         for (var ci2 = 0; ci2 < candidates.length; ci2++) {
           var cand = candidates[ci2];
           var errSum = cand.penalty;
+          if (cand.type === BT.STAIR && cand.props) {
+            if ((cand.props.half === 'top') !== preferTop) errSum += 0.3;
+          }
           for (var s2 = 0; s2 < 27; s2++) {
             var o2 = sampleOffsets[s2];
             if (cand.test(o2[0], o2[1], o2[2]) !== occ[s2]) errSum++;
@@ -1316,6 +1328,30 @@ function generateHullV2(p) {
                       cellAt(sx3, sy3, sz3 - 1) !== CELL_SOLID || cellAt(sx3, sy3, sz3 + 1) !== CELL_SOLID;
         var isDeck = !closedHull && sy3 === deckYArr[sz3];
         if (exposed || isDeck) setBlock(sx3, sy3, sz3, BT.PLANK);
+      }
+    }
+  }
+
+  // De-stack: same-facing same-half stair runs become planks above the
+  // lowest stair (mirrors Go; v1's proven rule).
+  {
+    var stairList = [];
+    for (var dk in blockMap) {
+      if (blockMap[dk].type === BT.STAIR) stairList.push(blockMap[dk]);
+    }
+    stairList.sort(function (a, b) {
+      if (a.y !== b.y) return b.y - a.y;
+      if (a.z !== b.z) return a.z - b.z;
+      return a.x - b.x;
+    });
+    for (var di2 = 0; di2 < stairList.length; di2++) {
+      var st2 = stairList[di2];
+      var cur2 = getBlock(st2.x, st2.y, st2.z);
+      var below2 = getBlock(st2.x, st2.y - 1, st2.z);
+      if (cur2 && cur2.type === BT.STAIR && below2 && below2.type === BT.STAIR &&
+          below2.props && cur2.props &&
+          below2.props.half === cur2.props.half && below2.props.facing === cur2.props.facing) {
+        setBlock(st2.x, st2.y, st2.z, BT.PLANK);
       }
     }
   }
