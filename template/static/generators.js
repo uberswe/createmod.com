@@ -1245,14 +1245,16 @@ function generateHullV2(p) {
     { type: BT.PLANK, props: null, test: function () { return true; }, penalty: 0.0 },
     { type: BT.SLAB_BOT, props: { type: 'bottom', waterlogged: 'false' }, test: function (sx, sy, sz) { return sy <= 0; }, penalty: 0.9 },
     { type: BT.SLAB_TOP, props: { type: 'top', waterlogged: 'false' }, test: function (sx, sy, sz) { return sy >= 0; }, penalty: 0.9 },
-    stairCand('east', sideE, 'bottom'),
-    stairCand('west', sideW, 'bottom'),
-    stairCand('north', sideN, 'bottom'),
-    stairCand('south', sideS, 'bottom'),
-    stairCand('east', sideE, 'top'),
-    stairCand('west', sideW, 'top'),
-    stairCand('north', sideN, 'top'),
-    stairCand('south', sideS, 'top')
+    // facing = LOW/open side in this codebase (NBT exporter flips it);
+    // east-facing pairs with the west-side mask. Mirrors Go.
+    stairCand('east', sideW, 'bottom'),
+    stairCand('west', sideE, 'bottom'),
+    stairCand('north', sideS, 'bottom'),
+    stairCand('south', sideN, 'bottom'),
+    stairCand('east', sideW, 'top'),
+    stairCand('west', sideE, 'top'),
+    stairCand('north', sideS, 'top'),
+    stairCand('south', sideN, 'top')
   ];
   var sampleOffsets = [];
   var offVals = [-1 / 3, 0, 1 / 3];

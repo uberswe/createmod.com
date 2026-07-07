@@ -424,6 +424,11 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			penalty: 0.6,
 		}
 	}
+	// Note the facing/mask pairing: this codebase (preview renderer and the
+	// NBT exporter, which flips facing on export) treats "facing" as the
+	// stair's LOW/open side, opposite Minecraft's blockstate convention. A
+	// stair emitted as facing=east therefore has its full-height half on the
+	// west — so the east-facing candidate pairs with the west-side mask.
 	candidates := []shapeCand{
 		{name: "", test: func(sx, sy, sz float64) bool { return false }, penalty: 3.0}, // air
 		{name: "planks", test: func(sx, sy, sz float64) bool { return true }, penalty: 0.0},
@@ -431,14 +436,14 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			test: func(sx, sy, sz float64) bool { return sy <= 0 }, penalty: 0.9},
 		{name: "slab_top", props: map[string]string{"type": "top", "waterlogged": "false"},
 			test: func(sx, sy, sz float64) bool { return sy >= 0 }, penalty: 0.9},
-		stairCand("east", sideEast, "bottom"),
-		stairCand("west", sideWest, "bottom"),
-		stairCand("north", sideNorth, "bottom"),
-		stairCand("south", sideSouth, "bottom"),
-		stairCand("east", sideEast, "top"),
-		stairCand("west", sideWest, "top"),
-		stairCand("north", sideNorth, "top"),
-		stairCand("south", sideSouth, "top"),
+		stairCand("east", sideWest, "bottom"),
+		stairCand("west", sideEast, "bottom"),
+		stairCand("north", sideSouth, "bottom"),
+		stairCand("south", sideNorth, "bottom"),
+		stairCand("east", sideWest, "top"),
+		stairCand("west", sideEast, "top"),
+		stairCand("north", sideSouth, "top"),
+		stairCand("south", sideNorth, "top"),
 	}
 	var sampleOffsets [27][3]float64
 	{
