@@ -92,8 +92,12 @@ func Test_Convert_Matrix(t *testing.T) {
 
 func Test_Convert_UnsupportedTargets(t *testing.T) {
 	data := generatorFixture(t)
-	if _, err := Convert(data, FormatLegacy); err == nil {
-		t.Errorf("legacy write should be unsupported for now")
+	// Legacy is a supported (lossy) target and must always carry warnings.
+	res, err := Convert(data, FormatLegacy)
+	if err != nil {
+		t.Errorf("legacy write: %v", err)
+	} else if len(res.Warnings) == 0 {
+		t.Errorf("legacy conversion must carry lossiness warnings")
 	}
 	if _, err := Convert(data, FormatSable); err == nil {
 		t.Errorf("sable write should be unsupported")
@@ -103,11 +107,12 @@ func Test_Convert_UnsupportedTargets(t *testing.T) {
 func FuzzDetectAndRead(f *testing.F) {
 	t := &testing.T{}
 	src, _ := ReadStructureNBT(handmadeFixture(t))
-	for _, format := range []Format{FormatStructure, FormatSponge, FormatLitematic} {
+	for _, format := range []Format{FormatStructure, FormatSponge, FormatLitematic, FormatLegacy} {
 		if data, err := Write(src, format); err == nil {
 			f.Add(data)
 		}
 	}
+	f.Add(sableFixture(t))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		format, err := Detect(data)
 		if err != nil {

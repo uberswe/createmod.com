@@ -37,9 +37,10 @@ type formatProbe struct {
 	// legacy MCEdit
 	Materials nbt.RawMessage `nbt:"Materials"`
 	Data      nbt.RawMessage `nbt:"Data"`
-	// Sable blueprint v1
-	BlueprintVersion nbt.RawMessage `nbt:"BlueprintVersion"`
-	Layers           nbt.RawMessage `nbt:"Layers"`
+	BlocksArr nbt.RawMessage `nbt:"Blocks"`
+	// Sable blueprint v1 (lowercase root tags)
+	SableVersion   nbt.RawMessage `nbt:"version"`
+	SableSubLevels nbt.RawMessage `nbt:"sub_levels"`
 }
 
 // Detect identifies the format of a schematic file by content.
@@ -55,9 +56,10 @@ func Detect(data []byte) (Format, error) {
 	has := func(r nbt.RawMessage) bool { return r.Type != nbt.TagEnd && len(r.Data) > 0 }
 
 	switch {
-	// Sable Blueprint v1 sniff: distinguish from vanilla structure NBT by
-	// its own version/layer root tags before the structure check.
-	case has(p.BlueprintVersion) || has(p.Layers):
+	// Sable Blueprint v1 sniff: lowercase version + sub_levels root tags
+	// distinguish it from vanilla structure NBT (checked first — a Sable
+	// file has no size/palette/Regions roots, but be explicit anyway).
+	case has(p.SableVersion) && has(p.SableSubLevels):
 		return FormatSable, nil
 	case has(p.Size) && (has(p.Palette) || has(p.Blocks)):
 		return FormatStructure, nil
@@ -65,7 +67,7 @@ func Detect(data []byte) (Format, error) {
 		return FormatLitematic, nil
 	case has(p.Schematic) || (has(p.Version) && (has(p.PaletteS) || has(p.BlockData))):
 		return FormatSponge, nil
-	case has(p.Materials) && has(p.Blocks) && has(p.Data):
+	case has(p.Materials) && has(p.BlocksArr) && has(p.Data):
 		return FormatLegacy, nil
 	default:
 		return FormatUnknown, fmt.Errorf("schematic: unrecognized schematic format")
@@ -81,8 +83,10 @@ func Read(data []byte, f Format) (*Schematic, error) {
 		return ReadSponge(data)
 	case FormatLitematic:
 		return ReadLitematic(data)
-	case FormatLegacy, FormatSable:
-		return nil, fmt.Errorf("schematic: reading %q is not supported yet", f)
+	case FormatLegacy:
+		return ReadLegacy(data)
+	case FormatSable:
+		return ReadSable(data)
 	default:
 		return nil, fmt.Errorf("schematic: unknown format %q", f)
 	}
@@ -97,8 +101,11 @@ func Write(s *Schematic, f Format) ([]byte, error) {
 		return WriteSponge(s)
 	case FormatLitematic:
 		return WriteLitematic(s)
-	case FormatLegacy, FormatSable:
-		return nil, fmt.Errorf("schematic: writing %q is not supported yet", f)
+	case FormatLegacy:
+		out, _, err := WriteLegacy(s)
+		return out, err
+	case FormatSable:
+		return nil, fmt.Errorf("schematic: writing Sable blueprints is not supported while the format is experimental")
 	default:
 		return nil, fmt.Errorf("schematic: unknown format %q", f)
 	}
@@ -129,11 +136,21 @@ func Convert(data []byte, target Format) (*ConvertResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := Write(s, target)
-	if err != nil {
-		return nil, err
+	res := &ConvertResult{From: from, To: target}
+	if target == FormatLegacy {
+		out, warnings, err := WriteLegacy(s)
+		if err != nil {
+			return nil, err
+		}
+		res.Data = out
+		res.Warnings = append(res.Warnings, warnings...)
+	} else {
+		out, err := Write(s, target)
+		if err != nil {
+			return nil, err
+		}
+		res.Data = out
 	}
-	res := &ConvertResult{Data: out, From: from, To: target}
 	for _, note := range s.Meta.LossyNotes {
 		res.Warnings = append(res.Warnings, Warning{Message: note})
 	}

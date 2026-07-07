@@ -29,6 +29,7 @@ var convertFormats = []struct {
 	{schematic.FormatStructure, "nbt", "Create / vanilla structure (.nbt)", ".nbt"},
 	{schematic.FormatSponge, "schem", "WorldEdit / Sponge (.schem)", ".schem"},
 	{schematic.FormatLitematic, "litematic", "Litematica (.litematic)", ".litematic"},
+	{schematic.FormatLegacy, "schematic", "Legacy MCEdit (.schematic)", ".schematic"},
 }
 
 func convertFormatBySlug(slug string) (schematic.Format, string, bool) {
@@ -45,6 +46,9 @@ func convertLabel(f schematic.Format) string {
 		if cf.Format == f {
 			return cf.Label
 		}
+	}
+	if f == schematic.FormatSable {
+		return "Sable Blueprint (read-only)"
 	}
 	return string(f)
 }

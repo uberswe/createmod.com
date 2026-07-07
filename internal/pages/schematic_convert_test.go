@@ -43,8 +43,8 @@ func Test_Convert_Template_Has_Expected_Elements(t *testing.T) {
 
 func Test_ConvertPairs_AllOrderedPairs(t *testing.T) {
 	pairs := ConvertPairs()
-	if len(pairs) != 6 {
-		t.Fatalf("expected 6 ordered pairs, got %d", len(pairs))
+	if len(pairs) != 12 {
+		t.Fatalf("expected 12 ordered pairs, got %d", len(pairs))
 	}
 	seen := map[string]bool{}
 	for _, p := range pairs {
@@ -53,7 +53,7 @@ func Test_ConvertPairs_AllOrderedPairs(t *testing.T) {
 		}
 		seen[p.FromSlug+"-to-"+p.ToSlug] = true
 	}
-	for _, want := range []string{"nbt-to-schem", "nbt-to-litematic", "schem-to-nbt", "schem-to-litematic", "litematic-to-nbt", "litematic-to-schem"} {
+	for _, want := range []string{"nbt-to-schem", "nbt-to-litematic", "schem-to-nbt", "schem-to-litematic", "litematic-to-nbt", "litematic-to-schem", "schematic-to-nbt", "nbt-to-schematic", "schematic-to-litematic", "litematic-to-schematic", "schematic-to-schem", "schem-to-schematic"} {
 		if !seen[want] {
 			t.Errorf("missing pair %s", want)
 		}
