@@ -132,7 +132,7 @@ type structRootOut struct {
 	Size        intList                 `nbt:"size"`
 	Palette     []structPaletteEntryOut `nbt:"palette"`
 	Blocks      []interface{}           `nbt:"blocks"`
-	Entities    []rawNBT                `nbt:"entities"`
+	Entities    rawList                `nbt:"entities"`
 }
 
 // ReadStructureNBT parses a vanilla structure / Create schematic file
@@ -275,10 +275,7 @@ func WriteStructureNBT(s *Schematic) ([]byte, error) {
 		}
 	}
 
-	entities := make([]rawNBT, len(s.Entities))
-	for i, e := range s.Entities {
-		entities[i] = rawNBT(e)
-	}
+	entities := rawList(s.Entities)
 	root := structRootOut{
 		DataVersion: int32(s.DataVersion),
 		Size:        intList{int32(s.Size[0]), int32(s.Size[1]), int32(s.Size[2])},
