@@ -39,9 +39,24 @@
     function open() {
       closeAll(root);
       menu.hidden = false;
+      // Position with fixed viewport coordinates so ancestors with
+      // overflow:hidden (cards, description containers) cannot clip the
+      // menu. Falls back upward when there is no room below.
+      var r = toggle.getBoundingClientRect();
+      var mw = menu.offsetWidth;
+      var mh = menu.offsetHeight;
+      var left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8));
+      var top = r.bottom + 4;
+      if (top + mh > window.innerHeight - 8) {
+        top = Math.max(8, r.top - mh - 4);
+      }
+      menu.style.position = 'fixed';
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+      menu.style.right = 'auto';
       toggle.setAttribute('aria-expanded', 'true');
       var first = menu.querySelector('[role="menuitem"]:not([aria-disabled="true"])');
-      if (first) first.focus();
+      if (first) { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }
     }
     function close(refocus) {
       menu.hidden = true;
@@ -97,6 +112,9 @@
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape') closeAll(null);
   });
+  // Fixed-position menus don't follow their anchor; close instead of drifting.
+  window.addEventListener('scroll', function () { closeAll(null); }, true);
+  window.addEventListener('resize', function () { closeAll(null); });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAll);
