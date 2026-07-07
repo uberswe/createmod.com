@@ -1278,6 +1278,13 @@ function generateHullV2(p) {
     return out;
   }
 
+  // Bow/stern taper flag per z (mirrors Go): stair steps there read fore-aft.
+  var inTaper = new Array(L);
+  for (var tz = 0; tz < L; tz++) {
+    var tzn = tz / Math.max(length - 1, 1);
+    inTaper[tz] = tzn < midLo || tzn > midHi;
+  }
+
   for (var fz = 0; fz < L; fz++) {
     for (var fy = 0; fy <= topY; fy++) {
       for (var fx = -xMax; fx <= xMax; fx++) {
@@ -1299,12 +1306,25 @@ function generateHullV2(p) {
           }
         }
         var preferTop = topMass >= botMass;
+        var zPos = 0, zNeg = 0, xPos = 0, xNeg = 0;
+        for (var sg = 0; sg < 27; sg++) {
+          if (!occ[sg]) continue;
+          if (sampleOffsets[sg][2] > 0) zPos++;
+          else if (sampleOffsets[sg][2] < 0) zNeg++;
+          if (sampleOffsets[sg][0] > 0) xPos++;
+          else if (sampleOffsets[sg][0] < 0) xNeg++;
+        }
+        var gz = Math.abs(zPos - zNeg), gx = Math.abs(xPos - xNeg);
         var bestIdx = 0, bestErr = Infinity;
         for (var ci2 = 0; ci2 < candidates.length; ci2++) {
           var cand = candidates[ci2];
           var errSum = cand.penalty;
           if (cand.type === BT.STAIR && cand.props) {
             if ((cand.props.half === 'top') !== preferTop) errSum += 0.3;
+            var sideways = cand.props.facing === 'east' || cand.props.facing === 'west';
+            if (sideways && inTaper[fz]) errSum += 2.5;
+            else if (sideways && gz >= 2) errSum += 0.8;
+            else if (!sideways && gx >= 2 && gz < 2 && !inTaper[fz]) errSum += 0.8;
           }
           for (var s2 = 0; s2 < 27; s2++) {
             var o2 = sampleOffsets[s2];

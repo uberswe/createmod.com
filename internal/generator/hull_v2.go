@@ -19,6 +19,10 @@ import (
 //
 // The JS engine in template/static/generators.js mirrors this function; keep
 // the two in sync (cross-checked by testdata fixtures).
+// hullV2DebugCell, when non-nil, receives fit diagnostics for every surface
+// cell (test-only instrumentation).
+var hullV2DebugCell func(x, y, z, occCount, gx, gz int, chosen string, errs []float64)
+
 func generateHullV2(p HullParams) (*GenerateResult, error) {
 	L := p.Length
 	D := p.Depth
@@ -482,6 +486,14 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		return out
 	}
 
+	// Bow/stern taper flag per z (base coordinates): inside these regions
+	// stair steps should read fore-aft like a stepped stem, not sideways.
+	inTaper := make([]bool, L)
+	for z := 0; z < L; z++ {
+		zn := float64(z) / math.Max(length-1, 1)
+		inTaper[z] = zn < midLo || zn > midHi
+	}
+
 	for z := 0; z < L; z++ {
 		for y := 0; y <= topY; y++ {
 			for x := -xMax; x <= xMax; x++ {
@@ -514,12 +526,54 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 					}
 				}
 				preferTop := topMass >= botMass
+				// Fore-aft gradient: at bow/stern taper cells (where the hull
+				// narrows along z) stairs should follow the ship's axis, the
+				// way builders step a stem — penalize sideways stairs there.
+				// Midship flanks have no z-gradient and keep lateral stairs.
+				zPos, zNeg, xPos, xNeg := 0, 0, 0, 0
+				for s := 0; s < 27; s++ {
+					if !occ[s] {
+						continue
+					}
+					switch {
+					case sampleOffsets[s][2] > 0:
+						zPos++
+					case sampleOffsets[s][2] < 0:
+						zNeg++
+					}
+					switch {
+					case sampleOffsets[s][0] > 0:
+						xPos++
+					case sampleOffsets[s][0] < 0:
+						xNeg++
+					}
+				}
+				gz := zPos - zNeg
+				if gz < 0 {
+					gz = -gz
+				}
+				gx := xPos - xNeg
+				if gx < 0 {
+					gx = -gx
+				}
 				bestIdx, bestErr := 0, math.MaxFloat64
 				for ci, cand := range candidates {
 					errSum := cand.penalty
 					if h, isStair := cand.props["half"]; isStair && cand.name == "stairs" {
 						if (h == "top") != preferTop {
 							errSum += 0.3
+						}
+						f := cand.props["facing"]
+						sideways := f == "east" || f == "west"
+						// Oblique bow/stern corner cells fit sideways stairs
+						// ~2 samples better than fore-aft ones; the taper
+						// penalty must exceed that gap to win the stem read.
+						if sideways && inTaper[z] {
+							errSum += 2.5
+						} else if sideways && gz >= 2 {
+							errSum += 0.8
+						} else if !sideways && gx >= 2 && gz < 2 && !inTaper[z] {
+							errSum += 0.8
 						}
 					}
 					for s := 0; s < 27; s++ {
@@ -532,6 +586,21 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 						bestErr = errSum
 						bestIdx = ci
 					}
+				}
+				if hullV2DebugCell != nil {
+					errs := make([]float64, len(candidates))
+					for ci, cand := range candidates {
+						e := cand.penalty
+						for s := 0; s < 27; s++ {
+							o := sampleOffsets[s]
+							if cand.test(o[0], o[1], o[2]) != occ[s] {
+								e++
+							}
+						}
+						errs[ci] = e
+					}
+					chosen := candidates[bestIdx].name + "/" + candidates[bestIdx].props["facing"] + "/" + candidates[bestIdx].props["half"]
+					hullV2DebugCell(x, y, z, occCount, gx, gz, chosen, errs)
 				}
 				if candidates[bestIdx].name == "" {
 					continue
