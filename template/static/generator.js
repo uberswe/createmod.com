@@ -264,70 +264,63 @@ function renderBlocks(data) {
 
   var dummy = new THREE.Object3D();
 
-  function makeStairGeo(flipped) {
-    // L-shaped stair: bottom half (1×0.5×1) + back-half step (1×0.5×0.5)
-    // No internal faces — 8 outer faces only
-    // flipped=true creates upside-down version with correct winding (no scale.y=-1 needed)
-    var sy = flipped ? -1 : 1;
-    var p = new Float32Array([
-      // Face 1: bottom
-      -0.5,-0.5*sy,-0.5, 0.5,-0.5*sy,-0.5, 0.5,-0.5*sy,0.5, -0.5,-0.5*sy,0.5,
-      // Face 2: front (z=0.5)
-      -0.5,-0.5*sy,0.5, 0.5,-0.5*sy,0.5, 0.5,0*sy,0.5, -0.5,0*sy,0.5,
-      // Face 3: back (z=-0.5)
-      0.5,-0.5*sy,-0.5, -0.5,-0.5*sy,-0.5, -0.5,0.5*sy,-0.5, 0.5,0.5*sy,-0.5,
-      // Face 4: left (x=-0.5) — L-shape
-      -0.5,-0.5*sy,-0.5, -0.5,-0.5*sy,0.5, -0.5,0*sy,0.5, -0.5,0*sy,0, -0.5,0.5*sy,0, -0.5,0.5*sy,-0.5,
-      // Face 5: right (x=0.5) — L-shape
-      0.5,-0.5*sy,0.5, 0.5,-0.5*sy,-0.5, 0.5,0*sy,0.5, 0.5,0*sy,0, 0.5,0.5*sy,0, 0.5,0.5*sy,-0.5,
-      // Face 6: lower step top (z=0 to 0.5)
-      -0.5,0*sy,0.5, 0.5,0*sy,0.5, 0.5,0*sy,0, -0.5,0*sy,0,
-      // Face 7: step front (z=0)
-      -0.5,0*sy,0, 0.5,0*sy,0, 0.5,0.5*sy,0, -0.5,0.5*sy,0,
-      // Face 8: upper step top (z=-0.5 to 0)
-      -0.5,0.5*sy,0, 0.5,0.5*sy,0, 0.5,0.5*sy,-0.5, -0.5,0.5*sy,-0.5
-    ]);
-    var ny = flipped ? 1 : -1;  // bottom normal flips
-    var uy = flipped ? -1 : 1;  // top normals flip
-    var n = new Float32Array([
-      0,ny,0, 0,ny,0, 0,ny,0, 0,ny,0,
-      0,0,1, 0,0,1, 0,0,1, 0,0,1,
-      0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-      -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0,
-      1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0,
-      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0,
-      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0,
-      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0
-    ]);
-    // Flipped: reverse winding by swapping v1/v2 in each triangle
-    var idx;
-    if (flipped) {
-      idx = new Uint16Array([
-        0,2,1, 0,3,2,
-        4,6,5, 4,7,6,
-        8,10,9, 8,11,10,
-        12,14,13, 12,15,14, 12,17,15, 15,17,16,
-        18,20,19, 19,20,21, 19,21,23, 23,21,22,
-        24,26,25, 24,27,26,
-        28,30,29, 28,31,30,
-        32,34,33, 32,35,34
-      ]);
-    } else {
-      idx = new Uint16Array([
-        0,1,2, 0,2,3,
-        4,5,6, 4,6,7,
-        8,9,10, 8,10,11,
-        12,13,14, 12,14,15, 12,15,17, 15,16,17,
-        18,19,20, 19,21,20, 19,23,21, 23,22,21,
-        24,25,26, 24,26,27,
-        28,29,30, 28,30,31,
-        32,33,34, 32,34,35
-      ]);
+
+  // Build a BufferGeometry from axis-aligned boxes [x0,y0,z0,x1,y1,z1].
+  // Used for Minecraft stair corner shapes (inner/outer), which modify the
+  // upper step into quarters exactly like adjacent in-game stairs do.
+  function boxesGeo(boxes) {
+    var pos = [], norm = [], idx = [];
+    var faces = [
+      { n: [0, -1, 0], c: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]] },
+      { n: [0, 1, 0],  c: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },
+      { n: [0, 0, -1], c: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]] },
+      { n: [0, 0, 1],  c: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },
+      { n: [-1, 0, 0], c: [[0,0,0],[0,0,1],[0,1,1],[0,1,0]] },
+      { n: [1, 0, 0],  c: [[1,0,1],[1,0,0],[1,1,0],[1,1,1]] }
+    ];
+    for (var b = 0; b < boxes.length; b++) {
+      var bx = boxes[b];
+      for (var f = 0; f < 6; f++) {
+        var base = pos.length / 3;
+        for (var v = 0; v < 4; v++) {
+          var c = faces[f].c[v];
+          pos.push(bx[0] + c[0] * (bx[3] - bx[0]), bx[1] + c[1] * (bx[4] - bx[1]), bx[2] + c[2] * (bx[5] - bx[2]));
+          norm.push(faces[f].n[0], faces[f].n[1], faces[f].n[2]);
+        }
+        idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      }
     }
     var geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(n, 3));
-    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(norm), 3));
+    geo.setIndex(new THREE.BufferAttribute(new Uint16Array(idx), 1));
+    return geo;
+  }
+
+  // Stair geometry per (half, shape) in base orientation (facing=south:
+  // open side +z, full-height side -z). FACING_ROT rotates all facings.
+  // outer_* reduce the upper step to a back quarter; inner_* extend it with
+  // a front quarter — matching how Minecraft stairs join at corners.
+  var stairShapeCache = {};
+  function makeStairShapeGeo(half, shape) {
+    var key = half + '|' + shape;
+    if (stairShapeCache[key]) return stairShapeCache[key];
+    var upper;
+    switch (shape) {
+      case 'outer_left':  upper = [[-0.5, 0, -0.5, 0, 0.5, 0]]; break;
+      case 'outer_right': upper = [[0, 0, -0.5, 0.5, 0.5, 0]]; break;
+      case 'inner_left':  upper = [[-0.5, 0, -0.5, 0.5, 0.5, 0], [-0.5, 0, 0, 0, 0.5, 0.5]]; break;
+      case 'inner_right': upper = [[-0.5, 0, -0.5, 0.5, 0.5, 0], [0, 0, 0, 0.5, 0.5, 0.5]]; break;
+      default:            upper = [[-0.5, 0, -0.5, 0.5, 0.5, 0]]; break;
+    }
+    var boxes = [[-0.5, -0.5, -0.5, 0.5, 0, 0.5]].concat(upper);
+    if (half === 'top') {
+      boxes = boxes.map(function (b) {
+        return [b[0], -b[4], b[2], b[3], -b[1], b[5]];
+      });
+    }
+    var geo = boxesGeo(boxes);
+    stairShapeCache[key] = geo;
     return geo;
   }
 
@@ -374,7 +367,8 @@ function renderBlocks(data) {
         var sb = arr[si];
         var facing = (sb.props && sb.props.facing) || 'south';
         var half = (sb.props && sb.props.half) || 'bottom';
-        var key = facing + '_' + half;
+        var shape = (sb.props && sb.props.shape) || 'straight';
+        var key = facing + '_' + half + '_' + shape;
         if (!stairGroups[key]) stairGroups[key] = [];
         stairGroups[key].push(sb);
       }
@@ -383,7 +377,8 @@ function renderBlocks(data) {
         var parts = sk.split('_');
         var sFacing = parts[0];
         var sHalf = parts[1];
-        var sGeo = makeStairGeo(sHalf === 'top');
+        var sShape = parts.slice(2).join('_') || 'straight';
+        var sGeo = makeStairShapeGeo(sHalf, sShape);
         var sMesh = new THREE.InstancedMesh(sGeo, stairMat, sArr.length);
         for (var sj = 0; sj < sArr.length; sj++) {
           dummy.position.set(sArr[sj].x - cx, (sArr[sj].y - cy), sArr[sj].z - cz);
