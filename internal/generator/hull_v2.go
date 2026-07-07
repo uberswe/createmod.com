@@ -274,16 +274,25 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		if zNormBase > 1 {
 			zNormBase = 1
 		}
-		if ys < keelYAtF(zNormBase) {
+		keelY := keelYAtF(zNormBase)
+		if ys < keelY {
 			return false
+		}
+		// Sections are lofted between the keel line and the deck: remapping
+		// (rather than chopping at the keel plane) keeps the underside a
+		// continuous curve where the keel rises toward the ends.
+		bottomSpan := depth - keelY
+		if bottomSpan < 1 {
+			bottomSpan = 1
 		}
 		var yNorm float64
 		if p.ClosedHull {
 			if ys > 2*depth {
 				return false
 			}
-			yNorm = ys / depth
-			if ys > depth {
+			if ys <= depth {
+				yNorm = (ys - keelY) / bottomSpan
+			} else {
 				yNorm = (2*depth - ys) / depth
 			}
 			if yNorm < 0 {
@@ -293,7 +302,7 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			if ys > deckYAtFloat(zs) {
 				return false
 			}
-			yNorm = ys / math.Max(depth, 1)
+			yNorm = (ys - keelY) / bottomSpan
 		}
 		sb := sternSetbackAt(yNorm)
 		st := stemSetbackAt(yNorm)

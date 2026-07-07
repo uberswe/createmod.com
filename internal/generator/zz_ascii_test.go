@@ -14,11 +14,11 @@ func TestASCII(t *testing.T) {
 		Version: 3, WoodType: "dark_oak", Length: 72, Beam: 22, Depth: 13,
 		BottomPinch: 0.35, HullFlare: 0.4, FlareCurve: 2.4, Tumblehome: 0.35, TumbleCurve: 2.8,
 		SheerCurve: 0.22, SheerCurveExp: 2, BowLength: 16, BowSharpness: 1.5,
-		BowKeelRise: 0.7, BowKeelLength: 16, BowCurve: 0.15, SternStyle: "square",
-		SternLength: 9, SternSharpness: 0.5, SternKeelRise: 0.4, SternKeelLength: 10,
-		SternOverhang: 0.55, KeelCurve: 1.7, MidWidthBias: 0.2, CastleBlend: 6,
+		BowKeelRise: 0.7, BowKeelLength: 24, BowCurve: 0.15, SternStyle: "square",
+		SternLength: 9, SternSharpness: 0.5, SternKeelRise: 0.4, SternKeelLength: 20,
+		SternOverhang: 0.55, KeelCurve: 1.4, MidWidthBias: 0.2, CastleBlend: 6,
 		CastleHeight: 5, CastleLength: 18, ForecastleHeight: 2, ForecastleLength: 9,
-		BowStyle: "default", StemRake: 0.55, StemCurve: 0.3, SternRake: 0.2, Rocker: 0.05,
+		BowStyle: "default", StemRake: 0.55, StemCurve: 0.3, SternRake: 0.2, Rocker: 0.12,
 		Deadrise: 0.1, MidFullness: 0.7, BowSectionV: 0.5, SternFullness: 0.6, ParallelMidbody: 0.25,
 	}
 	r, err := GenerateHull(p)
@@ -44,6 +44,18 @@ func TestASCII(t *testing.T) {
 		row := ""
 		for x := 0; x <= maxX; x++ {
 			if g, ok := occ[[3]int{x, y, zm}]; ok { row += g } else { row += "." }
+		}
+		fmt.Println(row)
+	}
+	fmt.Println("== side profile (keel line) ==")
+	for y := maxY; y >= 0; y-- {
+		row := ""
+		for z := 0; z <= maxZ; z++ {
+			hit := false
+			for dx := -2; dx <= 2; dx++ {
+				if _, ok := occ[[3]int{maxX/2 + dx, y, z}]; ok { hit = true; break }
+			}
+			if hit { row += "#" } else { row += "." }
 		}
 		fmt.Println(row)
 	}

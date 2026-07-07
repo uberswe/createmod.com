@@ -1152,16 +1152,20 @@ function generateHullV2(p) {
     var zNormBase = zs / Math.max(length - 1, 1);
     if (zNormBase < 0) zNormBase = 0;
     if (zNormBase > 1) zNormBase = 1;
-    if (ys < keelYAtF(zNormBase)) return false;
+    var keelY = keelYAtF(zNormBase);
+    if (ys < keelY) return false;
+    // Loft sections between keel line and deck (mirrors Go).
+    var bottomSpan = depth - keelY;
+    if (bottomSpan < 1) bottomSpan = 1;
     var yNorm;
     if (closedHull) {
       if (ys > 2 * depth) return false;
-      yNorm = ys / depth;
-      if (ys > depth) yNorm = (2 * depth - ys) / depth;
+      if (ys <= depth) yNorm = (ys - keelY) / bottomSpan;
+      else yNorm = (2 * depth - ys) / depth;
       if (yNorm < 0) return false;
     } else {
       if (ys > deckYAtFloat(zs)) return false;
-      yNorm = ys / Math.max(depth, 1);
+      yNorm = (ys - keelY) / bottomSpan;
     }
     var sb = sternSetbackAt(yNorm);
     var stk = stemSetbackAt(yNorm);
