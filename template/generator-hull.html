@@ -41,7 +41,6 @@
                                     <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="speedboat">Speedboat</button>
                                     <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="yacht">Yacht</button>
                                     <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="canoe">Canoe</button>
-                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="airship">Airship Hull</button>
                                 </div>
                             </div>
                             <div class="mb-2">
@@ -336,6 +335,21 @@
 <script src="/assets/x/guide.js?v={{ AssetVer }}"></script>
 <script>
 (function(){
+  // Neutral baseline applied under every preset so unset fields never
+  // carry over from a previously applied preset.
+  var PRESET_DEFAULTS = {
+    woodType:'spruce', length:40, beam:10, depth:6, bottomPinch:0.25, hullFlare:0.2,
+    flareCurve:2.6, tumblehome:0, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2,
+    bowLength:10, bowSharpness:1.3, bowKeelRise:0, bowKeelLength:0, bowCurve:0,
+    sternStyle:'round', sternLength:6, sternSharpness:0.7, sternKeelRise:0,
+    sternKeelLength:0, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4,
+    hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0,
+    forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2,
+    gunPortSpacing:4, bowStyle:'default', deadrise:0, midFullness:0.65, bowSectionV:0.55,
+    sternFullness:0.5, stemRake:0.35, stemCurve:0.15, sternRake:0.35, rocker:0,
+    parallelMidbody:0, stemPostHeight:0, sternPostHeight:0, doubleEnder:false, closedHull:false
+  };
+
   var PRESETS = {
     sloop: { woodType:'spruce', length:36, beam:10, depth:7, bottomPinch:0.35, hullFlare:0.18, flareCurve:2.6, tumblehome:0.15, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2, bowLength:11, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:12, bowCurve:-0.25, sternStyle:'round', sternLength:6, sternSharpness:0.8, sternKeelRise:0.2, sternKeelLength:9, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:7, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.25, midFullness:0.5, bowSectionV:0.6, sternFullness:0.45, stemRake:0.5, stemCurve:-0.2, sternRake:0.35, rocker:0.15, parallelMidbody:0.1 },
     schooner: { woodType:'spruce', length:52, beam:12, depth:8, bottomPinch:0.3, hullFlare:0.2, flareCurve:2.6, tumblehome:0.16, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:16, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:17, bowCurve:-0.3, sternStyle:'round', sternLength:7, sternSharpness:0.9, sternKeelRise:0.2, sternKeelLength:13, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:11, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.3, midFullness:0.45, bowSectionV:0.65, sternFullness:0.4, stemRake:0.6, stemCurve:-0.3, sternRake:0.4, rocker:0.12, parallelMidbody:0.1 },
@@ -358,8 +372,7 @@
     destroyer: { woodType:'spruce', length:96, beam:12, depth:7, bottomPinch:0.3, hullFlare:0.15, flareCurve:2.6, tumblehome:0.18, tumbleCurve:3, sheerCurve:0.04, sheerCurveExp:2, bowLength:26, bowSharpness:2.8, bowKeelRise:0.3, bowKeelLength:29, bowCurve:-0.4, sternStyle:'round', sternLength:12, sternSharpness:1, sternKeelRise:0.2, sternKeelLength:17, sternOverhang:0, keelCurve:1.6, midWidthBias:0.25, castleBlend:5, hasRailings:true, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked', deadrise:0.35, midFullness:0.55, bowSectionV:0.75, sternFullness:0.6, stemRake:0.6, stemCurve:0.1, sternRake:0.1, rocker:0.03, parallelMidbody:0.35 },
     speedboat: { woodType:'birch', length:24, beam:7, depth:4, bottomPinch:0.5, hullFlare:0.08, flareCurve:2.6, tumblehome:0.05, tumbleCurve:3, sheerCurve:0.08, sheerCurveExp:2, bowLength:8, bowSharpness:3, bowKeelRise:1, bowKeelLength:8, bowCurve:-0.5, sternStyle:'square', sternLength:4, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:4, sternOverhang:0, keelCurve:1.6, midWidthBias:0, castleBlend:3, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.55, midFullness:0.5, bowSectionV:0.8, sternFullness:0.7, stemRake:0.7, stemCurve:0, sternRake:0.05, rocker:0.05, parallelMidbody:0.2 },
     yacht: { woodType:'birch', length:42, beam:9, depth:6, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.1, tumbleCurve:3, sheerCurve:0.06, sheerCurveExp:2, bowLength:12, bowSharpness:2.2, bowKeelRise:0.35, bowKeelLength:15, bowCurve:-0.3, sternStyle:'round', sternLength:6, sternSharpness:0.8, sternKeelRise:0.2, sternKeelLength:10, sternOverhang:0, keelCurve:1.4, midWidthBias:0.15, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked', deadrise:0.45, midFullness:0.45, bowSectionV:0.7, sternFullness:0.5, stemRake:0.65, stemCurve:-0.1, sternRake:0.4, rocker:0.15, parallelMidbody:0.15 },
-    canoe: { woodType:'birch', length:22, beam:5, depth:4, bottomPinch:0.2, hullFlare:0.15, flareCurve:2.2, tumblehome:0, tumbleCurve:3, sheerCurve:0.25, sheerCurveExp:1.8, bowLength:8, bowSharpness:1.6, bowKeelRise:0.6, bowKeelLength:8, bowCurve:-0.2, sternStyle:'round', sternLength:8, sternSharpness:1.6, sternKeelRise:0.6, sternKeelLength:8, sternOverhang:0, keelCurve:1.3, midWidthBias:0, castleBlend:3, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.35, midFullness:0.4, bowSectionV:0.6, stemRake:0.6, stemCurve:-0.2, rocker:0.3, doubleEnder:true },
-    airship: { woodType:'dark_oak', length:64, beam:17, depth:9, bottomPinch:0.2, hullFlare:0, flareCurve:2.6, tumblehome:0, tumbleCurve:3, sheerCurve:0, sheerCurveExp:2, bowLength:19, bowSharpness:1.3, bowKeelRise:0.3, bowKeelLength:19, bowCurve:0, sternStyle:'round', sternLength:19, sternSharpness:1.3, sternKeelRise:0.2, sternKeelLength:19, sternOverhang:0, keelCurve:1.5, midWidthBias:0, castleBlend:4, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'default', midFullness:0.55, bowSectionV:0.4, stemRake:0.4, rocker:0.1, doubleEnder:true, closedHull:true }
+    canoe: { woodType:'birch', length:22, beam:5, depth:4, bottomPinch:0.2, hullFlare:0.15, flareCurve:2.2, tumblehome:0, tumbleCurve:3, sheerCurve:0.25, sheerCurveExp:1.8, bowLength:8, bowSharpness:1.6, bowKeelRise:0.6, bowKeelLength:8, bowCurve:-0.2, sternStyle:'round', sternLength:8, sternSharpness:1.6, sternKeelRise:0.6, sternKeelLength:8, sternOverhang:0, keelCurve:1.3, midWidthBias:0, castleBlend:3, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.35, midFullness:0.4, bowSectionV:0.6, stemRake:0.6, stemCurve:-0.2, rocker:0.3, doubleEnder:true }
   };
 
   // Original v1 presets, applied when the legacy engine is selected.
@@ -491,13 +504,12 @@
         e.preventDefault();
         var name = this.getAttribute('data-preset');
         var useV1 = parseInt(document.getElementById('param-genVersion').value, 10) < 3;
-        var p;
-        if (useV1 && PRESETS_V1[name]) {
-          p = Object.assign({ version: 2 }, PRESETS_V1[name]);
-        } else {
-          p = Object.assign({ version: 3 }, PRESETS[name]);
-        }
-        if (p) { setParams(p); refresh(); }
+        var base = useV1 && PRESETS_V1[name] ? PRESETS_V1[name] : PRESETS[name];
+        if (!base) return;
+        // Every parameter resets to its default first: presets must be
+        // reproducible regardless of what was clicked before.
+        var p = Object.assign({ version: useV1 && PRESETS_V1[name] ? 2 : 3 }, PRESET_DEFAULTS, base);
+        setParams(p); refresh();
       });
     });
 
