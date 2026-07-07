@@ -711,8 +711,16 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
-	// Generators
+	// Generators (also the de-facto tools landing; /tools is its alias)
 	r.Get("/generators", Adapt(pages.GeneratorsLandingHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
+	})
+	// Schematic converter
+	r.Get("/tools/convert", Adapt(pages.ConvertToolHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools/convert/{pair}", Adapt(pages.ConvertPairHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/convert", Adapt(pages.ConvertAPIHandler()))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/convert/inspect", Adapt(pages.ConvertInspectHandler()))
 	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/propeller/{hash}", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/balloon", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
