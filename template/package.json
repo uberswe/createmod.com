@@ -4,24 +4,24 @@
     "build:editor": "esbuild src/editor.js --bundle --minify --outfile=static/editor.js --format=iife --global-name=cmEditorBundle --target=es2020"
   },
   "dependencies": {
-    "@tiptap/core": "^3.0.0",
-    "@tiptap/extension-character-count": "^3.0.0",
-    "@tiptap/extension-image": "^3.0.0",
-    "@tiptap/extension-link": "^3.0.0",
-    "@tiptap/extension-placeholder": "^3.0.0",
-    "@tiptap/extension-table": "^3.0.0",
-    "@tiptap/extension-table-cell": "^3.0.0",
-    "@tiptap/extension-table-header": "^3.0.0",
-    "@tiptap/extension-table-row": "^3.0.0",
-    "@tiptap/extension-text-align": "^3.0.0",
-    "@tiptap/extension-underline": "^3.0.0",
-    "@tiptap/pm": "^3.0.0",
-    "@tiptap/starter-kit": "^3.0.0",
+    "@tiptap/core": "^3.27.3",
+    "@tiptap/extension-character-count": "^3.27.3",
+    "@tiptap/extension-image": "^3.27.3",
+    "@tiptap/extension-link": "^3.27.3",
+    "@tiptap/extension-placeholder": "^3.27.3",
+    "@tiptap/extension-table": "^3.27.3",
+    "@tiptap/extension-table-cell": "^3.27.3",
+    "@tiptap/extension-table-header": "^3.27.3",
+    "@tiptap/extension-table-row": "^3.27.3",
+    "@tiptap/extension-text-align": "^3.27.3",
+    "@tiptap/extension-underline": "^3.27.3",
+    "@tiptap/pm": "^3.27.3",
+    "@tiptap/starter-kit": "^3.27.3",
     "dropzone": "^6.0.0-beta.2",
     "fslightbox": "^3.4.2",
     "plyr": "^3.7.8",
     "star-rating.js": "^4.3.1",
-    "tom-select": "^2.4.2"
+    "tom-select": "^2.6.2"
   },
   "devDependencies": {
     "esbuild": "^0.28.0"
