@@ -421,7 +421,14 @@ func Register(p RegisterParams) chi.Router {
 			return nil
 		}
 	}
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert)))
+	var enqueueSafetyScan pages.SafetyScanEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueSafetyScan = func(ctx context.Context, schematicID string) error {
+			return jw.Insert(ctx, jobs.SafetyScanArgs{SchematicID: schematicID}, nil)
+		}
+	}
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
@@ -716,6 +723,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
 	})
+	// Safety explainer + checker
+	r.Get("/safety", Adapt(pages.SafetyExplainerHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools/safety-check", Adapt(pages.SafetyCheckToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/safety-check", Adapt(pages.SafetyCheckAPIHandler()))
 	// Schematic converter
 	r.Get("/tools/convert", Adapt(pages.ConvertToolHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/tools/convert/{pair}", Adapt(pages.ConvertPairHandler(registry, p.CacheService, p.AppStore)))

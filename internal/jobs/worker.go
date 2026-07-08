@@ -71,6 +71,9 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &ModMetadataWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SitemapWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SessionCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SafetyScanWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SafetyBackfillWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ConvCacheCleanupWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &TempUploadCleanupWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &ModerationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &CommentModerationWorker{deps: cfg.Deps})
@@ -119,6 +122,24 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 				func() (river.JobArgs, *river.InsertOpts) {
 					return TrendingArgs{}, &river.InsertOpts{
 						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
+					}
+				},
+				nil,
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(15*time.Minute),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return SafetyBackfillArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 15 * time.Minute},
+					}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return ConvCacheCleanupArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
 					}
 				},
 				nil,

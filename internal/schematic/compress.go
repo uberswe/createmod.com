@@ -36,6 +36,9 @@ func decompress(data []byte) ([]byte, error) {
 	if len(out) > MaxDecompressedSize {
 		return nil, fmt.Errorf("schematic: decompressed payload exceeds %d bytes", MaxDecompressedSize)
 	}
+	if err := validateNBTLimits(out); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 

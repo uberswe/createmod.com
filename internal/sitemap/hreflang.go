@@ -86,6 +86,8 @@ func (s *Service) GenerateHreflang(appStore *store.Store) []string {
 		"/collections",
 		"/mods",
 		"/tools/convert",
+		"/safety",
+		"/tools/safety-check",
 	}
 
 	// Build all bare paths (without language prefix)

@@ -1173,6 +1173,24 @@ type NBTHash struct {
 }
 
 // NBTHashStore handles NBT hash operations for blacklisting.
+// SchematicSafety is one schematic's content-safety scan result.
+type SchematicSafety struct {
+	SchematicID     string
+	Checksum        string
+	FileSafe        bool
+	Manifest        []byte // JSON schematic.Manifest
+	PipelineVersion int
+	ScannedAt       time.Time
+}
+
+// SchematicSafetyStore persists content-safety scan results.
+type SchematicSafetyStore interface {
+	Upsert(ctx context.Context, s *SchematicSafety) error
+	GetBySchematicID(ctx context.Context, schematicID string) (*SchematicSafety, error)
+	ListNeedingScan(ctx context.Context, pipelineVersion int, limit int) ([]string, error)
+	Delete(ctx context.Context, schematicID string) error
+}
+
 type NBTHashStore interface {
 	Create(ctx context.Context, h *NBTHash) error
 	ListByUser(ctx context.Context, userID string) ([]NBTHash, error)
@@ -1559,6 +1577,7 @@ type Store struct {
 	TempUploadFiles     TempUploadFileStore
 	TempUploadImages    TempUploadImageStore
 	NBTHashes           NBTHashStore
+	SchematicSafety     SchematicSafetyStore
 	DownloadTokens      DownloadTokenStore
 	SchematicFiles      SchematicFileStore
 	Webhooks            WebhookStore

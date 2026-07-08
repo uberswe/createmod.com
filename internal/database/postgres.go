@@ -7,12 +7,14 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	db "createmod/internal/database/gen"
 	"createmod/internal/store"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
@@ -3945,6 +3947,56 @@ func (ss *StatsStoreImpl) DailySchematicUploads(ctx context.Context, since time.
 // NBTHashStoreImpl
 // --------------------------------------------------------------------------
 
+// SchematicSafetyStoreImpl implements store.SchematicSafetyStore.
+type SchematicSafetyStoreImpl struct {
+	q *db.Queries
+}
+
+var _ store.SchematicSafetyStore = (*SchematicSafetyStoreImpl)(nil)
+
+func (s *SchematicSafetyStoreImpl) Upsert(ctx context.Context, v *store.SchematicSafety) error {
+	manifest := v.Manifest
+	if len(manifest) == 0 {
+		manifest = []byte("{}")
+	}
+	return s.q.UpsertSchematicSafety(ctx, db.UpsertSchematicSafetyParams{
+		SchematicID:     v.SchematicID,
+		Checksum:        v.Checksum,
+		FileSafe:        v.FileSafe,
+		Manifest:        manifest,
+		PipelineVersion: int32(v.PipelineVersion),
+	})
+}
+
+func (s *SchematicSafetyStoreImpl) GetBySchematicID(ctx context.Context, schematicID string) (*store.SchematicSafety, error) {
+	row, err := s.q.GetSchematicSafety(ctx, schematicID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &store.SchematicSafety{
+		SchematicID:     row.SchematicID,
+		Checksum:        row.Checksum,
+		FileSafe:        row.FileSafe,
+		Manifest:        row.Manifest,
+		PipelineVersion: int(row.PipelineVersion),
+		ScannedAt:       row.ScannedAt,
+	}, nil
+}
+
+func (s *SchematicSafetyStoreImpl) ListNeedingScan(ctx context.Context, pipelineVersion int, limit int) ([]string, error) {
+	return s.q.ListSchematicsNeedingSafetyScan(ctx, db.ListSchematicsNeedingSafetyScanParams{
+		PipelineVersion: int32(pipelineVersion),
+		Limit:           int32(limit),
+	})
+}
+
+func (s *SchematicSafetyStoreImpl) Delete(ctx context.Context, schematicID string) error {
+	return s.q.DeleteSchematicSafety(ctx, schematicID)
+}
+
 type NBTHashStoreImpl struct {
 	q *db.Queries
 }
@@ -4021,6 +4073,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		TempUploadFiles:     &TempUploadFileStoreImpl{q: q},
 		TempUploadImages:    &TempUploadImageStoreImpl{q: q},
 		NBTHashes:           &NBTHashStoreImpl{q: q},
+		SchematicSafety:     &SchematicSafetyStoreImpl{q: q},
 		DownloadTokens:      &DownloadTokenStoreImpl{q: q},
 		SchematicFiles:      &SchematicFileStoreImpl{q: q},
 		Webhooks:            &WebhookStoreImpl{q: q},

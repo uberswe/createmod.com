@@ -534,6 +534,15 @@ type SchematicReference struct {
 	Updated      time.Time          `json:"updated"`
 }
 
+type SchematicSafety struct {
+	SchematicID     string          `json:"schematic_id"`
+	Checksum        string          `json:"checksum"`
+	FileSafe        bool            `json:"file_safe"`
+	Manifest        json.RawMessage `json:"manifest"`
+	PipelineVersion int32           `json:"pipeline_version"`
+	ScannedAt       time.Time       `json:"scanned_at"`
+}
+
 type SchematicTag struct {
 	ID      string    `json:"id"`
 	Key     string    `json:"key"`

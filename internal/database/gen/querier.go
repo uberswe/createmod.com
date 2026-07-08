@@ -125,6 +125,7 @@ type Querier interface {
 	DeleteSchematicFile(ctx context.Context, id string) error
 	DeleteSchematicFilesBySchematicID(ctx context.Context, schematicID string) error
 	DeleteSchematicReference(ctx context.Context, arg DeleteSchematicReferenceParams) error
+	DeleteSchematicSafety(ctx context.Context, schematicID string) error
 	DeleteSchematicVariation(ctx context.Context, id string) error
 	DeleteSchematicVideo(ctx context.Context, arg DeleteSchematicVideoParams) error
 	DeleteSchematicVideosBySchematic(ctx context.Context, schematicID string) error
@@ -202,6 +203,7 @@ type Querier interface {
 	GetSchematicFileByID(ctx context.Context, id string) (GetSchematicFileByIDRow, error)
 	GetSchematicModpacks(ctx context.Context, schematicID string) ([]Modpack, error)
 	GetSchematicRating(ctx context.Context, schematicID string) (GetSchematicRatingRow, error)
+	GetSchematicSafety(ctx context.Context, schematicID string) (SchematicSafety, error)
 	GetSchematicTagIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicTranslation(ctx context.Context, arg GetSchematicTranslationParams) (SchematicTranslation, error)
 	GetSchematicVDRatioSinceCutoff(ctx context.Context, arg GetSchematicVDRatioSinceCutoffParams) (GetSchematicVDRatioSinceCutoffRow, error)
@@ -339,6 +341,7 @@ type Querier interface {
 	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
 	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
+	ListSchematicsNeedingSafetyScan(ctx context.Context, arg ListSchematicsNeedingSafetyScanParams) ([]string, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListSearchAlertsByUser(ctx context.Context, userID string) ([]SearchAlert, error)
 	ListSocialLinksByPlatform(ctx context.Context, platform string) ([]UserSocialLink, error)
@@ -463,6 +466,7 @@ type Querier interface {
 	UpsertModpack(ctx context.Context, arg UpsertModpackParams) (Modpack, error)
 	UpsertNotificationPreference(ctx context.Context, arg UpsertNotificationPreferenceParams) (NotificationPreference, error)
 	UpsertSchematicRating(ctx context.Context, arg UpsertSchematicRatingParams) error
+	UpsertSchematicSafety(ctx context.Context, arg UpsertSchematicSafetyParams) error
 	UpsertSchematicTranslation(ctx context.Context, arg UpsertSchematicTranslationParams) (SchematicTranslation, error)
 	UpsertSchematicView(ctx context.Context, arg UpsertSchematicViewParams) error
 	UpsertSchematicViewCount(ctx context.Context, arg UpsertSchematicViewCountParams) error

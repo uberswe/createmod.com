@@ -1,0 +1,127 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide" style="max-width: 800px;">
+                <div class="page-header d-print-none">
+                    <h1 class="h2 page-title">{{ T .Language "Schematic Safety Checker" }}</h1>
+                    <div class="text-secondary">{{ T .Language "See exactly what is inside a schematic — command blocks, spawners, click commands — before you paste it into your world. Files are scanned in memory and never stored." }}</div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div id="sc-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4"/><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/></svg>
+                            <div class="h3 mb-1">{{ T .Language "Drop a schematic here or click to choose" }}</div>
+                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }}</div>
+                            <input type="file" id="sc-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                        </div>
+
+                        <div id="sc-result" class="mt-3" style="display:none;">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                <span class="badge" id="sc-badge"></span>
+                                <span class="text-secondary small" id="sc-meta"></span>
+                            </div>
+                            <div id="sc-summary" class="mb-2"></div>
+                            <div id="sc-findings" style="display:none;">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead><tr><th>{{ T .Language "Type" }}</th><th>{{ T .Language "Position" }}</th><th>{{ T .Language "Detail" }}</th></tr></thead>
+                                        <tbody id="sc-findings-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="text-secondary small mt-2">{{ T .Language "What do these mean?" }} <a href="/safety">{{ T .Language "Read the safety explainer" }}</a>.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var drop = document.getElementById('sc-drop');
+  var input = document.getElementById('sc-file');
+  var result = document.getElementById('sc-result');
+  var badge = document.getElementById('sc-badge');
+  var meta = document.getElementById('sc-meta');
+  var summary = document.getElementById('sc-summary');
+  var findingsWrap = document.getElementById('sc-findings');
+  var findingsBody = document.getElementById('sc-findings-body');
+
+  function check(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    result.style.display = '';
+    badge.className = 'badge bg-secondary-lt';
+    badge.textContent = '{{ T .Language "Scanning…" }}';
+    meta.textContent = '';
+    summary.textContent = '';
+    findingsWrap.style.display = 'none';
+    fetch('/api/safety-check', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.fileSafe) {
+          badge.className = 'badge bg-red-lt';
+          badge.textContent = '{{ T .Language "Not a valid schematic" }}';
+          summary.textContent = j.parseError || j.error || '';
+          return;
+        }
+        meta.textContent = (j.label || j.format) + (j.size ? ' · ' + j.size[0] + '×' + j.size[1] + '×' + j.size[2] : '') + (j.blockCount ? ' · ' + j.blockCount.toLocaleString() + ' {{ T .Language "blocks" }}' : '');
+        if (!j.notable) {
+          badge.className = 'badge bg-green-lt';
+          badge.textContent = '{{ T .Language "Validated — nothing notable found" }}';
+          summary.textContent = '{{ T .Language "No command blocks, spawners, or click commands. Well-formed file that passed all hardening checks." }}';
+          return;
+        }
+        badge.className = 'badge bg-yellow-lt';
+        badge.textContent = '{{ T .Language "Contains notable blocks" }}';
+        summary.textContent = j.summary || '';
+        var f = (j.manifest && j.manifest.findings) || [];
+        if (f.length) {
+          findingsBody.replaceChildren();
+          f.forEach(function (x) {
+            var tr = document.createElement('tr');
+            var pos = x.pos ? x.pos.join(', ') : '';
+            [x.type, pos, x.detail || ''].forEach(function (cell) {
+              var td = document.createElement('td');
+              td.textContent = cell;
+              tr.appendChild(td);
+            });
+            findingsBody.appendChild(tr);
+          });
+          findingsWrap.style.display = '';
+          if (j.manifest.findingsTruncated) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td');
+            td.colSpan = 3;
+            td.className = 'text-secondary';
+            td.textContent = '{{ T .Language "…more findings truncated; counts above are exact." }}';
+            tr.appendChild(td);
+            findingsBody.appendChild(tr);
+          }
+        }
+      })
+      .catch(function () {
+        badge.className = 'badge bg-red-lt';
+        badge.textContent = '{{ T .Language "Scan failed" }}';
+      });
+  }
+
+  drop.addEventListener('click', function () { input.click(); });
+  input.addEventListener('change', function () { if (input.files[0]) check(input.files[0]); });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
+  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    drop.style.borderColor = '';
+    if (ev.dataTransfer.files[0]) check(ev.dataTransfer.files[0]);
+  });
+})();
+</script>
+{{ template "foot.html" . }}
