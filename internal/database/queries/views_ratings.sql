@@ -23,7 +23,8 @@ SELECT
     COALESCE(AVG(rating), 0)::REAL AS avg_rating,
     COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
-WHERE schematic_id = $1 AND deleted IS NULL;
+WHERE schematic_id = $1 AND deleted IS NULL
+  AND rating BETWEEN 1 AND 5;
 
 -- name: SoftDeleteRatingsByUser :exec
 UPDATE schematic_ratings SET deleted = NOW() WHERE user_id = $1 AND deleted IS NULL;
@@ -106,4 +107,5 @@ GROUP BY schematic_id;
 SELECT schematic_id, COALESCE(AVG(rating), 0)::REAL AS avg_rating, COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
 WHERE schematic_id = ANY($1::text[]) AND deleted IS NULL
+  AND rating BETWEEN 1 AND 5
 GROUP BY schematic_id;

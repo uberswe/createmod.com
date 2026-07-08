@@ -125,7 +125,10 @@ func (d SchematicData) SchematicJSONLD() template.HTML {
 		}
 	}
 	if s.HasRating && s.RatingCount > 0 {
-		if rv, err := strconv.ParseFloat(s.Rating, 64); err == nil && rv > 0 {
+		// Google rejects review snippets whose ratingValue falls outside
+		// [worstRating, bestRating]; legacy data contained 0-star rows, so
+		// guard the declared 1..5 range explicitly.
+		if rv, err := strconv.ParseFloat(s.Rating, 64); err == nil && rv >= 1 && rv <= 5 {
 			node["aggregateRating"] = map[string]any{
 				"@type":       "AggregateRating",
 				"ratingValue": rv,

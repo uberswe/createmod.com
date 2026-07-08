@@ -46,6 +46,7 @@ const batchGetRatings = `-- name: BatchGetRatings :many
 SELECT schematic_id, COALESCE(AVG(rating), 0)::REAL AS avg_rating, COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
 WHERE schematic_id = ANY($1::text[]) AND deleted IS NULL
+  AND rating BETWEEN 1 AND 5
 GROUP BY schematic_id
 `
 
@@ -347,6 +348,7 @@ SELECT
     COUNT(*)::INTEGER AS rating_count
 FROM schematic_ratings
 WHERE schematic_id = $1 AND deleted IS NULL
+  AND rating BETWEEN 1 AND 5
 `
 
 type GetSchematicRatingRow struct {
