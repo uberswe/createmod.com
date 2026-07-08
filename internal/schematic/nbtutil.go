@@ -2,6 +2,7 @@ package schematic
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -224,4 +225,9 @@ func (l rawList) MarshalNBT(w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// base64Encode is a small helper for Building Gadgets v1 bodies.
+func base64Encode(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
 }

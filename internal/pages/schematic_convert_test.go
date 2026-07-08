@@ -43,8 +43,8 @@ func Test_Convert_Template_Has_Expected_Elements(t *testing.T) {
 
 func Test_ConvertPairs_AllOrderedPairs(t *testing.T) {
 	pairs := ConvertPairs()
-	if len(pairs) != 12 {
-		t.Fatalf("expected 12 ordered pairs, got %d", len(pairs))
+	if len(pairs) != 30 {
+		t.Fatalf("expected 30 ordered pairs (6 formats), got %d", len(pairs))
 	}
 	seen := map[string]bool{}
 	for _, p := range pairs {

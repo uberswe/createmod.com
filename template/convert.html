@@ -23,8 +23,8 @@
                         <div id="conv-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 9l5 -5l5 5"/><path d="M12 4l0 12"/></svg>
                             <div class="h3 mb-1">{{ T .Language "Drop a schematic here or click to choose" }}</div>
-                            <div class="text-secondary small">.nbt, .schem, .litematic &middot; {{ T .Language "max 10 MB" }} &middot; {{ T .Language "files are converted in memory and never stored" }}</div>
-                            <input type="file" id="conv-file" accept=".nbt,.schem,.litematic,.schematic" hidden>
+                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }} &middot; {{ T .Language "files are converted in memory and never stored" }}</div>
+                            <input type="file" id="conv-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
                         </div>
 
                         <div id="conv-info" class="mt-3" style="display:none;">
@@ -41,6 +41,11 @@
                                 <button class="btn conv-target" data-to="nbt" style="background: var(--cm-primary); color:#fff; border:none;">Create .nbt</button>
                                 <button class="btn conv-target btn-outline-secondary" data-to="schem">WorldEdit .schem</button>
                                 <button class="btn conv-target btn-outline-secondary" data-to="litematic">Litematica .litematic</button>
+                                <button class="btn conv-target btn-outline-secondary" data-to="blueprint">MineColonies .blueprint</button>
+                                <button class="btn conv-target btn-outline-secondary" data-to="bg" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}">
+                                    Building Gadgets .json
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm ms-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="var(--cm-warning, #f59f00)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+                                </button>
                                 <button class="btn conv-target btn-outline-secondary" data-to="schematic" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
                                     Legacy .schematic
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm ms-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="var(--cm-warning, #f59f00)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>

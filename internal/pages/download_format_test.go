@@ -89,7 +89,7 @@ func Test_SchematicDownloadSplit_Model(t *testing.T) {
 	if d.Primary.Href != "/get/my-build" {
 		t.Errorf("primary href = %s", d.Primary.Href)
 	}
-	if len(d.Items) != 4 {
+	if len(d.Items) != 6 {
 		t.Fatalf("items = %d", len(d.Items))
 	}
 	wantHrefs := map[string]bool{
@@ -97,6 +97,8 @@ func Test_SchematicDownloadSplit_Model(t *testing.T) {
 		"/get/my-build?format=schem":     true,
 		"/get/my-build?format=litematic": true,
 		"/get/my-build?format=schematic": true,
+		"/get/my-build?format=blueprint": true,
+		"/get/my-build?format=bg":        true,
 	}
 	lossyCount := 0
 	for _, it := range d.Items {
@@ -105,13 +107,10 @@ func Test_SchematicDownloadSplit_Model(t *testing.T) {
 		}
 		if it.Lossy {
 			lossyCount++
-			if !strings.Contains(it.Label, ".schematic") {
-				t.Errorf("lossy flag on %s", it.Label)
-			}
 		}
 	}
-	if lossyCount != 1 {
-		t.Errorf("lossy items = %d", lossyCount)
+	if lossyCount != 2 {
+		t.Errorf("lossy items = %d, want 2 (legacy + building gadgets)", lossyCount)
 	}
 }
 
@@ -177,4 +176,52 @@ func mustTime(t *testing.T, s string) time.Time {
 		t.Fatal(err)
 	}
 	return ts
+}
+
+func Test_NormalizeUploadToNBT(t *testing.T) {
+	nbt := testStructureNBT(t)
+
+	// structure passes through untouched
+	out, name, format, warnings, err := normalizeUploadToNBT("build.nbt", nbt)
+	if err != nil || format != "nbt" || name != "build.nbt" || len(warnings) != 0 {
+		t.Fatalf("passthrough: %v %s %s %v", err, format, name, warnings)
+	}
+	if !bytes.Equal(out, nbt) {
+		t.Errorf("structure input was modified")
+	}
+
+	// .schem converts and renames
+	s, _ := schematic.ReadStructureNBT(nbt)
+	schem, err := schematic.WriteSponge(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, name, format, _, err = normalizeUploadToNBT("cool build.schem", schem)
+	if err != nil {
+		t.Fatalf("schem: %v", err)
+	}
+	if format != "schem" || name != "cool build.nbt" {
+		t.Errorf("schem: format=%s name=%s", format, name)
+	}
+	back, err := schematic.ReadStructureNBT(out)
+	if err != nil || back.BlockCount() != s.BlockCount() {
+		t.Errorf("converted output invalid: %v", err)
+	}
+
+	// garbage rejected
+	if _, _, _, _, err := normalizeUploadToNBT("x.schem", []byte("junk")); err == nil {
+		t.Errorf("garbage accepted")
+	}
+
+	// extension list gate
+	for _, ok := range []string{"a.nbt", "a.SCHEM", "a.litematic", "a.blueprint", "a.txt", "a.json"} {
+		if !isUploadableSchematicName(ok) {
+			t.Errorf("%s rejected", ok)
+		}
+	}
+	for _, bad := range []string{"a.exe", "a.zip", "a.nbt.exe"} {
+		if isUploadableSchematicName(bad) {
+			t.Errorf("%s accepted", bad)
+		}
+	}
 }

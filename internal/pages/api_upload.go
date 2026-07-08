@@ -255,8 +255,8 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		}
 
 		// Validate filename
-		if header == nil || header.Filename == "" || !strings.HasSuffix(strings.ToLower(header.Filename), ".nbt") {
-			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "invalid file type: expected .nbt"})
+		if header == nil || header.Filename == "" || !isUploadableSchematicName(header.Filename) {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "invalid file type: expected " + UploadAcceptAttr})
 		}
 		if header.Size > maxUploadSize {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
@@ -269,6 +269,14 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		}
 		if int64(len(data)) > maxUploadSize {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
+		}
+
+		// Convert non-.nbt formats to Create/vanilla structure NBT
+		uploadFilename := header.Filename
+		var convErr error
+		data, uploadFilename, _, _, convErr = normalizeUploadToNBT(header.Filename, data)
+		if convErr != nil {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": convErr.Error()})
 		}
 
 		// Validate NBT
@@ -346,7 +354,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		modsJSON, _ := json.Marshal(mods)
 
 		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
-		safeFilename := sanitizeFilename(header.Filename)
+		safeFilename := sanitizeFilename(uploadFilename)
 
 		// Upload NBT file to S3
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
@@ -444,8 +452,8 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 
 		// Validate filename
-		if header == nil || header.Filename == "" || !strings.HasSuffix(strings.ToLower(header.Filename), ".nbt") {
-			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "invalid file type: expected .nbt"})
+		if header == nil || header.Filename == "" || !isUploadableSchematicName(header.Filename) {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "invalid file type: expected " + UploadAcceptAttr})
 		}
 		if header.Size > maxUploadSize {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
@@ -458,6 +466,14 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 		if int64(len(data)) > maxUploadSize {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
+		}
+
+		// Convert non-.nbt formats to Create/vanilla structure NBT
+		uploadFilename := header.Filename
+		var convErr error
+		data, uploadFilename, _, _, convErr = normalizeUploadToNBT(header.Filename, data)
+		if convErr != nil {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": convErr.Error()})
 		}
 
 		// Validate NBT
@@ -530,7 +546,7 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		modsJSON, _ := json.Marshal(mods)
 
 		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
-		safeFilename := sanitizeFilename(header.Filename)
+		safeFilename := sanitizeFilename(uploadFilename)
 
 		// Upload NBT file to S3
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename

@@ -15,6 +15,8 @@ const (
 	FormatLitematic Format = "litematic" // Litematica .litematic
 	FormatLegacy    Format = "schematic" // MCEdit/WorldEdit legacy .schematic (read: phase C2)
 	FormatSable     Format = "sable"     // Sable Blueprint v1 (detect-only for now)
+	FormatBlueprint Format = "blueprint" // Structurize / MineColonies .blueprint
+	FormatBG        Format = "bg"        // Building Gadgets template (.json / .txt)
 	FormatUnknown   Format = ""
 )
 
@@ -41,10 +43,16 @@ type formatProbe struct {
 	// Sable blueprint v1 (lowercase root tags)
 	SableVersion   nbt.RawMessage `nbt:"version"`
 	SableSubLevels nbt.RawMessage `nbt:"sub_levels"`
+	// Structurize blueprint (shares the "palette" probe field above)
+	BpSizeX nbt.RawMessage `nbt:"size_x"`
 }
 
 // Detect identifies the format of a schematic file by content.
 func Detect(data []byte) (Format, error) {
+	// Building Gadgets templates are JSON text, not NBT.
+	if looksLikeJSON(data) {
+		return FormatBG, nil
+	}
 	raw, err := decompress(data)
 	if err != nil {
 		return FormatUnknown, err
@@ -61,6 +69,10 @@ func Detect(data []byte) (Format, error) {
 	// file has no size/palette/Regions roots, but be explicit anyway).
 	case has(p.SableVersion) && has(p.SableSubLevels):
 		return FormatSable, nil
+	// Structurize blueprint: size_x + palette (+ byte version, but the
+	// size_x short is the distinctive root tag)
+	case has(p.BpSizeX) && has(p.Palette):
+		return FormatBlueprint, nil
 	case has(p.Size) && (has(p.Palette) || has(p.Blocks)):
 		return FormatStructure, nil
 	case has(p.Regions) && has(p.MinecraftDataVersion):
@@ -87,6 +99,10 @@ func Read(data []byte, f Format) (*Schematic, error) {
 		return ReadLegacy(data)
 	case FormatSable:
 		return ReadSable(data)
+	case FormatBlueprint:
+		return ReadBlueprint(data)
+	case FormatBG:
+		return ReadBuildingGadgets(data)
 	default:
 		return nil, fmt.Errorf("schematic: unknown format %q", f)
 	}
@@ -103,6 +119,11 @@ func Write(s *Schematic, f Format) ([]byte, error) {
 		return WriteLitematic(s)
 	case FormatLegacy:
 		out, _, err := WriteLegacy(s)
+		return out, err
+	case FormatBlueprint:
+		return WriteBlueprint(s)
+	case FormatBG:
+		out, _, err := WriteBuildingGadgets(s)
 		return out, err
 	case FormatSable:
 		return nil, fmt.Errorf("schematic: writing Sable blueprints is not supported while the format is experimental")
@@ -139,6 +160,13 @@ func Convert(data []byte, target Format) (*ConvertResult, error) {
 	res := &ConvertResult{From: from, To: target}
 	if target == FormatLegacy {
 		out, warnings, err := WriteLegacy(s)
+		if err != nil {
+			return nil, err
+		}
+		res.Data = out
+		res.Warnings = append(res.Warnings, warnings...)
+	} else if target == FormatBG {
+		out, warnings, err := WriteBuildingGadgets(s)
 		if err != nil {
 			return nil, err
 		}

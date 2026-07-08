@@ -30,6 +30,8 @@ var convertFormats = []struct {
 	{schematic.FormatSponge, "schem", "WorldEdit / Sponge (.schem)", ".schem"},
 	{schematic.FormatLitematic, "litematic", "Litematica (.litematic)", ".litematic"},
 	{schematic.FormatLegacy, "schematic", "Legacy MCEdit (.schematic)", ".schematic"},
+	{schematic.FormatBlueprint, "blueprint", "MineColonies / Structurize (.blueprint)", ".blueprint"},
+	{schematic.FormatBG, "bg", "Building Gadgets template (.json)", ".json"},
 }
 
 func convertFormatBySlug(slug string) (schematic.Format, string, bool) {

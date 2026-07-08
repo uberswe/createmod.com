@@ -102,8 +102,11 @@ func serveConvertedSchematic(e *server.RequestEvent, storageSvc *storage.Service
 // cachedFormatWarnings mirrors the deterministic warnings Convert would
 // produce for a cache hit, where the source is a known-good Create .nbt.
 func cachedFormatWarnings(target schematic.Format) []schematic.Warning {
-	if target == schematic.FormatLegacy {
+	switch target {
+	case schematic.FormatLegacy:
 		return []schematic.Warning{{Message: "legacy .schematic export collapses modern blockstates to pre-1.13 id:meta pairs"}}
+	case schematic.FormatBG:
+		return []schematic.Warning{{Message: "Building Gadgets templates cannot carry block entity data (chest contents, Create kinetics)"}}
 	}
 	return nil
 }
@@ -152,6 +155,13 @@ func schematicDownloadSplit(name, lang string) DownloadSplitData {
 				Href:       get("schematic"),
 				Lossy:      true,
 				LossyTitle: i18n.T(lang, "Lossy: modern blocks without a pre-1.13 equivalent become air"),
+			},
+			{Label: "MineColonies .blueprint", Href: get("blueprint")},
+			{
+				Label:      "Building Gadgets .json",
+				Href:       get("bg"),
+				Lossy:      true,
+				LossyTitle: i18n.T(lang, "Lossy: Building Gadgets templates cannot carry block entity data (chest contents, Create kinetics)"),
 			},
 		},
 	}

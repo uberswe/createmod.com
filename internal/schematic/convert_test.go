@@ -107,7 +107,7 @@ func Test_Convert_UnsupportedTargets(t *testing.T) {
 func FuzzDetectAndRead(f *testing.F) {
 	t := &testing.T{}
 	src, _ := ReadStructureNBT(handmadeFixture(t))
-	for _, format := range []Format{FormatStructure, FormatSponge, FormatLitematic, FormatLegacy} {
+	for _, format := range []Format{FormatStructure, FormatSponge, FormatLitematic, FormatLegacy, FormatBlueprint, FormatBG} {
 		if data, err := Write(src, format); err == nil {
 			f.Add(data)
 		}
