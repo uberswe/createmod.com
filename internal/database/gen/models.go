@@ -496,6 +496,13 @@ type SchematicFile struct {
 	Description  string    `json:"description"`
 }
 
+type SchematicFingerprint struct {
+	SchematicID string          `json:"schematic_id"`
+	Fp          json.RawMessage `json:"fp"`
+	Version     int32           `json:"version"`
+	ComputedAt  time.Time       `json:"computed_at"`
+}
+
 type SchematicRating struct {
 	ID          string             `json:"id"`
 	UserID      string             `json:"user_id"`

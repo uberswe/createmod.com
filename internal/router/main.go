@@ -17,6 +17,7 @@ import (
 	"createmod/internal/search"
 	"createmod/internal/server"
 	"createmod/internal/session"
+	"createmod/internal/similarity"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
@@ -88,6 +89,7 @@ func computeAssetVersion() string {
 
 // RegisterParams holds all dependencies needed for route registration.
 type RegisterParams struct {
+	SimilarityService  *similarity.Service
 	SearchService      *search.Service
 	SearchEngine       search.SearchEngine
 	CacheService       *cache.Service
@@ -425,6 +427,7 @@ func Register(p RegisterParams) chi.Router {
 	if p.JobWorker != nil {
 		jw := p.JobWorker
 		enqueueSafetyScan = func(ctx context.Context, schematicID string) error {
+			_ = jw.Insert(ctx, jobs.FingerprintArgs{SchematicID: schematicID}, nil)
 			return jw.Insert(ctx, jobs.SafetyScanArgs{SchematicID: schematicID}, nil)
 		}
 	}
@@ -723,6 +726,11 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
 	})
+	// Similarity search
+	r.Get("/schematics/{name}/similar", Adapt(pages.SimilarSchematicsHandler(registry, p.CacheService, p.AppStore, p.SimilarityService)))
+	r.Get("/tools/similar", Adapt(pages.SimilarToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/similar", Adapt(pages.SimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
+	r.Get("/api/schematics/{name}/similar", Adapt(pages.GetSimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
 	// Safety explainer + checker
 	r.Get("/safety", Adapt(pages.SafetyExplainerHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/tools/safety-check", Adapt(pages.SafetyCheckToolHandler(registry, p.CacheService, p.AppStore)))

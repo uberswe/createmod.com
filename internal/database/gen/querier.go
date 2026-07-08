@@ -124,6 +124,7 @@ type Querier interface {
 	DeleteReportsByTarget(ctx context.Context, arg DeleteReportsByTargetParams) (int64, error)
 	DeleteSchematicFile(ctx context.Context, id string) error
 	DeleteSchematicFilesBySchematicID(ctx context.Context, schematicID string) error
+	DeleteSchematicFingerprint(ctx context.Context, schematicID string) error
 	DeleteSchematicReference(ctx context.Context, arg DeleteSchematicReferenceParams) error
 	DeleteSchematicSafety(ctx context.Context, schematicID string) error
 	DeleteSchematicVariation(ctx context.Context, id string) error
@@ -201,6 +202,7 @@ type Querier interface {
 	GetSchematicCategoryIDs(ctx context.Context, schematicID string) ([]string, error)
 	GetSchematicDownloadCount(ctx context.Context, schematicID string) (int32, error)
 	GetSchematicFileByID(ctx context.Context, id string) (GetSchematicFileByIDRow, error)
+	GetSchematicFingerprint(ctx context.Context, schematicID string) (SchematicFingerprint, error)
 	GetSchematicModpacks(ctx context.Context, schematicID string) ([]Modpack, error)
 	GetSchematicRating(ctx context.Context, schematicID string) (GetSchematicRatingRow, error)
 	GetSchematicSafety(ctx context.Context, schematicID string) (SchematicSafety, error)
@@ -266,6 +268,7 @@ type Querier interface {
 	ListAllAPIKeysWithUsage(ctx context.Context) ([]ListAllAPIKeysWithUsageRow, error)
 	ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Schematic, error)
 	ListAllCategories(ctx context.Context) ([]SchematicCategory, error)
+	ListAllFingerprints(ctx context.Context, version int32) ([]ListAllFingerprintsRow, error)
 	ListAllTags(ctx context.Context) ([]SchematicTag, error)
 	ListAllTempUploads(ctx context.Context, arg ListAllTempUploadsParams) ([]ListAllTempUploadsRow, error)
 	ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]ListApprovedSchematicIDsAndCreatedRow, error)
@@ -341,6 +344,7 @@ type Querier interface {
 	ListSchematicsByNamePattern(ctx context.Context, arg ListSchematicsByNamePatternParams) ([]Schematic, error)
 	ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error)
 	ListSchematicsForSitemap(ctx context.Context) ([]ListSchematicsForSitemapRow, error)
+	ListSchematicsNeedingFingerprint(ctx context.Context, arg ListSchematicsNeedingFingerprintParams) ([]string, error)
 	ListSchematicsNeedingSafetyScan(ctx context.Context, arg ListSchematicsNeedingSafetyScanParams) ([]string, error)
 	ListSchematicsWithoutTranslation(ctx context.Context, arg ListSchematicsWithoutTranslationParams) ([]ListSchematicsWithoutTranslationRow, error)
 	ListSearchAlertsByUser(ctx context.Context, userID string) ([]SearchAlert, error)
@@ -465,6 +469,7 @@ type Querier interface {
 	UpsertModMetadata(ctx context.Context, arg UpsertModMetadataParams) (ModMetadatum, error)
 	UpsertModpack(ctx context.Context, arg UpsertModpackParams) (Modpack, error)
 	UpsertNotificationPreference(ctx context.Context, arg UpsertNotificationPreferenceParams) (NotificationPreference, error)
+	UpsertSchematicFingerprint(ctx context.Context, arg UpsertSchematicFingerprintParams) error
 	UpsertSchematicRating(ctx context.Context, arg UpsertSchematicRatingParams) error
 	UpsertSchematicSafety(ctx context.Context, arg UpsertSchematicSafetyParams) error
 	UpsertSchematicTranslation(ctx context.Context, arg UpsertSchematicTranslationParams) (SchematicTranslation, error)

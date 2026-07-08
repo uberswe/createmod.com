@@ -1183,6 +1183,23 @@ type SchematicSafety struct {
 	ScannedAt       time.Time
 }
 
+// SchematicFingerprint is one schematic's stored similarity fingerprint.
+type SchematicFingerprint struct {
+	SchematicID string
+	FP          []byte // JSON schematic.Fingerprint
+	Version     int
+	ComputedAt  time.Time
+}
+
+// SchematicFingerprintStore persists similarity fingerprints.
+type SchematicFingerprintStore interface {
+	Upsert(ctx context.Context, f *SchematicFingerprint) error
+	GetBySchematicID(ctx context.Context, schematicID string) (*SchematicFingerprint, error)
+	ListNeedingCompute(ctx context.Context, version int, limit int) ([]string, error)
+	ListAll(ctx context.Context, version int) ([]SchematicFingerprint, error)
+	Delete(ctx context.Context, schematicID string) error
+}
+
 // SchematicSafetyStore persists content-safety scan results.
 type SchematicSafetyStore interface {
 	Upsert(ctx context.Context, s *SchematicSafety) error
@@ -1578,6 +1595,7 @@ type Store struct {
 	TempUploadImages    TempUploadImageStore
 	NBTHashes           NBTHashStore
 	SchematicSafety     SchematicSafetyStore
+	Fingerprints        SchematicFingerprintStore
 	DownloadTokens      DownloadTokenStore
 	SchematicFiles      SchematicFileStore
 	Webhooks            WebhookStore

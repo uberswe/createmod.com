@@ -3947,6 +3947,64 @@ func (ss *StatsStoreImpl) DailySchematicUploads(ctx context.Context, since time.
 // NBTHashStoreImpl
 // --------------------------------------------------------------------------
 
+// SchematicFingerprintStoreImpl implements store.SchematicFingerprintStore.
+type SchematicFingerprintStoreImpl struct {
+	q *db.Queries
+}
+
+var _ store.SchematicFingerprintStore = (*SchematicFingerprintStoreImpl)(nil)
+
+func (s *SchematicFingerprintStoreImpl) Upsert(ctx context.Context, v *store.SchematicFingerprint) error {
+	fp := v.FP
+	if len(fp) == 0 {
+		fp = []byte("{}")
+	}
+	return s.q.UpsertSchematicFingerprint(ctx, db.UpsertSchematicFingerprintParams{
+		SchematicID: v.SchematicID,
+		Fp:          fp,
+		Version:     int32(v.Version),
+	})
+}
+
+func (s *SchematicFingerprintStoreImpl) GetBySchematicID(ctx context.Context, schematicID string) (*store.SchematicFingerprint, error) {
+	row, err := s.q.GetSchematicFingerprint(ctx, schematicID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &store.SchematicFingerprint{
+		SchematicID: row.SchematicID,
+		FP:          row.Fp,
+		Version:     int(row.Version),
+		ComputedAt:  row.ComputedAt,
+	}, nil
+}
+
+func (s *SchematicFingerprintStoreImpl) ListNeedingCompute(ctx context.Context, version int, limit int) ([]string, error) {
+	return s.q.ListSchematicsNeedingFingerprint(ctx, db.ListSchematicsNeedingFingerprintParams{
+		Version: int32(version),
+		Limit:   int32(limit),
+	})
+}
+
+func (s *SchematicFingerprintStoreImpl) ListAll(ctx context.Context, version int) ([]store.SchematicFingerprint, error) {
+	rows, err := s.q.ListAllFingerprints(ctx, int32(version))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.SchematicFingerprint, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, store.SchematicFingerprint{SchematicID: r.SchematicID, FP: r.Fp, Version: version})
+	}
+	return out, nil
+}
+
+func (s *SchematicFingerprintStoreImpl) Delete(ctx context.Context, schematicID string) error {
+	return s.q.DeleteSchematicFingerprint(ctx, schematicID)
+}
+
 // SchematicSafetyStoreImpl implements store.SchematicSafetyStore.
 type SchematicSafetyStoreImpl struct {
 	q *db.Queries
@@ -4074,6 +4132,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		TempUploadImages:    &TempUploadImageStoreImpl{q: q},
 		NBTHashes:           &NBTHashStoreImpl{q: q},
 		SchematicSafety:     &SchematicSafetyStoreImpl{q: q},
+		Fingerprints:        &SchematicFingerprintStoreImpl{q: q},
 		DownloadTokens:      &DownloadTokenStoreImpl{q: q},
 		SchematicFiles:      &SchematicFileStoreImpl{q: q},
 		Webhooks:            &WebhookStoreImpl{q: q},

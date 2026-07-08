@@ -96,6 +96,22 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card">
+                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                    </span>
+                                    <div>
+                                        <h3 class="card-title mb-0">{{ T .Language "Find Similar" }}</h3>
+                                    </div>
+                                </div>
+                                <p class="text-secondary">{{ T .Language "Search the library by structure: upload a schematic and find builds like it, scored by shape, materials and Create components." }}</p>
+                                <a href="/tools/similar" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open Similarity Search" }}</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                     </div>
                     <!-- Ad Rail (desktop only): video ad above two stacked 300x600 sticky ads -->

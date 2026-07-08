@@ -409,6 +409,10 @@
                                         <span class="badge bg-red-lt" title="{{ if .Safety.ParseError }}{{ .Safety.ParseError }}{{ else }}{{ T .Language "The file failed validation" }}{{ end }}">{{ T .Language "File failed validation" }}</span>
                                         {{ end }}
                                         {{ end }}
+                                        <a href="/schematics/{{ .Schematic.Name }}/similar" class="btn btn-outline-secondary">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                            {{ T .Language "Find Similar" }}
+                                        </a>
                                         <a href="#" class="btn btn-outline-secondary" onclick="copyLink(event)" data-link="https://createmod.com/schematics/{{ .Schematic.Name }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>
                                             {{ T .Language "Copy Link" }}
