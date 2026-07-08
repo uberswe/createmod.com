@@ -89,6 +89,7 @@ func (s *Service) GenerateHreflang(appStore *store.Store) []string {
 		"/safety",
 		"/tools/safety-check",
 		"/tools/similar",
+		"/tools/nbt-viewer",
 	}
 
 	// Build all bare paths (without language prefix)

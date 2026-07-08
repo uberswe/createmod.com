@@ -726,6 +726,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
 	})
+	// NBT viewer
+	r.Get("/tools/nbt-viewer", Adapt(pages.NBTViewerToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Get("/api/schematics/{name}/nbt-tree", Adapt(pages.SchematicNBTTreeHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/nbt-tree", Adapt(pages.NBTTreeUploadHandler()))
 	// Similarity search
 	r.Get("/schematics/{name}/similar", Adapt(pages.SimilarSchematicsHandler(registry, p.CacheService, p.AppStore, p.SimilarityService)))
 	r.Get("/tools/similar", Adapt(pages.SimilarToolHandler(registry, p.CacheService, p.AppStore)))

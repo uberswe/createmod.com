@@ -92,6 +92,7 @@ func (s *Service) Generate(appStore *store.Store) {
 	addPage(now, smPages, "/safety", 0.8, smg.Weekly)
 	addPage(now, smPages, "/tools/safety-check", 0.7, smg.Weekly)
 	addPage(now, smPages, "/tools/similar", 0.7, smg.Weekly)
+	addPage(now, smPages, "/tools/nbt-viewer", 0.7, smg.Weekly)
 	for _, pair := range pages.ConvertPairs() {
 		addPage(now, smPages, fmt.Sprintf("/tools/convert/%s-to-%s", pair.FromSlug, pair.ToSlug), 0.7, smg.Weekly)
 	}
