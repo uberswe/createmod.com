@@ -80,7 +80,7 @@ jobs:
           build-args: |
             BUILD_VERSION=${{ github.sha }}
           cache-from: type=gha,scope=createmod
-          cache-to: type=gha,mode=max,scope=createmod
+          cache-to: type=gha,mode=max,scope=createmod,ignore-error=true
           platforms: linux/amd64
 
       - name: Build and start app
@@ -190,7 +190,7 @@ jobs:
           build-args: |
             BUILD_VERSION=${{ github.sha }}
           cache-from: ${{ github.event.inputs.no-cache == 'true' && '' || 'type=gha,scope=createmod' }}
-          cache-to: type=gha,mode=max,scope=createmod
+          cache-to: type=gha,mode=max,scope=createmod,ignore-error=true
           no-cache: ${{ github.event.inputs.no-cache == 'true' }}
           platforms: linux/amd64
 
