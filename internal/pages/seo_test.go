@@ -80,6 +80,28 @@ func Test_SchematicJSONLD(t *testing.T) {
 		t.Errorf("unrated JSON-LD should still be a MediaObject with author, got %s", out)
 	}
 
+	// Out-of-range averages (legacy 0-star rows made sub-1.0 averages
+	// possible) must never emit a rating: Google requires
+	// worstRating <= ratingValue <= bestRating (Search Console
+	// "Rating value is out of range").
+	for _, bad := range []string{"0.5", "0.0", "5.1", "12.0", "not-a-number"} {
+		d.Schematic.HasRating = true
+		d.Schematic.RatingCount = 3
+		d.Schematic.Rating = bad
+		out = string(d.SchematicJSONLD())
+		if strings.Contains(out, "aggregateRating") {
+			t.Errorf("rating %q must not emit aggregateRating", bad)
+		}
+	}
+	// Boundary values are valid
+	for _, good := range []string{"1.0", "5.0"} {
+		d.Schematic.Rating = good
+		out = string(d.SchematicJSONLD())
+		if !strings.Contains(out, "aggregateRating") {
+			t.Errorf("rating %q should emit aggregateRating", good)
+		}
+	}
+
 	// French pages self-reference the prefixed URL
 	d.Language = "fr"
 	out = string(d.SchematicJSONLD())

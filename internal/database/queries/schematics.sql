@@ -206,7 +206,7 @@ UPDATE schematics SET avg_rating = $2, rating_count = $3 WHERE id = $1;
 UPDATE schematics SET
   avg_rating = COALESCE(sub.avg_r, 0),
   rating_count = COALESCE(sub.cnt, 0)
-FROM (SELECT AVG(rating)::REAL AS avg_r, COUNT(*)::INTEGER AS cnt FROM schematic_ratings WHERE schematic_id = $1) sub
+FROM (SELECT AVG(rating)::REAL AS avg_r, COUNT(*)::INTEGER AS cnt FROM schematic_ratings WHERE schematic_id = $1 AND deleted IS NULL AND rating BETWEEN 1 AND 5) sub
 WHERE schematics.id = $1;
 
 -- name: ListSchematicsForSitemap :many
