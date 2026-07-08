@@ -183,6 +183,12 @@ func loadEditorSession(e *server.RequestEvent, appStore *store.Store) (*store.Ed
 	if err != nil || sess == nil {
 		return nil, fmt.Errorf("session not found")
 	}
+	// Sessions created by a logged-in user belong to that user. Anonymous
+	// sessions are capability-by-UUID (122-bit random id), the same model
+	// as temp upload tokens and modify previews.
+	if sess.UserID != "" && sess.UserID != authenticatedUserID(e) {
+		return nil, fmt.Errorf("session not found")
+	}
 	return sess, nil
 }
 
@@ -285,6 +291,10 @@ func EditorPreviewNBTHandler(appStore *store.Store, storageSvc *storage.Service)
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to serialize")
 		}
+		// CORS-open like modify previews: external viewers (Bloxelizer)
+		// fetch this URL. The unguessable session id is the access control;
+		// Referrer-Policy strict-origin-when-cross-origin keeps it out of
+		// cross-origin referers.
 		e.Response.Header().Set("Access-Control-Allow-Origin", "*")
 		e.Response.Header().Set("Content-Disposition", "attachment; filename=\"edited.nbt\"")
 		return e.Blob(http.StatusOK, "application/octet-stream", data)
