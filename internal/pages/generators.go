@@ -270,6 +270,9 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 		// Alternate output formats via the normalized schematic library.
 		// Generation is deterministic and fast, so conversion happens inline
 		// (an S3 round trip would cost more than regenerating).
+		if e.Request.URL.Query().Get("format") == "world" {
+			return serveGeneratorWorld(e, data, filename)
+		}
 		if format := e.Request.URL.Query().Get("format"); format != "" && format != "nbt" {
 			target, ext, ok := convertFormatBySlug(format)
 			if !ok {

@@ -133,7 +133,7 @@ type DownloadSplitData struct {
 // schematicDownloadSplit builds the split-button model for a library
 // schematic: primary = the existing interstitial .nbt flow, menu = the other
 // formats through the same interstitial with a format parameter.
-func schematicDownloadSplit(name, lang string) DownloadSplitData {
+func schematicDownloadSplit(name, lang string, dims [3]int) DownloadSplitData {
 	get := func(format string) string {
 		if format == "" {
 			return "/get/" + name
@@ -163,6 +163,23 @@ func schematicDownloadSplit(name, lang string) DownloadSplitData {
 				Lossy:      true,
 				LossyTitle: i18n.T(lang, "Lossy: Building Gadgets templates cannot carry block entity data (chest contents, Create kinetics)"),
 			},
+			worldDownloadItem(name, lang, dims),
 		},
 	}
+}
+
+// worldDownloadItem builds the ready-to-play-world menu entry, disabled with
+// the reason when the build exceeds the export guards.
+func worldDownloadItem(name, lang string, dims [3]int) DownloadSplitItem {
+	item := DownloadSplitItem{
+		Label: i18n.T(lang, "Ready-to-play world (.zip)"),
+		Href:  "/get/" + name + "?format=world",
+		Note:  i18n.T(lang, "superflat"),
+	}
+	if ok, reason := schematic.CanExportWorld(dims); !ok {
+		item.Disabled = true
+		item.DisabledReason = i18n.T(lang, "too large: ") + reason
+		item.Href = ""
+	}
+	return item
 }

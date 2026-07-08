@@ -97,6 +97,9 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 		// Alternate format download (converted from the primary .nbt via the
 		// normalized schematic library, cached in S3)
 		if format := e.Request.URL.Query().Get("format"); format != "" && format != "nbt" {
+			if format == "world" {
+				return serveWorldExport(e, rl, storageSvc, s)
+			}
 			return serveConvertedSchematic(e, storageSvc, s, format)
 		}
 

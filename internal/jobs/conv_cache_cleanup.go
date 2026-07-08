@@ -30,15 +30,17 @@ func (w *ConvCacheCleanupWorker) Work(ctx context.Context, job *river.Job[ConvCa
 	}
 	cutoff := time.Now().Add(-convCacheTTL)
 	var stale []string
-	err := w.deps.Storage.ListRaw(ctx, "_conv/", func(key string, lastModified time.Time, _ int64) bool {
-		if lastModified.Before(cutoff) && strings.HasPrefix(key, "_conv/") {
-			stale = append(stale, key)
+	for _, prefix := range []string{"_conv/", "_worlds/"} {
+		err := w.deps.Storage.ListRaw(ctx, prefix, func(key string, lastModified time.Time, _ int64) bool {
+			if lastModified.Before(cutoff) && strings.HasPrefix(key, prefix) {
+				stale = append(stale, key)
+			}
+			return len(stale) < 5000 // bound one run's work
+		})
+		if err != nil {
+			slog.Warn("conv cache cleanup: list failed", "prefix", prefix, "error", err)
+			return err
 		}
-		return len(stale) < 5000 // bound one run's work
-	})
-	if err != nil {
-		slog.Warn("conv cache cleanup: list failed", "error", err)
-		return err
 	}
 	deleted := 0
 	for _, key := range stale {

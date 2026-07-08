@@ -56,7 +56,7 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 		d.Name = name
 		d.FileID = fileID
 		if format := e.Request.URL.Query().Get("format"); format != "" && format != "nbt" {
-			if _, _, ok := convertFormatBySlug(format); ok {
+			if isDownloadFormatSlug(format) {
 				d.Format = format
 			}
 		}
@@ -99,7 +99,7 @@ func DownloadURLHandler(appStore *store.Store) func(e *server.RequestEvent) erro
 			dlURL += "&f=" + url.QueryEscape(f)
 		}
 		if format := e.Request.URL.Query().Get("fmt"); format != "" {
-			if _, _, ok := convertFormatBySlug(format); ok {
+			if isDownloadFormatSlug(format) {
 				dlURL += "&format=" + url.QueryEscape(format)
 			}
 		}

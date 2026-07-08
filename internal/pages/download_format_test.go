@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"archive/zip"
 	"bytes"
 	"net/http"
 	"net/http/httptest"
@@ -85,11 +86,11 @@ func Test_GeneratorDownload_FormatParam(t *testing.T) {
 }
 
 func Test_SchematicDownloadSplit_Model(t *testing.T) {
-	d := schematicDownloadSplit("my-build", "en")
+	d := schematicDownloadSplit("my-build", "en", [3]int{24, 8, 5})
 	if d.Primary.Href != "/get/my-build" {
 		t.Errorf("primary href = %s", d.Primary.Href)
 	}
-	if len(d.Items) != 6 {
+	if len(d.Items) != 7 {
 		t.Fatalf("items = %d", len(d.Items))
 	}
 	wantHrefs := map[string]bool{
@@ -99,6 +100,7 @@ func Test_SchematicDownloadSplit_Model(t *testing.T) {
 		"/get/my-build?format=schematic": true,
 		"/get/my-build?format=blueprint": true,
 		"/get/my-build?format=bg":        true,
+		"/get/my-build?format=world":     true,
 	}
 	lossyCount := 0
 	for _, it := range d.Items {
@@ -111,6 +113,18 @@ func Test_SchematicDownloadSplit_Model(t *testing.T) {
 	}
 	if lossyCount != 2 {
 		t.Errorf("lossy items = %d, want 2 (legacy + building gadgets)", lossyCount)
+	}
+
+	// Oversized build: world entry disabled with a reason, others untouched
+	big := schematicDownloadSplit("big-build", "en", [3]int{5000, 100, 5000})
+	var worldItem *DownloadSplitItem
+	for i := range big.Items {
+		if strings.Contains(big.Items[i].Label, "world") {
+			worldItem = &big.Items[i]
+		}
+	}
+	if worldItem == nil || !worldItem.Disabled || worldItem.DisabledReason == "" {
+		t.Errorf("oversized world item: %+v", worldItem)
 	}
 }
 
@@ -223,5 +237,39 @@ func Test_NormalizeUploadToNBT(t *testing.T) {
 		if isUploadableSchematicName(bad) {
 			t.Errorf("%s accepted", bad)
 		}
+	}
+}
+
+func Test_GeneratorDownload_WorldFormat(t *testing.T) {
+	body := `{"blades":3,"length":8,"rootChord":3,"tipChord":1,"airfoilShape":"linear","bladeMaterial":"wool","bladeColor":"white"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/generators/propeller/download?format=world", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	if err := GeneratorDownloadHandler("propeller")(&server.RequestEvent{Response: rec, Request: req}); err != nil {
+		t.Fatal(err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/zip" {
+		t.Errorf("content type = %s", ct)
+	}
+	if !strings.Contains(rec.Header().Get("Content-Disposition"), "_world.zip") {
+		t.Errorf("disposition = %q", rec.Header().Get("Content-Disposition"))
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("not a zip: %v", err)
+	}
+	var hasLevel, hasRegion bool
+	for _, f := range zr.File {
+		if strings.HasSuffix(f.Name, "/level.dat") {
+			hasLevel = true
+		}
+		if strings.Contains(f.Name, "/region/r.") {
+			hasRegion = true
+		}
+	}
+	if !hasLevel || !hasRegion {
+		t.Errorf("zip contents: level=%v region=%v", hasLevel, hasRegion)
 	}
 }
