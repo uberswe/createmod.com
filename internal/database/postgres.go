@@ -3947,6 +3947,63 @@ func (ss *StatsStoreImpl) DailySchematicUploads(ctx context.Context, since time.
 // NBTHashStoreImpl
 // --------------------------------------------------------------------------
 
+// EditorSessionStoreImpl implements store.EditorSessionStore.
+type EditorSessionStoreImpl struct {
+	q *db.Queries
+}
+
+var _ store.EditorSessionStore = (*EditorSessionStoreImpl)(nil)
+
+func (s *EditorSessionStoreImpl) Create(ctx context.Context, userID, sourceKind, sourceRef string) (string, error) {
+	var uid *string
+	if userID != "" {
+		uid = &userID
+	}
+	return s.q.CreateEditorSession(ctx, db.CreateEditorSessionParams{
+		UserID:     uid,
+		SourceKind: sourceKind,
+		SourceRef:  sourceRef,
+	})
+}
+
+func (s *EditorSessionStoreImpl) GetByID(ctx context.Context, id string) (*store.EditorSession, error) {
+	row, err := s.q.GetEditorSession(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	out := &store.EditorSession{
+		ID:         row.ID,
+		SourceKind: row.SourceKind,
+		SourceRef:  row.SourceRef,
+		Ops:        row.Ops,
+		Cursor:     int(row.Cursor),
+		Created:    row.Created,
+		Updated:    row.Updated,
+	}
+	if row.UserID != nil {
+		out.UserID = *row.UserID
+	}
+	return out, nil
+}
+
+func (s *EditorSessionStoreImpl) UpdateOps(ctx context.Context, id string, ops []byte, cursor int) error {
+	if len(ops) == 0 {
+		ops = []byte("[]")
+	}
+	return s.q.UpdateEditorSessionOps(ctx, db.UpdateEditorSessionOpsParams{
+		ID:     id,
+		Ops:    ops,
+		Cursor: int32(cursor),
+	})
+}
+
+func (s *EditorSessionStoreImpl) DeleteExpired(ctx context.Context, before time.Time) (int64, error) {
+	return s.q.DeleteExpiredEditorSessions(ctx, before)
+}
+
 // SchematicFingerprintStoreImpl implements store.SchematicFingerprintStore.
 type SchematicFingerprintStoreImpl struct {
 	q *db.Queries
@@ -4133,6 +4190,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		NBTHashes:           &NBTHashStoreImpl{q: q},
 		SchematicSafety:     &SchematicSafetyStoreImpl{q: q},
 		Fingerprints:        &SchematicFingerprintStoreImpl{q: q},
+		EditorSessions:      &EditorSessionStoreImpl{q: q},
 		DownloadTokens:      &DownloadTokenStoreImpl{q: q},
 		SchematicFiles:      &SchematicFileStoreImpl{q: q},
 		Webhooks:            &WebhookStoreImpl{q: q},

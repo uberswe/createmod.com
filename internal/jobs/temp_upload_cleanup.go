@@ -29,6 +29,13 @@ func (w *TempUploadCleanupWorker) Work(ctx context.Context, job *river.Job[TempU
 	}
 
 	cutoff := time.Now().Add(-30 * 24 * time.Hour)
+
+	// Editor sessions expire on the same schedule as temp uploads (their
+	// op logs are worthless once the source temp upload is gone).
+	if n, err := w.deps.Store.EditorSessions.DeleteExpired(ctx, cutoff); err == nil && n > 0 {
+		slog.Info("editor session cleanup", "deleted", n)
+	}
+
 	var totalDeleted int64
 
 	for {

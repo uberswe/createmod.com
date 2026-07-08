@@ -68,6 +68,7 @@ type Querier interface {
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreateContactFormSubmission(ctx context.Context, arg CreateContactFormSubmissionParams) (ContactFormSubmission, error)
 	CreateDownloadToken(ctx context.Context, arg CreateDownloadTokenParams) (DownloadToken, error)
+	CreateEditorSession(ctx context.Context, arg CreateEditorSessionParams) (string, error)
 	CreateExternalAuth(ctx context.Context, arg CreateExternalAuthParams) (ExternalAuth, error)
 	CreateFollow(ctx context.Context, arg CreateFollowParams) error
 	CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error)
@@ -108,6 +109,7 @@ type Querier interface {
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) error
 	DeleteCategoryByID(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
+	DeleteExpiredEditorSessions(ctx context.Context, updated time.Time) (int64, error)
 	DeleteExpiredTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteExpiredUnclaimedTempUploads(ctx context.Context, created time.Time) (int64, error)
 	DeleteExternalAuth(ctx context.Context, arg DeleteExternalAuthParams) error
@@ -170,6 +172,7 @@ type Querier interface {
 	GetCreatemodVersionByID(ctx context.Context, id string) (GetCreatemodVersionByIDRow, error)
 	GetDisplayedBadges(ctx context.Context, userID string) ([]GetDisplayedBadgesRow, error)
 	GetDownloadTokenByID(ctx context.Context, id string) (DownloadToken, error)
+	GetEditorSession(ctx context.Context, id string) (EditorSession, error)
 	GetExternalAuth(ctx context.Context, arg GetExternalAuthParams) (ExternalAuth, error)
 	GetExternalAuthByUserAndProvider(ctx context.Context, arg GetExternalAuthByUserAndProviderParams) (ExternalAuth, error)
 	GetFollow(ctx context.Context, arg GetFollowParams) (UserFollow, error)
@@ -432,6 +435,7 @@ type Querier interface {
 	UpdateAPIKeyRateLimit(ctx context.Context, arg UpdateAPIKeyRateLimitParams) error
 	UpdateCollection(ctx context.Context, arg UpdateCollectionParams) (Collection, error)
 	UpdateCollectionCollageURL(ctx context.Context, arg UpdateCollectionCollageURLParams) error
+	UpdateEditorSessionOps(ctx context.Context, arg UpdateEditorSessionOpsParams) error
 	UpdateFollowFrequency(ctx context.Context, arg UpdateFollowFrequencyParams) error
 	UpdateFollowLastNotified(ctx context.Context, id string) error
 	UpdateFollowerCountDecrement(ctx context.Context, id string) error

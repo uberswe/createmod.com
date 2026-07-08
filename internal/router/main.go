@@ -726,6 +726,15 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
 	})
+	// Schematic editor
+	r.Get("/tools/editor", Adapt(pages.EditorPageHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/editor/sessions", Adapt(pages.EditorCreateSessionHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}", Adapt(pages.EditorStateHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/op", Adapt(pages.EditorOpHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/undo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, false)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/redo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, true)))
+	r.Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
 	// NBT viewer
 	r.Get("/tools/nbt-viewer", Adapt(pages.NBTViewerToolHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Get("/api/schematics/{name}/nbt-tree", Adapt(pages.SchematicNBTTreeHandler(p.AppStore, p.StorageService)))

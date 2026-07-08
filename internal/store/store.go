@@ -1183,6 +1183,27 @@ type SchematicSafety struct {
 	ScannedAt       time.Time
 }
 
+// EditorSession is a server-authoritative schematic editing session: a
+// source reference plus an operation log with an undo cursor.
+type EditorSession struct {
+	ID         string
+	UserID     string
+	SourceKind string // "schematic", "upload" or "blank"
+	SourceRef  string
+	Ops        []byte // JSON []schematic.Op
+	Cursor     int
+	Created    time.Time
+	Updated    time.Time
+}
+
+// EditorSessionStore persists editor sessions.
+type EditorSessionStore interface {
+	Create(ctx context.Context, userID, sourceKind, sourceRef string) (string, error)
+	GetByID(ctx context.Context, id string) (*EditorSession, error)
+	UpdateOps(ctx context.Context, id string, ops []byte, cursor int) error
+	DeleteExpired(ctx context.Context, before time.Time) (int64, error)
+}
+
 // SchematicFingerprint is one schematic's stored similarity fingerprint.
 type SchematicFingerprint struct {
 	SchematicID string
@@ -1596,6 +1617,7 @@ type Store struct {
 	NBTHashes           NBTHashStore
 	SchematicSafety     SchematicSafetyStore
 	Fingerprints        SchematicFingerprintStore
+	EditorSessions      EditorSessionStore
 	DownloadTokens      DownloadTokenStore
 	SchematicFiles      SchematicFileStore
 	Webhooks            WebhookStore

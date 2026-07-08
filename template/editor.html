@@ -1,0 +1,302 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="page-header d-print-none">
+                    <h1 class="h2 page-title">{{ T .Language "Schematic Editor" }}</h1>
+                    <div class="text-secondary">{{ T .Language "Crop, expand, rotate, mirror, fill, hollow, replace and delete — with undo and a live 3D preview. Publish the result back to the library in one click." }}</div>
+                </div>
+
+                <!-- Start chooser -->
+                <div class="card mb-3" id="ed-start">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div id="ed-drop" class="text-center p-4 h-100" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
+                                    <div class="h3 mb-1">{{ T .Language "Edit a schematic file" }}</div>
+                                    <div class="text-secondary small">{{ T .Language "Drop it here or click — .nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json" }}</div>
+                                    <input type="file" id="ed-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-4" style="border: 1px solid var(--cm-card-border-color, rgba(255,255,255,0.08)); border-radius: 8px;">
+                                    <div class="h3 mb-2">{{ T .Language "Start from scratch" }}</div>
+                                    <div class="d-flex gap-2 align-items-center mb-2">
+                                        <input type="number" class="form-control form-control-sm" id="ed-blank-x" value="16" min="1" max="128" style="width:80px;"> ×
+                                        <input type="number" class="form-control form-control-sm" id="ed-blank-y" value="16" min="1" max="128" style="width:80px;"> ×
+                                        <input type="number" class="form-control form-control-sm" id="ed-blank-z" value="16" min="1" max="128" style="width:80px;">
+                                    </div>
+                                    <button class="btn btn-sm" id="ed-blank-btn" style="background: var(--cm-primary); color:#fff; border:none;">{{ T .Language "Create blank canvas" }}</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-secondary small mt-2" id="ed-start-status"></div>
+                    </div>
+                </div>
+
+                <!-- Editor -->
+                <div id="ed-main" style="display:none;">
+                    <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+                        <button class="btn btn-sm btn-outline-secondary" id="ed-undo">↶ {{ T .Language "Undo" }}</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="ed-redo">↷ {{ T .Language "Redo" }}</button>
+                        <span class="text-secondary small" id="ed-info"></span>
+                        <span class="ms-auto d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" id="ed-download" href="#" hx-boost="false">{{ T .Language "Download .nbt" }}</a>
+                            <a class="btn btn-sm btn-outline-secondary" id="ed-bloxelizer" href="#" target="_blank" rel="noopener">Bloxelizer 3D</a>
+                            <button class="btn btn-sm" id="ed-publish" style="background: var(--cm-primary); color:#fff; border:none;">{{ T .Language "Continue to publish" }}</button>
+                        </span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-lg-4 col-xl-3">
+                            <div class="card mb-3"><div class="card-body p-3" id="ed-ops">
+                                <div class="mb-3">
+                                    <label class="form-label mb-1">{{ T .Language "Region (two corners)" }}</label>
+                                    <div class="d-flex gap-1 mb-1">
+                                        <input type="number" class="form-control form-control-sm ed-reg" id="rx1" placeholder="x1" value="0">
+                                        <input type="number" class="form-control form-control-sm ed-reg" id="ry1" placeholder="y1" value="0">
+                                        <input type="number" class="form-control form-control-sm ed-reg" id="rz1" placeholder="z1" value="0">
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <input type="number" class="form-control form-control-sm ed-reg" id="rx2" placeholder="x2" value="0">
+                                        <input type="number" class="form-control form-control-sm ed-reg" id="ry2" placeholder="y2" value="0">
+                                        <input type="number" class="form-control form-control-sm ed-reg" id="rz2" placeholder="z2" value="0">
+                                    </div>
+                                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="crop">{{ T .Language "Crop to region" }}</button>
+                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="delete_region">{{ T .Language "Delete" }}</button>
+                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="hollow">{{ T .Language "Hollow" }}</button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label mb-1">{{ T .Language "Fill region with" }}</label>
+                                    <input type="text" class="form-control form-control-sm mb-1" id="ed-fill-block" placeholder="minecraft:stone" list="ed-palette-list">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="fill">{{ T .Language "Fill" }}</button>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label mb-1">{{ T .Language "Transform" }}</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="rotate">{{ T .Language "Rotate 90°" }}</button>
+                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-x">{{ T .Language "Mirror X" }}</button>
+                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-z">{{ T .Language "Mirror Z" }}</button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label mb-1">{{ T .Language "Expand (blocks per side)" }}</label>
+                                    <div class="d-flex gap-1 mb-1">
+                                        <input type="number" class="form-control form-control-sm" id="ed-grow-low-x" placeholder="-x" value="0" min="0">
+                                        <input type="number" class="form-control form-control-sm" id="ed-grow-low-y" placeholder="-y" value="0" min="0">
+                                        <input type="number" class="form-control form-control-sm" id="ed-grow-low-z" placeholder="-z" value="0" min="0">
+                                    </div>
+                                    <div class="d-flex gap-1 mb-1">
+                                        <input type="number" class="form-control form-control-sm" id="ed-grow-high-x" placeholder="+x" value="0" min="0">
+                                        <input type="number" class="form-control form-control-sm" id="ed-grow-high-y" placeholder="+y" value="0" min="0">
+                                        <input type="number" class="form-control form-control-sm" id="ed-grow-high-z" placeholder="+z" value="0" min="0">
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="expand">{{ T .Language "Expand" }}</button>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-1">{{ T .Language "Replace blocks" }}</label>
+                                    <input type="text" class="form-control form-control-sm mb-1" id="ed-replace-from" placeholder="{{ T .Language "from (e.g. minecraft:oak_planks)" }}" list="ed-palette-list">
+                                    <input type="text" class="form-control form-control-sm mb-1" id="ed-replace-to" placeholder="{{ T .Language "to (empty = remove)" }}">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="replace">{{ T .Language "Replace everywhere" }}</button>
+                                </div>
+                                <datalist id="ed-palette-list"></datalist>
+                                <div class="text-danger small" id="ed-error"></div>
+                            </div></div>
+                            <div class="card"><div class="card-body p-3">
+                                <div class="fw-bold mb-1">{{ T .Language "Materials" }}</div>
+                                <div id="ed-materials" class="small text-secondary" style="max-height: 240px; overflow-y: auto;"></div>
+                            </div></div>
+                        </div>
+                        <div class="col-lg-8 col-xl-9">
+                            <div class="card">
+                                <div id="editor-canvas" style="height: 620px; border-radius: 4px; overflow: hidden;"></div>
+                            </div>
+                            <div class="text-secondary small mt-1" id="ed-truncated"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
+<script src="/assets/x/generators.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}"></script>
+<script>
+(function () {
+  'use strict';
+  var sessionID = null;
+  var startEl = document.getElementById('ed-start');
+  var mainEl = document.getElementById('ed-main');
+  var startStatus = document.getElementById('ed-start-status');
+  var errEl = document.getElementById('ed-error');
+  var infoEl = document.getElementById('ed-info');
+  var sceneReady = false;
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.error || 'request failed');
+        return j;
+      });
+    });
+  }
+
+  function setError(msg) { errEl.textContent = msg || ''; }
+
+  function refreshPreview() {
+    api('/api/editor/' + sessionID + '/preview.json').then(function (p) {
+      if (!sceneReady) {
+        sceneReady = GeneratorApp.initScene('editor-canvas');
+      }
+      GeneratorApp.renderBlocks(p);
+      document.getElementById('ed-truncated').textContent = p.truncated
+        ? '{{ T .Language "Preview truncated for performance — the full build is intact in downloads." }}' : '';
+    }).catch(function (e) { setError(e.message); });
+  }
+
+  function applyState(st) {
+    infoEl.textContent = st.size[0] + '×' + st.size[1] + '×' + st.size[2] + ' · ' + st.blockCount.toLocaleString() + ' blocks · ' + st.cursor + '/' + st.ops.length + ' ops';
+    document.getElementById('ed-undo').disabled = st.cursor === 0;
+    document.getElementById('ed-redo').disabled = st.cursor >= st.ops.length;
+    var mats = document.getElementById('ed-materials');
+    mats.replaceChildren();
+    (st.materials || []).slice(0, 60).forEach(function (m) {
+      var row = document.createElement('div');
+      row.textContent = m.BlockID.replace('minecraft:', '') + ' × ' + m.Count.toLocaleString();
+      mats.appendChild(row);
+    });
+    var dl = document.getElementById('ed-palette-list');
+    dl.replaceChildren();
+    (st.palette || []).forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      dl.appendChild(opt);
+    });
+    document.getElementById('ed-download').href = '/api/editor/' + sessionID + '/preview.nbt';
+    document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(location.origin + '/api/editor/' + sessionID + '/preview.nbt');
+    setError('');
+    refreshPreview();
+  }
+
+  function openSession(id) {
+    sessionID = id;
+    var url = new URL(location.href);
+    url.searchParams.set('session', id);
+    url.searchParams.delete('source');
+    history.replaceState(null, '', url);
+    api('/api/editor/' + id).then(function (st) {
+      startEl.style.display = 'none';
+      mainEl.style.display = '';
+      applyState(st);
+    }).catch(function (e) { startStatus.textContent = e.message; });
+  }
+
+  function createSession(body) {
+    startStatus.textContent = '{{ T .Language "Preparing session…" }}';
+    return api('/api/editor/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (j) { openSession(j.id); })
+      .catch(function (e) { startStatus.textContent = e.message; });
+  }
+
+  function region() {
+    var v = function (id) { return parseInt(document.getElementById(id).value, 10) || 0; };
+    return { min: [v('rx1'), v('ry1'), v('rz1')], max: [v('rx2'), v('ry2'), v('rz2')] };
+  }
+
+  function buildOp(kind) {
+    var r = region();
+    switch (kind) {
+      case 'crop': return { type: 'crop', min: r.min, max: r.max };
+      case 'delete_region': return { type: 'delete_region', min: r.min, max: r.max };
+      case 'hollow': return { type: 'hollow', min: r.min, max: r.max };
+      case 'fill': return { type: 'fill', min: r.min, max: r.max, block: document.getElementById('ed-fill-block').value.trim() };
+      case 'rotate': return { type: 'rotate', steps: 1 };
+      case 'mirror-x': return { type: 'mirror', axis: 'x' };
+      case 'mirror-z': return { type: 'mirror', axis: 'z' };
+      case 'expand': {
+        var g = function (id) { return Math.max(0, parseInt(document.getElementById(id).value, 10) || 0); };
+        return { type: 'expand', grow: { low: [g('ed-grow-low-x'), g('ed-grow-low-y'), g('ed-grow-low-z')], high: [g('ed-grow-high-x'), g('ed-grow-high-y'), g('ed-grow-high-z')] } };
+      }
+      case 'replace': return { type: 'replace', replacements: [{ from: document.getElementById('ed-replace-from').value.trim(), to: document.getElementById('ed-replace-to').value.trim() }] };
+    }
+  }
+
+  document.querySelectorAll('.ed-op').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var op = buildOp(this.getAttribute('data-op'));
+      api('/api/editor/' + sessionID + '/op', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(op)
+      }).then(applyState).catch(function (e) { setError(e.message); });
+    });
+  });
+  document.getElementById('ed-undo').addEventListener('click', function () {
+    api('/api/editor/' + sessionID + '/undo', { method: 'POST' }).then(applyState).catch(function (e) { setError(e.message); });
+  });
+  document.getElementById('ed-redo').addEventListener('click', function () {
+    api('/api/editor/' + sessionID + '/redo', { method: 'POST' }).then(applyState).catch(function (e) { setError(e.message); });
+  });
+
+  // Publish: hand the current NBT to the existing upload pipeline, then
+  // continue on the standard upload preview/publish page.
+  document.getElementById('ed-publish').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch('/api/editor/' + sessionID + '/preview.nbt')
+      .then(function (r) { if (!r.ok) throw new Error('failed to serialize'); return r.blob(); })
+      .then(function (blob) {
+        var fd = new FormData();
+        fd.append('file', new File([blob], 'edited.nbt', { type: 'application/octet-stream' }));
+        return fetch('/upload/nbt', { method: 'POST', body: fd });
+      })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'upload failed'); return j; }); })
+      .then(function (j) { window.location.href = j.url; })
+      .catch(function (e) { setError(e.message); btn.disabled = false; });
+  });
+
+  // Start flows
+  var drop = document.getElementById('ed-drop');
+  var fileInput = document.getElementById('ed-file');
+  function uploadAndEdit(file) {
+    startStatus.textContent = '{{ T .Language "Uploading…" }}';
+    var fd = new FormData();
+    fd.append('file', file);
+    fetch('/upload/nbt', { method: 'POST', body: fd })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'upload failed'); return j; }); })
+      .then(function (j) { return createSession({ source: 'upload', ref: j.token }); })
+      .catch(function (e) { startStatus.textContent = e.message; });
+  }
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () { if (fileInput.files[0]) uploadAndEdit(fileInput.files[0]); });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
+  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    drop.style.borderColor = '';
+    if (ev.dataTransfer.files[0]) uploadAndEdit(ev.dataTransfer.files[0]);
+  });
+  document.getElementById('ed-blank-btn').addEventListener('click', function () {
+    var v = function (id) { return Math.max(1, Math.min(128, parseInt(document.getElementById(id).value, 10) || 16)); };
+    createSession({ source: 'blank', dims: [v('ed-blank-x'), v('ed-blank-y'), v('ed-blank-z')] });
+  });
+
+  // Deep links: ?session=... resumes; ?source=<schematic-name> prefills.
+  var params = new URLSearchParams(location.search);
+  if (params.get('session')) {
+    openSession(params.get('session'));
+  } else if (params.get('source')) {
+    createSession({ source: 'schematic', ref: params.get('source') });
+  }
+})();
+</script>
+{{ template "foot.html" . }}

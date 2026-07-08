@@ -152,6 +152,17 @@ type DownloadToken struct {
 	UseCount  int32     `json:"use_count"`
 }
 
+type EditorSession struct {
+	ID         string          `json:"id"`
+	UserID     *string         `json:"user_id"`
+	SourceKind string          `json:"source_kind"`
+	SourceRef  string          `json:"source_ref"`
+	Ops        json.RawMessage `json:"ops"`
+	Cursor     int32           `json:"cursor"`
+	Created    time.Time       `json:"created"`
+	Updated    time.Time       `json:"updated"`
+}
+
 type ExternalAuth struct {
 	ID                    string             `json:"id"`
 	UserID                string             `json:"user_id"`
