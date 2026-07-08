@@ -315,6 +315,12 @@ func WriteWorld(s *Schematic, worldName string, w io.Writer) ([]Warning, error) 
 			if err := reg.Close(); err != nil {
 				return nil, err
 			}
+			// Pad to a whole 4096-byte sector: go-mc stops at the last chunk
+			// byte, but Minecraft expects sector-aligned region files and
+			// logs "truncated" warnings otherwise.
+			if rem := len(mf.buf) % 4096; rem != 0 {
+				mf.buf = append(mf.buf, make([]byte, 4096-rem)...)
+			}
 			regFile, err := zw.Create(fmt.Sprintf("%s/region/r.%d.%d.mca", worldName, rx, rz))
 			if err != nil {
 				return nil, err

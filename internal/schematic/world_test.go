@@ -88,8 +88,14 @@ func Test_WriteWorld_GoldenStructure(t *testing.T) {
 		t.Errorf("world gen settings missing flat generator")
 	}
 
-	// region file: parseable, chunk (0,0) present and decodable
+	// region file: parseable, sector-aligned, chunk (0,0) present
 	mca := zipFile(t, zr, "test_world/region/r.0.0.mca")
+	if len(mca)%4096 != 0 {
+		t.Errorf("region file not sector-aligned: %d bytes", len(mca))
+	}
+	if len(mca) < 3*4096 {
+		t.Errorf("region file too small: %d", len(mca))
+	}
 	mf := &memFile{buf: mca}
 	reg, err := region.Load(mf)
 	if err != nil {
