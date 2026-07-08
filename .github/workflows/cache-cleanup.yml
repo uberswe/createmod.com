@@ -1,0 +1,47 @@
+name: Cache cleanup
+
+# The Actions cache quota is 10 GB; each dependency PR mints its own ~0.8 GB
+# Go cache (go.sum changes produce a new key per PR ref), so the quota pegs
+# and buildx cache reservations start failing. This prunes caches whose PR is
+# closed — open PRs and branch caches are untouched and everything deleted
+# regenerates on the next run.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete caches belonging to closed PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          deleted=0
+          gh api --paginate "repos/$GH_REPO/actions/caches?per_page=100" \
+            --jq '.actions_caches[] | [.id, .ref] | @tsv' > caches.tsv
+          while IFS=$'\t' read -r id ref; do
+            case "$ref" in
+              refs/pull/*/merge)
+                pr=${ref#refs/pull/}
+                pr=${pr%/merge}
+                case "$pr" in *[!0-9]*) continue ;; esac
+                state=$(gh api "repos/$GH_REPO/pulls/$pr" --jq .state 2>/dev/null || echo unknown)
+                if [ "$state" = "closed" ]; then
+                  if gh api -X DELETE "repos/$GH_REPO/actions/caches/$id" >/dev/null 2>&1; then
+                    deleted=$((deleted + 1))
+                  fi
+                fi
+                ;;
+            esac
+          done < caches.tsv
+          usage=$(gh api "repos/$GH_REPO/actions/cache/usage" --jq '.active_caches_size_in_bytes')
+          echo "deleted $deleted closed-PR caches; usage now $((usage / 1024 / 1024)) MB"
