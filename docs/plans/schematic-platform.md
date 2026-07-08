@@ -324,7 +324,87 @@ job + backfill; PR 3 badge + explainer + check-a-file page. ~5-6 days.
 
 ---
 
-## 8. Cross-cutting
+## 8. Phase X — Similarity search ("find schematics like this one")
+
+Structure-based search: give it a schematic (uploaded, or any library page's
+"Find similar" button) and get ranked results, each with a **similarity
+percentage and a per-component breakdown** of what matched. Built on the
+normalized model; mirrors the safety pipeline's architecture (fingerprint
+table + River backfill).
+
+### Fingerprint design
+
+Each schematic gets a compact, versioned fingerprint with independent
+components. Components are what make the breakdown explainable — every
+result shows its per-component scores, not just an opaque total.
+
+| Component | Encoding | Comparison | Weight |
+|---|---|---|---|
+| **Shape** | occupancy voxel grid, model downsampled to 16×16×16 bits (512 B), canonical yaw | Jaccard over bits, best of 4 rotations | 40% |
+| **Materials** | histogram over ~30 block *families* (planks, stairs, glass, wool, kinetic, …) so oak vs spruce builds still match | cosine | 25% |
+| **Function** | Create-component profile: counts of shafts, cogs, belts, contraption anchors, power sources | cosine | 15% |
+| **Proportions** | bounding-box aspect ratios + fill density | ratio closeness | 10% |
+| **Palette** | exact blockstate set (hashed) | Jaccard | 10% |
+
+Normalization before fingerprinting: translation is free (models are
+origin-based); **rotation invariance** via canonical yaw (the rotation that
+minimizes the encoded grid lexicographically) with the 4-way check at
+compare time as belt-and-braces; **material invariance** via the family
+mapping (a static table in `internal/schematic`, versioned with the
+fingerprint). Scale is deliberately NOT normalized — a 2× larger copy of a
+build is similar but not identical, and the proportions component captures
+that gradient.
+
+### Retrieval
+
+At the current library size (~5k, growing slowly), **brute-force scan of
+in-memory fingerprints is the right architecture**: ~1 KB per schematic ≈ a
+few MB per pod, a full comparison pass is single-digit milliseconds. Load
+fingerprints from the DB at boot and refresh periodically, exactly like the
+existing per-pod search metadata index. LSH/ANN indexing is explicitly
+YAGNI until ~100k schematics; the fingerprint format doesn't change if that
+day comes, only the lookup structure.
+
+### Pipeline
+
+- `internal/schematic/fingerprint.go`: `Fingerprint(s *Schematic) *FP` +
+  `Compare(a, b *FP) Similarity` where `Similarity` carries the overall
+  percentage and per-component scores. `FingerprintVersion` constant
+  mirrors `InspectorVersion`.
+- Migration: `schematic_fingerprints(schematic_id PK, fp BYTEA, families
+  JSONB, version INT, computed_at)`.
+- River: compute on publish/edit (enqueued beside the safety scan) + a
+  15-minute backfill sweeping missing/outdated/edited rows — copy the
+  safety pipeline's `updated > computed_at` catch-all query.
+- Per-pod in-memory fingerprint index with periodic reload (piggyback the
+  existing 10-minute search rebuild job).
+
+### UI / entry points
+
+- **"Find similar" on every schematic page** — compares the stored
+  fingerprint, no upload. Results grid of schematic cards, each with the
+  overall % and an expandable breakdown ("Shape 82% · Materials 74% ·
+  Function 91% · …").
+- **`/tools/similar`** — upload any schematic (never stored; fingerprint
+  computed in memory) and search the library with it. SEO: "find similar
+  minecraft schematics", "what schematic is this". Tools card + sitemap.
+- `GET /api/schematics/{name}/similar` + `POST /api/similar` (multipart) —
+  the API surface, MCP tool later.
+
+### Side benefit: near-duplicate detection
+
+Similarity ≥ ~95% against an existing schematic is a strong reupload
+signal. Surface it in the admin moderation queue (informational flag, not
+auto-rejection) — complements the existing exact-checksum NBTHash dedup,
+which misses one-block edits.
+
+**Ships as:** PR 1 fingerprint + compare + tests (golden similarity pairs:
+same build re-uploaded ≈ 100%, wood-swapped variant ≥ 85%, rotated copy ≥
+95%, unrelated builds < 40%); PR 2 table + jobs + backfill; PR 3 in-memory
+index + schematic-page button + results UI; PR 4 upload tool page + API.
+~6-8 days. Independent of V/W/E — can slot anywhere after F.
+
+## 9. Cross-cutting
 
 - **API/MCP surface**: as each phase lands, expose it: conversion endpoint in
   the public API (`POST /api/convert`, API-key gated, documented in
@@ -340,7 +420,7 @@ job + backfill; PR 3 badge + explainer + check-a-file page. ~5-6 days.
 - **Metrics**: counter per conversion pair, world exports, cache hit rates —
   existing Prometheus metrics package.
 
-## 9. Sequencing, dependencies, effort
+## 10. Sequencing, dependencies, effort
 
 ```
 F (foundation, 3-4d)
@@ -349,19 +429,23 @@ F (foundation, 3-4d)
 │                              └─→ generators adoption
 ├─→ V (NBT viewer, 4d)
 ├─→ E (editor, 8-10d)  [needs publish-refactor PR first]
-└─→ S (safety, 5-6d)   [independent after F; badge benefits from landing
-                        before editor publish so edits re-scan from day one]
+├─→ S (safety, 5-6d)   [independent after F; badge benefits from landing
+│                       before editor publish so edits re-scan from day one]
+└─→ X (similarity search, 6-8d)  [independent after F; reuses the safety
+                                  pipeline's job/backfill architecture]
 ```
 
-Recommended order: **F → C → D → S → V → W → E** — SEO/traffic value early
-(conversion pages, safety explainer), the riskiest engineering (world export)
-after the download plumbing exists, and the editor last because it composes
-everything (ops over F, publish pipeline, download component, safety re-scan).
+Recommended order: **F → C → D → S → X → V → W → E** — SEO/traffic value
+early (conversion pages, safety explainer, similarity tool), the riskiest
+engineering (world export) after the download plumbing exists, and the
+editor last because it composes everything (ops over F, publish pipeline,
+download component, safety re-scan). X slots after S because it copies S's
+pipeline shape while that pattern is fresh.
 
-Total: roughly 35-43 focused days. Each phase is independently shippable and
+Total: roughly 41-51 focused days. Each phase is independently shippable and
 each PR within a phase keeps CI green.
 
-## 10. Risks & open questions
+## 11. Risks & open questions
 
 1. **Legacy `.schematic` flattening map** — largest data artifact; mitigate
    by importing a community-maintained mapping (verify license) rather than
