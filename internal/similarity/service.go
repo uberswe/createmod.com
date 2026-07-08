@@ -34,16 +34,20 @@ func New(appStore *store.Store) *Service {
 }
 
 // Start loads the index and refreshes it every 10 minutes until ctx ends.
+// While the index is empty (fresh deploy, backfill still running) it
+// retries every 30 seconds so search comes online with the first batch.
 func (s *Service) Start(ctx context.Context) {
 	s.Reload(ctx)
 	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		defer ticker.Stop()
 		for {
+			interval := 10 * time.Minute
+			if s.Size() == 0 {
+				interval = 30 * time.Second
+			}
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
+			case <-time.After(interval):
 				s.Reload(ctx)
 			}
 		}
