@@ -4,6 +4,8 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"os"
+	"strconv"
 	"log/slog"
 	"time"
 
@@ -26,12 +28,25 @@ type Config struct {
 	MaxConnLifetime time.Duration
 }
 
-// DefaultConfig returns a Config with sensible defaults for PgBouncer.
+// DefaultConfig returns a Config with pool sizing appropriate for a shared
+// PostgreSQL. The shared cluster instance has 200 connection slots serving
+// ~10 applications; this app runs 2-6 pods (HPA) and rolling updates surge
+// pods, so per-pod appetite multiplies: 25/pod peaked past the global limit
+// during a deploy and starved other tenants (authentik outage, 2026-07-09).
+// Observed steady-state usage is ~8 connections per pod; 10 gives headroom
+// while capping the worst case (6 pods + surge) near 90. Override with
+// DB_MAX_CONNS if a dedicated database ever warrants more.
 func DefaultConfig(databaseURL string) Config {
+	maxConns := int32(10)
+	if v := os.Getenv("DB_MAX_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 2 && n <= 100 {
+			maxConns = int32(n)
+		}
+	}
 	return Config{
 		DatabaseURL:     databaseURL,
-		MaxConns:        25,
-		MinConns:        5,
+		MaxConns:        maxConns,
+		MinConns:        2,
 		MaxConnLifetime: time.Hour,
 	}
 }
