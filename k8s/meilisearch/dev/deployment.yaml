@@ -19,12 +19,6 @@ spec:
       containers:
         - name: meilisearch
           image: getmeili/meilisearch:v1.49
-          # Migrate the index database in place on version bumps instead of
-          # refusing to start ("database version X is incompatible with
-          # engine version Y" -> CrashLoopBackOff). No-op when versions
-          # already match, so it stays on permanently.
-          args:
-            - --experimental-dumpless-upgrade
           ports:
             - containerPort: 7700
               name: http
@@ -34,6 +28,14 @@ spec:
                 secretKeyRef:
                   name: meilisearch-secret
                   key: MEILI_MASTER_KEY
+            # Migrate the index database in place on version bumps instead
+            # of refusing to start ("database version X is incompatible with
+            # engine version Y" -> CrashLoopBackOff). No-op when versions
+            # already match, so it stays on permanently. Env form because the
+            # image's entrypoint is tini and container args replace the CMD
+            # (tini would exec the flag as a program).
+            - name: MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE
+              value: "true"
             - name: MEILI_ENV
               value: "development"
           resources:
