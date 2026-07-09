@@ -97,6 +97,13 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &AdClickRollupWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
+		// Poll-only mode: skip LISTEN/NOTIFY entirely so the queue works
+		// through PgBouncer transaction pooling (session-level protocol
+		// features don't survive it). Every job here is background work —
+		// moderation, indexing, scans, cleanups — so the poll interval's
+		// ~1s pickup latency is irrelevant, and this removes the one
+		// blocker to routing the app through the shared pooler.
+		PollOnly: true,
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {MaxWorkers: 10},
 			"search":           {MaxWorkers: 1}, // serialized search index updates
