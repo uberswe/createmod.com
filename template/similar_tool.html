@@ -7,21 +7,30 @@
             <div class="container-wide">
                 <div class="mb-3">
                     <h1 class="h2 mb-1">{{ T .Language "Find Similar Schematics" }}</h1>
-                    <div class="text-secondary">{{ T .Language "Upload any schematic and search the library by structure: shape, materials, Create components and proportions. Every match shows its similarity percentage and what contributed to it." }}</div>
+                    <p class="cm-page-sub">{{ T .Language "Upload any schematic and search the library by structure: shape, materials, Create components and proportions. Every match shows its similarity percentage and what contributed to it." }}</p>
                 </div>
                 <div class="d-flex gap-3">
                 <div class="flex-grow-1 min-width-0">
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div id="sim-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
-                            <div class="h3 mb-1">{{ T .Language "Drop a schematic here or click to choose" }}</div>
-                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }} &middot; {{ T .Language "searched in memory and never stored" }}</div>
-                            <input type="file" id="sim-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
-                        </div>
-                        <div class="text-secondary small mt-2" id="sim-status"></div>
+
+                <div id="sim-drop" class="cm-dropzone" tabindex="0">
+                    <div class="cm-dropzone__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/></svg></div>
+                    <div>
+                        <div class="cm-dropzone__title">{{ T .Language "Drop a schematic here or click to choose" }}</div>
+                        <div class="cm-dropzone__formats">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }}</div>
                     </div>
+                    <div class="cm-dropzone__note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><circle cx="12" cy="16" r="1"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span>{{ T .Language "Searched in memory, never stored" }}</span></div>
+                    <input type="file" id="sim-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
                 </div>
+
+                <div class="cm-resultsbar" id="sim-bar" style="display:none;">
+                    <span class="count" id="sim-count"></span>
+                    <span class="of" id="sim-of"></span>
+                    <span class="cm-filechip" id="sim-chip" style="display:none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/></svg>
+                        <span class="name" id="sim-chipname"></span><span class="size" id="sim-chipsize"></span>
+                    </span>
+                </div>
+                <div class="text-secondary small mb-3" id="sim-status"></div>
 
                 <div class="row row-cards" id="sim-results"></div>
                 </div><!-- /flex-grow-1 -->
@@ -39,12 +48,27 @@
   var input = document.getElementById('sim-file');
   var statusEl = document.getElementById('sim-status');
   var resultsEl = document.getElementById('sim-results');
+  var bar = document.getElementById('sim-bar');
+  var countEl = document.getElementById('sim-count');
+  var ofEl = document.getElementById('sim-of');
+  var chip = document.getElementById('sim-chip');
+  var chipName = document.getElementById('sim-chipname');
+  var chipSize = document.getElementById('sim-chipsize');
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
 
   function search(file) {
     var fd = new FormData();
     fd.append('file', file);
     statusEl.textContent = '{{ T .Language "Searching…" }}';
+    bar.style.display = 'none';
     resultsEl.replaceChildren();
+    chipName.textContent = file.name;
+    chipSize.textContent = fmtSize(file.size);
     fetch('/api/similar', { method: 'POST', body: fd })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
@@ -53,42 +77,65 @@
           return;
         }
         var results = res.j.results || [];
-        statusEl.textContent = results.length
-          ? results.length + ' {{ T .Language "matches (of" }} ' + (res.j.indexed || 0) + ' {{ T .Language "indexed schematics)" }}'
-          : '{{ T .Language "No matches above 35% similarity. This build looks unique." }}';
+        if (results.length) {
+          statusEl.textContent = '';
+          countEl.textContent = results.length + ' {{ T .Language "matches" }}';
+          ofEl.textContent = '{{ T .Language "of" }} ' + (res.j.indexed || 0).toLocaleString() + ' {{ T .Language "indexed schematics" }}';
+          chip.style.display = '';
+          bar.style.display = '';
+        } else {
+          statusEl.textContent = '{{ T .Language "No matches above 35% similarity. This build looks unique." }}';
+        }
         results.forEach(function (r) {
           var col = document.createElement('div');
-          col.className = 'col-sm-6 col-md-4 col-lg-3';
+          col.className = 'col-sm-6 col-lg-4';
           var card = document.createElement('a');
           card.href = '/schematics/' + encodeURIComponent(r.schematic.name);
-          card.className = 'card card-sm d-block text-decoration-none mb-1 position-relative';
+          card.className = 'card d-block text-decoration-none mb-3';
+          var imgWrap = document.createElement('div');
+          imgWrap.className = 'position-relative';
           var img = document.createElement('img');
           img.className = 'card-img-top object-fit-cover';
-          img.width = 320; img.height = 180;
+          img.width = 480; img.height = 270;
+          img.style.aspectRatio = '16/9';
+          img.style.width = '100%';
+          img.style.height = 'auto';
           img.loading = 'lazy';
           if (r.schematic.featuredImage) {
-            img.src = '/api/files/schematics/' + r.schematic.id + '/' + encodeURIComponent(r.schematic.featuredImage) + '?thumb=320x180&v=2';
+            img.src = '/api/files/schematics/' + r.schematic.id + '/' + encodeURIComponent(r.schematic.featuredImage) + '?thumb=480x270&v=2';
           } else {
             img.src = '/assets/x/placeholders/schematic-dark-01.svg';
           }
           var badge = document.createElement('span');
-          badge.className = 'badge';
-          badge.style.cssText = 'position:absolute;top:8px;right:8px;background:var(--cm-primary);color:#fff;';
+          badge.className = 'cm-scard__sim';
           badge.textContent = r.percent + '%';
+          imgWrap.appendChild(img);
+          imgWrap.appendChild(badge);
           var body = document.createElement('div');
-          body.className = 'card-body p-2';
+          body.className = 'card-body';
+          body.style.padding = '14px 16px 16px';
           var title = document.createElement('div');
           title.className = 'fw-bold text-truncate';
           title.textContent = r.schematic.title || r.schematic.name;
           body.appendChild(title);
-          card.appendChild(img);
-          card.appendChild(badge);
+          var grid = document.createElement('div');
+          grid.className = 'cm-matchgrid';
+          (r.breakdown || []).forEach(function (c) {
+            var cell = document.createElement('div');
+            var val = document.createElement('div');
+            val.className = 'val';
+            val.textContent = c.percent + '%';
+            var lbl = document.createElement('div');
+            lbl.className = 'lbl';
+            lbl.textContent = c.name;
+            cell.appendChild(val);
+            cell.appendChild(lbl);
+            grid.appendChild(cell);
+          });
+          body.appendChild(grid);
+          card.appendChild(imgWrap);
           card.appendChild(body);
-          var breakdown = document.createElement('div');
-          breakdown.className = 'text-secondary small mb-3';
-          breakdown.textContent = (r.breakdown || []).map(function (c) { return c.name + ' ' + c.percent + '%'; }).join(' · ');
           col.appendChild(card);
-          col.appendChild(breakdown);
           resultsEl.appendChild(col);
         });
       })
@@ -97,11 +144,11 @@
 
   drop.addEventListener('click', function () { input.click(); });
   input.addEventListener('change', function () { if (input.files[0]) search(input.files[0]); });
-  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
-  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.classList.add('is-drag'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('is-drag'); });
   drop.addEventListener('drop', function (ev) {
     ev.preventDefault();
-    drop.style.borderColor = '';
+    drop.classList.remove('is-drag');
     if (ev.dataTransfer.files[0]) search(ev.dataTransfer.files[0]);
   });
 })();

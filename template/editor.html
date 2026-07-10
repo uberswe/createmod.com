@@ -11,23 +11,26 @@
                 </div>
 
                 <!-- Start chooser -->
-                <div class="card mb-3" id="ed-start">
-                    <div class="card-body">
-                        <div id="ed-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
-                            <div class="h3 mb-1">{{ T .Language "Edit a schematic file" }}</div>
-                            <div class="text-secondary small">{{ T .Language "Drop it here or click. .nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json" }}</div>
-                            <input type="file" id="ed-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                <div id="ed-start">
+                    <div id="ed-drop" class="cm-dropzone" tabindex="0">
+                        <div class="cm-dropzone__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/><path d="M16 5l3 3"/></svg></div>
+                        <div>
+                            <div class="cm-dropzone__title">{{ T .Language "Edit a schematic file" }}</div>
+                            <div class="cm-dropzone__formats">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json</div>
                         </div>
-                        <div class="text-secondary small mt-2" id="ed-start-status"></div>
+                        <div class="cm-dropzone__note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><circle cx="12" cy="16" r="1"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span>{{ T .Language "Edited in your session, published only when you choose" }}</span></div>
+                        <input type="file" id="ed-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
                     </div>
+                    <div class="text-secondary small mt-2" id="ed-start-status"></div>
                 </div>
 
                 <!-- Editor -->
                 <div id="ed-main" style="display:none;">
-                    <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
-                        <button class="btn btn-sm btn-outline-secondary" id="ed-undo">↶ {{ T .Language "Undo" }}</button>
-                        <button class="btn btn-sm btn-outline-secondary" id="ed-redo">↷ {{ T .Language "Redo" }}</button>
-                        <span class="text-secondary small" id="ed-info"></span>
+                    <div class="cm-toolbar">
+                        <button class="btn btn-sm btn-outline-secondary" id="ed-undo"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></svg>{{ T .Language "Undo" }}</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="ed-redo"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4"/><path d="M19 10h-11a4 4 0 1 0 0 8h1"/></svg>{{ T .Language "Redo" }}</button>
+                        <div class="cm-vdivider"></div>
+                        <span class="cm-toolbar__meta" id="ed-info"></span>
                         <span class="ms-auto d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary" id="ed-download" href="#" hx-boost="false">{{ T .Language "Download .nbt" }}</a>
                             <div class="dropdown d-inline-block">
@@ -40,65 +43,73 @@
                                     <a class="dropdown-item" id="ed-bloxelizer" href="#" target="_blank" rel="noopener">Bloxelizer</a>
                                 </div>
                             </div>
-                            <button class="btn btn-sm" id="ed-publish" style="background: var(--cm-primary); color:#fff; border:none;">{{ T .Language "Continue to publish" }}</button>
+                            <button class="btn btn-sm btn-primary" id="ed-publish">{{ T .Language "Continue to publish" }}</button>
                         </span>
                     </div>
                     <div class="row g-3">
                         <div class="col-lg-4 col-xl-3">
-                            <div class="card mb-3"><div class="card-body p-3" id="ed-ops">
-                                <div class="mb-3">
-                                    <label class="form-label mb-1">{{ T .Language "Region (two corners)" }}</label>
-                                    <div class="d-flex gap-1 mb-1">
-                                        <input type="number" class="form-control form-control-sm ed-reg" id="rx1" placeholder="x1" value="0">
-                                        <input type="number" class="form-control form-control-sm ed-reg" id="ry1" placeholder="y1" value="0">
-                                        <input type="number" class="form-control form-control-sm ed-reg" id="rz1" placeholder="z1" value="0">
-                                    </div>
-                                    <div class="d-flex gap-1">
-                                        <input type="number" class="form-control form-control-sm ed-reg" id="rx2" placeholder="x2" value="0">
-                                        <input type="number" class="form-control form-control-sm ed-reg" id="ry2" placeholder="y2" value="0">
-                                        <input type="number" class="form-control form-control-sm ed-reg" id="rz2" placeholder="z2" value="0">
-                                    </div>
-                                    <div class="d-flex gap-2 mt-2 flex-wrap">
-                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="crop">{{ T .Language "Crop to region" }}</button>
-                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="delete_region">{{ T .Language "Delete" }}</button>
-                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="hollow">{{ T .Language "Hollow" }}</button>
-                                    </div>
+                            <div class="card mb-3"><div class="card-body" style="padding: 20px;" id="ed-ops">
+                                <div class="cm-panel-label">{{ T .Language "Region (two corners)" }}</div>
+                                <div class="cm-xyz">
+                                    <span></span><span class="h">X</span><span class="h">Y</span><span class="h">Z</span>
+                                    <span class="h">A</span>
+                                    <input type="number" class="cm-input ed-reg" id="rx1" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="ry1" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="rz1" placeholder="0" value="0">
+                                    <span class="h">B</span>
+                                    <input type="number" class="cm-input ed-reg" id="rx2" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="ry2" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="rz2" placeholder="0" value="0">
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label mb-1">{{ T .Language "Fill region with" }}</label>
-                                    <input type="text" class="form-control form-control-sm mb-1" id="ed-fill-block" placeholder="minecraft:stone" list="ed-palette-list">
-                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="fill">{{ T .Language "Fill" }}</button>
+                                <div class="cm-btnrow">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="crop">{{ T .Language "Crop to region" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="delete_region">{{ T .Language "Delete" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="hollow">{{ T .Language "Hollow" }}</button>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label mb-1">{{ T .Language "Transform" }}</label>
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="rotate">{{ T .Language "Rotate 90°" }}</button>
-                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-x">{{ T .Language "Mirror X" }}</button>
-                                        <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-z">{{ T .Language "Mirror Z" }}</button>
-                                    </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Fill region with" }}</div>
+                                <div class="cm-fillrow">
+                                    <input type="text" class="cm-input" id="ed-fill-block" placeholder="minecraft:stone" list="ed-palette-list">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="fill" style="height: 34px;">{{ T .Language "Fill" }}</button>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label mb-1">{{ T .Language "Expand (blocks per side)" }}</label>
-                                    <div class="d-flex gap-1 mb-1">
-                                        <input type="number" class="form-control form-control-sm" id="ed-grow-low-x" placeholder="-x" value="0" min="0">
-                                        <input type="number" class="form-control form-control-sm" id="ed-grow-low-y" placeholder="-y" value="0" min="0">
-                                        <input type="number" class="form-control form-control-sm" id="ed-grow-low-z" placeholder="-z" value="0" min="0">
-                                    </div>
-                                    <div class="d-flex gap-1 mb-1">
-                                        <input type="number" class="form-control form-control-sm" id="ed-grow-high-x" placeholder="+x" value="0" min="0">
-                                        <input type="number" class="form-control form-control-sm" id="ed-grow-high-y" placeholder="+y" value="0" min="0">
-                                        <input type="number" class="form-control form-control-sm" id="ed-grow-high-z" placeholder="+z" value="0" min="0">
-                                    </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Transform" }}</div>
+                                <div class="cm-btnrow">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="rotate"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5"/></svg>{{ T .Language "Rotate 90°" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-x"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M3 12h18"/></svg>{{ T .Language "Mirror X" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-z"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4 -4l4 4"/><path d="M8 17l4 4l4 -4"/><path d="M12 3v18"/></svg>{{ T .Language "Mirror Z" }}</button>
+                                </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Expand (blocks per side)" }}</div>
+                                <div class="cm-xyz">
+                                    <span></span><span class="h">X</span><span class="h">Y</span><span class="h">Z</span>
+                                    <span class="h">&minus;</span>
+                                    <input type="number" class="cm-input" id="ed-grow-low-x" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-low-y" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-low-z" placeholder="0" value="0" min="0">
+                                    <span class="h">+</span>
+                                    <input type="number" class="cm-input" id="ed-grow-high-x" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-high-y" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-high-z" placeholder="0" value="0" min="0">
+                                </div>
+                                <div class="cm-btnrow">
                                     <button class="btn btn-sm btn-outline-secondary ed-op" data-op="expand">{{ T .Language "Expand" }}</button>
                                 </div>
-                                <div class="mb-2">
-                                    <label class="form-label mb-1">{{ T .Language "Replace blocks" }}</label>
-                                    <input type="text" class="form-control form-control-sm mb-1" id="ed-replace-from" placeholder="{{ T .Language "from (e.g. minecraft:oak_planks)" }}" list="ed-palette-list">
-                                    <input type="text" class="form-control form-control-sm mb-1" id="ed-replace-to" placeholder="{{ T .Language "to (empty = remove)" }}">
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Replace blocks" }}</div>
+                                <div class="d-flex flex-column gap-2 mt-2">
+                                    <input type="text" class="cm-input" id="ed-replace-from" placeholder="{{ T .Language "from (e.g. minecraft:oak_planks)" }}" list="ed-palette-list">
+                                    <input type="text" class="cm-input" id="ed-replace-to" placeholder="{{ T .Language "to (empty = remove)" }}">
+                                </div>
+                                <div class="cm-btnrow">
                                     <button class="btn btn-sm btn-outline-secondary ed-op" data-op="replace">{{ T .Language "Replace everywhere" }}</button>
                                 </div>
                                 <datalist id="ed-palette-list"></datalist>
-                                <div class="text-danger small" id="ed-error"></div>
+                                <div class="text-danger small mt-2" id="ed-error"></div>
                             </div></div>
                             <div class="card">
                                 <div class="card-header py-2 px-3"><h3 class="card-title mb-0 fs-5">{{ T .Language "Materials" }}</h3></div>
