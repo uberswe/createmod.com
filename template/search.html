@@ -384,10 +384,16 @@ function saveSearchAlert() {
     var query = document.getElementById('search-hero-input')?.value || '';
     if (!query) return;
     btn.disabled = true;
+    // The alert checker matches on category name; send the selected one.
+    var filters = {};
+    var catSel = document.querySelector('select[name="category"]');
+    if (catSel && catSel.value && catSel.value !== 'all') {
+        filters.category = catSel.options[catSel.selectedIndex].text.trim();
+    }
     fetch('/api/search-alerts', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ query: query, frequency: 'daily' })
+        body: JSON.stringify({ query: query, filters: filters, frequency: 'daily' })
     }).then(function(res) {
         if (res.ok) {
             btn.textContent = 'Saved!';

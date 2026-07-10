@@ -79,6 +79,13 @@ func CreateSearchAlertHandler(appStore *store.Store) func(e *server.RequestEvent
 		if body.Frequency == "" {
 			body.Frequency = "daily"
 		}
+		// The filters column is NOT NULL jsonb; an absent field would
+		// otherwise insert NULL and fail the constraint.
+		if len(body.Filters) == 0 {
+			body.Filters = json.RawMessage("{}")
+		} else if !json.Valid(body.Filters) {
+			return &server.APIError{Status: http.StatusBadRequest, Message: "invalid filters"}
+		}
 
 		alert := &store.SearchAlert{
 			UserID:           userID,
