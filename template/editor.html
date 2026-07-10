@@ -30,7 +30,16 @@
                         <span class="text-secondary small" id="ed-info"></span>
                         <span class="ms-auto d-flex gap-2">
                             <a class="btn btn-sm btn-outline-secondary" id="ed-download" href="#" hx-boost="false">{{ T .Language "Download .nbt" }}</a>
-                            <a class="btn btn-sm btn-outline-secondary" id="ed-bloxelizer" href="#" target="_blank" rel="noopener">Bloxelizer 3D</a>
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-sm btn-outline-secondary" data-cm-toggle="dropdown" aria-expanded="false">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
+                                    {{ T .Language "3D Viewer" }}
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" id="ed-shulkr" href="#" target="_blank" rel="noopener">Shulkr</a>
+                                    <a class="dropdown-item" id="ed-bloxelizer" href="#" target="_blank" rel="noopener">Bloxelizer</a>
+                                </div>
+                            </div>
                             <button class="btn btn-sm" id="ed-publish" style="background: var(--cm-primary); color:#fff; border:none;">{{ T .Language "Continue to publish" }}</button>
                         </span>
                     </div>
@@ -91,10 +100,12 @@
                                 <datalist id="ed-palette-list"></datalist>
                                 <div class="text-danger small" id="ed-error"></div>
                             </div></div>
-                            <div class="card"><div class="card-body p-3">
-                                <div class="fw-bold mb-1">{{ T .Language "Materials" }}</div>
-                                <div id="ed-materials" class="small text-secondary" style="max-height: 240px; overflow-y: auto;"></div>
-                            </div></div>
+                            <div class="card">
+                                <div class="card-header py-2 px-3"><h3 class="card-title mb-0 fs-5">{{ T .Language "Materials" }}</h3></div>
+                                <div class="card-body p-0">
+                                    <div id="ed-materials" style="max-height: 320px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-lg-8 col-xl-9">
                             <div class="card">
@@ -151,9 +162,46 @@
     document.getElementById('ed-redo').disabled = st.cursor >= st.ops.length;
     var mats = document.getElementById('ed-materials');
     mats.replaceChildren();
-    (st.materials || []).slice(0, 60).forEach(function (m) {
+    (st.materials || []).forEach(function (m) {
       var row = document.createElement('div');
-      row.textContent = m.BlockID.replace('minecraft:', '') + ' × ' + m.Count.toLocaleString();
+      row.className = 'material-row';
+
+      var iconWrap = document.createElement('div');
+      iconWrap.className = 'material-icon-wrap';
+      var img = document.createElement('img');
+      img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(m.BlockID) + '/icon?size=64';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.onerror = function () {
+        this.style.display = 'none';
+        var p = document.createElement('div');
+        p.style.cssText = 'width:28px;height:28px;background:var(--cm-border-color,rgba(128,128,128,0.2));border-radius:2px';
+        this.parentNode.appendChild(p);
+      };
+      iconWrap.appendChild(img);
+      row.appendChild(iconWrap);
+
+      // Swatch matching the block's color in the 3D viewer.
+      var dot = document.createElement('span');
+      dot.className = 'material-color-dot';
+      dot.style.background = m.Color || 'transparent';
+      dot.title = '{{ T .Language "Color in the 3D preview" }}';
+      row.appendChild(dot);
+
+      var info = document.createElement('div');
+      info.className = 'material-info';
+      var name = document.createElement('span');
+      name.className = 'material-name';
+      name.textContent = m.BlockID.replace('minecraft:', '');
+      name.title = m.BlockID;
+      info.appendChild(name);
+      row.appendChild(info);
+
+      var count = document.createElement('span');
+      count.className = 'material-count';
+      count.textContent = 'x' + m.Count.toLocaleString();
+      row.appendChild(count);
+
       mats.appendChild(row);
     });
     var dl = document.getElementById('ed-palette-list');
@@ -164,7 +212,9 @@
       dl.appendChild(opt);
     });
     document.getElementById('ed-download').href = '/api/editor/' + sessionID + '/preview.nbt';
-    document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(location.origin + '/api/editor/' + sessionID + '/preview.nbt');
+    var previewURL = location.origin + '/api/editor/' + sessionID + '/preview.nbt';
+    document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(previewURL);
+    document.getElementById('ed-shulkr').href = 'https://www.shulkr.com/?url=' + encodeURIComponent(previewURL);
     setError('');
     refreshPreview();
   }
