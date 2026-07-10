@@ -7,13 +7,9 @@
             <div class="container-wide">
                 <div class="d-flex gap-3">
                     <div class="flex-grow-1 min-width-0">
-                <div class="page-header d-print-none">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h2 class="page-title">{{ T .Language "Generators" }}</h2>
-                            <p class="text-secondary mt-1">{{ T .Language "Generate custom schematics for your Create mod builds. Adjust parameters, preview in 3D, and download ready-to-use NBT files." }}</p>
-                        </div>
-                    </div>
+                <div class="mb-3">
+                    <h2 class="mb-1">{{ T .Language "Generators" }}</h2>
+                    <p class="text-secondary mb-0">{{ T .Language "Generate custom schematics for your Create mod builds. Adjust parameters, preview in 3D, and download ready-to-use NBT files." }}</p>
                 </div>
                 <div class="row row-cards">
                     <div class="col-md-6 col-lg-4">
@@ -61,86 +57,6 @@
                                 </div>
                                 <p class="text-secondary">{{ T .Language "Generate ship hulls with customizable length, beam, depth, and bow shape for your Create mod vessels." }}</p>
                                 <a href="/generators/hull" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open Generator" }}</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card">
-                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
-                                <div class="d-flex align-items-center mb-3">
-                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M14 4l-4 16"/></svg>
-                                    </span>
-                                    <div>
-                                        <h3 class="card-title mb-0">{{ T .Language "Schematic Converter" }}</h3>
-                                    </div>
-                                </div>
-                                <p class="text-secondary">{{ T .Language "Convert schematics between Create .nbt, WorldEdit .schem and Litematica .litematic formats. Free, in your browser, nothing stored." }}</p>
-                                <a href="/tools/convert" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open Converter" }}</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card">
-                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
-                                <div class="d-flex align-items-center mb-3">
-                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4"/><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/></svg>
-                                    </span>
-                                    <div>
-                                        <h3 class="card-title mb-0">{{ T .Language "Safety Checker" }}</h3>
-                                    </div>
-                                </div>
-                                <p class="text-secondary">{{ T .Language "Scan any schematic for command blocks, spawners and click commands before you paste it into your world. In-memory, never stored." }}</p>
-                                <a href="/tools/safety-check" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open Safety Checker" }}</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card">
-                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
-                                <div class="d-flex align-items-center mb-3">
-                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
-                                    </span>
-                                    <div>
-                                        <h3 class="card-title mb-0">{{ T .Language "Find Similar" }}</h3>
-                                    </div>
-                                </div>
-                                <p class="text-secondary">{{ T .Language "Search the library by structure: upload a schematic and find builds like it, scored by shape, materials and Create components." }}</p>
-                                <a href="/tools/similar" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open Similarity Search" }}</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card">
-                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
-                                <div class="d-flex align-items-center mb-3">
-                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5"/><path d="M12 12l8 -4.5"/><path d="M12 12l0 9"/><path d="M12 12l-8 -4.5"/></svg>
-                                    </span>
-                                    <div>
-                                        <h3 class="card-title mb-0">{{ T .Language "NBT Viewer" }}</h3>
-                                    </div>
-                                </div>
-                                <p class="text-secondary">{{ T .Language "Browse any NBT or schematic file as a tree: SNBT view, key search, copy-path. Parsed per request, never stored." }}</p>
-                                <a href="/tools/nbt-viewer" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open NBT Viewer" }}</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card">
-                            <div class="card-body" style="background: #353838; border: 1px solid #2b313a; border-radius: 4px;">
-                                <div class="d-flex align-items-center mb-3">
-                                    <span class="avatar rounded me-3" style="background: rgba(191,144,69,0.15);">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/><path d="M16 5l3 3"/></svg>
-                                    </span>
-                                    <div>
-                                        <h3 class="card-title mb-0">{{ T .Language "Schematic Editor" }}</h3>
-                                    </div>
-                                </div>
-                                <p class="text-secondary">{{ T .Language "Crop, rotate, mirror, fill and replace blocks in any schematic — with undo, 3D preview and one-click publishing." }}</p>
-                                <a href="/tools/editor" class="btn w-100" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open Editor" }}</a>
                             </div>
                         </div>
                     </div>

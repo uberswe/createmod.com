@@ -63,6 +63,29 @@ func GeneratorsLandingHandler(registry *server.Registry, cacheService *cache.Ser
 	}
 }
 
+var toolsLandingTemplates = append([]string{
+	"./template/tools.html",
+}, commonTemplates...)
+
+// ToolsLandingHandler renders /tools, the index of the schematic tools
+// (converter, safety checker, similarity search, NBT viewer, editor).
+func ToolsLandingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		d := GeneratorData{}
+		d.Populate(e)
+		d.Title = i18n.T(d.Language, "Tools")
+		d.Description = "Free browser tools for Minecraft schematics: convert, safety-check, find similar builds, inspect NBT and edit."
+		d.Slug = "/tools"
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Tools")
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		html, err := registry.LoadFiles(toolsLandingTemplates...).Render(d)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}
+
 func generatorThumbnail(_ *storage.Service, hash string, _ *server.RequestEvent) string {
 	if hash != "" {
 		return "https://createmod.com/api/generators/preview/" + hash
