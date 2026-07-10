@@ -337,3 +337,21 @@ func (s *Service) StatRaw(ctx context.Context, key string) (minio.ObjectInfo, er
 func (s *Service) Bucket() string {
 	return s.bucket
 }
+
+// ListRaw streams object keys and modification times under a raw key prefix.
+// The callback returns false to stop iteration early.
+func (s *Service) ListRaw(ctx context.Context, prefix string, fn func(key string, lastModified time.Time, size int64) bool) error {
+	if s == nil || s.client == nil {
+		return fmt.Errorf("storage not configured")
+	}
+	opts := minio.ListObjectsOptions{Prefix: prefix, Recursive: true}
+	for obj := range s.client.ListObjects(ctx, s.bucket, opts) {
+		if obj.Err != nil {
+			return obj.Err
+		}
+		if !fn(obj.Key, obj.LastModified, obj.Size) {
+			return nil
+		}
+	}
+	return ctx.Err()
+}

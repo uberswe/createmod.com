@@ -1,0 +1,43 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="page-header d-print-none">
+                    <h1 class="h2 page-title">{{ T .Language "Similar to" }} “{{ .Source.Title }}”</h1>
+                    <div class="text-secondary">{{ T .Language "Ranked by structure: shape, materials, Create components, proportions and palette." }}</div>
+                </div>
+
+                {{ if .Results }}
+                <div class="row row-cards">
+                    {{ range .Results }}
+                    <div class="col-sm-6 col-md-4 col-lg-3">
+                        <div class="position-relative">
+                            {{ template "schematic_card.html" .Schematic }}
+                            <span class="badge" style="position: absolute; top: 8px; right: 8px; z-index: 2; background: var(--cm-primary); color: #fff;">
+                                {{ .Percent }}%
+                            </span>
+                        </div>
+                        <div class="text-secondary small mt-1 mb-3">
+                            {{ range $i, $c := .Breakdown }}{{ if $i }} · {{ end }}{{ $c.Name }} {{ $c.Percent }}%{{ end }}
+                        </div>
+                    </div>
+                    {{ end }}
+                </div>
+                {{ else }}
+                <div class="card"><div class="card-body text-center text-secondary py-5">
+                    {{ if eq .Indexed 0 }}
+                    {{ T .Language "The similarity index is still being built — check back in a few minutes." }}
+                    {{ else }}
+                    {{ T .Language "No sufficiently similar builds found (35% minimum). This one is unique!" }}
+                    {{ end }}
+                </div></div>
+                {{ end }}
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+{{ template "foot.html" . }}

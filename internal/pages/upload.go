@@ -56,6 +56,10 @@ type ModerationEnqueuer func(ctx context.Context, args ModerationJobArgs) error
 // Nil means no incremental indexing is available (falls back to periodic rebuild).
 type SearchIndexEnqueuer func(ctx context.Context, schematicID string) error
 
+// SafetyScanEnqueuer is a callback that enqueues a content-safety scan.
+// Nil means scans happen only via the periodic backfill.
+type SafetyScanEnqueuer func(ctx context.Context, schematicID string) error
+
 const uploadPendingTemplate = "./template/upload_pending.html"
 
 // maxUploadSize is the maximum allowed NBT file size (10 MB).
@@ -276,7 +280,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
-func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
+func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer, enqueueSafetyScan SafetyScanEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
 			return e.String(http.StatusMethodNotAllowed, "method not allowed")
@@ -730,6 +734,11 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			_ = enqueueSearchUpsert(ctx, schem.ID)
 		}
 
+		// Content-safety scan (tier-1 hardening + tier-2 inspection manifest)
+		if enqueueSafetyScan != nil {
+			_ = enqueueSafetyScan(ctx, schem.ID)
+		}
+
 		// Async image moderation for gallery images (featured is handled by the moderation job).
 		moderateSchematicImages(moderationSvc, appStore, schem.ID, galleryFilenames)
 
@@ -993,6 +1002,8 @@ type uploadImageResponse struct {
 
 // uploadNBTResponse is the JSON response for a successful NBT upload.
 type uploadNBTResponse struct {
+	SourceFormat       string   `json:"sourceFormat,omitempty"`
+	ConversionWarnings []string `json:"conversionWarnings,omitempty"`
 	Token    string `json:"token"`
 	URL      string `json:"url"`
 	Checksum string `json:"checksum"`
@@ -1028,8 +1039,8 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 			defer file.Close()
 		}
 		// Basic filename validation before parsing
-		if header == nil || header.Filename == "" || !strings.HasSuffix(strings.ToLower(header.Filename), ".nbt") {
-			return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid file type: expected .nbt"})
+		if header == nil || header.Filename == "" || !isUploadableSchematicName(header.Filename) {
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid file type: expected " + UploadAcceptAttr})
 		}
 		// 10MB size limit check
 		if header.Size > maxUploadSize {
@@ -1043,6 +1054,14 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		if int64(len(data)) > maxUploadSize {
 			return e.JSON(http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
 		}
+		// Non-.nbt formats are converted to Create/vanilla structure NBT so
+		// the rest of the pipeline stays format-agnostic.
+		uploadFilename := header.Filename
+		data, uploadFilename, sourceFormat, conversionWarnings, convErr := normalizeUploadToNBT(header.Filename, data)
+		if convErr != nil {
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": convErr.Error()})
+		}
+
 		// Minimal backend validation
 		if ok, reason := nbtparser.Validate(data); !ok {
 			msg := "invalid NBT file"
@@ -1128,7 +1147,8 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		modsJSON, _ := json.Marshal(mods)
 
 		// Sanitize the filename to be ASCII-safe for URLs and S3 keys
-		safeFilename := sanitizeFilename(header.Filename)
+		// (extension already rewritten to .nbt when the upload was converted)
+		safeFilename := sanitizeFilename(uploadFilename)
 
 		// Upload NBT file to S3
 		nbtS3Key := s3CollectionTempUploads + "/" + token + "/" + safeFilename
@@ -1179,6 +1199,8 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		resp.Dimensions.X = dimX
 		resp.Dimensions.Y = dimY
 		resp.Dimensions.Z = dimZ
+		resp.SourceFormat = sourceFormat
+		resp.ConversionWarnings = conversionWarnings
 
 		if resp.Materials == nil {
 			resp.Materials = []nbtparser.Material{}

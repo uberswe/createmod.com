@@ -1,0 +1,79 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide" style="max-width: 1000px;">
+                <div class="page-header d-print-none">
+                    <h1 class="h2 page-title">{{ T .Language "NBT Viewer" }}</h1>
+                    <div class="text-secondary">{{ T .Language "Open any Minecraft NBT or schematic file in a browsable tree — with SNBT view, key search and copy-path. The file stays in your browser session and is parsed per request, never stored." }}</div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div id="nv-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5"/><path d="M12 12l8 -4.5"/><path d="M12 12l0 9"/><path d="M12 12l-8 -4.5"/></svg>
+                            <div class="h3 mb-1">{{ T .Language "Drop an NBT or schematic file here" }}</div>
+                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, .dat &middot; {{ T .Language "max 10 MB" }}</div>
+                            <input type="file" id="nv-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.dat" hidden>
+                        </div>
+                        <div class="text-secondary small mt-2" id="nv-status"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-3" id="nv-tree-card" style="display:none;">
+                    <div class="card-body">
+                        <div id="nv-tree"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+<script src="/assets/x/nbt-tree.js?v={{ AssetVer }}"></script>
+<script>
+(function () {
+  'use strict';
+  var drop = document.getElementById('nv-drop');
+  var input = document.getElementById('nv-file');
+  var statusEl = document.getElementById('nv-status');
+  var treeCard = document.getElementById('nv-tree-card');
+  var currentFile = null;
+
+  function source(params) {
+    var fd = new FormData();
+    fd.append('file', currentFile);
+    var qs = [];
+    Object.keys(params || {}).forEach(function (k) {
+      if (params[k] !== undefined && params[k] !== null && params[k] !== '') qs.push(k + '=' + encodeURIComponent(params[k]));
+    });
+    return fetch('/api/nbt-tree' + (qs.length ? '?' + qs.join('&') : ''), { method: 'POST', body: fd })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) throw new Error(j.error || 'request failed');
+          return j;
+        });
+      });
+  }
+
+  function open(file) {
+    currentFile = file;
+    statusEl.textContent = file.name + ' · ' + (file.size / 1024).toFixed(1) + ' KB';
+    treeCard.style.display = '';
+    window.NBTTree.mount(document.getElementById('nv-tree'), source);
+  }
+
+  drop.addEventListener('click', function () { input.click(); });
+  input.addEventListener('change', function () { if (input.files[0]) open(input.files[0]); });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
+  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    drop.style.borderColor = '';
+    if (ev.dataTransfer.files[0]) open(ev.dataTransfer.files[0]);
+  });
+})();
+</script>
+{{ template "foot.html" . }}

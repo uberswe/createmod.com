@@ -183,10 +183,24 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></svg>
                                     Guide
                                 </a>
-                                <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
+                                <div class="dl-split" data-dl-split hx-disable hx-boost="false">
+                                <button class="btn btn-sm btn-primary dl-split-primary" id="gen-download-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
                                     Download .nbt
                                 </button>
+                                <button type="button" class="btn btn-sm btn-primary dl-split-toggle" aria-haspopup="menu" aria-expanded="false" aria-label="{{ T .Language "More download formats" }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+                                </button>
+                                <div class="dl-split-menu" role="menu" hidden>
+                                    <button type="button" role="menuitem" data-gen-format="schem" tabindex="-1">WorldEdit .schem</button>
+                                    <button type="button" role="menuitem" data-gen-format="litematic" tabindex="-1">Litematica .litematic</button>
+                                    <button type="button" role="menuitem" data-gen-format="world" tabindex="-1" title="{{ T .Language "A superflat world with the build placed and spawn set — drop it in your saves folder" }}">{{ T .Language "Ready-to-play world (.zip)" }}</button>
+                                    <button type="button" role="menuitem" data-gen-format="schematic" tabindex="-1" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
+                                        Legacy .schematic
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm dl-split-warn" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+                                    </button>
+                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -360,6 +374,11 @@
       GeneratorApp.setSpinEnabled(this.checked);
     });
 
+    document.querySelectorAll('[data-gen-format]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            GeneratorApp.downloadNBT('/api/generators/balloon/download?format=' + this.getAttribute('data-gen-format'), getParams());
+        });
+    });
     document.getElementById('gen-download-btn').addEventListener('click', function(e) {
       e.preventDefault();
       GeneratorApp.downloadNBT('/api/generators/balloon/download', getParams());

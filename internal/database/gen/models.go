@@ -153,6 +153,17 @@ type DownloadToken struct {
 	UseCount  int32     `json:"use_count"`
 }
 
+type EditorSession struct {
+	ID         string          `json:"id"`
+	UserID     *string         `json:"user_id"`
+	SourceKind string          `json:"source_kind"`
+	SourceRef  string          `json:"source_ref"`
+	Ops        json.RawMessage `json:"ops"`
+	Cursor     int32           `json:"cursor"`
+	Created    time.Time       `json:"created"`
+	Updated    time.Time       `json:"updated"`
+}
+
 type ExternalAuth struct {
 	ID                    string             `json:"id"`
 	UserID                string             `json:"user_id"`
@@ -497,6 +508,13 @@ type SchematicFile struct {
 	Description  string    `json:"description"`
 }
 
+type SchematicFingerprint struct {
+	SchematicID string          `json:"schematic_id"`
+	Fp          json.RawMessage `json:"fp"`
+	Version     int32           `json:"version"`
+	ComputedAt  time.Time       `json:"computed_at"`
+}
+
 type SchematicRating struct {
 	ID          string             `json:"id"`
 	UserID      string             `json:"user_id"`
@@ -533,6 +551,15 @@ type SchematicReference struct {
 	LastFetched  pgtype.Timestamptz `json:"last_fetched"`
 	Created      time.Time          `json:"created"`
 	Updated      time.Time          `json:"updated"`
+}
+
+type SchematicSafety struct {
+	SchematicID     string          `json:"schematic_id"`
+	Checksum        string          `json:"checksum"`
+	FileSafe        bool            `json:"file_safe"`
+	Manifest        json.RawMessage `json:"manifest"`
+	PipelineVersion int32           `json:"pipeline_version"`
+	ScannedAt       time.Time       `json:"scanned_at"`
 }
 
 type SchematicTag struct {

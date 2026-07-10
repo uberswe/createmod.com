@@ -17,6 +17,7 @@ import (
 	"createmod/internal/search"
 	"createmod/internal/server"
 	"createmod/internal/session"
+	"createmod/internal/similarity"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
@@ -88,6 +89,7 @@ func computeAssetVersion() string {
 
 // RegisterParams holds all dependencies needed for route registration.
 type RegisterParams struct {
+	SimilarityService  *similarity.Service
 	SearchService      *search.Service
 	SearchEngine       search.SearchEngine
 	CacheService       *cache.Service
@@ -421,7 +423,15 @@ func Register(p RegisterParams) chi.Router {
 			return nil
 		}
 	}
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert)))
+	var enqueueSafetyScan pages.SafetyScanEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueSafetyScan = func(ctx context.Context, schematicID string) error {
+			_ = jw.Insert(ctx, jobs.FingerprintArgs{SchematicID: schematicID}, nil)
+			return jw.Insert(ctx, jobs.SafetyScanArgs{SchematicID: schematicID}, nil)
+		}
+	}
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
@@ -675,7 +685,7 @@ func Register(p RegisterParams) chi.Router {
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
-	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	// Download interstitial page
 	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/get/{name}/file/{fileID}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
@@ -711,8 +721,38 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
-	// Generators
+	// Generators (also the de-facto tools landing; /tools is its alias)
 	r.Get("/generators", Adapt(pages.GeneratorsLandingHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
+	})
+	// Schematic editor
+	r.Get("/tools/editor", Adapt(pages.EditorPageHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/editor/sessions", Adapt(pages.EditorCreateSessionHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}", Adapt(pages.EditorStateHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/op", Adapt(pages.EditorOpHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/undo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, false)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/redo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, true)))
+	r.Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
+	// NBT viewer
+	r.Get("/tools/nbt-viewer", Adapt(pages.NBTViewerToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Get("/api/schematics/{name}/nbt-tree", Adapt(pages.SchematicNBTTreeHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/nbt-tree", Adapt(pages.NBTTreeUploadHandler()))
+	// Similarity search
+	r.Get("/schematics/{name}/similar", Adapt(pages.SimilarSchematicsHandler(registry, p.CacheService, p.AppStore, p.SimilarityService)))
+	r.Get("/tools/similar", Adapt(pages.SimilarToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/similar", Adapt(pages.SimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
+	r.Get("/api/schematics/{name}/similar", Adapt(pages.GetSimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
+	// Safety explainer + checker
+	r.Get("/safety", Adapt(pages.SafetyExplainerHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools/safety-check", Adapt(pages.SafetyCheckToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/safety-check", Adapt(pages.SafetyCheckAPIHandler()))
+	// Schematic converter
+	r.Get("/tools/convert", Adapt(pages.ConvertToolHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools/convert/{pair}", Adapt(pages.ConvertPairHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/convert", Adapt(pages.ConvertAPIHandler()))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/convert/inspect", Adapt(pages.ConvertInspectHandler()))
 	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/propeller/{hash}", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/balloon", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore, p.StorageService)))

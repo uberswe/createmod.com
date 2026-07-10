@@ -2,6 +2,7 @@ package sitemap
 
 import (
 	"context"
+	"createmod/internal/pages"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"fmt"
@@ -87,6 +88,15 @@ func (s *Service) Generate(appStore *store.Store) {
 	addPage(now, smPages, "/explore", 0.9, smg.Daily)
 	addPage(now, smPages, "/users", 0.6, smg.Weekly)
 	addPage(now, smPages, "/videos", 0.6, smg.Weekly)
+	addPage(now, smPages, "/tools/convert", 0.8, smg.Weekly)
+	addPage(now, smPages, "/safety", 0.8, smg.Weekly)
+	addPage(now, smPages, "/tools/safety-check", 0.7, smg.Weekly)
+	addPage(now, smPages, "/tools/similar", 0.7, smg.Weekly)
+	addPage(now, smPages, "/tools/nbt-viewer", 0.7, smg.Weekly)
+	addPage(now, smPages, "/tools/editor", 0.8, smg.Weekly)
+	for _, pair := range pages.ConvertPairs() {
+		addPage(now, smPages, fmt.Sprintf("/tools/convert/%s-to-%s", pair.FromSlug, pair.ToSlug), 0.7, smg.Weekly)
+	}
 
 	schematicsSmCount := 1
 	smSchematics := smi.NewSitemap()

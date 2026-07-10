@@ -1,0 +1,48 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide" style="max-width: 800px;">
+                <div class="page-header d-print-none">
+                    <h1 class="h2 page-title">{{ T .Language "Are Minecraft schematics safe?" }}</h1>
+                    <div class="text-secondary">{{ T .Language "Short answer: schematics are data, not programs. Here is exactly what that means, and what we check anyway." }}</div>
+                </div>
+
+                <div class="card mb-3"><div class="card-body">
+                    <h2 class="h3">{{ T .Language "Schematics cannot run code on your computer" }}</h2>
+                    <p class="text-secondary">{{ T .Language "A schematic file (.nbt, .schem, .litematic) is a structured list of blocks and their positions — the same kind of data as a save file. Unlike a mod .jar, it contains no executable code, and Minecraft never executes it. Opening or downloading a schematic cannot install anything on your machine. A file pretending to be a schematic could still be malformed on purpose, which is why we validate structure before anything else." }}</p>
+                </div></div>
+
+                <div class="card mb-3"><div class="card-body">
+                    <h2 class="h3">{{ T .Language "What a schematic CAN contain" }}</h2>
+                    <p class="text-secondary">{{ T .Language "Once pasted into a world, some blocks act on the world or players:" }}</p>
+                    <ul class="text-secondary">
+                        <li><strong>{{ T .Language "Command blocks" }}</strong> — {{ T .Language "run any command when powered, including /give or /op. Only a risk in worlds where command blocks are enabled." }}</li>
+                        <li><strong>{{ T .Language "Mob spawners" }}</strong> — {{ T .Language "spawn entities continuously." }}</li>
+                        <li><strong>{{ T .Language "Signs and books with click commands" }}</strong> — {{ T .Language "run a command when a player clicks them." }}</li>
+                        <li><strong>{{ T .Language "Structure and jigsaw blocks" }}</strong> — {{ T .Language "can load or generate additional structures." }}</li>
+                    </ul>
+                    <p class="text-secondary mb-0">{{ T .Language "None of these are inherently malicious — command blocks power many legitimate contraptions — but you deserve to know they are there before you paste." }}</p>
+                </div></div>
+
+                <div class="card mb-3"><div class="card-body">
+                    <h2 class="h3">{{ T .Language "What CreateMod.com checks" }}</h2>
+                    <p class="text-secondary"><strong>{{ T .Language "1. File hardening (every upload)." }}</strong> {{ T .Language "Size caps, decompression-bomb guards, nesting-depth and length validation. Malformed or hostile files are rejected at upload." }}</p>
+                    <p class="text-secondary"><strong>{{ T .Language "2. Content inspection (every published schematic)." }}</strong> {{ T .Language "We parse every block and block entity and record a transparency manifest: command blocks (with their command text), spawners (with what they spawn), sign and book click commands, structure blocks. The manifest is shown on the schematic page." }}</p>
+                    <p class="text-secondary mb-0">{{ T .Language "When the inspection finds nothing notable, the schematic shows a Validated badge. When it finds something, the badge says exactly what — \"contains 2 command blocks\" — with the details one click away. We deliberately avoid a blanket \"100% secure\" stamp: our claims are specific because specific claims are the ones you can trust." }}</p>
+                </div></div>
+
+                <div class="card mb-3"><div class="card-body">
+                    <h2 class="h3">{{ T .Language "Check any file yourself" }}</h2>
+                    <p class="text-secondary">{{ T .Language "The same inspection runs in our free checker — upload any schematic (it is scanned in memory, never stored) and see what is inside before you use it:" }}</p>
+                    <a href="/tools/safety-check" class="btn" style="background: var(--cm-primary); color: #fff; border: none;">{{ T .Language "Open the Schematic Safety Checker" }}</a>
+                </div></div>
+                <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can a Minecraft schematic contain a virus?","acceptedAnswer":{"@type":"Answer","text":"A schematic is a data file describing blocks and positions — it contains no executable code and Minecraft never executes it, so it cannot install anything on your computer the way a malicious mod jar could. The realistic concerns are in-world: command blocks, spawners, or sign click-commands included in the build. CreateMod.com inspects every published schematic and shows a transparency manifest of exactly those contents."}},{"@type":"Question","name":"What does the Validated badge on CreateMod.com mean?","acceptedAnswer":{"@type":"Answer","text":"Validated means the file parsed as well-formed schematic data, passed hardening checks (size, decompression and nesting limits), and a content inspection found no command blocks, spawners, or click commands. If the inspection finds any, the badge states what was found instead, with details available."}}]}</script>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+{{ template "foot.html" . }}
