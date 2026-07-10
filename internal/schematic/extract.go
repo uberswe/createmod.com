@@ -9,7 +9,10 @@ type MaterialCount struct {
 }
 
 // Materials returns the material list (non-air blocks grouped by block id,
-// ignoring properties), sorted by count descending then id.
+// ignoring properties), sorted by count descending then id. Blocks applied
+// to copycats (Create's copycat panels/steps and Copycats+ variants) are
+// counted too: building the schematic requires both the copycat block and
+// the material it wraps.
 func (s *Schematic) Materials() []MaterialCount {
 	counts := make(map[string]int)
 	perPalette := make([]int, len(s.Palette))
@@ -21,6 +24,18 @@ func (s *Schematic) Materials() []MaterialCount {
 			continue
 		}
 		counts[st.Name] += perPalette[i]
+	}
+	for _, be := range s.BlockEntities {
+		x, y, z := be.Pos[0], be.Pos[1], be.Pos[2]
+		if x < 0 || y < 0 || z < 0 || x >= s.Size[0] || y >= s.Size[1] || z >= s.Size[2] {
+			continue
+		}
+		if !IsCopycat(s.Palette[s.Blocks[s.Index(x, y, z)]].Name) {
+			continue
+		}
+		if name := copycatMaterialName(be.Raw); name != "" {
+			counts[name]++
+		}
 	}
 	out := make([]MaterialCount, 0, len(counts))
 	for id, c := range counts {
