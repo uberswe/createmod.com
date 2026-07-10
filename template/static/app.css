@@ -732,13 +732,17 @@ body.sidebar-ready .sidebar-rail {
   width: 220px;
   z-index: 1060;
 }
+/* Space priority inside the rail: nav links keep their content height (they
+   only scroll once the kin tiles are fully collapsed), the bottom links and
+   toggle never shrink, and the kin tiles absorb the squeeze first. */
 .sidebar-nav {
-  flex: 1;
+  flex: 0 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.5rem 0;
 }
 .sidebar-bottom {
+  flex-shrink: 0;
   border-top: 1px solid rgba(128, 128, 128, 0.12);
   padding: 0.5rem 0;
 }
@@ -762,6 +766,7 @@ body.sidebar-ready .sidebar-rail {
   align-items: center;
   justify-content: center;
   width: 100%;
+  flex-shrink: 0;
   height: 40px;
   padding: 0.5rem 1rem;
   background: none;
@@ -838,6 +843,83 @@ body.sidebar-ready .sidebar-rail {
 .sidebar-rail:hover .sidebar-stats-card,
 .sidebar-rail.sidebar-expanded .sidebar-stats-card {
   display: block;
+}
+
+/* Kin tiles: compact promos for our other sites, pinned directly above the
+   account links. margin-top:auto keeps them at the bottom of the free space;
+   min-height:0 + the large shrink factor lets the bottom links clip them
+   when the viewport is too short instead of pushing anything else around.
+   A fixed width prevents reflow while the rail animates between 56/220px. */
+.sidebar-kin {
+  margin-top: auto;
+  flex: 0 999 auto;
+  min-height: 0;
+  overflow: hidden;
+  width: 220px;
+  padding: 0.75rem 0.75rem 0.5rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.sidebar-rail:hover .sidebar-kin,
+.sidebar-rail.sidebar-expanded .sidebar-kin {
+  opacity: 1;
+}
+.sidebar-kin-heading {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cm-secondary-color);
+  margin: 0 0.25rem 0.5rem;
+}
+.sidebar-kin-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(128, 128, 128, 0.15);
+  border-radius: 8px;
+  color: var(--cm-body-color);
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.sidebar-kin-tile:last-child {
+  margin-bottom: 0;
+}
+.sidebar-kin-tile:hover {
+  border-color: rgba(var(--cm-primary-rgb, 191, 144, 69), 0.55);
+  background: rgba(var(--cm-primary-rgb, 191, 144, 69), 0.08);
+  text-decoration: none;
+  color: var(--cm-body-color);
+}
+.sidebar-kin-tile > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  image-rendering: pixelated;
+}
+.sidebar-kin-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sidebar-kin-body strong {
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+.sidebar-kin-body > span {
+  font-size: 0.71875rem;
+  line-height: 1.35;
+  color: var(--cm-secondary-color);
+}
+.sidebar-kin-body em {
+  font-style: normal;
+  font-size: 0.6875rem;
+  color: var(--cm-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /***************
@@ -994,6 +1076,9 @@ body.sidebar-pinned .page-wrapper {
   }
   .sidebar-rail .sidebar-stats-card {
     display: block;
+  }
+  .sidebar-rail .sidebar-kin {
+    opacity: 1;
   }
   body.sidebar-open .sidebar-rail {
     transform: translateX(0);
