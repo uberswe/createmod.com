@@ -19,7 +19,7 @@
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <h2 class="mb-0">{{ .ProfileUsername }}</h2>
                                     {{ if .HasSchematics }}
-                                    <span class="badge bg-green" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
+                                    <span class="cm-badge cm-badge--green cm-badge--upper" title="{{ T .Language "This user has uploaded schematics" }}">{{ T .Language "Contributor" }}</span>
                                     {{ end }}
                                 </div>
                                 <div class="d-flex align-items-center gap-3 text-secondary">
@@ -48,23 +48,11 @@
                                 <div class="card h-100">
                                     <div class="card-header"><h3 class="card-title mb-0">{{ T .Language "Stats" }}</h3></div>
                                     <div class="card-body">
-                                        <div class="row g-3">
-                                            <div class="col-6">
-                                                <div class="text-secondary">{{ T .Language "Total schematics" }}</div>
-                                                <div class="h3 mb-0">{{ .SchematicCount }}</div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="text-secondary">{{ T .Language "Total views" }}</div>
-                                                <div class="h3 mb-0">{{ .TotalViews }}</div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="text-secondary">{{ T .Language "Total downloads" }}</div>
-                                                <div class="h3 mb-0">{{ .TotalDownloads }}</div>
-                                            </div>
-                                            <div class="col-6">
-                                                <div class="text-secondary">{{ T .Language "Points" }}</div>
-                                                <div class="h3 mb-0">{{ .Points }}</div>
-                                            </div>
+                                        <div class="cm-statstrip" style="grid-template-columns: repeat(2, 1fr);">
+                                            <div><div class="lbl">{{ T .Language "Total schematics" }}</div><div class="val">{{ .SchematicCount }}</div></div>
+                                            <div><div class="lbl">{{ T .Language "Total views" }}</div><div class="val">{{ .TotalViews }}</div></div>
+                                            <div><div class="lbl">{{ T .Language "Total downloads" }}</div><div class="val">{{ .TotalDownloads }}</div></div>
+                                            <div><div class="lbl">{{ T .Language "Points" }}</div><div class="val val--gold">{{ .Points }}</div></div>
                                         </div>
                                         {{ if .HasAchievements }}
                                         <hr />
