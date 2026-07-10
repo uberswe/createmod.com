@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
@@ -46,11 +47,35 @@ var similarTemplates = append([]string{
 	"./template/include/schematic_card.html",
 }, commonTemplates...)
 
+// similarSortKeys are the accepted ?sort= values: the overall score plus
+// each fingerprint component (see schematic.componentWeights).
+var similarSortKeys = []string{"overall", "shape", "materials", "function", "proportions", "palette"}
+
 type similarPageData struct {
 	DefaultData
-	Source  models.Schematic
-	Results []SimilarResultView
-	Indexed int
+	Source   models.Schematic
+	Results  []SimilarResultView
+	Indexed  int
+	Sort     string
+	SortKeys []string
+}
+
+func componentPercent(r SimilarResultView, name string) int {
+	for _, c := range r.Breakdown {
+		if c.Name == name {
+			return c.Percent
+		}
+	}
+	return 0
+}
+
+// sortSimilarResults reorders results by one component's score. Results
+// arrive sorted by overall score, so the stable sort keeps overall order
+// as the tie-breaker.
+func sortSimilarResults(rs []SimilarResultView, component string) {
+	sort.SliceStable(rs, func(i, j int) bool {
+		return componentPercent(rs[i], component) > componentPercent(rs[j], component)
+	})
 }
 
 // buildSimilarResults resolves index hits into card view models.
@@ -105,11 +130,25 @@ func SimilarSchematicsHandler(registry *server.Registry, cacheService *cache.Ser
 		d.Slug = "/schematics/" + name + "/similar"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", s.Title, "/schematics/"+name, i18n.T(d.Language, "Similar"))
 
+		d.Sort = "overall"
+		if q := e.Request.URL.Query().Get("sort"); q != "" {
+			for _, k := range similarSortKeys {
+				if q == k {
+					d.Sort = k
+					break
+				}
+			}
+		}
+		d.SortKeys = similarSortKeys
+
 		if simService != nil {
 			d.Indexed = simService.Size()
 			if fp := simService.Get(s.ID); fp != nil {
 				hits := simService.FindSimilar(fp, s.ID, similarMaxResults, similarMinOverall)
 				d.Results = buildSimilarResults(e.Request.Context(), appStore, cacheService, hits, d.Language)
+				if d.Sort != "overall" {
+					sortSimilarResults(d.Results, d.Sort)
+				}
 			}
 		}
 		mapped := MapStoreSchematics(appStore, []store.Schematic{*s}, cacheService)
