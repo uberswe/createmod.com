@@ -67,14 +67,33 @@ func Test_EditorCurrentModel_Replay(t *testing.T) {
 }
 
 func Test_EditorPreviewTypeMapping(t *testing.T) {
-	if previewTypeFor(schematic.BlockState{Name: "minecraft:oak_stairs"}) != 2 {
+	// The generator renderer's shape enum: 4=stair, 2=bottom slab, 3=top slab.
+	if previewTypeFor(schematic.BlockState{Name: "minecraft:oak_stairs"}) != 4 {
 		t.Errorf("stairs type")
 	}
-	if previewTypeFor(schematic.BlockState{Name: "minecraft:stone_slab"}) != 3 {
-		t.Errorf("slab type")
+	if previewTypeFor(schematic.BlockState{Name: "minecraft:stone_slab"}) != 2 {
+		t.Errorf("bottom slab type")
+	}
+	if previewTypeFor(schematic.BlockState{Name: "minecraft:stone_slab", Properties: map[string]string{"type": "top"}}) != 3 {
+		t.Errorf("top slab type")
 	}
 	if previewTypeFor(schematic.BlockState{Name: "create:cogwheel"}) != 1 {
 		t.Errorf("cube fallback")
+	}
+	// Distinct blocks get distinct, stable preview colors.
+	if previewColorFor(schematic.BlockState{Name: "minecraft:stone"}) != 0x7d7d7d {
+		t.Errorf("stone color")
+	}
+	if previewColorFor(schematic.BlockState{Name: "minecraft:red_wool"}) != 0xa12722 {
+		t.Errorf("dye color")
+	}
+	a := previewColorFor(schematic.BlockState{Name: "create:cogwheel"})
+	b := previewColorFor(schematic.BlockState{Name: "create:shaft"})
+	if a == b {
+		t.Errorf("hashed colors collide for distinct blocks: %x", a)
+	}
+	if a != previewColorFor(schematic.BlockState{Name: "create:cogwheel"}) {
+		t.Errorf("hashed color not stable")
 	}
 	props := previewPropsFor(schematic.BlockState{Name: "minecraft:oak_stairs", Properties: map[string]string{"facing": "east", "half": "top"}})
 	if props["facing"] != "east" || props["half"] != "top" {
@@ -107,7 +126,7 @@ func Test_Editor_Templates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(hdr), "header-editor-btn") || !strings.Contains(string(hdr), "/tools/editor") {
-		t.Errorf("header missing editor entry")
+	if !strings.Contains(string(hdr), "Schematic Editor") || !strings.Contains(string(hdr), "/tools/editor") {
+		t.Errorf("header missing editor entry in the Tools dropdown")
 	}
 }

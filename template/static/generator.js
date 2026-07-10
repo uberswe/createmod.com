@@ -226,6 +226,13 @@ function renderBlocks(data) {
   clearBlocks();
   currentData = data;
 
+  // Accept the editor's size:[x,y,z] payload alongside sizeX/Y/Z.
+  if (data.sizeX == null && data.size) {
+    data.sizeX = data.size[0];
+    data.sizeY = data.size[1];
+    data.sizeZ = data.size[2];
+  }
+
   var blocks = data.blocks;
   if (!blocks || blocks.length === 0) return;
 
@@ -233,12 +240,15 @@ function renderBlocks(data) {
 
   spinAxis = (materials.orientation === 'vertical') ? 'z' : 'y';
 
+  // Group by shape type and (optional) per-block color; parseInt stops at
+  // the ':' so group keys still parse back to the shape type.
   var groups = {};
   for (var i = 0; i < blocks.length; i++) {
     var b = blocks[i];
     var t = b.type || 1;
-    if (!groups[t]) groups[t] = [];
-    groups[t].push(b);
+    var gk = t + ':' + (b.color != null ? b.color : -1);
+    if (!groups[gk]) groups[gk] = [];
+    groups[gk].push(b);
   }
 
   var cx = data.sizeX / 2;
@@ -341,7 +351,7 @@ function renderBlocks(data) {
   for (var type in groups) {
     var arr = groups[type];
     var t = parseInt(type);
-    var color = getBlockColor(t, materials);
+    var color = (arr[0].color != null) ? arr[0].color : getBlockColor(t, materials);
     var roughness = 0.75;
     var metalness = 0.08;
     if (t === 7) { roughness = 0.92; metalness = 0.0; }
