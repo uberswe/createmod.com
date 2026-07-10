@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 
@@ -322,6 +323,7 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 			Y     int               `json:"y"`
 			Z     int               `json:"z"`
 			Type  int               `json:"type"`
+			Color int               `json:"color"`
 			Props map[string]string `json:"props,omitempty"`
 		}
 		blocks := make([]previewBlock, 0, 4096)
@@ -337,7 +339,7 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 						truncated = true
 						break
 					}
-					blocks = append(blocks, previewBlock{X: x, Y: y, Z: z, Type: previewTypeFor(st), Props: previewPropsFor(st)})
+					blocks = append(blocks, previewBlock{X: x, Y: y, Z: z, Type: previewTypeFor(st), Color: previewColorFor(st), Props: previewPropsFor(st)})
 				}
 			}
 		}
@@ -346,22 +348,104 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 			"materials": map[string]string{"woodType": "oak"},
 			"truncated": truncated,
 			"size":      model.Size,
+			// The generator renderer reads sizeX/Y/Z, not the size array.
+			"sizeX": model.Size[0],
+			"sizeY": model.Size[1],
+			"sizeZ": model.Size[2],
 		})
 	}
 }
 
-// previewTypeFor maps blocks onto the generator renderer's coarse enum:
-// 1=cube, 2=stair, 3=slab (shape fidelity for the common partial blocks,
-// generic cubes for everything else).
+// previewTypeFor maps blocks onto the generator renderer's shape enum:
+// 4=stair (with facing/half/shape props), 2=bottom slab, 3=top slab,
+// generic cubes for everything else.
 func previewTypeFor(st schematic.BlockState) int {
 	switch schematic.BlockFamily(st.Name) {
 	case "stairs":
-		return 2
+		return 4
 	case "slabs":
-		return 3
+		if st.Properties["type"] == "top" {
+			return 3
+		}
+		return 2
 	default:
 		return 1
 	}
+}
+
+// previewDyeColors are Minecraft's sixteen dye tones, used for wool,
+// concrete, terracotta, carpet and stained glass in the preview.
+var previewDyeColors = map[string]int{
+	"white": 0xe8e8e8, "orange": 0xf07613, "magenta": 0xbd44b3, "light_blue": 0x3aafd9,
+	"yellow": 0xf8c527, "lime": 0x70b919, "pink": 0xed8dac, "gray": 0x3e4447,
+	"light_gray": 0x8e8e86, "cyan": 0x158991, "purple": 0x792aac, "blue": 0x35399d,
+	"brown": 0x724728, "green": 0x546d1b, "red": 0xa12722, "black": 0x141519,
+}
+
+// previewBlockColors gives common blocks a recognizable tone.
+var previewBlockColors = map[string]int{
+	"stone": 0x7d7d7d, "cobblestone": 0x797979, "stone_bricks": 0x777777,
+	"deepslate": 0x4c4c4c, "andesite": 0x888888, "granite": 0x9a6b57, "diorite": 0xc9c9c6,
+	"dirt": 0x8a5f3b, "grass_block": 0x5d923a, "sand": 0xdbcf9c, "gravel": 0x84807d,
+	"oak_planks": 0xb8945f, "spruce_planks": 0x6b4226, "birch_planks": 0xd5c98c,
+	"dark_oak_planks": 0x3e2912, "jungle_planks": 0xb88764, "acacia_planks": 0xa85632,
+	"cherry_planks": 0xe8c4b8, "crimson_planks": 0x6b3344, "warped_planks": 0x2b6b5e,
+	"oak_log": 0x6b5839, "spruce_log": 0x3a2718, "birch_log": 0xd5cda1,
+	"glass": 0xc9e8ea, "water": 0x3a56d9, "lava": 0xd96514, "obsidian": 0x15121e,
+	"iron_block": 0xd8d8d8, "gold_block": 0xf5cd30, "copper_block": 0xc06843,
+	"brass_block": 0xd1a866, "brass_casing": 0xb08d4e, "andesite_casing": 0x9a9484,
+}
+
+// previewColorFor returns an RGB tone for the 3D preview so different block
+// types are visually distinct: dye-colored blocks use their dye, common
+// blocks use hand-picked tones, and everything else gets a stable color
+// derived from a hash of the block name.
+func previewColorFor(st schematic.BlockState) int {
+	name := st.Name
+	if i := strings.IndexByte(name, ':'); i >= 0 {
+		name = name[i+1:]
+	}
+	if c, ok := previewBlockColors[name]; ok {
+		return c
+	}
+	for dye, c := range previewDyeColors {
+		if strings.HasPrefix(name, dye+"_") {
+			return c
+		}
+	}
+	// FNV-1a hash of the name → hue, at fixed saturation/lightness.
+	var h uint32 = 2166136261
+	for i := 0; i < len(name); i++ {
+		h ^= uint32(name[i])
+		h *= 16777619
+	}
+	return hslToRGB(float64(h%360), 0.45, 0.55)
+}
+
+// hslToRGB converts HSL (h in degrees, s/l in 0..1) to a packed RGB int.
+func hslToRGB(h, s, l float64) int {
+	c := (1 - math.Abs(2*l-1)) * s
+	x := c * (1 - math.Abs(math.Mod(h/60, 2)-1))
+	m := l - c/2
+	var r, g, b float64
+	switch {
+	case h < 60:
+		r, g, b = c, x, 0
+	case h < 120:
+		r, g, b = x, c, 0
+	case h < 180:
+		r, g, b = 0, c, x
+	case h < 240:
+		r, g, b = 0, x, c
+	case h < 300:
+		r, g, b = x, 0, c
+	default:
+		r, g, b = c, 0, x
+	}
+	ri := int((r + m) * 255)
+	gi := int((g + m) * 255)
+	bi := int((b + m) * 255)
+	return ri<<16 | gi<<8 | bi
 }
 
 func previewPropsFor(st schematic.BlockState) map[string]string {
