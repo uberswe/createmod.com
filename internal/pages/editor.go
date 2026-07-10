@@ -103,14 +103,22 @@ func editorCurrentModel(ctx context.Context, appStore *store.Store, storageSvc *
 	return cur, ops, nil
 }
 
+// editorMaterialView is one material row with the same preview color the
+// 3D viewer uses for that block, as a #rrggbb string.
+type editorMaterialView struct {
+	BlockID string `json:"BlockID"`
+	Count   int    `json:"Count"`
+	Color   string `json:"Color"`
+}
+
 type editorStateView struct {
-	ID         string                    `json:"id"`
-	Size       [3]int                    `json:"size"`
-	BlockCount int                       `json:"blockCount"`
-	Ops        []schematic.Op            `json:"ops"`
-	Cursor     int                       `json:"cursor"`
-	Materials  []schematic.MaterialCount `json:"materials"`
-	Palette    []string                  `json:"palette"`
+	ID         string               `json:"id"`
+	Size       [3]int               `json:"size"`
+	BlockCount int                  `json:"blockCount"`
+	Ops        []schematic.Op       `json:"ops"`
+	Cursor     int                  `json:"cursor"`
+	Materials  []editorMaterialView `json:"materials"`
+	Palette    []string             `json:"palette"`
 }
 
 func editorState(sess *store.EditorSession, model *schematic.Schematic, ops []schematic.Op) editorStateView {
@@ -126,13 +134,22 @@ func editorState(sess *store.EditorSession, model *schematic.Schematic, ops []sc
 	if ops == nil {
 		ops = []schematic.Op{}
 	}
+	mats := model.Materials()
+	matViews := make([]editorMaterialView, len(mats))
+	for i, m := range mats {
+		matViews[i] = editorMaterialView{
+			BlockID: m.BlockID,
+			Count:   m.Count,
+			Color:   fmt.Sprintf("#%06x", previewColorFor(schematic.BlockState{Name: m.BlockID})),
+		}
+	}
 	return editorStateView{
 		ID:         sess.ID,
 		Size:       model.Size,
 		BlockCount: model.BlockCount(),
 		Ops:        ops,
 		Cursor:     sess.Cursor,
-		Materials:  model.Materials(),
+		Materials:  matViews,
 		Palette:    palette,
 	}
 }
