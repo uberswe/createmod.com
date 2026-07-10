@@ -81,6 +81,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &BadgeRecalculationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &NotificationCleanupWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &NotificationEmailDigestWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ModerationSummaryWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &RedditMetadataWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &ReferenceMetadataWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &ModpackSyncWorker{deps: cfg.Deps})
@@ -228,6 +229,16 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 				river.PeriodicInterval(1*time.Hour),
 				func() (river.JobArgs, *river.InsertOpts) {
 					return NotificationEmailDigestArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
+					}
+				},
+				nil,
+			),
+			// Runs hourly; the worker only sends at 12:00 and 22:00 Stockholm time.
+			river.NewPeriodicJob(
+				river.PeriodicInterval(1*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return ModerationSummaryArgs{}, &river.InsertOpts{
 						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
 					}
 				},

@@ -40,6 +40,11 @@ SELECT COUNT(*) FROM guides WHERE author_id = $1 AND deleted IS NULL;
 -- name: IncrementGuideViews :exec
 UPDATE guides SET views = views + 1 WHERE id = $1;
 
+-- name: ListGuidesCreatedSince :many
+SELECT * FROM guides
+WHERE deleted IS NULL AND created >= @since AND created < @until
+ORDER BY created DESC;
+
 -- name: ListGuidesForSitemap :many
 SELECT id, slug, updated FROM guides WHERE deleted IS NULL ORDER BY updated DESC;
 

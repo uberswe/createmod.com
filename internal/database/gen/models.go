@@ -62,21 +62,22 @@ type Badge struct {
 }
 
 type Collection struct {
-	ID          string    `json:"id"`
-	AuthorID    *string   `json:"author_id"`
-	Title       string    `json:"title"`
-	Name        string    `json:"name"`
-	Slug        string    `json:"slug"`
-	Description string    `json:"description"`
-	BannerUrl   string    `json:"banner_url"`
-	Featured    bool      `json:"featured"`
-	Views       int32     `json:"views"`
-	Published   bool      `json:"published"`
-	Deleted     string    `json:"deleted"`
-	Created     time.Time `json:"created"`
-	Updated     time.Time `json:"updated"`
-	CollageUrl  string    `json:"collage_url"`
-	Video       string    `json:"video"`
+	ID          string             `json:"id"`
+	AuthorID    *string            `json:"author_id"`
+	Title       string             `json:"title"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description string             `json:"description"`
+	BannerUrl   string             `json:"banner_url"`
+	Featured    bool               `json:"featured"`
+	Views       int32              `json:"views"`
+	Published   bool               `json:"published"`
+	Deleted     string             `json:"deleted"`
+	Created     time.Time          `json:"created"`
+	Updated     time.Time          `json:"updated"`
+	CollageUrl  string             `json:"collage_url"`
+	Video       string             `json:"video"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
 }
 
 type CollectionTranslation struct {

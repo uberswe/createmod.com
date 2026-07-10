@@ -33,6 +33,10 @@ UPDATE collections SET
     banner_url = COALESCE(sqlc.narg('banner_url'), banner_url),
     collage_url = COALESCE(sqlc.narg('collage_url'), collage_url),
     featured = COALESCE(sqlc.narg('featured'), featured),
+    published_at = CASE
+        WHEN COALESCE(sqlc.narg('published'), published) = true AND published = false THEN NOW()
+        ELSE published_at
+    END,
     published = COALESCE(sqlc.narg('published'), published),
     video = COALESCE(sqlc.narg('video'), video),
     updated = NOW()
@@ -76,6 +80,12 @@ SELECT * FROM collections
 WHERE deleted = '' AND published = true
 ORDER BY updated DESC
 LIMIT $1 OFFSET $2;
+
+-- name: ListCollectionsPublishedSince :many
+SELECT * FROM collections
+WHERE deleted = '' AND published = true
+  AND published_at >= @since AND published_at < @until
+ORDER BY published_at DESC;
 
 -- name: UpdateCollectionCollageURL :exec
 UPDATE collections SET collage_url = $2 WHERE id = $1;
