@@ -402,7 +402,7 @@ function generateBalloon(p) {
 
 // ===== Hull Generator =====
 
-function generateHull(p) {
+function generateHullV1(p) {
   var L = clamp(p.length || 40, 20, 500);
   var B = clamp(p.beam || 10, 4, 100);
   var D = clamp(p.depth || 6, 3, 40);
@@ -916,6 +916,656 @@ function generateHull(p) {
     sizeZ: maxZ - minZ + 1,
     materials: { woodType: p.woodType || 'spruce' }
   };
+}
+
+
+// ===== Hull Generator v2 (lofted geometry) =====
+// Mirrors internal/generator/hull_v2.go — keep the two in sync.
+
+function generateHullV2(p) {
+  var L = clamp(p.length || 40, 20, 500);
+  var B = clamp(p.beam || 10, 4, 100);
+  var D = clamp(p.depth || 6, 3, 40);
+  var bottomPinch = clamp(p.bottomPinch || 0.3, 0.1, 0.7);
+  var hullFlare = clamp(p.hullFlare || 0, 0, 0.6);
+  var flareCurve = clamp(p.flareCurve || 2.6, 1.2, 4.0);
+  var tumblehome = clamp(p.tumblehome || 0, 0, 0.4);
+  var tumbleCurve = clamp(p.tumbleCurve || 3, 1.5, 5.0);
+  var sheerCurve = clamp(p.sheerCurve || 0, 0, 0.75);
+  var sheerCurveExp = clamp(p.sheerCurveExp || 2, 1.0, 4.0);
+  var bowLength = clamp(p.bowLength || 8, 2, Math.floor(L / 2));
+  var bowSharpness = clamp(p.bowSharpness || 1.3, 0.4, 4.0);
+  var bowKeelRise = clamp(p.bowKeelRise || 0, 0, 1.5);
+  var bowKeelLength = clamp(p.bowKeelLength || 0, 0, 40);
+  var bowCurve = clamp(p.bowCurve || 0, -1.0, 1.0);
+  var sternStyle = p.sternStyle;
+  if (sternStyle !== 'square' && sternStyle !== 'round' && sternStyle !== 'pointed') sternStyle = 'round';
+  var sternLength = clamp(p.sternLength || 5, 2, Math.floor(L / 2));
+  var sternSharpness = clamp(p.sternSharpness || 0.7, 0.2, 2.0);
+  var sternKeelRise = clamp(p.sternKeelRise || 0, 0, 1.5);
+  var sternKeelLength = clamp(p.sternKeelLength || 0, 0, 30);
+  var sternOverhang = clamp(p.sternOverhang || 0, 0, 1.0);
+  var keelCurveVal = clamp(p.keelCurve || 1.7, 0.7, 3.5);
+  var castleBlend = clamp(p.castleBlend || 4, 2, 12);
+  var hasRailings = !!p.hasRailings;
+  var hasTrim = !!p.hasTrim;
+  var hasWindows = !!p.hasWindows;
+  var castleHeight = clamp(p.castleHeight || 0, 0, 6);
+  var castleLength = clamp(p.castleLength || 0, 0, 30);
+  if (castleLength > Math.floor(L * 55 / 100)) castleLength = Math.floor(L * 55 / 100);
+  var forecastleHeight = clamp(p.forecastleHeight || 0, 0, 3);
+  var forecastleLength = clamp(p.forecastleLength || 0, 0, 20);
+  if (forecastleLength > Math.floor(L * 50 / 100)) forecastleLength = Math.floor(L * 50 / 100);
+  var hasGunPorts = !!p.hasGunPorts;
+  var gunPortRow = clamp(p.gunPortRow || 2, 1, 6);
+  var gunPortSpacing = clamp(p.gunPortSpacing || 4, 2, 8);
+  var midWidthBias = clamp(p.midWidthBias || 0, 0, 1.0);
+  var bowStyle = p.bowStyle;
+  var validBows = { 'default':1, pointed:1, clipper:1, raked:1, plumb:1 };
+  if (!validBows[bowStyle]) bowStyle = 'default';
+
+  // v2 params
+  var deadrise = clamp(p.deadrise || 0, 0, 0.7);
+  var midFullness = clamp(p.midFullness || 0, 0, 1);
+  var bowSectionV = clamp(p.bowSectionV || 0, 0, 1);
+  var sternFullness = clamp(p.sternFullness || 0, 0, 1);
+  var stemRake = clamp(p.stemRake || 0, 0, 1.2);
+  var stemCurve = clamp(p.stemCurve || 0, -1, 1);
+  var sternRake = clamp(p.sternRake || 0, 0, 1);
+  var rocker = clamp(p.rocker || 0, 0, 0.5);
+  var parallelMidbody = clamp(p.parallelMidbody || 0, 0, 0.6);
+  var stemPostHeight = clamp(p.stemPostHeight || 0, 0, 8);
+  var sternPostHeight = clamp(p.sternPostHeight || 0, 0, 8);
+  var doubleEnder = !!p.doubleEnder;
+  var closedHull = !!p.closedHull;
+
+  // Defaults mirroring HullParams.Validate for version >= 3
+  if (midFullness === 0) midFullness = 0.65;
+  if (bowSectionV === 0) bowSectionV = 0.55;
+  if (sternFullness === 0) sternFullness = 0.5;
+  if (stemRake === 0 && stemCurve === 0) {
+    if (bowStyle === 'clipper') { stemRake = 0.8; stemCurve = -0.6; }
+    else if (bowStyle === 'raked') { stemRake = 0.6; }
+    else if (bowStyle === 'pointed') { stemRake = 0.2; }
+    else if (bowStyle !== 'plumb') { stemRake = 0.35; stemCurve = 0.15; }
+  }
+  if (sternRake === 0) {
+    if (sternStyle === 'square') sternRake = 0.2;
+    else if (sternStyle === 'round') sternRake = 0.35;
+  }
+
+  var length = L, depth = D, halfBeam = B / 2;
+  function sstep(t) { t = clamp01(t); return t * t * t * (t * (t * 6 - 15) + 10); }
+  function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  var stemSetbackMax = stemRake * depth;
+  function stemSetbackAt(yNorm) {
+    var t = 1 - clamp01(yNorm);
+    var shape = t;
+    if (stemCurve > 0) shape = lerp(t, t * t, stemCurve);
+    else if (stemCurve < 0) shape = lerp(t, Math.sqrt(t), -stemCurve);
+    return stemSetbackMax * shape;
+  }
+  var sternSetbackMax = sternRake * depth;
+  function sternSetbackAt(yNorm) {
+    if (doubleEnder) return stemSetbackAt(yNorm);
+    return sternSetbackMax * (1 - clamp01(yNorm));
+  }
+
+  function keelYAtF(zNorm) {
+    var rise = 0;
+    if (rocker > 0) {
+      var t = Math.abs(zNorm - 0.5) * 2;
+      rise = rocker * depth * Math.pow(t, keelCurveVal);
+    }
+    if (bowKeelRise > 0 && bowKeelLength > 0) {
+      var start = 1 - bowKeelLength / length;
+      if (zNorm > start) {
+        var tb = (zNorm - start) / Math.max(1 - start, 0.001);
+        var r = Math.pow(tb, keelCurveVal) * bowKeelRise * depth;
+        if (r > rise) rise = r;
+      }
+    }
+    var sRise = doubleEnder ? bowKeelRise : sternKeelRise;
+    var sLen = doubleEnder ? bowKeelLength : sternKeelLength;
+    if (sRise > 0 && sLen > 0) {
+      var end = sLen / length;
+      if (zNorm < end) {
+        var ts = (end - zNorm) / Math.max(end, 0.001);
+        var r2 = Math.pow(ts, keelCurveVal) * sRise * depth;
+        if (r2 > rise) rise = r2;
+      }
+    }
+    return rise;
+  }
+
+  var bowLenF = bowLength, sternLenF = doubleEnder ? bowLength : sternLength;
+  var midLo = sternLenF / length;
+  var midHi = 1 - bowLenF / length;
+  var midCenter = lerp(midLo, midHi, 0.5 - midWidthBias * 0.35);
+  var pmHalf = parallelMidbody / 2;
+  var fullLo = Math.max(midLo, midCenter - pmHalf);
+  var fullHi = Math.min(midHi, midCenter + pmHalf);
+
+  function planAt(zNorm, yNorm) {
+    if (zNorm < midLo) {
+      var t = zNorm / Math.max(midLo, 0.001);
+      var st = sstep(t);
+      if (doubleEnder) return Math.pow(st, bowSharpness);
+      if (sternStyle === 'square') {
+        // Flat transom above the waterline only; the run tapers underneath.
+        var f = Math.pow(st, sternSharpness);
+        var floorF = lerp(0.12, 0.72, sstep(clamp01(yNorm)));
+        return f < floorF ? floorF : f;
+      }
+      if (sternStyle === 'round') return Math.pow(st, sternSharpness * 0.55);
+      return Math.pow(st, sternSharpness);
+    }
+    if (zNorm > midHi) {
+      var t2 = (1 - zNorm) / Math.max(1 - midHi, 0.001);
+      var st2 = sstep(t2);
+      var base = Math.pow(st2, bowSharpness);
+      if (bowCurve > 0) base = lerp(base, Math.sqrt(st2), bowCurve);
+      else if (bowCurve < 0) base = lerp(base, st2 * st2 * st2, -bowCurve);
+      return base;
+    }
+    if (zNorm >= fullLo && zNorm <= fullHi) return 1;
+    if (zNorm < fullLo) {
+      var t3 = (zNorm - midLo) / Math.max(fullLo - midLo, 0.001);
+      return lerp(0.78, 1, sstep(t3));
+    }
+    var t4 = (midHi - zNorm) / Math.max(midHi - fullHi, 0.001);
+    return lerp(0.84, 1, sstep(t4));
+  }
+
+  function fullnessToK(f) { return lerp(1.6, 0.55, clamp01(f)); }
+  function sectionKAt(zNorm) {
+    var midK = fullnessToK(midFullness);
+    var bowK = midK + bowSectionV * 0.9;
+    var sternK = doubleEnder ? bowK : fullnessToK(lerp(sternFullness, midFullness, 0.35));
+    if (zNorm > midHi) {
+      var t = (zNorm - midHi) / Math.max(1 - midHi, 0.001);
+      return lerp(midK, bowK, sstep(t));
+    }
+    if (zNorm < midLo) {
+      var t2 = (midLo - zNorm) / Math.max(midLo, 0.001);
+      return lerp(midK, sternK, sstep(t2));
+    }
+    return midK;
+  }
+
+  var keelHalf = bottomPinch * 0.25;
+  function sectionAt(yNorm, k) {
+    var yc = clamp01(yNorm);
+    var body = Math.pow(Math.sin(yc * Math.PI / 2), k + deadrise * 0.8);
+    var base = keelHalf + (1 - keelHalf) * body;
+    var flare = hullFlare * Math.pow(yc, flareCurve);
+    var tumble = tumblehome * Math.pow(yc, tumbleCurve);
+    var above = yNorm - 1;
+    if (above < 0) above = 0;
+    var castleTaper = above * 0.32 + above * above * 0.18;
+    var r = base + flare - tumble - castleTaper;
+    return r < 0.06 ? 0.06 : r;
+  }
+
+  // deckYAtFloat: continuous deck surface so the fitter can express sheer
+  // with slabs. Mirrors Go deckYAtFloat.
+  function deckYAtFloat(zf) {
+    var y = depth;
+    var zNorm = zf / Math.max(length - 1, 1);
+    if (sheerCurve > 0) {
+      var t = Math.abs(zNorm - 0.5) * 2;
+      y += sheerCurve * depth * Math.pow(t, sheerCurveExp);
+    }
+    if (castleHeight > 0 && castleLength > 0) {
+      var cL = castleLength;
+      var blend = castleBlend;
+      var b1 = cL * 0.55;
+      if (b1 < blend) blend = b1;
+      if (blend < 2) blend = 2;
+      if (zf < cL - blend) y += castleHeight;
+      else if (zf < cL) {
+        var tc = (zf - (cL - blend)) / blend;
+        y += castleHeight * (1 - sstep(tc));
+      }
+    }
+    if (forecastleHeight > 0 && forecastleLength > 0) {
+      var fL = forecastleLength;
+      var blend2 = castleBlend;
+      var b2 = fL * 0.55;
+      if (b2 < blend2) blend2 = b2;
+      if (blend2 < 2) blend2 = 2;
+      var zFromBow = (length - 1) - zf;
+      if (zFromBow < fL - blend2) y += forecastleHeight;
+      else if (zFromBow < fL) {
+        var tf = (zFromBow - (fL - blend2)) / blend2;
+        y += forecastleHeight * (1 - sstep(tf));
+      }
+    }
+    return y;
+  }
+
+  // Continuous hull volume test. Mirrors Go insideAt.
+  function insideAt(xs, ys, zs) {
+    if (zs < -0.49 || zs > length - 0.51) return false;
+    var zNormBase = zs / Math.max(length - 1, 1);
+    if (zNormBase < 0) zNormBase = 0;
+    if (zNormBase > 1) zNormBase = 1;
+    var keelY = keelYAtF(zNormBase);
+    if (ys < keelY) return false;
+    // Loft sections between keel line and deck (mirrors Go).
+    var bottomSpan = depth - keelY;
+    if (bottomSpan < 1) bottomSpan = 1;
+    var yNorm;
+    if (closedHull) {
+      if (ys > 2 * depth) return false;
+      if (ys <= depth) yNorm = (ys - keelY) / bottomSpan;
+      else yNorm = (2 * depth - ys) / depth;
+      if (yNorm < 0) return false;
+    } else {
+      if (ys > deckYAtFloat(zs)) return false;
+      yNorm = (ys - keelY) / bottomSpan;
+    }
+    var sb = sternSetbackAt(yNorm);
+    var stk = stemSetbackAt(yNorm);
+    var zLo = sb, zHi = length - 1 - stk;
+    if (zHi <= zLo || zs < zLo || zs > zHi) return false;
+    var zN = clamp01((zs - zLo) / (zHi - zLo));
+    var w = planAt(zN, yNorm) * sectionAt(yNorm, sectionKAt(zN)) * halfBeam;
+    if (w < 0.15) return false;
+    return Math.abs(xs) <= w;
+  }
+
+  // --- Grid extents ---
+  var maxDeckY = D;
+  var deckYArr = new Array(L), keelYArr = new Array(L);
+  for (var z0 = 0; z0 < L; z0++) {
+    deckYArr[z0] = Math.round(deckYAtFloat(z0));
+    if (deckYArr[z0] > maxDeckY) maxDeckY = deckYArr[z0];
+    keelYArr[z0] = Math.round(keelYAtF(z0 / Math.max(length - 1, 1)));
+  }
+  var topY = closedHull ? 2 * D : maxDeckY;
+  var xMax = Math.ceil(halfBeam * (1 + hullFlare + sternOverhang)) + 2;
+
+  // --- Occupancy: corner grid + per-cell classification ---
+  var nxC = 2 * xMax + 2, nyC = topY + 2, nzC = L + 1;
+  var cornerArr = new Uint8Array(nxC * nyC * nzC);
+  function cIdx(i, j, k) { return (k * nyC + j) * nxC + i; }
+  for (var ck = 0; ck < nzC; ck++) {
+    for (var cj = 0; cj < nyC; cj++) {
+      for (var ci = 0; ci < nxC; ci++) {
+        cornerArr[cIdx(ci, cj, ck)] = insideAt((ci - xMax) - 0.5, cj - 0.5, ck - 0.5) ? 1 : 0;
+      }
+    }
+  }
+
+  var CELL_EMPTY = 0, CELL_SOLID = 1, CELL_SURF = 2;
+  var cellArr = new Uint8Array((2 * xMax + 1) * (topY + 1) * L);
+  function cellAt(x, y, z) {
+    if (x < -xMax || x > xMax || y < 0 || y > topY || z < 0 || z >= L) return CELL_EMPTY;
+    return cellArr[(z * (topY + 1) + y) * (2 * xMax + 1) + (x + xMax)];
+  }
+  function setCellV(x, y, z, v) {
+    cellArr[(z * (topY + 1) + y) * (2 * xMax + 1) + (x + xMax)] = v;
+  }
+  for (var gz = 0; gz < L; gz++) {
+    for (var gy = 0; gy <= topY; gy++) {
+      for (var gx = -xMax; gx <= xMax; gx++) {
+        var inC = 0;
+        for (var dk = 0; dk <= 1; dk++)
+          for (var dj = 0; dj <= 1; dj++)
+            for (var di = 0; di <= 1; di++)
+              if (cornerArr[cIdx(gx + xMax + di, gy + dj, gz + dk)]) inC++;
+        if (inC === 8) setCellV(gx, gy, gz, CELL_SOLID);
+        else if (inC === 0) {
+          if (insideAt(gx, gy, gz)) setCellV(gx, gy, gz, CELL_SURF);
+        } else setCellV(gx, gy, gz, CELL_SURF);
+      }
+    }
+  }
+
+  // --- Shape fitting ---
+  function sideE(sx, sy, sz) { return sx >= 0; }
+  function sideW(sx, sy, sz) { return sx <= 0; }
+  function sideS(sx, sy, sz) { return sz >= 0; }
+  function sideN(sx, sy, sz) { return sz <= 0; }
+  function stairCand(facing, side, half) {
+    return {
+      type: BT.STAIR,
+      props: { facing: facing, half: half, shape: 'straight', waterlogged: 'false' },
+      test: half === 'bottom'
+        ? function (sx, sy, sz) { return sy <= 0 || side(sx, sy, sz); }
+        : function (sx, sy, sz) { return sy >= 0 || side(sx, sy, sz); },
+      penalty: 0.6
+    };
+  }
+  var candidates = [
+    { type: -1, props: null, test: function () { return false; }, penalty: 3.0 },
+    { type: BT.PLANK, props: null, test: function () { return true; }, penalty: 0.0 },
+    { type: BT.SLAB_BOT, props: { type: 'bottom', waterlogged: 'false' }, test: function (sx, sy, sz) { return sy <= 0; }, penalty: 0.9 },
+    { type: BT.SLAB_TOP, props: { type: 'top', waterlogged: 'false' }, test: function (sx, sy, sz) { return sy >= 0; }, penalty: 0.9 },
+    // facing = LOW/open side in this codebase (NBT exporter flips it);
+    // east-facing pairs with the west-side mask. Mirrors Go.
+    stairCand('east', sideW, 'bottom'),
+    stairCand('west', sideE, 'bottom'),
+    stairCand('north', sideS, 'bottom'),
+    stairCand('south', sideN, 'bottom'),
+    stairCand('east', sideW, 'top'),
+    stairCand('west', sideE, 'top'),
+    stairCand('north', sideS, 'top'),
+    stairCand('south', sideN, 'top')
+  ];
+  var sampleOffsets = [];
+  var offVals = [-1 / 3, 0, 1 / 3];
+  for (var oi = 0; oi < 3; oi++)
+    for (var oj = 0; oj < 3; oj++)
+      for (var ok = 0; ok < 3; ok++)
+        sampleOffsets.push([offVals[oi], offVals[oj], offVals[ok]]);
+
+  var blockMap = {};
+  function bKey(x, y, z) { return x + ',' + y + ',' + z; }
+  function setBlock(x, y, z, type, props) {
+    var b = { x: x, y: y, z: z, type: type };
+    if (props) b.props = props;
+    blockMap[bKey(x, y, z)] = b;
+  }
+  function getBlock(x, y, z) { return blockMap[bKey(x, y, z)]; }
+  function copyProps(m) {
+    if (!m) return null;
+    var out = {};
+    for (var k in m) out[k] = m[k];
+    return out;
+  }
+
+  // Bow/stern taper flag per z (mirrors Go): stair steps there read fore-aft.
+  var inTaper = new Array(L);
+  for (var tz = 0; tz < L; tz++) {
+    var tzn = tz / Math.max(length - 1, 1);
+    inTaper[tz] = tzn < midLo || tzn > midHi;
+  }
+
+  for (var fz = 0; fz < L; fz++) {
+    for (var fy = 0; fy <= topY; fy++) {
+      for (var fx = -xMax; fx <= xMax; fx++) {
+        if (cellAt(fx, fy, fz) !== CELL_SURF) continue;
+        var occ = new Array(27);
+        var occCount = 0;
+        for (var s = 0; s < 27; s++) {
+          var o = sampleOffsets[s];
+          occ[s] = insideAt(fx + o[0], fy + o[1], fz + o[2]);
+          if (occ[s]) occCount++;
+        }
+        if (occCount === 0) continue;
+        // Tie-break stair halves toward the cell's occupied mass (mirrors Go).
+        var topMass = 0, botMass = 0;
+        for (var sm = 0; sm < 27; sm++) {
+          if (occ[sm]) {
+            if (sampleOffsets[sm][1] > 0) topMass++;
+            else if (sampleOffsets[sm][1] < 0) botMass++;
+          }
+        }
+        var preferTop = topMass >= botMass;
+        var zPos = 0, zNeg = 0, xPos = 0, xNeg = 0;
+        for (var sg = 0; sg < 27; sg++) {
+          if (!occ[sg]) continue;
+          if (sampleOffsets[sg][2] > 0) zPos++;
+          else if (sampleOffsets[sg][2] < 0) zNeg++;
+          if (sampleOffsets[sg][0] > 0) xPos++;
+          else if (sampleOffsets[sg][0] < 0) xNeg++;
+        }
+        var gz = Math.abs(zPos - zNeg), gx = Math.abs(xPos - xNeg);
+        var bestIdx = 0, bestErr = Infinity;
+        for (var ci2 = 0; ci2 < candidates.length; ci2++) {
+          var cand = candidates[ci2];
+          var errSum = cand.penalty;
+          if (cand.type === BT.STAIR && cand.props) {
+            if ((cand.props.half === 'top') !== preferTop) errSum += 0.3;
+            var sideways = cand.props.facing === 'east' || cand.props.facing === 'west';
+            if (sideways && inTaper[fz]) errSum += 2.5;
+            else if (sideways && gz >= 2) errSum += 0.8;
+            else if (!sideways && gx >= 2 && gz < 2 && !inTaper[fz]) errSum += 0.8;
+          }
+          for (var s2 = 0; s2 < 27; s2++) {
+            var o2 = sampleOffsets[s2];
+            if (cand.test(o2[0], o2[1], o2[2]) !== occ[s2]) errSum++;
+          }
+          if (errSum < bestErr) { bestErr = errSum; bestIdx = ci2; }
+        }
+        if (candidates[bestIdx].type === -1) continue;
+        setBlock(fx, fy, fz, candidates[bestIdx].type, copyProps(candidates[bestIdx].props));
+      }
+    }
+  }
+
+  // --- Shell + deck ---
+  for (var sz3 = 0; sz3 < L; sz3++) {
+    for (var sy3 = 0; sy3 <= topY; sy3++) {
+      for (var sx3 = -xMax; sx3 <= xMax; sx3++) {
+        if (cellAt(sx3, sy3, sz3) !== CELL_SOLID) continue;
+        var exposed = cellAt(sx3 - 1, sy3, sz3) !== CELL_SOLID || cellAt(sx3 + 1, sy3, sz3) !== CELL_SOLID ||
+                      cellAt(sx3, sy3 - 1, sz3) !== CELL_SOLID || cellAt(sx3, sy3 + 1, sz3) !== CELL_SOLID ||
+                      cellAt(sx3, sy3, sz3 - 1) !== CELL_SOLID || cellAt(sx3, sy3, sz3 + 1) !== CELL_SOLID;
+        var isDeck = !closedHull && sy3 === deckYArr[sz3];
+        if (exposed || isDeck) setBlock(sx3, sy3, sz3, BT.PLANK);
+      }
+    }
+  }
+
+  // De-stack: same-facing same-half stair runs become planks above the
+  // lowest stair (mirrors Go; v1's proven rule).
+  {
+    var stairList = [];
+    for (var dk in blockMap) {
+      if (blockMap[dk].type === BT.STAIR) stairList.push(blockMap[dk]);
+    }
+    stairList.sort(function (a, b) {
+      if (a.y !== b.y) return b.y - a.y;
+      if (a.z !== b.z) return a.z - b.z;
+      return a.x - b.x;
+    });
+    for (var di2 = 0; di2 < stairList.length; di2++) {
+      var st2 = stairList[di2];
+      var cur2 = getBlock(st2.x, st2.y, st2.z);
+      var below2 = getBlock(st2.x, st2.y - 1, st2.z);
+      if (cur2 && cur2.type === BT.STAIR && below2 && below2.type === BT.STAIR &&
+          below2.props && cur2.props &&
+          below2.props.half === cur2.props.half && below2.props.facing === cur2.props.facing) {
+        setBlock(st2.x, st2.y, st2.z, BT.PLANK);
+      }
+    }
+  }
+
+  function hwAt(y, z) {
+    if (y < 0 || y > topY || z < 0 || z >= L) return -1;
+    for (var x = xMax; x >= 0; x--) {
+      var c = cellAt(x, y, z);
+      if (c === CELL_SOLID) return x;
+      if (c === CELL_SURF && getBlock(x, y, z)) return x;
+    }
+    return -1;
+  }
+  function hasHull(x, y, z) { return cellAt(x, y, z) === CELL_SOLID; }
+  function hKey(x, y, z) { return x + ',' + y + ',' + z; }
+  var inHull = {};
+  for (var hz = 0; hz < L; hz++)
+    for (var hy = 0; hy <= topY; hy++)
+      for (var hx = -xMax; hx <= xMax; hx++)
+        if (cellAt(hx, hy, hz) === CELL_SOLID) inHull[hKey(hx, hy, hz)] = 1;
+
+
+  // Stem/stern posts
+  if (!closedHull) {
+    var placePost = function (fromBow, height) {
+      if (height <= 0) return;
+      var zStart = fromBow ? L - 1 : 0;
+      var zEnd = fromBow ? -1 : L;
+      var step = fromBow ? -1 : 1;
+      var zPost = -1;
+      for (var zp = zStart; zp !== zEnd; zp += step) {
+        if (hwAt(deckYArr[zp], zp) >= 0) { zPost = zp; break; }
+      }
+      if (zPost < 0) return;
+      var deckY = deckYArr[zPost];
+      for (var yp = deckY + 1; yp <= deckY + height; yp++) setBlock(0, yp, zPost, BT.PLANK);
+      setBlock(0, deckY + height + 1, zPost, BT.STAIR,
+        { facing: fromBow ? 'south' : 'north', half:'bottom', shape:'straight', waterlogged:'false' });
+    };
+    placePost(true, stemPostHeight);
+    var sp = sternPostHeight;
+    if (doubleEnder && sp === 0) sp = stemPostHeight;
+    placePost(false, sp);
+  }
+
+  // Stern windows
+  if (hasWindows && castleHeight >= 2 && castleLength > 0 && !closedHull) {
+    var wz = 0, wy = D + 1;
+    if (deckYArr[wz] > D) {
+      var hwBack = hwAt(wy, wz);
+      if (hwBack >= 1) {
+        for (var wx = -hwBack + 1; wx <= hwBack - 1; wx += 2) {
+          var wb = getBlock(wx, wy, wz);
+          if (wb && wb.type === BT.PLANK) {
+            setBlock(wx, wy, wz, BT.TRAPDOOR, { facing:'north', half:'bottom', open:'true', powered:'false', waterlogged:'false' });
+          }
+        }
+      }
+    }
+  }
+
+  // Gunwale trim + railings
+  if (!closedHull) {
+    for (var zg = 0; zg < L; zg++) {
+      var deckYg = deckYArr[zg];
+      var hwD = hwAt(deckYg, zg);
+      if (hwD < 1) continue;
+      var yg = deckYg + 1;
+      var canInset = hwD >= 2;
+      if (hasTrim && hasRailings && canInset) {
+        if (!getBlock(hwD, yg, zg) && !hasHull(hwD, yg, zg)) setBlock(hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+        if (!getBlock(-hwD, yg, zg) && !hasHull(-hwD, yg, zg)) setBlock(-hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+        setBlock(hwD - 1, yg, zg, BT.FENCE);
+        if (hwD - 1 > 0) setBlock(-(hwD - 1), yg, zg, BT.FENCE);
+      } else if (hasTrim) {
+        if (!getBlock(hwD, yg, zg) && !hasHull(hwD, yg, zg)) setBlock(hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+        if (hwD > 0 && !getBlock(-hwD, yg, zg) && !hasHull(-hwD, yg, zg)) setBlock(-hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+      } else if (hasRailings) {
+        setBlock(hwD, yg, zg, BT.FENCE);
+        if (hwD > 0) setBlock(-hwD, yg, zg, BT.FENCE);
+      }
+    }
+    for (var kf in blockMap) {
+      var bf = blockMap[kf];
+      if (bf.type !== BT.FENCE) continue;
+      var belowF = getBlock(bf.x, bf.y - 1, bf.z);
+      if (belowF && belowF.type === BT.SLAB_BOT) delete blockMap[bKey(bf.x, bf.y - 1, bf.z)];
+    }
+  }
+
+  // Gun ports
+  if (hasGunPorts && gunPortRow > 0 && !closedHull) {
+    var yPort = D - gunPortRow;
+    var midKeel = keelYArr[Math.floor(L / 2)];
+    if (midKeel + 1 > yPort) yPort = midKeel + 1;
+    for (var zp2 = 3; zp2 < L - 3; zp2 += gunPortSpacing) {
+      var hwP = hwAt(yPort, zp2);
+      if (hwP < 1) continue;
+      setBlock(hwP, yPort, zp2, BT.TRAPDOOR, { facing:'east', half:'bottom', open:'true', powered:'false', waterlogged:'false' });
+      if (hwP > 0) setBlock(-hwP, yPort, zp2, BT.TRAPDOOR, { facing:'west', half:'bottom', open:'true', powered:'false', waterlogged:'false' });
+    }
+  }
+
+  // Connectivity cleanup: keep only blocks 6-connected to the hull volume
+  {
+    var reached = {};
+    var queue = [];
+    for (var kq in inHull) queue.push(kq);
+    var DIRS = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    while (queue.length > 0) {
+      var cur2 = queue.shift().split(',');
+      var cx = +cur2[0], cy = +cur2[1], cz = +cur2[2];
+      for (var di = 0; di < 6; di++) {
+        var nk = (cx + DIRS[di][0]) + ',' + (cy + DIRS[di][1]) + ',' + (cz + DIRS[di][2]);
+        if (reached[nk] || inHull[nk]) continue;
+        if (blockMap[nk]) { reached[nk] = 1; queue.push(nk); }
+      }
+    }
+    for (var kr in blockMap) {
+      if (!inHull[kr] && !reached[kr]) delete blockMap[kr];
+    }
+  }
+
+  // Fence connection states
+  for (var kc in blockMap) {
+    var bc = blockMap[kc];
+    if (bc.type !== BT.FENCE) continue;
+    var connD = function (dx, dz) {
+      var n = getBlock(bc.x + dx, bc.y, bc.z + dz);
+      if (!n) return 'false';
+      return (n.type === BT.FENCE || n.type === BT.PLANK || n.type === BT.STAIR) ? 'true' : 'false';
+    };
+    bc.props = { east: connD(1, 0), west: connD(-1, 0), south: connD(0, 1), north: connD(0, -1), waterlogged: 'false' };
+  }
+
+  // Stair corner shapes
+  {
+    var facingVec = { south:[0,1], north:[0,-1], east:[1,0], west:[-1,0] };
+    var leftOf = { south:'east', north:'west', east:'north', west:'south' };
+    var rightOf = { south:'west', north:'east', east:'south', west:'north' };
+    for (var kk in blockMap) {
+      var bs = blockMap[kk];
+      if (bs.type !== BT.STAIR || !bs.props) continue;
+      var fv = facingVec[bs.props.facing];
+      if (!fv) continue;
+      var front = getBlock(bs.x + fv[0], bs.y, bs.z + fv[1]);
+      var back = getBlock(bs.x - fv[0], bs.y, bs.z - fv[1]);
+      if (back && back.type === BT.STAIR && back.props && back.props.half === bs.props.half) {
+        if (back.props.facing === leftOf[bs.props.facing]) { bs.props.shape = 'inner_left'; continue; }
+        if (back.props.facing === rightOf[bs.props.facing]) { bs.props.shape = 'inner_right'; continue; }
+      }
+      if (front && front.type === BT.STAIR && front.props && front.props.half === bs.props.half) {
+        if (front.props.facing === leftOf[bs.props.facing]) { bs.props.shape = 'outer_left'; continue; }
+        if (front.props.facing === rightOf[bs.props.facing]) { bs.props.shape = 'outer_right'; continue; }
+      }
+    }
+  }
+
+  // Emit
+  var result = [];
+  var minX = Infinity, minY = Infinity, minZ = Infinity;
+  var maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (var ke in blockMap) {
+    var be = blockMap[ke];
+    result.push(be);
+    if (be.x < minX) minX = be.x;
+    if (be.y < minY) minY = be.y;
+    if (be.z < minZ) minZ = be.z;
+    if (be.x > maxX) maxX = be.x;
+    if (be.y > maxY) maxY = be.y;
+    if (be.z > maxZ) maxZ = be.z;
+  }
+  if (result.length === 0) { minX = 0; minY = 0; minZ = 0; maxX = 0; maxY = 0; maxZ = 0; }
+  for (var ri = 0; ri < result.length; ri++) {
+    result[ri].x -= minX;
+    result[ri].y -= minY;
+    result[ri].z -= minZ;
+  }
+
+  return {
+    blocks: result,
+    sizeX: maxX - minX + 1,
+    sizeY: maxY - minY + 1,
+    sizeZ: maxZ - minZ + 1,
+    materials: { woodType: p.woodType || 'spruce' }
+  };
+}
+
+// Version dispatch: <= 2 runs the frozen v1 algorithm (old share links must
+// reproduce identical hulls); >= 3 (or missing) runs v2.
+function generateHull(p) {
+  var v = p && p.version ? p.version : 3;
+  if (v >= 3) return generateHullV2(p);
+  return generateHullV1(p);
 }
 
 // Expose
