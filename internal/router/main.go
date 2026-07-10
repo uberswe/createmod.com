@@ -721,11 +721,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
-	// Generators (also the de-facto tools landing; /tools is its alias)
 	r.Get("/generators", Adapt(pages.GeneratorsLandingHandler(registry, p.CacheService, p.AppStore)))
-	r.Get("/tools", func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, "/generators", http.StatusMovedPermanently)
-	})
+	r.Get("/tools", Adapt(pages.ToolsLandingHandler(registry, p.CacheService, p.AppStore)))
 	// Schematic editor
 	r.Get("/tools/editor", Adapt(pages.EditorPageHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/editor/sessions", Adapt(pages.EditorCreateSessionHandler(p.AppStore, p.StorageService)))

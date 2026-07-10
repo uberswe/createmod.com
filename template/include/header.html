@@ -28,12 +28,21 @@
                     <a class="dropdown-item" href="{{ LangURL .Language "/generators/propeller" }}">{{ T .Language "Propeller" }}</a>
                     <a class="dropdown-item" href="{{ LangURL .Language "/generators/balloon" }}">{{ T .Language "Airship Balloon" }}</a>
                     <a class="dropdown-item" href="{{ LangURL .Language "/generators/hull" }}">{{ T .Language "Ship Hull" }}</a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item d-lg-none" href="{{ LangURL .Language "/tools/editor" }}">{{ T .Language "Schematic Editor" }}</a>
+                </div>
+            </div>
+            <div class="dropdown d-none d-md-block">
+                <a href="#" class="btn btn-outline-primary" data-cm-toggle="dropdown" hx-boost="false" hx-disable aria-expanded="false" aria-label="{{ T .Language "Tools" }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4" /><path d="M14.5 5.5l4 4" /><path d="M12 8l-5 -5l-4 4l5 5" /><path d="M7 8l-1.5 1.5" /><path d="M16 12l5 5l-4 4l-5 -5" /><path d="M16 17l-1.5 1.5" /></svg>
+                    {{ T .Language "Tools" }}
+                </a>
+                <div class="dropdown-menu dropdown-menu-end">
                     <a class="dropdown-item" href="{{ LangURL .Language "/tools/convert" }}">{{ T .Language "Converter" }}</a>
+                    <a class="dropdown-item" href="{{ LangURL .Language "/tools/safety-check" }}">{{ T .Language "Safety Checker" }}</a>
                     <a class="dropdown-item" href="{{ LangURL .Language "/tools/similar" }}">{{ T .Language "Find Similar" }}</a>
                     <a class="dropdown-item" href="{{ LangURL .Language "/tools/nbt-viewer" }}">{{ T .Language "NBT Viewer" }}</a>
-                    <a class="dropdown-item" href="{{ LangURL .Language "/tools/safety-check" }}">{{ T .Language "Safety Check" }}</a>
+                    <a class="dropdown-item d-lg-none" href="{{ LangURL .Language "/tools/editor" }}">{{ T .Language "Schematic Editor" }}</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{{ LangURL .Language "/tools" }}">{{ T .Language "All tools" }}</a>
                 </div>
             </div>
             <a href="{{ LangURL .Language "/search" }}" class="nav-link px-0 d-md-none" aria-label="{{ T .Language "Search" }}" title="{{ T .Language "Search" }}">

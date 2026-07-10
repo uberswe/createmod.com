@@ -4,9 +4,9 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <main class="page-body">
-            <div class="container-wide" style="max-width: 900px;">
-                <div class="page-header d-print-none">
-                    <h1 class="h2 page-title">
+            <div class="container-wide">
+                <div class="mb-3">
+                    <h1 class="h2 mb-1">
                         {{ if .FromLabel }}{{ T .Language "Convert" }} .{{ .FromSlug }} {{ T .Language "to" }} .{{ .ToSlug }}{{ else }}{{ T .Language "Minecraft Schematic Converter" }}{{ end }}
                     </h1>
                     <div class="text-secondary">
@@ -17,7 +17,8 @@
                         {{ end }}
                     </div>
                 </div>
-
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0" style="max-width: 900px;">
                 <div class="card mb-3">
                     <div class="card-body">
                         <div id="conv-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
@@ -84,6 +85,9 @@
                 </div>
                 {{ end }}
                 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Minecraft Schematic Converter","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://createmod.com/tools/convert"}</script>
+                </div><!-- /flex-grow-1 -->
+                <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="convert" data-kw="minecraft,create-mod,schematic,converter" data-page="convert"></div>
+                </div><!-- /d-flex -->
             </div>
         </main>
         {{ template "footer.html" . }}
@@ -179,7 +183,7 @@
         a.click();
         a.remove();
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-        setStatus('{{ T .Language "Done — check your downloads." }}');
+        setStatus('{{ T .Language "Done. Check your downloads." }}');
       })
       .catch(function (err) { setStatus(err.message, true); });
   }

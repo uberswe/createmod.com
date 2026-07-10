@@ -4,18 +4,19 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <main class="page-body">
-            <div class="container-wide" style="max-width: 1100px;">
-                <div class="page-header d-print-none">
-                    <h1 class="h2 page-title">{{ T .Language "Find Similar Schematics" }}</h1>
-                    <div class="text-secondary">{{ T .Language "Upload any schematic and search the library by structure — shape, materials, Create components and proportions. Every match shows its similarity percentage and what contributed to it." }}</div>
+            <div class="container-wide">
+                <div class="mb-3">
+                    <h1 class="h2 mb-1">{{ T .Language "Find Similar Schematics" }}</h1>
+                    <div class="text-secondary">{{ T .Language "Upload any schematic and search the library by structure: shape, materials, Create components and proportions. Every match shows its similarity percentage and what contributed to it." }}</div>
                 </div>
-
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
                 <div class="card mb-3">
                     <div class="card-body">
                         <div id="sim-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
                             <div class="h3 mb-1">{{ T .Language "Drop a schematic here or click to choose" }}</div>
-                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }} &middot; {{ T .Language "searched in memory, never stored" }}</div>
+                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }} &middot; {{ T .Language "searched in memory and never stored" }}</div>
                             <input type="file" id="sim-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
                         </div>
                         <div class="text-secondary small mt-2" id="sim-status"></div>
@@ -23,6 +24,9 @@
                 </div>
 
                 <div class="row row-cards" id="sim-results"></div>
+                </div><!-- /flex-grow-1 -->
+                <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="similar-tool" data-kw="minecraft,create-mod,schematic,similar" data-page="similar-tool"></div>
+                </div><!-- /d-flex -->
             </div>
         </main>
         {{ template "footer.html" . }}
@@ -51,7 +55,7 @@
         var results = res.j.results || [];
         statusEl.textContent = results.length
           ? results.length + ' {{ T .Language "matches (of" }} ' + (res.j.indexed || 0) + ' {{ T .Language "indexed schematics)" }}'
-          : '{{ T .Language "No matches above 35% similarity — this build looks unique." }}';
+          : '{{ T .Language "No matches above 35% similarity. This build looks unique." }}';
         results.forEach(function (r) {
           var col = document.createElement('div');
           col.className = 'col-sm-6 col-md-4 col-lg-3';

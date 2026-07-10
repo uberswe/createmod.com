@@ -5,11 +5,12 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="page-header d-print-none">
-                    <h1 class="h2 page-title">{{ T .Language "Similar to" }} “{{ .Source.Title }}”</h1>
+                <div class="mb-3">
+                    <h1 class="h2 mb-1">{{ T .Language "Similar to" }} “{{ .Source.Title }}”</h1>
                     <div class="text-secondary">{{ T .Language "Ranked by structure: shape, materials, Create components, proportions and palette." }}</div>
                 </div>
-
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
                 {{ if .Results }}
                 <div class="row row-cards">
                     {{ range .Results }}
@@ -29,12 +30,15 @@
                 {{ else }}
                 <div class="card"><div class="card-body text-center text-secondary py-5">
                     {{ if eq .Indexed 0 }}
-                    {{ T .Language "The similarity index is still being built — check back in a few minutes." }}
+                    {{ T .Language "The similarity index is still being built. Check back in a few minutes." }}
                     {{ else }}
                     {{ T .Language "No sufficiently similar builds found (35% minimum). This one is unique!" }}
                     {{ end }}
                 </div></div>
                 {{ end }}
+                </div><!-- /flex-grow-1 -->
+                <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="similar" data-kw="minecraft,create-mod,schematic,similar" data-page="similar"></div>
+                </div><!-- /d-flex -->
             </div>
         </main>
         {{ template "footer.html" . }}

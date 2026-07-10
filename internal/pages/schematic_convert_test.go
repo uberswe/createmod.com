@@ -32,7 +32,7 @@ func Test_Convert_Template_Has_Expected_Elements(t *testing.T) {
 		"data-to=\"schem\"",
 		"data-to=\"litematic\"",
 		"SoftwareApplication",
-		"h1 class=\"h2 page-title\"",
+		"h1 class=\"h2 mb-1\"",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {
