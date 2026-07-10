@@ -9,69 +9,72 @@
                     <h1 class="h2 mb-1">
                         {{ if .FromLabel }}{{ T .Language "Convert" }} .{{ .FromSlug }} {{ T .Language "to" }} .{{ .ToSlug }}{{ else }}{{ T .Language "Minecraft Schematic Converter" }}{{ end }}
                     </h1>
-                    <div class="text-secondary">
+                    <p class="cm-page-sub">
                         {{ if .FromLabel }}
                         {{ .FromLabel }} &rarr; {{ .ToLabel }}. {{ T .Language "Blocks, block entities and Create mod data carry over. Free and no signup." }}
                         {{ else }}
                         {{ T .Language "Convert between Create .nbt, WorldEdit .schem and Litematica .litematic. Blocks, block entities and Create mod data carry over. Free and no signup." }}
                         {{ end }}
-                    </div>
+                    </p>
                 </div>
                 <div class="d-flex gap-3">
-                <div class="flex-grow-1 min-width-0" style="max-width: 900px;">
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div id="conv-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 9l5 -5l5 5"/><path d="M12 4l0 12"/></svg>
-                            <div class="h3 mb-1">{{ T .Language "Drop a schematic here or click to choose" }}</div>
-                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }} &middot; {{ T .Language "files are converted in memory and never stored" }}</div>
-                            <input type="file" id="conv-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
-                        </div>
+                <div class="flex-grow-1 min-width-0" style="max-width: 980px;">
 
-                        <div id="conv-info" class="mt-3" style="display:none;">
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="badge bg-green-lt" id="conv-detected"></span>
-                                <span class="text-secondary small" id="conv-stats"></span>
-                            </div>
-                            <div id="conv-warnings" class="alert alert-warning mt-2 mb-0 small" style="display:none;"></div>
-                        </div>
-
-                        <div class="mt-3" id="conv-targets" style="display:none;">
-                            <label class="form-label">{{ T .Language "Convert to" }}</label>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn conv-target" data-to="nbt" style="background: var(--cm-primary); color:#fff; border:none;">Create .nbt</button>
-                                <button class="btn conv-target btn-outline-secondary" data-to="schem">WorldEdit .schem</button>
-                                <button class="btn conv-target btn-outline-secondary" data-to="litematic">Litematica .litematic</button>
-                                <button class="btn conv-target btn-outline-secondary" data-to="blueprint">MineColonies .blueprint</button>
-                                <button class="btn conv-target btn-outline-secondary" data-to="bg" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}">
-                                    Building Gadgets .json
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm ms-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="var(--cm-warning, #f59f00)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
-                                </button>
-                                <button class="btn conv-target btn-outline-secondary" data-to="schematic" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
-                                    Legacy .schematic
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm ms-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="var(--cm-warning, #f59f00)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
-                                </button>
-                            </div>
-                            <div class="text-secondary small mt-2" id="conv-status"></div>
-                        </div>
+                <div id="conv-drop" class="cm-dropzone" tabindex="0">
+                    <div class="cm-dropzone__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 9l5 -5l5 5"/><path d="M12 4v12"/></svg></div>
+                    <div>
+                        <div class="cm-dropzone__title">{{ T .Language "Drop a schematic here or click to choose" }}</div>
+                        <div class="cm-dropzone__formats">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }}</div>
                     </div>
+                    <div class="cm-dropzone__note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><circle cx="12" cy="16" r="1"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span>{{ T .Language "Converted in memory, never stored" }}</span></div>
+                    <input type="file" id="conv-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                </div>
+
+                <div id="conv-info" class="mt-3" style="display:none;">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <span class="cm-badge cm-badge--green" id="conv-detected" style="font-size:12px;padding:4px 12px;"></span>
+                        <span id="conv-stats" style="font-family:var(--cm-font-mono);font-size:13.5px;color:var(--cm-text-muted);"></span>
+                    </div>
+                    <div id="conv-warnings" class="alert alert-warning mt-2 mb-0 small" style="display:none;"></div>
+                </div>
+
+                <div class="mt-4" id="conv-targets" style="display:none;">
+                    <div class="cm-panel-label">{{ T .Language "Convert to" }}</div>
+                    <div class="cm-convert-targets">
+                        <button class="btn conv-target" data-to="nbt">Create .nbt</button>
+                        <button class="btn conv-target" data-to="schem">WorldEdit .schem</button>
+                        <button class="btn conv-target" data-to="litematic">Litematica .litematic</button>
+                        <button class="btn conv-target" data-to="blueprint">MineColonies .blueprint</button>
+                        <button class="btn conv-target" data-to="bg" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}">
+                            <span>Building Gadgets .json</span>
+                            <span class="cm-warn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></span>
+                        </button>
+                        <button class="btn conv-target" data-to="schematic" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
+                            <span>Legacy .schematic</span>
+                            <span class="cm-warn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></span>
+                        </button>
+                    </div>
+                    <div class="text-secondary small mt-2" id="conv-status"></div>
                 </div>
 
                 {{ if not .FromLabel }}
-                <div class="card mb-3">
-                    <div class="card-header"><h2 class="card-title h3 mb-0">{{ T .Language "Supported conversions" }}</h2></div>
-                    <div class="card-body">
-                        <div class="row">
-                            {{ range .Pairs }}
-                            <div class="col-md-4 col-6 mb-2">
-                                <a href="/tools/convert/{{ .FromSlug }}-to-{{ .ToSlug }}" class="text-reset">.{{ .FromSlug }} &rarr; .{{ .ToSlug }}</a>
-                            </div>
-                            {{ end }}
-                        </div>
+                <div class="card mt-4 mb-3" style="overflow:hidden;">
+                    <div class="card-header d-flex align-items-baseline gap-2">
+                        <h2 class="card-title h3 mb-0">{{ T .Language "Supported conversions" }}</h2>
+                        <span class="text-secondary small">{{ len .Pairs }} {{ T .Language "pairs" }}</span>
+                    </div>
+                    <div class="cm-convgrid">
+                        {{ range .Pairs }}
+                        <a href="/tools/convert/{{ .FromSlug }}-to-{{ .ToSlug }}" class="cm-convrow text-reset">
+                            <span class="f">.{{ .FromSlug }}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg>
+                            <span class="t">.{{ .ToSlug }}</span>
+                        </a>
+                        {{ end }}
                     </div>
                 </div>
                 {{ else }}
-                <div class="card mb-3">
+                <div class="card mt-4 mb-3">
                     <div class="card-body">
                         <h2 class="h3">{{ T .Language "About this conversion" }}</h2>
                         <p class="text-secondary">{{ .FromLabel }} {{ T .Language "files convert to" }} {{ .ToLabel }} {{ T .Language "with blocks, blockstate properties, block entities (chests, signs, Create mod kinetic components) and the Minecraft data version preserved. Conversions that lose information show a warning before you download." }}</p>
@@ -124,6 +127,8 @@
     currentFile = file;
     var fd = new FormData();
     fd.append('file', file);
+    detectedEl.className = 'cm-badge';
+    detectedEl.style.cssText = 'font-size:12px;padding:4px 12px;';
     detectedEl.textContent = '{{ T .Language "Detecting…" }}';
     info.style.display = '';
     targets.style.display = 'none';
@@ -133,12 +138,14 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) {
+          detectedEl.className = 'cm-badge';
+          detectedEl.style.color = 'var(--cm-danger, #d63939)';
+          detectedEl.style.borderColor = 'rgba(214,57,57,0.55)';
           detectedEl.textContent = '{{ T .Language "Not recognized" }}';
-          detectedEl.className = 'badge bg-red-lt';
           setStatus(res.j.error || 'unrecognized file', true);
           return;
         }
-        detectedEl.className = 'badge bg-green-lt';
+        detectedEl.className = 'cm-badge cm-badge--green';
         detectedEl.textContent = res.j.label || res.j.format;
         var bits = [];
         if (res.j.size) bits.push(res.j.size[0] + '×' + res.j.size[1] + '×' + res.j.size[2]);
@@ -190,11 +197,11 @@
 
   drop.addEventListener('click', function () { input.click(); });
   input.addEventListener('change', function () { if (input.files[0]) inspect(input.files[0]); });
-  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
-  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.classList.add('is-drag'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('is-drag'); });
   drop.addEventListener('drop', function (ev) {
     ev.preventDefault();
-    drop.style.borderColor = '';
+    drop.classList.remove('is-drag');
     if (ev.dataTransfer.files[0]) inspect(ev.dataTransfer.files[0]);
   });
   document.querySelectorAll('.conv-target').forEach(function (b) {

@@ -7,37 +7,52 @@
             <div class="container-wide">
                 <div class="mb-3">
                     <h1 class="h2 mb-1">{{ T .Language "Schematic Safety Checker" }}</h1>
-                    <div class="text-secondary">{{ T .Language "See what is inside a schematic (command blocks, spawners, click commands) before you paste it into your world. Files are scanned in memory and never stored." }}</div>
+                    <p class="cm-page-sub">{{ T .Language "See what is inside a schematic (command blocks, spawners, click commands) before you paste it into your world. Files are scanned in memory and never stored." }}</p>
                 </div>
                 <div class="d-flex gap-3">
-                <div class="flex-grow-1 min-width-0" style="max-width: 800px;">
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div id="sc-drop" class="text-center p-4" style="border: 2px dashed var(--cm-border, #2b313a); border-radius: 8px; cursor: pointer;">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--cm-primary)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4"/><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/></svg>
-                            <div class="h3 mb-1">{{ T .Language "Drop a schematic here or click to choose" }}</div>
-                            <div class="text-secondary small">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }}</div>
-                            <input type="file" id="sc-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
-                        </div>
+                <div class="flex-grow-1 min-width-0" style="max-width: 920px;">
 
-                        <div id="sc-result" class="mt-3" style="display:none;">
-                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                                <span class="badge" id="sc-badge"></span>
-                                <span class="text-secondary small" id="sc-meta"></span>
-                            </div>
-                            <div id="sc-summary" class="mb-2"></div>
-                            <div id="sc-findings" style="display:none;">
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead><tr><th>{{ T .Language "Type" }}</th><th>{{ T .Language "Position" }}</th><th>{{ T .Language "Detail" }}</th></tr></thead>
-                                        <tbody id="sc-findings-body"></tbody>
-                                    </table>
+                <div id="sc-drop" class="cm-dropzone" tabindex="0">
+                    <div class="cm-dropzone__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/><path d="M9 12l2 2l4 -4"/></svg></div>
+                    <div>
+                        <div class="cm-dropzone__title">{{ T .Language "Drop a schematic here or click to choose" }}</div>
+                        <div class="cm-dropzone__formats">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }}</div>
+                    </div>
+                    <div class="cm-dropzone__note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><circle cx="12" cy="16" r="1"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span>{{ T .Language "Scanned in memory, never stored" }}</span></div>
+                    <input type="file" id="sc-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                </div>
+
+                <div class="card mt-3" id="sc-result" style="display:none;">
+                    <div class="card-body" style="padding: 22px 24px;">
+                        <div class="cm-verdict">
+                            <div class="cm-verdict__icon" id="sc-verdict-icon"></div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="cm-verdict__title" id="sc-title"></span>
+                                    <span id="sc-badge" style="display:none;"></span>
                                 </div>
+                                <div class="cm-verdict__meta" id="sc-meta"></div>
                             </div>
-                            <div class="text-secondary small mt-2">{{ T .Language "What do these mean?" }} <a href="/safety">{{ T .Language "Read the safety explainer" }}</a>.</div>
                         </div>
+                        <div class="cm-checklist" id="sc-checklist" style="display:none;">
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "No command blocks" }}</span></div>
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "No spawners" }}</span></div>
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "No click commands" }}</span></div>
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "The file is well formed and passed all hardening checks" }}</span></div>
+                        </div>
+                        <div id="sc-summary" class="mt-3" style="display:none;"></div>
+                        <div id="sc-findings" class="mt-3" style="display:none;">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead><tr><th>{{ T .Language "Type" }}</th><th>{{ T .Language "Position" }}</th><th>{{ T .Language "Detail" }}</th></tr></thead>
+                                    <tbody id="sc-findings-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="cm-card__footnote">{{ T .Language "What do these mean?" }} <a href="/safety">{{ T .Language "Read the safety explainer" }}</a>.</div>
                     </div>
                 </div>
+
                 </div><!-- /flex-grow-1 -->
                 <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="safety-check" data-kw="minecraft,create-mod,schematic,safety" data-page="safety-check"></div>
                 </div><!-- /d-flex -->
@@ -52,40 +67,60 @@
   var drop = document.getElementById('sc-drop');
   var input = document.getElementById('sc-file');
   var result = document.getElementById('sc-result');
+  var icon = document.getElementById('sc-verdict-icon');
+  var title = document.getElementById('sc-title');
   var badge = document.getElementById('sc-badge');
   var meta = document.getElementById('sc-meta');
   var summary = document.getElementById('sc-summary');
+  var checklist = document.getElementById('sc-checklist');
   var findingsWrap = document.getElementById('sc-findings');
   var findingsBody = document.getElementById('sc-findings-body');
+
+  var ICONS = {
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>',
+    bad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>',
+    scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>'
+  };
+
+  function setVerdict(kind, titleText) {
+    icon.className = 'cm-verdict__icon' + (kind === 'warn' ? ' cm-verdict__icon--warn' : kind === 'bad' ? ' cm-verdict__icon--bad' : '');
+    icon.innerHTML = ICONS[kind] || ICONS.check;
+    title.textContent = titleText;
+  }
 
   function check(file) {
     var fd = new FormData();
     fd.append('file', file);
     result.style.display = '';
-    badge.className = 'badge bg-secondary-lt';
-    badge.textContent = '{{ T .Language "Scanning…" }}';
+    setVerdict('scan', '{{ T .Language "Scanning…" }}');
+    badge.style.display = 'none';
     meta.textContent = '';
     summary.textContent = '';
+    summary.style.display = 'none';
+    checklist.style.display = 'none';
     findingsWrap.style.display = 'none';
     fetch('/api/safety-check', { method: 'POST', body: fd })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.fileSafe) {
-          badge.className = 'badge bg-red-lt';
-          badge.textContent = '{{ T .Language "Not a valid schematic" }}';
+          setVerdict('bad', '{{ T .Language "Not a valid schematic" }}');
           summary.textContent = j.parseError || j.error || '';
+          summary.style.display = '';
           return;
         }
         meta.textContent = (j.label || j.format) + (j.size ? ' · ' + j.size[0] + '×' + j.size[1] + '×' + j.size[2] : '') + (j.blockCount ? ' · ' + j.blockCount.toLocaleString() + ' {{ T .Language "blocks" }}' : '');
         if (!j.notable) {
-          badge.className = 'badge bg-green-lt';
-          badge.textContent = '{{ T .Language "Validated: nothing notable found" }}';
-          summary.textContent = '{{ T .Language "No command blocks, spawners, or click commands. The file is well formed and passed all hardening checks." }}';
+          setVerdict('check', '{{ T .Language "Nothing notable found" }}');
+          badge.className = 'cm-badge cm-badge--green cm-badge--upper';
+          badge.textContent = '{{ T .Language "Validated" }}';
+          badge.style.display = '';
+          checklist.style.display = '';
           return;
         }
-        badge.className = 'badge bg-yellow-lt';
-        badge.textContent = '{{ T .Language "Contains notable blocks" }}';
+        setVerdict('warn', '{{ T .Language "Contains notable blocks" }}');
         summary.textContent = j.summary || '';
+        summary.style.display = '';
         var f = (j.manifest && j.manifest.findings) || [];
         if (f.length) {
           findingsBody.replaceChildren();
@@ -112,18 +147,17 @@
         }
       })
       .catch(function () {
-        badge.className = 'badge bg-red-lt';
-        badge.textContent = '{{ T .Language "Scan failed" }}';
+        setVerdict('bad', '{{ T .Language "Scan failed" }}');
       });
   }
 
   drop.addEventListener('click', function () { input.click(); });
   input.addEventListener('change', function () { if (input.files[0]) check(input.files[0]); });
-  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
-  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.classList.add('is-drag'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('is-drag'); });
   drop.addEventListener('drop', function (ev) {
     ev.preventDefault();
-    drop.style.borderColor = '';
+    drop.classList.remove('is-drag');
     if (ev.dataTransfer.files[0]) check(ev.dataTransfer.files[0]);
   });
 })();
