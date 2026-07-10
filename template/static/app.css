@@ -3192,3 +3192,43 @@ body.sidebar-ready .generator-overlay {
 .cm-tree__row .t { color: var(--cm-text-muted); }
 .cm-tree__row .v { color: var(--cm-body-color); }
 .cm-tree__row .c { color: var(--cm-text-faint); font-size: 12px; }
+
+/* Section heads (index/profile) — handoff */
+.cm-section-head__arrow { width: 18px; height: 18px; color: var(--cm-primary); flex: none; }
+.cm-pagechip {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+  border-radius: var(--cm-radius-sm); border: 1px solid var(--cm-border-color);
+  color: var(--cm-text-faint); font-size: 12.5px; font-weight: 500;
+}
+.cm-btn--pager { height: 30px; padding: 0.25rem 14px; font-size: 13px; border-radius: var(--cm-radius-sm); }
+
+/* Schematic card hover: gold border + gentle image zoom (handoff) */
+.card-hover-lift { border: 1px solid var(--cm-card-border-color, var(--cm-border-color)); }
+.card-hover-lift:hover { border-color: rgba(191, 144, 69, 0.45); }
+.card-hover-lift .ratio img { transition: transform .25s ease; }
+.card-hover-lift:hover .ratio img { transform: scale(1.03); }
+
+/* Profile stat strip — handoff */
+.cm-statstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.cm-statstrip .val { font-size: 22px; font-weight: 600; color: var(--cm-heading-color); }
+.cm-statstrip .val--gold { color: var(--cm-link); }
+.cm-statstrip .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--cm-text-muted); margin-bottom: 5px; }
+@media (max-width: 980px) { .cm-statstrip { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+
+/* Details grids: handoff micro-label style for datagrid label/value pairs */
+.datagrid-title {
+  font-size: 10.5px !important;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.datagrid-content { font-size: 14.5px; }
+
+/* Index section titles (handoff): compact semibold with gold arrow */
+.cm-section-title { font-size: 19px !important; font-weight: 600; }
+.cm-section-title a { display: inline-flex; align-items: center; gap: 8px; }
+.cm-section-title a:hover { color: var(--cm-link-hover) !important; }
+.cm-super-heading {
+  font-size: 21px !important; font-weight: 600;
+  padding-top: 32px; border-top: 1px solid var(--cm-border-color);
+}
