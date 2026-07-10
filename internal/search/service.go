@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,9 +32,12 @@ const (
 	regex              = `<.*?>`
 
 	// cacheKeyPrefix is the storage path prefix for the serialized index cache.
-	// A date suffix (YYYY-MM-DD) is appended to form the full key, so that
-	// Minio/S3 bucket versioning doesn't accumulate thousands of old versions
-	// under a single key.
+	// An environment scope and a date suffix (YYYY-MM-DD) are appended to form
+	// the full key: the scope because dev and prod share one bucket and must
+	// not overwrite each other's snapshots (pods reload this cache every 10
+	// minutes, so a shared key lets one environment poison the other's
+	// in-memory index); the date so Minio/S3 bucket versioning doesn't
+	// accumulate thousands of old versions under a single key.
 	cacheKeyPrefix = "_internal/search_index_cache_"
 	cacheKeySuffix = ".json.gz"
 
@@ -389,8 +393,26 @@ func stripHtmlRegex(s string) string {
 // Storage-backed index cache (direct S3 via storage.Service)
 // ---------------------------------------------------------------------------
 
-// cacheKeyForDate returns the date-stamped cache key for the given time.
+// cacheEnvScope returns the environment segment of the cache key, from the
+// ENVIRONMENT env var ("production", "dev"). Empty means a local run.
+func cacheEnvScope() string {
+	if env := os.Getenv("ENVIRONMENT"); env != "" {
+		return env
+	}
+	return "local"
+}
+
+// cacheKeyForDate returns the environment- and date-stamped cache key for the
+// given time.
 func cacheKeyForDate(t time.Time) string {
+	return cacheKeyPrefix + cacheEnvScope() + "_" + t.UTC().Format("2006-01-02") + cacheKeySuffix
+}
+
+// unscopedCacheKeyForDate returns the pre-environment-scoping key. Kept for
+// migration: it is tried as a load fallback (so pods deployed before their
+// environment has saved a scoped snapshot still warm up) and deleted after a
+// successful save.
+func unscopedCacheKeyForDate(t time.Time) string {
 	return cacheKeyPrefix + t.UTC().Format("2006-01-02") + cacheKeySuffix
 }
 
@@ -439,9 +461,17 @@ func (s *Service) saveCacheToStorage(index []schematicIndex) {
 		}
 	}
 
-	// Remove legacy unversioned key (one-time migration cleanup).
-	if err := s.storage.DeleteRaw(context.Background(), legacyCacheKey); err != nil {
-		slog.Debug("search: failed to delete legacy cache key (may not exist)", "error", err)
+	// Remove pre-environment-scoping and legacy keys (migration cleanup).
+	// The unscoped key was shared between dev and prod, letting one
+	// environment's snapshot poison the other's in-memory index.
+	for _, key := range []string{
+		unscopedCacheKeyForDate(now),
+		unscopedCacheKeyForDate(now.AddDate(0, 0, -1)),
+		legacyCacheKey,
+	} {
+		if err := s.storage.DeleteRaw(context.Background(), key); err != nil {
+			slog.Debug("search: failed to delete old cache key (may not exist)", "key", key, "error", err)
+		}
 	}
 }
 
@@ -458,6 +488,8 @@ func (s *Service) loadCacheFromStorage() error {
 	keysToTry := []string{
 		cacheKeyForDate(now),
 		cacheKeyForDate(now.AddDate(0, 0, -1)),
+		unscopedCacheKeyForDate(now),
+		unscopedCacheKeyForDate(now.AddDate(0, 0, -1)),
 		legacyCacheKey,
 	}
 
