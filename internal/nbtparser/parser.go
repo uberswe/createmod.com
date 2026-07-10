@@ -422,9 +422,11 @@ func extractMaterialsFromMap(decoded interface{}) ([]Material, error) {
 	return materials, nil
 }
 
-// isCopycatBlock returns true for Create mod copycat block types.
+// isCopycatBlock returns true for Create mod copycat block types and the
+// Copycats+ addon's variants (mod id "copycats"), both of which store the
+// wrapped block in their NBT Material tag.
 func isCopycatBlock(name string) bool {
-	return strings.HasPrefix(name, "create:copycat_")
+	return strings.HasPrefix(name, "create:copycat_") || strings.HasPrefix(name, "copycats:")
 }
 
 // extractCopycatMaterial reads the mimicked block from a copycat's NBT data.
