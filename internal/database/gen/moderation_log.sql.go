@@ -51,6 +51,54 @@ func (q *Queries) CreateModerationLog(ctx context.Context, arg CreateModerationL
 	return i, err
 }
 
+const listAutoApprovedSchematicsSince = `-- name: ListAutoApprovedSchematicsSince :many
+SELECT DISTINCT ON (ml.schematic_id) ml.schematic_id, ml.created_at, s.title, s.name
+FROM moderation_log ml
+JOIN schematics s ON s.id = ml.schematic_id
+WHERE ml.actor_type = 'system'
+  AND ml.new_state = 'published'
+  AND ml.created_at >= $1 AND ml.created_at < $2
+  AND s.deleted IS NULL
+ORDER BY ml.schematic_id, ml.created_at DESC
+`
+
+type ListAutoApprovedSchematicsSinceParams struct {
+	Since time.Time `json:"since"`
+	Until time.Time `json:"until"`
+}
+
+type ListAutoApprovedSchematicsSinceRow struct {
+	SchematicID string    `json:"schematic_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	Title       string    `json:"title"`
+	Name        string    `json:"name"`
+}
+
+func (q *Queries) ListAutoApprovedSchematicsSince(ctx context.Context, arg ListAutoApprovedSchematicsSinceParams) ([]ListAutoApprovedSchematicsSinceRow, error) {
+	rows, err := q.db.Query(ctx, listAutoApprovedSchematicsSince, arg.Since, arg.Until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAutoApprovedSchematicsSinceRow{}
+	for rows.Next() {
+		var i ListAutoApprovedSchematicsSinceRow
+		if err := rows.Scan(
+			&i.SchematicID,
+			&i.CreatedAt,
+			&i.Title,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listModerationLogBySchematic = `-- name: ListModerationLogBySchematic :many
 SELECT ml.id, ml.schematic_id, ml.actor_id, ml.actor_type, ml.action, ml.old_state, ml.new_state, ml.reason, ml.created_at, COALESCE(u.username, '') AS actor_username
 FROM moderation_log ml

@@ -1040,6 +1040,45 @@ func (q *Queries) ListReports(ctx context.Context, arg ListReportsParams) ([]Rep
 	return items, nil
 }
 
+const listReportsSince = `-- name: ListReportsSince :many
+SELECT id, target_type, target_id, reason, reporter, created, updated FROM reports
+WHERE created >= $1 AND created < $2
+ORDER BY created DESC
+`
+
+type ListReportsSinceParams struct {
+	Since time.Time `json:"since"`
+	Until time.Time `json:"until"`
+}
+
+func (q *Queries) ListReportsSince(ctx context.Context, arg ListReportsSinceParams) ([]Report, error) {
+	rows, err := q.db.Query(ctx, listReportsSince, arg.Since, arg.Until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Report{}
+	for rows.Next() {
+		var i Report
+		if err := rows.Scan(
+			&i.ID,
+			&i.TargetType,
+			&i.TargetID,
+			&i.Reason,
+			&i.Reporter,
+			&i.Created,
+			&i.Updated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSchematicVersions = `-- name: ListSchematicVersions :many
 SELECT id, schematic_id, version, snapshot, note, created, updated, schematic_file, changelog, block_count, dim_x, dim_y, dim_z, materials FROM schematic_versions
 WHERE schematic_id = $1

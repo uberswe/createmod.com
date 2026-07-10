@@ -216,6 +216,50 @@ func (q *Queries) ListGuides(ctx context.Context, arg ListGuidesParams) ([]Guide
 	return items, nil
 }
 
+const listGuidesCreatedSince = `-- name: ListGuidesCreatedSince :many
+SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides
+WHERE deleted IS NULL AND created >= $1 AND created < $2
+ORDER BY created DESC
+`
+
+type ListGuidesCreatedSinceParams struct {
+	Since time.Time `json:"since"`
+	Until time.Time `json:"until"`
+}
+
+func (q *Queries) ListGuidesCreatedSince(ctx context.Context, arg ListGuidesCreatedSinceParams) ([]Guide, error) {
+	rows, err := q.db.Query(ctx, listGuidesCreatedSince, arg.Since, arg.Until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Guide{}
+	for rows.Next() {
+		var i Guide
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Title,
+			&i.Description,
+			&i.Content,
+			&i.Slug,
+			&i.UploadLink,
+			&i.Created,
+			&i.Updated,
+			&i.Views,
+			&i.BannerUrl,
+			&i.Deleted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGuidesForAdmin = `-- name: ListGuidesForAdmin :many
 SELECT id, author_id, title, description, content, slug, upload_link, created, updated, views, banner_url, deleted FROM guides
 WHERE

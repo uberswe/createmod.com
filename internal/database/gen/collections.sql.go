@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addSchematicToCollection = `-- name: AddSchematicToCollection :exec
@@ -68,7 +70,7 @@ func (q *Queries) CountUserCollections(ctx context.Context, authorID *string) (i
 const createCollection = `-- name: CreateCollection :one
 INSERT INTO collections (id, author_id, title, name, slug, description, banner_url, published, video)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video
+RETURNING id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at
 `
 
 type CreateCollectionParams struct {
@@ -112,12 +114,13 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 		&i.Updated,
 		&i.CollageUrl,
 		&i.Video,
+		&i.PublishedAt,
 	)
 	return i, err
 }
 
 const getCollectionByID = `-- name: GetCollectionByID :one
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections WHERE id = $1 AND deleted = ''
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections WHERE id = $1 AND deleted = ''
 `
 
 func (q *Queries) GetCollectionByID(ctx context.Context, id string) (Collection, error) {
@@ -139,12 +142,13 @@ func (q *Queries) GetCollectionByID(ctx context.Context, id string) (Collection,
 		&i.Updated,
 		&i.CollageUrl,
 		&i.Video,
+		&i.PublishedAt,
 	)
 	return i, err
 }
 
 const getCollectionBySlug = `-- name: GetCollectionBySlug :one
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections WHERE slug = $1 AND deleted = ''
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections WHERE slug = $1 AND deleted = ''
 `
 
 func (q *Queries) GetCollectionBySlug(ctx context.Context, slug string) (Collection, error) {
@@ -166,6 +170,7 @@ func (q *Queries) GetCollectionBySlug(ctx context.Context, slug string) (Collect
 		&i.Updated,
 		&i.CollageUrl,
 		&i.Video,
+		&i.PublishedAt,
 	)
 	return i, err
 }
@@ -206,7 +211,7 @@ func (q *Queries) IncrementCollectionViews(ctx context.Context, id string) error
 }
 
 const listCollections = `-- name: ListCollections :many
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections
 WHERE deleted = '' AND published = true
 ORDER BY updated DESC
 LIMIT $1 OFFSET $2
@@ -242,6 +247,7 @@ func (q *Queries) ListCollections(ctx context.Context, arg ListCollectionsParams
 			&i.Updated,
 			&i.CollageUrl,
 			&i.Video,
+			&i.PublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -254,7 +260,7 @@ func (q *Queries) ListCollections(ctx context.Context, arg ListCollectionsParams
 }
 
 const listCollectionsByAuthor = `-- name: ListCollectionsByAuthor :many
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections
 WHERE author_id = $1 AND deleted = ''
 ORDER BY updated DESC
 `
@@ -284,6 +290,7 @@ func (q *Queries) ListCollectionsByAuthor(ctx context.Context, authorID *string)
 			&i.Updated,
 			&i.CollageUrl,
 			&i.Video,
+			&i.PublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -296,7 +303,7 @@ func (q *Queries) ListCollectionsByAuthor(ctx context.Context, authorID *string)
 }
 
 const listCollectionsForAdmin = `-- name: ListCollectionsForAdmin :many
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections
 WHERE
   CASE
     WHEN $3::text = 'published' THEN deleted = '' AND published = true
@@ -339,6 +346,7 @@ func (q *Queries) ListCollectionsForAdmin(ctx context.Context, arg ListCollectio
 			&i.Updated,
 			&i.CollageUrl,
 			&i.Video,
+			&i.PublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -382,8 +390,57 @@ func (q *Queries) ListCollectionsForSitemap(ctx context.Context) ([]ListCollecti
 	return items, nil
 }
 
+const listCollectionsPublishedSince = `-- name: ListCollectionsPublishedSince :many
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections
+WHERE deleted = '' AND published = true
+  AND published_at >= $1 AND published_at < $2
+ORDER BY published_at DESC
+`
+
+type ListCollectionsPublishedSinceParams struct {
+	Since pgtype.Timestamptz `json:"since"`
+	Until pgtype.Timestamptz `json:"until"`
+}
+
+func (q *Queries) ListCollectionsPublishedSince(ctx context.Context, arg ListCollectionsPublishedSinceParams) ([]Collection, error) {
+	rows, err := q.db.Query(ctx, listCollectionsPublishedSince, arg.Since, arg.Until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Collection{}
+	for rows.Next() {
+		var i Collection
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Title,
+			&i.Name,
+			&i.Slug,
+			&i.Description,
+			&i.BannerUrl,
+			&i.Featured,
+			&i.Views,
+			&i.Published,
+			&i.Deleted,
+			&i.Created,
+			&i.Updated,
+			&i.CollageUrl,
+			&i.Video,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFeaturedCollections = `-- name: ListFeaturedCollections :many
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections
 WHERE deleted = '' AND published = true AND featured = true
 ORDER BY updated DESC
 LIMIT $1
@@ -414,6 +471,7 @@ func (q *Queries) ListFeaturedCollections(ctx context.Context, limit int32) ([]C
 			&i.Updated,
 			&i.CollageUrl,
 			&i.Video,
+			&i.PublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -426,7 +484,7 @@ func (q *Queries) ListFeaturedCollections(ctx context.Context, limit int32) ([]C
 }
 
 const listPublishedCollections = `-- name: ListPublishedCollections :many
-SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video FROM collections
+SELECT id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at FROM collections
 WHERE deleted = '' AND published = true
 ORDER BY updated DESC
 LIMIT $1 OFFSET $2
@@ -462,6 +520,7 @@ func (q *Queries) ListPublishedCollections(ctx context.Context, arg ListPublishe
 			&i.Updated,
 			&i.CollageUrl,
 			&i.Video,
+			&i.PublishedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -522,11 +581,15 @@ UPDATE collections SET
     banner_url = COALESCE($4, banner_url),
     collage_url = COALESCE($5, collage_url),
     featured = COALESCE($6, featured),
+    published_at = CASE
+        WHEN COALESCE($7, published) = true AND published = false THEN NOW()
+        ELSE published_at
+    END,
     published = COALESCE($7, published),
     video = COALESCE($8, video),
     updated = NOW()
 WHERE id = $1
-RETURNING id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video
+RETURNING id, author_id, title, name, slug, description, banner_url, featured, views, published, deleted, created, updated, collage_url, video, published_at
 `
 
 type UpdateCollectionParams struct {
@@ -568,6 +631,7 @@ func (q *Queries) UpdateCollection(ctx context.Context, arg UpdateCollectionPara
 		&i.Updated,
 		&i.CollageUrl,
 		&i.Video,
+		&i.PublishedAt,
 	)
 	return i, err
 }
