@@ -537,7 +537,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Reports
 	reportRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Hour)
-	r.With(reportRateLimit).Post("/reports", Adapt(pages.ReportSubmitHandler(p.MailService, p.AppStore)))
+	r.With(reportRateLimit).Post("/reports", Adapt(pages.ReportSubmitHandler(p.AppStore)))
 	// Admin (defense-in-depth: middleware enforces admin check in addition to per-handler checks)
 	r.Group(func(r chi.Router) {
 		r.Use(adminOnlyMiddleware)
@@ -649,7 +649,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/collections", Adapt(pages.CollectionsCreateHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Get("/collections/{slug}", Adapt(pages.CollectionsShowHandler(registry, p.CacheService, p.TranslationService, p.AppStore, p.StorageService)))
 	r.Get("/collections/{slug}/edit", Adapt(pages.CollectionsEditHandler(registry, p.CacheService, p.AppStore)))
-	r.Post("/collections/{slug}", Adapt(pages.CollectionsUpdateHandler(registry, p.CacheService, p.ModerationService, p.AppStore, p.StorageService, p.MailService)))
+	r.Post("/collections/{slug}", Adapt(pages.CollectionsUpdateHandler(registry, p.CacheService, p.ModerationService, p.AppStore, p.StorageService)))
 	r.Post("/collections/{slug}/delete", Adapt(pages.CollectionsDeleteHandler(p.AppStore)))
 	r.Post("/collections/{slug}/reorder", Adapt(pages.CollectionsReorderHandler(p.AppStore, p.StorageService)))
 	r.Post("/collections/{slug}/remove-schematic", Adapt(pages.CollectionsRemoveSchematicHandler(p.AppStore, p.StorageService)))

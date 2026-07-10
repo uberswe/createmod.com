@@ -23,6 +23,10 @@ import (
 	// get throttled under the Kubernetes CPU limit.
 	_ "github.com/KimMachineGun/automemlimit"
 	_ "go.uber.org/automaxprocs"
+
+	// Embedded tzdata fallback: the alpine-based image has no system zoneinfo,
+	// and the moderation summary job needs Europe/Stockholm.
+	_ "time/tzdata"
 )
 
 const (

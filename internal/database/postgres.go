@@ -191,6 +191,7 @@ func collectionFromDB(c db.Collection) store.Collection {
 		Featured:    c.Featured,
 		Views:       int(c.Views),
 		Published:   c.Published,
+		PublishedAt: fromPgTimestamptz(c.PublishedAt),
 		Deleted:     c.Deleted,
 		Created:     c.Created,
 		Updated:     c.Updated,
@@ -1683,6 +1684,21 @@ func (gs *GuideStoreImpl) List(ctx context.Context, limit, offset int) ([]store.
 	return result, nil
 }
 
+func (gs *GuideStoreImpl) ListCreatedSince(ctx context.Context, since, until time.Time) ([]store.Guide, error) {
+	rows, err := gs.q.ListGuidesCreatedSince(ctx, db.ListGuidesCreatedSinceParams{
+		Since: since,
+		Until: until,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Guide, len(rows))
+	for i, r := range rows {
+		result[i] = guideFromDB(r)
+	}
+	return result, nil
+}
+
 func (gs *GuideStoreImpl) Create(ctx context.Context, g *store.Guide) error {
 	if g.ID == "" {
 		g.ID = generateID()
@@ -1837,6 +1853,21 @@ func (cs *CollectionStoreImpl) ListPublished(ctx context.Context, limit, offset 
 	rows, err := cs.q.ListPublishedCollections(ctx, db.ListPublishedCollectionsParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Collection, len(rows))
+	for i, r := range rows {
+		result[i] = collectionFromDB(r)
+	}
+	return result, nil
+}
+
+func (cs *CollectionStoreImpl) ListPublishedSince(ctx context.Context, since, until time.Time) ([]store.Collection, error) {
+	rows, err := cs.q.ListCollectionsPublishedSince(ctx, db.ListCollectionsPublishedSinceParams{
+		Since: pgtype.Timestamptz{Time: since, Valid: true},
+		Until: pgtype.Timestamptz{Time: until, Valid: true},
 	})
 	if err != nil {
 		return nil, err
@@ -3187,6 +3218,21 @@ func (rs *ReportStoreImpl) List(ctx context.Context, limit, offset int) ([]store
 	return result, nil
 }
 
+func (rs *ReportStoreImpl) ListSince(ctx context.Context, since, until time.Time) ([]store.Report, error) {
+	rows, err := rs.q.ListReportsSince(ctx, db.ListReportsSinceParams{
+		Since: since,
+		Until: until,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.Report, len(rows))
+	for i, r := range rows {
+		result[i] = reportFromDB(r)
+	}
+	return result, nil
+}
+
 func (rs *ReportStoreImpl) Delete(ctx context.Context, id string) error {
 	return rs.q.DeleteReport(ctx, id)
 }
@@ -4344,6 +4390,26 @@ func (s *ModerationLogStoreImpl) ListBySchematic(ctx context.Context, schematicI
 		}
 	}
 	return entries, nil
+}
+
+func (s *ModerationLogStoreImpl) ListAutoApprovedSince(ctx context.Context, since, until time.Time) ([]store.AutoApprovedSchematic, error) {
+	rows, err := s.q.ListAutoApprovedSchematicsSince(ctx, db.ListAutoApprovedSchematicsSinceParams{
+		Since: since,
+		Until: until,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.AutoApprovedSchematic, len(rows))
+	for i, r := range rows {
+		result[i] = store.AutoApprovedSchematic{
+			SchematicID: r.SchematicID,
+			Title:       r.Title,
+			Name:        r.Name,
+			ApprovedAt:  r.CreatedAt,
+		}
+	}
+	return result, nil
 }
 
 // --------------------------------------------------------------------------

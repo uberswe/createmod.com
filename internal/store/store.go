@@ -172,6 +172,7 @@ type Collection struct {
 	Featured    bool
 	Views       int
 	Published   bool
+	PublishedAt *time.Time
 	Deleted     string
 	Created     time.Time
 	Updated     time.Time
@@ -907,6 +908,7 @@ type GuideStore interface {
 	GetByID(ctx context.Context, id string) (*Guide, error)
 	GetBySlug(ctx context.Context, slug string) (*Guide, error)
 	List(ctx context.Context, limit, offset int) ([]Guide, error)
+	ListCreatedSince(ctx context.Context, since, until time.Time) ([]Guide, error)
 	Create(ctx context.Context, g *Guide) error
 	Update(ctx context.Context, g *Guide) error
 	Delete(ctx context.Context, id string) error
@@ -927,6 +929,7 @@ type CollectionStore interface {
 	ListByAuthor(ctx context.Context, authorID string) ([]Collection, error)
 	ListFeatured(ctx context.Context, limit int) ([]Collection, error)
 	ListPublished(ctx context.Context, limit, offset int) ([]Collection, error)
+	ListPublishedSince(ctx context.Context, since, until time.Time) ([]Collection, error)
 	Create(ctx context.Context, c *Collection) error
 	Update(ctx context.Context, c *Collection) error
 	SoftDelete(ctx context.Context, id string) error
@@ -1072,6 +1075,7 @@ type AuthStore interface {
 type ReportStore interface {
 	Create(ctx context.Context, r *Report) error
 	List(ctx context.Context, limit, offset int) ([]Report, error)
+	ListSince(ctx context.Context, since, until time.Time) ([]Report, error)
 	Delete(ctx context.Context, id string) error
 	DeleteByTarget(ctx context.Context, targetType, targetID string) (int64, error)
 	CountUnresolvedCommentReportsByAuthor(ctx context.Context, authorID string) (int64, error)
@@ -1383,10 +1387,20 @@ type ModerationLogEntry struct {
 	CreatedAt     time.Time
 }
 
+// AutoApprovedSchematic is a schematic auto-approved by the system within a
+// time window, sourced from the moderation log.
+type AutoApprovedSchematic struct {
+	SchematicID string
+	Title       string
+	Name        string
+	ApprovedAt  time.Time
+}
+
 // ModerationLogStore handles moderation audit log persistence.
 type ModerationLogStore interface {
 	Create(ctx context.Context, entry *ModerationLogEntry) error
 	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationLogEntry, error)
+	ListAutoApprovedSince(ctx context.Context, since, until time.Time) ([]AutoApprovedSchematic, error)
 }
 
 // SchematicVideoStore handles videos linked to schematics.

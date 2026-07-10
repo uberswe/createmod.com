@@ -748,49 +748,8 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
-		// --- Send admin email notification ---
-		// For non-trusted users with async moderation, the moderation worker
-		// sends the email after moderation completes. Only send here for
-		// trusted users (auto-approved) or when moderation is not available.
-		sendAdminEmail := autoApproved || (moderationSvc == nil && mailService != nil)
-		if sendAdminEmail && mailService != nil {
-			emailTitle := schem.Title
-			emailID := schem.ID
-			emailName := nameSlug
-			emailImage := featuredFilename
-			go func() {
-				baseURL := os.Getenv("BASE_URL")
-				if baseURL == "" {
-					baseURL = "https://createmod.com"
-				}
-				var imageURL string
-				if emailImage != "" {
-					imageURL = fmt.Sprintf("%s/api/files/schematics/%s/%s", baseURL, emailID, url.PathEscape(emailImage))
-				}
-				schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, emailName)
-
-				to := adminRecipients(appStore, mailService)
-				if len(to) == 0 {
-					return
-				}
-				from := mailService.DefaultFrom()
-
-				var subject, bodyText string
-				if autoApproved {
-					subject = fmt.Sprintf("Schematic Auto-Approved: %s", emailTitle)
-					bodyText = fmt.Sprintf("The schematic \"%s\" has been auto-approved and is now live on the site.", emailTitle)
-				} else {
-					subject = fmt.Sprintf("Schematic Needs Review: %s", emailTitle)
-					bodyText = fmt.Sprintf("The schematic \"%s\" requires manual review before it can be published.", emailTitle)
-				}
-
-				body := mailer.SchematicEmailHTML(emailTitle, imageURL, schematicURL, bodyText)
-				msg := &mailer.Message{From: from, To: to, Subject: subject, HTML: body}
-				if err := mailService.Send(msg); err != nil {
-					slog.Error("make-public: failed to send admin notification", "error", err)
-				}
-			}()
-		}
+		// Admin notification happens via the twice-daily moderation summary
+		// email (auto-approved section / pending list), not per-event emails.
 
 		// --- Cleanup temp data ---
 		// Delete temp upload files from S3

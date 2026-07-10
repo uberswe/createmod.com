@@ -71,16 +71,15 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		}
 	}
 
-	// Run moderation if still in auto_review
+	// Run moderation if still in auto_review. Outcomes are reported to admins
+	// via the twice-daily moderation summary email, not per-event emails:
+	// approvals appear in the auto-approved section, flagged and
+	// still-in-auto-review schematics in the pending list.
 	if schem.ModerationState == store.ModerationAutoReview && w.deps.Moderation != nil {
-		var emailSubject, emailBodyText string
-
 		// Step 1: Policy check (text + image if available)
 		policyResult, policyErr := w.deps.Moderation.CheckSchematic(args.Title, args.Description, imageFullURL)
 		if policyErr != nil {
 			slog.Warn("moderation job: policy check unavailable", "error", policyErr, "schematic_id", args.SchematicID)
-			emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
-			emailBodyText = fmt.Sprintf("The schematic \"%s\" could not be auto-moderated (moderation unavailable). It requires manual review.", args.Title)
 		} else if !policyResult.Approved {
 			oldState := schem.ModerationState
 			schem.ModerationState = store.ModerationFlagged
@@ -90,15 +89,11 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			} else {
 				logStateChange(oldState, schem.ModerationState, "policy check failed: "+policyResult.Reason)
 			}
-			emailSubject = fmt.Sprintf("Schematic Blocked: %s", args.Title)
-			emailBodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", args.Title, policyResult.Reason)
 		} else {
 			// Step 2: Quality check
 			qualityResult, qualityErr := w.deps.Moderation.CheckSchematicQuality(args.Title, args.Description)
 			if qualityErr != nil {
 				slog.Warn("moderation job: quality check unavailable", "error", qualityErr, "schematic_id", args.SchematicID)
-				emailSubject = fmt.Sprintf("Schematic Needs Review: %s", args.Title)
-				emailBodyText = fmt.Sprintf("The schematic \"%s\" could not be auto-moderated (quality check unavailable). It requires manual review.", args.Title)
 			} else if !qualityResult.Approved {
 				oldState := schem.ModerationState
 				schem.ModerationState = store.ModerationFlagged
@@ -108,8 +103,6 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				} else {
 					logStateChange(oldState, schem.ModerationState, "quality check failed: "+qualityResult.Reason)
 				}
-				emailSubject = fmt.Sprintf("Schematic Blocked: %s", args.Title)
-				emailBodyText = fmt.Sprintf("The schematic \"%s\" was blocked by automated moderation. Reason: %s", args.Title, qualityResult.Reason)
 			} else {
 				// Both checks passed
 				oldState := schem.ModerationState
@@ -121,22 +114,6 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 					slog.Error("moderation job: failed to approve schematic", "error", updateErr, "schematic_id", args.SchematicID)
 				} else {
 					logStateChange(oldState, schem.ModerationState, "auto-approved: policy and quality checks passed")
-				}
-				emailSubject = fmt.Sprintf("Schematic Auto-Approved: %s", args.Title)
-				emailBodyText = fmt.Sprintf("The schematic \"%s\" has been auto-approved and is now live on the site.", args.Title)
-			}
-		}
-
-		// Send admin email
-		if w.deps.Mail != nil && emailSubject != "" {
-			schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, args.Slug)
-			to := moderationAdminRecipients(w.deps.Store, w.deps.Mail)
-			if len(to) > 0 {
-				from := w.deps.Mail.DefaultFrom()
-				body := mailer.SchematicEmailHTML(args.Title, imageFullURL, schematicURL, emailBodyText)
-				msg := &mailer.Message{From: from, To: to, Subject: emailSubject, HTML: body}
-				if sendErr := w.deps.Mail.Send(msg); sendErr != nil {
-					slog.Error("moderation job: failed to send admin email", "error", sendErr)
 				}
 			}
 		}

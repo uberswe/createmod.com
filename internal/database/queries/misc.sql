@@ -6,6 +6,11 @@ RETURNING *;
 -- name: ListReports :many
 SELECT * FROM reports ORDER BY created DESC LIMIT $1 OFFSET $2;
 
+-- name: ListReportsSince :many
+SELECT * FROM reports
+WHERE created >= @since AND created < @until
+ORDER BY created DESC;
+
 -- name: DeleteReport :exec
 DELETE FROM reports WHERE id = $1;
 
