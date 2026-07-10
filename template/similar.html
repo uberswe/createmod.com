@@ -12,6 +12,13 @@
                 <div class="d-flex gap-3">
                 <div class="flex-grow-1 min-width-0">
                 {{ if .Results }}
+                {{ $cur := .Sort }}{{ $slug := .Slug }}
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <span class="text-secondary small">{{ T .Language "Sort by" }}</span>
+                    {{ range .SortKeys }}
+                    <a href="{{ $slug }}{{ if ne . "overall" }}?sort={{ . }}{{ end }}" class="btn btn-sm {{ if eq . $cur }}btn-primary{{ else }}btn-outline-secondary{{ end }}" style="text-transform: capitalize;">{{ T $.Language . }}</a>
+                    {{ end }}
+                </div>
                 <div class="row row-cards">
                     {{ range .Results }}
                     <div class="col-sm-6 col-md-4 col-lg-3">
@@ -22,7 +29,7 @@
                             </span>
                         </div>
                         <div class="text-secondary small mt-1 mb-3">
-                            {{ range $i, $c := .Breakdown }}{{ if $i }} · {{ end }}{{ $c.Name }} {{ $c.Percent }}%{{ end }}
+                            {{ range $i, $c := .Breakdown }}{{ if $i }} · {{ end }}{{ if eq $c.Name $cur }}<strong style="color: var(--cm-primary);">{{ $c.Name }} {{ $c.Percent }}%</strong>{{ else }}{{ $c.Name }} {{ $c.Percent }}%{{ end }}{{ end }}
                         </div>
                     </div>
                     {{ end }}
