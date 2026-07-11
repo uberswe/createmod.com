@@ -223,7 +223,9 @@ type Querier interface {
 	GetTempUploadByToken(ctx context.Context, token string) (GetTempUploadByTokenRow, error)
 	GetTempUploadFileByID(ctx context.Context, id string) (TempUploadFile, error)
 	GetTotalViewCount(ctx context.Context, schematicID string) (int32, error)
-	GetUserByEmail(ctx context.Context, email string) (User, error)
+	// Case-insensitive; an exact-casing match wins so accounts in pre-existing
+	// duplicate groups keep resolving to themselves, then oldest account.
+	GetUserByEmail(ctx context.Context, lower string) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByIDIncludingDeleted(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, lower string) (User, error)

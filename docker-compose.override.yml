@@ -1,0 +1,5 @@
+# Local-only override: another project's dev postgres occupies host port 5433.
+# The app reaches postgres over the compose network; no host binding needed.
+services:
+  postgres:
+    ports: !override []

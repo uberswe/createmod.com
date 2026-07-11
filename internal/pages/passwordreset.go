@@ -77,7 +77,7 @@ func PasswordResetPostHandler(mailService *mailer.Service, registry *server.Regi
 		if err := e.Request.ParseForm(); err != nil {
 			return e.String(http.StatusBadRequest, "invalid form")
 		}
-		email := strings.TrimSpace(e.Request.Form.Get("email"))
+		email := strings.ToLower(strings.TrimSpace(e.Request.Form.Get("email")))
 
 		// Always show success to avoid email enumeration
 		d := passwordResetData{Success: true}
