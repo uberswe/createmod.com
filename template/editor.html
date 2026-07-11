@@ -32,7 +32,21 @@
                         <div class="cm-vdivider"></div>
                         <span class="cm-toolbar__meta" id="ed-info"></span>
                         <span class="ms-auto d-flex gap-2">
-                            <a class="btn btn-sm btn-outline-secondary" id="ed-download" href="#" hx-boost="false">{{ T .Language "Download .nbt" }}</a>
+                            <div class="dropdown d-inline-block">
+                                <span class="cm-split">
+                                    <a class="btn btn-sm btn-primary" id="ed-download" href="#" hx-boost="false"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4v12"/></svg>{{ T .Language "Download" }}</a>
+                                    <button class="btn btn-sm btn-primary cm-split__caret" data-cm-toggle="dropdown" aria-expanded="false" aria-label="{{ T .Language "Choose format" }}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg></button>
+                                </span>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item ed-dl" data-format="nbt" href="#" hx-boost="false"><span>Create</span><span class="ext">.nbt</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="schem" href="#" hx-boost="false"><span>WorldEdit</span><span class="ext">.schem</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="litematic" href="#" hx-boost="false"><span>Litematica</span><span class="ext">.litematic</span></a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item ed-dl" data-format="blueprint" href="#" hx-boost="false"><span>MineColonies</span><span class="ext">.blueprint</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="bg" href="#" hx-boost="false" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}"><span>Building Gadgets</span><span class="ext">.json</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="schematic" href="#" hx-boost="false" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}"><span>Legacy</span><span class="ext">.schematic</span></a>
+                                </div>
+                            </div>
                             <div class="dropdown d-inline-block">
                                 <button class="btn btn-sm btn-outline-secondary" data-cm-toggle="dropdown" aria-expanded="false">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
@@ -223,6 +237,9 @@
       dl.appendChild(opt);
     });
     document.getElementById('ed-download').href = '/api/editor/' + sessionID + '/preview.nbt';
+    document.querySelectorAll('.ed-dl').forEach(function (a) {
+      a.href = '/api/editor/' + sessionID + '/download?format=' + a.getAttribute('data-format');
+    });
     var previewURL = location.origin + '/api/editor/' + sessionID + '/preview.nbt';
     document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(previewURL);
     document.getElementById('ed-shulkr').href = 'https://www.shulkr.com/?url=' + encodeURIComponent(previewURL);

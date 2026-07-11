@@ -292,6 +292,35 @@ func EditorUndoRedoHandler(appStore *store.Store, storageSvc *storage.Service, r
 	}
 }
 
+// EditorDownloadHandler serves the current model in any supported write
+// format (same format slugs as the converter).
+// GET /api/editor/{id}/download?format=schem
+func EditorDownloadHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		sess, err := loadEditorSession(e, appStore)
+		if err != nil {
+			return e.String(http.StatusNotFound, err.Error())
+		}
+		format, ext, ok := convertFormatBySlug(e.Request.URL.Query().Get("format"))
+		if !ok {
+			return e.String(http.StatusBadRequest, "unknown format")
+		}
+		model, _, err := editorCurrentModel(e.Request.Context(), appStore, storageSvc, sess)
+		if err != nil {
+			return e.String(http.StatusUnprocessableEntity, err.Error())
+		}
+		data, err := schematic.Write(model, format)
+		if err != nil {
+			return e.String(http.StatusUnprocessableEntity, err.Error())
+		}
+		e.Response.Header().Set("Content-Type", "application/octet-stream")
+		e.Response.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", "edited"+ext))
+		e.Response.WriteHeader(http.StatusOK)
+		_, err = e.Response.Write(data)
+		return err
+	}
+}
+
 // EditorPreviewNBTHandler serves the current NBT (CORS-open so external
 // viewers like Bloxelizer can fetch it, same mechanism as modify previews).
 // GET /api/editor/{id}/preview.nbt
