@@ -340,7 +340,7 @@
             // After successful deletion via HTMX, clear cookie and redirect
             document.addEventListener('htmx:afterRequest', function(evt) {
               var form = document.getElementById('delete-account-form');
-              if (evt.target === form) {
+              if (evt.target === form && evt.detail && evt.detail.successful) {
                 try {
                   deleteCookie('create-mod-auth');
                 } catch (e) {}
