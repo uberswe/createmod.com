@@ -371,7 +371,23 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 			Type  int               `json:"type"`
 			Color int               `json:"color"`
 			P     int               `json:"p"` // palette index into the top-level names list
+			Mat   string            `json:"mat,omitempty"` // block wrapped by a copycat at this position
 			Props map[string]string `json:"props,omitempty"`
+		}
+		// Wrapped copycat materials by position, so the hover card can show
+		// what a copycat panel is mimicking.
+		copycatMatAt := map[[3]int]string{}
+		for _, be := range model.BlockEntities {
+			bx, by, bz := be.Pos[0], be.Pos[1], be.Pos[2]
+			if bx < 0 || by < 0 || bz < 0 || bx >= model.Size[0] || by >= model.Size[1] || bz >= model.Size[2] {
+				continue
+			}
+			if !schematic.IsCopycat(model.Palette[model.Blocks[model.Index(bx, by, bz)]].Name) {
+				continue
+			}
+			if name := schematic.CopycatMaterialName(be.Raw); name != "" {
+				copycatMatAt[be.Pos] = name
+			}
 		}
 		blocks := make([]previewBlock, 0, 4096)
 		truncated := false
@@ -387,7 +403,7 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 						truncated = true
 						break
 					}
-					blocks = append(blocks, previewBlock{X: x, Y: y, Z: z, Type: previewTypeFor(st), Color: previewColorFor(st), P: pi, Props: previewPropsFor(st)})
+					blocks = append(blocks, previewBlock{X: x, Y: y, Z: z, Type: previewTypeFor(st), Color: previewColorFor(st), P: pi, Mat: copycatMatAt[[3]int{x, y, z}], Props: previewPropsFor(st)})
 				}
 			}
 		}
