@@ -3267,3 +3267,10 @@ body.sidebar-ready .generator-overlay {
 .cm-vtable__row .v { font-family: var(--cm-font-mono); font-size: 13px; font-weight: 600; color: var(--cm-link); }
 .cm-vtable__row .d { font-family: var(--cm-font-mono); font-size: 12.5px; color: var(--cm-text-muted); }
 .cm-vtable__row .c { font-size: 13px; color: var(--cm-body-color); }
+
+/* Row link card (handoff): chevron + title + description */
+.cm-rowlink { display: flex; align-items: center; gap: 10px; padding: 16px 20px; color: inherit; flex-direction: row; }
+.cm-rowlink:hover { border-color: rgba(191, 144, 69, 0.5); color: inherit; }
+.cm-rowlink > svg { width: 16px; height: 16px; color: var(--cm-text-muted); flex: none; }
+.cm-rowlink .t { font-size: 15px; font-weight: 600; color: var(--cm-heading-color); white-space: nowrap; }
+.cm-rowlink .d { font-size: 13.5px; color: var(--cm-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

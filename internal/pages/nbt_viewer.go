@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -124,6 +125,43 @@ func NBTViewerToolHandler(registry *server.Registry, cacheService *cache.Service
 		d.Slug = "/tools/nbt-viewer"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Tools"), "/generators", i18n.T(d.Language, "NBT Viewer"))
 		html, err := registry.LoadFiles(nbtViewerTemplates...).Render(d)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}
+
+var nbtDataTemplates = append([]string{
+	"./template/nbt_data.html",
+}, commonTemplates...)
+
+type nbtDataPageData struct {
+	DefaultData
+	SourceTitle string
+	SourceName  string
+}
+
+// SchematicNBTDataHandler renders /schematics/{name}/nbt-data: the NBT tree
+// for a published schematic's file, with a back link to the schematic.
+func SchematicNBTDataHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		name := e.Request.PathValue("name")
+		s, err := appStore.Schematics.GetByName(e.Request.Context(), name)
+		if err != nil || s == nil || !store.IsPublicState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
+			return FourOhFourHandler(registry, appStore)(e)
+		}
+		d := nbtDataPageData{}
+		d.Populate(e)
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		d.NoIndex = true // raw data view; the schematic page carries the SEO
+		d.Title = fmt.Sprintf(i18n.T(d.Language, "NBT Data: %s"), s.Title)
+		d.Description = i18n.T(d.Language, "Browse the raw NBT structure of this schematic.")
+		d.Slug = "/schematics/" + name + "/nbt-data"
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", s.Title, "/schematics/"+name, i18n.T(d.Language, "NBT Data"))
+		d.SourceTitle = s.Title
+		d.SourceName = s.Name
+		html, err := registry.LoadFiles(nbtDataTemplates...).Render(d)
 		if err != nil {
 			return err
 		}

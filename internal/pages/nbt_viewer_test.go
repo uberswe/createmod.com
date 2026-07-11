@@ -104,9 +104,19 @@ func Test_NBTViewer_Templates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range []string{"nbt-viewer-details", "nbt-tree", "NBT Data"} {
+	// The schematic page links to the dedicated /nbt-data page.
+	for _, m := range []string{"/nbt-data", "NBT Data"} {
 		if !strings.Contains(string(sch), m) {
 			t.Errorf("schematic.html missing %q", m)
+		}
+	}
+	nd, err := os.ReadFile(filepath.Join("..", "..", "template", "nbt_data.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range []string{"NBTTree.mount", "/nbt-tree", "Back to schematic"} {
+		if !strings.Contains(string(nd), m) {
+			t.Errorf("nbt_data.html missing %q", m)
 		}
 	}
 	js, err := os.ReadFile(filepath.Join("..", "..", "template", "static", "nbt-tree.js"))
