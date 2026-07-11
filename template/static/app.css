@@ -2124,8 +2124,8 @@ a.card-link:hover {
 .mod-badge-icon { width: 20px; height: 20px; border-radius: 3px; vertical-align: middle; }
 
 /* Download buttons */
-.btn-modrinth { background: #1bd96a; color: #fff; border: none; }
-.btn-modrinth:hover { background: #18c25f; color: #fff; }
+.btn-modrinth { background: #1bd96a; color: #04200f; border: none; font-weight: 600; }
+.btn-modrinth:hover { background: #18c25f; color: #04200f; }
 .btn-curseforge { background: #f16436; color: #fff; border: none; }
 .btn-curseforge:hover { background: #d9552d; color: #fff; }
 .btn-github { background: #24292e; color: #e6e6e6; border: none; }
