@@ -384,7 +384,7 @@
                                         <span id="download-btn" hx-boost="false">{{ template "download_split.html" .DownloadSplit }}</span>
                                         {{ if .Safety.Scanned }}
                                         {{ if and .Safety.FileSafe (not .Safety.Notable) }}
-                                        <a href="/safety" class="badge bg-green-lt text-decoration-none" title="{{ T .Language "Valid file, hardening passed, content inspection found no command blocks, spawners or click commands" }}">
+                                        <a href="/safety" class="cm-badge cm-badge--green cm-badge--upper text-decoration-none" title="{{ T .Language "Valid file, hardening passed, content inspection found no command blocks, spawners or click commands" }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4"/><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/></svg>
                                             {{ T .Language "Validated" }}
                                         </a>
