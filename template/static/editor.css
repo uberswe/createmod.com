@@ -218,3 +218,13 @@
   color: var(--cm-secondary-color, #4d5560);
   font-variant-numeric: tabular-nums;
 }
+
+#ed-materials .material-id {
+  display: block;
+  font-size: 0.68rem;
+  font-family: var(--cm-font-mono);
+  color: var(--cm-text-faint, rgba(128, 128, 128, 0.7));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

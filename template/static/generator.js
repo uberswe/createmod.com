@@ -390,6 +390,7 @@ function renderBlocks(data) {
         var sShape = parts.slice(2).join('_') || 'straight';
         var sGeo = makeStairShapeGeo(sHalf, sShape);
         var sMesh = new THREE.InstancedMesh(sGeo, stairMat, sArr.length);
+        sMesh.userData.pickBlocks = sArr;
         for (var sj = 0; sj < sArr.length; sj++) {
           dummy.position.set(sArr[sj].x - cx, (sArr[sj].y - cy), sArr[sj].z - cz);
           dummy.rotation.set(0, 0, 0);
@@ -438,6 +439,7 @@ function renderBlocks(data) {
     if (t === 5) {
       // Instanced fence posts
       var postMesh = new THREE.InstancedMesh(fencePostGeo, mat, arr.length);
+      postMesh.userData.pickBlocks = arr;
       for (var fi = 0; fi < arr.length; fi++) {
         dummy.position.set(arr[fi].x - cx, arr[fi].y - cy, arr[fi].z - cz);
         dummy.rotation.set(0, 0, 0);
@@ -521,6 +523,7 @@ function renderBlocks(data) {
         var tdParts = tdk.split('_');
         var tdF = tdParts[0], tdH = tdParts[1], tdO = tdParts[2];
         var tdMesh = new THREE.InstancedMesh(trapdoorGeo, mat, tdArr.length);
+        tdMesh.userData.pickBlocks = tdArr;
         for (var tdj = 0; tdj < tdArr.length; tdj++) {
           dummy.position.set(tdArr[tdj].x - cx, tdArr[tdj].y - cy, tdArr[tdj].z - cz);
           dummy.rotation.set(0, 0, 0);
@@ -573,6 +576,7 @@ function renderBlocks(data) {
     }
 
     var mesh = new THREE.InstancedMesh(geo, mat, arr.length);
+    mesh.userData.pickBlocks = arr;
     for (var j = 0; j < arr.length; j++) {
       var yOff = 0;
       if (t === 2) yOff = -0.25;
@@ -1100,6 +1104,61 @@ function capturePreview() {
   // Preview images are now rendered server-side; this is a no-op retained for API compat.
 }
 
+
+/* ---- Block picking (used by the schematic editor) ----
+   Raycasts the instanced block meshes on pointer move and reports the
+   hovered source block (the object passed into renderBlocks) plus the
+   pointer's client coordinates. Disabled above a block-count cap since
+   InstancedMesh raycasting walks every instance. */
+var pickCallback = null;
+var pickRaycaster = null;
+var pickPointer = null;
+var pickRafPending = false;
+var pickLastEvent = null;
+var PICK_MAX_BLOCKS = 60000;
+
+function enablePicking(cb) {
+  if (!renderer || !THREE) return false;
+  pickCallback = cb;
+  pickRaycaster = pickRaycaster || new THREE.Raycaster();
+  pickPointer = pickPointer || new THREE.Vector2();
+  renderer.domElement.addEventListener('pointermove', onPickMove);
+  renderer.domElement.addEventListener('pointerleave', onPickLeave);
+  return true;
+}
+
+function onPickLeave() {
+  if (pickCallback) pickCallback(null, 0, 0);
+}
+
+function onPickMove(ev) {
+  pickLastEvent = ev;
+  if (pickRafPending) return;
+  pickRafPending = true;
+  requestAnimationFrame(function () {
+    pickRafPending = false;
+    runPick(pickLastEvent);
+  });
+}
+
+function runPick(ev) {
+  if (!pickCallback || !renderer || !camera || !currentData) return;
+  if ((currentData.blocks || []).length > PICK_MAX_BLOCKS) return;
+  var rect = renderer.domElement.getBoundingClientRect();
+  pickPointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  pickPointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+  pickRaycaster.setFromCamera(pickPointer, camera);
+  var hits = pickRaycaster.intersectObjects(blockMeshes, false);
+  for (var i = 0; i < hits.length; i++) {
+    var h = hits[i];
+    if (h.object.isInstancedMesh && h.object.userData.pickBlocks && h.instanceId !== undefined && h.instanceId !== null) {
+      pickCallback(h.object.userData.pickBlocks[h.instanceId] || null, ev.clientX, ev.clientY);
+      return;
+    }
+  }
+  pickCallback(null, ev.clientX, ev.clientY);
+}
+
 function cleanup() {
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   clearBlocks();
@@ -1108,6 +1167,7 @@ function cleanup() {
   if (renderer) { renderer.dispose(); renderer = null; }
   scene = null; camera = null; controls = null; container = null;
   currentData = null; cameraUserInteracted = false; spinEnabled = false; spinGroup = null; blockContainer = null; spinAxis = 'y';
+  pickCallback = null;
 }
 
 window.GeneratorApp = {
@@ -1123,6 +1183,7 @@ window.GeneratorApp = {
   toBase64Url: toBase64Url,
   fromBase64Url: fromBase64Url,
   capturePreview: capturePreview,
+  enablePicking: enablePicking,
   setSpinEnabled: function(v) { spinEnabled = !!v; },
   isSpinEnabled: function() { return spinEnabled; },
   _cleanup: cleanup
