@@ -86,7 +86,6 @@ func (s *Service) GenerateHreflang(appStore *store.Store) []string {
 		"/collections",
 		"/mods",
 		"/tools/convert",
-		"/safety",
 		"/tools/safety-check",
 		"/tools/similar",
 		"/tools/nbt-viewer",

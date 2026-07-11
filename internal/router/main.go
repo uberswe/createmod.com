@@ -742,8 +742,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/tools/similar", Adapt(pages.SimilarToolHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/similar", Adapt(pages.SimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
 	r.Get("/api/schematics/{name}/similar", Adapt(pages.GetSimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
-	// Safety explainer + checker
-	r.Get("/safety", Adapt(pages.SafetyExplainerHandler(registry, p.CacheService, p.AppStore)))
+	// Safety checker (the explainer content lives on this page; /safety redirects)
+	r.Get("/safety", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/tools/safety-check", http.StatusMovedPermanently)
+	})
 	r.Get("/tools/safety-check", Adapt(pages.SafetyCheckToolHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/safety-check", Adapt(pages.SafetyCheckAPIHandler()))
 	// Schematic converter

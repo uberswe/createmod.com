@@ -127,32 +127,8 @@ func itoa(n int) string {
 	return string(b[i:])
 }
 
-var safetyTemplates = append([]string{
-	"./template/safety.html",
-}, commonTemplates...)
-
 type safetyPageData struct {
 	DefaultData
-}
-
-// SafetyExplainerHandler renders /safety — what the validation badge means,
-// what schematics can and cannot do.
-func SafetyExplainerHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
-	return func(e *server.RequestEvent) error {
-		setPublicCacheControl(e, 600)
-		d := safetyPageData{}
-		d.Populate(e)
-		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-		d.Title = i18n.T(d.Language, "Are Minecraft Schematics Safe? How CreateMod.com Validates Files")
-		d.Description = i18n.T(d.Language, "Schematics are data, not programs. Learn how CreateMod.com hardens uploads, inspects content for command blocks and spawners, and what the Validated badge means.")
-		d.Slug = "/safety"
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Safety"))
-		html, err := registry.LoadFiles(safetyTemplates...).Render(d)
-		if err != nil {
-			return err
-		}
-		return e.HTML(http.StatusOK, html)
-	}
 }
 
 var safetyCheckTemplates = append([]string{
