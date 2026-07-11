@@ -370,6 +370,7 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 			Z     int               `json:"z"`
 			Type  int               `json:"type"`
 			Color int               `json:"color"`
+			P     int               `json:"p"` // palette index into the top-level names list
 			Props map[string]string `json:"props,omitempty"`
 		}
 		blocks := make([]previewBlock, 0, 4096)
@@ -377,7 +378,8 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 		for y := 0; y < model.Size[1] && !truncated; y++ {
 			for z := 0; z < model.Size[2] && !truncated; z++ {
 				for x := 0; x < model.Size[0]; x++ {
-					st := model.Palette[model.Blocks[model.Index(x, y, z)]]
+					pi := int(model.Blocks[model.Index(x, y, z)])
+					st := model.Palette[pi]
 					if st.IsAir() {
 						continue
 					}
@@ -385,12 +387,17 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 						truncated = true
 						break
 					}
-					blocks = append(blocks, previewBlock{X: x, Y: y, Z: z, Type: previewTypeFor(st), Color: previewColorFor(st), Props: previewPropsFor(st)})
+					blocks = append(blocks, previewBlock{X: x, Y: y, Z: z, Type: previewTypeFor(st), Color: previewColorFor(st), P: pi, Props: previewPropsFor(st)})
 				}
 			}
 		}
+		names := make([]string, len(model.Palette))
+		for i, st := range model.Palette {
+			names[i] = st.Name
+		}
 		return writeJSON(e, http.StatusOK, map[string]interface{}{
 			"blocks":    blocks,
+			"names":     names,
 			"materials": map[string]string{"woodType": "oak"},
 			"truncated": truncated,
 			"size":      model.Size,
