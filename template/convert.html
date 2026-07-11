@@ -11,9 +11,9 @@
                     </h1>
                     <p class="cm-page-sub">
                         {{ if .FromLabel }}
-                        {{ .FromLabel }} &rarr; {{ .ToLabel }}. {{ T .Language "Blocks, block entities and Create mod data carry over. Free and no signup." }}
+                        {{ .FromLabel }} &rarr; {{ .ToLabel }}. {{ T .Language "Blocks, block entities and Create mod data carry over. Free and no signup needed." }}
                         {{ else }}
-                        {{ T .Language "Convert between Create .nbt, WorldEdit .schem and Litematica .litematic. Blocks, block entities and Create mod data carry over. Free and no signup." }}
+                        {{ T .Language "Convert between Create .nbt, WorldEdit .schem and Litematica .litematic. Blocks, block entities and Create mod data carry over. Free and no signup needed." }}
                         {{ end }}
                     </p>
                 </div>
@@ -41,15 +41,15 @@
                 <div class="mt-4" id="conv-targets" style="display:none;">
                     <div class="cm-panel-label">{{ T .Language "Convert to" }}</div>
                     <div class="cm-convert-targets">
-                        <button class="btn conv-target" data-to="nbt">Create .nbt</button>
-                        <button class="btn conv-target" data-to="schem">WorldEdit .schem</button>
-                        <button class="btn conv-target" data-to="litematic">Litematica .litematic</button>
-                        <button class="btn conv-target" data-to="blueprint">MineColonies .blueprint</button>
-                        <button class="btn conv-target" data-to="bg" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}">
+                        <button class="btn btn-outline-secondary conv-target" data-to="nbt">Create .nbt</button>
+                        <button class="btn btn-outline-secondary conv-target" data-to="schem">WorldEdit .schem</button>
+                        <button class="btn btn-outline-secondary conv-target" data-to="litematic">Litematica .litematic</button>
+                        <button class="btn btn-outline-secondary conv-target" data-to="blueprint">MineColonies .blueprint</button>
+                        <button class="btn btn-outline-secondary conv-target" data-to="bg" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}">
                             <span>Building Gadgets .json</span>
                             <span class="cm-warn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></span>
                         </button>
-                        <button class="btn conv-target" data-to="schematic" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
+                        <button class="btn btn-outline-secondary conv-target" data-to="schematic" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
                             <span>Legacy .schematic</span>
                             <span class="cm-warn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg></span>
                         </button>
