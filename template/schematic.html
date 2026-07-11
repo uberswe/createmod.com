@@ -14,8 +14,21 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                {{/* The visible title is rendered by the breadcrumb overlay; this h1 gives the page its top-level heading without altering the design. */}}
-                <h1 class="visually-hidden">{{ .Schematic.Title }}</h1>
+                <div class="mb-3">
+                    <h1 class="h2 mb-2" style="max-width: 1100px;">{{ .Schematic.Title }}</h1>
+                    <div class="cm-byline">
+                        {{ if .Schematic.Author }}
+                        {{ if .Schematic.Author.HasAvatar }}
+                        <img class="avatar avatar-xs rounded" src="{{ .Schematic.Author.Avatar }}" alt="{{ .Schematic.Author.Username }}" width="24" height="24">
+                        {{ else }}
+                        <img class="avatar avatar-xs rounded" src="https://mc-heads.net/avatar/Steve" alt="{{ .Schematic.Author.Username }}" width="24" height="24">
+                        {{ end }}
+                        <span class="dim">{{ T .Language "by" }} <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{ .Schematic.Author.Username }}</a></span>
+                        <span class="dot">&middot;</span>
+                        {{ end }}
+                        <span class="dim" data-cm-toggle="tooltip" data-cm-placement="top" title="{{ .Schematic.CreatedFormatted }}">{{ T .Language "Uploaded" }} {{ .Schematic.CreatedHumanReadable }}</span>
+                    </div>
+                </div>
                 {{ .SchematicJSONLD }}
                 {{ if eq .ModerationBanner "auto_review" }}
                 <div class="alert alert-info mb-3" role="alert">
@@ -984,8 +997,8 @@
                             <div class="card-body">
                                 <div class="d-flex flex-wrap gap-2" id="mods-list">
                                     {{ range .ModInfoList }}
-                                    <a href="/mods/{{ .Namespace }}" class="badge bg-blue-lt text-decoration-none d-inline-flex align-items-center gap-1">
-                                        {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" class="mod-badge-icon" loading="lazy">{{ end }}
+                                    <a href="/mods/{{ .Namespace }}" class="cm-modchip text-decoration-none">
+                                        {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" loading="lazy">{{ else }}<span class="dot" style="background: var(--cm-primary);"></span>{{ end }}
                                         {{ .Name }}
                                     </a>
                                     {{ end }}
@@ -1000,7 +1013,7 @@
                             <div class="card-body">
                                 <div class="d-flex flex-wrap gap-2" id="mods-list">
                                     {{ range .Mods }}
-                                    <a href="/mods/{{ . }}" class="badge bg-blue-lt text-decoration-none" data-mod-id="{{ . }}">{{ . }}</a>
+                                    <a href="/mods/{{ . }}" class="cm-modchip text-decoration-none" data-mod-id="{{ . }}"><span class="dot" style="background: var(--cm-primary);"></span>{{ . }}</a>
                                     {{ end }}
                                 </div>
                             </div>
@@ -1078,25 +1091,11 @@
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Version history" }}</h3>
                             </div>
-                            <div class="table-responsive">
-                                <table class="table table-vcenter card-table">
-                                    <thead>
-                                        <tr>
-                                            <th>{{ T .Language "Version" }}</th>
-                                            <th>{{ T .Language "Date" }}</th>
-                                            <th>{{ T .Language "Changes" }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {{ range .Versions }}
-                                        <tr>
-                                            <td class="text-nowrap">v{{ .Version }}</td>
-                                            <td class="text-nowrap text-secondary">{{ HumanDate .Created }}</td>
-                                            <td class="text-secondary">{{ if .Note }}{{ .Note }}{{ else }}&mdash;{{ end }}</td>
-                                        </tr>
-                                        {{ end }}
-                                    </tbody>
-                                </table>
+                            <div class="pb-2">
+                                <div class="cm-vtable__head"><span>{{ T .Language "Version" }}</span><span>{{ T .Language "Date" }}</span><span>{{ T .Language "Changes" }}</span></div>
+                                {{ range .Versions }}
+                                <div class="cm-vtable__row"><span class="v">v{{ .Version }}</span><span class="d">{{ HumanDate .Created }}</span><span class="c">{{ if .Note }}{{ .Note }}{{ else }}&mdash;{{ end }}</span></div>
+                                {{ end }}
                             </div>
                         </div>
                         {{ end }}
