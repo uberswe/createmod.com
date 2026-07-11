@@ -3232,3 +3232,14 @@ body.sidebar-ready .generator-overlay {
   font-size: 21px !important; font-weight: 600;
   padding-top: 32px; border-top: 1px solid var(--cm-border-color);
 }
+
+/* Split download button (handoff) */
+.cm-split { display: inline-flex; }
+.cm-split > .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cm-split > .cm-split__caret {
+  border-top-left-radius: 0; border-bottom-left-radius: 0;
+  border-left: 1px solid rgba(36, 28, 14, 0.25);
+  padding-left: 0.45rem; padding-right: 0.45rem;
+}
+.dropdown-item.ed-dl { display: flex; align-items: center; gap: 12px; }
+.dropdown-item.ed-dl .ext { margin-left: auto; font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-text-muted); }

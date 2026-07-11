@@ -731,6 +731,7 @@ func Register(p RegisterParams) chi.Router {
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/undo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, false)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/redo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, true)))
 	r.Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}/download", Adapt(pages.EditorDownloadHandler(p.AppStore, p.StorageService)))
 	r.Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
 	// NBT viewer
 	r.Get("/tools/nbt-viewer", Adapt(pages.NBTViewerToolHandler(registry, p.CacheService, p.AppStore)))
