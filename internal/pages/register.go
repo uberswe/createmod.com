@@ -55,7 +55,7 @@ func RegisterPostHandler(appStore *store.Store, sessStore *session.Store) func(e
 		}
 
 		username := strings.TrimSpace(e.Request.Form.Get("username"))
-		email := strings.TrimSpace(e.Request.Form.Get("email"))
+		email := strings.ToLower(strings.TrimSpace(e.Request.Form.Get("email")))
 		password := e.Request.Form.Get("password")
 		terms := e.Request.Form.Get("terms")
 

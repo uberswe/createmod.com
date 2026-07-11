@@ -105,11 +105,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users WHERE email = $1 AND deleted IS NULL
+SELECT id, email, username, password_hash, old_password, avatar, points, verified, is_admin, deleted, created, updated, follower_count, following_count FROM users WHERE LOWER(email) = LOWER($1) AND deleted IS NULL
+ORDER BY (email = $1) DESC, created ASC
+LIMIT 1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
+// Case-insensitive; an exact-casing match wins so accounts in pre-existing
+// duplicate groups keep resolving to themselves, then oldest account.
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, lower)
 	var i User
 	err := row.Scan(
 		&i.ID,

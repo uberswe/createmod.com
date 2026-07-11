@@ -2,7 +2,11 @@
 SELECT * FROM users WHERE id = $1 AND deleted IS NULL;
 
 -- name: GetUserByEmail :one
-SELECT * FROM users WHERE email = $1 AND deleted IS NULL;
+-- Case-insensitive; an exact-casing match wins so accounts in pre-existing
+-- duplicate groups keep resolving to themselves, then oldest account.
+SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND deleted IS NULL
+ORDER BY (email = $1) DESC, created ASC
+LIMIT 1;
 
 -- name: GetUserByUsername :one
 SELECT * FROM users WHERE LOWER(username) = LOWER($1) AND deleted IS NULL;
