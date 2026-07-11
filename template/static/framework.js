@@ -218,7 +218,10 @@
 
     var dismiss = e.target.closest('[data-cm-dismiss="modal"]');
     if (dismiss) {
-      e.preventDefault();
+      // A submit button may both submit its form (e.g. the delete-account
+      // hx-delete form) and dismiss the modal; preventDefault would swallow
+      // the submission entirely.
+      if (!(dismiss.type === 'submit' && dismiss.form)) e.preventDefault();
       var modal = dismiss.closest('.modal');
       if (modal) hideModal(modal);
       return;
