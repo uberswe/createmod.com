@@ -33,7 +33,7 @@ func (s *Schematic) Materials() []MaterialCount {
 		if !IsCopycat(s.Palette[s.Blocks[s.Index(x, y, z)]].Name) {
 			continue
 		}
-		if name := copycatMaterialName(be.Raw); name != "" {
+		if name := CopycatMaterialName(be.Raw); name != "" {
 			counts[name]++
 		}
 	}

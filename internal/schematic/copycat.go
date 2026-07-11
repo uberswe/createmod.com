@@ -13,10 +13,10 @@ func IsCopycat(name string) bool {
 	return strings.HasPrefix(name, "create:copycat_") || strings.HasPrefix(name, "copycats:")
 }
 
-// copycatMaterialName reads the wrapped block id from a copycat block
+// CopycatMaterialName reads the wrapped block id from a copycat block
 // entity's Material tag ({Name, Properties}). Returns "" when the tag is
 // missing, malformed, or air (no material applied yet).
-func copycatMaterialName(raw nbt.RawMessage) string {
+func CopycatMaterialName(raw nbt.RawMessage) string {
 	fields, err := compoundFields(raw)
 	if err != nil {
 		return ""

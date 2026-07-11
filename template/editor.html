@@ -135,11 +135,21 @@
                         <div class="col-lg-8 col-xl-9">
                             <div class="card position-relative">
                                 <div id="editor-canvas" style="height: 620px; border-radius: 4px; overflow: hidden;"></div>
-                                <div id="ed-hover" style="display:none; position:absolute; z-index:5; pointer-events:none; align-items:center; gap:10px; padding:8px 12px; background:var(--cm-menu-bg); border:1px solid var(--cm-border-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.4); max-width:280px;">
-                                    <img id="ed-hover-icon" alt="" width="28" height="28" style="image-rendering:pixelated; flex:none;" onerror="this.style.display='none'">
-                                    <div style="min-width:0;">
-                                        <div id="ed-hover-name" style="font-size:13.5px; font-weight:600; color:var(--cm-heading-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-                                        <div id="ed-hover-id" style="font-size:11.5px; font-family:var(--cm-font-mono); color:var(--cm-text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                <div id="ed-hover" style="display:none; position:absolute; z-index:5; pointer-events:none; flex-direction:column; gap:0; padding:8px 12px; background:var(--cm-menu-bg); border:1px solid var(--cm-border-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.4); max-width:300px;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <img id="ed-hover-icon" alt="" width="28" height="28" style="image-rendering:pixelated; flex:none;" onerror="this.style.display='none'">
+                                        <div style="min-width:0;">
+                                            <div id="ed-hover-name" style="font-size:13.5px; font-weight:600; color:var(--cm-heading-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                            <div id="ed-hover-id" style="font-size:11.5px; font-family:var(--cm-font-mono); color:var(--cm-text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="ed-hover-sub" style="display:none; align-items:center; gap:10px; margin-top:8px; padding-top:8px; border-top:1px solid var(--cm-border-hairline);">
+                                        <img id="ed-hover-sub-icon" alt="" width="22" height="22" style="image-rendering:pixelated; flex:none;" onerror="this.style.display='none'">
+                                        <div style="min-width:0;">
+                                            <div style="font-size:9.5px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--cm-text-faint);">{{ T .Language "Contains" }}</div>
+                                            <div id="ed-hover-sub-name" style="font-size:12.5px; font-weight:600; color:var(--cm-heading-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                            <div id="ed-hover-sub-id" style="font-size:11px; font-family:var(--cm-font-mono); color:var(--cm-text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -202,13 +212,26 @@
     if (!el) return;
     var id = (b && b.p !== undefined) ? previewNames[b.p] : null;
     if (!id) { el.style.display = 'none'; el.dataset.id = ''; return; }
-    if (el.dataset.id !== id) {
-      el.dataset.id = id;
+    var mat = (b && b.mat) || '';
+    var key = id + '|' + mat;
+    if (el.dataset.id !== key) {
+      el.dataset.id = key;
       document.getElementById('ed-hover-name').textContent = prettyBlockName(id);
       document.getElementById('ed-hover-id').textContent = id;
       var img = document.getElementById('ed-hover-icon');
       img.style.display = '';
       img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(id) + '/icon?size=64';
+      var sub = document.getElementById('ed-hover-sub');
+      if (mat) {
+        document.getElementById('ed-hover-sub-name').textContent = prettyBlockName(mat);
+        document.getElementById('ed-hover-sub-id').textContent = mat;
+        var subImg = document.getElementById('ed-hover-sub-icon');
+        subImg.style.display = '';
+        subImg.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(mat) + '/icon?size=64';
+        sub.style.display = 'flex';
+      } else {
+        sub.style.display = 'none';
+      }
     }
     el.style.display = 'flex';
     var host = el.parentElement;
