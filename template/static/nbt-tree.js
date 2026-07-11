@@ -20,43 +20,45 @@
   function mount(container, source) {
     container.replaceChildren();
 
-    var toolbar = el('div', 'nbt-toolbar d-flex gap-2 align-items-center mb-2');
-    var search = el('input', 'form-control form-control-sm');
+    var toolbar = el('div', 'nbt-toolbar d-flex gap-3 align-items-center mb-2');
+    var searchWrap = el('div', 'cm-searchwrap');
+    searchWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"></circle><path d="M21 21l-6 -6"></path></svg>';
+    var search = el('input', 'cm-input cm-input--search');
+    search.type = 'text';
     search.placeholder = 'Search keys and values…';
-    search.style.maxWidth = '280px';
+    searchWrap.appendChild(search);
     var status = el('span', 'text-secondary small');
-    toolbar.appendChild(search);
+    toolbar.appendChild(searchWrap);
     toolbar.appendChild(status);
     container.appendChild(toolbar);
 
     var searchResults = el('div', 'nbt-search-results mb-2');
     container.appendChild(searchResults);
 
-    var treeRoot = el('div', 'nbt-tree font-monospace small');
+    var treeRoot = el('div', 'nbt-tree cm-tree');
     container.appendChild(treeRoot);
 
     function renderNode(node, parentEl) {
       var row = el('div', 'nbt-row');
       row.style.padding = '1px 0';
-      var line = el('div', 'd-flex align-items-center gap-1 flex-wrap');
+      var line = el('div', 'cm-tree__row flex-wrap');
 
-      var toggle = el('span', 'nbt-toggle', node.hasChildren ? '▸' : '·');
-      toggle.style.cssText = 'width:1em;display:inline-block;cursor:' + (node.hasChildren ? 'pointer' : 'default') + ';user-select:none;color:var(--cm-muted,#9ea5ad);';
+      var toggle = el('span', 'nbt-toggle mark', node.hasChildren ? '▸' : '·');
+      toggle.style.cssText = 'cursor:' + (node.hasChildren ? 'pointer' : 'default') + ';user-select:none;';
       line.appendChild(toggle);
 
-      var name = el('span', 'nbt-name', node.name || '(root)');
-      name.style.color = 'var(--cm-primary)';
+      var name = el('span', 'nbt-name k', node.name || '(root)');
       line.appendChild(name);
 
-      line.appendChild(el('span', 'text-secondary', node.type));
+      line.appendChild(el('span', 't', node.type));
 
       if (node.value) {
-        var val = el('span', '', node.value);
-        val.style.cssText = 'color:var(--cm-secondary-color,#c4b896);word-break:break-all;';
+        var val = el('span', 'v', node.value);
+        val.style.wordBreak = 'break-all';
         line.appendChild(val);
       }
       if (node.childCount) {
-        line.appendChild(el('span', 'text-secondary small', '(' + node.childCount + ')'));
+        line.appendChild(el('span', 'c', '(' + node.childCount + ')'));
       }
       if (node.create) {
         var badge = el('span', 'badge bg-orange-lt', 'create');
@@ -169,12 +171,13 @@
         source({ q: q }).then(function (j) {
           status.textContent = (j.results || []).length + ' matches';
           (j.results || []).slice(0, 50).forEach(function (hit) {
-            var row = el('div', 'small font-monospace');
-            var link = el('span', '', hit.displayPath);
-            link.style.cssText = 'color:var(--cm-primary);';
-            row.appendChild(link);
+            var row = el('div', 'cm-tree__row');
+            row.style.paddingLeft = '10px';
+            row.appendChild(el('span', 'k', hit.displayPath));
             if (hit.value) {
-              row.appendChild(el('span', 'text-secondary', ' = ' + hit.value));
+              var v = el('span', 'v', '= ' + hit.value);
+              v.style.wordBreak = 'break-all';
+              row.appendChild(v);
             }
             searchResults.appendChild(row);
           });

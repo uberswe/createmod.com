@@ -1,0 +1,41 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide" style="max-width: 1100px;">
+                <div class="mb-3">
+                    <h1 class="h2 mb-1">{{ T .Language "NBT Data" }}: {{ .SourceTitle }}</h1>
+                    <p class="cm-page-sub mb-2">{{ T .Language "The raw NBT structure of this schematic, with SNBT view, key search and copy-path." }}</p>
+                    <a href="/schematics/{{ .SourceName }}" class="btn btn-sm btn-outline-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+                        {{ T .Language "Back to schematic" }}
+                    </a>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div id="nbt-data-tree"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+<script src="/assets/x/nbt-tree.js?v={{ AssetVer }}"></script>
+<script>
+(function () {
+  'use strict';
+  window.NBTTree.mount(document.getElementById('nbt-data-tree'), function (params) {
+    var qs = [];
+    Object.keys(params || {}).forEach(function (k) {
+      if (params[k] !== undefined && params[k] !== null && params[k] !== '') qs.push(k + '=' + encodeURIComponent(params[k]));
+    });
+    return fetch('/api/schematics/{{ .SourceName }}/nbt-tree' + (qs.length ? '?' + qs.join('&') : ''))
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); return j; }); });
+  });
+})();
+</script>
+{{ template "foot.html" . }}

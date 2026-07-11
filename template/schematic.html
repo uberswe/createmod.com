@@ -955,37 +955,13 @@
                         </div>
                         {{ end }}
 
-                        <!-- NBT data viewer (lazy: loads on first open) -->
+                        <!-- NBT data: dedicated page -->
                         {{ if .Schematic.SchematicFile }}
-                        <div class="card mb-3">
-                            <div class="card-body p-2">
-                                <details id="nbt-viewer-details">
-                                    <summary class="fw-bold" style="cursor: pointer; padding: 0.5rem;">
-                                        {{ T .Language "NBT Data" }}
-                                        <span class="text-secondary small fw-normal">{{ T .Language "— browse the raw schematic structure" }}</span>
-                                    </summary>
-                                    <div id="nbt-viewer-mount" class="p-2"></div>
-                                </details>
-                            </div>
-                        </div>
-                        <script>
-                        (function () {
-                          var details = document.getElementById('nbt-viewer-details');
-                          var mounted = false;
-                          details.addEventListener('toggle', function () {
-                            if (!details.open || mounted || !window.NBTTree) return;
-                            mounted = true;
-                            window.NBTTree.mount(document.getElementById('nbt-viewer-mount'), function (params) {
-                              var qs = [];
-                              Object.keys(params || {}).forEach(function (k) {
-                                if (params[k] !== undefined && params[k] !== null && params[k] !== '') qs.push(k + '=' + encodeURIComponent(params[k]));
-                              });
-                              return fetch('/api/schematics/{{ .Schematic.Name }}/nbt-tree' + (qs.length ? '?' + qs.join('&') : ''))
-                                .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'failed'); return j; }); });
-                            });
-                          });
-                        })();
-                        </script>
+                        <a class="card mb-3 cm-rowlink text-decoration-none" href="/schematics/{{ .Schematic.Name }}/nbt-data">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>
+                            <span class="t">{{ T .Language "NBT Data" }}</span>
+                            <span class="d">{{ T .Language "browse the raw schematic structure" }}</span>
+                        </a>
                         {{ end }}
 
                         <!-- Required Mods -->
