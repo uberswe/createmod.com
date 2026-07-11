@@ -125,21 +125,16 @@ func Test_SafetyCheckAPI(t *testing.T) {
 }
 
 func Test_Safety_Templates(t *testing.T) {
-	explainer, err := os.ReadFile(filepath.Join("..", "..", "template", "safety.html"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, m := range []string{"schematics are data, not programs", "FAQPage", "/tools/safety-check", "h1"} {
-		if !strings.Contains(strings.ToLower(string(explainer)), strings.ToLower(m)) {
-			t.Errorf("safety.html missing %q", m)
-		}
-	}
+	// The explainer content lives on the checker page (/safety redirects there).
 	checker, err := os.ReadFile(filepath.Join("..", "..", "template", "safety_check.html"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range []string{"sc-drop", "/api/safety-check", "never stored", "/safety"} {
-		if !strings.Contains(string(checker), m) {
+	for _, m := range []string{
+		"sc-drop", "/api/safety-check", "never stored",
+		"safety-explainer", "schematics are data, not programs", "FAQPage",
+	} {
+		if !strings.Contains(strings.ToLower(string(checker)), strings.ToLower(m)) {
 			t.Errorf("safety_check.html missing %q", m)
 		}
 	}
