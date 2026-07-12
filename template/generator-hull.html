@@ -507,6 +507,7 @@
     }
 
     var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.setEncodeDefaults('h', getParams());
     GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'hull');
 
     document.querySelectorAll('.gen-param').forEach(function(el) {

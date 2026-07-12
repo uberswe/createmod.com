@@ -952,6 +952,29 @@ var SCHEMAS = {
 
 var CURRENT_VERSION = 3;
 
+// Per-generator default params (a snapshot of the page's initial values),
+// used to omit default-valued slots from share links so they stay short.
+var ENCODE_DEFAULTS = {};
+
+function setEncodeDefaults(prefix, params) {
+  ENCODE_DEFAULTS[prefix] = Object.assign({}, params);
+}
+
+function encodeVal(s, v) {
+  if (v === undefined || v === null) v = '';
+  switch (s.t) {
+    case 'b': return v ? '1' : '0';
+    case 'i': return String(Math.round(Number(v)));
+    case 'f': return String(Math.round(Number(v) * 100));
+    case 'e':
+      var map = ENUM_MAPS[s.m];
+      if (map && map[v]) return map[v];
+      if (map) return map[Object.keys(map)[0]];
+      return '';
+  }
+  return '';
+}
+
 function encodeCompact(prefix, params) {
   var schema = SCHEMAS[prefix];
   if (!schema) return '';
@@ -959,28 +982,18 @@ function encodeCompact(prefix, params) {
   // shared links must regenerate with the engine that produced them.
   var ver = CURRENT_VERSION;
   if (params && params.version && params.version >= 2) ver = params.version;
+  var defaults = ENCODE_DEFAULTS[prefix];
   var vals = [prefix + ver];
   for (var i = 0; i < schema.length; i++) {
     var s = schema[i];
-    var v = params[s.k];
-    if (v === undefined || v === null) v = '';
-    switch (s.t) {
-      case 'b': vals.push(v ? '1' : '0'); break;
-      case 'i': vals.push(String(Math.round(Number(v)))); break;
-      case 'f': vals.push(String(Math.round(Number(v) * 100))); break;
-      case 'e':
-        var map = ENUM_MAPS[s.m];
-        if (map && map[v]) {
-          vals.push(map[v]);
-        } else if (map) {
-          var firstKey = Object.keys(map)[0];
-          vals.push(map[firstKey]);
-        } else {
-          vals.push('');
-        }
-        break;
-    }
+    var enc = encodeVal(s, params[s.k]);
+    // Omit slots whose encoded value matches the page default; the decoder
+    // skips empty slots so the default stays in effect.
+    if (defaults && defaults[s.k] !== undefined && enc === encodeVal(s, defaults[s.k])) enc = '';
+    vals.push(enc);
   }
+  // Trailing defaults can be dropped entirely.
+  while (vals.length > 1 && vals[vals.length - 1] === '') vals.pop();
   return vals.join('.');
 }
 
@@ -1044,8 +1057,9 @@ function getGeneratorBasePath(prefix) {
 }
 
 function updateHash(prefix, params) {
-  var compact = encodeCompact(prefix, params);
-  var encoded = toBase64Url(compact);
+  // The compact form is already URL-safe (letters, digits, dots, minus);
+  // base64 wrapping only made links ~33% longer.
+  var encoded = encodeCompact(prefix, params);
   var newPath = getGeneratorBasePath(prefix) + '/' + encoded;
   if (window.location.pathname !== newPath) {
     history.replaceState(null, '', newPath);
@@ -1057,17 +1071,23 @@ function updateHash(prefix, params) {
 }
 
 function getShareURL(prefix, params, view) {
-  var compact = encodeCompact(prefix, params);
-  var encoded = toBase64Url(compact);
+  var encoded = encodeCompact(prefix, params);
   var url = window.location.origin + getGeneratorBasePath(prefix) + '/' + encoded;
   if (view === 'guide') url += '/guide';
   return url;
 }
 
+// Links are plain compact strings now; older shared links are base64-wrapped.
+function unwrapCompact(str) {
+  if (!str) return '';
+  if (str.indexOf('.') !== -1) return str; // plain compact
+  if (/^[pbh]\d+$/.test(str) && str.length <= 4) return str; // all-defaults link
+  try { return fromBase64Url(str); } catch (e) { return ''; }
+}
+
 function applyHashParams(setParamsFn, initHash, generatorType) {
   if (initHash) {
-    var compact;
-    try { compact = fromBase64Url(initHash); } catch(e) { compact = ''; }
+    var compact = unwrapCompact(initHash);
     var decoded = decodeCompact(compact);
     if (Object.keys(decoded.params).length > 0) {
       setParamsFn(decoded.params);
@@ -1086,7 +1106,7 @@ function applyHashParams(setParamsFn, initHash, generatorType) {
     try {
       var stored = localStorage.getItem('gen_hash_' + generatorType);
       if (stored) {
-        var storedCompact = fromBase64Url(stored);
+        var storedCompact = unwrapCompact(stored);
         var decoded3 = decodeCompact(storedCompact);
         if (Object.keys(decoded3.params).length > 0) {
           setParamsFn(decoded3.params);
@@ -1178,6 +1198,7 @@ window.GeneratorApp = {
   updateHash: updateHash,
   getShareURL: getShareURL,
   applyHashParams: applyHashParams,
+  setEncodeDefaults: setEncodeDefaults,
   decodeCompact: decodeCompact,
   encodeCompact: encodeCompact,
   toBase64Url: toBase64Url,
