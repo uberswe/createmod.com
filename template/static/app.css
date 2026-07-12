@@ -375,7 +375,7 @@ a:hover {
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;
-  z-index: 100;
+  z-index: 1070;
   width: 280px;
   padding: 0.75rem;
   border-radius: 6px;
@@ -1391,7 +1391,7 @@ body.sidebar-open::after {
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1050;
+  z-index: 1070;
   background: var(--cm-body-bg);
   border: 1px solid var(--cm-border-color);
   border-radius: 0.5rem;
@@ -1560,7 +1560,7 @@ body.sidebar-open::after {
   border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 0 0 .4rem .4rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  z-index: 1070;
   max-height: 320px;
   overflow-y: auto;
 }
@@ -2779,7 +2779,7 @@ body.sidebar-ready .generator-overlay {
   font-size: 0.8125rem;
   color: var(--cm-body-color);
   line-height: 1.55;
-  z-index: 100;
+  z-index: 1070;
 }
 .rotation-tooltip.active { display: block; }
 .rotation-tooltip::after {
@@ -2982,7 +2982,7 @@ body.sidebar-ready .generator-overlay {
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   padding: 0.25rem;
-  z-index: 1050;
+  z-index: 1070;
 }
 .dl-split-menu [role="menuitem"] {
   display: flex;
