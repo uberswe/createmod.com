@@ -49,7 +49,11 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 
 		d := DownloadInterstitialData{}
 		d.Populate(e)
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", i18n.T(d.Language, "Download"))
+		crumbTitle := name
+		if schematic != nil && schematic.Title != "" {
+			crumbTitle = schematic.Title
+		}
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", crumbTitle, "/schematics/"+name, i18n.T(d.Language, "Download"))
 		d.Slug = "/get/" + name
 		d.NoIndex = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
