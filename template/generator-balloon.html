@@ -342,6 +342,7 @@
     }
 
     var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.setEncodeDefaults('b', getParams());
     GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'balloon');
 
     document.querySelectorAll('.gen-param').forEach(function(el) {

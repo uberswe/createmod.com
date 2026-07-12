@@ -234,6 +234,7 @@
     }
 
     var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.setEncodeDefaults('p', getParams());
     GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'propeller');
 
     document.querySelectorAll('.gen-param').forEach(function(el) {
