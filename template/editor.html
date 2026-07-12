@@ -155,6 +155,8 @@
                             </div>
                             <div class="text-secondary small mt-1">{{ T .Language "This initial version of the editor only generates solid full block representations of blocks" }}</div>
                             <div class="text-secondary small mt-1" id="ed-truncated"></div>
+                            <div id="editor-banner" class="d-none d-lg-block mt-3 text-center"></div>
+                            <div id="editor-mobile" class="d-lg-none mt-3 text-center"></div>
                         </div>
                     </div>
                 </div>
@@ -429,5 +431,40 @@
     createSession({ source: 'upload', ref: params.get('upload') });
   }
 })();
+</script>
+<script>
+// The 3D viewport needs its width, so instead of the usual right rail the
+// editor runs a horizontal leaderboard under the canvas plus a mobile banner.
+window['nitroAds'].createAd('editor-banner', {
+  "sizes": [["728", "90"], ["970", "90"]],
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,schematic,editor",
+  "targeting": { "pageType": "editor" },
+  "mediaQuery": "(min-width: 992px)"
+});
+window['nitroAds'].createAd('editor-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,schematic,editor",
+  "targeting": { "pageType": "editor" },
+  "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+});
 </script>
 {{ template "foot.html" . }}
