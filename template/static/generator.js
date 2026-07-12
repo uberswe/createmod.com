@@ -1043,9 +1043,7 @@ function getGeneratorBasePath(prefix) {
 }
 
 function updateHash(prefix, params) {
-  // The compact form is already URL-safe (letters, digits, dots, minus);
-  // base64 wrapping only made links ~33% longer.
-  var encoded = encodeCompact(prefix, params);
+  var encoded = toBase64Url(encodeCompact(prefix, params));
   var newPath = getGeneratorBasePath(prefix) + '/' + encoded;
   if (window.location.pathname !== newPath) {
     history.replaceState(null, '', newPath);
@@ -1057,13 +1055,14 @@ function updateHash(prefix, params) {
 }
 
 function getShareURL(prefix, params, view) {
-  var encoded = encodeCompact(prefix, params);
+  var encoded = toBase64Url(encodeCompact(prefix, params));
   var url = window.location.origin + getGeneratorBasePath(prefix) + '/' + encoded;
   if (view === 'guide') url += '/guide';
   return url;
 }
 
-// Links are plain compact strings now; older shared links are base64-wrapped.
+// Links are base64url-wrapped compact strings; tolerate bare compact strings
+// (from the brief window where links were not wrapped).
 function unwrapCompact(str) {
   if (!str) return '';
   if (str.indexOf('.') !== -1) return str; // plain compact
