@@ -132,6 +132,10 @@
                                     <input type="range" class="form-range gen-param" id="param-rocker" min="0" max="0.5" value="0" step="0.05">
                                 </div>
                                 <div class="mb-2">
+                                    <label class="form-label mb-0">Hull Sweep: <span id="val-sweep">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sweep" min="0" max="2" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
                                     <label class="form-label mb-0">Deadrise (V-bottom): <span id="val-deadrise">0</span></label>
                                     <input type="range" class="form-range gen-param" id="param-deadrise" min="0" max="0.7" value="0" step="0.05">
                                 </div>
@@ -360,7 +364,7 @@
     hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0,
     forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2,
     gunPortSpacing:4, bowStyle:'default', deadrise:0, midFullness:0.65, bowSectionV:0.55,
-    sternFullness:0.5, stemRake:0.35, stemCurve:0.15, sternRake:0.35, rocker:0,
+    sternFullness:0.5, stemRake:0.35, stemCurve:0.15, sternRake:0.35, rocker:0, sweep:0,
     parallelMidbody:0, stemPostHeight:0, sternPostHeight:0, doubleEnder:false, closedHull:false
   };
 
@@ -414,7 +418,7 @@
     yacht:    { woodType:'birch', length:34, beam:7, depth:4, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.1, tumbleCurve:3, sheerCurve:0.06, sheerCurveExp:2, bowLength:10, bowSharpness:2.2, bowKeelRise:0.35, bowKeelLength:9, bowCurve:-0.3, sternStyle:'round', sternLength:5, sternSharpness:0.8, sternKeelRise:0.1, sternKeelLength:4, sternOverhang:0, keelCurve:1.7, midWidthBias:0.15, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked' }
   };
 
-  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing','stemRake','stemCurve','sternRake','rocker','deadrise','midFullness','bowSectionV','sternFullness','parallelMidbody','stemPostHeight','sternPostHeight'];
+  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing','stemRake','stemCurve','sternRake','rocker','sweep','deadrise','midFullness','bowSectionV','sternFullness','parallelMidbody','stemPostHeight','sternPostHeight'];
   var CHECK_PARAMS = ['hasRailings','hasTrim','hasWindows','hasGunPorts','doubleEnder','closedHull'];
   var SELECT_PARAMS = ['sternStyle','woodType','bowStyle'];
 
