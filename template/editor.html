@@ -319,6 +319,7 @@
     var url = new URL(location.href);
     url.searchParams.set('session', id);
     url.searchParams.delete('source');
+    url.searchParams.delete('upload');
     history.replaceState(null, '', url);
     api('/api/editor/' + id).then(function (st) {
       startEl.style.display = 'none';
@@ -416,12 +417,15 @@
     if (ev.dataTransfer.files[0]) uploadAndEdit(ev.dataTransfer.files[0]);
   });
 
-  // Deep links: ?session=... resumes; ?source=<schematic-name> prefills.
+  // Deep links: ?session=... resumes; ?source=<schematic-name> prefills;
+  // ?upload=<temp-upload-token> edits a fresh upload (from the upload page).
   var params = new URLSearchParams(location.search);
   if (params.get('session')) {
     openSession(params.get('session'));
   } else if (params.get('source')) {
     createSession({ source: 'schematic', ref: params.get('source') });
+  } else if (params.get('upload')) {
+    createSession({ source: 'upload', ref: params.get('upload') });
   }
 })();
 </script>
