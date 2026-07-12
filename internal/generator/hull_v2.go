@@ -68,6 +68,17 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		return sternSetbackMax * t
 	}
 
+	// Sweep bends the whole hull — keel and deck together — up toward the
+	// ends, applied as a vertical shear so sections keep their shape. This
+	// is the lengthwise counterpart of the sideways plan curve.
+	sweepAt := func(zNorm float64) float64 {
+		if p.Sweep <= 0 {
+			return 0
+		}
+		t := math.Abs(zNorm-0.5) * 2
+		return p.Sweep * depth * t * t
+	}
+
 	// Keel line: rocker curves the whole keel up toward the ends; the v1
 	// bow/stern keel rises still apply on top (max wins).
 	keelYAtF := func(zNorm float64) float64 {
@@ -271,15 +282,17 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 	deckYArr := make([]int, L)
 	keelYArr := make([]int, L)
 	for z := 0; z < L; z++ {
-		deckYArr[z] = int(math.Round(deckYAtFloat(float64(z))))
+		zn := float64(z) / math.Max(length-1, 1)
+		sw := sweepAt(zn)
+		deckYArr[z] = int(math.Round(deckYAtFloat(float64(z)) + sw))
 		if deckYArr[z] > maxDeckY {
 			maxDeckY = deckYArr[z]
 		}
-		keelYArr[z] = int(math.Round(keelYAtF(float64(z) / math.Max(length-1, 1))))
+		keelYArr[z] = int(math.Round(keelYAtF(zn) + sw))
 	}
 	topY := maxDeckY
 	if p.ClosedHull {
-		topY = 2 * D
+		topY = 2*D + int(math.Round(sweepAt(0)))
 	}
 
 	// --- Column-quantized half-widths ----------------------------------------------
@@ -299,6 +312,8 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		}
 		ys, zs := float64(y), float64(z)
 		zNormBase := clamp01(zs / math.Max(length-1, 1))
+		// Undo the sweep shear so the loft below sees an unbent hull.
+		ys -= sweepAt(zNormBase)
 		keelY := keelYAtF(zNormBase)
 		bottomSpan := depth - keelY
 		if bottomSpan < 1 {
@@ -457,120 +472,101 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 
 	// --- Step smoothing --------------------------------------------------------------
 
-	// Lateral flare stairs: where the hull widens going up (flare, bilge
-	// curve), tuck top-half stairs under the overhanging row.
-	for z := 0; z < L; z++ {
-		for y := 0; y < topY; y++ {
-			hwHere, hwUp := hwArr[y][z], hwArr[y+1][z]
-			if hwHere < 0 || hwUp <= hwHere {
-				continue
-			}
-			for xN := hwHere + 1; xN <= hwUp; xN++ {
-				if hasHull(xN, y, z) || !hasHull(xN, y+1, z) {
-					continue
-				}
-				if b := get(xN, y, z); b != nil && b.name == "planks" {
-					continue
-				}
-				set(xN, y, z, "stairs", map[string]string{"facing": "east", "half": "top", "shape": "straight", "waterlogged": "false"})
-				set(-xN, y, z, "stairs", map[string]string{"facing": "west", "half": "top", "shape": "straight", "waterlogged": "false"})
-			}
-		}
-	}
-
-	// Tumblehome ledges: where the hull narrows going up, cap the exposed
-	// step with bottom-half stairs (open side outward) so the topsides read
-	// as a curve. Skip the deck row — trim and railings own that edge.
-	for z := 0; z < L; z++ {
-		for y := 0; y < topY; y++ {
-			hwHere, hwUp := hwArr[y][z], hwArr[y+1][z]
-			if hwHere < 0 || hwUp < 0 || hwUp >= hwHere {
-				continue
-			}
-			if !p.ClosedHull && y+1 >= deckYArr[z] {
-				continue
-			}
-			for xN := hwUp + 1; xN <= hwHere; xN++ {
-				if hasHull(xN, y+1, z) || !hasHull(xN, y, z) {
-					continue
-				}
-				if get(xN, y+1, z) != nil {
-					continue
-				}
-				set(xN, y+1, z, "stairs", map[string]string{"facing": "east", "half": "bottom", "shape": "straight", "waterlogged": "false"})
-				if xN > 0 {
-					set(-xN, y+1, z, "stairs", map[string]string{"facing": "west", "half": "bottom", "shape": "straight", "waterlogged": "false"})
-				}
-			}
-		}
-	}
-
-	// Longitudinal taper stairs: where the hull narrows along z (entrance,
-	// run, raked ends), step the transition with top-half stairs.
-	placeLongStair := func(x, y, z int, facing string) {
-		if hasHull(x, y, z) {
-			return
-		}
-		if b := get(x, y, z); b != nil && (b.name == "planks" || b.name == "stairs") {
-			return
-		}
-		set(x, y, z, "stairs", map[string]string{"facing": facing, "half": "top", "shape": "straight", "waterlogged": "false"})
-	}
+	// One chamfer rule covers flare underhangs, bow/stern rakes and keel
+	// rises: an empty cell directly under hull that also touches hull on a
+	// horizontal face gets a top-half stair. Requiring the horizontal
+	// neighbour keeps stairs seated in real step corners — no teeth hanging
+	// from a face above. Facing (this codebase: the stair's LOW/open side)
+	// points away from the supporting neighbour; in the bow/stern tapers
+	// fore-aft support wins so the stem reads as one stepped line instead of
+	// mixed directions.
+	maxHW := 0
 	for y := 0; y <= topY; y++ {
 		for z := 0; z < L; z++ {
-			hwThis := hwArr[y][z]
-			if hwThis < 0 {
-				continue
+			if hwArr[y][z] > maxHW {
+				maxHW = hwArr[y][z]
 			}
-			if z+1 < L {
-				if hwFwd := hwArr[y][z+1]; hwFwd >= 0 && hwFwd < hwThis {
-					for x := hwFwd + 1; x <= hwThis; x++ {
-						placeLongStair(x, y, z+1, "south")
-						if x != 0 {
-							placeLongStair(-x, y, z+1, "south")
-						}
-					}
-				}
+		}
+	}
+	inTaper := make([]bool, L)
+	for z := 0; z < L; z++ {
+		zn := float64(z) / math.Max(length-1, 1)
+		inTaper[z] = zn < midLo || zn > midHi
+	}
+	chamferFacing := func(x, y, z int) string {
+		n := hasHull(x, y, z-1)
+		s := hasHull(x, y, z+1)
+		w := hasHull(x-1, y, z)
+		e := hasHull(x+1, y, z)
+		lateral := ""
+		if x >= 0 && w {
+			lateral = "east"
+		} else if x <= 0 && e {
+			lateral = "west"
+		} else if w {
+			lateral = "east"
+		} else if e {
+			lateral = "west"
+		}
+		foreAft := ""
+		if n {
+			foreAft = "south"
+		} else if s {
+			foreAft = "north"
+		}
+		if inTaper[z] {
+			if foreAft != "" {
+				return foreAft
 			}
-			if z > 0 {
-				if hwBack := hwArr[y][z-1]; hwBack >= 0 && hwBack < hwThis {
-					for x := hwBack + 1; x <= hwThis; x++ {
-						placeLongStair(x, y, z-1, "north")
-						if x != 0 {
-							placeLongStair(-x, y, z-1, "north")
-						}
-					}
+			return lateral
+		}
+		if lateral != "" {
+			return lateral
+		}
+		return foreAft
+	}
+	for z := 0; z < L; z++ {
+		for y := 0; y < topY; y++ {
+			for x := -maxHW - 1; x <= maxHW+1; x++ {
+				if hasHull(x, y, z) || !hasHull(x, y+1, z) {
+					continue
 				}
+				if get(x, y, z) != nil {
+					continue
+				}
+				f := chamferFacing(x, y, z)
+				if f == "" {
+					continue
+				}
+				set(x, y, z, "stairs", map[string]string{"facing": f, "half": "top", "shape": "straight", "waterlogged": "false"})
 			}
 		}
 	}
 
-	// Keel-rise stairs: fill the underside step where the keel line climbs.
-	for z := 0; z < L-1; z++ {
-		k0, k1 := keelYArr[z], keelYArr[z+1]
-		if k1 == k0 {
-			continue
-		}
-		var yFill, zFill, refZ int
-		facing := "south"
-		if k1 > k0 {
-			yFill, zFill, refZ = k1-1, z+1, z+1
-		} else {
-			yFill, zFill, refZ = k0-1, z, z
-			facing = "north"
-		}
-		if yFill+1 < 0 || yFill+1 > topY {
-			continue
-		}
-		hw := hwArr[yFill+1][refZ]
-		if hw < 0 {
-			continue
-		}
-		for x := -hw; x <= hw; x++ {
-			if hasHull(x, yFill, zFill) || get(x, yFill, zFill) != nil {
-				continue
+	// Ledge caps: an empty cell directly on top of hull with horizontal hull
+	// support gets a bottom-half stair, smoothing tumblehome ledges, castle
+	// walls and the deck breaks a strong sweep or sheer produces. Above the
+	// column's own deck only fore-aft caps are allowed — the gunwale edge
+	// belongs to trim and railings.
+	for z := 0; z < L; z++ {
+		for y := 1; y <= topY; y++ {
+			for x := -maxHW - 1; x <= maxHW+1; x++ {
+				if hasHull(x, y, z) || !hasHull(x, y-1, z) {
+					continue
+				}
+				if get(x, y, z) != nil {
+					continue
+				}
+				aboveDeck := !p.ClosedHull && y > deckYArr[z]
+				f := chamferFacing(x, y, z)
+				if f == "" {
+					continue
+				}
+				if aboveDeck && f != "south" && f != "north" {
+					continue
+				}
+				set(x, y, z, "stairs", map[string]string{"facing": f, "half": "bottom", "shape": "straight", "waterlogged": "false"})
 			}
-			set(x, yFill, zFill, "stairs", map[string]string{"facing": facing, "half": "top", "shape": "straight", "waterlogged": "false"})
 		}
 	}
 

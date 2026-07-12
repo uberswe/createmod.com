@@ -932,7 +932,9 @@ var SCHEMAS = {
     { k:'sternFullness', t:'f' }, { k:'stemRake', t:'f' }, { k:'stemCurve', t:'f' },
     { k:'sternRake', t:'f' }, { k:'rocker', t:'f' }, { k:'parallelMidbody', t:'f' },
     { k:'stemPostHeight', t:'i' }, { k:'sternPostHeight', t:'i' },
-    { k:'doubleEnder', t:'b' }, { k:'closedHull', t:'b' }
+    { k:'doubleEnder', t:'b' }, { k:'closedHull', t:'b' },
+    // Appended params (positional format: new slots go at the end).
+    { k:'sweep', t:'f' }
   ]
 };
 

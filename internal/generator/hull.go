@@ -55,6 +55,7 @@ type HullParams struct {
 	StemCurve       float64 `json:"stemCurve"`       // stem profile: -1 concave (clipper) .. 1 convex (spoon)
 	SternRake       float64 `json:"sternRake"`       // aft lean of the transom/counter, fraction of depth
 	Rocker          float64 `json:"rocker"`          // keel rise toward the ends, fraction of depth
+	Sweep           float64 `json:"sweep"`           // lengthwise bend of the whole hull toward the ends, fraction of depth
 	ParallelMidbody float64 `json:"parallelMidbody"` // fraction of length held at full beam
 	StemPostHeight  int     `json:"stemPostHeight"`  // stem post rising above deck (longships)
 	SternPostHeight int     `json:"sternPostHeight"` // stern post rising above deck
@@ -160,6 +161,7 @@ func (p *HullParams) Validate() error {
 	clampFloat(&p.StemCurve, -1, 1)
 	clampFloat(&p.SternRake, 0, 1)
 	clampFloat(&p.Rocker, 0, 0.5)
+	clampFloat(&p.Sweep, 0, 2.0)
 	clampFloat(&p.ParallelMidbody, 0, 0.6)
 	clampInt(&p.StemPostHeight, 0, 8)
 	clampInt(&p.SternPostHeight, 0, 8)

@@ -978,6 +978,7 @@ function generateHullV2(p) {
   var sternPostHeight = clamp(p.sternPostHeight || 0, 0, 8);
   var doubleEnder = !!p.doubleEnder;
   var closedHull = !!p.closedHull;
+  var sweep = clamp(p.sweep || 0, 0, 2);
 
   // Defaults mirroring HullParams.Validate for version >= 3
   if (midFullness === 0) midFullness = 0.65;
@@ -998,6 +999,14 @@ function generateHullV2(p) {
   function sstep(t) { t = clamp01(t); return t * t * t * (t * (t * 6 - 15) + 10); }
   function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
   function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // Sweep bends the whole hull — keel and deck together — up toward the
+  // ends, applied as a vertical shear so sections keep their shape.
+  function sweepAt(zNorm) {
+    if (sweep <= 0) return 0;
+    var t = Math.abs(zNorm - 0.5) * 2;
+    return sweep * depth * t * t;
+  }
 
   var stemSetbackMax = stemRake * depth;
   function stemSetbackAt(yNorm) {
@@ -1181,11 +1190,13 @@ function generateHullV2(p) {
   var maxDeckY = D;
   var deckYArr = new Array(L), keelYArr = new Array(L);
   for (var z0 = 0; z0 < L; z0++) {
-    deckYArr[z0] = Math.round(deckYAtFloat(z0));
+    var zn0 = z0 / Math.max(length - 1, 1);
+    var sw0 = sweepAt(zn0);
+    deckYArr[z0] = Math.round(deckYAtFloat(z0) + sw0);
     if (deckYArr[z0] > maxDeckY) maxDeckY = deckYArr[z0];
-    keelYArr[z0] = Math.round(keelYAtF(z0 / Math.max(length - 1, 1)));
+    keelYArr[z0] = Math.round(keelYAtF(zn0) + sw0);
   }
-  var topY = closedHull ? 2 * D : maxDeckY;
+  var topY = closedHull ? 2 * D + Math.round(sweepAt(0)) : maxDeckY;
 
   // --- Column-quantized half-widths (mirrors Go hwRowAt) ---
   // Continuous half-width at integer row (y,z), or -1 when the row is
@@ -1197,6 +1208,8 @@ function generateHullV2(p) {
     if (!closedHull && y > deckYArr[z]) return -1;
     var ys = y, zs = z;
     var zNormBase = clamp01(zs / Math.max(length - 1, 1));
+    // Undo the sweep shear so the loft below sees an unbent hull.
+    ys -= sweepAt(zNormBase);
     var keelY = keelYAtF(zNormBase);
     var bottomSpan = depth - keelY;
     if (bottomSpan < 1) bottomSpan = 1;
@@ -1312,85 +1325,66 @@ function generateHullV2(p) {
 
   // --- Step smoothing (mirrors Go) ---
 
-  // Lateral flare stairs: where the hull widens going up (flare, bilge
-  // curve), tuck top-half stairs under the overhanging row.
-  for (var lz = 0; lz < L; lz++) {
-    for (var ly = 0; ly < topY; ly++) {
-      var hwHere = hwArr[ly][lz], hwUp = hwArr[ly + 1][lz];
-      if (hwHere < 0 || hwUp <= hwHere) continue;
-      for (var xN = hwHere + 1; xN <= hwUp; xN++) {
-        if (hasHull(xN, ly, lz) || !hasHull(xN, ly + 1, lz)) continue;
-        var exb = getBlock(xN, ly, lz);
-        if (exb && exb.type === BT.PLANK) continue;
-        setBlock(xN, ly, lz, BT.STAIR, { facing: 'east', half: 'top', shape: 'straight', waterlogged: 'false' });
-        setBlock(-xN, ly, lz, BT.STAIR, { facing: 'west', half: 'top', shape: 'straight', waterlogged: 'false' });
+  // One chamfer rule covers flare underhangs, bow/stern rakes and keel
+  // rises: an empty cell directly under hull that also touches hull on a
+  // horizontal face gets a top-half stair. Requiring the horizontal
+  // neighbour keeps stairs seated in real step corners — no teeth hanging
+  // from a face above. Facing (this codebase: the stair's LOW/open side)
+  // points away from the supporting neighbour; in the bow/stern tapers
+  // fore-aft support wins so the stem reads as one stepped line.
+  var maxHW = 0;
+  for (var my = 0; my <= topY; my++)
+    for (var mz = 0; mz < L; mz++)
+      if (hwArr[my][mz] > maxHW) maxHW = hwArr[my][mz];
+  var inTaper = new Array(L);
+  for (var itz = 0; itz < L; itz++) {
+    var itn = itz / Math.max(length - 1, 1);
+    inTaper[itz] = itn < midLo || itn > midHi;
+  }
+  function chamferFacing(x, y, z) {
+    var n = hasHull(x, y, z - 1);
+    var s = hasHull(x, y, z + 1);
+    var w = hasHull(x - 1, y, z);
+    var e = hasHull(x + 1, y, z);
+    var lateral = '';
+    if (x >= 0 && w) lateral = 'east';
+    else if (x <= 0 && e) lateral = 'west';
+    else if (w) lateral = 'east';
+    else if (e) lateral = 'west';
+    var foreAft = '';
+    if (n) foreAft = 'south';
+    else if (s) foreAft = 'north';
+    if (inTaper[z]) return foreAft !== '' ? foreAft : lateral;
+    return lateral !== '' ? lateral : foreAft;
+  }
+  for (var cz = 0; cz < L; cz++) {
+    for (var cy = 0; cy < topY; cy++) {
+      for (var cxx = -maxHW - 1; cxx <= maxHW + 1; cxx++) {
+        if (hasHull(cxx, cy, cz) || !hasHull(cxx, cy + 1, cz)) continue;
+        if (getBlock(cxx, cy, cz)) continue;
+        var cf = chamferFacing(cxx, cy, cz);
+        if (cf === '') continue;
+        setBlock(cxx, cy, cz, BT.STAIR, { facing: cf, half: 'top', shape: 'straight', waterlogged: 'false' });
       }
     }
   }
 
-  // Tumblehome ledges: where the hull narrows going up, cap the exposed
-  // step with bottom-half stairs (open side outward). Skip the deck row —
-  // trim and railings own that edge.
-  for (var tz2 = 0; tz2 < L; tz2++) {
-    for (var ty2 = 0; ty2 < topY; ty2++) {
-      var hwHere2 = hwArr[ty2][tz2], hwUp2 = hwArr[ty2 + 1][tz2];
-      if (hwHere2 < 0 || hwUp2 < 0 || hwUp2 >= hwHere2) continue;
-      if (!closedHull && ty2 + 1 >= deckYArr[tz2]) continue;
-      for (var xT = hwUp2 + 1; xT <= hwHere2; xT++) {
-        if (hasHull(xT, ty2 + 1, tz2) || !hasHull(xT, ty2, tz2)) continue;
-        if (getBlock(xT, ty2 + 1, tz2)) continue;
-        setBlock(xT, ty2 + 1, tz2, BT.STAIR, { facing: 'east', half: 'bottom', shape: 'straight', waterlogged: 'false' });
-        if (xT > 0) setBlock(-xT, ty2 + 1, tz2, BT.STAIR, { facing: 'west', half: 'bottom', shape: 'straight', waterlogged: 'false' });
+  // Ledge caps: an empty cell directly on top of hull with horizontal hull
+  // support gets a bottom-half stair, smoothing tumblehome ledges, castle
+  // walls and the deck breaks a strong sweep or sheer produces. Above the
+  // column's own deck only fore-aft caps are allowed — the gunwale edge
+  // belongs to trim and railings.
+  for (var lz2 = 0; lz2 < L; lz2++) {
+    for (var ly2 = 1; ly2 <= topY; ly2++) {
+      for (var lx2 = -maxHW - 1; lx2 <= maxHW + 1; lx2++) {
+        if (hasHull(lx2, ly2, lz2) || !hasHull(lx2, ly2 - 1, lz2)) continue;
+        if (getBlock(lx2, ly2, lz2)) continue;
+        var aboveDeck = !closedHull && ly2 > deckYArr[lz2];
+        var lf = chamferFacing(lx2, ly2, lz2);
+        if (lf === '') continue;
+        if (aboveDeck && lf !== 'south' && lf !== 'north') continue;
+        setBlock(lx2, ly2, lz2, BT.STAIR, { facing: lf, half: 'bottom', shape: 'straight', waterlogged: 'false' });
       }
-    }
-  }
-
-  // Longitudinal taper stairs: where the hull narrows along z (entrance,
-  // run, raked ends), step the transition with top-half stairs.
-  function placeLongStair(x, y, z, facing) {
-    if (hasHull(x, y, z)) return;
-    var ex = getBlock(x, y, z);
-    if (ex && (ex.type === BT.PLANK || ex.type === BT.STAIR)) return;
-    setBlock(x, y, z, BT.STAIR, { facing: facing, half: 'top', shape: 'straight', waterlogged: 'false' });
-  }
-  for (var py = 0; py <= topY; py++) {
-    for (var pz = 0; pz < L; pz++) {
-      var hwThis = hwArr[py][pz];
-      if (hwThis < 0) continue;
-      if (pz + 1 < L) {
-        var hwFwd = hwArr[py][pz + 1];
-        if (hwFwd >= 0 && hwFwd < hwThis) {
-          for (var px = hwFwd + 1; px <= hwThis; px++) {
-            placeLongStair(px, py, pz + 1, 'south');
-            if (px !== 0) placeLongStair(-px, py, pz + 1, 'south');
-          }
-        }
-      }
-      if (pz > 0) {
-        var hwBack = hwArr[py][pz - 1];
-        if (hwBack >= 0 && hwBack < hwThis) {
-          for (var px2 = hwBack + 1; px2 <= hwThis; px2++) {
-            placeLongStair(px2, py, pz - 1, 'north');
-            if (px2 !== 0) placeLongStair(-px2, py, pz - 1, 'north');
-          }
-        }
-      }
-    }
-  }
-
-  // Keel-rise stairs: fill the underside step where the keel line climbs.
-  for (var kz = 0; kz < L - 1; kz++) {
-    var k0 = keelYArr[kz], k1 = keelYArr[kz + 1];
-    if (k1 === k0) continue;
-    var yFill, zFill, refZ, kFacing;
-    if (k1 > k0) { yFill = k1 - 1; zFill = kz + 1; refZ = kz + 1; kFacing = 'south'; }
-    else { yFill = k0 - 1; zFill = kz; refZ = kz; kFacing = 'north'; }
-    if (yFill + 1 < 0 || yFill + 1 > topY) continue;
-    var khw = hwArr[yFill + 1][refZ];
-    if (khw < 0) continue;
-    for (var kx = -khw; kx <= khw; kx++) {
-      if (hasHull(kx, yFill, zFill) || getBlock(kx, yFill, zFill)) continue;
-      setBlock(kx, yFill, zFill, BT.STAIR, { facing: kFacing, half: 'top', shape: 'straight', waterlogged: 'false' });
     }
   }
 
