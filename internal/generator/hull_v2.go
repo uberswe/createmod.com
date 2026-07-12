@@ -13,15 +13,15 @@ import (
 //  2. Section lofting: cross-section shape morphs along the length — V-shaped
 //     entry sections at the bow (BowSectionV), full superellipse sections
 //     midship (MidFullness, Deadrise), flatter sections aft (SternFullness).
-//  3. Slope-aware surfacing: stairs (both halves, so overhanging flare and
-//     counters work) and deck slabs are chosen from the width/height
-//     gradients everywhere, not only in special-cased regions.
+//  3. Column-quantized surfacing: the continuous half-width is rounded per
+//     (y,z) row like v1, faired to remove single-block quantization spikes,
+//     and stairs are placed exactly at the integer steps. Per-cell shape
+//     fitting (the old marching-cubes-style pass) produced pockmarked walls
+//     and floating slabs on large hulls; rounding whole rows keeps every
+//     surface line coherent.
 //
 // The JS engine in template/static/generators.js mirrors this function; keep
 // the two in sync (cross-checked by testdata fixtures).
-// hullV2DebugCell, when non-nil, receives fit diagnostics for every surface
-// cell (test-only instrumentation).
-var hullV2DebugCell func(x, y, z, occCount, gx, gz int, chosen string, errs []float64)
 
 func generateHullV2(p HullParams) (*GenerateResult, error) {
 	L := p.Length
@@ -265,63 +265,6 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		return y
 	}
 
-	// insideAt is the continuous hull volume test. All quantization happens
-	// later, in the shape fitter — never here.
-	insideAt := func(xs, ys, zs float64) bool {
-		if zs < -0.49 || zs > length-0.51 {
-			return false
-		}
-		zNormBase := zs / math.Max(length-1, 1)
-		if zNormBase < 0 {
-			zNormBase = 0
-		}
-		if zNormBase > 1 {
-			zNormBase = 1
-		}
-		keelY := keelYAtF(zNormBase)
-		if ys < keelY {
-			return false
-		}
-		// Sections are lofted between the keel line and the deck: remapping
-		// (rather than chopping at the keel plane) keeps the underside a
-		// continuous curve where the keel rises toward the ends.
-		bottomSpan := depth - keelY
-		if bottomSpan < 1 {
-			bottomSpan = 1
-		}
-		var yNorm float64
-		if p.ClosedHull {
-			if ys > 2*depth {
-				return false
-			}
-			if ys <= depth {
-				yNorm = (ys - keelY) / bottomSpan
-			} else {
-				yNorm = (2*depth - ys) / depth
-			}
-			if yNorm < 0 {
-				return false
-			}
-		} else {
-			if ys > deckYAtFloat(zs) {
-				return false
-			}
-			yNorm = (ys - keelY) / bottomSpan
-		}
-		sb := sternSetbackAt(yNorm)
-		st := stemSetbackAt(yNorm)
-		zLo, zHi := sb, length-1-st
-		if zHi <= zLo || zs < zLo || zs > zHi {
-			return false
-		}
-		zN := clamp01((zs - zLo) / (zHi - zLo))
-		w := planAt(zN, yNorm) * sectionAt(yNorm, sectionKAt(zN)) * halfBeam
-		if w < 0.15 {
-			return false
-		}
-		return math.Abs(xs) <= w
-	}
-
 	// --- Grid extents -------------------------------------------------------------
 
 	maxDeckY := D
@@ -338,129 +281,144 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 	if p.ClosedHull {
 		topY = 2 * D
 	}
-	xMax := int(math.Ceil(halfBeam*(1+p.HullFlare+p.SternOverhang))) + 2
 
-	// --- Occupancy: corner grid + per-cell classification --------------------------
+	// --- Column-quantized half-widths ----------------------------------------------
 
-	// Cell (x,y,z) spans a unit cube centred on integer coordinates. Corners
-	// live on the half-integer lattice and are shared between cells, so one
-	// insideAt call serves eight cells.
-	nx, ny, nz := 2*xMax+2, topY+2, L+1
-	corner := make([]bool, nx*ny*nz)
-	cIdx := func(i, j, k int) int { return (k*ny+j)*nx + i }
-	for k := 0; k < nz; k++ {
-		for j := 0; j < ny; j++ {
-			for i := 0; i < nx; i++ {
-				corner[cIdx(i, j, k)] = insideAt(float64(i-xMax)-0.5, float64(j)-0.5, float64(k)-0.5)
+	// hwRowAt is the continuous half-width of the hull at integer row (y,z),
+	// or -1 when the row is outside the hull. Quantization happens on whole
+	// rows — never per cell — so every surface line stays coherent.
+	hwRowAt := func(y, z int) float64 {
+		if z < 0 || z >= L || y < 0 || y > topY {
+			return -1
+		}
+		if y < keelYArr[z] {
+			return -1
+		}
+		if !p.ClosedHull && y > deckYArr[z] {
+			return -1
+		}
+		ys, zs := float64(y), float64(z)
+		zNormBase := clamp01(zs / math.Max(length-1, 1))
+		keelY := keelYAtF(zNormBase)
+		bottomSpan := depth - keelY
+		if bottomSpan < 1 {
+			bottomSpan = 1
+		}
+		// The rounded keel and deck rows clamp to the continuous heights so
+		// the rows the grid keeps get real loft widths.
+		var yNorm float64
+		if p.ClosedHull {
+			if ys < keelY {
+				ys = keelY
+			}
+			if ys <= depth {
+				yNorm = (ys - keelY) / bottomSpan
+			} else {
+				yNorm = (2*depth - ys) / depth
+			}
+			if yNorm < 0 {
+				return -1
+			}
+		} else {
+			if d := deckYAtFloat(zs); ys > d {
+				ys = d
+			}
+			if ys < keelY {
+				ys = keelY
+			}
+			yNorm = (ys - keelY) / bottomSpan
+		}
+		sb := sternSetbackAt(yNorm)
+		st := stemSetbackAt(yNorm)
+		zLo, zHi := sb, length-1-st
+		if zHi <= zLo || zs < zLo || zs > zHi {
+			return -1
+		}
+		zN := clamp01((zs - zLo) / (zHi - zLo))
+		w := planAt(zN, yNorm) * sectionAt(yNorm, sectionKAt(zN)) * halfBeam
+		if w < 0.15 {
+			return -1
+		}
+		return w
+	}
+
+	rawHW := make([][]float64, topY+1)
+	for y := range rawHW {
+		rawHW[y] = make([]float64, L)
+		for z := range rawHW[y] {
+			rawHW[y][z] = hwRowAt(y, z)
+		}
+	}
+
+	// Fair the entrance and run along z (v1's smoothing): quantization noise
+	// is most visible where the plan curve changes fastest.
+	bowStartZ := L - p.BowLength
+	sternEndZ := p.SternLength
+	if p.DoubleEnder {
+		sternEndZ = p.BowLength
+	}
+	for y := 0; y <= topY; y++ {
+		sm := make([]float64, L)
+		copy(sm, rawHW[y])
+		for z := 1; z < L-1; z++ {
+			if z >= sternEndZ && z <= bowStartZ {
+				continue
+			}
+			prev, cur, next := rawHW[y][z-1], rawHW[y][z], rawHW[y][z+1]
+			if cur < 0 {
+				continue
+			}
+			if prev < 0 {
+				prev = cur
+			}
+			if next < 0 {
+				next = cur
+			}
+			sm[z] = prev*0.25 + cur*0.5 + next*0.25
+		}
+		rawHW[y] = sm
+	}
+
+	// Quantize rows, then remove single-row spikes: a lone ±1 outlier between
+	// equal neighbours (along z or along y) is rounding noise, not shape.
+	hwArr := make([][]int, topY+1)
+	for y := range hwArr {
+		hwArr[y] = make([]int, L)
+		for z := range hwArr[y] {
+			if rawHW[y][z] < 0 {
+				hwArr[y][z] = -1
+			} else {
+				q := int(math.Round(rawHW[y][z] - 0.0001))
+				if q < 0 {
+					q = 0
+				}
+				hwArr[y][z] = q
 			}
 		}
 	}
-
-	// solid = all eight corners inside; empty = none (plus centre check for
-	// thin features). Everything else is a surface cell for the fitter.
-	const (
-		cellEmpty = 0
-		cellSolid = 1
-		cellSurf  = 2
-	)
-	cell := make([]uint8, (2*xMax+1)*(topY+1)*L)
-	cellAt := func(x, y, z int) int {
-		if x < -xMax || x > xMax || y < 0 || y > topY || z < 0 || z >= L {
-			return cellEmpty
+	for y := 0; y <= topY; y++ {
+		for z := 1; z < L-1; z++ {
+			a, b, c := hwArr[y][z-1], hwArr[y][z], hwArr[y][z+1]
+			if a >= 0 && b >= 0 && a == c && (b == a+1 || b == a-1) {
+				hwArr[y][z] = a
+			}
 		}
-		return int(cell[(z*(topY+1)+y)*(2*xMax+1)+(x+xMax)])
-	}
-	setCell := func(x, y, z int, v uint8) {
-		cell[(z*(topY+1)+y)*(2*xMax+1)+(x+xMax)] = v
 	}
 	for z := 0; z < L; z++ {
-		for y := 0; y <= topY; y++ {
-			for x := -xMax; x <= xMax; x++ {
-				in := 0
-				for dk := 0; dk <= 1; dk++ {
-					for dj := 0; dj <= 1; dj++ {
-						for di := 0; di <= 1; di++ {
-							if corner[cIdx(x+xMax+di, y+dj, z+dk)] {
-								in++
-							}
-						}
-					}
-				}
-				switch {
-				case in == 8:
-					setCell(x, y, z, cellSolid)
-				case in == 0:
-					if insideAt(float64(x), float64(y), float64(z)) {
-						setCell(x, y, z, cellSurf)
-					}
-				default:
-					setCell(x, y, z, cellSurf)
-				}
+		for y := 1; y < topY; y++ {
+			a, b, c := hwArr[y-1][z], hwArr[y][z], hwArr[y+1][z]
+			if a >= 0 && b >= 0 && a == c && (b == a+1 || b == a-1) {
+				hwArr[y][z] = a
 			}
 		}
 	}
 
-	// --- Shape fitting ---------------------------------------------------------------
-
-	// Candidate shapes are tested against a 3x3x3 occupancy sample of the
-	// cell. Small penalties bias ties toward solid blocks (watertight shells)
-	// and strongly against air (no pinholes).
-	type shapeCand struct {
-		name    string
-		props   map[string]string
-		test    func(sx, sy, sz float64) bool
-		penalty float64
-	}
-	sideEast := func(sx, sy, sz float64) bool { return sx >= 0 }
-	sideWest := func(sx, sy, sz float64) bool { return sx <= 0 }
-	sideSouth := func(sx, sy, sz float64) bool { return sz >= 0 }
-	sideNorth := func(sx, sy, sz float64) bool { return sz <= 0 }
-	stairCand := func(facing string, side func(float64, float64, float64) bool, half string) shapeCand {
-		return shapeCand{
-			name:  "stairs",
-			props: map[string]string{"facing": facing, "half": half, "shape": "straight", "waterlogged": "false"},
-			test: func(sx, sy, sz float64) bool {
-				if half == "bottom" {
-					return sy <= 0 || side(sx, sy, sz)
-				}
-				return sy >= 0 || side(sx, sy, sz)
-			},
-			penalty: 0.6,
+	hasHull := func(x, y, z int) bool {
+		if y < 0 || y > topY || z < 0 || z >= L {
+			return false
 		}
-	}
-	// Note the facing/mask pairing: this codebase (preview renderer and the
-	// NBT exporter, which flips facing on export) treats "facing" as the
-	// stair's LOW/open side, opposite Minecraft's blockstate convention. A
-	// stair emitted as facing=east therefore has its full-height half on the
-	// west — so the east-facing candidate pairs with the west-side mask.
-	candidates := []shapeCand{
-		{name: "", test: func(sx, sy, sz float64) bool { return false }, penalty: 3.0}, // air
-		{name: "planks", test: func(sx, sy, sz float64) bool { return true }, penalty: 0.0},
-		{name: "slab", props: map[string]string{"type": "bottom", "waterlogged": "false"},
-			test: func(sx, sy, sz float64) bool { return sy <= 0 }, penalty: 0.9},
-		{name: "slab_top", props: map[string]string{"type": "top", "waterlogged": "false"},
-			test: func(sx, sy, sz float64) bool { return sy >= 0 }, penalty: 0.9},
-		stairCand("east", sideWest, "bottom"),
-		stairCand("west", sideEast, "bottom"),
-		stairCand("north", sideSouth, "bottom"),
-		stairCand("south", sideNorth, "bottom"),
-		stairCand("east", sideWest, "top"),
-		stairCand("west", sideEast, "top"),
-		stairCand("north", sideSouth, "top"),
-		stairCand("south", sideNorth, "top"),
-	}
-	var sampleOffsets [27][3]float64
-	{
-		vals := [3]float64{-1.0 / 3.0, 0, 1.0 / 3.0}
-		n := 0
-		for _, ox := range vals {
-			for _, oy := range vals {
-				for _, oz := range vals {
-					sampleOffsets[n] = [3]float64{ox, oy, oz}
-					n++
-				}
-			}
-		}
+		hw := hwArr[y][z]
+		return hw >= 0 && x >= -hw && x <= hw
 	}
 
 	type coord [3]int
@@ -475,159 +433,144 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 	}
 	get := func(x, y, z int) *blockEntry { return blocks[coord{x, y, z}] }
 
-	copyProps := func(m map[string]string) map[string]string {
-		if m == nil {
-			return nil
-		}
-		out := make(map[string]string, len(m))
-		for k, v := range m {
-			out[k] = v
-		}
-		return out
-	}
-
-	// Bow/stern taper flag per z (base coordinates): inside these regions
-	// stair steps should read fore-aft like a stepped stem, not sideways.
-	inTaper := make([]bool, L)
-	for z := 0; z < L; z++ {
-		zn := float64(z) / math.Max(length-1, 1)
-		inTaper[z] = zn < midLo || zn > midHi
-	}
-
-	for z := 0; z < L; z++ {
-		for y := 0; y <= topY; y++ {
-			for x := -xMax; x <= xMax; x++ {
-				if cellAt(x, y, z) != cellSurf {
-					continue
-				}
-				var occ [27]bool
-				occCount := 0
-				for s := 0; s < 27; s++ {
-					o := sampleOffsets[s]
-					if insideAt(float64(x)+o[0], float64(y)+o[1], float64(z)+o[2]) {
-						occ[s] = true
-						occCount++
-					}
-				}
-				if occCount == 0 {
-					continue
-				}
-				// Diagonal surfaces fit top-half and bottom-half stairs with
-				// identical error; break the tie toward the half holding the
-				// cell's occupied mass so steps ascend the way the surface does.
-				topMass, botMass := 0, 0
-				for s := 0; s < 27; s++ {
-					if occ[s] {
-						if sampleOffsets[s][1] > 0 {
-							topMass++
-						} else if sampleOffsets[s][1] < 0 {
-							botMass++
-						}
-					}
-				}
-				preferTop := topMass >= botMass
-				// Fore-aft gradient: at bow/stern taper cells (where the hull
-				// narrows along z) stairs should follow the ship's axis, the
-				// way builders step a stem — penalize sideways stairs there.
-				// Midship flanks have no z-gradient and keep lateral stairs.
-				zPos, zNeg, xPos, xNeg := 0, 0, 0, 0
-				for s := 0; s < 27; s++ {
-					if !occ[s] {
-						continue
-					}
-					switch {
-					case sampleOffsets[s][2] > 0:
-						zPos++
-					case sampleOffsets[s][2] < 0:
-						zNeg++
-					}
-					switch {
-					case sampleOffsets[s][0] > 0:
-						xPos++
-					case sampleOffsets[s][0] < 0:
-						xNeg++
-					}
-				}
-				gz := zPos - zNeg
-				if gz < 0 {
-					gz = -gz
-				}
-				gx := xPos - xNeg
-				if gx < 0 {
-					gx = -gx
-				}
-				bestIdx, bestErr := 0, math.MaxFloat64
-				for ci, cand := range candidates {
-					errSum := cand.penalty
-					if h, isStair := cand.props["half"]; isStair && cand.name == "stairs" {
-						if (h == "top") != preferTop {
-							errSum += 0.3
-						}
-						f := cand.props["facing"]
-						sideways := f == "east" || f == "west"
-						// Oblique bow/stern corner cells fit sideways stairs
-						// ~2 samples better than fore-aft ones; the taper
-						// penalty must exceed that gap to win the stem read.
-						if sideways && inTaper[z] {
-							errSum += 2.5
-						} else if sideways && gz >= 2 {
-							errSum += 0.8
-						} else if !sideways && gx >= 2 && gz < 2 && !inTaper[z] {
-							errSum += 0.8
-						}
-					}
-					for s := 0; s < 27; s++ {
-						o := sampleOffsets[s]
-						if cand.test(o[0], o[1], o[2]) != occ[s] {
-							errSum++
-						}
-					}
-					if errSum < bestErr {
-						bestErr = errSum
-						bestIdx = ci
-					}
-				}
-				if hullV2DebugCell != nil {
-					errs := make([]float64, len(candidates))
-					for ci, cand := range candidates {
-						e := cand.penalty
-						for s := 0; s < 27; s++ {
-							o := sampleOffsets[s]
-							if cand.test(o[0], o[1], o[2]) != occ[s] {
-								e++
-							}
-						}
-						errs[ci] = e
-					}
-					chosen := candidates[bestIdx].name + "/" + candidates[bestIdx].props["facing"] + "/" + candidates[bestIdx].props["half"]
-					hullV2DebugCell(x, y, z, occCount, gx, gz, chosen, errs)
-				}
-				if candidates[bestIdx].name == "" {
-					continue
-				}
-				set(x, y, z, candidates[bestIdx].name, copyProps(candidates[bestIdx].props))
-			}
-		}
-	}
-
 	// --- Shell + deck -----------------------------------------------------------------
 
-	// Solid cells: keep only the shell (a face exposed to non-solid) plus the
-	// deck row, mirroring v1's hollow hulls.
+	// Keep only the shell (a face exposed to non-hull) plus the deck row,
+	// mirroring v1's hollow hulls.
 	for z := 0; z < L; z++ {
 		for y := 0; y <= topY; y++ {
-			for x := -xMax; x <= xMax; x++ {
-				if cellAt(x, y, z) != cellSolid {
-					continue
-				}
-				exposed := cellAt(x-1, y, z) != cellSolid || cellAt(x+1, y, z) != cellSolid ||
-					cellAt(x, y-1, z) != cellSolid || cellAt(x, y+1, z) != cellSolid ||
-					cellAt(x, y, z-1) != cellSolid || cellAt(x, y, z+1) != cellSolid
+			hw := hwArr[y][z]
+			if hw < 0 {
+				continue
+			}
+			for x := -hw; x <= hw; x++ {
+				exposed := !hasHull(x-1, y, z) || !hasHull(x+1, y, z) ||
+					!hasHull(x, y-1, z) || !hasHull(x, y+1, z) ||
+					!hasHull(x, y, z-1) || !hasHull(x, y, z+1)
 				isDeck := !p.ClosedHull && y == deckYArr[z]
 				if exposed || isDeck {
 					set(x, y, z, "planks", nil)
 				}
 			}
+		}
+	}
+
+	// --- Step smoothing --------------------------------------------------------------
+
+	// Lateral flare stairs: where the hull widens going up (flare, bilge
+	// curve), tuck top-half stairs under the overhanging row.
+	for z := 0; z < L; z++ {
+		for y := 0; y < topY; y++ {
+			hwHere, hwUp := hwArr[y][z], hwArr[y+1][z]
+			if hwHere < 0 || hwUp <= hwHere {
+				continue
+			}
+			for xN := hwHere + 1; xN <= hwUp; xN++ {
+				if hasHull(xN, y, z) || !hasHull(xN, y+1, z) {
+					continue
+				}
+				if b := get(xN, y, z); b != nil && b.name == "planks" {
+					continue
+				}
+				set(xN, y, z, "stairs", map[string]string{"facing": "east", "half": "top", "shape": "straight", "waterlogged": "false"})
+				set(-xN, y, z, "stairs", map[string]string{"facing": "west", "half": "top", "shape": "straight", "waterlogged": "false"})
+			}
+		}
+	}
+
+	// Tumblehome ledges: where the hull narrows going up, cap the exposed
+	// step with bottom-half stairs (open side outward) so the topsides read
+	// as a curve. Skip the deck row — trim and railings own that edge.
+	for z := 0; z < L; z++ {
+		for y := 0; y < topY; y++ {
+			hwHere, hwUp := hwArr[y][z], hwArr[y+1][z]
+			if hwHere < 0 || hwUp < 0 || hwUp >= hwHere {
+				continue
+			}
+			if !p.ClosedHull && y+1 >= deckYArr[z] {
+				continue
+			}
+			for xN := hwUp + 1; xN <= hwHere; xN++ {
+				if hasHull(xN, y+1, z) || !hasHull(xN, y, z) {
+					continue
+				}
+				if get(xN, y+1, z) != nil {
+					continue
+				}
+				set(xN, y+1, z, "stairs", map[string]string{"facing": "east", "half": "bottom", "shape": "straight", "waterlogged": "false"})
+				if xN > 0 {
+					set(-xN, y+1, z, "stairs", map[string]string{"facing": "west", "half": "bottom", "shape": "straight", "waterlogged": "false"})
+				}
+			}
+		}
+	}
+
+	// Longitudinal taper stairs: where the hull narrows along z (entrance,
+	// run, raked ends), step the transition with top-half stairs.
+	placeLongStair := func(x, y, z int, facing string) {
+		if hasHull(x, y, z) {
+			return
+		}
+		if b := get(x, y, z); b != nil && (b.name == "planks" || b.name == "stairs") {
+			return
+		}
+		set(x, y, z, "stairs", map[string]string{"facing": facing, "half": "top", "shape": "straight", "waterlogged": "false"})
+	}
+	for y := 0; y <= topY; y++ {
+		for z := 0; z < L; z++ {
+			hwThis := hwArr[y][z]
+			if hwThis < 0 {
+				continue
+			}
+			if z+1 < L {
+				if hwFwd := hwArr[y][z+1]; hwFwd >= 0 && hwFwd < hwThis {
+					for x := hwFwd + 1; x <= hwThis; x++ {
+						placeLongStair(x, y, z+1, "south")
+						if x != 0 {
+							placeLongStair(-x, y, z+1, "south")
+						}
+					}
+				}
+			}
+			if z > 0 {
+				if hwBack := hwArr[y][z-1]; hwBack >= 0 && hwBack < hwThis {
+					for x := hwBack + 1; x <= hwThis; x++ {
+						placeLongStair(x, y, z-1, "north")
+						if x != 0 {
+							placeLongStair(-x, y, z-1, "north")
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Keel-rise stairs: fill the underside step where the keel line climbs.
+	for z := 0; z < L-1; z++ {
+		k0, k1 := keelYArr[z], keelYArr[z+1]
+		if k1 == k0 {
+			continue
+		}
+		var yFill, zFill, refZ int
+		facing := "south"
+		if k1 > k0 {
+			yFill, zFill, refZ = k1-1, z+1, z+1
+		} else {
+			yFill, zFill, refZ = k0-1, z, z
+			facing = "north"
+		}
+		if yFill+1 < 0 || yFill+1 > topY {
+			continue
+		}
+		hw := hwArr[yFill+1][refZ]
+		if hw < 0 {
+			continue
+		}
+		for x := -hw; x <= hw; x++ {
+			if hasHull(x, yFill, zFill) || get(x, yFill, zFill) != nil {
+				continue
+			}
+			set(x, yFill, zFill, "stairs", map[string]string{"facing": facing, "half": "top", "shape": "straight", "waterlogged": "false"})
 		}
 	}
 
@@ -666,32 +609,22 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		}
 	}
 
-	// hwAt reports the outermost occupied |x| at a row, used by the
-	// decoration passes (railings, gun ports, posts).
+	// hwAt reports the hull half-width at a row, used by the decoration
+	// passes (railings, gun ports, posts).
 	hwAt := func(y, z int) int {
 		if y < 0 || y > topY || z < 0 || z >= L {
 			return -1
 		}
-		for x := xMax; x >= 0; x-- {
-			c := cellAt(x, y, z)
-			if c == cellSolid {
-				return x
-			}
-			if c == cellSurf && get(x, y, z) != nil {
-				return x
-			}
-		}
-		return -1
+		return hwArr[y][z]
 	}
-	has := func(x, y, z int) bool { return cellAt(x, y, z) == cellSolid }
+	has := hasHull
 	// inHull seeds the connectivity cleanup.
 	inHull := make(map[coord]bool)
 	for z := 0; z < L; z++ {
 		for y := 0; y <= topY; y++ {
-			for x := -xMax; x <= xMax; x++ {
-				if cellAt(x, y, z) == cellSolid {
-					inHull[coord{x, y, z}] = true
-				}
+			hw := hwArr[y][z]
+			for x := -hw; x <= hw; x++ {
+				inHull[coord{x, y, z}] = true
 			}
 		}
 	}
