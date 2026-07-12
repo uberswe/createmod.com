@@ -192,6 +192,21 @@ func AuthMDHandler() func(e *server.RequestEvent) error {
 }
 
 // AgentSkillsIndexHandler serves /.well-known/agent-skills/index.json.
+// mcpRegistryAuth is the domain-verification proof for publishing the
+// com.createmod/* namespace to the official MCP registry
+// (registry.modelcontextprotocol.io). The matching Ed25519 private key is
+// held offline by the site owner; rotating the key means regenerating this
+// public half and re-running mcp-publisher login http.
+const mcpRegistryAuth = "v=MCPv1; k=ed25519; p=NgRkTZGoyo8EHwnqafyRGw5gfbXykQn+8EpBWj7D95A="
+
+// MCPRegistryAuthHandler serves /.well-known/mcp-registry-auth.
+func MCPRegistryAuthHandler() func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		e.Response.Header().Set("Cache-Control", "public, max-age=3600")
+		return e.String(http.StatusOK, mcpRegistryAuth)
+	}
+}
+
 func AgentSkillsIndexHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		type entry struct {

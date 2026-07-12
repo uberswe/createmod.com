@@ -523,6 +523,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/mcp", Adapt(pages.MCPHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/.well-known/mcp/server-card.json", Adapt(pages.MCPServerCardHandler()))
 	// Agent skills discovery (Agent Skills Discovery RFC)
+	r.Get("/.well-known/mcp-registry-auth", Adapt(pages.MCPRegistryAuthHandler()))
 	r.Get("/.well-known/agent-skills/index.json", Adapt(pages.AgentSkillsIndexHandler()))
 	r.Get("/.well-known/agent-skills/{name}/SKILL.md", Adapt(pages.AgentSkillHandler()))
 	// Agent-facing authentication guide (auth.md convention)
