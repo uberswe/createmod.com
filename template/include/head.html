@@ -85,7 +85,29 @@ window.setTheme=function(theme){
     {{ if .IsDev }}
     <script src="/assets/x/dev-ads.js?v={{ AssetVer }}" defer></script>
     {{ else }}
-    <script data-cfasync="false" async src="https://s.nitropay.com/ads-2143.js" onerror="window._nitroBlocked=true"></script>
+    <script data-cfasync="false">
+    // Defer the NitroPay loader until the page has loaded and the main
+    // thread is idle: its initial evaluation is a ~1.4s main-thread task
+    // (the site's dominant INP contributor on mobile), and running it during
+    // the critical window makes early taps wait behind it. The queue shim
+    // above buffers createAd calls until the real script arrives.
+    (function () {
+      function loadNitro() {
+        var s = document.createElement('script');
+        s.setAttribute('data-cfasync', 'false');
+        s.async = true;
+        s.src = 'https://s.nitropay.com/ads-2143.js';
+        s.onerror = function () { window._nitroBlocked = true; };
+        document.head.appendChild(s);
+      }
+      function whenIdle() {
+        if (window.requestIdleCallback) requestIdleCallback(loadNitro, { timeout: 4000 });
+        else setTimeout(loadNitro, 1500);
+      }
+      if (document.readyState === 'complete') whenIdle();
+      else window.addEventListener('load', whenIdle, { once: true });
+    })();
+    </script>
     {{ end }}
     <script src="/assets/x/adrail.js?v={{ AssetVer }}" defer></script>
     <!-- WebMCP: expose curated site tools to browser AI agents -->
