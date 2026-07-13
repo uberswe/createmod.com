@@ -345,7 +345,16 @@ func Register(p RegisterParams) chi.Router {
 	// Static assets with long cache (files use ?v=hash cache-busting)
 	staticFS := http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static")))
 	r.Handle("/assets/x/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		// During a rolling deploy, a request for the NEW ?v= can land on an
+		// OLD pod (the file server ignores the query); with an immutable
+		// max-age the edge would cache the wrong bytes under the new URL
+		// for a year. A pod only vouches for its own version — anything
+		// else is served uncacheable so a mismatch can never poison the CDN.
+		if v := req.URL.Query().Get("v"); v != "" && v != assetVer {
+			w.Header().Set("Cache-Control", "no-store")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
 		staticFS.ServeHTTP(w, req)
 	}))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
