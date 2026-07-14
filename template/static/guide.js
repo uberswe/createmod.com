@@ -175,6 +175,39 @@ function addDragToScroll(scrollContainer, canvas) {
   return function isDragging() { return dragging; };
 }
 
+// Browser canvases have hard size limits (dimension and total area in device
+// pixels); exceeding them silently produces an unpaintable, broken-looking
+// canvas. fitRender shrinks the cell size (and, as a last resort, the device
+// pixel ratio) until the canvas fits, or returns null if it never can.
+var MAX_CANVAS_DIM = 16384;
+var MAX_CANVAS_AREA = 16000000;
+
+function fitRender(gridW, gridH, cellSize, dpr) {
+  var s = cellSize, d = dpr;
+  for (;;) {
+    var w = gridW * s * d, h = gridH * s * d;
+    if (w <= MAX_CANVAS_DIM && h <= MAX_CANVAS_DIM && w * h <= MAX_CANVAS_AREA) return { cellSize: s, dpr: d };
+    if (s > 1) { s--; continue; }
+    if (d > 1) { d = 1; continue; }
+    return null;
+  }
+}
+
+function drawOversizeNotice(canvas, ctx, gridW, gridH) {
+  canvas.width = 640;
+  canvas.height = 80;
+  canvas.style.width = '640px';
+  canvas.style.height = '80px';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0, 0, 640, 80);
+  ctx.fillStyle = '#c8c8c8';
+  ctx.font = '14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('This layer is too large to display as a grid (' + gridW + '×' + gridH + ' blocks).', 320, 44);
+  ctx.textAlign = 'start';
+}
+
 function drawGrid(ctx, gridW, gridH, cellSize, canvasW, canvasH) {
   for (var gx = 0; gx <= gridW; gx++) {
     var isMajorX = gx % GRID_MAJOR_INTERVAL === 0;
@@ -528,6 +561,13 @@ function openGuide(data, mode) {
     var baseCellSize = Math.max(4, Math.min(40, Math.floor(Math.min(availW / gridW, availH / gridH))));
     var cellSize = Math.max(2, Math.round(baseCellSize * zoomLevel));
 
+    var fit = fitRender(gridW, gridH, cellSize, window.devicePixelRatio || 1);
+    if (!fit) {
+      drawOversizeNotice(ui.canvas, ctx, gridW, gridH);
+      return;
+    }
+    cellSize = fit.cellSize;
+
     modalMinX = minX;
     modalMinZ = minZ;
     modalCellSize = cellSize;
@@ -535,7 +575,7 @@ function openGuide(data, mode) {
     var canvasW = gridW * cellSize;
     var canvasH = gridH * cellSize;
 
-    var dpr = window.devicePixelRatio || 1;
+    var dpr = fit.dpr;
     ui.canvas.width = canvasW * dpr;
     ui.canvas.height = canvasH * dpr;
     ui.canvas.style.width = canvasW + 'px';
@@ -802,6 +842,13 @@ function renderPageInner(data, mode, loader) {
     var baseCellSize = Math.max(4, Math.min(40, Math.floor(Math.min(availW / gridW, availH / gridH))));
     var cellSize = Math.max(2, Math.round(baseCellSize * zoomLevel));
 
+    var fit = fitRender(gridW, gridH, cellSize, window.devicePixelRatio || 1);
+    if (!fit) {
+      drawOversizeNotice(canvas, ctx, gridW, gridH);
+      return;
+    }
+    cellSize = fit.cellSize;
+
     renderMinX = minX;
     renderMinZ = minZ;
     renderCellSize = cellSize;
@@ -809,7 +856,7 @@ function renderPageInner(data, mode, loader) {
     var canvasW = gridW * cellSize;
     var canvasH = gridH * cellSize;
 
-    var dpr = window.devicePixelRatio || 1;
+    var dpr = fit.dpr;
     canvas.width = canvasW * dpr;
     canvas.height = canvasH * dpr;
     canvas.style.width = canvasW + 'px';
