@@ -125,7 +125,7 @@ jobs:
           PGPASSWORD: localdev
         run: psql -h localhost -U createmod -d createmod -f tests/e2e/seed.sql
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install Playwright
