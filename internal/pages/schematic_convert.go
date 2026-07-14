@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -187,6 +190,136 @@ func ConvertAPIHandler() func(e *server.RequestEvent) error {
 		e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeContentDispositionFilename(outName)+"\"")
 		return e.Blob(http.StatusOK, "application/octet-stream", res.Data)
 	}
+}
+
+// maxConvertBatchFiles caps how many schematics one batch request may carry.
+const maxConvertBatchFiles = 20
+
+// convertBatchResult is the per-file outcome reported to the client.
+type convertBatchResult struct {
+	Name     string   `json:"name"`
+	OK       bool     `json:"ok"`
+	Output   string   `json:"output,omitempty"`
+	Error    string   `json:"error,omitempty"`
+	Warnings []string `json:"warnings,omitempty"`
+}
+
+// ConvertBatchAPIHandler converts several uploaded schematics in one request
+// and streams the results back as a single zip. Stateless like the single
+// converter: nothing is persisted. Per-file outcomes travel in the
+// X-Conversion-Results header (JSON array); files that fail are skipped
+// rather than failing the whole batch. Only if every file fails does the
+// request return an error status.
+// POST /api/convert/batch  (multipart: files (repeated), to)
+func ConvertBatchAPIHandler() func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		e.Request.Body = http.MaxBytesReader(e.Response, e.Request.Body, maxConvertBatchFiles*maxUploadSize+(1<<20))
+		if err := e.Request.ParseMultipartForm(32 << 20); err != nil {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "invalid form"})
+		}
+		toSlug := e.Request.FormValue("to")
+		target, ext, ok := convertFormatBySlug(toSlug)
+		if !ok {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "unsupported target format"})
+		}
+		var files []*multipart.FileHeader
+		if e.Request.MultipartForm != nil {
+			files = e.Request.MultipartForm.File["files"]
+		}
+		if len(files) == 0 {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "missing files"})
+		}
+		if len(files) > maxConvertBatchFiles {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("too many files: at most %d per batch", maxConvertBatchFiles)})
+		}
+
+		var zipBuf bytes.Buffer
+		zw := zip.NewWriter(&zipBuf)
+		usedNames := map[string]bool{}
+		results := make([]convertBatchResult, 0, len(files))
+		converted := 0
+		for _, fh := range files {
+			r := convertBatchResult{Name: fh.Filename}
+			data, err := readConvertUpload(fh)
+			if err != nil {
+				r.Error = err.Error()
+				results = append(results, r)
+				continue
+			}
+			res, err := schematic.Convert(data, target)
+			if err != nil {
+				r.Error = convertUserError(err)
+				results = append(results, r)
+				continue
+			}
+			base := strings.TrimSuffix(filepath.Base(fh.Filename), filepath.Ext(fh.Filename))
+			outName := sanitizeFilename(base + ext)
+			for i := 2; usedNames[outName]; i++ {
+				outName = sanitizeFilename(fmt.Sprintf("%s-%d%s", base, i, ext))
+			}
+			usedNames[outName] = true
+			fw, err := zw.Create(outName)
+			if err == nil {
+				_, err = fw.Write(res.Data)
+			}
+			if err != nil {
+				r.Error = "failed to write zip entry"
+				results = append(results, r)
+				continue
+			}
+			r.OK = true
+			r.Output = outName
+			for _, w := range res.Warnings {
+				r.Warnings = append(r.Warnings, w.Message)
+			}
+			results = append(results, r)
+			converted++
+		}
+		if converted == 0 {
+			return writeJSON(e, http.StatusUnprocessableEntity, map[string]interface{}{
+				"error":   "no files could be converted",
+				"results": results,
+			})
+		}
+		if err := zw.Close(); err != nil {
+			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to build zip"})
+		}
+		if rj, err := json.Marshal(results); err == nil {
+			// Keep the header proxy-safe: drop warning texts if the full
+			// payload is unreasonably large.
+			if len(rj) > 16<<10 {
+				slim := make([]convertBatchResult, len(results))
+				copy(slim, results)
+				for i := range slim {
+					slim[i].Warnings = nil
+				}
+				rj, err = json.Marshal(slim)
+			}
+			if err == nil {
+				e.Response.Header().Set("X-Conversion-Results", string(rj))
+			}
+		}
+		zipName := sanitizeFilename("converted-" + toSlug + ".zip")
+		e.Response.Header().Set("Content-Disposition", "attachment; filename=\""+sanitizeContentDispositionFilename(zipName)+"\"")
+		return e.Blob(http.StatusOK, "application/zip", zipBuf.Bytes())
+	}
+}
+
+// readConvertUpload reads one multipart file enforcing the per-file size cap.
+func readConvertUpload(fh *multipart.FileHeader) ([]byte, error) {
+	if fh.Size > maxUploadSize {
+		return nil, fmt.Errorf("file exceeds 10 MB")
+	}
+	f, err := fh.Open()
+	if err != nil {
+		return nil, fmt.Errorf("unreadable file")
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, maxUploadSize+1))
+	if err != nil || int64(len(data)) > maxUploadSize {
+		return nil, fmt.Errorf("file exceeds 10 MB")
+	}
+	return data, nil
 }
 
 // ConvertInspectHandler identifies an uploaded schematic without converting.
