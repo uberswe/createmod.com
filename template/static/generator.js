@@ -307,34 +307,51 @@ function renderBlocks(data) {
     return geo;
   }
 
-  // Stair geometry per (half, shape) in base orientation (facing=south:
-  // open side +z, full-height side -z). FACING_ROT rotates all facings.
-  // outer_* reduce the upper step to a back quarter; inner_* extend it with
-  // a front quarter — matching how Minecraft stairs join at corners.
+  // Stair geometry per (facing, half, shape), transcribed from vanilla
+  // (models/block/stairs*.json + the oak_stairs blockstate rotations).
+  // The base model faces east: tall side +x. half=top is the x=180 flip
+  // (y AND z negate — a rotation, not a mirror, so corner chirality holds),
+  // and *_left / *_right shapes carry their own extra y-rotation.
   var stairShapeCache = {};
-  function makeStairShapeGeo(half, shape) {
-    var key = half + '|' + shape;
+  var STAIR_Y_DEG = { east: 0, south: 90, west: 180, north: 270 };
+  function makeStairGeo(facing, half, shape) {
+    var key = facing + '|' + half + '|' + shape;
     if (stairShapeCache[key]) return stairShapeCache[key];
-    var upper;
+    // Boxes in vanilla model coords (0..16), facing=east base.
+    var boxes = [[0, 0, 0, 16, 8, 16]];
     switch (shape) {
-      case 'outer_left':  upper = [[-0.5, 0, -0.5, 0, 0.5, 0]]; break;
-      case 'outer_right': upper = [[0, 0, -0.5, 0.5, 0.5, 0]]; break;
-      case 'inner_left':  upper = [[-0.5, 0, -0.5, 0.5, 0.5, 0], [-0.5, 0, 0, 0, 0.5, 0.5]]; break;
-      case 'inner_right': upper = [[-0.5, 0, -0.5, 0.5, 0.5, 0], [0, 0, 0, 0.5, 0.5, 0.5]]; break;
-      default:            upper = [[-0.5, 0, -0.5, 0.5, 0.5, 0]]; break;
+      case 'outer_left':
+      case 'outer_right':
+        boxes.push([8, 8, 8, 16, 16, 16]);
+        break;
+      case 'inner_left':
+      case 'inner_right':
+        boxes.push([8, 8, 0, 16, 16, 16], [0, 8, 8, 8, 16, 16]);
+        break;
+      default:
+        boxes.push([8, 8, 0, 16, 16, 16]);
+        break;
     }
-    var boxes = [[-0.5, -0.5, -0.5, 0.5, 0, 0.5]].concat(upper);
     if (half === 'top') {
-      boxes = boxes.map(function (b) {
-        return [b[0], -b[4], b[2], b[3], -b[1], b[5]];
-      });
+      // Vanilla x=180: rotate about the X axis through the block center.
+      boxes = boxes.map(function (b) { return [b[0], 16 - b[4], 16 - b[5], b[3], 16 - b[1], 16 - b[2]]; });
     }
-    var geo = boxesGeo(boxes);
+    var deg = STAIR_Y_DEG[facing] || 0;
+    var isLeft = shape === 'inner_left' || shape === 'outer_left';
+    var isRight = shape === 'inner_right' || shape === 'outer_right';
+    if (half === 'top' ? isRight : isLeft) {
+      deg = (deg + (half === 'top' ? 90 : 270)) % 360;
+    }
+    for (var r = 0; r < deg / 90; r++) {
+      // Vanilla y-rotation by 90°: (x, z) -> (16 - z, x)
+      boxes = boxes.map(function (b) { return [16 - b[5], b[1], b[0], 16 - b[2], b[4], b[3]]; });
+    }
+    var geo = boxesGeo(boxes.map(function (b) {
+      return [b[0] / 16 - 0.5, b[1] / 16 - 0.5, b[2] / 16 - 0.5, b[3] / 16 - 0.5, b[4] / 16 - 0.5, b[5] / 16 - 0.5];
+    }));
     stairShapeCache[key] = geo;
     return geo;
   }
-
-  var FACING_ROT = { south: 0, west: -Math.PI / 2, north: Math.PI, east: Math.PI / 2 };
 
   var fencePostGeo = new THREE.BoxGeometry(0.25, 1, 0.25);
   var fenceBarGeos = {
@@ -388,14 +405,13 @@ function renderBlocks(data) {
         var sFacing = parts[0];
         var sHalf = parts[1];
         var sShape = parts.slice(2).join('_') || 'straight';
-        var sGeo = makeStairShapeGeo(sHalf, sShape);
+        var sGeo = makeStairGeo(sFacing, sHalf, sShape);
         var sMesh = new THREE.InstancedMesh(sGeo, stairMat, sArr.length);
         sMesh.userData.pickBlocks = sArr;
         for (var sj = 0; sj < sArr.length; sj++) {
           dummy.position.set(sArr[sj].x - cx, (sArr[sj].y - cy), sArr[sj].z - cz);
           dummy.rotation.set(0, 0, 0);
           dummy.scale.set(1, 1, 1);
-          dummy.rotation.y = FACING_ROT[sFacing] || 0;
           dummy.updateMatrix();
           sMesh.setMatrixAt(sj, dummy.matrix);
         }
@@ -412,7 +428,6 @@ function renderBlocks(data) {
             dummy.position.set(sArr[sei].x - cx, (sArr[sei].y - cy), sArr[sei].z - cz);
             dummy.rotation.set(0, 0, 0);
             dummy.scale.set(1, 1, 1);
-            dummy.rotation.y = FACING_ROT[sFacing] || 0;
             dummy.updateMatrix();
             for (var sev = 0; sev < stairECount; sev++) {
               sv.set(stairEPosAttr.getX(sev), stairEPosAttr.getY(sev), stairEPosAttr.getZ(sev));
@@ -528,24 +543,21 @@ function renderBlocks(data) {
           dummy.position.set(tdArr[tdj].x - cx, tdArr[tdj].y - cy, tdArr[tdj].z - cz);
           dummy.rotation.set(0, 0, 0);
           if (tdO === 'true') {
-            // Open trapdoor: vertical panel flush against the face it's attached to
+            // Open trapdoor: full-height vertical panel flush against the
+            // cell face OPPOSITE its facing (vanilla: facing=north puts the
+            // open panel on the south edge, same model for both halves).
             if (tdF === 'north') {
               dummy.rotation.x = Math.PI / 2;
-              dummy.position.z -= 0.41;
+              dummy.position.z += 0.41;
             } else if (tdF === 'south') {
               dummy.rotation.x = -Math.PI / 2;
-              dummy.position.z += 0.41;
+              dummy.position.z -= 0.41;
             } else if (tdF === 'east') {
               dummy.rotation.z = Math.PI / 2;
-              dummy.position.x += 0.41;
+              dummy.position.x -= 0.41;
             } else if (tdF === 'west') {
               dummy.rotation.z = -Math.PI / 2;
-              dummy.position.x -= 0.41;
-            }
-            if (tdH === 'top') {
-              dummy.position.y += 0.25;
-            } else {
-              dummy.position.y -= 0.25;
+              dummy.position.x += 0.41;
             }
           } else {
             // Closed trapdoor: flat, offset to top or bottom
