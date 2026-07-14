@@ -147,25 +147,127 @@ func Test_Fingerprint_EncodeDecode(t *testing.T) {
 
 func Test_BlockFamily(t *testing.T) {
 	cases := map[string]string{
-		"minecraft:oak_planks":        "planks",
-		"minecraft:spruce_planks":     "planks",
-		"minecraft:oak_stairs":        "stairs",
-		"minecraft:stone":             "stone",
-		"minecraft:deepslate_tiles":   "stone",
-		"minecraft:chest":             "storage",
-		"minecraft:redstone_lamp":     "redstone",
-		"create:cogwheel":             "create_rotation",
-		"create:shaft":                "create_rotation",
-		"create:mechanical_press":     "create_processing",
-		"create:water_wheel":          "create_power",
-		"create:andesite_casing":      "create_casing_deco",
-		"create:mechanical_bearing":   "create_movement",
-		"somemod:weird_block":         "modded_other",
-		"minecraft:glass_pane":        "glass",
+		"minecraft:oak_planks":      "planks",
+		"minecraft:spruce_planks":   "planks",
+		"minecraft:oak_stairs":      "stairs",
+		"minecraft:stone":           "stone",
+		"minecraft:deepslate_tiles": "stone",
+		"minecraft:chest":           "storage",
+		"minecraft:redstone_lamp":   "redstone",
+		"create:cogwheel":           "create_rotation",
+		"create:shaft":              "create_rotation",
+		"create:mechanical_press":   "create_processing",
+		"create:water_wheel":        "create_power",
+		"create:andesite_casing":    "create_casing_deco",
+		"create:mechanical_bearing": "create_movement",
+		"somemod:weird_block":       "modded_other",
+		"minecraft:glass_pane":      "glass",
 	}
 	for name, want := range cases {
 		if got := BlockFamily(name); got != want {
 			t.Errorf("%s -> %s, want %s", name, got, want)
+		}
+	}
+}
+
+// compositionModel builds a box filled with the given block counts (laid out
+// linearly; remaining volume stays air). Composition is what matters for the
+// materials/function components under test.
+func compositionModel(t *testing.T, counts map[string]int) *Schematic {
+	t.Helper()
+	total := 0
+	for _, n := range counts {
+		total += n
+	}
+	edge := 1
+	for edge*edge*edge < total {
+		edge++
+	}
+	s := New(edge, edge, edge)
+	i := 0
+	for name, n := range counts {
+		idx := s.PaletteIndex(BlockState{Name: name})
+		for k := 0; k < n; k++ {
+			s.Blocks[i] = idx
+			i++
+		}
+	}
+	return s
+}
+
+// A house with a few decorative Create blocks must not "function" like a
+// machine: cosine direction alone is scale-invariant, which used to rank
+// steam boilers as the most similar builds to houses.
+func Test_Fingerprint_HouseDoesNotMatchMachine(t *testing.T) {
+	house := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":       2000,
+		"minecraft:oak_planks": 500,
+		"minecraft:oak_stairs": 300,
+		"minecraft:glass":      200,
+		"create:shaft":         2,
+		"create:fluid_pipe":    3,
+	}))
+	otherHouse := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":          1800,
+		"minecraft:spruce_planks": 600,
+		"minecraft:spruce_stairs": 250,
+		"minecraft:glass":         150,
+	}))
+	boiler := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":      2000,
+		"create:shaft":        60,
+		"create:fluid_pipe":   120,
+		"create:fluid_tank":   80,
+		"create:steam_engine": 20,
+	}))
+
+	component := func(sim Similarity, name string) float64 {
+		for _, c := range sim.Components {
+			if c.Name == name {
+				return c.Score
+			}
+		}
+		return -1
+	}
+
+	vsBoiler := Compare(house, boiler)
+	vsHouse := Compare(house, otherHouse)
+
+	if f := component(vsBoiler, "function"); f > 0.3 {
+		t.Errorf("house vs boiler function = %.2f, want <= 0.3 (house is ~0.2%% machinery, boiler ~11%%)", f)
+	}
+	// Two non-machines agree on function even when one has a couple of
+	// decorative Create blocks.
+	if f := component(vsHouse, "function"); f < 0.99 {
+		t.Errorf("house vs house function = %.2f, want ~1", f)
+	}
+	// Materials must not be hijacked by the shared terrain (dirt) majority.
+	if m := component(vsBoiler, "materials"); m > 0.85 {
+		t.Errorf("house vs boiler materials = %.2f, want < 0.85 despite shared dirt majority", m)
+	}
+	if vsHouse.Overall <= vsBoiler.Overall {
+		t.Errorf("ranking broken: house-vs-house %.2f <= house-vs-boiler %.2f", vsHouse.Overall, vsBoiler.Overall)
+	}
+}
+
+func Test_Fingerprint_MachinesStillMatchMachines(t *testing.T) {
+	boilerA := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":      500,
+		"create:shaft":        60,
+		"create:fluid_pipe":   120,
+		"create:fluid_tank":   80,
+		"create:steam_engine": 20,
+	}))
+	boilerB := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":      400,
+		"create:shaft":        50,
+		"create:fluid_pipe":   140,
+		"create:fluid_tank":   70,
+		"create:steam_engine": 25,
+	}))
+	for _, c := range Compare(boilerA, boilerB).Components {
+		if c.Name == "function" && c.Score < 0.8 {
+			t.Errorf("boiler vs boiler function = %.2f, want >= 0.8", c.Score)
 		}
 	}
 }

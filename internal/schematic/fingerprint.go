@@ -54,9 +54,9 @@ var componentWeights = []struct {
 	name   string
 	weight float64
 }{
-	{"shape", 0.40},
-	{"materials", 0.25},
-	{"function", 0.15},
+	{"shape", 0.30},
+	{"materials", 0.30},
+	{"function", 0.20},
 	{"proportions", 0.10},
 	{"palette", 0.10},
 }
@@ -284,6 +284,30 @@ func ratioCloseness(a, b float64) float64 {
 	return a / b
 }
 
+// logDamp compresses raw family counts to log scale for comparison.
+func logDamp(v []float32) []float32 {
+	out := make([]float32, len(v))
+	for i, x := range v {
+		if x > 0 {
+			out[i] = float32(math.Log1p(float64(x)))
+		}
+	}
+	return out
+}
+
+// functionalFraction is the share of a build's blocks that are functional
+// Create components.
+func functionalFraction(fn []float32, blockCount int) float64 {
+	if blockCount <= 0 {
+		return 0
+	}
+	var sum float64
+	for _, v := range fn {
+		sum += float64(v)
+	}
+	return sum / float64(blockCount)
+}
+
 // functionVector extracts the Create functional profile from the family
 // histogram.
 func functionVector(families []float32) []float32 {
@@ -311,10 +335,28 @@ func Compare(a, b *Fingerprint) Similarity {
 	}
 	scores["shape"] = shapeScore
 
-	scores["materials"] = cosine32(a.Families, b.Families)
+	// Materials: log-damped counts, so one dominant family (usually the
+	// terrain a build was scanned with) cannot hijack the cosine.
+	scores["materials"] = cosine32(logDamp(a.Families), logDamp(b.Families))
 
+	// Function: kind-of-machinery direction scaled by how much of each build
+	// is machinery. Cosine alone is scale-invariant — a house with three
+	// pipes would otherwise "function" like a giant boiler. Builds whose
+	// functional share is below the noise floor count as plain non-machines:
+	// two such builds agree perfectly, and a handful of decorative Create
+	// blocks neither helps nor hurts.
 	fa, fb := functionVector(a.Families), functionVector(b.Families)
-	scores["function"] = cosine32(fa, fb)
+	da := functionalFraction(fa, a.BlockCount)
+	db := functionalFraction(fb, b.BlockCount)
+	const functionalNoiseFloor = 0.02
+	switch {
+	case da < functionalNoiseFloor && db < functionalNoiseFloor:
+		scores["function"] = 1
+	case da < functionalNoiseFloor || db < functionalNoiseFloor:
+		scores["function"] = ratioCloseness(math.Max(da, functionalNoiseFloor), math.Max(db, functionalNoiseFloor))
+	default:
+		scores["function"] = cosine32(fa, fb) * ratioCloseness(da, db)
+	}
 
 	// Proportions: aspect-ratio closeness (scale-free) plus density and
 	// absolute-size closeness (scale-aware, so a 2x copy scores below 1).
