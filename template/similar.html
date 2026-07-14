@@ -14,10 +14,12 @@
                 {{ if .Results }}
                 {{ $cur := .Sort }}{{ $slug := .Slug }}
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                    <span class="text-secondary small">{{ T .Language "Sort by" }}</span>
-                    {{ range .SortKeys }}
-                    <a href="{{ $slug }}{{ if ne . "overall" }}?sort={{ . }}{{ end }}" class="btn btn-sm {{ if eq . $cur }}btn-primary{{ else }}btn-outline-secondary{{ end }}" style="text-transform: capitalize;">{{ T $.Language . }}</a>
-                    {{ end }}
+                    <label class="text-secondary small" for="sim-sort">{{ T .Language "Sort by" }}</label>
+                    <select class="form-select" id="sim-sort" data-slug="{{ $slug }}" style="width:auto;text-transform:capitalize;">
+                        {{ range .SortKeys }}
+                        <option value="{{ . }}"{{ if eq . $cur }} selected{{ end }}>{{ T $.Language . }}</option>
+                        {{ end }}
+                    </select>
                 </div>
                 <div class="row row-cards">
                     {{ range .Results }}
@@ -51,4 +53,15 @@
         {{ template "footer.html" . }}
     </div>
 </div>
+<script hx-disable>
+(function () {
+  'use strict';
+  var sel = document.getElementById('sim-sort');
+  if (!sel) return;
+  sel.addEventListener('change', function () {
+    var slug = sel.getAttribute('data-slug') || window.location.pathname;
+    window.location.href = sel.value === 'overall' ? slug : slug + '?sort=' + encodeURIComponent(sel.value);
+  });
+})();
+</script>
 {{ template "foot.html" . }}

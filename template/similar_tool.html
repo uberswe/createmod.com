@@ -29,6 +29,15 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/></svg>
                         <span class="name" id="sim-chipname"></span><span class="size" id="sim-chipsize"></span>
                     </span>
+                    <label class="text-secondary small" for="sim-sort">{{ T .Language "Sort by" }}</label>
+                    <select class="form-select" id="sim-sort" style="width:auto;text-transform:capitalize;">
+                        <option value="overall" selected>{{ T .Language "overall" }}</option>
+                        <option value="shape">{{ T .Language "shape" }}</option>
+                        <option value="materials">{{ T .Language "materials" }}</option>
+                        <option value="function">{{ T .Language "function" }}</option>
+                        <option value="proportions">{{ T .Language "proportions" }}</option>
+                        <option value="palette">{{ T .Language "palette" }}</option>
+                    </select>
                 </div>
                 <div class="text-secondary small mb-3" id="sim-status"></div>
 
@@ -54,11 +63,31 @@
   var chip = document.getElementById('sim-chip');
   var chipName = document.getElementById('sim-chipname');
   var chipSize = document.getElementById('sim-chipsize');
+  var sortSel = document.getElementById('sim-sort');
+  var lastResults = [];
 
   function fmtSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function componentPercent(r, name) {
+    var bd = r.breakdown || [];
+    for (var i = 0; i < bd.length; i++) {
+      if (bd[i].name === name) return bd[i].percent;
+    }
+    return 0;
+  }
+
+  // Results arrive sorted by overall score; component sorts keep overall as
+  // the tie-breaker by sorting a copy stably.
+  function sortedResults(key) {
+    var out = lastResults.slice();
+    if (key !== 'overall') {
+      out.sort(function (a, b) { return componentPercent(b, key) - componentPercent(a, key); });
+    }
+    return out;
   }
 
   function search(file) {
@@ -76,71 +105,82 @@
           statusEl.textContent = res.j.error || 'search failed';
           return;
         }
-        var results = res.j.results || [];
-        if (results.length) {
+        lastResults = res.j.results || [];
+        if (lastResults.length) {
           statusEl.textContent = '';
-          countEl.textContent = results.length + ' {{ T .Language "matches" }}';
+          countEl.textContent = lastResults.length + ' {{ T .Language "matches" }}';
           ofEl.textContent = '{{ T .Language "of" }} ' + (res.j.indexed || 0).toLocaleString() + ' {{ T .Language "indexed schematics" }}';
           chip.style.display = '';
           bar.style.display = '';
         } else {
           statusEl.textContent = '{{ T .Language "No matches above 35% similarity. This build looks unique." }}';
         }
-        results.forEach(function (r) {
-          var col = document.createElement('div');
-          col.className = 'col-sm-6 col-lg-4';
-          var card = document.createElement('a');
-          card.href = '/schematics/' + encodeURIComponent(r.schematic.name);
-          card.className = 'card d-block text-decoration-none mb-3';
-          var imgWrap = document.createElement('div');
-          imgWrap.className = 'position-relative';
-          var img = document.createElement('img');
-          img.className = 'card-img-top object-fit-cover';
-          img.width = 480; img.height = 270;
-          img.style.aspectRatio = '16/9';
-          img.style.width = '100%';
-          img.style.height = 'auto';
-          img.loading = 'lazy';
-          if (r.schematic.featuredImage) {
-            img.src = '/api/files/schematics/' + r.schematic.id + '/' + encodeURIComponent(r.schematic.featuredImage) + '?thumb=480x270&v=2';
-          } else {
-            img.src = '/assets/x/placeholders/schematic-dark-01.svg';
-          }
-          var badge = document.createElement('span');
-          badge.className = 'cm-scard__sim';
-          badge.textContent = r.percent + '%';
-          imgWrap.appendChild(img);
-          imgWrap.appendChild(badge);
-          var body = document.createElement('div');
-          body.className = 'card-body';
-          body.style.padding = '14px 16px 16px';
-          var title = document.createElement('div');
-          title.className = 'fw-bold text-truncate';
-          title.textContent = r.schematic.title || r.schematic.name;
-          body.appendChild(title);
-          var grid = document.createElement('div');
-          grid.className = 'cm-matchgrid';
-          (r.breakdown || []).forEach(function (c) {
-            var cell = document.createElement('div');
-            var val = document.createElement('div');
-            val.className = 'val';
-            val.textContent = c.percent + '%';
-            var lbl = document.createElement('div');
-            lbl.className = 'lbl';
-            lbl.textContent = c.name;
-            cell.appendChild(val);
-            cell.appendChild(lbl);
-            grid.appendChild(cell);
-          });
-          body.appendChild(grid);
-          card.appendChild(imgWrap);
-          card.appendChild(body);
-          col.appendChild(card);
-          resultsEl.appendChild(col);
-        });
+        renderResults(sortSel.value);
       })
       .catch(function () { statusEl.textContent = '{{ T .Language "Search failed" }}'; });
   }
+
+  function renderResults(sortKey) {
+    resultsEl.replaceChildren();
+    sortedResults(sortKey).forEach(function (r) {
+      var col = document.createElement('div');
+      col.className = 'col-sm-6 col-lg-4';
+      var card = document.createElement('a');
+      card.href = '/schematics/' + encodeURIComponent(r.schematic.name);
+      card.className = 'card d-block text-decoration-none mb-3';
+      var imgWrap = document.createElement('div');
+      imgWrap.className = 'position-relative';
+      var img = document.createElement('img');
+      img.className = 'card-img-top object-fit-cover';
+      img.width = 480; img.height = 270;
+      img.style.aspectRatio = '16/9';
+      img.style.width = '100%';
+      img.style.height = 'auto';
+      img.loading = 'lazy';
+      if (r.schematic.featuredImage) {
+        img.src = '/api/files/schematics/' + r.schematic.id + '/' + encodeURIComponent(r.schematic.featuredImage) + '?thumb=480x270&v=2';
+      } else {
+        img.src = '/assets/x/placeholders/schematic-dark-01.svg';
+      }
+      var badge = document.createElement('span');
+      badge.className = 'cm-scard__sim';
+      badge.textContent = r.percent + '%';
+      imgWrap.appendChild(img);
+      imgWrap.appendChild(badge);
+      var body = document.createElement('div');
+      body.className = 'card-body';
+      body.style.padding = '14px 16px 16px';
+      var title = document.createElement('div');
+      title.className = 'fw-bold text-truncate';
+      title.textContent = r.schematic.title || r.schematic.name;
+      body.appendChild(title);
+      var grid = document.createElement('div');
+      grid.className = 'cm-matchgrid';
+      (r.breakdown || []).forEach(function (c) {
+        var cell = document.createElement('div');
+        var val = document.createElement('div');
+        val.className = 'val';
+        val.textContent = c.percent + '%';
+        var lbl = document.createElement('div');
+        lbl.className = 'lbl';
+        lbl.textContent = c.name;
+        if (c.name === sortKey) {
+          val.style.color = 'var(--cm-primary)';
+          lbl.style.color = 'var(--cm-primary)';
+        }
+        cell.appendChild(val);
+        cell.appendChild(lbl);
+        grid.appendChild(cell);
+      });
+      body.appendChild(grid);
+      card.appendChild(imgWrap);
+      card.appendChild(body);
+      col.appendChild(card);
+      resultsEl.appendChild(col);
+    });
+  }
+
+  sortSel.addEventListener('change', function () { renderResults(sortSel.value); });
 
   drop.addEventListener('click', function () { input.click(); });
   input.addEventListener('change', function () { if (input.files[0]) search(input.files[0]); });
