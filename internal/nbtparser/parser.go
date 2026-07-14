@@ -574,6 +574,50 @@ type GuideData struct {
 // maxGuideBlocks limits the number of blocks to prevent enormous payloads.
 const maxGuideBlocks = 500000
 
+// guideOutlierSpan is how far (per axis, in blocks) a block may sit from the
+// median center of the build before it is treated as corrupt data and dropped
+// from the guide. Malformed exports can carry stray blocks or entities at
+// world-absolute coordinates; without this guard a single such entry inflates
+// the guide grid to millions of cells and the frontend cannot render it.
+const guideOutlierSpan = 2048
+
+type guideRawBlock struct {
+	x, y, z int
+	state   int
+}
+
+// dropGuideOutliers removes blocks unreasonably far from the median center.
+func dropGuideOutliers(raw []guideRawBlock) []guideRawBlock {
+	if len(raw) == 0 {
+		return raw
+	}
+	median := func(pick func(guideRawBlock) int) int {
+		vals := make([]int, len(raw))
+		for i, b := range raw {
+			vals[i] = pick(b)
+		}
+		sort.Ints(vals)
+		return vals[len(vals)/2]
+	}
+	medX := median(func(b guideRawBlock) int { return b.x })
+	medY := median(func(b guideRawBlock) int { return b.y })
+	medZ := median(func(b guideRawBlock) int { return b.z })
+	abs := func(v int) int {
+		if v < 0 {
+			return -v
+		}
+		return v
+	}
+	kept := raw[:0]
+	for _, b := range raw {
+		if abs(b.x-medX) > guideOutlierSpan || abs(b.y-medY) > guideOutlierSpan || abs(b.z-medZ) > guideOutlierSpan {
+			continue
+		}
+		kept = append(kept, b)
+	}
+	return kept
+}
+
 // blockColor returns a hex color for a Minecraft block ID.
 func blockColor(name string) string {
 	colors := map[string]string{
@@ -758,42 +802,53 @@ func ExtractGuideBlocks(data []byte) (*GuideData, error) {
 		return t
 	}
 
-	var blocks []GuideBlock
-	var minX, minY, minZ float64 = math.MaxFloat64, math.MaxFloat64, math.MaxFloat64
-
-	// First pass: find min coordinates
+	// Collect buildable blocks. Entities are skipped: they are not part of a
+	// layer-by-layer build, and some exporters store entity positions in
+	// world-absolute (or negated-world) coordinates that would explode the
+	// guide's bounding box.
+	var raw []guideRawBlock
 	for _, b := range std.Blocks {
+		if b.Type == "entity" {
+			continue
+		}
 		name := getName(b.State)
 		if isNonBuildableBlock(name) {
 			continue
 		}
-		if b.Position.X < minX {
-			minX = b.Position.X
+		raw = append(raw, guideRawBlock{
+			x:     int(math.Round(b.Position.X)),
+			y:     int(math.Round(b.Position.Y)),
+			z:     int(math.Round(b.Position.Z)),
+			state: b.State,
+		})
+	}
+	raw = dropGuideOutliers(raw)
+
+	var blocks []GuideBlock
+	minX, minY, minZ := math.MaxInt32, math.MaxInt32, math.MaxInt32
+	for _, rb := range raw {
+		if rb.x < minX {
+			minX = rb.x
 		}
-		if b.Position.Y < minY {
-			minY = b.Position.Y
+		if rb.y < minY {
+			minY = rb.y
 		}
-		if b.Position.Z < minZ {
-			minZ = b.Position.Z
+		if rb.z < minZ {
+			minZ = rb.z
 		}
 	}
 
-	// Second pass: build blocks
 	var maxX, maxY, maxZ int
-	for _, b := range std.Blocks {
-		name := getName(b.State)
-		if isNonBuildableBlock(name) {
-			continue
-		}
+	for _, rb := range raw {
 		if len(blocks) >= maxGuideBlocks {
 			break
 		}
-		bt := getType(name)
-		x := int(math.Round(b.Position.X - minX))
-		y := int(math.Round(b.Position.Y - minY))
-		z := int(math.Round(b.Position.Z - minZ))
+		bt := getType(getName(rb.state))
+		x := rb.x - minX
+		y := rb.y - minY
+		z := rb.z - minZ
 		var props map[string]string
-		if p, ok := std.Palette[b.State]; ok && len(p.Properties) > 0 {
+		if p, ok := std.Palette[rb.state]; ok && len(p.Properties) > 0 {
 			if f, hasFacing := p.Properties["facing"]; hasFacing {
 				props = map[string]string{"facing": f}
 			}
@@ -871,13 +926,7 @@ func extractGuideFromMap(decoded interface{}) (*GuideData, error) {
 	}
 
 	var blocks []GuideBlock
-	var minX, minY, minZ int = math.MaxInt32, math.MaxInt32, math.MaxInt32
-
-	type rawBlock struct {
-		x, y, z int
-		state   int
-	}
-	var rawBlocks []rawBlock
+	var rawBlocks []guideRawBlock
 
 	for _, block := range blocksSlice {
 		bm, ok := block.(map[string]interface{})
@@ -900,16 +949,21 @@ func extractGuideFromMap(decoded interface{}) (*GuideData, error) {
 		if !ok || len(pos) < 3 {
 			continue
 		}
-		if pos[0] < minX {
-			minX = pos[0]
+		rawBlocks = append(rawBlocks, guideRawBlock{pos[0], pos[1], pos[2], state})
+	}
+	rawBlocks = dropGuideOutliers(rawBlocks)
+
+	minX, minY, minZ := math.MaxInt32, math.MaxInt32, math.MaxInt32
+	for _, rb := range rawBlocks {
+		if rb.x < minX {
+			minX = rb.x
 		}
-		if pos[1] < minY {
-			minY = pos[1]
+		if rb.y < minY {
+			minY = rb.y
 		}
-		if pos[2] < minZ {
-			minZ = pos[2]
+		if rb.z < minZ {
+			minZ = rb.z
 		}
-		rawBlocks = append(rawBlocks, rawBlock{pos[0], pos[1], pos[2], state})
 	}
 
 	var maxX, maxY, maxZ int
