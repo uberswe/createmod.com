@@ -635,11 +635,27 @@ function renderBlocks(data) {
   }
 
   if (!cameraUserInteracted) {
-    var maxDim = Math.max(data.sizeX, data.sizeY, data.sizeZ);
+    // Frame the occupied bounding box, not the declared canvas size: editor
+    // sessions can carry air padding (e.g. after expanding upward), and
+    // framing the declared size then centers the camera on empty space.
+    var minBX = Infinity, minBY = Infinity, minBZ = Infinity;
+    var maxBX = -Infinity, maxBY = -Infinity, maxBZ = -Infinity;
+    for (var ci = 0; ci < blocks.length; ci++) {
+      var cb = blocks[ci];
+      if (cb.x < minBX) minBX = cb.x;
+      if (cb.x > maxBX) maxBX = cb.x;
+      if (cb.y < minBY) minBY = cb.y;
+      if (cb.y > maxBY) maxBY = cb.y;
+      if (cb.z < minBZ) minBZ = cb.z;
+      if (cb.z > maxBZ) maxBZ = cb.z;
+    }
+    var maxDim = Math.max(maxBX - minBX + 1, maxBY - minBY + 1, maxBZ - minBZ + 1);
     var dist = maxDim * 2.4;
-    var centerY = data.sizeY / 2;
-    camera.position.set(dist * 0.7, centerY + dist * 0.25, dist * 0.7);
-    controls.target.set(0, centerY, 0);
+    var tx = (minBX + maxBX) / 2 - cx;
+    var ty = (minBY + maxBY) / 2;
+    var tz = (minBZ + maxBZ) / 2 - cz;
+    camera.position.set(tx + dist * 0.7, ty + dist * 0.25, tz + dist * 0.7);
+    controls.target.set(tx, ty, tz);
     controls.update();
   }
 }
