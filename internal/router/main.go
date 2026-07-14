@@ -763,6 +763,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/tools/convert", Adapt(pages.ConvertToolHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/tools/convert/{pair}", Adapt(pages.ConvertPairHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/convert", Adapt(pages.ConvertAPIHandler()))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/convert/batch", Adapt(pages.ConvertBatchAPIHandler()))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/convert/inspect", Adapt(pages.ConvertInspectHandler()))
 	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/propeller/{hash}", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))

@@ -1,8 +1,11 @@
 package pages
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -33,6 +36,9 @@ func Test_Convert_Template_Has_Expected_Elements(t *testing.T) {
 		"data-to=\"litematic\"",
 		"SoftwareApplication",
 		"h1 class=\"h2 mb-1\"",
+		"/api/convert/batch",
+		"multiple",
+		"conv-filelist",
 	}
 	for _, m := range must {
 		if !strings.Contains(s, m) {
@@ -148,6 +154,193 @@ func Test_ConvertAPIHandler_RejectsBadInput(t *testing.T) {
 	}
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Errorf("garbage: status %d", rec.Code)
+	}
+}
+
+// multipartBatchBody builds a multipart body with repeated "files" parts.
+func multipartBatchBody(t *testing.T, to string, files map[string][]byte, names []string) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	if err := w.WriteField("to", to); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		fw, err := w.CreateFormFile("files", name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := fw.Write(files[name]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return &buf, w.FormDataContentType()
+}
+
+func runBatch(t *testing.T, body *bytes.Buffer, ctype string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/convert/batch", body)
+	req.Header.Set("Content-Type", ctype)
+	rec := httptest.NewRecorder()
+	if err := ConvertBatchAPIHandler()(&server.RequestEvent{Response: rec, Request: req}); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	return rec
+}
+
+func Test_ConvertBatchAPIHandler_ConvertsMultipleToZip(t *testing.T) {
+	nbt := testStructureNBT(t)
+	body, ctype := multipartBatchBody(t, "schem", map[string][]byte{"one.nbt": nbt, "two.nbt": nbt}, []string{"one.nbt", "two.nbt"})
+	rec := runBatch(t, body, ctype)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/zip" {
+		t.Errorf("content type = %q", ct)
+	}
+	if dispo := rec.Header().Get("Content-Disposition"); !strings.Contains(dispo, "converted-schem.zip") {
+		t.Errorf("content disposition = %q", dispo)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("output is not a zip: %v", err)
+	}
+	got := map[string]bool{}
+	for _, f := range zr.File {
+		got[f.Name] = true
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := schematic.ReadSponge(data)
+		if err != nil {
+			t.Fatalf("%s unreadable: %v", f.Name, err)
+		}
+		if out.BlockCount() != 1 {
+			t.Errorf("%s content lost: blocks=%d", f.Name, out.BlockCount())
+		}
+	}
+	if !got["one.schem"] || !got["two.schem"] {
+		t.Errorf("zip entries = %v", got)
+	}
+	var results []convertBatchResult
+	if err := json.Unmarshal([]byte(rec.Header().Get("X-Conversion-Results")), &results); err != nil {
+		t.Fatalf("results header: %v", err)
+	}
+	if len(results) != 2 || !results[0].OK || !results[1].OK {
+		t.Errorf("results = %+v", results)
+	}
+}
+
+func Test_ConvertBatchAPIHandler_DedupesOutputNames(t *testing.T) {
+	nbt := testStructureNBT(t)
+	// Same base name from different folders collides after conversion.
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	if err := w.WriteField("to", "schem"); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		fw, err := w.CreateFormFile("files", "build.nbt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := fw.Write(nbt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	rec := runBatch(t, &buf, w.FormDataContentType())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		if names[f.Name] {
+			t.Fatalf("duplicate zip entry %s", f.Name)
+		}
+		names[f.Name] = true
+	}
+	if len(names) != 2 {
+		t.Errorf("expected 2 distinct entries, got %v", names)
+	}
+}
+
+func Test_ConvertBatchAPIHandler_PartialFailure(t *testing.T) {
+	body, ctype := multipartBatchBody(t, "schem",
+		map[string][]byte{"good.nbt": testStructureNBT(t), "bad.nbt": []byte("not a schematic")},
+		[]string{"good.nbt", "bad.nbt"})
+	rec := runBatch(t, body, ctype)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var results []convertBatchResult
+	if err := json.Unmarshal([]byte(rec.Header().Get("X-Conversion-Results")), &results); err != nil {
+		t.Fatalf("results header: %v", err)
+	}
+	if len(results) != 2 || !results[0].OK || results[1].OK || results[1].Error == "" {
+		t.Errorf("results = %+v", results)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(zr.File) != 1 {
+		t.Errorf("expected 1 zip entry, got %d", len(zr.File))
+	}
+}
+
+func Test_ConvertBatchAPIHandler_RejectsBadBatches(t *testing.T) {
+	// Every file fails → 422 with per-file results.
+	body, ctype := multipartBatchBody(t, "schem",
+		map[string][]byte{"a.nbt": []byte("junk"), "b.nbt": []byte("junk")},
+		[]string{"a.nbt", "b.nbt"})
+	rec := runBatch(t, body, ctype)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("all-fail: status %d", rec.Code)
+	}
+
+	// Unsupported target format.
+	body, ctype = multipartBatchBody(t, "exe", map[string][]byte{"a.nbt": testStructureNBT(t)}, []string{"a.nbt"})
+	rec = runBatch(t, body, ctype)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("bad target: status %d", rec.Code)
+	}
+
+	// No files at all.
+	body, ctype = multipartBatchBody(t, "schem", nil, nil)
+	rec = runBatch(t, body, ctype)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("no files: status %d", rec.Code)
+	}
+
+	// Too many files.
+	nbt := testStructureNBT(t)
+	files := map[string][]byte{}
+	var names []string
+	for i := 0; i < maxConvertBatchFiles+1; i++ {
+		name := fmt.Sprintf("f%d.nbt", i)
+		files[name] = nbt
+		names = append(names, name)
+	}
+	body, ctype = multipartBatchBody(t, "schem", files, names)
+	rec = runBatch(t, body, ctype)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("too many: status %d", rec.Code)
 	}
 }
 
