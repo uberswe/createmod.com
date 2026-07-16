@@ -4087,6 +4087,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		Security:            &SecurityStoreImpl{q: q, pool: pool},
 		AdClicks:            &AdClickStoreImpl{q: q},
 		ModSecrets:          &ModSecretStoreImpl{pool: pool},
+		BlockedURLs:         &BlockedURLStoreImpl{pool: pool},
 	}
 }
 
@@ -4145,6 +4146,60 @@ func (m *ModSecretStoreImpl) SetActive(ctx context.Context, id string, active bo
 
 func (m *ModSecretStoreImpl) Delete(ctx context.Context, id string) error {
 	_, err := m.pool.Exec(ctx, `DELETE FROM mod_secrets WHERE id = $1`, id)
+	return err
+}
+
+// BlockedURLStoreImpl implements store.BlockedURLStore over raw pgx.
+type BlockedURLStoreImpl struct{ pool *pgxpool.Pool }
+
+func (b *BlockedURLStoreImpl) ListURLs(ctx context.Context) ([]string, error) {
+	rows, err := b.pool.Query(ctx, `SELECT url FROM blocked_urls ORDER BY created_at`)
+	if err != nil {
+		return nil, fmt.Errorf("listing blocked urls: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func (b *BlockedURLStoreImpl) List(ctx context.Context) ([]store.BlockedURL, error) {
+	rows, err := b.pool.Query(ctx, `
+		SELECT id, url, note, created_by, created_at
+		FROM blocked_urls ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("listing blocked urls: %w", err)
+	}
+	defer rows.Close()
+	var out []store.BlockedURL
+	for rows.Next() {
+		var u store.BlockedURL
+		if err := rows.Scan(&u.ID, &u.URL, &u.Note, &u.CreatedBy, &u.Created); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func (b *BlockedURLStoreImpl) Create(ctx context.Context, u *store.BlockedURL) error {
+	return b.pool.QueryRow(ctx, `
+		INSERT INTO blocked_urls (url, note, created_by)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (url) DO UPDATE SET note = EXCLUDED.note
+		RETURNING id, created_at`,
+		u.URL, u.Note, u.CreatedBy,
+	).Scan(&u.ID, &u.Created)
+}
+
+func (b *BlockedURLStoreImpl) Delete(ctx context.Context, id string) error {
+	_, err := b.pool.Exec(ctx, `DELETE FROM blocked_urls WHERE id = $1`, id)
 	return err
 }
 
@@ -4733,6 +4788,7 @@ var (
 	_ store.ZeroResultStore     = (*ZeroResultStoreImpl)(nil)
 	_ store.AdClickStore        = (*AdClickStoreImpl)(nil)
 	_ store.ModSecretStore      = (*ModSecretStoreImpl)(nil)
+	_ store.BlockedURLStore     = (*BlockedURLStoreImpl)(nil)
 )
 
 // --------------------------------------------------------------------------
