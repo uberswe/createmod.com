@@ -2,7 +2,7 @@
 <div id="search-filters">
     <form id="advanced-search-form" method="get" action="/search" autocomplete="off"
           hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML" hx-push-url="true"
-          hx-trigger="change">
+          hx-trigger="change" hx-sync="this:replace">
         <div class="search-filter-bar">
             <div class="search-filter-row">
                 <div class="search-filter-input input-icon">
@@ -12,7 +12,7 @@
                     <input id="search-hero-input" type="text" value="{{ .Term }}" name="q" class="form-control" placeholder="{{ T .Language "Search schematics, creators, tags..." }}"
                            aria-label="Search CreateMod.com" autocomplete="off"
                            hx-get="/search" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"
-                           hx-trigger="keyup changed delay:800ms, search" hx-include="closest form">
+                           hx-trigger="keyup changed delay:800ms, search" hx-include="closest form" hx-sync="closest form:replace">
                 </div>
                 <div class="search-filter-item">
                     <span class="filter-label">{{ T .Language "Sort" }}:</span>
