@@ -153,14 +153,14 @@
                                     <ul class="pagination mb-0">
                                         {{ if gt .Page 1 }}
                                         <li class="page-item">
-                                            <a class="page-link page-link-arrow" href="{{ .FirstURL }}" hx-get="{{ .FirstURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7l-5 5l5 5"/><path d="M17 7l-5 5l5 5"/></svg></a>
+                                            <a class="page-link page-link-arrow" href="{{ .FirstURL }}" hx-get="{{ .FirstURL }}" hx-sync="#advanced-search-form:replace" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7l-5 5l5 5"/><path d="M17 7l-5 5l5 5"/></svg></a>
                                         </li>
                                         {{ else }}
                                         <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 7l-5 5l5 5"/><path d="M17 7l-5 5l5 5"/></svg></span></li>
                                         {{ end }}
                                         {{ if .HasPrev }}
                                         <li class="page-item">
-                                            <a class="page-link page-link-arrow" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></a>
+                                            <a class="page-link page-link-arrow" href="{{ .PrevURL }}" hx-get="{{ .PrevURL }}" hx-sync="#advanced-search-form:replace" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></a>
                                         </li>
                                         {{ else }}
                                         <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6l6 6"/></svg></span></li>
@@ -168,14 +168,14 @@
                                         <li class="page-item"><span class="page-link page-link-info page-jump-trigger" data-page-jump data-current-page="{{ .Page }}" data-total-pages="{{ .TotalPages }}" data-page-param="p">{{ T .Language "Page" }} {{ .Page }}/{{ .TotalPages }}</span></li>
                                         {{ if .HasNext }}
                                         <li class="page-item">
-                                            <a class="page-link page-link-arrow" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></a>
+                                            <a class="page-link page-link-arrow" href="{{ .NextURL }}" hx-get="{{ .NextURL }}" hx-sync="#advanced-search-form:replace" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></a>
                                         </li>
                                         {{ else }}
                                         <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg></span></li>
                                         {{ end }}
                                         {{ if and (gt .TotalPages 0) (lt .Page .TotalPages) }}
                                         <li class="page-item">
-                                            <a class="page-link page-link-arrow" href="{{ .LastURL }}" hx-get="{{ .LastURL }}" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5 5l-5 5"/><path d="M13 7l5 5l-5 5"/></svg></a>
+                                            <a class="page-link page-link-arrow" href="{{ .LastURL }}" hx-get="{{ .LastURL }}" hx-sync="#advanced-search-form:replace" hx-target="#search-results" hx-select="#search-results" hx-swap="outerHTML scroll:top" hx-push-url="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5 5l-5 5"/><path d="M13 7l5 5l-5 5"/></svg></a>
                                         </li>
                                         {{ else }}
                                         <li class="page-item disabled"><span class="page-link page-link-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5 5l-5 5"/><path d="M13 7l5 5l-5 5"/></svg></span></li>
