@@ -79,6 +79,7 @@ func (s *Service) Generate(appStore *store.Store) {
 	addPage(now, smPages, "/rules", 0.9, smg.Weekly)
 	addPage(now, smPages, "/terms-of-service", 0.9, smg.Weekly)
 	addPage(now, smPages, "/privacy-policy", 0.9, smg.Weekly)
+	addPage(now, smPages, "/dmca", 0.5, smg.Monthly)
 	addPage(now, smPages, "/login", 0.9, smg.Weekly)
 	addPage(now, smPages, "/register", 0.9, smg.Weekly)
 	addPage(now, smPages, "/reset-password", 0.9, smg.Weekly)

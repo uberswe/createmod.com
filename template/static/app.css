@@ -1246,6 +1246,7 @@ body.sidebar-open::after {
   border-radius: 999px;
   line-height: 1;
 }
+.search-filter-bar .btn-filter-search,
 .search-filter-bar .btn-more-filters {
   font-size: 0.8125rem;
   padding: 0.25rem 0.625rem;

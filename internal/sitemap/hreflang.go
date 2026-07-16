@@ -73,6 +73,7 @@ func (s *Service) GenerateHreflang(appStore *store.Store) []string {
 		"/rules",
 		"/terms-of-service",
 		"/privacy-policy",
+		"/dmca",
 		"/login",
 		"/register",
 		"/reset-password",

@@ -447,6 +447,8 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/upload/pending", Adapt(pages.UploadPendingHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/contact", Adapt(pages.ContactHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
+	r.Get("/dmca", Adapt(pages.DMCAHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/dmca", Adapt(pages.DMCASubmitHandler(p.AppStore, p.MailService)))
 	// Comments and ratings API (replaces PB REST endpoints)
 	// Build comment moderation enqueuer
 	var enqueueCommentModeration pages.CommentModerationEnqueuer
