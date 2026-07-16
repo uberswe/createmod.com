@@ -1547,6 +1547,27 @@ type ModSecretStore interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// BlockedURL is an admin-managed URL (path + optional query string) that is
+// served a 404, e.g. to honor DMCA takedown notices without removing
+// unrelated content.
+type BlockedURL struct {
+	ID        string
+	URL       string // path + optional query, e.g. /es/search?q=foo
+	Note      string // free text, e.g. the takedown notice reference
+	CreatedBy string
+	Created   time.Time
+}
+
+// BlockedURLStore manages admin-defined blocked URLs.
+type BlockedURLStore interface {
+	// ListURLs returns just the URL strings of all entries (hot path).
+	ListURLs(ctx context.Context) ([]string, error)
+	// List returns all entries (for the admin UI), newest first.
+	List(ctx context.Context) ([]BlockedURL, error)
+	Create(ctx context.Context, b *BlockedURL) error
+	Delete(ctx context.Context, id string) error
+}
+
 type Store struct {
 	Users               UserStore
 	Sessions            SessionStore
@@ -1593,4 +1614,5 @@ type Store struct {
 	Security            SecurityStore
 	AdClicks            AdClickStore
 	ModSecrets          ModSecretStore
+	BlockedURLs         BlockedURLStore
 }

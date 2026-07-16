@@ -276,6 +276,9 @@ func Register(p RegisterParams) chi.Router {
 	r.Use(requestLogger)
 	r.Use(securityHeaders)
 	r.Use(maintenanceModeMiddleware(maintenanceFlag))
+	// Admin-managed blocked URLs (DMCA takedowns) return a 404. Runs before
+	// the legacy-compat rewrites so the exact reported URL is what's blocked.
+	r.Use(blockedURLMiddleware(p.AppStore, p.CacheService, Adapt(pages.FourOhFourHandler(registry, p.AppStore))))
 	r.Use(legacyFileCompat)
 	r.Use(legacySearchCompat)
 	r.Use(legacyCategoryCompat)
@@ -562,6 +565,9 @@ func Register(p RegisterParams) chi.Router {
 		r.Post("/admin/api-secrets", Adapt(pages.AdminModSecretCreateHandler(p.CacheService, p.AppStore)))
 		r.Post("/admin/api-secrets/{id}/active", Adapt(pages.AdminModSecretActiveHandler(p.CacheService, p.AppStore)))
 		r.Post("/admin/api-secrets/{id}/delete", Adapt(pages.AdminModSecretDeleteHandler(p.CacheService, p.AppStore)))
+		r.Get("/admin/blocked-urls", Adapt(pages.AdminBlockedURLsHandler(registry, p.CacheService, p.AppStore)))
+		r.Post("/admin/blocked-urls", Adapt(pages.AdminBlockedURLCreateHandler(p.CacheService, p.AppStore)))
+		r.Post("/admin/blocked-urls/{id}/delete", Adapt(pages.AdminBlockedURLDeleteHandler(p.CacheService, p.AppStore)))
 		r.Get("/admin/api-keys", Adapt(pages.AdminAPIKeysHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/api-keys/{id}/rate-limit", Adapt(pages.AdminAPIKeyRateLimitHandler(p.AppStore)))
 		r.Get("/admin/mods", Adapt(pages.AdminModsHandler(registry, p.CacheService, p.AppStore)))
