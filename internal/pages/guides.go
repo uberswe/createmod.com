@@ -147,6 +147,10 @@ func GuidesHandler(registry *server.Registry, cacheService *cache.Service, outSe
 		d.Title = i18n.T(d.Language, "Guides")
 		d.Description = i18n.T(d.Language, "Guides for the Create mod and Minecraft")
 		d.Slug = "/guides"
+		// Never index arbitrary-search-term result pages (spam-query bait).
+		if q != "" {
+			d.NoIndex = true
+		}
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(guidesTemplates...).Render(d)

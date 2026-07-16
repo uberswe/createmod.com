@@ -330,6 +330,10 @@ func VideosHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		d.Title = i18n.T(d.Language, "Create Mod Videos")
 		d.Description = i18n.T(d.Language, "Videos from published schematics")
 		d.Slug = "/videos"
+		// Never index arbitrary-search-term result pages (spam-query bait).
+		if q != "" {
+			d.NoIndex = true
+		}
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(videosTemplates...).Render(d)

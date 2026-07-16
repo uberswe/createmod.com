@@ -467,6 +467,11 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 			d.Description = d.Subtitle
 		}
 		d.Slug = "/mods/" + slug
+		// Arbitrary search terms are attacker-controlled input; never let
+		// spam-query result pages get indexed (DMCA/brand-crawler bait).
+		if term != "" {
+			d.NoIndex = true
+		}
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 		html, err := registry.LoadFiles(modDetailTemplates...).Render(d)
