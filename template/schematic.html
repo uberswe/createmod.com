@@ -1430,11 +1430,26 @@ function copyMaterialsAsMarkdown() {
 </script>
 <script>
     (function() {
+        function createCommentEditor() {
+            cmEditorEnsure(function () {
+                var el = document.querySelector('#tinymce-comment');
+                if (!el) return;
+                if (window._cmCommentEditor) { cmEditor.destroy(window._cmCommentEditor); }
+                window._cmCommentEditor = cmEditor.create('#tinymce-comment', { preset: 'basic', minHeight: 200, maxHeight: 400, placeholder: 'comment text goes here' });
+            });
+        }
         function initCommentEditor() {
             var el = document.querySelector('#tinymce-comment');
             if (!el) return;
-            if (window._cmCommentEditor) { cmEditor.destroy(window._cmCommentEditor); }
-            window._cmCommentEditor = cmEditor.create('#tinymce-comment', { preset: 'basic', minHeight: 200, maxHeight: 400, placeholder: 'comment text goes here' });
+            // Once the bundle is loaded (user already interacted), keep the
+            // editor eager so comment-section swaps re-render it instantly.
+            if (window.cmEditor) { createCommentEditor(); return; }
+            // Defer the ~140 KB editor bundle until the visitor actually
+            // starts writing a comment — most schematic views never do.
+            if (el.getAttribute('data-editor-armed')) return;
+            el.setAttribute('data-editor-armed', '1');
+            el.addEventListener('focusin', createCommentEditor, { once: true });
+            el.addEventListener('click', createCommentEditor, { once: true });
         }
         if (!window._htmxCommentEditorReinit) {
             window._htmxCommentEditorReinit = true;

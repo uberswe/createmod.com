@@ -355,6 +355,9 @@ func Register(p RegisterParams) chi.Router {
 		} else {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		}
+		if serveMinifiedAsset(w, req, "./template/static") {
+			return
+		}
 		staticFS.ServeHTTP(w, req)
 	}))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {

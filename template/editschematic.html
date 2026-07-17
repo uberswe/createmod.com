@@ -511,8 +511,10 @@
     // --- Rich text editor ---
     var editorEl = document.getElementById('tinymce-schematic');
     if (editorEl) {
-        if (window._cmSchematicEditor) { cmEditor.destroy(window._cmSchematicEditor); }
-        window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600 });
+        cmEditorEnsure(function () {
+            if (window._cmSchematicEditor) { cmEditor.destroy(window._cmSchematicEditor); }
+            window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600 });
+        });
     }
 
     // --- Schematic file Dropzone (kept for .nbt uploads) ---

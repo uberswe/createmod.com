@@ -82,7 +82,7 @@ updateTitleCount();
 updateDescCount();
 </script>
 <script>
-(function(){
+cmEditorEnsure(function(){
   window._cmCollectionEditor = cmEditor.create('#description', {
     preset: 'basic',
     minHeight: 200,
@@ -91,5 +91,5 @@ updateDescCount();
     onUpdate: function(){ updateDescCount(); }
   });
   updateDescCount();
-})();
+});
 </script>

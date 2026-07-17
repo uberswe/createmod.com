@@ -67,9 +67,31 @@ window.setTheme=function(theme){
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project styles -->
     <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
-    <!-- Editor (Tiptap) -->
-    <link rel="stylesheet" href="/assets/x/editor.css?v={{ AssetVer }}" />
-    <script src="/assets/x/editor.js?v={{ AssetVer }}" defer></script>
+    <!-- Editor (Tiptap) is lazy-loaded on demand via cmEditorEnsure: the
+         ~140 KB bundle and its stylesheet are only fetched on pages (or
+         interactions) that actually create an editor. Loading it here for
+         every page was the largest first-party source of render-blocking
+         CSS and unused JavaScript. -->
+    <script>
+    window.cmEditorEnsure = function (cb) {
+      if (window.cmEditor) { cb(); return; }
+      var cbs = (window._cmEditorCbs = window._cmEditorCbs || []);
+      cbs.push(cb);
+      if (window._cmEditorLoading) return;
+      window._cmEditorLoading = true;
+      var l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = '/assets/x/editor.css?v={{ AssetVer }}';
+      document.head.appendChild(l);
+      var s = document.createElement('script');
+      s.src = '/assets/x/editor.js?v={{ AssetVer }}';
+      s.onload = function () {
+        window._cmEditorCbs = [];
+        cbs.forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
+      };
+      document.head.appendChild(s);
+    };
+    </script>
     <!-- Non-critical CSS: load async to avoid blocking LCP -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous" media="print" onload="this.media='all'">
 
