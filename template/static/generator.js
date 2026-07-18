@@ -226,6 +226,13 @@ function renderBlocks(data) {
   clearBlocks();
   currentData = data;
 
+  // Accept the editor's size:[x,y,z] payload alongside sizeX/Y/Z.
+  if (data.sizeX == null && data.size) {
+    data.sizeX = data.size[0];
+    data.sizeY = data.size[1];
+    data.sizeZ = data.size[2];
+  }
+
   var blocks = data.blocks;
   if (!blocks || blocks.length === 0) return;
 
@@ -233,12 +240,15 @@ function renderBlocks(data) {
 
   spinAxis = (materials.orientation === 'vertical') ? 'z' : 'y';
 
+  // Group by shape type and (optional) per-block color; parseInt stops at
+  // the ':' so group keys still parse back to the shape type.
   var groups = {};
   for (var i = 0; i < blocks.length; i++) {
     var b = blocks[i];
     var t = b.type || 1;
-    if (!groups[t]) groups[t] = [];
-    groups[t].push(b);
+    var gk = t + ':' + (b.color != null ? b.color : -1);
+    if (!groups[gk]) groups[gk] = [];
+    groups[gk].push(b);
   }
 
   var cx = data.sizeX / 2;
@@ -264,74 +274,84 @@ function renderBlocks(data) {
 
   var dummy = new THREE.Object3D();
 
-  function makeStairGeo(flipped) {
-    // L-shaped stair: bottom half (1×0.5×1) + back-half step (1×0.5×0.5)
-    // No internal faces — 8 outer faces only
-    // flipped=true creates upside-down version with correct winding (no scale.y=-1 needed)
-    var sy = flipped ? -1 : 1;
-    var p = new Float32Array([
-      // Face 1: bottom
-      -0.5,-0.5*sy,-0.5, 0.5,-0.5*sy,-0.5, 0.5,-0.5*sy,0.5, -0.5,-0.5*sy,0.5,
-      // Face 2: front (z=0.5)
-      -0.5,-0.5*sy,0.5, 0.5,-0.5*sy,0.5, 0.5,0*sy,0.5, -0.5,0*sy,0.5,
-      // Face 3: back (z=-0.5)
-      0.5,-0.5*sy,-0.5, -0.5,-0.5*sy,-0.5, -0.5,0.5*sy,-0.5, 0.5,0.5*sy,-0.5,
-      // Face 4: left (x=-0.5) — L-shape
-      -0.5,-0.5*sy,-0.5, -0.5,-0.5*sy,0.5, -0.5,0*sy,0.5, -0.5,0*sy,0, -0.5,0.5*sy,0, -0.5,0.5*sy,-0.5,
-      // Face 5: right (x=0.5) — L-shape
-      0.5,-0.5*sy,0.5, 0.5,-0.5*sy,-0.5, 0.5,0*sy,0.5, 0.5,0*sy,0, 0.5,0.5*sy,0, 0.5,0.5*sy,-0.5,
-      // Face 6: lower step top (z=0 to 0.5)
-      -0.5,0*sy,0.5, 0.5,0*sy,0.5, 0.5,0*sy,0, -0.5,0*sy,0,
-      // Face 7: step front (z=0)
-      -0.5,0*sy,0, 0.5,0*sy,0, 0.5,0.5*sy,0, -0.5,0.5*sy,0,
-      // Face 8: upper step top (z=-0.5 to 0)
-      -0.5,0.5*sy,0, 0.5,0.5*sy,0, 0.5,0.5*sy,-0.5, -0.5,0.5*sy,-0.5
-    ]);
-    var ny = flipped ? 1 : -1;  // bottom normal flips
-    var uy = flipped ? -1 : 1;  // top normals flip
-    var n = new Float32Array([
-      0,ny,0, 0,ny,0, 0,ny,0, 0,ny,0,
-      0,0,1, 0,0,1, 0,0,1, 0,0,1,
-      0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-      -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0,
-      1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0,
-      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0,
-      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0,
-      0,uy,0, 0,uy,0, 0,uy,0, 0,uy,0
-    ]);
-    // Flipped: reverse winding by swapping v1/v2 in each triangle
-    var idx;
-    if (flipped) {
-      idx = new Uint16Array([
-        0,2,1, 0,3,2,
-        4,6,5, 4,7,6,
-        8,10,9, 8,11,10,
-        12,14,13, 12,15,14, 12,17,15, 15,17,16,
-        18,20,19, 19,20,21, 19,21,23, 23,21,22,
-        24,26,25, 24,27,26,
-        28,30,29, 28,31,30,
-        32,34,33, 32,35,34
-      ]);
-    } else {
-      idx = new Uint16Array([
-        0,1,2, 0,2,3,
-        4,5,6, 4,6,7,
-        8,9,10, 8,10,11,
-        12,13,14, 12,14,15, 12,15,17, 15,16,17,
-        18,19,20, 19,21,20, 19,23,21, 23,22,21,
-        24,25,26, 24,26,27,
-        28,29,30, 28,30,31,
-        32,33,34, 32,34,35
-      ]);
+
+  // Build a BufferGeometry from axis-aligned boxes [x0,y0,z0,x1,y1,z1].
+  // Used for Minecraft stair corner shapes (inner/outer), which modify the
+  // upper step into quarters exactly like adjacent in-game stairs do.
+  function boxesGeo(boxes) {
+    var pos = [], norm = [], idx = [];
+    var faces = [
+      { n: [0, -1, 0], c: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]] },
+      { n: [0, 1, 0],  c: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },
+      { n: [0, 0, -1], c: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]] },
+      { n: [0, 0, 1],  c: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },
+      { n: [-1, 0, 0], c: [[0,0,0],[0,0,1],[0,1,1],[0,1,0]] },
+      { n: [1, 0, 0],  c: [[1,0,1],[1,0,0],[1,1,0],[1,1,1]] }
+    ];
+    for (var b = 0; b < boxes.length; b++) {
+      var bx = boxes[b];
+      for (var f = 0; f < 6; f++) {
+        var base = pos.length / 3;
+        for (var v = 0; v < 4; v++) {
+          var c = faces[f].c[v];
+          pos.push(bx[0] + c[0] * (bx[3] - bx[0]), bx[1] + c[1] * (bx[4] - bx[1]), bx[2] + c[2] * (bx[5] - bx[2]));
+          norm.push(faces[f].n[0], faces[f].n[1], faces[f].n[2]);
+        }
+        idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      }
     }
     var geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(n, 3));
-    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(norm), 3));
+    geo.setIndex(new THREE.BufferAttribute(new Uint16Array(idx), 1));
     return geo;
   }
 
-  var FACING_ROT = { south: 0, west: -Math.PI / 2, north: Math.PI, east: Math.PI / 2 };
+  // Stair geometry per (facing, half, shape), transcribed from vanilla
+  // (models/block/stairs*.json + the oak_stairs blockstate rotations).
+  // The base model faces east: tall side +x. half=top is the x=180 flip
+  // (y AND z negate — a rotation, not a mirror, so corner chirality holds),
+  // and *_left / *_right shapes carry their own extra y-rotation.
+  var stairShapeCache = {};
+  var STAIR_Y_DEG = { east: 0, south: 90, west: 180, north: 270 };
+  function makeStairGeo(facing, half, shape) {
+    var key = facing + '|' + half + '|' + shape;
+    if (stairShapeCache[key]) return stairShapeCache[key];
+    // Boxes in vanilla model coords (0..16), facing=east base.
+    var boxes = [[0, 0, 0, 16, 8, 16]];
+    switch (shape) {
+      case 'outer_left':
+      case 'outer_right':
+        boxes.push([8, 8, 8, 16, 16, 16]);
+        break;
+      case 'inner_left':
+      case 'inner_right':
+        boxes.push([8, 8, 0, 16, 16, 16], [0, 8, 8, 8, 16, 16]);
+        break;
+      default:
+        boxes.push([8, 8, 0, 16, 16, 16]);
+        break;
+    }
+    if (half === 'top') {
+      // Vanilla x=180: rotate about the X axis through the block center.
+      boxes = boxes.map(function (b) { return [b[0], 16 - b[4], 16 - b[5], b[3], 16 - b[1], 16 - b[2]]; });
+    }
+    var deg = STAIR_Y_DEG[facing] || 0;
+    var isLeft = shape === 'inner_left' || shape === 'outer_left';
+    var isRight = shape === 'inner_right' || shape === 'outer_right';
+    if (half === 'top' ? isRight : isLeft) {
+      deg = (deg + (half === 'top' ? 90 : 270)) % 360;
+    }
+    for (var r = 0; r < deg / 90; r++) {
+      // Vanilla y-rotation by 90°: (x, z) -> (16 - z, x)
+      boxes = boxes.map(function (b) { return [16 - b[5], b[1], b[0], 16 - b[2], b[4], b[3]]; });
+    }
+    var geo = boxesGeo(boxes.map(function (b) {
+      return [b[0] / 16 - 0.5, b[1] / 16 - 0.5, b[2] / 16 - 0.5, b[3] / 16 - 0.5, b[4] / 16 - 0.5, b[5] / 16 - 0.5];
+    }));
+    stairShapeCache[key] = geo;
+    return geo;
+  }
 
   var fencePostGeo = new THREE.BoxGeometry(0.25, 1, 0.25);
   var fenceBarGeos = {
@@ -348,7 +368,7 @@ function renderBlocks(data) {
   for (var type in groups) {
     var arr = groups[type];
     var t = parseInt(type);
-    var color = getBlockColor(t, materials);
+    var color = (arr[0].color != null) ? arr[0].color : getBlockColor(t, materials);
     var roughness = 0.75;
     var metalness = 0.08;
     if (t === 7) { roughness = 0.92; metalness = 0.0; }
@@ -374,7 +394,8 @@ function renderBlocks(data) {
         var sb = arr[si];
         var facing = (sb.props && sb.props.facing) || 'south';
         var half = (sb.props && sb.props.half) || 'bottom';
-        var key = facing + '_' + half;
+        var shape = (sb.props && sb.props.shape) || 'straight';
+        var key = facing + '_' + half + '_' + shape;
         if (!stairGroups[key]) stairGroups[key] = [];
         stairGroups[key].push(sb);
       }
@@ -383,13 +404,14 @@ function renderBlocks(data) {
         var parts = sk.split('_');
         var sFacing = parts[0];
         var sHalf = parts[1];
-        var sGeo = makeStairGeo(sHalf === 'top');
+        var sShape = parts.slice(2).join('_') || 'straight';
+        var sGeo = makeStairGeo(sFacing, sHalf, sShape);
         var sMesh = new THREE.InstancedMesh(sGeo, stairMat, sArr.length);
+        sMesh.userData.pickBlocks = sArr;
         for (var sj = 0; sj < sArr.length; sj++) {
           dummy.position.set(sArr[sj].x - cx, (sArr[sj].y - cy), sArr[sj].z - cz);
           dummy.rotation.set(0, 0, 0);
           dummy.scale.set(1, 1, 1);
-          dummy.rotation.y = FACING_ROT[sFacing] || 0;
           dummy.updateMatrix();
           sMesh.setMatrixAt(sj, dummy.matrix);
         }
@@ -406,7 +428,6 @@ function renderBlocks(data) {
             dummy.position.set(sArr[sei].x - cx, (sArr[sei].y - cy), sArr[sei].z - cz);
             dummy.rotation.set(0, 0, 0);
             dummy.scale.set(1, 1, 1);
-            dummy.rotation.y = FACING_ROT[sFacing] || 0;
             dummy.updateMatrix();
             for (var sev = 0; sev < stairECount; sev++) {
               sv.set(stairEPosAttr.getX(sev), stairEPosAttr.getY(sev), stairEPosAttr.getZ(sev));
@@ -433,6 +454,7 @@ function renderBlocks(data) {
     if (t === 5) {
       // Instanced fence posts
       var postMesh = new THREE.InstancedMesh(fencePostGeo, mat, arr.length);
+      postMesh.userData.pickBlocks = arr;
       for (var fi = 0; fi < arr.length; fi++) {
         dummy.position.set(arr[fi].x - cx, arr[fi].y - cy, arr[fi].z - cz);
         dummy.rotation.set(0, 0, 0);
@@ -516,28 +538,26 @@ function renderBlocks(data) {
         var tdParts = tdk.split('_');
         var tdF = tdParts[0], tdH = tdParts[1], tdO = tdParts[2];
         var tdMesh = new THREE.InstancedMesh(trapdoorGeo, mat, tdArr.length);
+        tdMesh.userData.pickBlocks = tdArr;
         for (var tdj = 0; tdj < tdArr.length; tdj++) {
           dummy.position.set(tdArr[tdj].x - cx, tdArr[tdj].y - cy, tdArr[tdj].z - cz);
           dummy.rotation.set(0, 0, 0);
           if (tdO === 'true') {
-            // Open trapdoor: vertical panel flush against the face it's attached to
+            // Open trapdoor: full-height vertical panel flush against the
+            // cell face OPPOSITE its facing (vanilla: facing=north puts the
+            // open panel on the south edge, same model for both halves).
             if (tdF === 'north') {
               dummy.rotation.x = Math.PI / 2;
-              dummy.position.z -= 0.41;
+              dummy.position.z += 0.41;
             } else if (tdF === 'south') {
               dummy.rotation.x = -Math.PI / 2;
-              dummy.position.z += 0.41;
+              dummy.position.z -= 0.41;
             } else if (tdF === 'east') {
               dummy.rotation.z = Math.PI / 2;
-              dummy.position.x += 0.41;
+              dummy.position.x -= 0.41;
             } else if (tdF === 'west') {
               dummy.rotation.z = -Math.PI / 2;
-              dummy.position.x -= 0.41;
-            }
-            if (tdH === 'top') {
-              dummy.position.y += 0.25;
-            } else {
-              dummy.position.y -= 0.25;
+              dummy.position.x += 0.41;
             }
           } else {
             // Closed trapdoor: flat, offset to top or bottom
@@ -568,6 +588,7 @@ function renderBlocks(data) {
     }
 
     var mesh = new THREE.InstancedMesh(geo, mat, arr.length);
+    mesh.userData.pickBlocks = arr;
     for (var j = 0; j < arr.length; j++) {
       var yOff = 0;
       if (t === 2) yOff = -0.25;
@@ -614,11 +635,27 @@ function renderBlocks(data) {
   }
 
   if (!cameraUserInteracted) {
-    var maxDim = Math.max(data.sizeX, data.sizeY, data.sizeZ);
+    // Frame the occupied bounding box, not the declared canvas size: editor
+    // sessions can carry air padding (e.g. after expanding upward), and
+    // framing the declared size then centers the camera on empty space.
+    var minBX = Infinity, minBY = Infinity, minBZ = Infinity;
+    var maxBX = -Infinity, maxBY = -Infinity, maxBZ = -Infinity;
+    for (var ci = 0; ci < blocks.length; ci++) {
+      var cb = blocks[ci];
+      if (cb.x < minBX) minBX = cb.x;
+      if (cb.x > maxBX) maxBX = cb.x;
+      if (cb.y < minBY) minBY = cb.y;
+      if (cb.y > maxBY) maxBY = cb.y;
+      if (cb.z < minBZ) minBZ = cb.z;
+      if (cb.z > maxBZ) maxBZ = cb.z;
+    }
+    var maxDim = Math.max(maxBX - minBX + 1, maxBY - minBY + 1, maxBZ - minBZ + 1);
     var dist = maxDim * 2.4;
-    var centerY = data.sizeY / 2;
-    camera.position.set(dist * 0.7, centerY + dist * 0.25, dist * 0.7);
-    controls.target.set(0, centerY, 0);
+    var tx = (minBX + maxBX) / 2 - cx;
+    var ty = (minBY + maxBY) / 2;
+    var tz = (minBZ + maxBZ) / 2 - cz;
+    camera.position.set(tx + dist * 0.7, ty + dist * 0.25, tz + dist * 0.7);
+    controls.target.set(tx, ty, tz);
     controls.update();
   }
 }
@@ -931,38 +968,62 @@ var SCHEMAS = {
     { k:'forecastleHeight', t:'i' }, { k:'forecastleLength', t:'i' },
     { k:'hasGunPorts', t:'b' }, { k:'gunPortRow', t:'i' }, { k:'gunPortSpacing', t:'i' },
     { k:'bowCurve', t:'f' }, { k:'sternOverhang', t:'f' }, { k:'midWidthBias', t:'f' },
-    { k:'bowStyle', t:'e', m:'bowStyle' }
+    { k:'bowStyle', t:'e', m:'bowStyle' },
+    // v2 (version >= 3) fields, appended — order frozen, mirrors Go schemaHull
+    { k:'deadrise', t:'f' }, { k:'midFullness', t:'f' }, { k:'bowSectionV', t:'f' },
+    { k:'sternFullness', t:'f' }, { k:'stemRake', t:'f' }, { k:'stemCurve', t:'f' },
+    { k:'sternRake', t:'f' }, { k:'rocker', t:'f' }, { k:'parallelMidbody', t:'f' },
+    { k:'stemPostHeight', t:'i' }, { k:'sternPostHeight', t:'i' },
+    { k:'doubleEnder', t:'b' }, { k:'closedHull', t:'b' },
+    // Appended params (positional format: new slots go at the end).
+    { k:'sweep', t:'f' }
   ]
 };
 
-var CURRENT_VERSION = 2;
+var CURRENT_VERSION = 3;
+
+// Per-generator default params (a snapshot of the page's initial values),
+// used to omit default-valued slots from share links so they stay short.
+var ENCODE_DEFAULTS = {};
+
+function setEncodeDefaults(prefix, params) {
+  ENCODE_DEFAULTS[prefix] = Object.assign({}, params);
+}
+
+function encodeVal(s, v) {
+  if (v === undefined || v === null) v = '';
+  switch (s.t) {
+    case 'b': return v ? '1' : '0';
+    case 'i': return String(Math.round(Number(v)));
+    case 'f': return String(Math.round(Number(v) * 100));
+    case 'e':
+      var map = ENUM_MAPS[s.m];
+      if (map && map[v]) return map[v];
+      if (map) return map[Object.keys(map)[0]];
+      return '';
+  }
+  return '';
+}
 
 function encodeCompact(prefix, params) {
   var schema = SCHEMAS[prefix];
   if (!schema) return '';
+  // Respect an explicit engine version (>= 2 so float x100 encoding holds);
+  // shared links must regenerate with the engine that produced them.
   var ver = CURRENT_VERSION;
+  if (params && params.version && params.version >= 2) ver = params.version;
+  var defaults = ENCODE_DEFAULTS[prefix];
   var vals = [prefix + ver];
   for (var i = 0; i < schema.length; i++) {
     var s = schema[i];
-    var v = params[s.k];
-    if (v === undefined || v === null) v = '';
-    switch (s.t) {
-      case 'b': vals.push(v ? '1' : '0'); break;
-      case 'i': vals.push(String(Math.round(Number(v)))); break;
-      case 'f': vals.push(String(Math.round(Number(v) * 100))); break;
-      case 'e':
-        var map = ENUM_MAPS[s.m];
-        if (map && map[v]) {
-          vals.push(map[v]);
-        } else if (map) {
-          var firstKey = Object.keys(map)[0];
-          vals.push(map[firstKey]);
-        } else {
-          vals.push('');
-        }
-        break;
-    }
+    var enc = encodeVal(s, params[s.k]);
+    // Omit slots whose encoded value matches the page default; the decoder
+    // skips empty slots so the default stays in effect.
+    if (defaults && defaults[s.k] !== undefined && enc === encodeVal(s, defaults[s.k])) enc = '';
+    vals.push(enc);
   }
+  // Trailing defaults can be dropped entirely.
+  while (vals.length > 1 && vals[vals.length - 1] === '') vals.pop();
   return vals.join('.');
 }
 
@@ -1026,8 +1087,7 @@ function getGeneratorBasePath(prefix) {
 }
 
 function updateHash(prefix, params) {
-  var compact = encodeCompact(prefix, params);
-  var encoded = toBase64Url(compact);
+  var encoded = toBase64Url(encodeCompact(prefix, params));
   var newPath = getGeneratorBasePath(prefix) + '/' + encoded;
   if (window.location.pathname !== newPath) {
     history.replaceState(null, '', newPath);
@@ -1039,17 +1099,24 @@ function updateHash(prefix, params) {
 }
 
 function getShareURL(prefix, params, view) {
-  var compact = encodeCompact(prefix, params);
-  var encoded = toBase64Url(compact);
+  var encoded = toBase64Url(encodeCompact(prefix, params));
   var url = window.location.origin + getGeneratorBasePath(prefix) + '/' + encoded;
   if (view === 'guide') url += '/guide';
   return url;
 }
 
+// Links are base64url-wrapped compact strings; tolerate bare compact strings
+// (from the brief window where links were not wrapped).
+function unwrapCompact(str) {
+  if (!str) return '';
+  if (str.indexOf('.') !== -1) return str; // plain compact
+  if (/^[pbh]\d+$/.test(str) && str.length <= 4) return str; // all-defaults link
+  try { return fromBase64Url(str); } catch (e) { return ''; }
+}
+
 function applyHashParams(setParamsFn, initHash, generatorType) {
   if (initHash) {
-    var compact;
-    try { compact = fromBase64Url(initHash); } catch(e) { compact = ''; }
+    var compact = unwrapCompact(initHash);
     var decoded = decodeCompact(compact);
     if (Object.keys(decoded.params).length > 0) {
       setParamsFn(decoded.params);
@@ -1068,7 +1135,7 @@ function applyHashParams(setParamsFn, initHash, generatorType) {
     try {
       var stored = localStorage.getItem('gen_hash_' + generatorType);
       if (stored) {
-        var storedCompact = fromBase64Url(stored);
+        var storedCompact = unwrapCompact(stored);
         var decoded3 = decodeCompact(storedCompact);
         if (Object.keys(decoded3.params).length > 0) {
           setParamsFn(decoded3.params);
@@ -1086,6 +1153,61 @@ function capturePreview() {
   // Preview images are now rendered server-side; this is a no-op retained for API compat.
 }
 
+
+/* ---- Block picking (used by the schematic editor) ----
+   Raycasts the instanced block meshes on pointer move and reports the
+   hovered source block (the object passed into renderBlocks) plus the
+   pointer's client coordinates. Disabled above a block-count cap since
+   InstancedMesh raycasting walks every instance. */
+var pickCallback = null;
+var pickRaycaster = null;
+var pickPointer = null;
+var pickRafPending = false;
+var pickLastEvent = null;
+var PICK_MAX_BLOCKS = 60000;
+
+function enablePicking(cb) {
+  if (!renderer || !THREE) return false;
+  pickCallback = cb;
+  pickRaycaster = pickRaycaster || new THREE.Raycaster();
+  pickPointer = pickPointer || new THREE.Vector2();
+  renderer.domElement.addEventListener('pointermove', onPickMove);
+  renderer.domElement.addEventListener('pointerleave', onPickLeave);
+  return true;
+}
+
+function onPickLeave() {
+  if (pickCallback) pickCallback(null, 0, 0);
+}
+
+function onPickMove(ev) {
+  pickLastEvent = ev;
+  if (pickRafPending) return;
+  pickRafPending = true;
+  requestAnimationFrame(function () {
+    pickRafPending = false;
+    runPick(pickLastEvent);
+  });
+}
+
+function runPick(ev) {
+  if (!pickCallback || !renderer || !camera || !currentData) return;
+  if ((currentData.blocks || []).length > PICK_MAX_BLOCKS) return;
+  var rect = renderer.domElement.getBoundingClientRect();
+  pickPointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+  pickPointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+  pickRaycaster.setFromCamera(pickPointer, camera);
+  var hits = pickRaycaster.intersectObjects(blockMeshes, false);
+  for (var i = 0; i < hits.length; i++) {
+    var h = hits[i];
+    if (h.object.isInstancedMesh && h.object.userData.pickBlocks && h.instanceId !== undefined && h.instanceId !== null) {
+      pickCallback(h.object.userData.pickBlocks[h.instanceId] || null, ev.clientX, ev.clientY);
+      return;
+    }
+  }
+  pickCallback(null, ev.clientX, ev.clientY);
+}
+
 function cleanup() {
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   clearBlocks();
@@ -1094,6 +1216,7 @@ function cleanup() {
   if (renderer) { renderer.dispose(); renderer = null; }
   scene = null; camera = null; controls = null; container = null;
   currentData = null; cameraUserInteracted = false; spinEnabled = false; spinGroup = null; blockContainer = null; spinAxis = 'y';
+  pickCallback = null;
 }
 
 window.GeneratorApp = {
@@ -1104,11 +1227,13 @@ window.GeneratorApp = {
   updateHash: updateHash,
   getShareURL: getShareURL,
   applyHashParams: applyHashParams,
+  setEncodeDefaults: setEncodeDefaults,
   decodeCompact: decodeCompact,
   encodeCompact: encodeCompact,
   toBase64Url: toBase64Url,
   fromBase64Url: fromBase64Url,
   capturePreview: capturePreview,
+  enablePicking: enablePicking,
   setSpinEnabled: function(v) { spinEnabled = !!v; },
   isSpinEnabled: function() { return spinEnabled; },
   _cleanup: cleanup

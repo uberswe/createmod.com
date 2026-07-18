@@ -247,6 +247,10 @@ func renderCollectionsPage(e *server.RequestEvent, registry *server.Registry, ca
 	d.Title = i18n.T(d.Language, "Collections")
 	d.Description = i18n.T(d.Language, "Community-created collections of schematics")
 	d.Slug = "/collections"
+	// Never index arbitrary-search-term result pages (spam-query bait).
+	if q != "" {
+		d.NoIndex = true
+	}
 	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 
 	html, err := registry.LoadFiles(collectionsTemplates...).Render(d)

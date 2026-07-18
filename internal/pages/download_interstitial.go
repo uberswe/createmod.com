@@ -23,6 +23,7 @@ type DownloadInterstitialData struct {
 	Name    string
 	TokenID string
 	FileID  string
+	Format  string
 }
 
 func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
@@ -48,12 +49,21 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 
 		d := DownloadInterstitialData{}
 		d.Populate(e)
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", i18n.T(d.Language, "Download"))
+		crumbTitle := name
+		if schematic != nil && schematic.Title != "" {
+			crumbTitle = schematic.Title
+		}
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", crumbTitle, "/schematics/"+name, i18n.T(d.Language, "Download"))
 		d.Slug = "/get/" + name
 		d.NoIndex = true
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.Name = name
 		d.FileID = fileID
+		if format := e.Request.URL.Query().Get("format"); format != "" && format != "nbt" {
+			if isDownloadFormatSlug(format) {
+				d.Format = format
+			}
+		}
 
 		token := randomHex(24)
 		dt := &store.DownloadToken{
@@ -91,6 +101,11 @@ func DownloadURLHandler(appStore *store.Store) func(e *server.RequestEvent) erro
 		dlURL := "/download/" + dt.Name + "?t=" + dt.Token
 		if f := e.Request.URL.Query().Get("f"); f != "" {
 			dlURL += "&f=" + url.QueryEscape(f)
+		}
+		if format := e.Request.URL.Query().Get("fmt"); format != "" {
+			if isDownloadFormatSlug(format) {
+				dlURL += "&format=" + url.QueryEscape(format)
+			}
 		}
 		return e.JSON(http.StatusOK, map[string]string{
 			"url": dlURL,

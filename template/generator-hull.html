@@ -40,7 +40,15 @@
                                     <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="destroyer">Destroyer</button>
                                     <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="speedboat">Speedboat</button>
                                     <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="yacht">Yacht</button>
+                                    <button class="btn btn-sm btn-outline-secondary gen-preset" data-preset="canoe">Canoe</button>
                                 </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0">Generator Engine</label>
+                                <select class="form-select form-select-sm gen-param" id="param-genVersion">
+                                    <option value="3" selected>v2: lofted hulls (new)</option>
+                                    <option value="2">v1: legacy</option>
+                                </select>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Wood Type</label>
@@ -105,6 +113,66 @@
                                     <option value="raked">Raked</option>
                                     <option value="plumb">Plumb (Modern)</option>
                                 </select>
+                            </div>
+                            <div id="v2ParamsGroup">
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stem Rake: <span id="val-stemRake">0.35</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-stemRake" min="0" max="1.2" value="0.35" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stem Curve: <span id="val-stemCurve">0.15</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-stemCurve" min="-1" max="1" value="0.15" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stern Rake: <span id="val-sternRake">0.35</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sternRake" min="0" max="1" value="0.35" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Keel Rocker: <span id="val-rocker">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-rocker" min="0" max="0.5" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Hull Sweep: <span id="val-sweep">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sweep" min="0" max="2" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Deadrise (V-bottom): <span id="val-deadrise">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-deadrise" min="0" max="0.7" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Midship Fullness: <span id="val-midFullness">0.65</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-midFullness" min="0.05" max="1" value="0.65" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Bow V-Sections: <span id="val-bowSectionV">0.55</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-bowSectionV" min="0.05" max="1" value="0.55" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stern Fullness: <span id="val-sternFullness">0.5</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sternFullness" min="0.05" max="1" value="0.5" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Parallel Midbody: <span id="val-parallelMidbody">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-parallelMidbody" min="0" max="0.6" value="0" step="0.05">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stem Post Height: <span id="val-stemPostHeight">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-stemPostHeight" min="0" max="8" value="0" step="1">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0">Stern Post Height: <span id="val-sternPostHeight">0</span></label>
+                                    <input type="range" class="form-range gen-param" id="param-sternPostHeight" min="0" max="8" value="0" step="1">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input gen-param" type="checkbox" id="param-doubleEnder">
+                                        <span class="form-check-label">Double Ender</span>
+                                    </label>
+                                    <label class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input gen-param" type="checkbox" id="param-closedHull">
+                                        <span class="form-check-label">Closed Hull (Airship)</span>
+                                    </label>
+                                </div>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label mb-0">Bow Length: <span id="val-bowLength">10</span></label>
@@ -226,10 +294,24 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></svg>
                                     Guide
                                 </a>
-                                <button class="btn btn-sm btn-primary" id="gen-download-btn" hx-disable hx-boost="false">
+                                <div class="dl-split" data-dl-split hx-disable hx-boost="false">
+                                <button class="btn btn-sm btn-primary dl-split-primary" id="gen-download-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
                                     Download .nbt
                                 </button>
+                                <button type="button" class="btn btn-sm btn-primary dl-split-toggle" aria-haspopup="menu" aria-expanded="false" aria-label="{{ T .Language "More download formats" }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>
+                                </button>
+                                <div class="dl-split-menu" role="menu" hidden>
+                                    <button type="button" role="menuitem" data-gen-format="schem" tabindex="-1">WorldEdit .schem</button>
+                                    <button type="button" role="menuitem" data-gen-format="litematic" tabindex="-1">Litematica .litematic</button>
+                                    <button type="button" role="menuitem" data-gen-format="world" tabindex="-1" title="{{ T .Language "A superflat world with the build placed and spawn set. Drop it into your saves folder." }}">{{ T .Language "Ready-to-play world (.zip)" }}</button>
+                                    <button type="button" role="menuitem" data-gen-format="schematic" tabindex="-1" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}">
+                                        Legacy .schematic
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm dl-split-warn" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+                                    </button>
+                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -271,7 +353,48 @@
 <script src="/assets/x/guide.js?v={{ AssetVer }}"></script>
 <script>
 (function(){
+  // Neutral baseline applied under every preset so unset fields never
+  // carry over from a previously applied preset.
+  var PRESET_DEFAULTS = {
+    woodType:'spruce', length:40, beam:10, depth:6, bottomPinch:0.25, hullFlare:0.2,
+    flareCurve:2.6, tumblehome:0, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2,
+    bowLength:10, bowSharpness:1.3, bowKeelRise:0, bowKeelLength:0, bowCurve:0,
+    sternStyle:'round', sternLength:6, sternSharpness:0.7, sternKeelRise:0,
+    sternKeelLength:0, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4,
+    hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0,
+    forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2,
+    gunPortSpacing:4, bowStyle:'default', deadrise:0, midFullness:0.65, bowSectionV:0.55,
+    sternFullness:0.5, stemRake:0.35, stemCurve:0.15, sternRake:0.35, rocker:0, sweep:0,
+    parallelMidbody:0, stemPostHeight:0, sternPostHeight:0, doubleEnder:false, closedHull:false
+  };
+
   var PRESETS = {
+    sloop: { woodType:'spruce', length:36, beam:10, depth:7, bottomPinch:0.35, hullFlare:0.18, flareCurve:2.6, tumblehome:0.15, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2, bowLength:11, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:12, bowCurve:-0.25, sternStyle:'round', sternLength:6, sternSharpness:0.8, sternKeelRise:0.2, sternKeelLength:9, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:7, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.25, midFullness:0.5, bowSectionV:0.6, sternFullness:0.45, stemRake:0.5, stemCurve:-0.2, sternRake:0.35, rocker:0.15, parallelMidbody:0.1 },
+    schooner: { woodType:'spruce', length:52, beam:12, depth:8, bottomPinch:0.3, hullFlare:0.2, flareCurve:2.6, tumblehome:0.16, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:16, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:17, bowCurve:-0.3, sternStyle:'round', sternLength:7, sternSharpness:0.9, sternKeelRise:0.2, sternKeelLength:13, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:11, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.3, midFullness:0.45, bowSectionV:0.65, sternFullness:0.4, stemRake:0.6, stemCurve:-0.3, sternRake:0.4, rocker:0.12, parallelMidbody:0.1 },
+    frigate: { woodType:'dark_oak', length:76, beam:16, depth:10, bottomPinch:0.28, hullFlare:0.25, flareCurve:2.6, tumblehome:0.25, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:19, bowSharpness:1.8, bowKeelRise:0.6, bowKeelLength:24, bowCurve:-0.2, sternStyle:'square', sternLength:10, sternSharpness:0.6, sternKeelRise:0.25, sternKeelLength:19, sternOverhang:0.2, keelCurve:1.5, midWidthBias:0, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:15, forecastleHeight:1, forecastleLength:8, hasGunPorts:true, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.15, midFullness:0.6, bowSectionV:0.6, sternFullness:0.5, stemRake:0.5, stemCurve:-0.15, sternRake:0.25, rocker:0.12, parallelMidbody:0.2 },
+    galleon: { woodType:'dark_oak', length:72, beam:22, depth:13, bottomPinch:0.35, hullFlare:0.4, flareCurve:2.4, tumblehome:0.35, tumbleCurve:2.8, sheerCurve:0.22, sheerCurveExp:2, bowLength:16, bowSharpness:1.5, bowKeelRise:0.7, bowKeelLength:24, bowCurve:0.15, sternStyle:'square', sternLength:9, sternSharpness:0.5, sternKeelRise:0.4, sternKeelLength:20, sternOverhang:0.55, keelCurve:1.4, midWidthBias:0.2, castleBlend:6, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:4, castleLength:19, forecastleHeight:2, forecastleLength:9, hasGunPorts:true, gunPortRow:3, gunPortSpacing:5, bowStyle:'default', deadrise:0.1, midFullness:0.7, bowSectionV:0.5, sternFullness:0.6, stemRake:0.55, stemCurve:0.3, sternRake:0.2, rocker:0.12, parallelMidbody:0.25 },
+    carrack: { woodType:'oak', length:56, beam:18, depth:11, bottomPinch:0.35, hullFlare:0.28, flareCurve:2.4, tumblehome:0.2, tumbleCurve:3, sheerCurve:0.28, sheerCurveExp:2, bowLength:13, bowSharpness:1.3, bowKeelRise:0.9, bowKeelLength:19, bowCurve:0.1, sternStyle:'square', sternLength:9, sternSharpness:0.5, sternKeelRise:0.55, sternKeelLength:16, sternOverhang:0.3, keelCurve:1.4, midWidthBias:0.15, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:5, castleLength:16, forecastleHeight:3, forecastleLength:9, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'default', deadrise:0.1, midFullness:0.7, bowSectionV:0.45, sternFullness:0.55, stemRake:0.6, stemCurve:0.35, sternRake:0.25, rocker:0.15, parallelMidbody:0.2 },
+    longship: { woodType:'oak', length:70, beam:12, depth:6, bottomPinch:0.45, hullFlare:0.1, flareCurve:2.6, tumblehome:0.08, tumbleCurve:3, sheerCurve:0.35, sheerCurveExp:1.8, bowLength:18, bowSharpness:2.2, bowKeelRise:1.4, bowKeelLength:21, bowCurve:-0.5, sternStyle:'pointed', sternLength:18, sternSharpness:2, sternKeelRise:1.3, sternKeelLength:21, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.5, midFullness:0.3, bowSectionV:0.6, stemRake:0.8, stemCurve:-0.35, rocker:0.3, parallelMidbody:0.15, stemPostHeight:4, sternPostHeight:4, doubleEnder:true },
+    clipper: { woodType:'spruce', length:120, beam:18, depth:11, bottomPinch:0.25, hullFlare:0.22, flareCurve:2.6, tumblehome:0.26, tumbleCurve:3, sheerCurve:0.1, sheerCurveExp:2, bowLength:35, bowSharpness:2.5, bowKeelRise:0.4, bowKeelLength:36, bowCurve:-0.8, sternStyle:'round', sternLength:18, sternSharpness:1.2, sternKeelRise:0.2, sternKeelLength:26, sternOverhang:0, keelCurve:1.5, midWidthBias:0.3, castleBlend:6, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:18, forecastleHeight:1, forecastleLength:10, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'clipper', deadrise:0.35, midFullness:0.5, bowSectionV:0.75, sternFullness:0.4, stemRake:1, stemCurve:-0.7, sternRake:0.45, rocker:0.08, parallelMidbody:0.25 },
+    shipOfTheLine: { woodType:'dark_oak', length:100, beam:24, depth:14, bottomPinch:0.28, hullFlare:0.25, flareCurve:2.6, tumblehome:0.3, tumbleCurve:3, sheerCurve:0.12, sheerCurveExp:2, bowLength:22, bowSharpness:1.7, bowKeelRise:0.6, bowKeelLength:32, bowCurve:-0.15, sternStyle:'square', sternLength:10, sternSharpness:0.5, sternKeelRise:0.3, sternKeelLength:25, sternOverhang:0.3, keelCurve:1.5, midWidthBias:0, castleBlend:6, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:3, castleLength:22, forecastleHeight:1, forecastleLength:12, hasGunPorts:true, gunPortRow:3, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.1, midFullness:0.7, bowSectionV:0.5, sternFullness:0.55, stemRake:0.45, stemCurve:-0.1, sternRake:0.2, rocker:0.1, parallelMidbody:0.3 },
+    cog: { woodType:'oak', length:34, beam:14, depth:8, bottomPinch:0.45, hullFlare:0.25, flareCurve:2.6, tumblehome:0.12, tumbleCurve:3, sheerCurve:0.28, sheerCurveExp:2, bowLength:7, bowSharpness:1, bowKeelRise:0.75, bowKeelLength:12, bowCurve:0.3, sternStyle:'square', sternLength:7, sternSharpness:0.6, sternKeelRise:0.65, sternKeelLength:10, sternOverhang:0, keelCurve:1.3, midWidthBias:0, castleBlend:3, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:3, castleLength:10, forecastleHeight:2, forecastleLength:7, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'default', deadrise:0.2, midFullness:0.6, bowSectionV:0.4, sternFullness:0.5, stemRake:0.5, stemCurve:0.4, sternRake:0.4, rocker:0.25, parallelMidbody:0.1 },
+    pinnace: { woodType:'birch', length:28, beam:9, depth:6, bottomPinch:0.4, hullFlare:0.2, flareCurve:2.6, tumblehome:0.18, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2, bowLength:8, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:9, bowCurve:-0.2, sternStyle:'round', sternLength:4, sternSharpness:0.7, sternKeelRise:0.2, sternKeelLength:8, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.3, midFullness:0.45, bowSectionV:0.55, sternFullness:0.45, stemRake:0.45, stemCurve:-0.2, sternRake:0.3, rocker:0.2 },
+    dhow: { woodType:'acacia', length:44, beam:12, depth:7, bottomPinch:0.35, hullFlare:0.1, flareCurve:2.6, tumblehome:0.05, tumbleCurve:3, sheerCurve:0.2, sheerCurveExp:2, bowLength:16, bowSharpness:2.2, bowKeelRise:0.9, bowKeelLength:17, bowCurve:-0.6, sternStyle:'pointed', sternLength:9, sternSharpness:1.5, sternKeelRise:0.4, sternKeelLength:13, sternOverhang:0, keelCurve:1.3, midWidthBias:0.3, castleBlend:4, hasRailings:false, hasTrim:true, hasWindows:false, castleHeight:1, castleLength:8, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.4, midFullness:0.4, bowSectionV:0.65, sternFullness:0.35, stemRake:1.1, stemCurve:-0.4, sternRake:0.5, rocker:0.2, parallelMidbody:0.1 },
+    junk: { woodType:'jungle', length:48, beam:15, depth:8, bottomPinch:0.5, hullFlare:0.4, flareCurve:2, tumblehome:0.05, tumbleCurve:3, sheerCurve:0.2, sheerCurveExp:2, bowLength:9, bowSharpness:0.9, bowKeelRise:0.3, bowKeelLength:14, bowCurve:0.4, sternStyle:'square', sternLength:5, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:14, sternOverhang:0.5, keelCurve:1.3, midWidthBias:0, castleBlend:3, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:13, forecastleHeight:1, forecastleLength:7, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'default', deadrise:0.05, midFullness:0.75, bowSectionV:0.3, sternFullness:0.65, stemRake:0.3, stemCurve:0.5, sternRake:0.55, rocker:0.25, parallelMidbody:0.2 },
+    warGalley: { woodType:'dark_oak', length:84, beam:14, depth:6, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.12, tumbleCurve:3, sheerCurve:0.1, sheerCurveExp:2, bowLength:23, bowSharpness:2.5, bowKeelRise:0.4, bowKeelLength:25, bowCurve:-0.5, sternStyle:'round', sternLength:12, sternSharpness:1.3, sternKeelRise:0.3, sternKeelLength:18, sternOverhang:0, keelCurve:1.5, midWidthBias:0.2, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:1, castleLength:12, forecastleHeight:1, forecastleLength:7, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked', deadrise:0.3, midFullness:0.45, bowSectionV:0.7, sternFullness:0.4, stemRake:0.7, stemCurve:-0.5, sternRake:0.35, rocker:0.1, parallelMidbody:0.3 },
+    flyingShip: { woodType:'cherry', length:52, beam:18, depth:9, bottomPinch:0.5, hullFlare:0.35, flareCurve:2.2, tumblehome:0.3, tumbleCurve:2.5, sheerCurve:0.3, sheerCurveExp:2.5, bowLength:14, bowSharpness:1.2, bowKeelRise:1.2, bowKeelLength:18, bowCurve:0.5, sternStyle:'round', sternLength:12, sternSharpness:0.7, sternKeelRise:1, sternKeelLength:17, sternOverhang:0.6, keelCurve:1.4, midWidthBias:0, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:3, castleLength:16, forecastleHeight:2, forecastleLength:8, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'default', deadrise:0.15, midFullness:0.65, bowSectionV:0.45, sternFullness:0.6, stemRake:0.7, stemCurve:0.5, sternRake:0.6, rocker:0.25, parallelMidbody:0.1 },
+    dragonShip: { woodType:'crimson', length:60, beam:10, depth:7, bottomPinch:0.4, hullFlare:0.05, flareCurve:2.6, tumblehome:0.15, tumbleCurve:3, sheerCurve:0.4, sheerCurveExp:1.8, bowLength:19, bowSharpness:2.5, bowKeelRise:1.4, bowKeelLength:21, bowCurve:-0.8, sternStyle:'pointed', sternLength:17, sternSharpness:2, sternKeelRise:1.3, sternKeelLength:19, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:false, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.45, midFullness:0.3, bowSectionV:0.65, stemRake:0.9, stemCurve:-0.5, rocker:0.35, stemPostHeight:6, sternPostHeight:5, doubleEnder:true },
+    ark: { woodType:'oak', length:84, beam:24, depth:12, bottomPinch:0.55, hullFlare:0.15, flareCurve:2.6, tumblehome:0.08, tumbleCurve:3, sheerCurve:0.05, sheerCurveExp:2, bowLength:12, bowSharpness:0.8, bowKeelRise:0.3, bowKeelLength:21, bowCurve:0.7, sternStyle:'square', sternLength:8, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:17, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:19, forecastleHeight:1, forecastleLength:10, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'default', deadrise:0.05, midFullness:0.85, bowSectionV:0.25, sternFullness:0.75, stemRake:0.2, stemCurve:0.4, sternRake:0.2, rocker:0.08, parallelMidbody:0.4 },
+    trawler: { woodType:'spruce', length:36, beam:14, depth:7, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.08, tumbleCurve:3, sheerCurve:0.05, sheerCurveExp:2, bowLength:8, bowSharpness:0.9, bowKeelRise:0.3, bowKeelLength:10, bowCurve:0, sternStyle:'square', sternLength:5, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:7, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:3, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:1, castleLength:8, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'plumb', deadrise:0.2, midFullness:0.65, bowSectionV:0.5, sternFullness:0.6, stemRake:0.4, stemCurve:0.1, sternRake:0.15, rocker:0.1, parallelMidbody:0.2 },
+    tugboat: { woodType:'dark_oak', length:26, beam:12, depth:6, bottomPinch:0.3, hullFlare:0.1, flareCurve:2.6, tumblehome:0.06, tumbleCurve:3, sheerCurve:0.05, sheerCurveExp:2, bowLength:6, bowSharpness:0.8, bowKeelRise:0.3, bowKeelLength:8, bowCurve:0, sternStyle:'square', sternLength:4, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:6, sternOverhang:0, keelCurve:1.4, midWidthBias:0, castleBlend:3, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:1, castleLength:6, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'plumb', deadrise:0.15, midFullness:0.7, bowSectionV:0.4, sternFullness:0.6, stemRake:0.35, stemCurve:0.2, sternRake:0.2, rocker:0.12, parallelMidbody:0.15 },
+    destroyer: { woodType:'spruce', length:96, beam:12, depth:7, bottomPinch:0.3, hullFlare:0.15, flareCurve:2.6, tumblehome:0.18, tumbleCurve:3, sheerCurve:0.04, sheerCurveExp:2, bowLength:26, bowSharpness:2.8, bowKeelRise:0.3, bowKeelLength:29, bowCurve:-0.4, sternStyle:'round', sternLength:12, sternSharpness:1, sternKeelRise:0.2, sternKeelLength:17, sternOverhang:0, keelCurve:1.6, midWidthBias:0.25, castleBlend:5, hasRailings:true, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked', deadrise:0.35, midFullness:0.55, bowSectionV:0.75, sternFullness:0.6, stemRake:0.6, stemCurve:0.1, sternRake:0.1, rocker:0.03, parallelMidbody:0.35 },
+    speedboat: { woodType:'birch', length:24, beam:7, depth:4, bottomPinch:0.5, hullFlare:0.08, flareCurve:2.6, tumblehome:0.05, tumbleCurve:3, sheerCurve:0.08, sheerCurveExp:2, bowLength:8, bowSharpness:3, bowKeelRise:1, bowKeelLength:8, bowCurve:-0.5, sternStyle:'square', sternLength:4, sternSharpness:0.5, sternKeelRise:0.2, sternKeelLength:4, sternOverhang:0, keelCurve:1.6, midWidthBias:0, castleBlend:3, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.55, midFullness:0.5, bowSectionV:0.8, sternFullness:0.7, stemRake:0.7, stemCurve:0, sternRake:0.05, rocker:0.05, parallelMidbody:0.2 },
+    yacht: { woodType:'birch', length:42, beam:9, depth:6, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.1, tumbleCurve:3, sheerCurve:0.06, sheerCurveExp:2, bowLength:12, bowSharpness:2.2, bowKeelRise:0.35, bowKeelLength:15, bowCurve:-0.3, sternStyle:'round', sternLength:6, sternSharpness:0.8, sternKeelRise:0.2, sternKeelLength:10, sternOverhang:0, keelCurve:1.4, midWidthBias:0.15, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked', deadrise:0.45, midFullness:0.45, bowSectionV:0.7, sternFullness:0.5, stemRake:0.65, stemCurve:-0.1, sternRake:0.4, rocker:0.15, parallelMidbody:0.15 },
+    canoe: { woodType:'birch', length:22, beam:5, depth:4, bottomPinch:0.2, hullFlare:0.15, flareCurve:2.2, tumblehome:0, tumbleCurve:3, sheerCurve:0.25, sheerCurveExp:1.8, bowLength:8, bowSharpness:1.6, bowKeelRise:0.6, bowKeelLength:8, bowCurve:-0.2, sternStyle:'round', sternLength:8, sternSharpness:1.6, sternKeelRise:0.6, sternKeelLength:8, sternOverhang:0, keelCurve:1.3, midWidthBias:0, castleBlend:3, hasRailings:false, hasTrim:false, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed', deadrise:0.35, midFullness:0.4, bowSectionV:0.6, stemRake:0.6, stemCurve:-0.2, rocker:0.3, doubleEnder:true }
+  };
+
+  // Original v1 presets, applied when the legacy engine is selected.
+  var PRESETS_V1 = {
     sloop:    { woodType:'spruce', length:26, beam:8, depth:5, bottomPinch:0.35, hullFlare:0.18, flareCurve:2.6, tumblehome:0.15, tumbleCurve:3, sheerCurve:0.15, sheerCurveExp:2, bowLength:8, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:7, bowCurve:-0.25, sternStyle:'round', sternLength:4, sternSharpness:0.8, sternKeelRise:0.15, sternKeelLength:5, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:5, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed' },
     schooner: { woodType:'spruce', length:38, beam:9, depth:6, bottomPinch:0.3, hullFlare:0.2, flareCurve:2.6, tumblehome:0.16, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:12, bowSharpness:1.8, bowKeelRise:0.5, bowKeelLength:10, bowCurve:-0.3, sternStyle:'round', sternLength:5, sternSharpness:0.9, sternKeelRise:0.2, sternKeelLength:5, sternOverhang:0, keelCurve:1.7, midWidthBias:0, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:1, castleLength:8, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed' },
     frigate:  { woodType:'dark_oak', length:56, beam:12, depth:7, bottomPinch:0.28, hullFlare:0.25, flareCurve:2.6, tumblehome:0.25, tumbleCurve:3, sheerCurve:0.14, sheerCurveExp:2, bowLength:14, bowSharpness:1.8, bowKeelRise:0.6, bowKeelLength:13, bowCurve:-0.2, sternStyle:'square', sternLength:7, sternSharpness:0.6, sternKeelRise:0.25, sternKeelLength:7, sternOverhang:0.2, keelCurve:1.7, midWidthBias:0, castleBlend:5, hasRailings:true, hasTrim:true, hasWindows:true, castleHeight:2, castleLength:11, forecastleHeight:1, forecastleLength:6, hasGunPorts:true, gunPortRow:2, gunPortSpacing:4, bowStyle:'pointed' },
@@ -295,8 +418,8 @@
     yacht:    { woodType:'birch', length:34, beam:7, depth:4, bottomPinch:0.3, hullFlare:0.12, flareCurve:2.6, tumblehome:0.1, tumbleCurve:3, sheerCurve:0.06, sheerCurveExp:2, bowLength:10, bowSharpness:2.2, bowKeelRise:0.35, bowKeelLength:9, bowCurve:-0.3, sternStyle:'round', sternLength:5, sternSharpness:0.8, sternKeelRise:0.1, sternKeelLength:4, sternOverhang:0, keelCurve:1.7, midWidthBias:0.15, castleBlend:4, hasRailings:true, hasTrim:true, hasWindows:false, castleHeight:0, castleLength:0, forecastleHeight:0, forecastleLength:0, hasGunPorts:false, gunPortRow:2, gunPortSpacing:4, bowStyle:'raked' }
   };
 
-  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing'];
-  var CHECK_PARAMS = ['hasRailings','hasTrim','hasWindows','hasGunPorts'];
+  var RANGE_PARAMS = ['length','beam','depth','bottomPinch','hullFlare','flareCurve','tumblehome','tumbleCurve','sheerCurve','sheerCurveExp','bowLength','bowSharpness','bowKeelRise','bowKeelLength','bowCurve','sternLength','sternSharpness','sternKeelRise','sternKeelLength','sternOverhang','keelCurve','midWidthBias','castleBlend','castleHeight','castleLength','forecastleHeight','forecastleLength','gunPortRow','gunPortSpacing','stemRake','stemCurve','sternRake','rocker','sweep','deadrise','midFullness','bowSectionV','sternFullness','parallelMidbody','stemPostHeight','sternPostHeight'];
+  var CHECK_PARAMS = ['hasRailings','hasTrim','hasWindows','hasGunPorts','doubleEnder','closedHull'];
   var SELECT_PARAMS = ['sternStyle','woodType','bowStyle'];
 
   function updateGunPortVisibility() {
@@ -305,8 +428,14 @@
     document.getElementById('gunPortSpacingGroup').style.display = checked ? '' : 'none';
   }
 
+  function updateVersionVisibility() {
+    var v = parseInt(document.getElementById('param-genVersion').value, 10);
+    document.getElementById('v2ParamsGroup').style.display = v >= 3 ? '' : 'none';
+  }
+
   function getParams() {
     var p = {};
+    p.version = parseInt(document.getElementById('param-genVersion').value, 10) || 3;
     RANGE_PARAMS.forEach(function(k) {
       var el = document.getElementById('param-' + k);
       p[k] = el.step && el.step.indexOf('.') >= 0 ? parseFloat(el.value) : parseInt(el.value);
@@ -337,7 +466,14 @@
       var el = document.getElementById('param-' + k);
       if (el && p[k] !== undefined) el.value = p[k];
     });
+    // Loading a shared configuration restores its engine version; pre-v3
+    // links select the legacy engine so they reproduce exactly.
+    if (p.version !== undefined) {
+      var vSel = document.getElementById('param-genVersion');
+      if (vSel) vSel.value = p.version >= 3 ? '3' : '2';
+    }
     updateGunPortVisibility();
+    updateVersionVisibility();
   }
 
   function updateLabels() {
@@ -363,6 +499,7 @@
   function refresh() {
     updateLabels();
     updateGunPortVisibility();
+    updateVersionVisibility();
     updateShareURLs();
     GeneratorApp.generate('/api/generators/hull', getParams());
   }
@@ -374,6 +511,7 @@
     }
 
     var initEl = document.getElementById('gen-init-data');
+    GeneratorApp.setEncodeDefaults('h', getParams());
     GeneratorApp.applyHashParams(setParams, initEl && initEl.dataset.hash, 'hull');
 
     document.querySelectorAll('.gen-param').forEach(function(el) {
@@ -383,8 +521,14 @@
     document.querySelectorAll('.gen-preset').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.preventDefault();
-        var p = PRESETS[this.getAttribute('data-preset')];
-        if (p) { setParams(p); refresh(); }
+        var name = this.getAttribute('data-preset');
+        var useV1 = parseInt(document.getElementById('param-genVersion').value, 10) < 3;
+        var base = useV1 && PRESETS_V1[name] ? PRESETS_V1[name] : PRESETS[name];
+        if (!base) return;
+        // Every parameter resets to its default first: presets must be
+        // reproducible regardless of what was clicked before.
+        var p = Object.assign({ version: useV1 && PRESETS_V1[name] ? 2 : 3 }, PRESET_DEFAULTS, base);
+        setParams(p); refresh();
       });
     });
 
@@ -392,6 +536,11 @@
       GeneratorApp.setSpinEnabled(this.checked);
     });
 
+    document.querySelectorAll('[data-gen-format]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            GeneratorApp.downloadNBT('/api/generators/hull/download?format=' + this.getAttribute('data-gen-format'), getParams());
+        });
+    });
     document.getElementById('gen-download-btn').addEventListener('click', function(e) {
       e.preventDefault();
       GeneratorApp.downloadNBT('/api/generators/hull/download', getParams());

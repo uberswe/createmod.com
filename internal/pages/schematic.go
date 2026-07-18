@@ -40,6 +40,7 @@ var schematicTemplates = append([]string{
 	"./template/schematic.html",
 	"./template/include/schematic_card.html",
 	"./template/include/schematic_card_full.html",
+	"./template/include/download_split.html",
 }, commonTemplates...)
 
 type CollectionOption struct {
@@ -49,6 +50,8 @@ type CollectionOption struct {
 }
 
 type SchematicData struct {
+	DownloadSplit DownloadSplitData
+	Safety        SafetyBadgeData
 	DefaultData
 	Schematic     models.Schematic
 	Comments      []models.Comment
@@ -451,6 +454,8 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 
 		d.Title = d.Schematic.Title
+		d.DownloadSplit = schematicDownloadSplit(d.Schematic.Name, d.Language, [3]int{d.Schematic.DimX, d.Schematic.DimY, d.Schematic.DimZ})
+		d.Safety = safetyBadgeFor(e.Request.Context(), appStore, d.Schematic.ID)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
 		d.Description = truncateMetaDescription(strip.StripTags(d.Schematic.Content))
 		d.OGType = "article"

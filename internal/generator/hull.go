@@ -44,6 +44,23 @@ type HullParams struct {
 	GunPortSpacing   int     `json:"gunPortSpacing"`
 	MidWidthBias     float64 `json:"midWidthBias"`
 	BowStyle         string  `json:"bowStyle"`
+
+	// v2 (version >= 3) lofted-hull parameters. Zero values select sensible
+	// defaults in Validate so old presets and bare API calls still work.
+	Deadrise        float64 `json:"deadrise"`        // bottom V angle at midship (0 = flat)
+	MidFullness     float64 `json:"midFullness"`     // midship section fullness: 0 = round, 1 = boxy
+	BowSectionV     float64 `json:"bowSectionV"`     // how V-shaped bow entry sections are
+	SternFullness   float64 `json:"sternFullness"`   // stern section fullness
+	StemRake        float64 `json:"stemRake"`        // forward lean of the stem, fraction of depth
+	StemCurve       float64 `json:"stemCurve"`       // stem profile: -1 concave (clipper) .. 1 convex (spoon)
+	SternRake       float64 `json:"sternRake"`       // aft lean of the transom/counter, fraction of depth
+	Rocker          float64 `json:"rocker"`          // keel rise toward the ends, fraction of depth
+	Sweep           float64 `json:"sweep"`           // lengthwise bend of the whole hull toward the ends, fraction of depth
+	ParallelMidbody float64 `json:"parallelMidbody"` // fraction of length held at full beam
+	StemPostHeight  int     `json:"stemPostHeight"`  // stem post rising above deck (longships)
+	SternPostHeight int     `json:"sternPostHeight"` // stern post rising above deck
+	DoubleEnder     bool    `json:"doubleEnder"`     // stern mirrors the bow (canoe, longship)
+	ClosedHull      bool    `json:"closedHull"`      // mirror hull above deck into a closed envelope
 }
 
 func (p *HullParams) Validate() error {
@@ -135,6 +152,57 @@ func (p *HullParams) Validate() error {
 		p.GunPortRow = 2
 	}
 
+	// v2 parameters
+	clampFloat(&p.Deadrise, 0, 0.7)
+	clampFloat(&p.MidFullness, 0, 1)
+	clampFloat(&p.BowSectionV, 0, 1)
+	clampFloat(&p.SternFullness, 0, 1)
+	clampFloat(&p.StemRake, 0, 1.2)
+	clampFloat(&p.StemCurve, -1, 1)
+	clampFloat(&p.SternRake, 0, 1)
+	clampFloat(&p.Rocker, 0, 0.5)
+	clampFloat(&p.Sweep, 0, 2.0)
+	clampFloat(&p.ParallelMidbody, 0, 0.6)
+	clampInt(&p.StemPostHeight, 0, 8)
+	clampInt(&p.SternPostHeight, 0, 8)
+	if p.Version >= HullV2MinVersion {
+		// Zero-value section params mean "unset" (old presets, bare API
+		// calls): pick shapes that read as a ship out of the box.
+		if p.MidFullness == 0 {
+			p.MidFullness = 0.65
+		}
+		if p.BowSectionV == 0 {
+			p.BowSectionV = 0.55
+		}
+		if p.SternFullness == 0 {
+			p.SternFullness = 0.5
+		}
+		// Map v1 bow styles onto profile curves when the stem is unset, so
+		// existing presets get correct silhouettes without new fields.
+		if p.StemRake == 0 && p.StemCurve == 0 {
+			switch p.BowStyle {
+			case "clipper":
+				p.StemRake, p.StemCurve = 0.8, -0.6
+			case "raked":
+				p.StemRake = 0.6
+			case "pointed":
+				p.StemRake = 0.2
+			case "plumb":
+				// stays 0
+			default:
+				p.StemRake, p.StemCurve = 0.35, 0.15
+			}
+		}
+		if p.SternRake == 0 {
+			switch p.SternStyle {
+			case "square":
+				p.SternRake = 0.2
+			case "round":
+				p.SternRake = 0.35
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -149,7 +217,23 @@ func smoothstep(t float64) float64 {
 	return x * x * (3 - 2*x)
 }
 
+// GenerateHull dispatches to the algorithm selected by p.Version. Versions
+// <= 2 run the frozen v1 algorithm so existing share links reproduce
+// byte-identical hulls; version >= 3 runs the v2 lofted-hull algorithm.
 func GenerateHull(p HullParams) (*GenerateResult, error) {
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+	if p.Version >= HullV2MinVersion {
+		return generateHullV2(p)
+	}
+	return generateHullV1(p)
+}
+
+// generateHullV1 is the original hull algorithm, frozen at hash version 2.
+// Do not modify: every pre-v3 share link regenerates through this code and
+// must produce identical output forever (guarded by golden tests).
+func generateHullV1(p HullParams) (*GenerateResult, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
@@ -614,9 +698,16 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 				stairList = append(stairList, stairEntry{k[0], k[1], k[2]})
 			}
 		}
-		// Sort top-down
+		// Sort top-down; break ties on z/x so map iteration order can never
+		// influence output (share links must reproduce identical hulls).
 		sort.Slice(stairList, func(i, j int) bool {
-			return stairList[i].y > stairList[j].y
+			if stairList[i].y != stairList[j].y {
+				return stairList[i].y > stairList[j].y
+			}
+			if stairList[i].z != stairList[j].z {
+				return stairList[i].z < stairList[j].z
+			}
+			return stairList[i].x < stairList[j].x
 		})
 		for _, s := range stairList {
 			below := get(s.x, s.y-1, s.z)
@@ -771,13 +862,23 @@ func GenerateHull(p HullParams) (*GenerateResult, error) {
 			return true
 		}
 
-		// Collect current fences
+		// Collect current fences in deterministic order: bridge placement
+		// depends on processing order, and map iteration is random.
 		var fences []*blockEntry
 		for _, b := range blocks {
 			if b.name == "minecraft:spruce_fence" {
 				fences = append(fences, b)
 			}
 		}
+		sort.Slice(fences, func(i, j int) bool {
+			if fences[i].z != fences[j].z {
+				return fences[i].z < fences[j].z
+			}
+			if fences[i].y != fences[j].y {
+				return fences[i].y < fences[j].y
+			}
+			return fences[i].x < fences[j].x
+		})
 
 		for _, f := range fences {
 			for _, dz := range []int{-1, 1} {

@@ -402,7 +402,7 @@ function generateBalloon(p) {
 
 // ===== Hull Generator =====
 
-function generateHull(p) {
+function generateHullV1(p) {
   var L = clamp(p.length || 40, 20, 500);
   var B = clamp(p.beam || 10, 4, 100);
   var D = clamp(p.depth || 6, 3, 40);
@@ -916,6 +916,687 @@ function generateHull(p) {
     sizeZ: maxZ - minZ + 1,
     materials: { woodType: p.woodType || 'spruce' }
   };
+}
+
+
+// ===== Hull Generator v2 (lofted geometry) =====
+// Mirrors internal/generator/hull_v2.go — keep the two in sync.
+
+function generateHullV2(p) {
+  var L = clamp(p.length || 40, 20, 500);
+  var B = clamp(p.beam || 10, 4, 100);
+  var D = clamp(p.depth || 6, 3, 40);
+  var bottomPinch = clamp(p.bottomPinch || 0.3, 0.1, 0.7);
+  var hullFlare = clamp(p.hullFlare || 0, 0, 0.6);
+  var flareCurve = clamp(p.flareCurve || 2.6, 1.2, 4.0);
+  var tumblehome = clamp(p.tumblehome || 0, 0, 0.4);
+  var tumbleCurve = clamp(p.tumbleCurve || 3, 1.5, 5.0);
+  var sheerCurve = clamp(p.sheerCurve || 0, 0, 0.75);
+  var sheerCurveExp = clamp(p.sheerCurveExp || 2, 1.0, 4.0);
+  var bowLength = clamp(p.bowLength || 8, 2, Math.floor(L / 2));
+  var bowSharpness = clamp(p.bowSharpness || 1.3, 0.4, 4.0);
+  var bowKeelRise = clamp(p.bowKeelRise || 0, 0, 1.5);
+  var bowKeelLength = clamp(p.bowKeelLength || 0, 0, 40);
+  var bowCurve = clamp(p.bowCurve || 0, -1.0, 1.0);
+  var sternStyle = p.sternStyle;
+  if (sternStyle !== 'square' && sternStyle !== 'round' && sternStyle !== 'pointed') sternStyle = 'round';
+  var sternLength = clamp(p.sternLength || 5, 2, Math.floor(L / 2));
+  var sternSharpness = clamp(p.sternSharpness || 0.7, 0.2, 2.0);
+  var sternKeelRise = clamp(p.sternKeelRise || 0, 0, 1.5);
+  var sternKeelLength = clamp(p.sternKeelLength || 0, 0, 30);
+  var sternOverhang = clamp(p.sternOverhang || 0, 0, 1.0);
+  var keelCurveVal = clamp(p.keelCurve || 1.7, 0.7, 3.5);
+  var castleBlend = clamp(p.castleBlend || 4, 2, 12);
+  var hasRailings = !!p.hasRailings;
+  var hasTrim = !!p.hasTrim;
+  var hasWindows = !!p.hasWindows;
+  var castleHeight = clamp(p.castleHeight || 0, 0, 6);
+  var castleLength = clamp(p.castleLength || 0, 0, 30);
+  if (castleLength > Math.floor(L * 55 / 100)) castleLength = Math.floor(L * 55 / 100);
+  var forecastleHeight = clamp(p.forecastleHeight || 0, 0, 3);
+  var forecastleLength = clamp(p.forecastleLength || 0, 0, 20);
+  if (forecastleLength > Math.floor(L * 50 / 100)) forecastleLength = Math.floor(L * 50 / 100);
+  var hasGunPorts = !!p.hasGunPorts;
+  var gunPortRow = clamp(p.gunPortRow || 2, 1, 6);
+  var gunPortSpacing = clamp(p.gunPortSpacing || 4, 2, 8);
+  var midWidthBias = clamp(p.midWidthBias || 0, 0, 1.0);
+  var bowStyle = p.bowStyle;
+  var validBows = { 'default':1, pointed:1, clipper:1, raked:1, plumb:1 };
+  if (!validBows[bowStyle]) bowStyle = 'default';
+
+  // v2 params
+  var deadrise = clamp(p.deadrise || 0, 0, 0.7);
+  var midFullness = clamp(p.midFullness || 0, 0, 1);
+  var bowSectionV = clamp(p.bowSectionV || 0, 0, 1);
+  var sternFullness = clamp(p.sternFullness || 0, 0, 1);
+  var stemRake = clamp(p.stemRake || 0, 0, 1.2);
+  var stemCurve = clamp(p.stemCurve || 0, -1, 1);
+  var sternRake = clamp(p.sternRake || 0, 0, 1);
+  var rocker = clamp(p.rocker || 0, 0, 0.5);
+  var parallelMidbody = clamp(p.parallelMidbody || 0, 0, 0.6);
+  var stemPostHeight = clamp(p.stemPostHeight || 0, 0, 8);
+  var sternPostHeight = clamp(p.sternPostHeight || 0, 0, 8);
+  var doubleEnder = !!p.doubleEnder;
+  var closedHull = !!p.closedHull;
+  var sweep = clamp(p.sweep || 0, 0, 2);
+
+  // Defaults mirroring HullParams.Validate for version >= 3
+  if (midFullness === 0) midFullness = 0.65;
+  if (bowSectionV === 0) bowSectionV = 0.55;
+  if (sternFullness === 0) sternFullness = 0.5;
+  if (stemRake === 0 && stemCurve === 0) {
+    if (bowStyle === 'clipper') { stemRake = 0.8; stemCurve = -0.6; }
+    else if (bowStyle === 'raked') { stemRake = 0.6; }
+    else if (bowStyle === 'pointed') { stemRake = 0.2; }
+    else if (bowStyle !== 'plumb') { stemRake = 0.35; stemCurve = 0.15; }
+  }
+  if (sternRake === 0) {
+    if (sternStyle === 'square') sternRake = 0.2;
+    else if (sternStyle === 'round') sternRake = 0.35;
+  }
+
+  var length = L, depth = D, halfBeam = B / 2;
+  function sstep(t) { t = clamp01(t); return t * t * t * (t * (t * 6 - 15) + 10); }
+  function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // Sweep bends the whole hull — keel and deck together — up toward the
+  // ends, applied as a vertical shear so sections keep their shape.
+  function sweepAt(zNorm) {
+    if (sweep <= 0) return 0;
+    var t = Math.abs(zNorm - 0.5) * 2;
+    return sweep * depth * t * t;
+  }
+
+  var stemSetbackMax = stemRake * depth;
+  function stemSetbackAt(yNorm) {
+    var t = 1 - clamp01(yNorm);
+    var shape = t;
+    if (stemCurve > 0) shape = lerp(t, t * t, stemCurve);
+    else if (stemCurve < 0) shape = lerp(t, Math.sqrt(t), -stemCurve);
+    return stemSetbackMax * shape;
+  }
+  var sternSetbackMax = sternRake * depth;
+  function sternSetbackAt(yNorm) {
+    if (doubleEnder) return stemSetbackAt(yNorm);
+    return sternSetbackMax * (1 - clamp01(yNorm));
+  }
+
+  function keelYAtF(zNorm) {
+    var rise = 0;
+    if (rocker > 0) {
+      var t = Math.abs(zNorm - 0.5) * 2;
+      rise = rocker * depth * Math.pow(t, keelCurveVal);
+    }
+    if (bowKeelRise > 0 && bowKeelLength > 0) {
+      var start = 1 - bowKeelLength / length;
+      if (zNorm > start) {
+        var tb = (zNorm - start) / Math.max(1 - start, 0.001);
+        var r = Math.pow(tb, keelCurveVal) * bowKeelRise * depth;
+        if (r > rise) rise = r;
+      }
+    }
+    var sRise = doubleEnder ? bowKeelRise : sternKeelRise;
+    var sLen = doubleEnder ? bowKeelLength : sternKeelLength;
+    if (sRise > 0 && sLen > 0) {
+      var end = sLen / length;
+      if (zNorm < end) {
+        var ts = (end - zNorm) / Math.max(end, 0.001);
+        var r2 = Math.pow(ts, keelCurveVal) * sRise * depth;
+        if (r2 > rise) rise = r2;
+      }
+    }
+    return rise;
+  }
+
+  var bowLenF = bowLength, sternLenF = doubleEnder ? bowLength : sternLength;
+  var midLo = sternLenF / length;
+  var midHi = 1 - bowLenF / length;
+  var midCenter = lerp(midLo, midHi, 0.5 - midWidthBias * 0.35);
+  var pmHalf = parallelMidbody / 2;
+  var fullLo = Math.max(midLo, midCenter - pmHalf);
+  var fullHi = Math.min(midHi, midCenter + pmHalf);
+
+  function planAt(zNorm, yNorm) {
+    if (zNorm < midLo) {
+      var t = zNorm / Math.max(midLo, 0.001);
+      var st = sstep(t);
+      if (doubleEnder) return Math.pow(st, bowSharpness);
+      if (sternStyle === 'square') {
+        // Flat transom above the waterline only; the run tapers underneath.
+        var f = Math.pow(st, sternSharpness);
+        var floorF = lerp(0.12, 0.72, sstep(clamp01(yNorm)));
+        return f < floorF ? floorF : f;
+      }
+      if (sternStyle === 'round') return Math.pow(st, sternSharpness * 0.55);
+      return Math.pow(st, sternSharpness);
+    }
+    if (zNorm > midHi) {
+      var t2 = (1 - zNorm) / Math.max(1 - midHi, 0.001);
+      var st2 = sstep(t2);
+      var base = Math.pow(st2, bowSharpness);
+      if (bowCurve > 0) base = lerp(base, Math.sqrt(st2), bowCurve);
+      else if (bowCurve < 0) base = lerp(base, st2 * st2 * st2, -bowCurve);
+      return base;
+    }
+    if (zNorm >= fullLo && zNorm <= fullHi) return 1;
+    if (zNorm < fullLo) {
+      var t3 = (zNorm - midLo) / Math.max(fullLo - midLo, 0.001);
+      return lerp(0.78, 1, sstep(t3));
+    }
+    var t4 = (midHi - zNorm) / Math.max(midHi - fullHi, 0.001);
+    return lerp(0.84, 1, sstep(t4));
+  }
+
+  function fullnessToK(f) { return lerp(1.6, 0.55, clamp01(f)); }
+  function sectionKAt(zNorm) {
+    var midK = fullnessToK(midFullness);
+    var bowK = midK + bowSectionV * 0.9;
+    var sternK = doubleEnder ? bowK : fullnessToK(lerp(sternFullness, midFullness, 0.35));
+    if (zNorm > midHi) {
+      var t = (zNorm - midHi) / Math.max(1 - midHi, 0.001);
+      return lerp(midK, bowK, sstep(t));
+    }
+    if (zNorm < midLo) {
+      var t2 = (midLo - zNorm) / Math.max(midLo, 0.001);
+      return lerp(midK, sternK, sstep(t2));
+    }
+    return midK;
+  }
+
+  var keelHalf = bottomPinch * 0.25;
+  function sectionAt(yNorm, k) {
+    var yc = clamp01(yNorm);
+    var body = Math.pow(Math.sin(yc * Math.PI / 2), k + deadrise * 0.8);
+    var base = keelHalf + (1 - keelHalf) * body;
+    var flare = hullFlare * Math.pow(yc, flareCurve);
+    var tumble = tumblehome * Math.pow(yc, tumbleCurve);
+    var above = yNorm - 1;
+    if (above < 0) above = 0;
+    var castleTaper = above * 0.32 + above * above * 0.18;
+    var r = base + flare - tumble - castleTaper;
+    return r < 0.06 ? 0.06 : r;
+  }
+
+  // deckYAtFloat: continuous deck surface so the fitter can express sheer
+  // with slabs. Mirrors Go deckYAtFloat.
+  function deckYAtFloat(zf) {
+    var y = depth;
+    var zNorm = zf / Math.max(length - 1, 1);
+    if (sheerCurve > 0) {
+      var t = Math.abs(zNorm - 0.5) * 2;
+      y += sheerCurve * depth * Math.pow(t, sheerCurveExp);
+    }
+    if (castleHeight > 0 && castleLength > 0) {
+      var cL = castleLength;
+      var blend = castleBlend;
+      var b1 = cL * 0.55;
+      if (b1 < blend) blend = b1;
+      if (blend < 2) blend = 2;
+      if (zf < cL - blend) y += castleHeight;
+      else if (zf < cL) {
+        var tc = (zf - (cL - blend)) / blend;
+        y += castleHeight * (1 - sstep(tc));
+      }
+    }
+    if (forecastleHeight > 0 && forecastleLength > 0) {
+      var fL = forecastleLength;
+      var blend2 = castleBlend;
+      var b2 = fL * 0.55;
+      if (b2 < blend2) blend2 = b2;
+      if (blend2 < 2) blend2 = 2;
+      var zFromBow = (length - 1) - zf;
+      if (zFromBow < fL - blend2) y += forecastleHeight;
+      else if (zFromBow < fL) {
+        var tf = (zFromBow - (fL - blend2)) / blend2;
+        y += forecastleHeight * (1 - sstep(tf));
+      }
+    }
+    return y;
+  }
+
+  // Continuous hull volume test. Mirrors Go insideAt.
+  function insideAt(xs, ys, zs) {
+    if (zs < -0.49 || zs > length - 0.51) return false;
+    var zNormBase = zs / Math.max(length - 1, 1);
+    if (zNormBase < 0) zNormBase = 0;
+    if (zNormBase > 1) zNormBase = 1;
+    var keelY = keelYAtF(zNormBase);
+    if (ys < keelY) return false;
+    // Loft sections between keel line and deck (mirrors Go).
+    var bottomSpan = depth - keelY;
+    if (bottomSpan < 1) bottomSpan = 1;
+    var yNorm;
+    if (closedHull) {
+      if (ys > 2 * depth) return false;
+      if (ys <= depth) yNorm = (ys - keelY) / bottomSpan;
+      else yNorm = (2 * depth - ys) / depth;
+      if (yNorm < 0) return false;
+    } else {
+      if (ys > deckYAtFloat(zs)) return false;
+      yNorm = (ys - keelY) / bottomSpan;
+    }
+    var sb = sternSetbackAt(yNorm);
+    var stk = stemSetbackAt(yNorm);
+    var zLo = sb, zHi = length - 1 - stk;
+    if (zHi <= zLo || zs < zLo || zs > zHi) return false;
+    var zN = clamp01((zs - zLo) / (zHi - zLo));
+    var w = planAt(zN, yNorm) * sectionAt(yNorm, sectionKAt(zN)) * halfBeam;
+    if (w < 0.15) return false;
+    return Math.abs(xs) <= w;
+  }
+
+  // --- Grid extents ---
+  var maxDeckY = D;
+  var deckYArr = new Array(L), keelYArr = new Array(L);
+  for (var z0 = 0; z0 < L; z0++) {
+    var zn0 = z0 / Math.max(length - 1, 1);
+    var sw0 = sweepAt(zn0);
+    deckYArr[z0] = Math.round(deckYAtFloat(z0) + sw0);
+    if (deckYArr[z0] > maxDeckY) maxDeckY = deckYArr[z0];
+    keelYArr[z0] = Math.round(keelYAtF(zn0) + sw0);
+  }
+  var topY = closedHull ? 2 * D + Math.round(sweepAt(0)) : maxDeckY;
+
+  // --- Column-quantized half-widths (mirrors Go hwRowAt) ---
+  // Continuous half-width at integer row (y,z), or -1 when the row is
+  // outside the hull. Quantization happens on whole rows — never per cell —
+  // so every surface line stays coherent.
+  function hwRowAt(y, z) {
+    if (z < 0 || z >= L || y < 0 || y > topY) return -1;
+    if (y < keelYArr[z]) return -1;
+    if (!closedHull && y > deckYArr[z]) return -1;
+    var ys = y, zs = z;
+    var zNormBase = clamp01(zs / Math.max(length - 1, 1));
+    // Undo the sweep shear so the loft below sees an unbent hull.
+    ys -= sweepAt(zNormBase);
+    var keelY = keelYAtF(zNormBase);
+    var bottomSpan = depth - keelY;
+    if (bottomSpan < 1) bottomSpan = 1;
+    // The rounded keel and deck rows clamp to the continuous heights so the
+    // rows the grid keeps get real loft widths.
+    var yNorm;
+    if (closedHull) {
+      if (ys < keelY) ys = keelY;
+      if (ys <= depth) yNorm = (ys - keelY) / bottomSpan;
+      else yNorm = (2 * depth - ys) / depth;
+      if (yNorm < 0) return -1;
+    } else {
+      var d = deckYAtFloat(zs);
+      if (ys > d) ys = d;
+      if (ys < keelY) ys = keelY;
+      yNorm = (ys - keelY) / bottomSpan;
+    }
+    var sb = sternSetbackAt(yNorm);
+    var stk = stemSetbackAt(yNorm);
+    var zLo = sb, zHi = length - 1 - stk;
+    if (zHi <= zLo || zs < zLo || zs > zHi) return -1;
+    var zN = clamp01((zs - zLo) / (zHi - zLo));
+    var w = planAt(zN, yNorm) * sectionAt(yNorm, sectionKAt(zN)) * halfBeam;
+    if (w < 0.15) return -1;
+    return w;
+  }
+
+  var rawHW = new Array(topY + 1);
+  for (var ry = 0; ry <= topY; ry++) {
+    rawHW[ry] = new Float64Array(L);
+    for (var rz = 0; rz < L; rz++) rawHW[ry][rz] = hwRowAt(ry, rz);
+  }
+
+  // Fair the entrance and run along z (v1's smoothing).
+  var bowStartZ = L - bowLength;
+  var sternEndZ = doubleEnder ? bowLength : sternLength;
+  for (var sy = 0; sy <= topY; sy++) {
+    var smRow = new Float64Array(L);
+    smRow.set(rawHW[sy]);
+    for (var sz = 1; sz < L - 1; sz++) {
+      if (sz >= sternEndZ && sz <= bowStartZ) continue;
+      var prevW = rawHW[sy][sz - 1], curW = rawHW[sy][sz], nextW = rawHW[sy][sz + 1];
+      if (curW < 0) continue;
+      if (prevW < 0) prevW = curW;
+      if (nextW < 0) nextW = curW;
+      smRow[sz] = prevW * 0.25 + curW * 0.5 + nextW * 0.25;
+    }
+    rawHW[sy] = smRow;
+  }
+
+  // Quantize rows, then remove single-row spikes: a lone ±1 outlier between
+  // equal neighbours (along z or along y) is rounding noise, not shape.
+  var hwArr = new Array(topY + 1);
+  for (var qy = 0; qy <= topY; qy++) {
+    hwArr[qy] = new Int32Array(L);
+    for (var qz = 0; qz < L; qz++) {
+      if (rawHW[qy][qz] < 0) hwArr[qy][qz] = -1;
+      else {
+        var q = Math.round(rawHW[qy][qz] - 0.0001);
+        hwArr[qy][qz] = q < 0 ? 0 : q;
+      }
+    }
+  }
+  for (var fy2 = 0; fy2 <= topY; fy2++) {
+    for (var fz2 = 1; fz2 < L - 1; fz2++) {
+      var a1 = hwArr[fy2][fz2 - 1], b1 = hwArr[fy2][fz2], c1 = hwArr[fy2][fz2 + 1];
+      if (a1 >= 0 && b1 >= 0 && a1 === c1 && (b1 === a1 + 1 || b1 === a1 - 1)) hwArr[fy2][fz2] = a1;
+    }
+  }
+  for (var fz3 = 0; fz3 < L; fz3++) {
+    for (var fy3 = 1; fy3 < topY; fy3++) {
+      var a2 = hwArr[fy3 - 1][fz3], b2 = hwArr[fy3][fz3], c2 = hwArr[fy3 + 1][fz3];
+      if (a2 >= 0 && b2 >= 0 && a2 === c2 && (b2 === a2 + 1 || b2 === a2 - 1)) hwArr[fy3][fz3] = a2;
+    }
+  }
+
+  function hasHull(x, y, z) {
+    if (y < 0 || y > topY || z < 0 || z >= L) return false;
+    var hw = hwArr[y][z];
+    return hw >= 0 && x >= -hw && x <= hw;
+  }
+
+  var blockMap = {};
+  function bKey(x, y, z) { return x + ',' + y + ',' + z; }
+  function setBlock(x, y, z, type, props) {
+    var b = { x: x, y: y, z: z, type: type };
+    if (props) b.props = props;
+    blockMap[bKey(x, y, z)] = b;
+  }
+  function getBlock(x, y, z) { return blockMap[bKey(x, y, z)]; }
+  function copyProps(m) {
+    if (!m) return null;
+    var out = {};
+    for (var k in m) out[k] = m[k];
+    return out;
+  }
+
+  // --- Shell + deck ---
+  // Keep only the shell (a face exposed to non-hull) plus the deck row.
+  for (var sz3 = 0; sz3 < L; sz3++) {
+    for (var sy3 = 0; sy3 <= topY; sy3++) {
+      var shw = hwArr[sy3][sz3];
+      if (shw < 0) continue;
+      for (var sx3 = -shw; sx3 <= shw; sx3++) {
+        var exposed = !hasHull(sx3 - 1, sy3, sz3) || !hasHull(sx3 + 1, sy3, sz3) ||
+                      !hasHull(sx3, sy3 - 1, sz3) || !hasHull(sx3, sy3 + 1, sz3) ||
+                      !hasHull(sx3, sy3, sz3 - 1) || !hasHull(sx3, sy3, sz3 + 1);
+        var isDeck = !closedHull && sy3 === deckYArr[sz3];
+        if (exposed || isDeck) setBlock(sx3, sy3, sz3, BT.PLANK);
+      }
+    }
+  }
+
+  // --- Step smoothing (mirrors Go) ---
+
+  // One chamfer rule covers flare underhangs, bow/stern rakes and keel
+  // rises: an empty cell directly under hull that also touches hull on a
+  // horizontal face gets a top-half stair. Requiring the horizontal
+  // neighbour keeps stairs seated in real step corners — no teeth hanging
+  // from a face above. Facing (this codebase: the stair's LOW/open side)
+  // points away from the supporting neighbour; in the bow/stern tapers
+  // fore-aft support wins so the stem reads as one stepped line.
+  var maxHW = 0;
+  for (var my = 0; my <= topY; my++)
+    for (var mz = 0; mz < L; mz++)
+      if (hwArr[my][mz] > maxHW) maxHW = hwArr[my][mz];
+  var inTaper = new Array(L);
+  for (var itz = 0; itz < L; itz++) {
+    var itn = itz / Math.max(length - 1, 1);
+    inTaper[itz] = itn < midLo || itn > midHi;
+  }
+  function chamferFacing(x, y, z) {
+    var n = hasHull(x, y, z - 1);
+    var s = hasHull(x, y, z + 1);
+    var w = hasHull(x - 1, y, z);
+    var e = hasHull(x + 1, y, z);
+    var lateral = '';
+    if (x >= 0 && w) lateral = 'east';
+    else if (x <= 0 && e) lateral = 'west';
+    else if (w) lateral = 'east';
+    else if (e) lateral = 'west';
+    var foreAft = '';
+    if (n) foreAft = 'south';
+    else if (s) foreAft = 'north';
+    if (inTaper[z]) return foreAft !== '' ? foreAft : lateral;
+    return lateral !== '' ? lateral : foreAft;
+  }
+  for (var cz = 0; cz < L; cz++) {
+    for (var cy = 0; cy < topY; cy++) {
+      for (var cxx = -maxHW - 1; cxx <= maxHW + 1; cxx++) {
+        if (hasHull(cxx, cy, cz) || !hasHull(cxx, cy + 1, cz)) continue;
+        if (getBlock(cxx, cy, cz)) continue;
+        var cf = chamferFacing(cxx, cy, cz);
+        if (cf === '') continue;
+        setBlock(cxx, cy, cz, BT.STAIR, { facing: cf, half: 'top', shape: 'straight', waterlogged: 'false' });
+      }
+    }
+  }
+
+  // Ledge caps: an empty cell directly on top of hull with horizontal hull
+  // support gets a bottom-half stair, smoothing tumblehome ledges, castle
+  // walls and the deck breaks a strong sweep or sheer produces. Above the
+  // column's own deck only fore-aft caps are allowed — the gunwale edge
+  // belongs to trim and railings.
+  for (var lz2 = 0; lz2 < L; lz2++) {
+    for (var ly2 = 1; ly2 <= topY; ly2++) {
+      for (var lx2 = -maxHW - 1; lx2 <= maxHW + 1; lx2++) {
+        if (hasHull(lx2, ly2, lz2) || !hasHull(lx2, ly2 - 1, lz2)) continue;
+        if (getBlock(lx2, ly2, lz2)) continue;
+        var aboveDeck = !closedHull && ly2 > deckYArr[lz2];
+        var lf = chamferFacing(lx2, ly2, lz2);
+        if (lf === '') continue;
+        if (aboveDeck && lf !== 'south' && lf !== 'north') continue;
+        setBlock(lx2, ly2, lz2, BT.STAIR, { facing: lf, half: 'bottom', shape: 'straight', waterlogged: 'false' });
+      }
+    }
+  }
+
+  // De-stack: same-facing same-half stair runs become planks above the
+  // lowest stair (mirrors Go; v1's proven rule).
+  {
+    var stairList = [];
+    for (var dk in blockMap) {
+      if (blockMap[dk].type === BT.STAIR) stairList.push(blockMap[dk]);
+    }
+    stairList.sort(function (a, b) {
+      if (a.y !== b.y) return b.y - a.y;
+      if (a.z !== b.z) return a.z - b.z;
+      return a.x - b.x;
+    });
+    for (var di2 = 0; di2 < stairList.length; di2++) {
+      var st2 = stairList[di2];
+      var cur2 = getBlock(st2.x, st2.y, st2.z);
+      var below2 = getBlock(st2.x, st2.y - 1, st2.z);
+      if (cur2 && cur2.type === BT.STAIR && below2 && below2.type === BT.STAIR &&
+          below2.props && cur2.props &&
+          below2.props.half === cur2.props.half && below2.props.facing === cur2.props.facing) {
+        setBlock(st2.x, st2.y, st2.z, BT.PLANK);
+      }
+    }
+  }
+
+  function hwAt(y, z) {
+    if (y < 0 || y > topY || z < 0 || z >= L) return -1;
+    return hwArr[y][z];
+  }
+  function hKey(x, y, z) { return x + ',' + y + ',' + z; }
+  var inHull = {};
+  for (var hz = 0; hz < L; hz++)
+    for (var hy = 0; hy <= topY; hy++) {
+      var ihw = hwArr[hy][hz];
+      for (var hx = -ihw; hx <= ihw; hx++) inHull[hKey(hx, hy, hz)] = 1;
+    }
+
+
+  // Stem/stern posts
+  if (!closedHull) {
+    var placePost = function (fromBow, height) {
+      if (height <= 0) return;
+      var zStart = fromBow ? L - 1 : 0;
+      var zEnd = fromBow ? -1 : L;
+      var step = fromBow ? -1 : 1;
+      var zPost = -1;
+      for (var zp = zStart; zp !== zEnd; zp += step) {
+        if (hwAt(deckYArr[zp], zp) >= 0) { zPost = zp; break; }
+      }
+      if (zPost < 0) return;
+      var deckY = deckYArr[zPost];
+      for (var yp = deckY + 1; yp <= deckY + height; yp++) setBlock(0, yp, zPost, BT.PLANK);
+      setBlock(0, deckY + height + 1, zPost, BT.STAIR,
+        { facing: fromBow ? 'south' : 'north', half:'bottom', shape:'straight', waterlogged:'false' });
+    };
+    placePost(true, stemPostHeight);
+    var sp = sternPostHeight;
+    if (doubleEnder && sp === 0) sp = stemPostHeight;
+    placePost(false, sp);
+  }
+
+  // Stern windows
+  if (hasWindows && castleHeight >= 2 && castleLength > 0 && !closedHull) {
+    var wz = 0, wy = D + 1;
+    if (deckYArr[wz] > D) {
+      var hwBack = hwAt(wy, wz);
+      if (hwBack >= 1) {
+        for (var wx = -hwBack + 1; wx <= hwBack - 1; wx += 2) {
+          var wb = getBlock(wx, wy, wz);
+          if (wb && wb.type === BT.PLANK) {
+            setBlock(wx, wy, wz, BT.TRAPDOOR, { facing:'north', half:'bottom', open:'true', powered:'false', waterlogged:'false' });
+          }
+        }
+      }
+    }
+  }
+
+  // Gunwale trim + railings
+  if (!closedHull) {
+    for (var zg = 0; zg < L; zg++) {
+      var deckYg = deckYArr[zg];
+      var hwD = hwAt(deckYg, zg);
+      if (hwD < 1) continue;
+      var yg = deckYg + 1;
+      var canInset = hwD >= 2;
+      if (hasTrim && hasRailings && canInset) {
+        if (!getBlock(hwD, yg, zg) && !hasHull(hwD, yg, zg)) setBlock(hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+        if (!getBlock(-hwD, yg, zg) && !hasHull(-hwD, yg, zg)) setBlock(-hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+        setBlock(hwD - 1, yg, zg, BT.FENCE);
+        if (hwD - 1 > 0) setBlock(-(hwD - 1), yg, zg, BT.FENCE);
+      } else if (hasTrim) {
+        if (!getBlock(hwD, yg, zg) && !hasHull(hwD, yg, zg)) setBlock(hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+        if (hwD > 0 && !getBlock(-hwD, yg, zg) && !hasHull(-hwD, yg, zg)) setBlock(-hwD, yg, zg, BT.SLAB_BOT, { type:'bottom', waterlogged:'false' });
+      } else if (hasRailings) {
+        setBlock(hwD, yg, zg, BT.FENCE);
+        if (hwD > 0) setBlock(-hwD, yg, zg, BT.FENCE);
+      }
+    }
+    for (var kf in blockMap) {
+      var bf = blockMap[kf];
+      if (bf.type !== BT.FENCE) continue;
+      var belowF = getBlock(bf.x, bf.y - 1, bf.z);
+      if (belowF && belowF.type === BT.SLAB_BOT) delete blockMap[bKey(bf.x, bf.y - 1, bf.z)];
+    }
+  }
+
+  // Gun ports
+  if (hasGunPorts && gunPortRow > 0 && !closedHull) {
+    var yPort = D - gunPortRow;
+    var midKeel = keelYArr[Math.floor(L / 2)];
+    if (midKeel + 1 > yPort) yPort = midKeel + 1;
+    for (var zp2 = 3; zp2 < L - 3; zp2 += gunPortSpacing) {
+      var hwP = hwAt(yPort, zp2);
+      if (hwP < 1) continue;
+      setBlock(hwP, yPort, zp2, BT.TRAPDOOR, { facing:'east', half:'bottom', open:'true', powered:'false', waterlogged:'false' });
+      if (hwP > 0) setBlock(-hwP, yPort, zp2, BT.TRAPDOOR, { facing:'west', half:'bottom', open:'true', powered:'false', waterlogged:'false' });
+    }
+  }
+
+  // Connectivity cleanup: keep only blocks 6-connected to the hull volume
+  {
+    var reached = {};
+    var queue = [];
+    for (var kq in inHull) queue.push(kq);
+    var DIRS = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+    while (queue.length > 0) {
+      var cur2 = queue.shift().split(',');
+      var cx = +cur2[0], cy = +cur2[1], cz = +cur2[2];
+      for (var di = 0; di < 6; di++) {
+        var nk = (cx + DIRS[di][0]) + ',' + (cy + DIRS[di][1]) + ',' + (cz + DIRS[di][2]);
+        if (reached[nk] || inHull[nk]) continue;
+        if (blockMap[nk]) { reached[nk] = 1; queue.push(nk); }
+      }
+    }
+    for (var kr in blockMap) {
+      if (!inHull[kr] && !reached[kr]) delete blockMap[kr];
+    }
+  }
+
+  // Fence connection states
+  for (var kc in blockMap) {
+    var bc = blockMap[kc];
+    if (bc.type !== BT.FENCE) continue;
+    var connD = function (dx, dz) {
+      var n = getBlock(bc.x + dx, bc.y, bc.z + dz);
+      if (!n) return 'false';
+      return (n.type === BT.FENCE || n.type === BT.PLANK || n.type === BT.STAIR) ? 'true' : 'false';
+    };
+    bc.props = { east: connD(1, 0), west: connD(-1, 0), south: connD(0, 1), north: connD(0, -1), waterlogged: 'false' };
+  }
+
+  // Stair corner shapes
+  {
+    var facingVec = { south:[0,1], north:[0,-1], east:[1,0], west:[-1,0] };
+    var leftOf = { south:'east', north:'west', east:'north', west:'south' };
+    var rightOf = { south:'west', north:'east', east:'south', west:'north' };
+    for (var kk in blockMap) {
+      var bs = blockMap[kk];
+      if (bs.type !== BT.STAIR || !bs.props) continue;
+      var fv = facingVec[bs.props.facing];
+      if (!fv) continue;
+      var front = getBlock(bs.x + fv[0], bs.y, bs.z + fv[1]);
+      var back = getBlock(bs.x - fv[0], bs.y, bs.z - fv[1]);
+      if (back && back.type === BT.STAIR && back.props && back.props.half === bs.props.half) {
+        if (back.props.facing === leftOf[bs.props.facing]) { bs.props.shape = 'inner_left'; continue; }
+        if (back.props.facing === rightOf[bs.props.facing]) { bs.props.shape = 'inner_right'; continue; }
+      }
+      if (front && front.type === BT.STAIR && front.props && front.props.half === bs.props.half) {
+        if (front.props.facing === leftOf[bs.props.facing]) { bs.props.shape = 'outer_left'; continue; }
+        if (front.props.facing === rightOf[bs.props.facing]) { bs.props.shape = 'outer_right'; continue; }
+      }
+    }
+  }
+
+  // Emit
+  var result = [];
+  var minX = Infinity, minY = Infinity, minZ = Infinity;
+  var maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (var ke in blockMap) {
+    var be = blockMap[ke];
+    result.push(be);
+    if (be.x < minX) minX = be.x;
+    if (be.y < minY) minY = be.y;
+    if (be.z < minZ) minZ = be.z;
+    if (be.x > maxX) maxX = be.x;
+    if (be.y > maxY) maxY = be.y;
+    if (be.z > maxZ) maxZ = be.z;
+  }
+  if (result.length === 0) { minX = 0; minY = 0; minZ = 0; maxX = 0; maxY = 0; maxZ = 0; }
+  for (var ri = 0; ri < result.length; ri++) {
+    result[ri].x -= minX;
+    result[ri].y -= minY;
+    result[ri].z -= minZ;
+  }
+
+  return {
+    blocks: result,
+    sizeX: maxX - minX + 1,
+    sizeY: maxY - minY + 1,
+    sizeZ: maxZ - minZ + 1,
+    materials: { woodType: p.woodType || 'spruce' }
+  };
+}
+
+// Version dispatch: <= 2 runs the frozen v1 algorithm (old share links must
+// reproduce identical hulls); >= 3 (or missing) runs v2.
+function generateHull(p) {
+  var v = p && p.version ? p.version : 3;
+  if (v >= 3) return generateHullV2(p);
+  return generateHullV1(p);
 }
 
 // Expose

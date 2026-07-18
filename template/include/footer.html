@@ -6,7 +6,7 @@
                 <!-- Brand column -->
                 <div class="col-12 col-md-6 col-lg-3">
                     <a href="{{ LangURL .Language "/" }}" class="footer-brand">
-                        <img src="/assets/x/logo.png" alt="CreateMod.com" width="48" height="48">
+                        <img src="/assets/x/logo.png" alt="CreateMod.com" width="171" height="56">
                     </a>
                     <p class="footer-tagline">{{ T .Language "The Create Mod Schematics Repository. Download and share community-built schematics for Minecraft." }}</p>
                     <div class="footer-social">
@@ -21,7 +21,7 @@
                         </a>
                     </div>
                     <div class="footer-newsletter mt-3">
-                        <h6 class="footer-heading">{{ T .Language "Newsletter" }}</h6>
+                        <div class="footer-heading">{{ T .Language "Newsletter" }}</div>
                         <p class="text-secondary small mb-2">{{ T .Language "Get weekly trending schematics in your inbox." }}</p>
                         <form id="footer-newsletter-form" hx-post="/api/newsletter/subscribe" hx-swap="outerHTML" hx-boost="false" class="d-flex gap-2">
                             <input type="email" name="email" class="form-control form-control-sm" placeholder="{{ T .Language "Your email" }}" required>
@@ -31,7 +31,7 @@
                 </div>
                 <!-- Browse column -->
                 <div class="col-6 col-md-3 col-lg-2 offset-lg-1">
-                    <h6 class="footer-heading">{{ T .Language "Browse" }}</h6>
+                    <div class="footer-heading">{{ T .Language "Browse" }}</div>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/" }}">{{ T .Language "Latest Schematics" }}</a></li>
                         <li><a href="{{ LangURL .Language "/explore" }}">{{ T .Language "Explore" }}</a></li>
@@ -41,7 +41,7 @@
                 </div>
                 <!-- Community column -->
                 <div class="col-6 col-md-3 col-lg-2">
-                    <h6 class="footer-heading">{{ T .Language "Community" }}</h6>
+                    <div class="footer-heading">{{ T .Language "Community" }}</div>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/guides" }}">{{ T .Language "Guides" }}</a></li>
                         <li><a href="{{ LangURL .Language "/news" }}">{{ T .Language "News" }}</a></li>
@@ -51,10 +51,11 @@
                 </div>
                 <!-- Legal column -->
                 <div class="col-6 col-md-3 col-lg-2">
-                    <h6 class="footer-heading">{{ T .Language "Legal" }}</h6>
+                    <div class="footer-heading">{{ T .Language "Legal" }}</div>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/terms-of-service" }}">{{ T .Language "Terms of Service" }}</a></li>
                         <li><a href="{{ LangURL .Language "/privacy-policy" }}">{{ T .Language "Privacy Policy" }}</a></li>
+                        <li><a href="{{ LangURL .Language "/dmca" }}">{{ T .Language "DMCA" }}</a></li>
                         <li><a href="{{ LangURL .Language "/rules" }}">{{ T .Language "Rules" }}</a></li>
                         <li><span data-ccpa-link="1"></span></li>
                     </ul>
@@ -62,7 +63,7 @@
                 </div>
                 <!-- Open Source column -->
                 <div class="col-6 col-md-3 col-lg-2">
-                    <h6 class="footer-heading">{{ T .Language "Developers" }}</h6>
+                    <div class="footer-heading">{{ T .Language "Developers" }}</div>
                     <ul class="footer-nav">
                         <li><a href="{{ LangURL .Language "/api" }}">{{ T .Language "API Docs" }}</a></li>
                         <li><a href="https://github.com/uberswe/createmod" target="_blank" rel="noopener">{{ T .Language "Source Code" }}</a></li>

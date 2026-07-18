@@ -565,11 +565,19 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			nextURL = buildPageURL(page + 1)
 		}
 
-		// SEO classification: clean landings (bare search, single term, single
-		// category, single tag) are indexable and self-canonical; every other
-		// filter permutation is noindexed and canonicalizes to its dominant
-		// clean landing so ranking signals consolidate instead of fragmenting
+		// SEO classification: clean landings (bare search, single category,
+		// single tag) are indexable and self-canonical; every other filter
+		// permutation is noindexed and canonicalizes to its dominant clean
+		// landing so ranking signals consolidate instead of fragmenting
 		// across facet combinations.
+		//
+		// Pages with a user-supplied search term are ALWAYS noindexed: the
+		// term space is unbounded attacker-controlled input, and spammers
+		// link junk queries (e.g. "<brand>-premium-mod-for-pc") from
+		// external sites to get them indexed, which attracts brand-protection
+		// crawlers and DMCA notices against auto-generated result pages.
+		// Category and tag landings stay indexable because those vocabularies
+		// are site-controlled.
 		hasExtraFilters := rating > -1 || mcVersion != "all" || createVersion != "all" ||
 			minBlockCount > 0 || maxBlockCount > 0 || minHorizontal > 0 || maxHorizontal > 0 ||
 			minDimX > 0 || maxDimX > 0 || minDimY > 0 || maxDimY > 0 || minDimZ > 0 || maxDimZ > 0 ||
@@ -598,7 +606,7 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			}
 			canonicalPath += fmt.Sprintf("%sp=%d", sep, page)
 		}
-		seoNoIndex := page > 20 || !isCleanLanding
+		seoNoIndex := page > 20 || !isCleanLanding || slugTerm != ""
 
 		totalPages := 0
 		if pageSize > 0 {

@@ -1177,6 +1177,62 @@ type NBTHash struct {
 }
 
 // NBTHashStore handles NBT hash operations for blacklisting.
+// SchematicSafety is one schematic's content-safety scan result.
+type SchematicSafety struct {
+	SchematicID     string
+	Checksum        string
+	FileSafe        bool
+	Manifest        []byte // JSON schematic.Manifest
+	PipelineVersion int
+	ScannedAt       time.Time
+}
+
+// EditorSession is a server-authoritative schematic editing session: a
+// source reference plus an operation log with an undo cursor.
+type EditorSession struct {
+	ID         string
+	UserID     string
+	SourceKind string // "schematic", "upload" or "blank"
+	SourceRef  string
+	Ops        []byte // JSON []schematic.Op
+	Cursor     int
+	Created    time.Time
+	Updated    time.Time
+}
+
+// EditorSessionStore persists editor sessions.
+type EditorSessionStore interface {
+	Create(ctx context.Context, userID, sourceKind, sourceRef string) (string, error)
+	GetByID(ctx context.Context, id string) (*EditorSession, error)
+	UpdateOps(ctx context.Context, id string, ops []byte, cursor int) error
+	DeleteExpired(ctx context.Context, before time.Time) (int64, error)
+}
+
+// SchematicFingerprint is one schematic's stored similarity fingerprint.
+type SchematicFingerprint struct {
+	SchematicID string
+	FP          []byte // JSON schematic.Fingerprint
+	Version     int
+	ComputedAt  time.Time
+}
+
+// SchematicFingerprintStore persists similarity fingerprints.
+type SchematicFingerprintStore interface {
+	Upsert(ctx context.Context, f *SchematicFingerprint) error
+	GetBySchematicID(ctx context.Context, schematicID string) (*SchematicFingerprint, error)
+	ListNeedingCompute(ctx context.Context, version int, limit int) ([]string, error)
+	ListAll(ctx context.Context, version int) ([]SchematicFingerprint, error)
+	Delete(ctx context.Context, schematicID string) error
+}
+
+// SchematicSafetyStore persists content-safety scan results.
+type SchematicSafetyStore interface {
+	Upsert(ctx context.Context, s *SchematicSafety) error
+	GetBySchematicID(ctx context.Context, schematicID string) (*SchematicSafety, error)
+	ListNeedingScan(ctx context.Context, pipelineVersion int, limit int) ([]string, error)
+	Delete(ctx context.Context, schematicID string) error
+}
+
 type NBTHashStore interface {
 	Create(ctx context.Context, h *NBTHash) error
 	ListByUser(ctx context.Context, userID string) ([]NBTHash, error)
@@ -1594,6 +1650,9 @@ type Store struct {
 	TempUploadFiles     TempUploadFileStore
 	TempUploadImages    TempUploadImageStore
 	NBTHashes           NBTHashStore
+	SchematicSafety     SchematicSafetyStore
+	Fingerprints        SchematicFingerprintStore
+	EditorSessions      EditorSessionStore
 	DownloadTokens      DownloadTokenStore
 	SchematicFiles      SchematicFileStore
 	Webhooks            WebhookStore

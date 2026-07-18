@@ -73,6 +73,7 @@ func (s *Service) GenerateHreflang(appStore *store.Store) []string {
 		"/rules",
 		"/terms-of-service",
 		"/privacy-policy",
+		"/dmca",
 		"/login",
 		"/register",
 		"/reset-password",
@@ -85,6 +86,11 @@ func (s *Service) GenerateHreflang(appStore *store.Store) []string {
 		"/guides",
 		"/collections",
 		"/mods",
+		"/tools/convert",
+		"/tools/safety-check",
+		"/tools/similar",
+		"/tools/nbt-viewer",
+		"/tools/editor",
 	}
 
 	// Build all bare paths (without language prefix)

@@ -6,6 +6,7 @@ import (
 	"createmod/internal/generator"
 	"createmod/internal/generator/render"
 	"createmod/internal/i18n"
+	"createmod/internal/schematic"
 	"createmod/internal/server"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -14,6 +15,7 @@ import (
 	"image/png"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -54,6 +56,29 @@ func GeneratorsLandingHandler(registry *server.Registry, cacheService *cache.Ser
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Generators")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		html, err := registry.LoadFiles(generatorsLandingTemplates...).Render(d)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}
+
+var toolsLandingTemplates = append([]string{
+	"./template/tools.html",
+}, commonTemplates...)
+
+// ToolsLandingHandler renders /tools, the index of the schematic tools
+// (converter, safety checker, similarity search, NBT viewer, editor).
+func ToolsLandingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		d := GeneratorData{}
+		d.Populate(e)
+		d.Title = i18n.T(d.Language, "Tools")
+		d.Description = "Free browser tools for Minecraft schematics: convert, safety-check, find similar builds, inspect NBT and edit."
+		d.Slug = "/tools"
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, "Tools")
+		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
+		html, err := registry.LoadFiles(toolsLandingTemplates...).Render(d)
 		if err != nil {
 			return err
 		}
@@ -263,6 +288,30 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 		data, err := generator.ExportNBT(result)
 		if err != nil {
 			return e.InternalServerError("failed to generate NBT file", nil)
+		}
+
+		// Alternate output formats via the normalized schematic library.
+		// Generation is deterministic and fast, so conversion happens inline
+		// (an S3 round trip would cost more than regenerating).
+		if e.Request.URL.Query().Get("format") == "world" {
+			return serveGeneratorWorld(e, data, filename)
+		}
+		if format := e.Request.URL.Query().Get("format"); format != "" && format != "nbt" {
+			target, ext, ok := convertFormatBySlug(format)
+			if !ok {
+				return e.BadRequestError("unsupported format", nil)
+			}
+			res, convErr := schematic.Convert(data, target)
+			if convErr != nil {
+				return e.InternalServerError("failed to convert generated schematic", nil)
+			}
+			data = res.Data
+			filename = strings.TrimSuffix(filename, ".nbt") + ext
+			if len(res.Warnings) > 0 {
+				if wj, jErr := json.Marshal(res.Warnings); jErr == nil {
+					e.Response.Header().Set("X-Conversion-Warnings", string(wj))
+				}
+			}
 		}
 
 		e.Response.Header().Set("Content-Type", "application/octet-stream")

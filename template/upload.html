@@ -23,10 +23,10 @@
                                      ondragover="event.preventDefault(); this.style.borderColor='var(--cm-primary)'; this.style.backgroundColor='rgba(191,144,69,0.05)';"
                                      ondragleave="this.style.borderColor='var(--cm-border-color)'; this.style.backgroundColor='';"
                                      ondrop="event.preventDefault(); this.style.borderColor='var(--cm-border-color)'; this.style.backgroundColor=''; handleFileDrop(event.dataTransfer.files);">
-                                    <input type="file" id="nbt-file-input" accept=".nbt" style="display:none;" onchange="handleFileDrop(this.files);">
+                                    <input type="file" id="nbt-file-input" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" style="display:none;" onchange="handleFileDrop(this.files);">
                                     <div id="upload-prompt" onclick="document.getElementById('nbt-file-input').click();">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg mb-2" width="40" height="40" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 9l5 -5l5 5" /><path d="M12 4l0 12" /></svg>
-                                        <h4 class="text-secondary">{{ T .Language "Drop your .nbt schematic file here" }}</h4>
+                                        <h4 class="text-secondary">{{ T .Language "Drop your schematic here (.nbt, .schem, .litematic, .blueprint and more)" }}</h4>
                                         <p class="text-secondary">{{ T .Language "or click to select a file" }}</p>
                                         <small class="text-muted">{{ T .Language "Max file size: 10MB" }}</small>
                                     </div>
@@ -171,6 +171,16 @@
                                             </a>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Edit in Schematic Editor -->
+                            <div class="card mb-3" id="edit-schematic-card" style="display:none;">
+                                <div class="card-body text-center">
+                                    <a id="edit-schematic-btn" href="#" class="btn btn-outline-primary w-100">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" /><path d="M13.5 6.5l4 4" /></svg>
+                                        {{ T .Language "Edit Schematic" }}
+                                    </a>
                                 </div>
                             </div>
 
@@ -334,8 +344,10 @@ var blockNameMap = {};
 function handleFileDrop(files) {
     if (!files || files.length === 0) return;
     var file = files[0];
-    if (!file.name.toLowerCase().endsWith('.nbt')) {
-        showUploadError('Please select a .nbt file.');
+    var okExts = ['.nbt', '.schem', '.litematic', '.schematic', '.blueprint', '.txt', '.json'];
+    var lowerName = file.name.toLowerCase();
+    if (!okExts.some(function (ext) { return lowerName.endsWith(ext); })) {
+        showUploadError('Please select a schematic file (.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json).');
         return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -443,6 +455,16 @@ function renderResults(data) {
             if (shulkrLink) shulkrLink.href = 'https://www.shulkr.com/?url=' + encodeURIComponent(fullFileURL);
             if (bloxLink) bloxLink.href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(fullFileURL);
             viewerCard.style.display = '';
+        }
+    }
+
+    // Edit in the schematic editor (session is created from the temp upload)
+    if (data.token) {
+        var editCard = document.getElementById('edit-schematic-card');
+        var editBtn = document.getElementById('edit-schematic-btn');
+        if (editCard && editBtn) {
+            editBtn.href = '/tools/editor?upload=' + encodeURIComponent(data.token);
+            editCard.style.display = '';
         }
     }
 

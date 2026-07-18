@@ -17,6 +17,7 @@ import (
 	irouter "createmod/internal/router"
 	"createmod/internal/search"
 	"createmod/internal/session"
+	"createmod/internal/similarity"
 	"createmod/internal/sitemap"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -354,7 +355,13 @@ func (s *Server) Start() {
 
 	// ROUTES
 
+	// Similarity fingerprint index: per-pod, loaded in the background so
+	// boot isn't blocked, refreshed every 10 minutes.
+	similarityService := similarity.New(s.store)
+	go similarityService.Start(context.Background())
+
 	chiRouter := irouter.Register(irouter.RegisterParams{
+		SimilarityService:  similarityService,
 		SearchService:      s.searchService,
 		SearchEngine:       searchEngine,
 		CacheService:       s.cacheService,

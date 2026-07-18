@@ -14,8 +14,21 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                {{/* The visible title is rendered by the breadcrumb overlay; this h1 gives the page its top-level heading without altering the design. */}}
-                <h1 class="visually-hidden">{{ .Schematic.Title }}</h1>
+                <div class="mb-3">
+                    <h1 class="h2 mb-2" style="max-width: 1100px;">{{ .Schematic.Title }}</h1>
+                    <div class="cm-byline">
+                        {{ if .Schematic.Author }}
+                        {{ if .Schematic.Author.HasAvatar }}
+                        <img class="avatar avatar-xs rounded" src="{{ .Schematic.Author.Avatar }}" alt="{{ .Schematic.Author.Username }}" width="24" height="24">
+                        {{ else }}
+                        <img class="avatar avatar-xs rounded" src="https://mc-heads.net/avatar/Steve" alt="{{ .Schematic.Author.Username }}" width="24" height="24">
+                        {{ end }}
+                        <span class="dim">{{ T .Language "by" }} <a href="/author/{{ .Schematic.Author.Username | ToLower }}">{{ .Schematic.Author.Username }}</a></span>
+                        <span class="dot">&middot;</span>
+                        {{ end }}
+                        <span class="dim" data-cm-toggle="tooltip" data-cm-placement="top" title="{{ .Schematic.CreatedFormatted }}">{{ T .Language "Uploaded" }} {{ .Schematic.CreatedHumanReadable }}</span>
+                    </div>
+                </div>
                 {{ .SchematicJSONLD }}
                 {{ if eq .ModerationBanner "auto_review" }}
                 <div class="alert alert-info mb-3" role="alert">
@@ -381,9 +394,41 @@
                                 <!-- Action bar -->
                                 <div class="mt-3 pb-3 border-bottom">
                                     <div class="d-flex flex-wrap align-items-center gap-2">
-                                        <a href="/get/{{ .Schematic.Name }}" class="btn btn-primary" id="download-btn" hx-boost="false">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>
-                                            {{ T .Language "Download" }}
+                                        <span id="download-btn" hx-boost="false">{{ template "download_split.html" .DownloadSplit }}</span>
+                                        {{ if .Safety.Scanned }}
+                                        {{ if and .Safety.FileSafe (not .Safety.Notable) }}
+                                        <a href="/tools/safety-check" class="cm-badge cm-badge--green cm-badge--upper text-decoration-none" title="{{ T .Language "Valid file, hardening passed, content inspection found no command blocks, spawners or click commands" }}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2l4 -4"/><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/></svg>
+                                            {{ T .Language "Validated" }}
+                                        </a>
+                                        {{ else if .Safety.FileSafe }}
+                                        <details class="d-inline-block" style="position: relative;">
+                                            <summary class="badge bg-yellow-lt" style="cursor: pointer; list-style: none;" title="{{ T .Language "Valid file; content inspection found notable blocks — click for details" }}">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
+                                                {{ T .Language "Contains" }} {{ .Safety.Summary }}
+                                            </summary>
+                                            <div class="card p-2 small" style="position: absolute; z-index: 1050; min-width: 320px; max-width: 480px; max-height: 300px; overflow-y: auto;">
+                                                <div class="text-secondary mb-1">{{ T .Language "The file itself is valid and passed hardening. These blocks act on the world once pasted:" }}</div>
+                                                <ul class="mb-1 ps-3">
+                                                    {{ range .Safety.Findings }}
+                                                    <li><code>{{ .Type }}</code> @ {{ index .Pos 0 }},{{ index .Pos 1 }},{{ index .Pos 2 }}{{ if .Detail }} — <code>{{ .Detail }}</code>{{ end }}</li>
+                                                    {{ end }}
+                                                    {{ if .Safety.Truncated }}<li class="text-secondary">{{ T .Language "…more findings truncated; counts are exact." }}</li>{{ end }}
+                                                </ul>
+                                                <a href="/tools/safety-check">{{ T .Language "What does this mean?" }}</a>
+                                            </div>
+                                        </details>
+                                        {{ else }}
+                                        <span class="badge bg-red-lt" title="{{ if .Safety.ParseError }}{{ .Safety.ParseError }}{{ else }}{{ T .Language "The file failed validation" }}{{ end }}">{{ T .Language "File failed validation" }}</span>
+                                        {{ end }}
+                                        {{ end }}
+                                        <a href="/tools/editor?source={{ .Schematic.Name }}" class="btn btn-outline-secondary" hx-boost="false">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/><path d="M16 5l3 3"/></svg>
+                                            {{ T .Language "Edit" }}
+                                        </a>
+                                        <a href="/schematics/{{ .Schematic.Name }}/similar" class="btn btn-outline-secondary" title="{{ T .Language "Find builds with a similar structure: shape, materials and Create components" }}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></svg>
+                                            {{ T .Language "Similar by shape" }}
                                         </a>
                                         <a href="#" class="btn btn-outline-secondary" onclick="copyLink(event)" data-link="https://createmod.com/schematics/{{ .Schematic.Name }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>
@@ -910,6 +955,15 @@
                         </div>
                         {{ end }}
 
+                        <!-- NBT data: dedicated page -->
+                        {{ if .Schematic.SchematicFile }}
+                        <a class="card mb-3 cm-rowlink text-decoration-none" href="/schematics/{{ .Schematic.Name }}/nbt-data">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></svg>
+                            <span class="t">{{ T .Language "NBT Data" }}</span>
+                            <span class="d">{{ T .Language "browse the raw schematic structure" }}</span>
+                        </a>
+                        {{ end }}
+
                         <!-- Required Mods -->
                         {{ if .ModInfoList }}
                         <div class="card mb-3">
@@ -919,8 +973,8 @@
                             <div class="card-body">
                                 <div class="d-flex flex-wrap gap-2" id="mods-list">
                                     {{ range .ModInfoList }}
-                                    <a href="/mods/{{ .Namespace }}" class="badge bg-blue-lt text-decoration-none d-inline-flex align-items-center gap-1">
-                                        {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" class="mod-badge-icon" loading="lazy">{{ end }}
+                                    <a href="/mods/{{ .Namespace }}" class="cm-modchip text-decoration-none">
+                                        {{ if .IconURL }}<img src="{{ .IconURL }}" alt="" loading="lazy">{{ else }}<span class="dot" style="background: var(--cm-primary);"></span>{{ end }}
                                         {{ .Name }}
                                     </a>
                                     {{ end }}
@@ -935,7 +989,7 @@
                             <div class="card-body">
                                 <div class="d-flex flex-wrap gap-2" id="mods-list">
                                     {{ range .Mods }}
-                                    <a href="/mods/{{ . }}" class="badge bg-blue-lt text-decoration-none" data-mod-id="{{ . }}">{{ . }}</a>
+                                    <a href="/mods/{{ . }}" class="cm-modchip text-decoration-none" data-mod-id="{{ . }}"><span class="dot" style="background: var(--cm-primary);"></span>{{ . }}</a>
                                     {{ end }}
                                 </div>
                             </div>
@@ -1013,25 +1067,11 @@
                             <div class="card-header">
                                 <h3 class="card-title">{{ T .Language "Version history" }}</h3>
                             </div>
-                            <div class="table-responsive">
-                                <table class="table table-vcenter card-table">
-                                    <thead>
-                                        <tr>
-                                            <th>{{ T .Language "Version" }}</th>
-                                            <th>{{ T .Language "Date" }}</th>
-                                            <th>{{ T .Language "Changes" }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {{ range .Versions }}
-                                        <tr>
-                                            <td class="text-nowrap">v{{ .Version }}</td>
-                                            <td class="text-nowrap text-secondary">{{ HumanDate .Created }}</td>
-                                            <td class="text-secondary">{{ if .Note }}{{ .Note }}{{ else }}&mdash;{{ end }}</td>
-                                        </tr>
-                                        {{ end }}
-                                    </tbody>
-                                </table>
+                            <div class="pb-2">
+                                <div class="cm-vtable__head"><span>{{ T .Language "Version" }}</span><span>{{ T .Language "Date" }}</span><span>{{ T .Language "Changes" }}</span></div>
+                                {{ range .Versions }}
+                                <div class="cm-vtable__row"><span class="v">v{{ .Version }}</span><span class="d">{{ HumanDate .Created }}</span><span class="c">{{ if .Note }}{{ .Note }}{{ else }}&mdash;{{ end }}</span></div>
+                                {{ end }}
                             </div>
                         </div>
                         {{ end }}
@@ -1390,11 +1430,26 @@ function copyMaterialsAsMarkdown() {
 </script>
 <script>
     (function() {
+        function createCommentEditor() {
+            cmEditorEnsure(function () {
+                var el = document.querySelector('#tinymce-comment');
+                if (!el) return;
+                if (window._cmCommentEditor) { cmEditor.destroy(window._cmCommentEditor); }
+                window._cmCommentEditor = cmEditor.create('#tinymce-comment', { preset: 'basic', minHeight: 200, maxHeight: 400, placeholder: 'comment text goes here' });
+            });
+        }
         function initCommentEditor() {
             var el = document.querySelector('#tinymce-comment');
             if (!el) return;
-            if (window._cmCommentEditor) { cmEditor.destroy(window._cmCommentEditor); }
-            window._cmCommentEditor = cmEditor.create('#tinymce-comment', { preset: 'basic', minHeight: 200, maxHeight: 400, placeholder: 'comment text goes here' });
+            // Once the bundle is loaded (user already interacted), keep the
+            // editor eager so comment-section swaps re-render it instantly.
+            if (window.cmEditor) { createCommentEditor(); return; }
+            // Defer the ~140 KB editor bundle until the visitor actually
+            // starts writing a comment — most schematic views never do.
+            if (el.getAttribute('data-editor-armed')) return;
+            el.setAttribute('data-editor-armed', '1');
+            el.addEventListener('focusin', createCommentEditor, { once: true });
+            el.addEventListener('click', createCommentEditor, { once: true });
         }
         if (!window._htmxCommentEditorReinit) {
             window._htmxCommentEditorReinit = true;

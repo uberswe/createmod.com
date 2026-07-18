@@ -1,0 +1,200 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="mb-3">
+                    <h1 class="h2 mb-1">{{ T .Language "Schematic Safety Checker" }}</h1>
+                    <p class="cm-page-sub">{{ T .Language "See what is inside a schematic (command blocks, spawners, click commands) before you paste it into your world. Files are scanned in memory and never stored." }}</p>
+                </div>
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
+
+                <div id="sc-drop" class="cm-dropzone" tabindex="0">
+                    <div class="cm-dropzone__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"/><path d="M9 12l2 2l4 -4"/></svg></div>
+                    <div>
+                        <div class="cm-dropzone__title">{{ T .Language "Drop a schematic here or click to choose" }}</div>
+                        <div class="cm-dropzone__formats">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json &middot; {{ T .Language "max 10 MB" }}</div>
+                    </div>
+                    <div class="cm-dropzone__note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><circle cx="12" cy="16" r="1"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span>{{ T .Language "Scanned in memory, never stored" }}</span></div>
+                    <input type="file" id="sc-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                </div>
+
+                <div class="card mt-3" id="sc-result" style="display:none;">
+                    <div class="card-body" style="padding: 22px 24px;">
+                        <div class="cm-verdict">
+                            <div class="cm-verdict__icon" id="sc-verdict-icon"></div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="cm-verdict__title" id="sc-title"></span>
+                                    <span id="sc-badge" style="display:none;"></span>
+                                </div>
+                                <div class="cm-verdict__meta" id="sc-meta"></div>
+                            </div>
+                        </div>
+                        <div class="cm-checklist" id="sc-checklist" style="display:none;">
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "No command blocks" }}</span></div>
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "No spawners" }}</span></div>
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "No click commands" }}</span></div>
+                            <div class="cm-checklist__item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4 -4"/></svg><span>{{ T .Language "The file is well formed and passed all hardening checks" }}</span></div>
+                        </div>
+                        <div id="sc-summary" class="mt-3" style="display:none;"></div>
+                        <div id="sc-findings" class="mt-3" style="display:none;">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead><tr><th>{{ T .Language "Type" }}</th><th>{{ T .Language "Position" }}</th><th>{{ T .Language "Detail" }}</th></tr></thead>
+                                    <tbody id="sc-findings-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="cm-card__footnote">{{ T .Language "What do these mean?" }} <a href="#safety-explainer">{{ T .Language "Read the safety explainer below" }}</a>.</div>
+                    </div>
+                </div>
+
+                <div class="mt-4" id="safety-explainer">
+                    <h2 class="h3 mb-1">{{ T .Language "Are Minecraft schematics safe?" }}</h2>
+                    <p class="cm-page-sub mb-3">{{ T .Language "Short answer: schematics are data, not programs. Here is exactly what that means, and what we check anyway." }}</p>
+                    <div class="row g-3">
+                        <div class="col-lg-4 d-flex">
+                            <div class="card flex-fill"><div class="card-body">
+                                <h3 class="h4">{{ T .Language "Schematics cannot run code on your computer" }}</h3>
+                                <p class="text-secondary mb-0">{{ T .Language "A schematic file (.nbt, .schem, .litematic) is a structured list of blocks and their positions, the same kind of data as a save file. Unlike a mod .jar, it contains no executable code, and Minecraft never executes it. Opening or downloading a schematic cannot install anything on your machine. A file pretending to be a schematic could still be malformed on purpose, which is why we validate structure before anything else." }}</p>
+                            </div></div>
+                        </div>
+                        <div class="col-lg-4 d-flex">
+                            <div class="card flex-fill"><div class="card-body">
+                                <h3 class="h4">{{ T .Language "What a schematic CAN contain" }}</h3>
+                                <p class="text-secondary">{{ T .Language "Once pasted into a world, some blocks act on the world or players:" }}</p>
+                                <ul class="text-secondary">
+                                    <li><strong>{{ T .Language "Command blocks" }}</strong>: {{ T .Language "run any command when powered, including /give or /op. Only a risk in worlds where command blocks are enabled." }}</li>
+                                    <li><strong>{{ T .Language "Mob spawners" }}</strong>: {{ T .Language "spawn entities continuously." }}</li>
+                                    <li><strong>{{ T .Language "Signs and books with click commands" }}</strong>: {{ T .Language "run a command when a player clicks them." }}</li>
+                                    <li><strong>{{ T .Language "Structure and jigsaw blocks" }}</strong>: {{ T .Language "can load or generate additional structures." }}</li>
+                                </ul>
+                                <p class="text-secondary mb-0">{{ T .Language "None of these are malicious by themselves; command blocks power plenty of legitimate contraptions. But you should know they are there before you paste." }}</p>
+                            </div></div>
+                        </div>
+                        <div class="col-lg-4 d-flex">
+                            <div class="card flex-fill"><div class="card-body">
+                                <h3 class="h4">{{ T .Language "What CreateMod.com checks" }}</h3>
+                                <p class="text-secondary"><strong>{{ T .Language "1. File hardening (every upload)." }}</strong> {{ T .Language "Size caps, decompression-bomb guards, nesting-depth and length validation. Malformed or hostile files are rejected at upload." }}</p>
+                                <p class="text-secondary"><strong>{{ T .Language "2. Content inspection (every published schematic)." }}</strong> {{ T .Language "We parse every block and block entity and record a transparency manifest: command blocks (with their command text), spawners (with what they spawn), sign and book click commands, structure blocks. The manifest is shown on the schematic page." }}</p>
+                                <p class="text-secondary mb-0">{{ T .Language "When the inspection finds nothing notable, the schematic shows a Validated badge. When it finds something, the badge says what: \"contains 2 command blocks\", with the details one click away. We deliberately avoid a blanket \"100% secure\" stamp and only make claims we actually checked." }}</p>
+                            </div></div>
+                        </div>
+                    </div>
+                </div>
+                <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can a Minecraft schematic contain a virus?","acceptedAnswer":{"@type":"Answer","text":"A schematic is a data file describing blocks and positions. It contains no executable code and Minecraft never executes it, so it cannot install anything on your computer the way a malicious mod jar could. The realistic concerns are in-world: command blocks, spawners, or sign click-commands included in the build. CreateMod.com inspects every published schematic and shows a transparency manifest of exactly those contents."}},{"@type":"Question","name":"What does the Validated badge on CreateMod.com mean?","acceptedAnswer":{"@type":"Answer","text":"Validated means the file parsed as well-formed schematic data, passed hardening checks (size, decompression and nesting limits), and a content inspection found no command blocks, spawners, or click commands. If the inspection finds any, the badge states what was found instead, with details available."}}]}</script>
+
+                </div><!-- /flex-grow-1 -->
+                <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="safety-check" data-kw="minecraft,create-mod,schematic,safety" data-page="safety-check"></div>
+                </div><!-- /d-flex -->
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var drop = document.getElementById('sc-drop');
+  var input = document.getElementById('sc-file');
+  var result = document.getElementById('sc-result');
+  var icon = document.getElementById('sc-verdict-icon');
+  var title = document.getElementById('sc-title');
+  var badge = document.getElementById('sc-badge');
+  var meta = document.getElementById('sc-meta');
+  var summary = document.getElementById('sc-summary');
+  var checklist = document.getElementById('sc-checklist');
+  var findingsWrap = document.getElementById('sc-findings');
+  var findingsBody = document.getElementById('sc-findings-body');
+
+  var ICONS = {
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>',
+    bad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>',
+    scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>'
+  };
+
+  function setVerdict(kind, titleText) {
+    icon.className = 'cm-verdict__icon' + (kind === 'warn' ? ' cm-verdict__icon--warn' : kind === 'bad' ? ' cm-verdict__icon--bad' : '');
+    icon.innerHTML = ICONS[kind] || ICONS.check;
+    title.textContent = titleText;
+  }
+
+  function check(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    result.style.display = '';
+    setVerdict('scan', '{{ T .Language "Scanning…" }}');
+    badge.style.display = 'none';
+    meta.textContent = '';
+    summary.textContent = '';
+    summary.style.display = 'none';
+    checklist.style.display = 'none';
+    findingsWrap.style.display = 'none';
+    fetch('/api/safety-check', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.fileSafe) {
+          setVerdict('bad', '{{ T .Language "Not a valid schematic" }}');
+          summary.textContent = j.parseError || j.error || '';
+          summary.style.display = '';
+          return;
+        }
+        meta.textContent = (j.label || j.format) + (j.size ? ' · ' + j.size[0] + '×' + j.size[1] + '×' + j.size[2] : '') + (j.blockCount ? ' · ' + j.blockCount.toLocaleString() + ' {{ T .Language "blocks" }}' : '');
+        if (!j.notable) {
+          setVerdict('check', '{{ T .Language "Nothing notable found" }}');
+          badge.className = 'cm-badge cm-badge--green cm-badge--upper';
+          badge.textContent = '{{ T .Language "Validated" }}';
+          badge.style.display = '';
+          checklist.style.display = '';
+          return;
+        }
+        setVerdict('warn', '{{ T .Language "Contains notable blocks" }}');
+        summary.textContent = j.summary || '';
+        summary.style.display = '';
+        var f = (j.manifest && j.manifest.findings) || [];
+        if (f.length) {
+          findingsBody.replaceChildren();
+          f.forEach(function (x) {
+            var tr = document.createElement('tr');
+            var pos = x.pos ? x.pos.join(', ') : '';
+            [x.type, pos, x.detail || ''].forEach(function (cell) {
+              var td = document.createElement('td');
+              td.textContent = cell;
+              tr.appendChild(td);
+            });
+            findingsBody.appendChild(tr);
+          });
+          findingsWrap.style.display = '';
+          if (j.manifest.findingsTruncated) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td');
+            td.colSpan = 3;
+            td.className = 'text-secondary';
+            td.textContent = '{{ T .Language "…more findings truncated; counts above are exact." }}';
+            tr.appendChild(td);
+            findingsBody.appendChild(tr);
+          }
+        }
+      })
+      .catch(function () {
+        setVerdict('bad', '{{ T .Language "Scan failed" }}');
+      });
+  }
+
+  drop.addEventListener('click', function () { input.click(); });
+  input.addEventListener('change', function () { if (input.files[0]) check(input.files[0]); });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.classList.add('is-drag'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('is-drag'); });
+  drop.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    drop.classList.remove('is-drag');
+    if (ev.dataTransfer.files[0]) check(ev.dataTransfer.files[0]);
+  });
+})();
+</script>
+{{ template "foot.html" . }}

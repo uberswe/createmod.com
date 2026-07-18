@@ -1,0 +1,470 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="page-header d-print-none">
+                    <h1 class="h2 page-title">{{ T .Language "Schematic Editor" }}</h1>
+                    <div class="text-secondary">{{ T .Language "Crop, expand, rotate, mirror, fill, hollow, replace and delete — with undo and a live 3D preview. Publish the result back to the library in one click." }}</div>
+                </div>
+
+                <!-- Start chooser -->
+                <div id="ed-start">
+                    <div id="ed-drop" class="cm-dropzone" tabindex="0">
+                        <div class="cm-dropzone__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/><path d="M16 5l3 3"/></svg></div>
+                        <div>
+                            <div class="cm-dropzone__title">{{ T .Language "Edit a schematic file" }}</div>
+                            <div class="cm-dropzone__formats">.nbt, .schem, .litematic, .schematic, .blueprint, BG .txt/.json</div>
+                        </div>
+                        <div class="cm-dropzone__note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><circle cx="12" cy="16" r="1"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span>{{ T .Language "Edited in your session, published only when you choose" }}</span></div>
+                        <input type="file" id="ed-file" accept=".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json" hidden>
+                    </div>
+                    <div class="text-secondary small mt-2" id="ed-start-status"></div>
+                </div>
+
+                <!-- Editor -->
+                <div id="ed-main" style="display:none;">
+                    <div class="cm-toolbar">
+                        <button class="btn btn-sm btn-outline-secondary" id="ed-undo"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4 -4l4 -4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></svg>{{ T .Language "Undo" }}</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="ed-redo"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l4 -4l-4 -4"/><path d="M19 10h-11a4 4 0 1 0 0 8h1"/></svg>{{ T .Language "Redo" }}</button>
+                        <div class="cm-vdivider"></div>
+                        <span class="cm-toolbar__meta" id="ed-info"></span>
+                        <span class="ms-auto d-flex gap-2">
+                            <div class="dropdown d-inline-block">
+                                <span class="cm-split">
+                                    <a class="btn btn-sm btn-primary" id="ed-download" href="#" hx-boost="false"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4v12"/></svg>{{ T .Language "Download" }}</a>
+                                    <button class="btn btn-sm btn-primary cm-split__caret" data-cm-toggle="dropdown" aria-expanded="false" aria-label="{{ T .Language "Choose format" }}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg></button>
+                                </span>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item ed-dl" data-format="nbt" href="#" hx-boost="false"><span>Create</span><span class="ext">.nbt</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="schem" href="#" hx-boost="false"><span>WorldEdit</span><span class="ext">.schem</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="litematic" href="#" hx-boost="false"><span>Litematica</span><span class="ext">.litematic</span></a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item ed-dl" data-format="blueprint" href="#" hx-boost="false"><span>MineColonies</span><span class="ext">.blueprint</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="bg" href="#" hx-boost="false" title="{{ T .Language "Lossy: Building Gadgets templates cannot carry block entity data" }}"><span>Building Gadgets</span><span class="ext">.json</span></a>
+                                    <a class="dropdown-item ed-dl" data-format="schematic" href="#" hx-boost="false" title="{{ T .Language "Lossy: modern blocks without a pre-1.13 equivalent become air" }}"><span>Legacy</span><span class="ext">.schematic</span></a>
+                                </div>
+                            </div>
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-sm btn-outline-secondary" data-cm-toggle="dropdown" aria-expanded="false">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 17.6l-2 -1.1v-2.5"/><path d="M4 10v-2.5l2 -1.1"/><path d="M10 4.1l2 -1.1l2 1.1"/><path d="M18 6.4l2 1.1v2.5"/><path d="M20 14v2.5l-2 1.12"/><path d="M14 19.9l-2 1.1l-2 -1.1"/><path d="M12 12l2 -1.1"/><path d="M18 8.6l2 -1.1"/><path d="M12 12l0 2.5"/><path d="M12 18.5l0 2.5"/><path d="M12 12l-2 -1.12"/><path d="M6 8.6l-2 -1.1"/></svg>
+                                    {{ T .Language "3D Viewer" }}
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" id="ed-shulkr" href="#" target="_blank" rel="noopener">Shulkr</a>
+                                    <a class="dropdown-item" id="ed-bloxelizer" href="#" target="_blank" rel="noopener">Bloxelizer</a>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-primary" id="ed-publish">{{ T .Language "Continue to publish" }}</button>
+                        </span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-lg-4 col-xl-3">
+                            <div class="card mb-3"><div class="card-body" style="padding: 20px;" id="ed-ops">
+                                <div class="cm-panel-label">{{ T .Language "Region (two corners)" }}</div>
+                                <div class="cm-xyz">
+                                    <span></span><span class="h">X</span><span class="h">Y</span><span class="h">Z</span>
+                                    <span class="h">A</span>
+                                    <input type="number" class="cm-input ed-reg" id="rx1" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="ry1" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="rz1" placeholder="0" value="0">
+                                    <span class="h">B</span>
+                                    <input type="number" class="cm-input ed-reg" id="rx2" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="ry2" placeholder="0" value="0">
+                                    <input type="number" class="cm-input ed-reg" id="rz2" placeholder="0" value="0">
+                                </div>
+                                <div class="cm-btnrow">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="crop">{{ T .Language "Crop to region" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="delete_region">{{ T .Language "Delete" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="hollow">{{ T .Language "Hollow" }}</button>
+                                </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Fill region with" }}</div>
+                                <div class="cm-fillrow">
+                                    <input type="text" class="cm-input" id="ed-fill-block" placeholder="minecraft:stone" list="ed-palette-list">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="fill" style="height: 34px;">{{ T .Language "Fill" }}</button>
+                                </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Transform" }}</div>
+                                <div class="cm-btnrow">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="rotate"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5"/></svg>{{ T .Language "Rotate 90°" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-x"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4l4 4"/><path d="M17 8l4 4l-4 4"/><path d="M3 12h18"/></svg>{{ T .Language "Mirror X" }}</button>
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="mirror-z"><svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4 -4l4 4"/><path d="M8 17l4 4l4 -4"/><path d="M12 3v18"/></svg>{{ T .Language "Mirror Z" }}</button>
+                                </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Expand (blocks per side)" }}</div>
+                                <div class="cm-xyz">
+                                    <span></span><span class="h">X</span><span class="h">Y</span><span class="h">Z</span>
+                                    <span class="h">&minus;</span>
+                                    <input type="number" class="cm-input" id="ed-grow-low-x" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-low-y" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-low-z" placeholder="0" value="0" min="0">
+                                    <span class="h">+</span>
+                                    <input type="number" class="cm-input" id="ed-grow-high-x" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-high-y" placeholder="0" value="0" min="0">
+                                    <input type="number" class="cm-input" id="ed-grow-high-z" placeholder="0" value="0" min="0">
+                                </div>
+                                <div class="cm-btnrow">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="expand">{{ T .Language "Expand" }}</button>
+                                </div>
+
+                                <hr class="cm-hr">
+                                <div class="cm-panel-label">{{ T .Language "Replace blocks" }}</div>
+                                <div class="d-flex flex-column gap-2 mt-2">
+                                    <input type="text" class="cm-input" id="ed-replace-from" placeholder="{{ T .Language "from (e.g. minecraft:oak_planks)" }}" list="ed-palette-list">
+                                    <input type="text" class="cm-input" id="ed-replace-to" placeholder="{{ T .Language "to (empty = remove)" }}">
+                                </div>
+                                <div class="cm-btnrow">
+                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="replace">{{ T .Language "Replace everywhere" }}</button>
+                                </div>
+                                <datalist id="ed-palette-list"></datalist>
+                                <div class="text-danger small mt-2" id="ed-error"></div>
+                            </div></div>
+                            <div class="card">
+                                <div class="card-header py-2 px-3"><h3 class="card-title mb-0 fs-5">{{ T .Language "Materials" }}</h3></div>
+                                <div class="card-body p-0">
+                                    <div id="ed-materials" style="max-height: 320px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8 col-xl-9">
+                            <div class="card position-relative">
+                                <div id="editor-canvas" style="height: 620px; border-radius: 4px; overflow: hidden;"></div>
+                                <div id="ed-hover" style="display:none; position:absolute; z-index:5; pointer-events:none; flex-direction:column; gap:0; padding:8px 12px; background:var(--cm-menu-bg); border:1px solid var(--cm-border-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.4); max-width:300px;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <img id="ed-hover-icon" alt="" width="28" height="28" style="image-rendering:pixelated; flex:none;" onerror="this.style.display='none'">
+                                        <div style="min-width:0;">
+                                            <div id="ed-hover-name" style="font-size:13.5px; font-weight:600; color:var(--cm-heading-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                            <div id="ed-hover-id" style="font-size:11.5px; font-family:var(--cm-font-mono); color:var(--cm-text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="ed-hover-sub" style="display:none; align-items:center; gap:10px; margin-top:8px; padding-top:8px; border-top:1px solid var(--cm-border-hairline);">
+                                        <img id="ed-hover-sub-icon" alt="" width="22" height="22" style="image-rendering:pixelated; flex:none;" onerror="this.style.display='none'">
+                                        <div style="min-width:0;">
+                                            <div style="font-size:9.5px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--cm-text-faint);">{{ T .Language "Contains" }}</div>
+                                            <div id="ed-hover-sub-name" style="font-size:12.5px; font-weight:600; color:var(--cm-heading-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                            <div id="ed-hover-sub-id" style="font-size:11px; font-family:var(--cm-font-mono); color:var(--cm-text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-secondary small mt-1">{{ T .Language "This initial version of the editor only generates solid full block representations of blocks" }}</div>
+                            <div class="text-secondary small mt-1" id="ed-truncated"></div>
+                            <div id="editor-banner" class="d-none d-lg-block mt-3 text-center"></div>
+                            <div id="editor-mobile" class="d-lg-none mt-3 text-center"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O" crossorigin="anonymous"></script>
+<script src="/assets/x/generators.js?v={{ AssetVer }}"></script>
+<script src="/assets/x/generator.js?v={{ AssetVer }}"></script>
+<script>
+(function () {
+  'use strict';
+  var sessionID = null;
+  var startEl = document.getElementById('ed-start');
+  var mainEl = document.getElementById('ed-main');
+  var startStatus = document.getElementById('ed-start-status');
+  var errEl = document.getElementById('ed-error');
+  var infoEl = document.getElementById('ed-info');
+  var sceneReady = false;
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.error || 'request failed');
+        return j;
+      });
+    });
+  }
+
+  function setError(msg) { errEl.textContent = msg || ''; }
+
+  function refreshPreview() {
+    api('/api/editor/' + sessionID + '/preview.json').then(function (p) {
+      previewNames = p.names || [];
+      if (!sceneReady) {
+        sceneReady = GeneratorApp.initScene('editor-canvas');
+        if (sceneReady && GeneratorApp.enablePicking) GeneratorApp.enablePicking(onBlockHover);
+      }
+      GeneratorApp.renderBlocks(p);
+      document.getElementById('ed-truncated').textContent = p.truncated
+        ? '{{ T .Language "Preview truncated for performance — the full build is intact in downloads." }}' : '';
+    }).catch(function (e) { setError(e.message); });
+  }
+
+  var previewNames = [];
+
+  function prettyBlockName(id) {
+    var s = (id.split(':').pop() || id).replace(/_/g, ' ');
+    return s.replace(/(^|\s)\S/g, function (ch) { return ch.toUpperCase(); });
+  }
+
+  function onBlockHover(b, cx, cy) {
+    var el = document.getElementById('ed-hover');
+    if (!el) return;
+    var id = (b && b.p !== undefined) ? previewNames[b.p] : null;
+    if (!id) { el.style.display = 'none'; el.dataset.id = ''; return; }
+    var mat = (b && b.mat) || '';
+    var key = id + '|' + mat;
+    if (el.dataset.id !== key) {
+      el.dataset.id = key;
+      document.getElementById('ed-hover-name').textContent = prettyBlockName(id);
+      document.getElementById('ed-hover-id').textContent = id;
+      var img = document.getElementById('ed-hover-icon');
+      img.style.display = '';
+      img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(id) + '/icon?size=64';
+      var sub = document.getElementById('ed-hover-sub');
+      if (mat) {
+        document.getElementById('ed-hover-sub-name').textContent = prettyBlockName(mat);
+        document.getElementById('ed-hover-sub-id').textContent = mat;
+        var subImg = document.getElementById('ed-hover-sub-icon');
+        subImg.style.display = '';
+        subImg.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(mat) + '/icon?size=64';
+        sub.style.display = 'flex';
+      } else {
+        sub.style.display = 'none';
+      }
+    }
+    el.style.display = 'flex';
+    var host = el.parentElement;
+    var r = host.getBoundingClientRect();
+    var left = cx - r.left + 16;
+    var top = cy - r.top + 16;
+    left = Math.max(4, Math.min(left, r.width - el.offsetWidth - 8));
+    top = Math.max(4, Math.min(top, r.height - el.offsetHeight - 8));
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
+
+  function applyState(st) {
+    infoEl.textContent = st.size[0] + '×' + st.size[1] + '×' + st.size[2] + ' · ' + st.blockCount.toLocaleString() + ' blocks · ' + st.cursor + '/' + st.ops.length + ' ops';
+    document.getElementById('ed-undo').disabled = st.cursor === 0;
+    document.getElementById('ed-redo').disabled = st.cursor >= st.ops.length;
+    var mats = document.getElementById('ed-materials');
+    mats.replaceChildren();
+    (st.materials || []).forEach(function (m) {
+      var row = document.createElement('div');
+      row.className = 'material-row';
+
+      var iconWrap = document.createElement('div');
+      iconWrap.className = 'material-icon-wrap';
+      var img = document.createElement('img');
+      img.src = 'https://blocksitems.com/api/v1/blocks/' + encodeURIComponent(m.BlockID) + '/icon?size=64';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.onerror = function () {
+        this.style.display = 'none';
+        var p = document.createElement('div');
+        p.style.cssText = 'width:28px;height:28px;background:var(--cm-border-color,rgba(128,128,128,0.2));border-radius:2px';
+        this.parentNode.appendChild(p);
+      };
+      iconWrap.appendChild(img);
+      row.appendChild(iconWrap);
+
+      // Swatch matching the block's color in the 3D viewer.
+      var dot = document.createElement('span');
+      dot.className = 'material-color-dot';
+      dot.style.background = m.Color || 'transparent';
+      dot.title = '{{ T .Language "Color in the 3D preview" }}';
+      row.appendChild(dot);
+
+      var info = document.createElement('div');
+      info.className = 'material-info';
+      var name = document.createElement('span');
+      name.className = 'material-name';
+      name.textContent = prettyBlockName(m.BlockID);
+      name.title = m.BlockID;
+      info.appendChild(name);
+      var idEl = document.createElement('span');
+      idEl.className = 'material-id';
+      idEl.textContent = m.BlockID;
+      info.appendChild(idEl);
+      row.appendChild(info);
+
+      var count = document.createElement('span');
+      count.className = 'material-count';
+      count.textContent = 'x' + m.Count.toLocaleString();
+      row.appendChild(count);
+
+      mats.appendChild(row);
+    });
+    var dl = document.getElementById('ed-palette-list');
+    dl.replaceChildren();
+    (st.palette || []).forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      dl.appendChild(opt);
+    });
+    document.getElementById('ed-download').href = '/api/editor/' + sessionID + '/preview.nbt';
+    document.querySelectorAll('.ed-dl').forEach(function (a) {
+      a.href = '/api/editor/' + sessionID + '/download?format=' + a.getAttribute('data-format');
+    });
+    var previewURL = location.origin + '/api/editor/' + sessionID + '/preview.nbt';
+    document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(previewURL);
+    document.getElementById('ed-shulkr').href = 'https://www.shulkr.com/?url=' + encodeURIComponent(previewURL);
+    setError('');
+    refreshPreview();
+  }
+
+  function openSession(id) {
+    sessionID = id;
+    var url = new URL(location.href);
+    url.searchParams.set('session', id);
+    url.searchParams.delete('source');
+    url.searchParams.delete('upload');
+    history.replaceState(null, '', url);
+    api('/api/editor/' + id).then(function (st) {
+      startEl.style.display = 'none';
+      mainEl.style.display = '';
+      applyState(st);
+    }).catch(function (e) { startStatus.textContent = e.message; });
+  }
+
+  function createSession(body) {
+    startStatus.textContent = '{{ T .Language "Preparing session…" }}';
+    return api('/api/editor/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (j) { openSession(j.id); })
+      .catch(function (e) { startStatus.textContent = e.message; });
+  }
+
+  function region() {
+    var v = function (id) { return parseInt(document.getElementById(id).value, 10) || 0; };
+    return { min: [v('rx1'), v('ry1'), v('rz1')], max: [v('rx2'), v('ry2'), v('rz2')] };
+  }
+
+  function buildOp(kind) {
+    var r = region();
+    switch (kind) {
+      case 'crop': return { type: 'crop', min: r.min, max: r.max };
+      case 'delete_region': return { type: 'delete_region', min: r.min, max: r.max };
+      case 'hollow': return { type: 'hollow', min: r.min, max: r.max };
+      case 'fill': return { type: 'fill', min: r.min, max: r.max, block: document.getElementById('ed-fill-block').value.trim() };
+      case 'rotate': return { type: 'rotate', steps: 1 };
+      case 'mirror-x': return { type: 'mirror', axis: 'x' };
+      case 'mirror-z': return { type: 'mirror', axis: 'z' };
+      case 'expand': {
+        var g = function (id) { return Math.max(0, parseInt(document.getElementById(id).value, 10) || 0); };
+        return { type: 'expand', grow: { low: [g('ed-grow-low-x'), g('ed-grow-low-y'), g('ed-grow-low-z')], high: [g('ed-grow-high-x'), g('ed-grow-high-y'), g('ed-grow-high-z')] } };
+      }
+      case 'replace': return { type: 'replace', replacements: [{ from: document.getElementById('ed-replace-from').value.trim(), to: document.getElementById('ed-replace-to').value.trim() }] };
+    }
+  }
+
+  document.querySelectorAll('.ed-op').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var op = buildOp(this.getAttribute('data-op'));
+      api('/api/editor/' + sessionID + '/op', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(op)
+      }).then(applyState).catch(function (e) { setError(e.message); });
+    });
+  });
+  document.getElementById('ed-undo').addEventListener('click', function () {
+    api('/api/editor/' + sessionID + '/undo', { method: 'POST' }).then(applyState).catch(function (e) { setError(e.message); });
+  });
+  document.getElementById('ed-redo').addEventListener('click', function () {
+    api('/api/editor/' + sessionID + '/redo', { method: 'POST' }).then(applyState).catch(function (e) { setError(e.message); });
+  });
+
+  // Publish: hand the current NBT to the existing upload pipeline, then
+  // continue on the standard upload preview/publish page.
+  document.getElementById('ed-publish').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch('/api/editor/' + sessionID + '/preview.nbt')
+      .then(function (r) { if (!r.ok) throw new Error('failed to serialize'); return r.blob(); })
+      .then(function (blob) {
+        var fd = new FormData();
+        fd.append('file', new File([blob], 'edited.nbt', { type: 'application/octet-stream' }));
+        return fetch('/upload/nbt', { method: 'POST', body: fd });
+      })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'upload failed'); return j; }); })
+      .then(function (j) { window.location.href = j.url; })
+      .catch(function (e) { setError(e.message); btn.disabled = false; });
+  });
+
+  // Start flows
+  var drop = document.getElementById('ed-drop');
+  var fileInput = document.getElementById('ed-file');
+  function uploadAndEdit(file) {
+    startStatus.textContent = '{{ T .Language "Uploading…" }}';
+    var fd = new FormData();
+    fd.append('file', file);
+    fetch('/upload/nbt', { method: 'POST', body: fd })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'upload failed'); return j; }); })
+      .then(function (j) { return createSession({ source: 'upload', ref: j.token }); })
+      .catch(function (e) { startStatus.textContent = e.message; });
+  }
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () { if (fileInput.files[0]) uploadAndEdit(fileInput.files[0]); });
+  drop.addEventListener('dragover', function (ev) { ev.preventDefault(); drop.style.borderColor = 'var(--cm-primary)'; });
+  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    drop.style.borderColor = '';
+    if (ev.dataTransfer.files[0]) uploadAndEdit(ev.dataTransfer.files[0]);
+  });
+
+  // Deep links: ?session=... resumes; ?source=<schematic-name> prefills;
+  // ?upload=<temp-upload-token> edits a fresh upload (from the upload page).
+  var params = new URLSearchParams(location.search);
+  if (params.get('session')) {
+    openSession(params.get('session'));
+  } else if (params.get('source')) {
+    createSession({ source: 'schematic', ref: params.get('source') });
+  } else if (params.get('upload')) {
+    createSession({ source: 'upload', ref: params.get('upload') });
+  }
+})();
+</script>
+<script>
+// The 3D viewport needs its width, so instead of the usual right rail the
+// editor runs a horizontal leaderboard under the canvas plus a mobile banner.
+window['nitroAds'].createAd('editor-banner', {
+  "sizes": [["728", "90"], ["970", "90"]],
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,schematic,editor",
+  "targeting": { "pageType": "editor" },
+  "mediaQuery": "(min-width: 992px)"
+});
+window['nitroAds'].createAd('editor-mobile', {
+  "refreshTime": 60,
+  "refreshVisibleOnly": true,
+  "renderVisibleOnly": true,
+  "visibleMargin": 300,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,schematic,editor",
+  "targeting": { "pageType": "editor" },
+  "mediaQuery": "(min-width: 320px) and (max-width: 991px)"
+});
+</script>
+{{ template "foot.html" . }}

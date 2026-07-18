@@ -67,9 +67,31 @@ window.setTheme=function(theme){
     <link rel="stylesheet" href="/assets/x/style.css?v={{ AssetVer }}" />
     <!-- Project styles -->
     <link rel="stylesheet" href="/assets/x/app.css?v={{ AssetVer }}" />
-    <!-- Editor (Tiptap) -->
-    <link rel="stylesheet" href="/assets/x/editor.css?v={{ AssetVer }}" />
-    <script src="/assets/x/editor.js?v={{ AssetVer }}" defer></script>
+    <!-- Editor (Tiptap) is lazy-loaded on demand via cmEditorEnsure: the
+         ~140 KB bundle and its stylesheet are only fetched on pages (or
+         interactions) that actually create an editor. Loading it here for
+         every page was the largest first-party source of render-blocking
+         CSS and unused JavaScript. -->
+    <script>
+    window.cmEditorEnsure = function (cb) {
+      if (window.cmEditor) { cb(); return; }
+      var cbs = (window._cmEditorCbs = window._cmEditorCbs || []);
+      cbs.push(cb);
+      if (window._cmEditorLoading) return;
+      window._cmEditorLoading = true;
+      var l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = '/assets/x/editor.css?v={{ AssetVer }}';
+      document.head.appendChild(l);
+      var s = document.createElement('script');
+      s.src = '/assets/x/editor.js?v={{ AssetVer }}';
+      s.onload = function () {
+        window._cmEditorCbs = [];
+        cbs.forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
+      };
+      document.head.appendChild(s);
+    };
+    </script>
     <!-- Non-critical CSS: load async to avoid blocking LCP -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dropzone@6.0.0-beta.2/dist/dropzone.css" crossorigin="anonymous" media="print" onload="this.media='all'">
 
@@ -267,6 +289,28 @@ window.setTheme=function(theme){
         document.addEventListener('htmx:pushedIntoHistory', function(){
           window.scrollTo(0, 0);
         });
+
+        // Keep the sidebar state consistent when the viewport crosses the
+        // desktop breakpoint after load (DevTools closing, window resize,
+        // session restore reporting a small width, bfcache restores).
+        // Without this, a page whose first paint happened below 992px never
+        // gets body.sidebar-pinned, so widening the window leaves the
+        // expanded rail covering the header logo until the user toggles.
+        var syncSidebarToViewport = function(){
+          var sidebar = document.getElementById('sidebar-menu');
+          if (!sidebar || window.innerWidth < 992) return;
+          var expanded = localStorage.getItem('sidebar-expanded') !== '0';
+          sidebar.classList.toggle('sidebar-expanded', expanded);
+          document.body.classList.toggle('sidebar-pinned', expanded);
+          var label = document.getElementById('sidebar-toggle-label');
+          if (label) label.textContent = expanded ? 'Collapse' : 'Expand';
+        };
+        var sidebarResizeTimer;
+        window.addEventListener('resize', function(){
+          clearTimeout(sidebarResizeTimer);
+          sidebarResizeTimer = setTimeout(syncSidebarToViewport, 100);
+        });
+        window.addEventListener('pageshow', syncSidebarToViewport);
       }
     } catch(_) {}
   })();

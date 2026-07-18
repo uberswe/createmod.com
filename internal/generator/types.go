@@ -1,6 +1,19 @@
 package generator
 
-const CurrentVersion = 1
+// CurrentVersion is the version stamped on new generations and share hashes.
+// The version selects both the hash float encoding and the hull algorithm:
+//
+//	1    legacy hash encoding (raw floats)
+//	2    hash floats stored x100; hull algorithm v1
+//	3    hull algorithm v2 (lofted sections, profile curves); same encoding as 2
+//
+// Versions <= 2 must reproduce byte-identical results forever: existing share
+// links embed the version and regenerate on every visit. Never modify
+// generateHullV1 or the v1 preset semantics.
+const CurrentVersion = 3
+
+// HullV2MinVersion is the first version that uses the v2 hull algorithm.
+const HullV2MinVersion = 3
 
 type Block struct {
 	X     int               `json:"x"`

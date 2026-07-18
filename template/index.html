@@ -11,7 +11,7 @@
                     <div class="flex-grow-1 min-width-0">
                         <!-- Trending -->
                         <div class="d-flex align-items-center mb-3">
-                            <h2 class="mb-0"><a href="/trending" class="text-reset text-decoration-none">{{ T .Language "Trending" }} &rarr;</a></h2>
+                            <h2 class="mb-0 cm-section-title"><a href="/trending" class="text-reset text-decoration-none">{{ T .Language "Trending" }} <svg xmlns="http://www.w3.org/2000/svg" class="cm-section-head__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg></a></h2>
                             {{ if .IsAuthenticated }}
                             {{ $ft := index .FollowedSet "trending:trending" }}
                             <button class="btn btn-sm {{ if $ft }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="trending" data-target-id="trending" data-followed="{{ if $ft }}true{{ else }}false{{ end }}" title="{{ if $ft }}{{ T .Language "Following" }}{{ else }}{{ T .Language "Follow" }}{{ end }}">
@@ -20,12 +20,7 @@
                             {{ end }}
                             <div id="pagination-trending" class="ms-auto">
                             {{ if .TrendingHasNext }}
-                                <ul class="pagination mb-0">
-                                    <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} 1</span></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
-                                    </li>
-                                </ul>
+                                <span class="d-inline-flex align-items-center gap-2"><span class="cm-pagechip">{{ T .Language "Page" }} 1</span><a class="btn btn-sm btn-outline-secondary cm-btn--pager" href="/?tab=trending&p=2" hx-get="/?tab=trending&p=2" hx-target="#tab-panel-trending" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a></span>
                             {{ end }}
                             </div>
                         </div>
@@ -39,7 +34,7 @@
 
                         <!-- Latest -->
                         <div class="d-flex align-items-center mb-3 mt-4">
-                            <h2 class="mb-0"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} &rarr;</a></h2>
+                            <h2 class="mb-0 cm-section-title"><a href="/search?sort=2" class="text-reset text-decoration-none">{{ T .Language "Latest" }} <svg xmlns="http://www.w3.org/2000/svg" class="cm-section-head__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg></a></h2>
                             {{ if .IsAuthenticated }}
                             {{ $fl := index .FollowedSet "latest:latest" }}
                             <button class="btn btn-sm {{ if $fl }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="latest" data-target-id="latest" data-followed="{{ if $fl }}true{{ else }}false{{ end }}" title="{{ if $fl }}{{ T .Language "Following" }}{{ else }}{{ T .Language "Follow" }}{{ end }}">
@@ -48,12 +43,7 @@
                             {{ end }}
                             <div id="pagination-latest" class="ms-auto">
                             {{ if .HasNext }}
-                                <ul class="pagination mb-0">
-                                    <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} 1</span></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
-                                    </li>
-                                </ul>
+                                <span class="d-inline-flex align-items-center gap-2"><span class="cm-pagechip">{{ T .Language "Page" }} 1</span><a class="btn btn-sm btn-outline-secondary cm-btn--pager" href="/?tab=latest&p=2" hx-get="/?tab=latest&p=2" hx-target="#tab-panel-latest" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a></span>
                             {{ end }}
                             </div>
                         </div>
@@ -67,7 +57,7 @@
 
                         <!-- Highest Rated -->
                         <div class="d-flex align-items-center mb-3 mt-4">
-                            <h2 class="mb-0"><a href="/highest-scores" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} &rarr;</a></h2>
+                            <h2 class="mb-0 cm-section-title"><a href="/highest-scores" class="text-reset text-decoration-none">{{ T .Language "Highest Rated" }} <svg xmlns="http://www.w3.org/2000/svg" class="cm-section-head__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg></a></h2>
                             {{ if .IsAuthenticated }}
                             {{ $fh := index .FollowedSet "highest_rated:highest_rated" }}
                             <button class="btn btn-sm {{ if $fh }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="highest_rated" data-target-id="highest_rated" data-followed="{{ if $fh }}true{{ else }}false{{ end }}" title="{{ if $fh }}{{ T .Language "Following" }}{{ else }}{{ T .Language "Follow" }}{{ end }}">
@@ -76,12 +66,7 @@
                             {{ end }}
                             <div id="pagination-highest" class="ms-auto">
                             {{ if .HighestHasNext }}
-                                <ul class="pagination mb-0">
-                                    <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} 1</span></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a>
-                                    </li>
-                                </ul>
+                                <span class="d-inline-flex align-items-center gap-2"><span class="cm-pagechip">{{ T .Language "Page" }} 1</span><a class="btn btn-sm btn-outline-secondary cm-btn--pager" href="/?tab=highest&p=2" hx-get="/?tab=highest&p=2" hx-target="#tab-panel-highest" hx-swap="outerHTML" hx-push-url="false">{{ T .Language "Next" }}</a></span>
                             {{ end }}
                             </div>
                         </div>
@@ -94,10 +79,10 @@
                         </div>
 
                         <!-- Categories -->
-                        <h2 class="mb-3 mt-5">{{ T .Language "Categories" }}</h2>
+                        <h2 class="mb-3 mt-5 cm-super-heading">{{ T .Language "Categories" }}</h2>
                         {{ range .CategorySections }}
                         <div class="d-flex align-items-center mb-3 mt-4">
-                            <h3 class="mb-0"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ T $.Language .Category.Name }} &rarr;</a></h3>
+                            <h3 class="mb-0 cm-section-title"><a href="/search?category={{ .Category.Key }}" class="text-reset text-decoration-none">{{ T $.Language .Category.Name }} <svg xmlns="http://www.w3.org/2000/svg" class="cm-section-head__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></svg></a></h3>
                             {{ if $.IsAuthenticated }}
                             {{ $fc := index $.FollowedSet (printf "category:%s" .Category.ID) }}
                             <button class="btn btn-sm {{ if $fc }}btn-primary{{ else }}btn-ghost-primary{{ end }} ms-2 follow-btn" data-follow-type="category" data-target-id="{{ .Category.ID }}" data-followed="{{ if $fc }}true{{ else }}false{{ end }}" title="{{ if $fc }}{{ T $.Language "Following" }}{{ else }}{{ T $.Language "Follow" }}{{ end }}">
@@ -106,12 +91,7 @@
                             {{ end }}
                             <div id="pagination-cat-{{ .Category.Key }}" class="ms-auto">
                             {{ if .HasNext }}
-                                <ul class="pagination mb-0">
-                                    <li class="page-item disabled"><span class="page-link">{{ T $.Language "Page" }} 1</span></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false">{{ T $.Language "Next" }}</a>
-                                    </li>
-                                </ul>
+                                <span class="d-inline-flex align-items-center gap-2"><span class="cm-pagechip">{{ T $.Language "Page" }} 1</span><a class="btn btn-sm btn-outline-secondary cm-btn--pager" href="/?tab=cat-{{ .Category.Key }}&p=2" hx-get="/?tab=cat-{{ .Category.Key }}&p=2" hx-target="#tab-panel-cat-{{ .Category.Key }}" hx-swap="outerHTML" hx-push-url="false">{{ T $.Language "Next" }}</a></span>
                             {{ end }}
                             </div>
                         </div>

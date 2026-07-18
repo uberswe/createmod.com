@@ -31,8 +31,9 @@ require (
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.15
 	github.com/sym01/htmlsanitizer v1.1.1
+	github.com/tdewolff/minify/v2 v2.24.13
 	github.com/uberswe/mcnbt v0.1.4
-	github.com/yuin/goldmark v1.8.2
+	github.com/yuin/goldmark v1.8.4
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/image v0.44.0
@@ -86,6 +87,7 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/sunshineplan/pdf v1.0.8 // indirect
+	github.com/tdewolff/parse/v2 v2.8.12 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

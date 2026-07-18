@@ -13,9 +13,9 @@
     </div>
     <div class="card-body p-2">
       <div class="d-flex align-items-start justify-content-between">
-        <h4 class="card-title mb-1 text-truncate" style="max-width: 80%;">
+        <h3 class="card-title mb-1 text-truncate" style="max-width: 80%;">
           {{ .Title }}
-        </h4>
+        </h3>
       </div>
       <div class="d-flex align-items-center gap-2 text-muted small">
         {{ if .HasRating }}
@@ -34,13 +34,13 @@
           {{ .Downloads }}
         </span>
         {{ end }}
-        {{ if .Author }}<span class="text-truncate" style="max-width: 100px;">{{ T $.Language "by" }} {{ .Author.Username }}</span>{{ end }}
+        {{ if .Author }}<span class="text-truncate ms-auto" style="max-width: 110px;">{{ T $.Language "by" }} <b class="fw-medium">{{ .Author.Username }}</b></span>{{ end }}
       </div>
-      <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+      <div class="d-flex align-items-center gap-1 mt-2 flex-wrap">
         {{ range .Categories }}
-        <span class="badge badge-outline text-blue">{{ T $.Language .Name }}</span>
+        <span class="cm-badge cm-badge--gold">{{ T $.Language .Name }}</span>
         {{ end }}
-        {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="badge badge-outline text-secondary">{{ T $.Language $tag.Name }}</span>{{ end }}{{ end }}
+        {{ range $i, $tag := .Tags }}{{ if lt $i 3 }}<span class="cm-badge">{{ T $.Language $tag.Name }}</span>{{ end }}{{ end }}
       </div>
     </div>
   </div>

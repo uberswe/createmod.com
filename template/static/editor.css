@@ -163,3 +163,68 @@
 [data-cm-theme=dark] .cm-editor-content .tiptap code {
   background: #1a1d1d;
 }
+
+/* Schematic editor material list — mirrors the schematic page's material
+   rows, plus a swatch matching each block's color in the 3D preview.
+   Scoped under #ed-materials because this stylesheet loads site-wide and
+   the schematic page defines its own .material-* rules inline. */
+#ed-materials .material-row {
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--cm-border-color, rgba(128, 128, 128, 0.15));
+}
+#ed-materials .material-row:last-child {
+  border-bottom: none;
+}
+#ed-materials .material-icon-wrap {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cm-bg-surface-secondary, rgba(128, 128, 128, 0.08));
+  border-radius: 4px;
+}
+#ed-materials .material-icon-wrap img {
+  width: 26px;
+  height: 26px;
+  image-rendering: pixelated;
+}
+#ed-materials .material-color-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+#ed-materials .material-info {
+  flex: 1;
+  min-width: 0;
+}
+#ed-materials .material-name {
+  font-weight: 500;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+#ed-materials .material-count {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--cm-secondary-color, #4d5560);
+  font-variant-numeric: tabular-nums;
+}
+
+#ed-materials .material-id {
+  display: block;
+  font-size: 0.68rem;
+  font-family: var(--cm-font-mono);
+  color: var(--cm-text-faint, rgba(128, 128, 128, 0.7));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

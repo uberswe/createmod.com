@@ -119,6 +119,21 @@ var schemaHull = []schemaField{
 	{"sternOverhang", ftFloat, nil},
 	{"midWidthBias", ftFloat, nil},
 	{"bowStyle", ftEnum, codeToBowStyle},
+	// v2 (version >= 3) fields, appended so pre-v3 hashes (shorter value
+	// lists) keep decoding; field order below is frozen once released.
+	{"deadrise", ftFloat, nil},
+	{"midFullness", ftFloat, nil},
+	{"bowSectionV", ftFloat, nil},
+	{"sternFullness", ftFloat, nil},
+	{"stemRake", ftFloat, nil},
+	{"stemCurve", ftFloat, nil},
+	{"sternRake", ftFloat, nil},
+	{"rocker", ftFloat, nil},
+	{"parallelMidbody", ftFloat, nil},
+	{"stemPostHeight", ftInt, nil},
+	{"sternPostHeight", ftInt, nil},
+	{"doubleEnder", ftBool, nil},
+	{"closedHull", ftBool, nil},
 }
 
 // DecodeHash decodes a base64url generator hash into a GenerateResult.
@@ -403,6 +418,32 @@ func decodeHullParams(values []string, version int) HullParams {
 			p.MidWidthBias = v.(float64)
 		case "bowStyle":
 			p.BowStyle = v.(string)
+		case "deadrise":
+			p.Deadrise = v.(float64)
+		case "midFullness":
+			p.MidFullness = v.(float64)
+		case "bowSectionV":
+			p.BowSectionV = v.(float64)
+		case "sternFullness":
+			p.SternFullness = v.(float64)
+		case "stemRake":
+			p.StemRake = v.(float64)
+		case "stemCurve":
+			p.StemCurve = v.(float64)
+		case "sternRake":
+			p.SternRake = v.(float64)
+		case "rocker":
+			p.Rocker = v.(float64)
+		case "parallelMidbody":
+			p.ParallelMidbody = v.(float64)
+		case "stemPostHeight":
+			p.StemPostHeight = v.(int)
+		case "sternPostHeight":
+			p.SternPostHeight = v.(int)
+		case "doubleEnder":
+			p.DoubleEnder = v.(bool)
+		case "closedHull":
+			p.ClosedHull = v.(bool)
 		}
 	}
 	return p

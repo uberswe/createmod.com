@@ -17,6 +17,7 @@ import (
 	"createmod/internal/search"
 	"createmod/internal/server"
 	"createmod/internal/session"
+	"createmod/internal/similarity"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
@@ -88,6 +89,7 @@ func computeAssetVersion() string {
 
 // RegisterParams holds all dependencies needed for route registration.
 type RegisterParams struct {
+	SimilarityService  *similarity.Service
 	SearchService      *search.Service
 	SearchEngine       search.SearchEngine
 	CacheService       *cache.Service
@@ -346,7 +348,19 @@ func Register(p RegisterParams) chi.Router {
 	// Static assets with long cache (files use ?v=hash cache-busting)
 	staticFS := http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static")))
 	r.Handle("/assets/x/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		// During a rolling deploy, a request for the NEW ?v= can land on an
+		// OLD pod (the file server ignores the query); with an immutable
+		// max-age the edge would cache the wrong bytes under the new URL
+		// for a year. A pod only vouches for its own version — anything
+		// else is served uncacheable so a mismatch can never poison the CDN.
+		if v := req.URL.Query().Get("v"); v != "" && v != assetVer {
+			w.Header().Set("Cache-Control", "no-store")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		if serveMinifiedAsset(w, req, "./template/static") {
+			return
+		}
 		staticFS.ServeHTTP(w, req)
 	}))
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
@@ -424,13 +438,23 @@ func Register(p RegisterParams) chi.Router {
 			return nil
 		}
 	}
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert)))
+	var enqueueSafetyScan pages.SafetyScanEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueSafetyScan = func(ctx context.Context, schematicID string) error {
+			_ = jw.Insert(ctx, jobs.FingerprintArgs{SchematicID: schematicID}, nil)
+			return jw.Insert(ctx, jobs.SafetyScanArgs{SchematicID: schematicID}, nil)
+		}
+	}
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
 	r.Get("/upload/pending", Adapt(pages.UploadPendingHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/contact", Adapt(pages.ContactHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/contact", Adapt(pages.ContactSubmitHandler(p.AppStore, p.MailService)))
+	r.Get("/dmca", Adapt(pages.DMCAHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/dmca", Adapt(pages.DMCASubmitHandler(p.AppStore, p.MailService)))
 	// Comments and ratings API (replaces PB REST endpoints)
 	// Build comment moderation enqueuer
 	var enqueueCommentModeration pages.CommentModerationEnqueuer
@@ -516,6 +540,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/mcp", Adapt(pages.MCPHandler(p.SearchEngine, p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/.well-known/mcp/server-card.json", Adapt(pages.MCPServerCardHandler()))
 	// Agent skills discovery (Agent Skills Discovery RFC)
+	r.Get("/.well-known/mcp-registry-auth", Adapt(pages.MCPRegistryAuthHandler()))
 	r.Get("/.well-known/agent-skills/index.json", Adapt(pages.AgentSkillsIndexHandler()))
 	r.Get("/.well-known/agent-skills/{name}/SKILL.md", Adapt(pages.AgentSkillHandler()))
 	// Agent-facing authentication guide (auth.md convention)
@@ -681,7 +706,7 @@ func Register(p RegisterParams) chi.Router {
 	// Add to collection
 	r.Post("/schematics/{name}/add-to-collection", Adapt(pages.SchematicAddToCollectionHandler(p.AppStore)))
 	// Download endpoint to track download metrics separately
-	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore)))
+	r.Get("/download/{name}", Adapt(pages.DownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 	// Download interstitial page
 	r.Get("/get/{name}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/get/{name}/file/{fileID}", Adapt(pages.DownloadInterstitialHandler(registry, p.CacheService, p.AppStore)))
@@ -717,8 +742,40 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search/", Adapt(pages.SearchHandler(p.SearchEngine, p.SearchService, p.CacheService, registry, p.AppStore, p.TranslationService)))
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
-	// Generators
 	r.Get("/generators", Adapt(pages.GeneratorsLandingHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools", Adapt(pages.ToolsLandingHandler(registry, p.CacheService, p.AppStore)))
+	// Schematic editor
+	r.Get("/tools/editor", Adapt(pages.EditorPageHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/editor/sessions", Adapt(pages.EditorCreateSessionHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}", Adapt(pages.EditorStateHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/op", Adapt(pages.EditorOpHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/undo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, false)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/redo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, true)))
+	r.Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}/download", Adapt(pages.EditorDownloadHandler(p.AppStore, p.StorageService)))
+	r.Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
+	// NBT viewer
+	r.Get("/tools/nbt-viewer", Adapt(pages.NBTViewerToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Get("/api/schematics/{name}/nbt-tree", Adapt(pages.SchematicNBTTreeHandler(p.AppStore, p.StorageService)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/nbt-tree", Adapt(pages.NBTTreeUploadHandler()))
+	// Similarity search
+	r.Get("/schematics/{name}/similar", Adapt(pages.SimilarSchematicsHandler(registry, p.CacheService, p.AppStore, p.SimilarityService)))
+	r.Get("/schematics/{name}/nbt-data", Adapt(pages.SchematicNBTDataHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools/similar", Adapt(pages.SimilarToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/similar", Adapt(pages.SimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
+	r.Get("/api/schematics/{name}/similar", Adapt(pages.GetSimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
+	// Safety checker (the explainer content lives on this page; /safety redirects)
+	r.Get("/safety", func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, "/tools/safety-check", http.StatusMovedPermanently)
+	})
+	r.Get("/tools/safety-check", Adapt(pages.SafetyCheckToolHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/safety-check", Adapt(pages.SafetyCheckAPIHandler()))
+	// Schematic converter
+	r.Get("/tools/convert", Adapt(pages.ConvertToolHandler(registry, p.CacheService, p.AppStore)))
+	r.Get("/tools/convert/{pair}", Adapt(pages.ConvertPairHandler(registry, p.CacheService, p.AppStore)))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/convert", Adapt(pages.ConvertAPIHandler()))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 5, time.Minute)).Post("/api/convert/batch", Adapt(pages.ConvertBatchAPIHandler()))
+	r.With(rateLimitMiddlewareNew(p.RateLimiter, 20, time.Minute)).Post("/api/convert/inspect", Adapt(pages.ConvertInspectHandler()))
 	r.Get("/generators/propeller", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/propeller/{hash}", Adapt(pages.GeneratorPropellerHandler(registry, p.CacheService, p.AppStore, p.StorageService)))
 	r.Get("/generators/balloon", Adapt(pages.GeneratorBalloonHandler(registry, p.CacheService, p.AppStore, p.StorageService)))

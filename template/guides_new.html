@@ -57,7 +57,7 @@
 </div>
 {{template "foot.html" .}}
 <script>
-(function() {
+cmEditorEnsure(function() {
   window._cmGuideEditor = cmEditor.create('#guide-editor', {
     preset: 'full',
     minHeight: 400,
@@ -65,5 +65,5 @@
     imageUploadUrl: '/api/images/upload',
     placeholder: 'Write your guide here...'
   });
-})();
+});
 </script>

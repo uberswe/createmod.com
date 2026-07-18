@@ -179,7 +179,9 @@ func OAuthCallbackHandler(provider *auth.OAuthProvider, appStore *store.Store, s
 			return maybeCreateSessionOrChallenge(e, appStore, sessStore, mailService, extAuth.UserID, "/")
 		}
 
-		// No existing link — check if user with same email exists
+		// No existing link — check if user with same email exists.
+		// Provider emails arrive in arbitrary casing; store lowercase.
+		oauthUser.Email = strings.ToLower(strings.TrimSpace(oauthUser.Email))
 		var userID string
 		if oauthUser.Email != "" {
 			existingUser, _ := appStore.Users.GetUserByEmail(ctx, oauthUser.Email)

@@ -67,12 +67,12 @@
 </div>
 {{template "foot.html" .}}
 <script>
-(function() {
+cmEditorEnsure(function() {
   window._cmGuideEditor = cmEditor.create('#guide-editor', {
     preset: 'full',
     minHeight: 400,
     maxHeight: 800,
     imageUploadUrl: '/api/images/upload'
   });
-})();
+});
 </script>

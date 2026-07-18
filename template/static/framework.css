@@ -595,13 +595,16 @@ th { text-align: inherit; }
 .btn-primary {
   --cm-btn-bg: var(--cm-primary);
   --cm-btn-border-color: var(--cm-primary);
-  --cm-btn-color: #fff;
-  --cm-btn-hover-bg: color-mix(in srgb, var(--cm-primary), #000 15%);
-  --cm-btn-hover-border-color: color-mix(in srgb, var(--cm-primary), #000 15%);
-  --cm-btn-hover-color: #fff;
-  --cm-btn-active-bg: color-mix(in srgb, var(--cm-primary), #000 25%);
-  --cm-btn-active-border-color: color-mix(in srgb, var(--cm-primary), #000 25%);
-  --cm-btn-active-color: #fff;
+  /* Dark text on the brass/gold primary: white fails WCAG AA contrast
+     (~2.9:1 on #bf9045); #1f2121 gives ~5.7:1. Hover/active lighten the
+     gold so the dark text keeps passing. */
+  --cm-btn-color: #1f2121;
+  --cm-btn-hover-bg: color-mix(in srgb, var(--cm-primary), #fff 12%);
+  --cm-btn-hover-border-color: color-mix(in srgb, var(--cm-primary), #fff 12%);
+  --cm-btn-hover-color: #1f2121;
+  --cm-btn-active-bg: color-mix(in srgb, var(--cm-primary), #fff 20%);
+  --cm-btn-active-border-color: color-mix(in srgb, var(--cm-primary), #fff 20%);
+  --cm-btn-active-color: #1f2121;
 }
 .btn-secondary {
   --cm-btn-bg: var(--cm-secondary);
@@ -1220,7 +1223,9 @@ textarea.form-control { min-height: calc(1.4285714286em + 0.875rem + 2px); }
   --cm-dropdown-border-color: var(--cm-border-color);
   position: absolute;
   top: 100%;
-  z-index: 1000;
+  /* Above the sidebar rail (1040, 1060 expanded/hovered) so menus opened
+     near the left content edge are not painted over; below toasts (1080). */
+  z-index: 1070;
   display: none;
   min-width: var(--cm-dropdown-min-width);
   padding: var(--cm-dropdown-padding-y) 0;
@@ -1820,7 +1825,7 @@ textarea.form-control { min-height: calc(1.4285714286em + 0.875rem + 2px); }
 }
 .page-item.active .page-link {
   z-index: 3;
-  color: #fff;
+  color: #1f2121; /* dark text for WCAG AA contrast on the gold primary */
   background-color: var(--cm-primary);
   border-color: var(--cm-primary);
 }

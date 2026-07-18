@@ -1,0 +1,144 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="page-header d-print-none">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">{{ T .Language "DMCA Takedown Requests" }}</h2>
+                            <div class="text-secondary">{{ T .Language "For copyright holders and their authorized agents to request removal of content hosted on CreateMod.com." }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row row-cards">
+                    <div class="col-md-7">
+                        <form class="card" id="dmca-form" method="post" action="/api/dmca" hx-boost="false">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Submit a takedown request" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label required" for="dmca-name">{{ T .Language "Full name" }}</label>
+                                        <input type="text" class="form-control" id="dmca-name" name="name" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="dmca-company">{{ T .Language "Company / organization" }}</label>
+                                        <input type="text" class="form-control" id="dmca-company" name="company">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label required" for="dmca-email">{{ T .Language "Email address" }}</label>
+                                        <input type="email" class="form-control" id="dmca-email" name="email" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label required" for="dmca-holder">{{ T .Language "Copyright holder you represent" }}</label>
+                                        <input type="text" class="form-control" id="dmca-holder" name="copyright_holder" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label required" for="dmca-work">{{ T .Language "The copyrighted work" }}</label>
+                                        <textarea class="form-control" id="dmca-work" name="work" rows="3" required placeholder="{{ T .Language "Describe or link to the original copyrighted work that is being infringed." }}"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label required" for="dmca-urls">{{ T .Language "Allegedly infringing URLs on CreateMod.com" }}</label>
+                                        <textarea class="form-control" id="dmca-urls" name="urls" rows="3" required placeholder="https://createmod.com/..."></textarea>
+                                        <small class="form-hint">{{ T .Language "One URL per line. Please be specific so we can locate the exact material." }}</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="dmca-details">{{ T .Language "Additional details" }}</label>
+                                        <textarea class="form-control" id="dmca-details" name="details" rows="3" placeholder="{{ T .Language "Reference numbers, letters of authorization, or anything else that helps us process your request." }}"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="dmca-good-faith" name="good_faith" required>
+                                            <span class="form-check-label">{{ T .Language "I have a good-faith belief that use of the material in the manner complained of is not authorized by the copyright owner, its agent, or the law." }}</span>
+                                        </label>
+                                        <label class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="dmca-accuracy" name="accuracy" required>
+                                            <span class="form-check-label">{{ T .Language "I swear, under penalty of perjury, that the information in this notification is accurate and that I am the copyright owner or authorized to act on the owner's behalf." }}</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label required" for="dmca-signature">{{ T .Language "Electronic signature (type your full name)" }}</label>
+                                        <input type="text" class="form-control" id="dmca-signature" name="signature" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer text-end">
+                                <button type="submit" class="btn btn-primary" id="dmca-form-btn">{{ T .Language "Submit request" }}</button>
+                            </div>
+                            <div class="mb-12">
+                                <div id="dmca-success" class="alert alert-important alert-success" {{ if not .Submitted }}style="display: none;"{{ end }} role="alert">
+                                    <div class="d-flex">
+                                        <div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10"/></svg>
+                                        </div>
+                                        <div>
+                                            {{ T .Language "Your request has been received. We review DMCA requests promptly and will respond to the email address you provided." }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="dmca-error" class="alert alert-important alert-danger" style="display: none;" role="alert">
+                                    <span id="dmca-error-text">{{ T .Language "Something went wrong. Please check the form and try again." }}</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ T .Language "Before you submit" }}</h3>
+                            </div>
+                            <div class="card-body">
+                                <p>{{ T .Language "CreateMod.com hosts community-built Minecraft schematics. If you believe content on this site infringes your copyright, submit a notice using this form and we will review it promptly." }}</p>
+                                <p>{{ T .Language "A complete notice under 17 U.S.C. § 512(c)(3) must include:" }}</p>
+                                <ul>
+                                    <li>{{ T .Language "Identification of the copyrighted work claimed to be infringed." }}</li>
+                                    <li>{{ T .Language "The exact URLs of the material you want removed." }}</li>
+                                    <li>{{ T .Language "Your contact information." }}</li>
+                                    <li>{{ T .Language "A good-faith statement and a statement of accuracy under penalty of perjury." }}</li>
+                                    <li>{{ T .Language "A physical or electronic signature of the copyright owner or an authorized agent." }}</li>
+                                </ul>
+                                <p class="text-secondary small">{{ T .Language "Please note that search result pages are generated automatically from user queries and do not host content themselves. Under 17 U.S.C. § 512(f), misrepresenting that material is infringing may make you liable for damages. If your content was removed and you believe this was a mistake, reply to our response email to file a counter-notice." }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{ template "footer.html" . }}
+    </div>
+</div>
+{{ template "foot.html" . }}
+<script>
+    (function () {
+        var form = document.getElementById('dmca-form');
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!form.reportValidity()) return;
+            var btn = document.getElementById('dmca-form-btn');
+            btn.disabled = true;
+            document.getElementById('dmca-error').style.display = 'none';
+            try {
+                var resp = await fetch('/api/dmca', { method: 'POST', body: new FormData(form) });
+                if (resp.ok) {
+                    document.getElementById('dmca-success').style.display = 'block';
+                    form.querySelectorAll('input, textarea, button').forEach(function (el) { el.disabled = true; });
+                    return;
+                }
+                try {
+                    var text = (await resp.text()).trim();
+                    if (text && text.length < 200) {
+                        document.getElementById('dmca-error-text').textContent = text;
+                    }
+                } catch (_) {}
+                document.getElementById('dmca-error').style.display = 'block';
+            } catch (_) {
+                document.getElementById('dmca-error').style.display = 'block';
+            }
+            btn.disabled = false;
+        });
+    })();
+</script>
