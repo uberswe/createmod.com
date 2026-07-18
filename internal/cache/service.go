@@ -24,6 +24,7 @@ const (
 	LatestHasNextKey          = "LatestHasNext"
 	HighestRatedHasNextKey    = "HighestRatedHasNext"
 	TrendingHasNextKey        = "TrendingHasNext"
+	BlockedURLsKey            = "BlockedURLs"
 
 	keyPrefix    = "cm:"
 	defaultTTL   = 30 * time.Minute

@@ -1,0 +1,89 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <main class="page-body">
+      <div class="container-wide">
+        {{template "admin_nav.html" .}}
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Admin: Blocked URLs</h2>
+              <div class="text-secondary">URLs listed here return a 404 to every visitor. Use this to honor DMCA takedown notices without removing unrelated content. Matching is exact on path and query parameters (parameter order does not matter).</div>
+            </div>
+          </div>
+        </div>
+
+        {{if not .IsAuthenticated}}
+          <div class="alert alert-danger">You must be logged in.</div>
+        {{end}}
+
+        {{if .FormError}}
+          <div class="alert alert-danger">{{ .FormError }}</div>
+        {{end}}
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <h3 class="card-title">Block a URL</h3>
+          </div>
+          <div class="card-body">
+            <form method="post" action="/admin/blocked-urls">
+              <div class="row g-2">
+                <div class="col-md-7">
+                  <label class="form-label">URL</label>
+                  <input type="text" class="form-control" name="url" required placeholder="https://createmod.com/es/search?p=17&amp;q=term or /es/search?q=term">
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label">Note</label>
+                  <input type="text" class="form-control" name="note" placeholder="e.g. DMCA notice reference">
+                </div>
+              </div>
+              <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Block URL</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <h3 class="card-title">Blocked URLs</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table card-table table-vcenter">
+              <thead>
+                <tr>
+                  <th>URL</th>
+                  <th>Note</th>
+                  <th>Created</th>
+                  <th class="w-1">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .BlockedURLs}}
+                <tr>
+                  <td><code style="word-break:break-all;">{{ .URL }}</code></td>
+                  <td>{{ if .Note }}{{ .Note }}{{ else }}<span class="text-secondary">—</span>{{ end }}</td>
+                  <td class="text-secondary">{{ .Created }}</td>
+                  <td>
+                    <form method="post" action="/admin/blocked-urls/{{ .ID }}/delete" style="display:inline" onsubmit="return confirm('Unblock this URL? It will be served normally again.');">
+                      <button type="submit" class="btn btn-sm btn-danger">Unblock</button>
+                    </form>
+                  </td>
+                </tr>
+                {{else}}
+                <tr>
+                  <td colspan="4" class="text-secondary">No blocked URLs.</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}
