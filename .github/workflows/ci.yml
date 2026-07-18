@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26'
       - name: Go tests
@@ -125,7 +125,7 @@ jobs:
           PGPASSWORD: localdev
         run: psql -h localhost -U createmod -d createmod -f tests/e2e/seed.sql
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install Playwright
