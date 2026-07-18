@@ -75,7 +75,7 @@ window.setTheme=function(theme){
 
 
     <!-- HTMX (via jsdelivr to share CDN connection) -->
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12/dist/htmx.min.js" defer crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" defer crossorigin="anonymous"></script>
     <!-- DOMPurify – client-side HTML sanitization for defense-in-depth -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer crossorigin="anonymous"></script>
     <!-- Framework JS (dropdown, modal, collapse, tabs) — in <head> to prevent re-execution on HTMX body swaps -->
@@ -272,3 +272,33 @@ window.setTheme=function(theme){
   })();
 </script>
 <div id="htmx-indicator" class="htmx-indicator"></div>
+<script>
+  // Safety net for the shared loading bar. htmx can leak the htmx-request
+  // class on #htmx-indicator when a response's target was removed by a
+  // concurrent swap (htmx:swapError) or the request was aborted (hx-sync),
+  // leaving the bar animating forever. Track in-flight XHRs and clear the
+  // bar whenever none remain.
+  (function () {
+    var inflight = new Set();
+    function sweep() {
+      inflight.forEach(function (x) {
+        if (x.readyState === 4 || x.readyState === 0) inflight.delete(x);
+      });
+      if (inflight.size === 0) {
+        var el = document.getElementById('htmx-indicator');
+        if (el) el.classList.remove('htmx-request');
+      }
+    }
+    document.addEventListener('htmx:beforeRequest', function (e) {
+      if (e.detail && e.detail.xhr) inflight.add(e.detail.xhr);
+    });
+    ['htmx:afterRequest', 'htmx:sendError', 'htmx:responseError', 'htmx:swapError',
+     'htmx:targetError', 'htmx:timeout', 'htmx:abort'].forEach(function (ev) {
+      document.addEventListener(ev, function (e) {
+        if (e.detail && e.detail.xhr) inflight.delete(e.detail.xhr);
+        setTimeout(sweep, 0);
+      });
+    });
+    setInterval(sweep, 2000);
+  })();
+</script>

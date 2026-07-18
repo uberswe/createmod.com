@@ -34,6 +34,9 @@
     <li class="nav-item">
       <a class="nav-link{{ if eq .AdminSection "api-keys" }} active{{ end }}" href="/admin/api-keys">API Keys</a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link{{ if eq .AdminSection "blocked-urls" }} active{{ end }}" href="/admin/blocked-urls">Blocked URLs</a>
+    </li>
   </ul>
 </div>
 {{end}}
