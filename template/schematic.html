@@ -1571,7 +1571,7 @@ function copyMaterialsAsMarkdown() {
             headers: { 'HX-Request': 'true' }
         }).then(function(resp) {
             if (resp.ok) {
-                htmx.ajax('GET', '/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'});
+                htmx.ajax('GET', '/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'}).catch(function(){});
             }
         });
     });
@@ -1599,7 +1599,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
       var status = evt.detail && evt.detail.xhr ? evt.detail.xhr.status : 0;
       if (status >= 200 && status < 300) {
         gtag('event', 'comment_post', { 'schematic_id': '{{ .Schematic.ID }}' });
-        htmx.ajax('GET','/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'});
+        htmx.ajax('GET','/schematics/{{ .Schematic.Name }}/comments', {target:'#comments-list', swap:'outerHTML'}).catch(function(){});
         var s = document.getElementById('comment-success'); if (s) { s.style.display = 'block'; }
         if (window._cmCommentEditor) { window._cmCommentEditor.commands.clearContent(); }
         var p = document.getElementById('parent-comment'); if (p) { p.value = ''; }
