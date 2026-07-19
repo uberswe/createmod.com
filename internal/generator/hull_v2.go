@@ -490,24 +490,36 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			}
 		}
 	}
+	// The side-profile zone covers the plan tapers plus the keel-rise
+	// spans: everywhere the hull's side silhouette is a diagonal, lateral
+	// chamfers read as square teeth poking below the rake line, so only
+	// fore-aft chamfers are allowed there.
 	inTaper := make([]bool, L)
 	for z := 0; z < L; z++ {
 		zn := float64(z) / math.Max(length-1, 1)
 		inTaper[z] = zn < midLo || zn > midHi
+		if p.BowKeelRise > 0 && z >= L-1-p.BowKeelLength {
+			inTaper[z] = true
+		}
+		if p.SternKeelRise > 0 && z <= p.SternKeelLength {
+			inTaper[z] = true
+		}
 	}
 	chamferFacing := func(x, y, z int) string {
 		n := hasHull(x, y, z-1)
 		s := hasHull(x, y, z+1)
 		w := hasHull(x-1, y, z)
 		e := hasHull(x+1, y, z)
+		// Lateral chamfers only count when the supporting hull is INBOARD
+		// (toward the centerline): those are real flare underhangs on the
+		// hull's outer surface. Outboard-supported cells sit inside the
+		// V-groove between the entry sections of sharp bows and sterns;
+		// a stair there projects a full-square silhouette through the
+		// open centerline and reads as teeth under the rake line.
 		lateral := ""
-		if x >= 0 && w {
+		if x > 0 && w {
 			lateral = "west"
-		} else if x <= 0 && e {
-			lateral = "east"
-		} else if w {
-			lateral = "west"
-		} else if e {
+		} else if x < 0 && e {
 			lateral = "east"
 		}
 		foreAft := ""
@@ -517,10 +529,7 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			foreAft = "south"
 		}
 		if inTaper[z] {
-			if foreAft != "" {
-				return foreAft
-			}
-			return lateral
+			return foreAft
 		}
 		if lateral != "" {
 			return lateral

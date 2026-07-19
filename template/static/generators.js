@@ -1336,25 +1336,33 @@ function generateHullV2(p) {
   for (var my = 0; my <= topY; my++)
     for (var mz = 0; mz < L; mz++)
       if (hwArr[my][mz] > maxHW) maxHW = hwArr[my][mz];
+  // Side-profile zone: plan tapers plus the keel-rise spans — everywhere
+  // the side silhouette is a diagonal, only fore-aft chamfers are allowed
+  // (lateral ones read as square teeth under the rake line).
   var inTaper = new Array(L);
   for (var itz = 0; itz < L; itz++) {
     var itn = itz / Math.max(length - 1, 1);
     inTaper[itz] = itn < midLo || itn > midHi;
+    if ((p.bowKeelRise || 0) > 0 && itz >= L - 1 - (p.bowKeelLength || 0)) inTaper[itz] = true;
+    if ((p.sternKeelRise || 0) > 0 && itz <= (p.sternKeelLength || 0)) inTaper[itz] = true;
   }
   function chamferFacing(x, y, z) {
     var n = hasHull(x, y, z - 1);
     var s = hasHull(x, y, z + 1);
     var w = hasHull(x - 1, y, z);
     var e = hasHull(x + 1, y, z);
+    // Vanilla facing semantics: the stair's TALL side is the facing side,
+    // so facing points TOWARD the supporting hull neighbour. Lateral
+    // chamfers only count when the support is INBOARD — outboard-supported
+    // cells are inside the V-groove of sharp entries and read as teeth
+    // through the open centerline. (Mirrors internal/generator/hull_v2.go.)
     var lateral = '';
-    if (x >= 0 && w) lateral = 'east';
-    else if (x <= 0 && e) lateral = 'west';
-    else if (w) lateral = 'east';
-    else if (e) lateral = 'west';
+    if (x > 0 && w) lateral = 'west';
+    else if (x < 0 && e) lateral = 'east';
     var foreAft = '';
-    if (n) foreAft = 'south';
-    else if (s) foreAft = 'north';
-    if (inTaper[z]) return foreAft !== '' ? foreAft : lateral;
+    if (n) foreAft = 'north';
+    else if (s) foreAft = 'south';
+    if (inTaper[z]) return foreAft;
     return lateral !== '' ? lateral : foreAft;
   }
   for (var cz = 0; cz < L; cz++) {
@@ -1440,7 +1448,7 @@ function generateHullV2(p) {
       var deckY = deckYArr[zPost];
       for (var yp = deckY + 1; yp <= deckY + height; yp++) setBlock(0, yp, zPost, BT.PLANK);
       setBlock(0, deckY + height + 1, zPost, BT.STAIR,
-        { facing: fromBow ? 'south' : 'north', half:'bottom', shape:'straight', waterlogged:'false' });
+        { facing: fromBow ? 'north' : 'south', half:'bottom', shape:'straight', waterlogged:'false' });
     };
     placePost(true, stemPostHeight);
     var sp = sternPostHeight;
