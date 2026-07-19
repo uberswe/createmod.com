@@ -27,11 +27,14 @@ import (
 	"fmt"
 	html "html/template"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -74,13 +77,28 @@ func Adapt(h func(e *server.RequestEvent) error) http.HandlerFunc {
 	}
 }
 
-// computeAssetVersion hashes local CSS files and returns a short hex string.
-// Called once at startup so templates can append ?v=<hash> for cache-busting.
+// computeAssetVersion hashes every file under template/static and returns a
+// short hex string. Called once at startup so templates can append
+// ?v=<hash> for cache-busting. Hashing the whole directory (rather than a
+// hardcoded list) guarantees that editing ANY served asset changes the URL:
+// /assets/x/* responses are cached as immutable for a year, so an asset
+// whose edits do not move AssetVer would be stale in CDNs and browsers
+// until the cache expired.
 func computeAssetVersion() string {
+	const root = "./template/static"
+	var paths []string
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		paths = append(paths, path)
+		return nil
+	})
+	sort.Strings(paths)
 	h := sha256.New()
-	for _, path := range []string{"./template/static/framework.css", "./template/static/framework.js", "./template/static/style.css", "./template/static/app.css", "./template/static/editor.css", "./template/static/editor.js", "./template/static/generator.js", "./template/static/guide.js", "./template/static/dev-ads.js"} {
-		data, err := os.ReadFile(path)
-		if err == nil {
+	for _, path := range paths {
+		if data, err := os.ReadFile(path); err == nil {
+			h.Write([]byte(path))
 			h.Write(data)
 		}
 	}
