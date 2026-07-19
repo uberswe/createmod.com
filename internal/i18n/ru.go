@@ -281,7 +281,7 @@ var LangRU = map[string]string{
 
 	// ── Mods ──
 	"Browse schematics by mod":          "Просмотр схем по моду",
-	"No mods required":                  "Моды не требуются",
+	"Create only":                  "Только Create",
 	"schematics":                        "схем",
 	"No mods found yet.":                "Моды пока не найдены.",
 	"All Mods":                          "Все моды",
@@ -592,7 +592,7 @@ var LangRU = map[string]string{
 	"Comments for":                      "Комментарии к",
 	"page.search.description":           "Результаты поиска схем Create Mod для %s.",
 	"Schematics - Page":                 "Схемы - Страница",
-	"Schematics that require no mods in Minecraft": "Схемы, не требующие модов в Minecraft",
+	"Schematics featuring only the Create mod and nothing else": "Схемы, использующие только мод Create и ничего больше",
 	"Schematics using the %s mod in Minecraft":     "Схемы с использованием мода %s в Minecraft",
 
 	"Page Not Found":       "Страница не найдена",

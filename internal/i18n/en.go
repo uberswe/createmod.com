@@ -288,7 +288,7 @@ var LangEN = map[string]string{
 
 	// ── Mods ──
 	"Browse schematics by mod":     "Browse schematics by mod",
-	"No mods required":             "No mods required",
+	"Create only":             "Create only",
 	"schematics":                   "schematics",
 	"No mods found yet.":           "No mods found yet.",
 	"All Mods":                     "All Mods",
@@ -638,7 +638,7 @@ var LangEN = map[string]string{
 	"Comments for":                      "Comments for",
 	"page.search.description":           "Search results for %s Create Mod Schematics.",
 	"Schematics - Page":                 "Schematics - Page",
-	"Schematics that require no mods in Minecraft": "Schematics that require no mods in Minecraft",
+	"Schematics featuring only the Create mod and nothing else": "Schematics featuring only the Create mod and nothing else",
 	"Schematics using the %s mod in Minecraft":     "Schematics using the %s mod in Minecraft",
 	"Page Not Found":                                "Page Not Found",
 	"page.404.description":                          "The page you are looking for could not be found.",

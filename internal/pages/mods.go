@@ -151,7 +151,7 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 		caser := cases.Title(language.English)
 		modName := caser.String(strings.ReplaceAll(slug, "_", " "))
 		if isVanilla {
-			modName = "Vanilla"
+			modName = "Vanilla Create"
 		}
 
 		mod := ModEntry{
@@ -460,7 +460,7 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Mods"), "/mods", mod.Name)
 		d.Title = mod.Name + " " + i18n.T(d.Language, "Schematics")
 		if isVanilla {
-			d.Subtitle = i18n.T(d.Language, "Schematics that require no mods in Minecraft")
+			d.Subtitle = i18n.T(d.Language, "Schematics featuring only the Create mod and nothing else")
 			d.Description = d.Subtitle
 		} else {
 			d.Subtitle = fmt.Sprintf(i18n.T(d.Language, "Schematics using the %s mod in Minecraft"), mod.Name)
@@ -514,7 +514,7 @@ func queryModEntriesFromStore(appStore *store.Store) ([]ModEntry, error) {
 	if vanillaCount > 0 {
 		entries = append(entries, ModEntry{
 			Slug:      "vanilla",
-			Name:      "Vanilla",
+			Name:      "Vanilla Create",
 			Count:     vanillaCount,
 			IsVanilla: true,
 		})

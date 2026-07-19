@@ -1,5 +1,8 @@
-# Local-only override: another project's dev postgres occupies host port 5433.
-# The app reaches postgres over the compose network; no host binding needed.
+# Local-only override: another project's dev postgres occupies host port 5433
+# and its minio occupies 9000/9001. The app reaches both over the compose
+# network; no host bindings needed.
 services:
   postgres:
+    ports: !override []
+  minio:
     ports: !override []

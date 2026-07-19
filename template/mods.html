@@ -35,7 +35,7 @@
                   <div class="text-muted small mt-1 text-truncate">{{ .Description }}</div>
                   {{ else }}
                   <div class="text-muted small mt-1">
-                    {{ if .IsVanilla }}{{ T $.Language "No mods required" }}{{ else }}{{ .Count }} {{ T $.Language "schematics" }}{{ end }}
+                    {{ if .IsVanilla }}{{ T $.Language "Create only" }}{{ else }}{{ .Count }} {{ T $.Language "schematics" }}{{ end }}
                   </div>
                   {{ end }}
                 </div>

@@ -281,7 +281,7 @@ var LangFR = map[string]string{
 
 	// ── Mods ──
 	"Browse schematics by mod":     "Parcourir les schematics par mod",
-	"No mods required":             "Aucun mod requis",
+	"Create only":             "Create uniquement",
 	"schematics":                   "schematics",
 	"No mods found yet.":           "Aucun mod trouvé pour le moment.",
 	"All Mods":                     "Tous les mods",
@@ -591,7 +591,7 @@ var LangFR = map[string]string{
 	"Comments for":                      "Commentaires pour",
 	"page.search.description":           "Résultats de recherche pour %s schematics Create Mod.",
 	"Schematics - Page":                 "Schematics - Page",
-	"Schematics that require no mods in Minecraft": "Schematics ne nécessitant aucun mod dans Minecraft",
+	"Schematics featuring only the Create mod and nothing else": "Schematics utilisant uniquement le mod Create et rien d'autre",
 	"Schematics using the %s mod in Minecraft":     "Schematics utilisant le mod %s dans Minecraft",
 	"Page Not Found":                                "Page introuvable",
 	"page.404.description":                          "La page que vous recherchez est introuvable.",

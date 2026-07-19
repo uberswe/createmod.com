@@ -20,10 +20,11 @@
   function closeAll(except) {
     document.querySelectorAll('[data-dl-split]').forEach(function (root) {
       if (root === except) return;
-      var menu = root.querySelector('.dl-split-menu');
+      var menu = root._dlSplitMenu || root.querySelector('.dl-split-menu');
       var toggle = root.querySelector('.dl-split-toggle');
       if (menu && !menu.hidden) {
         menu.hidden = true;
+        root.appendChild(menu); // restore from the body portal
         if (toggle) toggle.setAttribute('aria-expanded', 'false');
       }
     });
@@ -35,9 +36,15 @@
     var toggle = root.querySelector('.dl-split-toggle');
     var menu = root.querySelector('.dl-split-menu');
     if (!toggle || !menu) return;
+    root._dlSplitMenu = menu;
 
     function open() {
       closeAll(root);
+      // Portal the menu to <body> while open: fixed positioning alone is
+      // not enough, because ancestors with backdrop-filter or transform
+      // (e.g. the generator controls overlay) become the containing block
+      // for fixed descendants and their overflow clips the menu.
+      document.body.appendChild(menu);
       menu.hidden = false;
       // Position with fixed viewport coordinates so ancestors with
       // overflow:hidden (cards, description containers) cannot clip the
@@ -60,6 +67,7 @@
     }
     function close(refocus) {
       menu.hidden = true;
+      root.appendChild(menu); // restore from the body portal
       toggle.setAttribute('aria-expanded', 'false');
       if (refocus) toggle.focus();
     }
@@ -107,7 +115,8 @@
   }
 
   document.addEventListener('click', function (ev) {
-    if (!ev.target.closest('[data-dl-split]')) closeAll(null);
+    // The open menu lives in <body> (portal), so check it separately.
+    if (!ev.target.closest('[data-dl-split]') && !ev.target.closest('.dl-split-menu')) closeAll(null);
   });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape') closeAll(null);
