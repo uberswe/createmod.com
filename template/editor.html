@@ -97,23 +97,6 @@
                                 </div>
 
                                 <hr class="cm-hr">
-                                <div class="cm-panel-label">{{ T .Language "Expand (blocks per side)" }}</div>
-                                <div class="cm-xyz">
-                                    <span></span><span class="h">X</span><span class="h">Y</span><span class="h">Z</span>
-                                    <span class="h">&minus;</span>
-                                    <input type="number" class="cm-input" id="ed-grow-low-x" placeholder="0" value="0" min="0">
-                                    <input type="number" class="cm-input" id="ed-grow-low-y" placeholder="0" value="0" min="0">
-                                    <input type="number" class="cm-input" id="ed-grow-low-z" placeholder="0" value="0" min="0">
-                                    <span class="h">+</span>
-                                    <input type="number" class="cm-input" id="ed-grow-high-x" placeholder="0" value="0" min="0">
-                                    <input type="number" class="cm-input" id="ed-grow-high-y" placeholder="0" value="0" min="0">
-                                    <input type="number" class="cm-input" id="ed-grow-high-z" placeholder="0" value="0" min="0">
-                                </div>
-                                <div class="cm-btnrow">
-                                    <button class="btn btn-sm btn-outline-secondary ed-op" data-op="expand">{{ T .Language "Expand" }}</button>
-                                </div>
-
-                                <hr class="cm-hr">
                                 <div class="cm-panel-label">{{ T .Language "Replace blocks" }}</div>
                                 <div class="d-flex flex-column gap-2 mt-2">
                                     <input type="text" class="cm-input" id="ed-replace-from" placeholder="{{ T .Language "from (e.g. minecraft:oak_planks)" }}" list="ed-palette-list">
@@ -356,10 +339,6 @@
       case 'rotate': return { type: 'rotate', steps: 1 };
       case 'mirror-x': return { type: 'mirror', axis: 'x' };
       case 'mirror-z': return { type: 'mirror', axis: 'z' };
-      case 'expand': {
-        var g = function (id) { return Math.max(0, parseInt(document.getElementById(id).value, 10) || 0); };
-        return { type: 'expand', grow: { low: [g('ed-grow-low-x'), g('ed-grow-low-y'), g('ed-grow-low-z')], high: [g('ed-grow-high-x'), g('ed-grow-high-y'), g('ed-grow-high-z')] } };
-      }
       case 'replace': return { type: 'replace', replacements: [{ from: document.getElementById('ed-replace-from').value.trim(), to: document.getElementById('ed-replace-to').value.trim() }] };
     }
   }

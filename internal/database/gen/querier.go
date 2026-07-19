@@ -48,7 +48,7 @@ type Querier interface {
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsByAuthorAll(ctx context.Context, authorID *string) (int64, error)
 	CountSchematicsByModpack(ctx context.Context, modpackID string) (int64, error)
-	CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error)
+	CountSchematicsForAdmin(ctx context.Context, arg CountSchematicsForAdminParams) (int64, error)
 	CountSoftDeletedByAuthor(ctx context.Context, authorID *string) (int64, error)
 	CountTempUploadImagesByToken(ctx context.Context, token string) (int32, error)
 	CountUnreadNotifications(ctx context.Context, userID string) (int64, error)

@@ -59,6 +59,7 @@ type AdminSchematicsData struct {
 	Schematics []AdminSchematicItem
 	Drafts     []AdminDraftItem
 	Filter     string
+	Search     string
 	Page       int
 	TotalPages int
 	Total      int64
@@ -101,6 +102,8 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 			filter = "pending"
 		}
 
+		search := strings.TrimSpace(e.Request.URL.Query().Get("q"))
+
 		pageStr := e.Request.URL.Query().Get("page")
 		page, _ := strconv.Atoi(pageStr)
 		if page < 1 {
@@ -142,11 +145,11 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 				})
 			}
 		} else {
-			schematics, err := appStore.Schematics.ListForAdmin(ctx, filter, adminSchematicsPerPage, offset)
+			schematics, err := appStore.Schematics.ListForAdmin(ctx, filter, search, adminSchematicsPerPage, offset)
 			if err != nil {
 				return e.String(http.StatusInternalServerError, "failed to list schematics")
 			}
-			total, err = appStore.Schematics.CountForAdmin(ctx, filter)
+			total, err = appStore.Schematics.CountForAdmin(ctx, filter, search)
 			if err != nil {
 				return e.String(http.StatusInternalServerError, "failed to count schematics")
 			}
@@ -194,6 +197,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 			Schematics: items,
 			Drafts:     drafts,
 			Filter:     filter,
+			Search:     search,
 			Page:       page,
 			TotalPages: totalPages,
 			Total:      total,

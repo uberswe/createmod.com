@@ -115,5 +115,10 @@ func (w *FingerprintBackfillWorker) Work(ctx context.Context, job *river.Job[Fin
 		done++
 	}
 	slog.Info("fingerprint backfill batch complete", "computed", done, "batch", len(ids))
+	// A full batch means more work is probably waiting — drain it now
+	// rather than one batch per periodic sweep.
+	if len(ids) == fingerprintBackfillBatch && ctx.Err() == nil {
+		chainBackfill(ctx, FingerprintBackfillArgs{})
+	}
 	return nil
 }

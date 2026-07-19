@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/meilisearch/meilisearch-go"
 	"github.com/riverqueue/river"
@@ -50,6 +51,33 @@ type Deps struct {
 type Config struct {
 	Pool *pgxpool.Pool
 	Deps Deps
+}
+
+
+// chainBackfill re-enqueues a backfill job immediately when the current run
+// processed a full batch, so a large backlog (a fresh table after a
+// migration, or a version bump) drains continuously instead of one batch
+// per 15-minute periodic sweep. The unique states deliberately exclude
+// "running" so the follow-up can be inserted from inside the current run,
+// while still deduping against an already-queued follow-up.
+func chainBackfill(ctx context.Context, args river.JobArgs) {
+	client, err := river.ClientFromContextSafely[pgx.Tx](ctx)
+	if err != nil {
+		return
+	}
+	if _, err := client.Insert(ctx, args, &river.InsertOpts{
+		UniqueOpts: river.UniqueOpts{
+			ByArgs: true,
+			ByState: []rivertype.JobState{
+				rivertype.JobStateAvailable,
+				rivertype.JobStatePending,
+				rivertype.JobStateRetryable,
+				rivertype.JobStateScheduled,
+			},
+		},
+	}); err != nil {
+		slog.Warn("backfill chain: insert failed", "kind", args.Kind(), "error", err)
+	}
 }
 
 // Worker wraps the River client for job processing.

@@ -174,10 +174,19 @@ WHERE
     WHEN $1::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END
+  AND ($2::text = ''
+     OR title ILIKE '%' || $2::text || '%'
+     OR name ILIKE '%' || $2::text || '%'
+     OR id = $2::text)
 `
 
-func (q *Queries) CountSchematicsForAdmin(ctx context.Context, filter string) (int64, error) {
-	row := q.db.QueryRow(ctx, countSchematicsForAdmin, filter)
+type CountSchematicsForAdminParams struct {
+	Filter string `json:"filter"`
+	Search string `json:"search"`
+}
+
+func (q *Queries) CountSchematicsForAdmin(ctx context.Context, arg CountSchematicsForAdminParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSchematicsForAdmin, arg.Filter, arg.Search)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -1635,6 +1644,10 @@ WHERE
     WHEN $3::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END
+  AND ($4::text = ''
+     OR title ILIKE '%' || $4::text || '%'
+     OR name ILIKE '%' || $4::text || '%'
+     OR id = $4::text)
 ORDER BY created DESC
 LIMIT $1 OFFSET $2
 `
@@ -1643,10 +1656,16 @@ type ListSchematicsForAdminParams struct {
 	Limit  int32  `json:"limit"`
 	Offset int32  `json:"offset"`
 	Filter string `json:"filter"`
+	Search string `json:"search"`
 }
 
 func (q *Queries) ListSchematicsForAdmin(ctx context.Context, arg ListSchematicsForAdminParams) ([]Schematic, error) {
-	rows, err := q.db.Query(ctx, listSchematicsForAdmin, arg.Limit, arg.Offset, arg.Filter)
+	rows, err := q.db.Query(ctx, listSchematicsForAdmin,
+		arg.Limit,
+		arg.Offset,
+		arg.Filter,
+		arg.Search,
+	)
 	if err != nil {
 		return nil, err
 	}

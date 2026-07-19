@@ -834,8 +834,8 @@ type SchematicStore interface {
 	UpdateName(ctx context.Context, id, name string) error
 	ListByNamePattern(ctx context.Context, pattern string, limit int) ([]Schematic, error)
 	// Admin queries
-	ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]Schematic, error)
-	CountForAdmin(ctx context.Context, filter string) (int64, error)
+	ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]Schematic, error)
+	CountForAdmin(ctx context.Context, filter, search string) (int64, error)
 	GetByIDAdmin(ctx context.Context, id string) (*Schematic, error)
 	// Pre-computed aggregates
 	UpdateTrendingScore(ctx context.Context, id string, score float64) error

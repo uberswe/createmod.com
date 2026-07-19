@@ -34,16 +34,16 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 
 		ctx := context.Background()
 
-		pendingCount, _ := appStore.Schematics.CountForAdmin(ctx, "pending")
-		moderatedCount, _ := appStore.Schematics.CountForAdmin(ctx, "published")
-		deletedCount, _ := appStore.Schematics.CountForAdmin(ctx, "deleted")
-		totalCount, _ := appStore.Schematics.CountForAdmin(ctx, "")
+		pendingCount, _ := appStore.Schematics.CountForAdmin(ctx, "pending", "")
+		moderatedCount, _ := appStore.Schematics.CountForAdmin(ctx, "published", "")
+		deletedCount, _ := appStore.Schematics.CountForAdmin(ctx, "deleted", "")
+		totalCount, _ := appStore.Schematics.CountForAdmin(ctx, "", "")
 
 		reports, _ := appStore.Reports.List(ctx, 1000, 0)
 		pendingCats, _ := appStore.Categories.ListPending(ctx)
 		pendingTags, _ := appStore.Tags.ListPending(ctx)
 
-		recentPending, _ := appStore.Schematics.ListForAdmin(ctx, "pending", 10, 0)
+		recentPending, _ := appStore.Schematics.ListForAdmin(ctx, "pending", "", 10, 0)
 		items := make([]AdminSchematicItem, 0, len(recentPending))
 		for _, s := range recentPending {
 			username := ""

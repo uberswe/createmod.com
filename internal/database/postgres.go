@@ -857,11 +857,12 @@ func (ps *PostgresStore) SetModerationState(ctx context.Context, id, state, reas
 	})
 }
 
-func (ps *PostgresStore) ListForAdmin(ctx context.Context, filter string, limit, offset int) ([]store.Schematic, error) {
+func (ps *PostgresStore) ListForAdmin(ctx context.Context, filter, search string, limit, offset int) ([]store.Schematic, error) {
 	rows, err := ps.q.ListSchematicsForAdmin(ctx, db.ListSchematicsForAdminParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 		Filter: filter,
+		Search: search,
 	})
 	if err != nil {
 		return nil, err
@@ -869,8 +870,8 @@ func (ps *PostgresStore) ListForAdmin(ctx context.Context, filter string, limit,
 	return schematicSliceFromDB(rows), nil
 }
 
-func (ps *PostgresStore) CountForAdmin(ctx context.Context, filter string) (int64, error) {
-	return ps.q.CountSchematicsForAdmin(ctx, filter)
+func (ps *PostgresStore) CountForAdmin(ctx context.Context, filter, search string) (int64, error) {
+	return ps.q.CountSchematicsForAdmin(ctx, db.CountSchematicsForAdminParams{Filter: filter, Search: search})
 }
 
 func (ps *PostgresStore) GetByIDAdmin(ctx context.Context, id string) (*store.Schematic, error) {

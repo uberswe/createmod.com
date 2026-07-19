@@ -135,5 +135,10 @@ func (w *SafetyBackfillWorker) Work(ctx context.Context, job *river.Job[SafetyBa
 		scanned++
 	}
 	slog.Info("safety backfill batch complete", "scanned", scanned, "batch", len(ids))
+	// A full batch means more work is probably waiting — drain it now
+	// rather than one batch per periodic sweep.
+	if len(ids) == safetyBackfillBatch && ctx.Err() == nil {
+		chainBackfill(ctx, SafetyBackfillArgs{})
+	}
 	return nil
 }
