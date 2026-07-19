@@ -358,6 +358,20 @@ func Compare(a, b *Fingerprint) Similarity {
 		scores["function"] = cosine32(fa, fb) * ratioCloseness(da, db)
 	}
 
+	// The function WEIGHT scales with how much machinery is actually
+	// present. Two decoration-only builds trivially "agree" on function
+	// (score 1), and at a fixed 20% weight that agreement drowned the
+	// shape signal — a house query boosted every other house by a fifth
+	// of the score for carrying no machinery at all. The weight now grows
+	// with the more functional of the two builds (keeping Compare
+	// symmetric): zero machinery contributes zero weight, a single
+	// mechanical bearing in a house a couple of percent, and builds at or
+	// above functionalSaturation machinery get the full nominal weight.
+	// The freed weight is redistributed across the other components by
+	// renormalizing below.
+	const functionalSaturation = 0.15
+	functionW := math.Min(1, math.Sqrt(math.Max(da, db)/functionalSaturation))
+
 	// Proportions: aspect-ratio closeness (scale-free) plus density and
 	// absolute-size closeness (scale-aware, so a 2x copy scores below 1).
 	aAspect1 := ratioCloseness(float64(a.Dims[1])/float64(max1(a.Dims[0])), float64(b.Dims[1])/float64(max1(b.Dims[0])))
@@ -368,11 +382,24 @@ func Compare(a, b *Fingerprint) Similarity {
 
 	scores["palette"] = jaccardHashes(a.PaletteHashes, b.PaletteHashes)
 
+	totalW := 0.0
+	for _, cw := range componentWeights {
+		w := cw.weight
+		if cw.name == "function" {
+			w *= functionW
+		}
+		totalW += w
+	}
 	var sim Similarity
 	for _, cw := range componentWeights {
+		w := cw.weight
+		if cw.name == "function" {
+			w *= functionW
+		}
+		w /= totalW
 		s := scores[cw.name]
-		sim.Components = append(sim.Components, ComponentScore{Name: cw.name, Score: s, Weight: cw.weight})
-		sim.Overall += s * cw.weight
+		sim.Components = append(sim.Components, ComponentScore{Name: cw.name, Score: s, Weight: w})
+		sim.Overall += s * w
 	}
 	return sim
 }
