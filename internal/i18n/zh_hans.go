@@ -281,7 +281,7 @@ var LangZhHans = map[string]string{
 
 	// ── Mods ──
 	"Browse schematics by mod":          "按模组浏览蓝图",
-	"No mods required":                  "无需模组",
+	"Create only":                  "仅 Create",
 	"schematics":                        "个蓝图",
 	"No mods found yet.":                "暂未找到模组。",
 	"All Mods":                          "所有模组",
@@ -591,7 +591,7 @@ var LangZhHans = map[string]string{
 	"Comments for":                      "评论：",
 	"page.search.description":           "%s 的 Create 模组蓝图搜索结果。",
 	"Schematics - Page":                 "蓝图 - 第",
-	"Schematics that require no mods in Minecraft": "无需模组的 Minecraft 蓝图",
+	"Schematics featuring only the Create mod and nothing else": "仅使用 Create 模组的蓝图，不含其他模组",
 	"Schematics using the %s mod in Minecraft":     "使用 %s 模组的 Minecraft 蓝图",
 
 	"Page Not Found":       "页面未找到",
