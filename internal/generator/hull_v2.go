@@ -476,10 +476,12 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 	// rises: an empty cell directly under hull that also touches hull on a
 	// horizontal face gets a top-half stair. Requiring the horizontal
 	// neighbour keeps stairs seated in real step corners — no teeth hanging
-	// from a face above. Facing (this codebase: the stair's LOW/open side)
-	// points away from the supporting neighbour; in the bow/stern tapers
-	// fore-aft support wins so the stem reads as one stepped line instead of
-	// mixed directions.
+	// from a face above. Facing follows vanilla semantics (the stair's TALL
+	// side is on the facing side, per models/block/stairs.json), so it
+	// points TOWARD the supporting neighbour: the tall half continues the
+	// hull mass and the open notch chamfers away down the curve. In the
+	// bow/stern tapers fore-aft support wins so the stem reads as one
+	// stepped line instead of mixed directions.
 	maxHW := 0
 	for y := 0; y <= topY; y++ {
 		for z := 0; z < L; z++ {
@@ -500,19 +502,19 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 		e := hasHull(x+1, y, z)
 		lateral := ""
 		if x >= 0 && w {
-			lateral = "east"
+			lateral = "west"
 		} else if x <= 0 && e {
-			lateral = "west"
-		} else if w {
 			lateral = "east"
-		} else if e {
+		} else if w {
 			lateral = "west"
+		} else if e {
+			lateral = "east"
 		}
 		foreAft := ""
 		if n {
-			foreAft = "south"
-		} else if s {
 			foreAft = "north"
+		} else if s {
+			foreAft = "south"
 		}
 		if inTaper[z] {
 			if foreAft != "" {
@@ -652,9 +654,11 @@ func generateHullV2(p HullParams) (*GenerateResult, error) {
 			for y := deckY + 1; y <= deckY+height; y++ {
 				set(0, y, zPost, "planks", nil)
 			}
-			facing := "south"
+			// Vanilla facing = tall side; point it inboard so the cap
+			// slopes down toward the post's outer end.
+			facing := "north"
 			if !fromBow {
-				facing = "north"
+				facing = "south"
 			}
 			set(0, deckY+height+1, zPost, "stairs", map[string]string{"facing": facing, "half": "bottom", "shape": "straight", "waterlogged": "false"})
 		}
