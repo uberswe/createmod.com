@@ -16,7 +16,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -292,28 +291,8 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		sum := sha256.Sum256(data)
 		checksum := hex.EncodeToString(sum[:])
 
-		// Duplicate detection (skip in dev mode)
-		// Only checks against published (moderated) schematics and blacklisted
-		// hashes. Temp/private uploads are intentionally not checked so users
-		// can re-upload after losing their token or making a mistake.
-		isDev := os.Getenv("DEV") == "true"
-		if !isDev {
-			dupMsg := "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator."
-
-			// Check published schematics via store
-			if appStore != nil {
-				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
-					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-
-			// Check blacklist hashes
-			if appStore != nil {
-				if blacklisted, err := appStore.NBTHashes.IsBlacklisted(context.Background(), checksum); err == nil && blacklisted {
-					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-		}
+		// Duplicate detection happens at the publish step (make-public),
+		// not here: temp uploads are private.
 
 		// Generate token
 		buf := make([]byte, 16)
@@ -489,23 +468,8 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		sum := sha256.Sum256(data)
 		checksum := hex.EncodeToString(sum[:])
 
-		// Duplicate detection (skip in dev mode)
-		isDev := os.Getenv("DEV") == "true"
-		if !isDev {
-			dupMsg := "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator."
-
-			if appStore != nil {
-				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
-					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-
-			if appStore != nil {
-				if blacklisted, err := appStore.NBTHashes.IsBlacklisted(context.Background(), checksum); err == nil && blacklisted {
-					return writeJSON(e, http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-		}
+		// Duplicate detection happens at the publish step (make-public),
+		// not here: temp uploads are private.
 
 		// Generate token
 		buf := make([]byte, 16)

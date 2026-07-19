@@ -280,6 +280,24 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
+// checkDuplicateChecksum returns a user-facing error message when the given
+// checksum matches a live schematic (published/approved and not deleted) or a
+// creator-blacklisted hash. Rejected and deleted schematics do not block.
+// Returns "" when publishing may proceed. Skipped in dev mode (DEV=true).
+func checkDuplicateChecksum(ctx context.Context, appStore *store.Store, checksum string) string {
+	if checksum == "" || appStore == nil || os.Getenv("DEV") == "true" {
+		return ""
+	}
+	const dupMsg = "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator. If you need more help contact us: /contact"
+	if existingID, err := appStore.Schematics.GetByChecksum(ctx, checksum); err == nil && existingID != "" {
+		return dupMsg
+	}
+	if blacklisted, err := appStore.NBTHashes.IsBlacklisted(ctx, checksum); err == nil && blacklisted {
+		return dupMsg
+	}
+	return ""
+}
+
 func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer, enqueueSafetyScan SafetyScanEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
@@ -306,6 +324,15 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 		if entry.UploadedBy != userID {
 			return e.String(http.StatusForbidden, "you do not own this upload")
+		}
+
+		// Duplicate detection runs here at publish time rather than at
+		// upload: private temp uploads and editor/converter sessions may
+		// legitimately match existing files. Only live (published/approved,
+		// not deleted) schematics and creator-blacklisted hashes block
+		// publishing.
+		if dupErr := checkDuplicateChecksum(ctx, appStore, entry.Checksum); dupErr != "" {
+			return e.String(http.StatusConflict, dupErr)
 		}
 
 		// Parse the multipart form (up to 100 MB in memory; the rest spills to
@@ -1074,28 +1101,11 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		sum := sha256.Sum256(data)
 		checksum := hex.EncodeToString(sum[:])
 
-		// Duplicate detection -- skipped in dev mode (DEV=true)
-		// Only checks against published (moderated) schematics and blacklisted
-		// hashes. Temp/private uploads are intentionally not checked so users
-		// can re-upload after losing their token or making a mistake.
-		isDev := os.Getenv("DEV") == "true"
-		if !isDev {
-			dupMsg := "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator. If you need more help contact us: /contact"
-
-			// Check published schematics via store
-			if appStore != nil {
-				if existingID, err := appStore.Schematics.GetByChecksum(context.Background(), checksum); err == nil && existingID != "" {
-					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-
-			// Check blacklist hashes
-			if appStore != nil {
-				if blacklisted, err := appStore.NBTHashes.IsBlacklisted(context.Background(), checksum); err == nil && blacklisted {
-					return e.JSON(http.StatusConflict, map[string]string{"error": dupMsg})
-				}
-			}
-		}
+		// Duplicate detection intentionally does NOT happen here: temp
+		// uploads are private, and tools like the editor and converter
+		// accept files that match existing schematics. The checksum check
+		// runs at the publish step (checkDuplicateChecksum in
+		// UploadMakePublicHandler) instead.
 
 		// Generate a random token
 		buf := make([]byte, 16)
