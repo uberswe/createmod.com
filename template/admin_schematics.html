@@ -43,6 +43,22 @@
               </li>
             </ul>
           </div>
+          {{ if ne .Filter "drafts" }}
+          <div class="card-body border-bottom py-2">
+            <form method="get" action="/admin/schematics" class="row g-2 align-items-center" hx-boost="false">
+              <input type="hidden" name="filter" value="{{.Filter}}">
+              <div class="col">
+                <input type="search" class="form-control" name="q" value="{{.Search}}" placeholder="{{ T .Language "Search by title, name or ID" }}">
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-primary">{{ T .Language "Search" }}</button>
+                {{if .Search}}
+                <a href="/admin/schematics?filter={{.Filter}}" class="btn btn-link">{{ T .Language "Clear" }}</a>
+                {{end}}
+              </div>
+            </form>
+          </div>
+          {{ end }}
           {{ if eq .Filter "drafts" }}
           <div class="table-responsive">
             <table class="table card-table table-vcenter text-nowrap">
@@ -154,7 +170,7 @@
           <ul class="pagination">
             {{if gt .Page 1}}
             <li class="page-item">
-              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.PrevPage}}">{{ T .Language "Previous" }}</a>
+              <a class="page-link" href="/admin/schematics?filter={{.Filter}}{{if .Search}}&q={{.Search}}{{end}}&page={{.PrevPage}}">{{ T .Language "Previous" }}</a>
             </li>
             {{else}}
             <li class="page-item disabled"><span class="page-link">{{ T .Language "Previous" }}</span></li>
@@ -162,7 +178,7 @@
             <li class="page-item disabled"><span class="page-link">{{ T .Language "Page" }} {{.Page}} / {{.TotalPages}}</span></li>
             {{if lt .Page .TotalPages}}
             <li class="page-item">
-              <a class="page-link" href="/admin/schematics?filter={{.Filter}}&page={{.NextPage}}">{{ T .Language "Next" }}</a>
+              <a class="page-link" href="/admin/schematics?filter={{.Filter}}{{if .Search}}&q={{.Search}}{{end}}&page={{.NextPage}}">{{ T .Language "Next" }}</a>
             </li>
             {{else}}
             <li class="page-item disabled"><span class="page-link">{{ T .Language "Next" }}</span></li>

@@ -259,6 +259,10 @@ WHERE
     WHEN @filter::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
   END
+  AND (@search::text = ''
+     OR title ILIKE '%' || @search::text || '%'
+     OR name ILIKE '%' || @search::text || '%'
+     OR id = @search::text)
 ORDER BY created DESC
 LIMIT $1 OFFSET $2;
 
@@ -273,7 +277,11 @@ WHERE
     WHEN @filter::text = 'deleted' THEN moderation_state = 'deleted'
     WHEN @filter::text = 'private' THEN moderation_state NOT IN ('published', 'approved')
     ELSE true
-  END;
+  END
+  AND (@search::text = ''
+     OR title ILIKE '%' || @search::text || '%'
+     OR name ILIKE '%' || @search::text || '%'
+     OR id = @search::text);
 
 -- name: GetSchematicByIDAdmin :one
 SELECT * FROM schematics WHERE id = $1;

@@ -90,14 +90,14 @@ func (w *ModerationSummaryWorker) Work(ctx context.Context, job *river.Job[Moder
 	if err != nil {
 		slog.Warn("moderation summary: listing reports failed", "err", err)
 	}
-	pendingCount, err := w.deps.Store.Schematics.CountForAdmin(ctx, "pending")
+	pendingCount, err := w.deps.Store.Schematics.CountForAdmin(ctx, "pending", "")
 	if err != nil {
 		slog.Warn("moderation summary: counting pending schematics failed", "err", err)
 	}
 	const pendingLimit = 20
 	var pending []store.Schematic
 	if pendingCount > 0 {
-		pending, err = w.deps.Store.Schematics.ListForAdmin(ctx, "pending", pendingLimit, 0)
+		pending, err = w.deps.Store.Schematics.ListForAdmin(ctx, "pending", "", pendingLimit, 0)
 		if err != nil {
 			slog.Warn("moderation summary: listing pending schematics failed", "err", err)
 		}

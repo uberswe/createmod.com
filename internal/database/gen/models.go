@@ -61,6 +61,14 @@ type Badge struct {
 	Updated     time.Time `json:"updated"`
 }
 
+type BlockedUrl struct {
+	ID        string    `json:"id"`
+	Url       string    `json:"url"`
+	Note      string    `json:"note"`
+	CreatedBy string    `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Collection struct {
 	ID          string             `json:"id"`
 	AuthorID    *string            `json:"author_id"`
