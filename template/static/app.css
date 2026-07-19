@@ -500,6 +500,60 @@ a:hover {
   color: var(--cm-muted);
 }
 
+/* Editor materials panel: one compact row per block type. */
+.material-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--cm-border-color, rgba(255, 255, 255, 0.06));
+}
+.material-row:last-child {
+  border-bottom: none;
+}
+.material-icon-wrap {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+}
+.material-icon-wrap img {
+  width: 28px;
+  height: 28px;
+  image-rendering: pixelated;
+}
+.material-color-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.material-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.material-info .material-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.material-info .material-id {
+  color: var(--cm-muted);
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.material-row .material-count {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--cm-muted);
+  white-space: nowrap;
+}
+
 /***************
   Card hover effect
 ***************/
