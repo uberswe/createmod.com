@@ -4,7 +4,10 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <main class="page-body">
-            <div class="container-wide" style="max-width: 1020px;">
+            <div class="container-wide">
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
+                <div style="max-width: 1020px;">
                 <div class="mb-3">
                     <h1 class="h2 mb-1">{{ T .Language "NBT Viewer" }}</h1>
                     <p class="cm-page-sub">{{ T .Language "Open any Minecraft NBT or schematic file in a browsable tree, with SNBT view, key search and copy-path. The file stays in your browser session and is parsed per request, never stored." }}</p>
@@ -33,6 +36,10 @@
                         <div id="nv-tree"></div>
                     </div>
                 </div>
+                </div><!-- /max-width -->
+                </div><!-- /flex-grow-1 -->
+                <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="nbt-viewer" data-kw="minecraft,create-mod,schematic,nbt" data-page="nbt-viewer"></div>
+                </div><!-- /d-flex -->
             </div>
         </main>
         {{ template "footer.html" . }}
