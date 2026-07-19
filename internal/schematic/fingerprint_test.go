@@ -271,3 +271,65 @@ func Test_Fingerprint_MachinesStillMatchMachines(t *testing.T) {
 		}
 	}
 }
+
+// The function component's weight scales with how much machinery is present:
+// a pure-decoration pair gets zero function weight (the trivial "both
+// non-machines" agreement can no longer drown the shape signal), a lone
+// functional block gets a couple of percent, and machinery-heavy pairs get
+// the full nominal weight. Weights always renormalize to 1.
+func Test_Fingerprint_FunctionWeightScales(t *testing.T) {
+	pureHouse := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":       2000,
+		"minecraft:oak_planks": 500,
+	}))
+	otherPureHouse := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":          1800,
+		"minecraft:spruce_planks": 600,
+	}))
+	bearingHouse := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":            2000,
+		"minecraft:oak_planks":      500,
+		"create:mechanical_bearing": 4,
+	}))
+	boiler := ComputeFingerprint(compositionModel(t, map[string]int{
+		"minecraft:dirt":      2000,
+		"create:shaft":        60,
+		"create:fluid_pipe":   120,
+		"create:fluid_tank":   80,
+		"create:steam_engine": 20,
+	}))
+
+	weight := func(sim Similarity, name string) float64 {
+		for _, c := range sim.Components {
+			if c.Name == name {
+				return c.Weight
+			}
+		}
+		return -1
+	}
+	sumWeights := func(sim Similarity) float64 {
+		total := 0.0
+		for _, c := range sim.Components {
+			total += c.Weight
+		}
+		return total
+	}
+
+	houses := Compare(pureHouse, otherPureHouse)
+	if w := weight(houses, "function"); w != 0 {
+		t.Errorf("pure house pair function weight = %.4f, want 0", w)
+	}
+	withBearing := Compare(pureHouse, bearingHouse)
+	if w := weight(withBearing, "function"); w <= 0 || w > 0.06 {
+		t.Errorf("house vs bearing-house function weight = %.4f, want small but non-zero", w)
+	}
+	machines := Compare(boiler, boiler)
+	if w := weight(machines, "function"); w < 0.15 {
+		t.Errorf("machine pair function weight = %.4f, want near the nominal 0.20", w)
+	}
+	for name, sim := range map[string]Similarity{"houses": houses, "bearing": withBearing, "machines": machines} {
+		if s := sumWeights(sim); s < 0.999 || s > 1.001 {
+			t.Errorf("%s: weights sum to %.4f, want 1", name, s)
+		}
+	}
+}
