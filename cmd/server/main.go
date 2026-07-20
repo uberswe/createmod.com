@@ -37,6 +37,7 @@ const (
 	CurseForgeAPIKey      = "CURSEFORGE_API_KEY"
 	DevEnv                = "DEV"
 	DatabaseURL           = "DATABASE_URL"
+	DatabaseReplicaURL    = "DATABASE_REPLICA_URL"
 	RedisURL              = "REDIS_URL"
 	S3Endpoint            = "S3_ENDPOINT"
 	S3AccessKey           = "S3_ACCESS_KEY"
@@ -160,6 +161,24 @@ func main() {
 
 	conf.Store = database.NewStore(pool)
 	conf.Pool = pool
+
+	// Optional read-replica pool. Points at pgbouncer's <db>_ro entry which
+	// routes to the PostgreSQL read replica; lag-tolerant heavy reads (search
+	// index rebuild, trending, sitemap, cache warming) go here so they stop
+	// loading the primary. Everything else — writes, interactive reads, River,
+	// migrations — stays on DATABASE_URL.
+	if replicaURL := getEnv(envFile, DatabaseReplicaURL); replicaURL != "" {
+		replicaPool, err := database.Connect(ctx, database.DefaultReplicaConfig(replicaURL))
+		if err != nil {
+			// The replica is an optimization, not a dependency — boot on the
+			// primary rather than crash-looping while the replica is down.
+			log.Printf("WARNING: read replica unavailable, falling back to primary: %v", err)
+		} else {
+			defer replicaPool.Close()
+			conf.ReadStore = database.NewStore(replicaPool)
+			log.Println("Connected to PostgreSQL read replica")
+		}
+	}
 
 	// Initialize S3/Minio storage service (optional — if not configured, storage
 	// features like file serving and thumbnailing will be unavailable).
