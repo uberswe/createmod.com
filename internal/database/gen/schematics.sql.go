@@ -1907,7 +1907,8 @@ UPDATE schematics SET
     schematic_file = COALESCE($27, schematic_file),
     short_code = COALESCE($28, short_code),
     created = COALESCE($29, created),
-    rotation_disabled = COALESCE($30, rotation_disabled)
+    rotation_disabled = COALESCE($30, rotation_disabled),
+    modified = NOW()
 WHERE id = $1
 RETURNING id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled
 `

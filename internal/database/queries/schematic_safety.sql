@@ -14,9 +14,9 @@ SELECT * FROM schematic_safety WHERE schematic_id = $1;
 -- name: ListSchematicsNeedingSafetyScan :many
 SELECT s.id FROM schematics s
 LEFT JOIN schematic_safety ss ON ss.schematic_id = s.id
-WHERE (ss.schematic_id IS NULL OR ss.pipeline_version < $1 OR s.updated > ss.scanned_at)
+WHERE (ss.schematic_id IS NULL OR ss.pipeline_version < $1 OR COALESCE(s.modified, s.created) > ss.scanned_at)
   AND s.deleted IS NULL
-ORDER BY s.created DESC
+ORDER BY (ss.schematic_id IS NULL) DESC, s.created DESC
 LIMIT $2;
 
 -- name: DeleteSchematicSafety :exec

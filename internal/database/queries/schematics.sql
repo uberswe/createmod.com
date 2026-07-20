@@ -114,7 +114,8 @@ UPDATE schematics SET
     schematic_file = COALESCE(sqlc.narg('schematic_file'), schematic_file),
     short_code = COALESCE(sqlc.narg('short_code'), short_code),
     created = COALESCE(sqlc.narg('created'), created),
-    rotation_disabled = COALESCE(sqlc.narg('rotation_disabled'), rotation_disabled)
+    rotation_disabled = COALESCE(sqlc.narg('rotation_disabled'), rotation_disabled),
+    modified = NOW()
 WHERE id = $1
 RETURNING *;
 
