@@ -12,9 +12,9 @@ SELECT * FROM schematic_fingerprints WHERE schematic_id = $1;
 -- name: ListSchematicsNeedingFingerprint :many
 SELECT s.id FROM schematics s
 LEFT JOIN schematic_fingerprints sf ON sf.schematic_id = s.id
-WHERE (sf.schematic_id IS NULL OR sf.version < $1 OR s.updated > sf.computed_at)
+WHERE (sf.schematic_id IS NULL OR sf.version < $1 OR COALESCE(s.modified, s.created) > sf.computed_at)
   AND s.deleted IS NULL
-ORDER BY s.created DESC
+ORDER BY (sf.schematic_id IS NULL) DESC, s.created DESC
 LIMIT $2;
 
 -- name: ListAllFingerprints :many
