@@ -38,6 +38,7 @@ const (
 	DevEnv                = "DEV"
 	DatabaseURL           = "DATABASE_URL"
 	DatabaseReplicaURL    = "DATABASE_REPLICA_URL"
+	DatabaseDirectURL     = "DATABASE_DIRECT_URL"
 	RedisURL              = "REDIS_URL"
 	S3Endpoint            = "S3_ENDPOINT"
 	S3AccessKey           = "S3_ACCESS_KEY"
@@ -135,8 +136,18 @@ func main() {
 		log.Fatal("DATABASE_URL environment variable is required")
 	}
 
+	// DATABASE_DIRECT_URL is a direct (non-pgbouncer) primary connection for
+	// the parts that need a stable session: golang-migrate takes session
+	// advisory locks and River relies on LISTEN/NOTIFY — both break under
+	// pgbouncer's transaction pooling. When DATABASE_URL points straight at
+	// the primary this is unset and everything shares one pool as before.
+	directURL := getEnv(envFile, DatabaseDirectURL)
+	if directURL == "" {
+		directURL = conf.DatabaseURL
+	}
+
 	log.Println("Connecting to PostgreSQL...")
-	if err := database.RunMigrations(conf.DatabaseURL); err != nil {
+	if err := database.RunMigrations(directURL); err != nil {
 		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 	log.Println("Database migrations complete")
@@ -149,8 +160,22 @@ func main() {
 	defer pool.Close()
 	log.Println("Connected to PostgreSQL")
 
+	// Dedicated direct pool for River when the main pool goes through
+	// pgbouncer. Unlike the replica this is a hard dependency — background
+	// jobs cannot run over transaction pooling — so failure to connect is
+	// fatal, matching the main pool.
+	riverPool := pool
+	if directURL != conf.DatabaseURL {
+		riverPool, err = database.Connect(ctx, database.DefaultRiverConfig(directURL))
+		if err != nil {
+			log.Fatalf("Failed to connect to database (direct, for River): %v", err)
+		}
+		defer riverPool.Close()
+		log.Println("Connected to PostgreSQL (direct, for River)")
+	}
+
 	// Run River queue migrations (creates river_job, river_queue, etc.)
-	riverMigrator, err := rivermigrate.New(riverpgxv5.New(pool), nil)
+	riverMigrator, err := rivermigrate.New(riverpgxv5.New(riverPool), nil)
 	if err != nil {
 		log.Fatalf("Failed to create River migrator: %v", err)
 	}
@@ -161,12 +186,13 @@ func main() {
 
 	conf.Store = database.NewStore(pool)
 	conf.Pool = pool
+	conf.RiverPool = riverPool
 
 	// Optional read-replica pool. Points at pgbouncer's <db>_ro entry which
 	// routes to the PostgreSQL read replica; lag-tolerant heavy reads (search
 	// index rebuild, trending, sitemap, cache warming) go here so they stop
-	// loading the primary. Everything else — writes, interactive reads, River,
-	// migrations — stays on DATABASE_URL.
+	// loading the primary. Writes and interactive reads stay on DATABASE_URL;
+	// River and migrations use the direct URL above.
 	if replicaURL := getEnv(envFile, DatabaseReplicaURL); replicaURL != "" {
 		replicaPool, err := database.Connect(ctx, database.DefaultReplicaConfig(replicaURL))
 		if err != nil {

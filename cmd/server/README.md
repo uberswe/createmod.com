@@ -75,7 +75,9 @@ go test -v ./...                                    # All tests
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | Yes | | PostgreSQL connection string |
 | `DATABASE_REPLICA_URL` | No | | Read-replica connection string (pgbouncer `<db>_ro`); used for lag-tolerant heavy reads. Needs `default_query_exec_mode=exec` when going through pgbouncer transaction pooling |
+| `DATABASE_DIRECT_URL` | No | | Direct (non-pgbouncer) primary connection for migrations and River. Required when `DATABASE_URL` goes through pgbouncer — advisory locks and LISTEN/NOTIFY break under transaction pooling |
 | `DB_REPLICA_MAX_CONNS` | No | `5` | Max replica connections per pod |
+| `DB_RIVER_MAX_CONNS` | No | `5` | Max direct River-pool connections per pod |
 | `S3_ENDPOINT` | No | | MinIO/S3 endpoint (e.g. `localhost:9000`) |
 | `S3_ACCESS_KEY` | No | | S3 access key |
 | `S3_SECRET_KEY` | No | | S3 secret key |

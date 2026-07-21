@@ -75,6 +75,28 @@ func DefaultReplicaConfig(databaseURL string) Config {
 	}
 }
 
+// DefaultRiverConfig returns pool sizing for the dedicated River pool used
+// when DATABASE_DIRECT_URL is set (i.e. DATABASE_URL goes through pgbouncer).
+// River needs a direct PostgreSQL connection — it relies on LISTEN/NOTIFY,
+// which pgbouncer's transaction pooling does not support. The pool only
+// carries queue bookkeeping (fetch/complete/insert + one LISTEN connection);
+// job payload work goes through the regular stores. Override with
+// DB_RIVER_MAX_CONNS.
+func DefaultRiverConfig(databaseURL string) Config {
+	maxConns := int32(5)
+	if v := os.Getenv("DB_RIVER_MAX_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 2 && n <= 100 {
+			maxConns = int32(n)
+		}
+	}
+	return Config{
+		DatabaseURL:     databaseURL,
+		MaxConns:        maxConns,
+		MinConns:        1,
+		MaxConnLifetime: time.Hour,
+	}
+}
+
 // Connect creates a new pgxpool connected to PostgreSQL.
 func Connect(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)

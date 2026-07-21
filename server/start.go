@@ -55,8 +55,12 @@ type Config struct {
 	// ReadStore is an optional store backed by the read replica (via
 	// pgbouncer's <db>_ro route). Only lag-tolerant heavy reads use it;
 	// nil means everything runs against Store.
-	ReadStore             *store.Store
-	Pool                  *pgxpool.Pool
+	ReadStore *store.Store
+	Pool      *pgxpool.Pool
+	// RiverPool is a direct-to-primary pool for the River job queue, needed
+	// when Pool goes through pgbouncer (transaction pooling breaks River's
+	// LISTEN/NOTIFY). nil means River shares Pool.
+	RiverPool             *pgxpool.Pool
 	Storage               *storage.Service
 	DiscordClientID       string
 	DiscordClientSecret   string
@@ -82,6 +86,7 @@ type Server struct {
 	store                *store.Store
 	readStore            *store.Store // replica-backed; always non-nil (falls back to store)
 	pool                 *pgxpool.Pool
+	riverPool            *pgxpool.Pool // direct-to-primary; always non-nil (falls back to pool)
 	storageService       *storage.Service
 	sessionStore         *session.Store
 	searchService        *search.Service
@@ -192,12 +197,17 @@ func New(conf Config) *Server {
 	if readStore == nil {
 		readStore = conf.Store
 	}
+	riverPool := conf.RiverPool
+	if riverPool == nil {
+		riverPool = conf.Pool
+	}
 
 	srv := &Server{
 		conf:                 conf,
 		store:                conf.Store,
 		readStore:            readStore,
 		pool:                 conf.Pool,
+		riverPool:            riverPool,
 		storageService:       conf.Storage,
 		sitemapService:       sitemapService,
 		cacheService:         cacheService,
@@ -479,9 +489,12 @@ func (s *Server) Start() {
 			}
 		}
 
-		// 6. Close PostgreSQL pool
+		// 6. Close PostgreSQL pools
 		if s.pool != nil {
 			s.pool.Close()
+		}
+		if s.riverPool != nil && s.riverPool != s.pool {
+			s.riverPool.Close()
 		}
 	}()
 
@@ -526,7 +539,7 @@ func anyLetter(r rune) bool {
 func (s *Server) startJobWorker(windowDays []int) {
 	jobCtx := context.Background()
 	w, err := jobs.New(jobCtx, jobs.Config{
-		Pool: s.pool,
+		Pool: s.riverPool,
 		Deps: jobs.Deps{
 			Store:              s.store,
 			ReadStore:          s.readStore,
