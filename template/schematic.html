@@ -1627,7 +1627,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   // Narrow ad rail (lg only: 992-1199px)
   window['nitroAds'].createAd('schematic-sticky-adrail-lg', {
     "refreshLimit": 30,
-    "refreshTime": 45,
+    "refreshTime": 30,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
@@ -1649,7 +1649,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   // Wide ad rail (xl+) is built by adrail.js via the data-cm-adrail container.
   // Mobile ad (in-content on smaller screens)
   window['nitroAds'].createAd('schematic-mobile', {
-    "refreshTime": 45,
+    "refreshTime": 30,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,

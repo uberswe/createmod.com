@@ -41,7 +41,7 @@
       stickyStackOffset: 8,
       stickyStackResizable: true,
       refreshLimit: 30,
-      refreshTime: 45,
+      refreshTime: 30,
       refreshVisibleOnly: true,
       renderVisibleOnly: true,
       visibleMargin: 300,
