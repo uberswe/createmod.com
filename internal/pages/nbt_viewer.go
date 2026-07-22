@@ -154,7 +154,6 @@ func SchematicNBTDataHandler(registry *server.Registry, cacheService *cache.Serv
 		d := nbtDataPageData{}
 		d.Populate(e)
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-		d.NoIndex = true // raw data view; the schematic page carries the SEO
 		d.Title = fmt.Sprintf(i18n.T(d.Language, "NBT Data: %s"), s.Title)
 		d.Description = i18n.T(d.Language, "Browse the raw NBT structure of this schematic.")
 		d.Slug = "/schematics/" + name + "/nbt-data"
