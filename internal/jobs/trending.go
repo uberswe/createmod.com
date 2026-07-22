@@ -27,14 +27,15 @@ func (w *TrendingWorker) Work(ctx context.Context, job *river.Job[TrendingArgs])
 		return nil
 	}
 
-	if scores := pages.ComputeTrendingScoresFromStore(w.deps.Store); scores != nil {
+	readStore := w.deps.readStore()
+	if scores := pages.ComputeTrendingScoresFromStore(readStore); scores != nil {
 		w.deps.Search.SetTrendingScores(scores)
 	}
 
 	// Warm caches
 	if w.deps.Cache != nil {
-		pages.WarmIndexCache(w.deps.Cache, w.deps.Store, []int{7})
-		pages.WarmVideosCache(w.deps.Cache, w.deps.Store)
+		pages.WarmIndexCache(w.deps.Cache, readStore, []int{7})
+		pages.WarmVideosCache(w.deps.Cache, readStore)
 	}
 
 	slog.Info("trending scores updated")

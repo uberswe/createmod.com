@@ -32,7 +32,11 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 	// while the full DB rebuild is in progress.
 	w.deps.Search.WarmFromStorage()
 
-	storeSchematics, err := w.deps.Store.Schematics.ListAllForIndex(ctx)
+	// The rebuild is a bulk scan of the whole catalog and tolerates replica
+	// lag — a schematic missed this run is picked up next run (and the
+	// incremental upsert path reads the primary).
+	readStore := w.deps.readStore()
+	storeSchematics, err := readStore.Schematics.ListAllForIndex(ctx)
 	if err != nil {
 		slog.Error("search index rebuild: failed to load schematics", "error", err)
 		return err
@@ -40,7 +44,7 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 
 	// Load mod metadata for display names.
 	modDisplayNames := make(map[string]string)
-	if allMeta, err := w.deps.Store.ModMetadata.ListAll(ctx); err == nil {
+	if allMeta, err := readStore.ModMetadata.ListAll(ctx); err == nil {
 		for _, m := range allMeta {
 			if m.DisplayName != "" {
 				modDisplayNames[m.Namespace] = m.DisplayName
@@ -50,12 +54,12 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 		slog.Warn("search index rebuild: failed to load mod metadata", "error", err)
 	}
 
-	mapped := pages.MapStoreSchematicsNoCache(w.deps.Store, storeSchematics, w.deps.Cache)
+	mapped := pages.MapStoreSchematicsNoCache(readStore, storeSchematics, w.deps.Cache)
 	w.deps.Search.BuildIndex(mapped, modDisplayNames)
 
 	// Compute trending scores and store them for Meilisearch indexing.
 	var trendingScores map[string]float64
-	if scores := pages.ComputeTrendingScoresFromStore(w.deps.Store); scores != nil {
+	if scores := pages.ComputeTrendingScoresFromStore(readStore); scores != nil {
 		trendingScores = scores
 		w.deps.Search.SetTrendingScores(scores)
 	}

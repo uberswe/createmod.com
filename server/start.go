@@ -7,7 +7,6 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/discord"
 	"createmod/internal/jobs"
-	"createmod/internal/slowlog"
 	appmailer "createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
@@ -19,6 +18,7 @@ import (
 	"createmod/internal/session"
 	"createmod/internal/similarity"
 	"createmod/internal/sitemap"
+	"createmod/internal/slowlog"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
@@ -43,40 +43,50 @@ import (
 )
 
 type Config struct {
-	AutoMigrate         bool
-	CreateAdmin         bool
-	DiscordWebhookUrl   string
-	OpenAIApiKey        string
-	CurseForgeApiKey    string
-	Dev                 bool
-	DatabaseURL         string
-	RedisURL            string
-	Store               *store.Store
-	Pool                *pgxpool.Pool
-	Storage             *storage.Service
-	DiscordClientID     string
-	DiscordClientSecret string
-	GithubClientID      string
-	GithubClientSecret  string
-	TwitchClientID      string
-	TwitchClientSecret  string
-	PatreonClientID     string
-	PatreonClientSecret string
-	RedditClientID      string
-	RedditClientSecret  string
-	GoogleClientID      string
-	GoogleClientSecret  string
-	MicrosoftClientID   string
+	AutoMigrate       bool
+	CreateAdmin       bool
+	DiscordWebhookUrl string
+	OpenAIApiKey      string
+	CurseForgeApiKey  string
+	Dev               bool
+	DatabaseURL       string
+	RedisURL          string
+	Store             *store.Store
+	// ReadStore is an optional store backed by the read replica (via
+	// pgbouncer's <db>_ro route). Only lag-tolerant heavy reads use it;
+	// nil means everything runs against Store.
+	ReadStore *store.Store
+	Pool      *pgxpool.Pool
+	// RiverPool is a direct-to-primary pool for the River job queue, needed
+	// when Pool goes through pgbouncer (transaction pooling breaks River's
+	// LISTEN/NOTIFY). nil means River shares Pool.
+	RiverPool             *pgxpool.Pool
+	Storage               *storage.Service
+	DiscordClientID       string
+	DiscordClientSecret   string
+	GithubClientID        string
+	GithubClientSecret    string
+	TwitchClientID        string
+	TwitchClientSecret    string
+	PatreonClientID       string
+	PatreonClientSecret   string
+	RedditClientID        string
+	RedditClientSecret    string
+	GoogleClientID        string
+	GoogleClientSecret    string
+	MicrosoftClientID     string
 	MicrosoftClientSecret string
-	SteamAPIKey         string
-	BaseURL             string
-	MaintenanceMode     *atomic.Bool // runtime-togglable maintenance flag
+	SteamAPIKey           string
+	BaseURL               string
+	MaintenanceMode       *atomic.Bool // runtime-togglable maintenance flag
 }
 
 type Server struct {
 	conf                 Config
 	store                *store.Store
+	readStore            *store.Store // replica-backed; always non-nil (falls back to store)
 	pool                 *pgxpool.Pool
+	riverPool            *pgxpool.Pool // direct-to-primary; always non-nil (falls back to pool)
 	storageService       *storage.Service
 	sessionStore         *session.Store
 	searchService        *search.Service
@@ -183,10 +193,21 @@ func New(conf Config) *Server {
 		log.Println("WARNING: REDIS_URL not set, rate limiting and caching use per-pod in-memory stores")
 	}
 
+	readStore := conf.ReadStore
+	if readStore == nil {
+		readStore = conf.Store
+	}
+	riverPool := conf.RiverPool
+	if riverPool == nil {
+		riverPool = conf.Pool
+	}
+
 	srv := &Server{
 		conf:                 conf,
 		store:                conf.Store,
+		readStore:            readStore,
 		pool:                 conf.Pool,
+		riverPool:            riverPool,
 		storageService:       conf.Storage,
 		sitemapService:       sitemapService,
 		cacheService:         cacheService,
@@ -299,8 +320,8 @@ func (s *Server) Start() {
 		// Warm per-pod in-memory caches in the background so startup isn't
 		// blocked. Handlers tolerate cold caches (they compute on miss).
 		go func() {
-			pages.WarmIndexCache(s.cacheService, s.store, trendingWindowDays)
-			pages.WarmVideosCache(s.cacheService, s.store)
+			pages.WarmIndexCache(s.cacheService, s.readStore, trendingWindowDays)
+			pages.WarmVideosCache(s.cacheService, s.readStore)
 		}()
 
 		// Pre-warm site stats search cache on every pod. Uses a random
@@ -310,16 +331,16 @@ func (s *Server) Start() {
 			jitter := time.Duration(rand.Intn(300)) * time.Second
 			time.Sleep(jitter)
 			ctx := context.Background()
-			pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "30d")
-			pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "7d")
+			pages.WarmSearchStatsCache(ctx, s.cacheService, s.readStore, "30d")
+			pages.WarmSearchStatsCache(ctx, s.cacheService, s.readStore, "7d")
 			slog.Info("site stats cache warmed (initial)", "jitter", jitter.Round(time.Second))
 
 			ticker := time.NewTicker(30 * time.Minute)
 			defer ticker.Stop()
 			for range ticker.C {
 				ctx := context.Background()
-				pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "30d")
-				pages.WarmSearchStatsCache(ctx, s.cacheService, s.store, "7d")
+				pages.WarmSearchStatsCache(ctx, s.cacheService, s.readStore, "30d")
+				pages.WarmSearchStatsCache(ctx, s.cacheService, s.readStore, "7d")
 				slog.Info("site stats cache warmed (periodic)")
 			}
 		}()
@@ -356,8 +377,9 @@ func (s *Server) Start() {
 	// ROUTES
 
 	// Similarity fingerprint index: per-pod, loaded in the background so
-	// boot isn't blocked, refreshed every 10 minutes.
-	similarityService := similarity.New(s.store)
+	// boot isn't blocked, refreshed every 10 minutes. Read-only full scans,
+	// so it runs against the replica when one is configured.
+	similarityService := similarity.New(s.readStore)
 	go similarityService.Start(context.Background())
 
 	chiRouter := irouter.Register(irouter.RegisterParams{
@@ -467,9 +489,12 @@ func (s *Server) Start() {
 			}
 		}
 
-		// 6. Close PostgreSQL pool
+		// 6. Close PostgreSQL pools
 		if s.pool != nil {
 			s.pool.Close()
+		}
+		if s.riverPool != nil && s.riverPool != s.pool {
+			s.riverPool.Close()
 		}
 	}()
 
@@ -510,14 +535,14 @@ func anyLetter(r rune) bool {
 	return unicode.IsLetter(r)
 }
 
-
 // startJobWorker initialises and starts the River background job worker.
 func (s *Server) startJobWorker(windowDays []int) {
 	jobCtx := context.Background()
 	w, err := jobs.New(jobCtx, jobs.Config{
-		Pool: s.pool,
+		Pool: s.riverPool,
 		Deps: jobs.Deps{
 			Store:              s.store,
+			ReadStore:          s.readStore,
 			Storage:            s.storageService,
 			Search:             s.searchService,
 			Cache:              s.cacheService,
@@ -545,7 +570,6 @@ func (s *Server) startJobWorker(windowDays []int) {
 	s.jobWorker = w
 	slog.Info("River job worker started")
 }
-
 
 func init() {
 	rand.Seed(time.Now().UnixNano())

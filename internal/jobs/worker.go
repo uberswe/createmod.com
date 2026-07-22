@@ -29,7 +29,12 @@ import (
 
 // Deps holds service dependencies shared by all job workers.
 type Deps struct {
-	Store              *store.Store
+	Store *store.Store
+	// ReadStore is backed by the read replica when one is configured.
+	// Workers doing lag-tolerant bulk reads (index rebuild, trending,
+	// sitemap) use readStore(); anything that must read its own writes
+	// stays on Store.
+	ReadStore          *store.Store
 	Storage            *storage.Service
 	Search             *search.Service
 	Cache              *cache.Service
@@ -46,12 +51,20 @@ type Deps struct {
 	TwitchClientSecret string
 }
 
+// readStore returns the replica-backed store, falling back to the primary
+// when no replica is configured.
+func (d Deps) readStore() *store.Store {
+	if d.ReadStore != nil {
+		return d.ReadStore
+	}
+	return d.Store
+}
+
 // Config holds job worker configuration.
 type Config struct {
 	Pool *pgxpool.Pool
 	Deps Deps
 }
-
 
 // chainBackfill re-enqueues a backfill job immediately when the current run
 // processed a full batch, so a large backlog (a fresh table after a

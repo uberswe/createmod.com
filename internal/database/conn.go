@@ -4,9 +4,9 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
-	"log/slog"
 	"time"
 
 	"createmod/internal/slowlog"
@@ -47,6 +47,52 @@ func DefaultConfig(databaseURL string) Config {
 		DatabaseURL:     databaseURL,
 		MaxConns:        maxConns,
 		MinConns:        2,
+		MaxConnLifetime: time.Hour,
+	}
+}
+
+// DefaultReplicaConfig returns pool sizing for the optional read-replica
+// connection (DATABASE_REPLICA_URL). This URL is expected to point at
+// pgbouncer's <db>_ro entry (transaction pooling → postgresql-read), where
+// client connections are cheap, but the replica itself is small so keep the
+// per-pod appetite modest. Override with DB_REPLICA_MAX_CONNS.
+//
+// When connecting through pgbouncer in transaction-pooling mode the URL must
+// include default_query_exec_mode=exec — pgx's default prepared-statement
+// cache assumes a stable session, which transaction pooling breaks.
+func DefaultReplicaConfig(databaseURL string) Config {
+	maxConns := int32(5)
+	if v := os.Getenv("DB_REPLICA_MAX_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 2 && n <= 100 {
+			maxConns = int32(n)
+		}
+	}
+	return Config{
+		DatabaseURL:     databaseURL,
+		MaxConns:        maxConns,
+		MinConns:        1,
+		MaxConnLifetime: time.Hour,
+	}
+}
+
+// DefaultRiverConfig returns pool sizing for the dedicated River pool used
+// when DATABASE_DIRECT_URL is set (i.e. DATABASE_URL goes through pgbouncer).
+// River needs a direct PostgreSQL connection — it relies on LISTEN/NOTIFY,
+// which pgbouncer's transaction pooling does not support. The pool only
+// carries queue bookkeeping (fetch/complete/insert + one LISTEN connection);
+// job payload work goes through the regular stores. Override with
+// DB_RIVER_MAX_CONNS.
+func DefaultRiverConfig(databaseURL string) Config {
+	maxConns := int32(5)
+	if v := os.Getenv("DB_RIVER_MAX_CONNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 2 && n <= 100 {
+			maxConns = int32(n)
+		}
+	}
+	return Config{
+		DatabaseURL:     databaseURL,
+		MaxConns:        maxConns,
+		MinConns:        1,
 		MaxConnLifetime: time.Hour,
 	}
 }
