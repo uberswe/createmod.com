@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 // The desktop right rail is built client-side by adrail.js: each page has a
-// <div class="ad-rail ..." data-cm-adrail ...> container, and the helper
+// <div class="cm-side-rail ..." data-cm-adrail ...> container, and the helper
 // appends a single NitroPay sticky-stack unit whose id ends "_sticky". The
 // holder itself is NOT sticky — NitroPay pins individual ads inside it — but
 // it must span the full rail column (height: 100%) so ads can be placed down
-// the whole page height. Uses /explore because it always renders an .ad-rail.
+// the whole page height. Uses /explore because it always renders an .cm-side-rail.
 // In CI no real ad scripts load, but the helper still builds the DOM (it only
 // needs the nitroAds stub), so we can verify the computed styles.
 
@@ -16,12 +16,12 @@ test.describe('Ad rail', () => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
-    const adRail = page.locator('.ad-rail[data-cm-adrail]').first();
+    const adRail = page.locator('.cm-side-rail[data-cm-adrail]').first();
     await expect(adRail).toBeAttached({ timeout: 10000 });
 
     // adrail.js builds the rail on load — wait for the unit holder to appear.
     await page.waitForFunction(() => {
-      const r = document.querySelector('.ad-rail[data-cm-adrail]');
+      const r = document.querySelector('.cm-side-rail[data-cm-adrail]');
       return !!(r && r.querySelector(':scope > [id$="_sticky"]'));
     }, { timeout: 10000 });
 
@@ -53,7 +53,7 @@ test.describe('Ad rail', () => {
     const url = baseURL ?? 'http://localhost:8080';
     await page.goto(url + '/explore', { waitUntil: 'domcontentloaded' });
 
-    const adRail = page.locator('.ad-rail').first();
+    const adRail = page.locator('.cm-side-rail').first();
     await expect(adRail).toBeAttached({ timeout: 10000 });
 
     const outerStyles = await adRail.evaluate((el) => {

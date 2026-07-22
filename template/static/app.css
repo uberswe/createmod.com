@@ -426,7 +426,7 @@ a:hover {
   We only set width and flex so the column stretches to full
   content height — required for sticky-stack placement calc.
 ***************/
-.ad-rail {
+.cm-side-rail {
   width: 300px;
   min-width: 300px;
   flex-shrink: 0;
@@ -436,10 +436,32 @@ a:hover {
    adrail.js) must span the full column so NitroPay can place pinned ads down
    the whole page height — the holder has no content of its own and would
    otherwise collapse. NitroPay handles the per-ad sticky positioning. */
-.ad-rail > [id$="_sticky"],
-.ad-rail > [id*="sticky-adrail"],
+.cm-side-rail > [id$="_sticky"],
+.cm-side-rail > [id*="sticky-adrail"],
 .search-ad-rail-wide > [id$="_sticky"] {
   height: 100%;
+}
+/* First-party support note shown in the rail when an ad blocker keeps ads
+   from loading (see the blocked-ads fallback in adrail.js). Deliberately
+   quiet: lives in the empty rail space, no overlay, no content blocking. */
+.cm-support-note {
+  position: sticky;
+  top: 8px;
+  border: 1px dashed rgba(191, 144, 69, 0.4);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--cm-secondary, #8a9099);
+  background: rgba(191, 144, 69, 0.05);
+}
+.cm-support-note strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--cm-primary, #bf9045);
+}
+.cm-support-note p {
+  margin: 0;
 }
 /* When the mobile/tablet anchor ad is showing, lift the floating outstream
    player above it — both are fixed to the bottom edge otherwise. The
@@ -560,7 +582,7 @@ html.cm-anchor-open [id*="outstream-player"] {
 /***************
   Narrow ad rail (160px, for lg breakpoint)
 ***************/
-.ad-rail-sm {
+.cm-side-rail-sm {
   width: 160px;
   min-width: 160px;
   flex-shrink: 0;
@@ -568,7 +590,7 @@ html.cm-anchor-open [id*="outstream-player"] {
 }
 /* Full column height so the NitroPay sticky-stack can place pinned ads down
    the whole page as the user scrolls (NitroPay handles the stickiness). */
-.ad-rail-sm > [id*="sticky-adrail"] {
+.cm-side-rail-sm > [id*="sticky-adrail"] {
   height: 100%;
 }
 
