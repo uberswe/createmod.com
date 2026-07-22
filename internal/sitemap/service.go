@@ -126,6 +126,9 @@ func (s *Service) Generate(appStore *store.Store) {
 
 	// Per-schematic sub-pages: similar-schematics search and the raw NBT data
 	// view. Chunked at 500 schematics per file (two locs each = 1000 locs).
+	// Note: nbt-data renders are only safe to invite crawlers to because the
+	// tree API caches its root page and caps decompress concurrency (see
+	// SchematicNBTTreeHandler) — uncapped, this caused the 2026-07-22 OOMs.
 	schematicPagesSmCount := 1
 	smSchematicPages := smi.NewSitemap()
 	smSchematicPages.SetName(fmt.Sprintf("schematic-pages-%d", schematicPagesSmCount))
