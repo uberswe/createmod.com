@@ -1,11 +1,13 @@
 package pages
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
@@ -15,9 +17,35 @@ import (
 	"createmod/internal/store"
 )
 
+// nbtTreeSem caps concurrent NBT decompress+parse work per pod. A single
+// request can hold MaxDecompressedSize (100MB) of decompressed NBT plus parse
+// overhead, so a crawler fetching several large schematics at once can spike
+// the pod past its 4Gi memory limit (OOMKilled wave, 2026-07-22). Requests
+// wait briefly for a slot, then get a 429 with Retry-After so well-behaved
+// bots back off.
+var nbtTreeSem = make(chan struct{}, 2)
+
+// acquireNBTTreeSlot reserves a decompress+parse slot. It returns a release
+// function, or writes a 429 and returns false if none frees up in time.
+func acquireNBTTreeSlot(e *server.RequestEvent) (func(), bool) {
+	select {
+	case nbtTreeSem <- struct{}{}:
+		return func() { <-nbtTreeSem }, true
+	case <-time.After(2 * time.Second):
+		e.Response.Header().Set("Retry-After", "5")
+		_ = writeJSON(e, http.StatusTooManyRequests, map[string]string{"error": "server busy, retry shortly"})
+		return nil, false
+	}
+}
+
 // nbtTreeRespond serves tree/SNBT/search views over raw schematic bytes.
 // Shared by the library endpoint and the stateless upload endpoint.
 func nbtTreeRespond(e *server.RequestEvent, data []byte) error {
+	release, ok := acquireNBTTreeSlot(e)
+	if !ok {
+		return nil
+	}
+	defer release()
 	raw, err := schematic.DecompressForTree(data)
 	if err != nil {
 		return writeJSON(e, http.StatusUnprocessableEntity, map[string]string{"error": convertUserError(err)})
@@ -54,9 +82,13 @@ func nbtTreeRespond(e *server.RequestEvent, data []byte) error {
 	return writeJSON(e, http.StatusOK, page)
 }
 
+// nbtTreeCacheMaxEntry bounds cached default-page JSON so a crawler sweep
+// can't balloon the per-pod cache (worst case ≈ sweep rate × TTL × this).
+const nbtTreeCacheMaxEntry = 256 * 1024
+
 // SchematicNBTTreeHandler serves the NBT tree for a library schematic.
 // GET /api/schematics/{name}/nbt-tree
-func SchematicNBTTreeHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func SchematicNBTTreeHandler(appStore *store.Store, cacheService *cache.Service, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if storageSvc == nil {
 			return writeJSON(e, http.StatusServiceUnavailable, map[string]string{"error": "file storage unavailable"})
@@ -70,6 +102,38 @@ func SchematicNBTTreeHandler(appStore *store.Store, storageSvc *storage.Service)
 		if primary == "" {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic has no file"})
 		}
+
+		// The root page (no path/search/snbt, offset 0) is what every first
+		// page load — and every crawler rendering /schematics/{name}/nbt-data
+		// — asks for, and it is the same few-hundred-node response every
+		// time. Serve it from cache so bot sweeps don't pay the full
+		// decompress+parse (up to 100MB in memory per request; caused the
+		// 2026-07-22 OOM wave). Deeper navigation (path/offset/snbt/search)
+		// stays uncached but is bounded by the nbtTreeSem concurrency cap.
+		q := e.Request.URL.Query()
+		qInt := func(key string, def int) int {
+			if v, err := strconv.Atoi(q.Get(key)); err == nil {
+				return v
+			}
+			return def
+		}
+		depth := qInt("depth", 2)
+		limit := qInt("limit", 200)
+		isDefaultPage := strings.TrimSpace(q.Get("q")) == "" && q.Get("snbt") != "1" &&
+			q.Get("path") == "" && qInt("offset", 0) == 0
+		cacheKey := fmt.Sprintf("nbt_tree_p1_%s_%s_%d_%d", s.ID, primary, depth, limit)
+		if isDefaultPage && cacheService != nil {
+			if v, ok := cacheService.Get(cacheKey); ok {
+				if body, ok2 := v.([]byte); ok2 {
+					setPublicCacheControl(e, 300)
+					e.Response.Header().Set("Content-Type", "application/json")
+					e.Response.WriteHeader(http.StatusOK)
+					_, _ = e.Response.Write(body)
+					return nil
+				}
+			}
+		}
+
 		reader, err := storageSvc.Download(e.Request.Context(), storage.CollectionPrefix("schematics"), s.ID, primary)
 		if err != nil {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic file not found"})
@@ -79,6 +143,35 @@ func SchematicNBTTreeHandler(appStore *store.Store, storageSvc *storage.Service)
 		if err != nil {
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read schematic"})
 		}
+
+		if isDefaultPage {
+			release, ok := acquireNBTTreeSlot(e)
+			if !ok {
+				return nil
+			}
+			defer release()
+			raw, err := schematic.DecompressForTree(data)
+			if err != nil {
+				return writeJSON(e, http.StatusUnprocessableEntity, map[string]string{"error": convertUserError(err)})
+			}
+			page, err := schematic.NBTTreePage(raw, "", depth, 0, limit)
+			if err != nil {
+				return writeJSON(e, http.StatusUnprocessableEntity, map[string]string{"error": convertUserError(err)})
+			}
+			body, err := json.Marshal(page)
+			if err != nil {
+				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to encode tree"})
+			}
+			if cacheService != nil && len(body) <= nbtTreeCacheMaxEntry {
+				cacheService.SetWithTTL(cacheKey, body, 10*time.Minute)
+			}
+			setPublicCacheControl(e, 300)
+			e.Response.Header().Set("Content-Type", "application/json")
+			e.Response.WriteHeader(http.StatusOK)
+			_, _ = e.Response.Write(body)
+			return nil
+		}
+
 		// Tree responses vary only with the stored file; cache briefly.
 		setPublicCacheControl(e, 300)
 		return nbtTreeRespond(e, data)
@@ -154,7 +247,6 @@ func SchematicNBTDataHandler(registry *server.Registry, cacheService *cache.Serv
 		d := nbtDataPageData{}
 		d.Populate(e)
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-		d.NoIndex = true // raw data view; the schematic page carries the SEO
 		d.Title = fmt.Sprintf(i18n.T(d.Language, "NBT Data: %s"), s.Title)
 		d.Description = i18n.T(d.Language, "Browse the raw NBT structure of this schematic.")
 		d.Slug = "/schematics/" + name + "/nbt-data"

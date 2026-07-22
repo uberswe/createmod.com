@@ -426,36 +426,28 @@ a:hover {
   We only set width and flex so the column stretches to full
   content height — required for sticky-stack placement calc.
 ***************/
-.ad-rail {
+.cm-side-rail {
   width: 300px;
   min-width: 300px;
   flex-shrink: 0;
   align-self: stretch;
 }
-/* Right-rail ad sticking (built by adrail.js). The video ad is outside both and
-   scrolls away. */
-/* Variant B: two static display ads share one sticky wrapper (.ad-sticky-stack)
-   so they pin together as a unit and never overlap — they sit in normal flow
-   inside it (with a 1rem gap) and the group pins near the top of the viewport. */
-.ad-rail .ad-sticky-stack,
-.search-ad-rail-wide .ad-sticky-stack {
-  position: sticky;
-  top: 8px;
-  z-index: 1;
+/* The rail's single NitroPay sticky-stack unit (id ends "_sticky", built by
+   adrail.js) must span the full column so NitroPay can place pinned ads down
+   the whole page height — the holder has no content of its own and would
+   otherwise collapse. NitroPay handles the per-ad sticky positioning. */
+.cm-side-rail > [id$="_sticky"],
+.cm-side-rail > [id*="sticky-adrail"],
+.search-ad-rail-wide > [id$="_sticky"] {
+  height: 100%;
 }
-.ad-sticky-stack > [id*="_b_display"] {
-  margin-bottom: 1rem;
-}
-/* Variant A: the single NitroPay sticky-stack ad (id ends "_a_sticky"). It needs
-   a tall sticky container so the ad has room to stay pinned while scrolling —
-   without an explicit height the slot collapses (the ad lives in NitroPay's own
-   inner element) and scrolls away. */
-.ad-rail > [id$="_a_sticky"],
-.search-ad-rail-wide > [id$="_a_sticky"] {
-  position: sticky;
-  top: 8px;
-  z-index: 1;
-  height: calc(100vh - 8px);
+/* When the mobile/tablet anchor ad is showing, lift the floating outstream
+   player above it — both are fixed to the bottom edge otherwise. The
+   .cm-anchor-open class is toggled in foot.html from NitroPay's
+   anchorVisibility event; .cm-outstream is set via the unit's className. */
+html.cm-anchor-open .cm-outstream,
+html.cm-anchor-open [id*="outstream-player"] {
+  bottom: 110px !important;
 }
 
 /***************
@@ -568,17 +560,16 @@ a:hover {
 /***************
   Narrow ad rail (160px, for lg breakpoint)
 ***************/
-.ad-rail-sm {
+.cm-side-rail-sm {
   width: 160px;
   min-width: 160px;
   flex-shrink: 0;
   align-self: stretch;
 }
-.ad-rail-sm > [id*="sticky-adrail"] {
-  position: sticky;
-  top: 8px;
-  z-index: 1;
-  height: calc(100vh - 8px);
+/* Full column height so the NitroPay sticky-stack can place pinned ads down
+   the whole page as the user scrolls (NitroPay handles the stickiness). */
+.cm-side-rail-sm > [id*="sticky-adrail"] {
+  height: 100%;
 }
 
 /***************
@@ -1227,10 +1218,7 @@ body.sidebar-open::after {
   align-self: stretch;
 }
 .search-ad-rail > [id*="sticky-adrail"] {
-  position: sticky;
-  top: 8px;
-  z-index: 1;
-  height: calc(100vh - 8px);
+  height: 100%;
   overflow: hidden;
 }
 

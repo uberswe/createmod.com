@@ -1178,11 +1178,11 @@
 
                     <!-- Column 3: Ad Rails -->
                     <!-- Narrow 160px rail for lg (992-1199px) -->
-                    <div class="ad-rail-sm d-none d-lg-block d-xl-none">
+                    <div class="cm-side-rail-sm d-none d-lg-block d-xl-none">
                         <div id="schematic-sticky-adrail-lg" class="mb-3"></div>
                     </div>
                     <!-- Wide 300px rail for xl+ (1200px+): video ad (scrolls away) above two stacked 300x600 sticky ads -->
-                    <div class="ad-rail d-none d-xl-block" data-cm-adrail data-prefix="schematic" data-kw="minecraft,create-mod,schematic" data-page="schematic"></div>
+                    <div class="cm-side-rail d-none d-xl-block" data-cm-adrail data-prefix="schematic" data-kw="minecraft,create-mod,schematic" data-page="schematic"></div>
                 </div><!-- /d-flex -->
 
             </div>
@@ -1626,8 +1626,8 @@ document.addEventListener('htmx:afterRequest', function(evt) {
 
   // Narrow ad rail (lg only: 992-1199px)
   window['nitroAds'].createAd('schematic-sticky-adrail-lg', {
-    "refreshLimit": 10,
-    "refreshTime": 45,
+    "refreshLimit": 30,
+    "refreshTime": 30,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
@@ -1635,7 +1635,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
     "stickyStackOffset": 8,
-    "stickyStackResizable": false,
+    "stickyStackResizable": true,
     "keywords": kwString,
     "targeting": targeting,
     "report": {
@@ -1649,7 +1649,7 @@ document.addEventListener('htmx:afterRequest', function(evt) {
   // Wide ad rail (xl+) is built by adrail.js via the data-cm-adrail container.
   // Mobile ad (in-content on smaller screens)
   window['nitroAds'].createAd('schematic-mobile', {
-    "refreshTime": 60,
+    "refreshTime": 30,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,

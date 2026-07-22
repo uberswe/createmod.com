@@ -4,7 +4,10 @@
     <div class="page-wrapper">
         {{template "header.html" .}}
         <main class="page-body">
-            <div class="container-wide" style="max-width: 1100px;">
+            <div class="container-wide">
+                <div class="d-flex gap-3">
+                <div class="flex-grow-1 min-width-0">
+                <div style="max-width: 1100px; margin: 0 auto;">
                 <div class="mb-3">
                     <h1 class="h2 mb-1">{{ T .Language "NBT Data" }}: {{ .SourceTitle }}</h1>
                     <p class="cm-page-sub mb-2">{{ T .Language "The raw NBT structure of this schematic, with SNBT view, key search and copy-path." }}</p>
@@ -19,6 +22,10 @@
                         <div id="nbt-data-tree"></div>
                     </div>
                 </div>
+                </div><!-- /max-width -->
+                </div><!-- /flex-grow-1 -->
+                <div class="cm-side-rail d-none d-xl-block" data-cm-adrail data-prefix="nbt-data" data-kw="minecraft,create-mod,schematic,nbt" data-page="nbt-data"></div>
+                </div><!-- /d-flex -->
             </div>
         </main>
         {{ template "footer.html" . }}

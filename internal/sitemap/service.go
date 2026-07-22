@@ -124,6 +124,44 @@ func (s *Service) Generate(appStore *store.Store) {
 		}
 	}
 
+	// Per-schematic sub-pages: similar-schematics search and the raw NBT data
+	// view. Chunked at 500 schematics per file (two locs each = 1000 locs).
+	// Note: nbt-data renders are only safe to invite crawlers to because the
+	// tree API caches its root page and caps decompress concurrency (see
+	// SchematicNBTTreeHandler) — uncapped, this caused the 2026-07-22 OOMs.
+	schematicPagesSmCount := 1
+	smSchematicPages := smi.NewSitemap()
+	smSchematicPages.SetName(fmt.Sprintf("schematic-pages-%d", schematicPagesSmCount))
+	smSchematicPages.SetOutputPath(tmpDir + "/")
+	smSchematicPages.SetLastMod(&now)
+
+	for i := range schematics {
+		if i != 0 && i%500 == 0 {
+			schematicPagesSmCount++
+			smSchematicPages = smi.NewSitemap()
+			smSchematicPages.SetName(fmt.Sprintf("schematic-pages-%d", schematicPagesSmCount))
+			smSchematicPages.SetOutputPath(tmpDir + "/")
+			smSchematicPages.SetLastMod(&now)
+		}
+		lastMod := schematics[i].Updated
+		for _, sub := range []struct {
+			path     string
+			priority float32
+		}{
+			{"similar", 0.4},
+			{"nbt-data", 0.3},
+		} {
+			if err := smSchematicPages.Add(&smg.SitemapLoc{
+				Loc:        fmt.Sprintf("/schematics/%s/%s", schematics[i].Name, sub.path),
+				LastMod:    &lastMod,
+				ChangeFreq: smg.Weekly,
+				Priority:   sub.priority,
+			}); err != nil {
+				slog.Error("Unable to add schematic sub-page SitemapLoc:", "error", err)
+			}
+		}
+	}
+
 	userSmCount := 1
 	smUsers := smi.NewSitemap()
 	smUsers.SetName(fmt.Sprintf("users-%d", userSmCount))

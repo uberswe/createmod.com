@@ -1,38 +1,21 @@
-// Desktop right-rail ads + A/B test.
+// Desktop right-rail ads.
 //
 // Each page declares its rail with a container element:
-//   <div class="ad-rail d-none d-xl-block" data-cm-adrail
+//   <div class="cm-side-rail d-none d-xl-block" data-cm-adrail
 //        data-prefix="mods" data-kw="minecraft,..." data-page="mods"></div>
 // (search / mod_detail use .search-ad-rail-wide; the data-cm-adrail attribute
 // is what matters.)
 //
-// Two variants exist:
-//   Variant A  -> video ad on top + ONE NitroPay sticky-stack ad.
-//   Variant B  -> video ad on top + TWO static display ads (300x600 / 300x250
-//                 / 160x600) that stick together as one unit.
-// The ad-unit ids encode the variant (e.g. mods_a_sticky, mods_b_display_1) so
-// NitroPay reporting can compare revenue/RPM between the two setups.
-//
-// The experiment is currently NOT splitting traffic: every page view renders
-// Variant B. Flip AD_RAIL_VARIANT below back to "ab" to resume the 50/50 test
-// (or "a" to force Variant A). See useVariantA().
+// The rail is a single NitroPay sticky-stack unit (id "<prefix>_sticky") that
+// spans the full column height (see the [id$="_sticky"] rule in app.css):
+// NitroPay places ads down the column that pin near the top of the viewport as
+// the user scrolls past them, and stickyStackResizable lets it add extra units
+// when the viewport is tall enough. This replaced an earlier A/B setup (video
+// on top + either a sticky-stack or two fixed display ads) — video now runs
+// site-wide through the floating outstream player in foot.html, which only
+// appears when there is an ad to play, so the rail carries display demand only.
 (function () {
   "use strict";
-
-  // A/B rollout control for the wide (xl+) ad rail. The full A/B test is kept
-  // implemented below; this single switch decides which variant ships, so we
-  // can re-run the experiment or flip variants without touching the logic:
-  //   "b"  -> force Variant B (two static display ads) for everyone  [current]
-  //   "a"  -> force Variant A (single NitroPay sticky-stack) for everyone
-  //   "ab" -> original ~50/50 random A/B split
-  var AD_RAIL_VARIANT = "b";
-
-  // useVariantA reports whether this page view should render Variant A.
-  function useVariantA() {
-    if (AD_RAIL_VARIANT === "a") return true;
-    if (AD_RAIL_VARIANT === "b") return false;
-    return Math.random() < 0.5; // "ab": run the live experiment
-  }
 
   function slot(id) {
     var d = document.createElement("div");
@@ -45,50 +28,29 @@
     return window.nitroAds;
   }
 
-  // Builds one page's rail and runs the A/B test. Exposed for completeness;
-  // normally invoked by the initializer below via the data attributes.
+  // Builds one page's rail. Exposed for completeness; normally invoked by the
+  // initializer below via the data attributes.
   window.cmAdRail = function (rail, prefix, keywords, pageType) {
     if (!rail || !nitro() || !nitro().createAd || !prefix) return;
 
-    var common = {
+    rail.appendChild(slot(prefix + "_sticky"));
+    nitro().createAd(prefix + "_sticky", {
+      format: "sticky-stack",
+      stickyStackLimit: 15,
+      stickyStackSpace: 2,
+      stickyStackOffset: 8,
+      stickyStackResizable: true,
+      refreshLimit: 30,
+      refreshTime: 30,
+      refreshVisibleOnly: true,
+      renderVisibleOnly: true,
+      visibleMargin: 300,
+      onNavigateMin: 4000,
       keywords: keywords || "",
       targeting: { pageType: pageType || prefix },
       report: { enabled: true, icon: true, wording: "Report Ad", position: "top-right" },
       mediaQuery: "(min-width: 1200px)"
-    };
-    var refresh = {
-      refreshLimit: 10, refreshTime: 45,
-      refreshVisibleOnly: true, renderVisibleOnly: true, visibleMargin: 300
-    };
-
-    // Video ad on top in both variants — scrolls away with the page.
-    rail.appendChild(slot(prefix + "_video"));
-    nitro().createAd(prefix + "_video", Object.assign({ format: "video-nc" }, common));
-
-    if (useVariantA()) {
-      // Variant A: a single NitroPay sticky-stack ad.
-      rail.appendChild(slot(prefix + "_a_sticky"));
-      nitro().createAd(prefix + "_a_sticky", Object.assign({
-        format: "sticky-stack",
-        stickyStackLimit: 15,
-        stickyStackSpace: 2.5,
-        stickyStackOffset: 8,
-        stickyStackResizable: false
-      }, refresh, common));
-    } else {
-      // Variant B: two static display ads stacked in one sticky wrapper, so
-      // they pin together while scrolling and never overlap.
-      var wrap = document.createElement("div");
-      wrap.className = "ad-sticky-stack";
-      wrap.appendChild(slot(prefix + "_b_display_1"));
-      wrap.appendChild(slot(prefix + "_b_display_2"));
-      rail.appendChild(wrap);
-      var display = Object.assign({
-        sizes: [["300", "600"], ["300", "250"], ["160", "600"]]
-      }, refresh, common);
-      nitro().createAd(prefix + "_b_display_1", display);
-      nitro().createAd(prefix + "_b_display_2", display);
-    }
+    });
   };
 
   function initAdRails() {
