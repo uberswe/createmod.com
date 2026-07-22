@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -106,7 +107,8 @@ func SchematicNBTTreeHandler(appStore *store.Store, cacheService *cache.Service,
 		// The root page (no path/search/snbt, offset 0) is what every first
 		// page load — and every crawler rendering /schematics/{name}/nbt-data
 		// — asks for, and it is the same few-hundred-node response every
-		// time. Serve it from cache so bot sweeps don't pay the full
+		// time. It is computed once per schematic version, persisted to S3,
+		// and memoized per pod, so bot sweeps never pay the full
 		// decompress+parse (up to 100MB in memory per request; caused the
 		// 2026-07-22 OOM wave). Deeper navigation (path/offset/snbt/search)
 		// stays uncached but is bounded by the nbtTreeSem concurrency cap.
@@ -121,30 +123,52 @@ func SchematicNBTTreeHandler(appStore *store.Store, cacheService *cache.Service,
 		limit := qInt("limit", 200)
 		isDefaultPage := strings.TrimSpace(q.Get("q")) == "" && q.Get("snbt") != "1" &&
 			q.Get("path") == "" && qInt("offset", 0) == 0
-		cacheKey := fmt.Sprintf("nbt_tree_p1_%s_%s_%d_%d", s.ID, primary, depth, limit)
-		if isDefaultPage && cacheService != nil {
-			if v, ok := cacheService.Get(cacheKey); ok {
-				if body, ok2 := v.([]byte); ok2 {
-					setPublicCacheControl(e, 300)
-					e.Response.Header().Set("Content-Type", "application/json")
-					e.Response.WriteHeader(http.StatusOK)
-					_, _ = e.Response.Write(body)
-					return nil
-				}
-			}
-		}
-
-		reader, err := storageSvc.Download(e.Request.Context(), storage.CollectionPrefix("schematics"), s.ID, primary)
-		if err != nil {
-			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic file not found"})
-		}
-		defer reader.Close()
-		data, err := io.ReadAll(io.LimitReader(reader, maxUploadSize+1))
-		if err != nil {
-			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read schematic"})
-		}
 
 		if isDefaultPage {
+			// s.Updated in the keys makes them self-invalidating: replacing
+			// the file bumps Updated, so a new key is computed and the old
+			// objects just go stale (a few KB each, harmless orphans).
+			memKey := fmt.Sprintf("nbt_tree_p1_%s_%d_%d_%d", s.ID, s.Updated.Unix(), depth, limit)
+			s3Key := fmt.Sprintf("_nbt_tree/%s/%d_%d_%d.json", s.ID, s.Updated.Unix(), depth, limit)
+			serve := func(body []byte) error {
+				// Shared-cache friendly (unlike setPublicCacheControl, which
+				// sets s-maxage=0): the payload is public, identical for
+				// every viewer, and version-keyed server-side, so the CDN
+				// may hold it for hours.
+				e.Response.Header().Set("Cache-Control", "public, max-age=3600, s-maxage=21600, stale-while-revalidate=86400")
+				e.Response.Header().Set("Content-Type", "application/json")
+				e.Response.WriteHeader(http.StatusOK)
+				_, _ = e.Response.Write(body)
+				return nil
+			}
+			if cacheService != nil {
+				if v, ok := cacheService.Get(memKey); ok {
+					if body, ok2 := v.([]byte); ok2 {
+						return serve(body)
+					}
+				}
+			}
+			if r, err := storageSvc.DownloadRaw(e.Request.Context(), s3Key); err == nil {
+				body, rerr := io.ReadAll(io.LimitReader(r, nbtTreeCacheMaxEntry+1))
+				_ = r.Close()
+				if rerr == nil && len(body) > 0 && len(body) <= nbtTreeCacheMaxEntry {
+					if cacheService != nil {
+						cacheService.SetWithTTL(memKey, body, 10*time.Minute)
+					}
+					return serve(body)
+				}
+			}
+
+			reader, err := storageSvc.Download(e.Request.Context(), storage.CollectionPrefix("schematics"), s.ID, primary)
+			if err != nil {
+				return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic file not found"})
+			}
+			defer reader.Close()
+			data, err := io.ReadAll(io.LimitReader(reader, maxUploadSize+1))
+			if err != nil {
+				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read schematic"})
+			}
+
 			release, ok := acquireNBTTreeSlot(e)
 			if !ok {
 				return nil
@@ -162,14 +186,25 @@ func SchematicNBTTreeHandler(appStore *store.Store, cacheService *cache.Service,
 			if err != nil {
 				return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to encode tree"})
 			}
-			if cacheService != nil && len(body) <= nbtTreeCacheMaxEntry {
-				cacheService.SetWithTTL(cacheKey, body, 10*time.Minute)
+			if len(body) <= nbtTreeCacheMaxEntry {
+				if cacheService != nil {
+					cacheService.SetWithTTL(memKey, body, 10*time.Minute)
+				}
+				if err := storageSvc.UploadRawBytes(e.Request.Context(), s3Key, body, "application/json"); err != nil {
+					slog.Warn("nbt-tree: failed to persist root page", "key", s3Key, "error", err)
+				}
 			}
-			setPublicCacheControl(e, 300)
-			e.Response.Header().Set("Content-Type", "application/json")
-			e.Response.WriteHeader(http.StatusOK)
-			_, _ = e.Response.Write(body)
-			return nil
+			return serve(body)
+		}
+
+		reader, err := storageSvc.Download(e.Request.Context(), storage.CollectionPrefix("schematics"), s.ID, primary)
+		if err != nil {
+			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic file not found"})
+		}
+		defer reader.Close()
+		data, err := io.ReadAll(io.LimitReader(reader, maxUploadSize+1))
+		if err != nil {
+			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to read schematic"})
 		}
 
 		// Tree responses vary only with the stored file; cache briefly.
