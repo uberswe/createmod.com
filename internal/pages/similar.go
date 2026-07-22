@@ -124,8 +124,7 @@ func SimilarSchematicsHandler(registry *server.Registry, cacheService *cache.Ser
 		d := similarPageData{}
 		d.Populate(e)
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
-		d.NoIndex = true // dynamic thin content; the tool page carries the SEO
-		d.Title = fmt.Sprintf(i18n.T(d.Language, "Schematics similar to %s"), s.Title)
+		d.Title = fmt.Sprintf(i18n.T(d.Language, "Schematics Similar to “%s”"), s.Title)
 		d.Description = i18n.T(d.Language, "Builds with a similar structure, shape and materials.")
 		d.Slug = "/schematics/" + name + "/similar"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", s.Title, "/schematics/"+name, i18n.T(d.Language, "Similar"))
