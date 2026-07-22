@@ -45,7 +45,7 @@ services:
       "
 
   meilisearch:
-    image: getmeili/meilisearch:v1.49
+    image: getmeili/meilisearch:v1.50
     ports:
       - "7701:7700"
     environment:
