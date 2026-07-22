@@ -441,28 +441,6 @@ a:hover {
 .search-ad-rail-wide > [id$="_sticky"] {
   height: 100%;
 }
-/* First-party support note shown in the rail when an ad blocker keeps ads
-   from loading (see the blocked-ads fallback in adrail.js). Deliberately
-   quiet: lives in the empty rail space, no overlay, no content blocking. */
-.cm-support-note {
-  position: sticky;
-  top: 8px;
-  border: 1px dashed rgba(191, 144, 69, 0.4);
-  border-radius: 8px;
-  padding: 16px;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: var(--cm-secondary, #8a9099);
-  background: rgba(191, 144, 69, 0.05);
-}
-.cm-support-note strong {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--cm-primary, #bf9045);
-}
-.cm-support-note p {
-  margin: 0;
-}
 /* When the mobile/tablet anchor ad is showing, lift the floating outstream
    player above it — both are fixed to the bottom edge otherwise. The
    .cm-anchor-open class is toggled in foot.html from NitroPay's
