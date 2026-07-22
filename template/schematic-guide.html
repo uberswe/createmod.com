@@ -55,7 +55,6 @@
                         </div>
                     </div>
                     <div class="guide-ad-rail d-none d-xl-block">
-                        <div id="guide-video-nc" class="mb-3"></div>
                         <div id="guide-sticky-adrail" class="mb-3"></div>
                     </div>
                     <div class="guide-ad-rail-sm d-none d-lg-block d-xl-none">
@@ -110,6 +109,44 @@
       });
     });
   }
+})();
+</script>
+<script>
+(function(){
+  // Ads — same rail layout as the generator guide pages.
+  window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
+  window['nitroAds'].createAd('guide-sticky-adrail-lg', {
+    "refreshLimit": 30,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": true,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "keywords": "minecraft,create-mod,schematic,guide,tutorial",
+    "targeting": { "pageType": "schematic-guide" },
+    "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
+  });
+  window['nitroAds'].createAd('guide-sticky-adrail', {
+    "refreshLimit": 30,
+    "refreshTime": 45,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
+    "format": "sticky-stack",
+    "stickyStackLimit": 15,
+    "stickyStackSpace": 2.5,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": true,
+    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+    "keywords": "minecraft,create-mod,schematic,guide,tutorial",
+    "targeting": { "pageType": "schematic-guide" },
+    "mediaQuery": "(min-width: 1200px)"
+  });
 })();
 </script>
 {{template "foot.html" .}}

@@ -234,12 +234,17 @@ if (!window._searchScrollInit) {
 </script>
 {{ if not .HideOutstream }}
 <!-- Floating outstream video player (bottom-right) — no container div needed;
-     NitroPay creates its own fixed-position wrapper for the floating format. -->
+     NitroPay creates its own fixed-position wrapper for the floating format.
+     Runs at all viewport widths: the desktop rail no longer carries a video
+     unit, so this is the site's only video placement, and it only appears
+     when there is an ad to play. -->
 <script>
 window['nitroAds'].createAd('outstream-player', {
   "format": "floating",
   "floating": { "position": "right" },
   "outstream": "auto",
+  "className": "cm-outstream",
+  "onNavigateMin": 4000,
   "report": {
     "enabled": true,
     "icon": true,
@@ -248,9 +253,43 @@ window['nitroAds'].createAd('outstream-player', {
   },
   "keywords": "minecraft,create-mod,schematics,builds",
   "targeting": { "pageType": "global" },
+  "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"]
+});
+// Mobile/tablet bottom anchor — NitroPay renders and manages the bar itself
+// (no holder div needed). Desktop (>=1200px) keeps the rail instead.
+window['nitroAds'].createAd('cm-anchor', {
+  "format": "anchor",
+  "anchor": "bottom",
+  "anchorClose": true,
+  "anchorBgColor": "rgb(31 33 33 / 90%)",
+  "className": "cm-anchor",
+  "onNavigateMin": 4000,
+  "report": {
+    "enabled": true,
+    "icon": true,
+    "wording": "Report Ad",
+    "position": "top-right"
+  },
+  "keywords": "minecraft,create-mod,schematics,builds",
+  "targeting": { "pageType": "global" },
   "geoDeny": ["IQ","LY","BY","CD","MR","AF","YE","DZ","SY"],
   "mediaQuery": "(max-width: 1199px)"
 });
+// Keep the floating outstream player clear of the anchor bar: NitroPay emits
+// nitroAds.anchorVisibility whenever an anchor shows or hides; we mirror the
+// anchor's actual on-screen state into a class that offsets the player
+// (see the .cm-anchor-open rules in app.css). Guarded so hx-boost body swaps
+// don't stack duplicate listeners.
+if (!window._cmAnchorInit) {
+  window._cmAnchorInit = true;
+  document.addEventListener('nitroAds.anchorVisibility', function () {
+    requestAnimationFrame(function () {
+      var el = document.querySelector('.cm-anchor, [id*="cm-anchor"]');
+      var open = !!(el && el.offsetHeight > 0 && getComputedStyle(el).display !== 'none');
+      document.documentElement.classList.toggle('cm-anchor-open', open);
+    });
+  });
+}
 </script>
 {{ if not .IsDev }}
 <!-- Blocker detection prompt (guarded against HTMX re-init) -->

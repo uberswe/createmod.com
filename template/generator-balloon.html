@@ -227,7 +227,6 @@
                     <div id="gen-sticky-adrail-lg" class="mb-3"></div>
                 </div>
                 <div class="generator-ad-rail d-none d-xl-block">
-                    <div id="gen-video-nc" class="mb-3"></div>
                     <div id="gen-sticky-adrail" class="mb-3"></div>
                 </div>
             </div>
@@ -426,13 +425,8 @@
 
   // Ads
   window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
-  window['nitroAds'].createAd('gen-video-nc', {
-    "format": "video-nc",
-    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
-    "mediaQuery": "(min-width: 1200px)"
-  });
   window['nitroAds'].createAd('gen-sticky-adrail-lg', {
-    "refreshLimit": 10,
+    "refreshLimit": 30,
     "refreshTime": 45,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
@@ -441,23 +435,12 @@
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
     "stickyStackOffset": 110,
-    "stickyStackResizable": false,
+    "stickyStackResizable": true,
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  var videoNcEl = document.getElementById('gen-video-nc');
-  var adRailEl = videoNcEl && videoNcEl.closest('.ad-rail');
-  var stickyStackTop = 110 + 200 + 16;
-  if (videoNcEl && adRailEl && typeof ResizeObserver !== 'undefined') {
-    var updateOffset = function () {
-      var h = videoNcEl.getBoundingClientRect().height;
-      if (h > 0) adRailEl.style.setProperty('--video-nc-height', h + 'px');
-    };
-    new ResizeObserver(updateOffset).observe(videoNcEl);
-    updateOffset();
-  }
   window['nitroAds'].createAd('gen-sticky-adrail', {
-    "refreshLimit": 10,
+    "refreshLimit": 30,
     "refreshTime": 45,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
@@ -465,8 +448,8 @@
     "format": "sticky-stack",
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
-    "stickyStackOffset": stickyStackTop,
-    "stickyStackResizable": false,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": true,
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 1200px)"
   });

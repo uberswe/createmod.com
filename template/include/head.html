@@ -108,11 +108,14 @@ window.setTheme=function(theme){
     <script src="/assets/x/dev-ads.js?v={{ AssetVer }}" defer></script>
     {{ else }}
     <script data-cfasync="false">
-    // Defer the NitroPay loader until the page has loaded and the main
-    // thread is idle: its initial evaluation is a ~1.4s main-thread task
-    // (the site's dominant INP contributor on mobile), and running it during
-    // the critical window makes early taps wait behind it. The queue shim
-    // above buffers createAd calls until the real script arrives.
+    // Defer the NitroPay loader until DOMContentLoaded and the main thread is
+    // idle: its initial evaluation is a ~1.4s main-thread task (the site's
+    // dominant INP contributor on mobile), and running it during the critical
+    // window makes early taps wait behind it. Anchoring on DOMContentLoaded
+    // (not the load event) starts the first ad auctions several seconds
+    // earlier on image-heavy pages, so short visits still get an impression.
+    // The queue shim above buffers createAd calls until the real script
+    // arrives.
     (function () {
       function loadNitro() {
         var s = document.createElement('script');
@@ -123,11 +126,11 @@ window.setTheme=function(theme){
         document.head.appendChild(s);
       }
       function whenIdle() {
-        if (window.requestIdleCallback) requestIdleCallback(loadNitro, { timeout: 4000 });
-        else setTimeout(loadNitro, 1500);
+        if (window.requestIdleCallback) requestIdleCallback(loadNitro, { timeout: 2000 });
+        else setTimeout(loadNitro, 800);
       }
-      if (document.readyState === 'complete') whenIdle();
-      else window.addEventListener('load', whenIdle, { once: true });
+      if (document.readyState !== 'loading') whenIdle();
+      else document.addEventListener('DOMContentLoaded', whenIdle, { once: true });
     })();
     </script>
     {{ end }}
@@ -166,9 +169,9 @@ window.setTheme=function(theme){
         } catch(e) {}
       }
       document.addEventListener('click', function(ev) {
-        var adEl = ev.target.closest('[id*="-video-nc-"], [id*="_video"], [id*="-smart-flex"], [id*="-sticky-adrail"], [id*="_a_sticky"], [id*="_b_display"], [id*="-mobile"], [id*="outstream-player"]');
+        var adEl = ev.target.closest('[id*="-smart-flex"], [id*="-sticky-adrail"], [id*="_sticky"], [id*="-mobile"], [id*="outstream-player"], [id*="editor-banner"], .cm-outstream, .cm-anchor');
         if (adEl) {
-          trackAdClick(adEl.id, '');
+          trackAdClick(adEl.id || (adEl.classList.contains('cm-anchor') ? 'cm-anchor' : 'cm-outstream'), '');
         }
       }, true);
     })();
