@@ -1,7 +1,7 @@
 // Desktop right-rail ads.
 //
 // Each page declares its rail with a container element:
-//   <div class="ad-rail d-none d-xl-block" data-cm-adrail
+//   <div class="cm-side-rail d-none d-xl-block" data-cm-adrail
 //        data-prefix="mods" data-kw="minecraft,..." data-page="mods"></div>
 // (search / mod_detail use .search-ad-rail-wide; the data-cm-adrail attribute
 // is what matters.)
@@ -67,6 +67,52 @@
       );
     }
   }
+
+  // ---- Blocked-ads fallback ----
+  // Most blockers stop the NitroPay loader at the network level, which would
+  // leave the rail as a blank gutter. Instead of a popup or blocking content,
+  // fill it with a quiet first-party support note. Signals: the loader's
+  // onerror flag (_nitroBlocked, set in head.html), NitroPay's own abp flag,
+  // and the np.detect event dispatched by the detection script in foot.html.
+  function renderSupportNote(rail) {
+    if (rail.querySelector(".cm-support-note")) return;
+    // The empty unit holder spans the full column; hide it so the note
+    // isn't pushed below the fold.
+    var holders = rail.querySelectorAll('[id$="_sticky"]');
+    for (var i = 0; i < holders.length; i++) holders[i].style.display = "none";
+
+    var note = document.createElement("div");
+    note.className = "cm-support-note";
+    var head = document.createElement("strong");
+    head.textContent = "Enjoying CreateMod?";
+    var body = document.createElement("p");
+    body.textContent =
+      "CreateMod.com is a free community project funded by the ads that " +
+      "would normally appear here. If the site is useful to you, please " +
+      "consider allowlisting createmod.com in your ad blocker.";
+    note.appendChild(head);
+    note.appendChild(body);
+    rail.appendChild(note);
+  }
+
+  function blockedFallback() {
+    var rails = document.querySelectorAll("[data-cm-adrail]");
+    for (var i = 0; i < rails.length; i++) renderSupportNote(rails[i]);
+  }
+
+  function checkBlocked() {
+    if (window._nitroBlocked || (window.nitroAds && window.nitroAds.abp === true)) {
+      blockedFallback();
+    }
+  }
+
+  document.addEventListener("np.detect", function (e) {
+    if (e && e.detail && e.detail.blocking) blockedFallback();
+  });
+  setTimeout(checkBlocked, 6000);
+  document.addEventListener("htmx:afterSettle", function () {
+    setTimeout(checkBlocked, 1500);
+  });
 
   if (document.readyState !== "loading") {
     initAdRails();

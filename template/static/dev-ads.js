@@ -119,7 +119,7 @@
   }
 
   function renderStickyStack(container, id) {
-    var isNarrow = !!(container.closest('.ad-rail-sm') ||
+    var isNarrow = !!(container.closest('.cm-side-rail-sm') ||
                       container.closest('.generator-ad-rail-sm'));
     var w = isNarrow ? 160 : 300;
     var h = isNarrow ? 600 : 800;
