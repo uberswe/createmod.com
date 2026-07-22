@@ -415,8 +415,8 @@
 // The 3D viewport needs its width, so instead of the usual right rail the
 // editor runs a horizontal leaderboard under the canvas plus a mobile banner.
 window['nitroAds'].createAd('editor-banner', {
-  "sizes": [["728", "90"], ["970", "90"]],
-  "refreshTime": 60,
+  "sizes": [["728", "90"], ["970", "90"], ["970", "250"]],
+  "refreshTime": 30,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,
@@ -431,7 +431,7 @@ window['nitroAds'].createAd('editor-banner', {
   "mediaQuery": "(min-width: 992px)"
 });
 window['nitroAds'].createAd('editor-mobile', {
-  "refreshTime": 60,
+  "refreshTime": 30,
   "refreshVisibleOnly": true,
   "renderVisibleOnly": true,
   "visibleMargin": 300,

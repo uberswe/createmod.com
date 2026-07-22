@@ -55,7 +55,6 @@
                         </div>
                     </div>
                     <div class="guide-ad-rail d-none d-xl-block">
-                        <div id="guide-video-nc" class="mb-3"></div>
                         <div id="guide-sticky-adrail" class="mb-3"></div>
                     </div>
                     <div class="guide-ad-rail-sm d-none d-lg-block d-xl-none">
@@ -151,14 +150,9 @@
   }
 
   window['nitroAds'] = window['nitroAds'] || { createAd: function() { return new Promise(function(e) { window['nitroAds'].queue.push(['createAd', arguments, e]); }); }, queue: [] };
-  window['nitroAds'].createAd('guide-video-nc', {
-    "format": "video-nc",
-    "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
-    "mediaQuery": "(min-width: 1200px)"
-  });
   window['nitroAds'].createAd('guide-sticky-adrail-lg', {
-    "refreshLimit": 10,
-    "refreshTime": 45,
+    "refreshLimit": 30,
+    "refreshTime": 30,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
@@ -166,32 +160,21 @@
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
     "stickyStackOffset": 110,
-    "stickyStackResizable": false,
+    "stickyStackResizable": true,
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 992px) and (max-width: 1199px)"
   });
-  var guideVideoEl = document.getElementById('guide-video-nc');
-  var guideAdRail = guideVideoEl && guideVideoEl.closest('.guide-ad-rail');
-  var guideStickyTop = 110 + 200 + 16;
-  if (guideVideoEl && guideAdRail && typeof ResizeObserver !== 'undefined') {
-    var updateGuideOffset = function () {
-      var h = guideVideoEl.getBoundingClientRect().height;
-      if (h > 0) guideAdRail.style.setProperty('--video-nc-height', h + 'px');
-    };
-    new ResizeObserver(updateGuideOffset).observe(guideVideoEl);
-    updateGuideOffset();
-  }
   window['nitroAds'].createAd('guide-sticky-adrail', {
-    "refreshLimit": 10,
-    "refreshTime": 45,
+    "refreshLimit": 30,
+    "refreshTime": 30,
     "refreshVisibleOnly": true,
     "renderVisibleOnly": true,
     "visibleMargin": 300,
     "format": "sticky-stack",
     "stickyStackLimit": 15,
     "stickyStackSpace": 2.5,
-    "stickyStackOffset": guideStickyTop,
-    "stickyStackResizable": false,
+    "stickyStackOffset": 110,
+    "stickyStackResizable": true,
     "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
     "mediaQuery": "(min-width: 1200px)"
   });
