@@ -162,6 +162,42 @@
     document.body.appendChild(wrap);
   }
 
+  function renderAnchor(id) {
+    if (document.querySelector('.dev-ad-anchor')) return;
+    var bar = document.createElement('div');
+    bar.className = 'dev-ad dev-ad-anchor';
+    bar.style.cssText =
+      'position:fixed;left:0;right:0;bottom:0;z-index:9998;height:60px;' +
+      'background:var(--cm-secondary-bg,' + BG + ');' +
+      'border-top:2px dashed ' + BORDER + ';' +
+      'display:flex;align-items:center;justify-content:center;flex-direction:column;' +
+      'font-family:var(--cm-font-mono,monospace);color:' + COLOR + ';gap:2px;';
+
+    var close = document.createElement('button');
+    close.textContent = '×';
+    close.style.cssText =
+      'position:absolute;top:4px;right:8px;background:none;border:none;' +
+      'color:' + COLOR + ';font-size:18px;cursor:pointer;padding:0;line-height:1;';
+    close.addEventListener('click', function () {
+      bar.remove();
+      document.documentElement.classList.remove('cm-anchor-open');
+    });
+
+    var label = document.createElement('span');
+    label.style.cssText = 'font-size:11px;font-weight:600;';
+    label.textContent = 'ANCHOR AD';
+    var sub = document.createElement('span');
+    sub.style.fontSize = '10px';
+    sub.textContent = id;
+
+    bar.appendChild(close);
+    bar.appendChild(label);
+    bar.appendChild(sub);
+    document.body.appendChild(bar);
+    // Mirror prod behaviour: the anchor-open class lifts the floating player.
+    document.documentElement.classList.add('cm-anchor-open');
+  }
+
   function renderMobile(container, id) {
     var p = makePlaceholder(320, 100, ['MOBILE AD', id, '320 × 100']);
     p.style.margin = '0 auto';
@@ -179,6 +215,11 @@
 
     if (format === 'floating') {
       renderFloating(id);
+      return;
+    }
+
+    if (format === 'anchor') {
+      renderAnchor(id);
       return;
     }
 
@@ -227,10 +268,11 @@
   window.nitroAds.createAd = devCreateAd;
 
   document.addEventListener('htmx:beforeSwap', function () {
-    var floats = document.querySelectorAll('.dev-ad-floating, .dev-ad-pip');
+    var floats = document.querySelectorAll('.dev-ad-floating, .dev-ad-pip, .dev-ad-anchor');
     for (var j = 0; j < floats.length; j++) {
       floats[j].remove();
     }
+    document.documentElement.classList.remove('cm-anchor-open');
     for (var k = 0; k < videoNcObservers.length; k++) {
       videoNcObservers[k].disconnect();
     }
