@@ -20,8 +20,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/drexedam/gravatar"
 	"createmod/internal/server"
+	"github.com/drexedam/gravatar"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -412,7 +412,6 @@ func renderTabPartial(cacheService *cache.Service, registry *server.Registry, ap
 	return e.HTML(http.StatusOK, html)
 }
 
-
 // trendingEpoch is a fixed reference point for the Reddit-style hot score.
 // All scores are relative to this; the exact value doesn't matter as long as it's consistent.
 var trendingEpoch = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -451,10 +450,10 @@ func WarmIndexCache(cacheService *cache.Service, appStore *store.Store, windowDa
 // warm is already in progress when the timer fires, the pending flag ensures
 // another warm runs after it completes.
 var indexRefreshDebouncer = struct {
-	mu       sync.Mutex
-	timer    *time.Timer
-	pending  bool
-	running  bool
+	mu      sync.Mutex
+	timer   *time.Timer
+	pending bool
+	running bool
 }{}
 
 const refreshDebounceDelay = 2 * time.Second
@@ -498,15 +497,18 @@ func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store, windo
 	})
 }
 
-
 // ComputeTrendingScoresFromStore computes trending scores using the PostgreSQL store.
 // Returns a map of schematic ID to score. Also persists trending scores and
 // rating aggregates to the schematics table for pre-computed query support.
-func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
+// The heavy trending read may run against the replica-backed store, but the
+// persist step must be given a primary-backed store — the replica rejects
+// writes ('cannot execute UPDATE in a read-only transaction', which silently
+// stopped score/aggregate persistence after the replica rollout).
+func ComputeTrendingScoresFromStore(readStore, writeStore *store.Store) map[string]float64 {
 	ctx := context.Background()
 	// 7-day window matches the index page (windowDays := 7) so that search
 	// trending (sort=8) ranks schematics identically to the homepage.
-	td, err := appStore.ViewRatings.FetchTrendingData(ctx, 7)
+	td, err := readStore.ViewRatings.FetchTrendingData(ctx, 7)
 	if err != nil || td == nil {
 		return nil
 	}
@@ -522,7 +524,7 @@ func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
 	for i, id := range allIDs {
 		allScores[i] = scores[id]
 	}
-	if err := appStore.Schematics.BatchUpdateTrendingScores(ctx, allIDs, allScores); err != nil {
+	if err := writeStore.Schematics.BatchUpdateTrendingScores(ctx, allIDs, allScores); err != nil {
 		slog.Error("failed to batch persist trending scores", "error", err)
 	}
 
@@ -537,7 +539,7 @@ func ComputeTrendingScoresFromStore(appStore *store.Store) map[string]float64 {
 			ratingCounts = append(ratingCounts, int(rCount))
 		}
 	}
-	if err := appStore.Schematics.BatchUpdateRatingAggregates(ctx, ratingIDs, avgRatings, ratingCounts); err != nil {
+	if err := writeStore.Schematics.BatchUpdateRatingAggregates(ctx, ratingIDs, avgRatings, ratingCounts); err != nil {
 		slog.Error("failed to batch persist rating aggregates", "error", err)
 	}
 
@@ -803,4 +805,3 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 
 	logger.Debug("Index page cache warmed (store)")
 }
-

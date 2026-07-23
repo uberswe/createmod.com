@@ -59,7 +59,7 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 
 	// Compute trending scores and store them for Meilisearch indexing.
 	var trendingScores map[string]float64
-	if scores := pages.ComputeTrendingScoresFromStore(readStore); scores != nil {
+	if scores := pages.ComputeTrendingScoresFromStore(readStore, w.deps.Store); scores != nil {
 		trendingScores = scores
 		w.deps.Search.SetTrendingScores(scores)
 	}

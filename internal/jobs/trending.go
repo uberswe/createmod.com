@@ -28,7 +28,7 @@ func (w *TrendingWorker) Work(ctx context.Context, job *river.Job[TrendingArgs])
 	}
 
 	readStore := w.deps.readStore()
-	if scores := pages.ComputeTrendingScoresFromStore(readStore); scores != nil {
+	if scores := pages.ComputeTrendingScoresFromStore(readStore, w.deps.Store); scores != nil {
 		w.deps.Search.SetTrendingScores(scores)
 	}
 
