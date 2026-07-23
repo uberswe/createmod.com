@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/riverqueue/river"
 )
@@ -47,8 +48,12 @@ func (w *CommentModerationWorker) Work(ctx context.Context, job *river.Job[Comme
 	if w.deps.Moderation != nil {
 		result, err := w.deps.Moderation.CheckContent(args.Content)
 		if err != nil {
-			slog.Warn("comment moderation job: moderation check unavailable", "error", err, "comment_id", args.CommentID)
-			// Still translate even if moderation fails
+			// Return the error so River retries on the slow schedule —
+			// swallowing it would leave the comment permanently unmoderated
+			// (this hid a moderation outage on 2026-07-23).
+			slog.Warn("comment moderation job: moderation check unavailable, will retry",
+				"error", err, "comment_id", args.CommentID, "attempt", job.Attempt)
+			return fmt.Errorf("comment moderation check: %w", err)
 		} else if !result.Approved {
 			slog.Warn("comment moderation job: comment failed moderation",
 				"comment_id", args.CommentID, "reason", result.Reason)
@@ -56,6 +61,7 @@ func (w *CommentModerationWorker) Work(ctx context.Context, job *river.Job[Comme
 			// Disapprove the comment
 			if err := w.deps.Store.Comments.Disapprove(ctx, args.CommentID); err != nil {
 				slog.Error("comment moderation job: failed to disapprove comment", "error", err)
+				return fmt.Errorf("disapproving comment: %w", err)
 			}
 
 			// Create a report
@@ -111,4 +117,10 @@ func (w *CommentModerationWorker) Work(ctx context.Context, job *river.Job[Comme
 
 	slog.Info("comment moderation complete: approved", "comment_id", args.CommentID)
 	return nil
+}
+
+// NextRetry applies the slow retry schedule (30m doubling to a 24h ceiling):
+// comment moderation failures usually mean OpenAI or the database is down.
+func (w *CommentModerationWorker) NextRetry(job *river.Job[CommentModerationArgs]) time.Time {
+	return slowRetryAt(job.Attempt, time.Now())
 }

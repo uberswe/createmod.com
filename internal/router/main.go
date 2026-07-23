@@ -434,13 +434,15 @@ func Register(p RegisterParams) chi.Router {
 	if p.JobWorker != nil {
 		jw := p.JobWorker
 		enqueueModeration = func(ctx context.Context, args pages.ModerationJobArgs) error {
+			// MaxAttempts 10 with the workers' slow retry schedule (30m
+			// doubling to 24h) spans ~4 days before a job is discarded.
 			return jw.Insert(ctx, jobs.ModerationArgs{
 				SchematicID: args.SchematicID,
 				Title:       args.Title,
 				Description: args.Description,
 				ImageURL:    args.ImageURL,
 				Slug:        args.Slug,
-			}, &river.InsertOpts{Queue: "ai"})
+			}, &river.InsertOpts{Queue: "ai", MaxAttempts: 10})
 		}
 	}
 	// Build the search index enqueuer callbacks that close over the job worker.
@@ -484,7 +486,7 @@ func Register(p RegisterParams) chi.Router {
 				Content:     content,
 				AuthorID:    authorID,
 				SchematicID: schematicID,
-			}, &river.InsertOpts{Queue: "ai"})
+			}, &river.InsertOpts{Queue: "ai", MaxAttempts: 10})
 		}
 	}
 	r.Post("/api/comments", Adapt(pages.CommentCreateHandler(p.AppStore, p.MailService, enqueueCommentModeration)))
