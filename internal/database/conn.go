@@ -57,12 +57,12 @@ func DefaultConfig(databaseURL string) Config {
 // client connections are cheap, but the replica itself is small so keep the
 // per-pod appetite modest. Override with DB_REPLICA_MAX_CONNS.
 //
-// When connecting through pgbouncer in transaction-pooling mode the URL must
-// include default_query_exec_mode=describe_exec. The default prepared-
-// statement cache assumes a stable session, which transaction pooling
-// breaks — but plain exec mode is NOT safe either: it skips the Describe
-// step pgx uses to learn parameter types, so json columns (passed as
-// []byte by sqlc) fail with SQLSTATE 22P02 (broke prod writes 2026-07-23).
+// pgbouncer runs transaction pooling with max_prepared_statements, which
+// lets pgx's default query mode (cache_statement) work through the pooler.
+// Do NOT add default_query_exec_mode overrides to pooled URLs: exec mode
+// loses parameter type info (sqlc passes json columns as []byte -> SQLSTATE
+// 22P02) and describe_exec races across round trips through a transaction
+// pooler; both broke prod on 2026-07-23.
 func DefaultReplicaConfig(databaseURL string) Config {
 	maxConns := int32(5)
 	if v := os.Getenv("DB_REPLICA_MAX_CONNS"); v != "" {

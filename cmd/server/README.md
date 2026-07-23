@@ -74,7 +74,7 @@ go test -v ./...                                    # All tests
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | Yes | | PostgreSQL connection string |
-| `DATABASE_REPLICA_URL` | No | | Read-replica connection string (pgbouncer `<db>_ro`); used for lag-tolerant heavy reads. Needs `default_query_exec_mode=describe_exec` when going through pgbouncer transaction pooling (plain `exec` breaks json parameters — SQLSTATE 22P02) |
+| `DATABASE_REPLICA_URL` | No | | Read-replica connection string (pgbouncer `<db>_ro`); used for lag-tolerant heavy reads. No `default_query_exec_mode` override — pgbouncer runs `max_prepared_statements`, so pgx default mode works through pooling (`exec` breaks json params; `describe_exec` races through poolers) |
 | `DATABASE_DIRECT_URL` | No | | Direct (non-pgbouncer) primary connection for migrations and River. Required when `DATABASE_URL` goes through pgbouncer — advisory locks and LISTEN/NOTIFY break under transaction pooling |
 | `DB_REPLICA_MAX_CONNS` | No | `5` | Max replica connections per pod |
 | `DB_RIVER_MAX_CONNS` | No | `5` | Max direct River-pool connections per pod |
