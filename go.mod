@@ -26,8 +26,8 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.21.0
-	github.com/riverqueue/river v0.40.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0
+	github.com/riverqueue/river v0.41.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.41.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.15
 	github.com/sym01/htmlsanitizer v1.1.1
@@ -81,9 +81,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.40.0 // indirect
-	github.com/riverqueue/river/rivershared v0.40.0 // indirect
-	github.com/riverqueue/river/rivertype v0.40.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.41.0 // indirect
+	github.com/riverqueue/river/rivershared v0.41.0 // indirect
+	github.com/riverqueue/river/rivertype v0.41.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/sunshineplan/pdf v1.0.8 // indirect
