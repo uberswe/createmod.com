@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/meilisearch/meilisearch-go"
 )
@@ -15,7 +16,29 @@ type MeiliEngine struct {
 	client   meilisearch.ServiceManager
 	indexUID string
 	svc      *Service // for suggest, trending scores, and filter index
-	resync   sync.Once
+
+	// Resync trigger state. The actual resync is a River job enqueued via
+	// resyncEnqueue so exactly ONE pod cluster-wide rebuilds the index —
+	// before 2026-07-24 every replica ran its own in-process full-corpus
+	// resync on the same 0-result signal, and the synchronized memory
+	// balloon OOMKilled the whole deployment.
+	resyncMu      sync.Mutex
+	resyncEnqueue func()
+	lastResync    time.Time
+}
+
+// resyncTriggerCooldown rate-limits how often a single pod may enqueue a
+// resync. The enqueue itself is further deduplicated cluster-wide by River
+// unique opts, so this only keeps a pod from hammering inserts while
+// Meilisearch is degraded.
+const resyncTriggerCooldown = 5 * time.Minute
+
+// SetResyncEnqueuer wires the callback used to enqueue an index rebuild job.
+// Called once the River job worker is running.
+func (m *MeiliEngine) SetResyncEnqueuer(fn func()) {
+	m.resyncMu.Lock()
+	defer m.resyncMu.Unlock()
+	m.resyncEnqueue = fn
 }
 
 // NewMeiliEngine creates a SearchEngine backed by Meilisearch.
@@ -35,6 +58,11 @@ func (m *MeiliEngine) Search(ctx context.Context, q SearchQuery) ([]string, erro
 		Limit:  5000,
 		Filter: filter,
 		Sort:   sort,
+		// Only the IDs are used — without this Meilisearch returns 5000 FULL
+		// documents (descriptions included) per broad query, which at ~30
+		// req/s of concurrent decodes was a large share of the pods' memory
+		// pressure in the 2026-07-24 OOM cascade.
+		AttributesToRetrieve: []string{"id"},
 	}
 
 	index := m.client.Index(m.indexUID)
@@ -68,8 +96,9 @@ func (m *MeiliEngine) SearchSimilar(ctx context.Context, schematicID string, tag
 	filter := fmt.Sprintf(`id != "%s"`, escapeMeiliString(schematicID))
 
 	searchReq := &meilisearch.SearchRequest{
-		Limit:  int64(limit),
-		Filter: filter,
+		Limit:                int64(limit),
+		Filter:               filter,
+		AttributesToRetrieve: []string{"id"},
 	}
 
 	index := m.client.Index(m.indexUID)
@@ -211,29 +240,30 @@ func (m *MeiliEngine) buildSort(order int) []string {
 	}
 }
 
-// triggerResyncIfEmpty kicks off a one-time background Meilisearch sync when a
-// broad query (empty term, no filters) returns 0 hits but the in-memory index
-// has documents. This covers the case where the pod started before Meilisearch
-// was reachable or before auth was configured.
+// triggerResyncIfEmpty enqueues a search index rebuild when a broad query
+// (empty term, no filters) returns 0 hits but the in-memory index has
+// documents. This covers the case where the pod started before Meilisearch
+// was reachable, or Meilisearch lost its index. The rebuild runs as a River
+// job (deduplicated cluster-wide with a cooldown), NOT in-process: one pod
+// does the work no matter how many replicas observe the same condition.
 func (m *MeiliEngine) triggerResyncIfEmpty(q SearchQuery, hitCount int) {
 	if hitCount > 0 || q.Term != "" || q.Category != "" && q.Category != "all" || len(q.Tags) > 0 {
 		return
 	}
-	idx := m.svc.GetIndex()
-	if len(idx) == 0 {
+	if len(m.svc.GetIndex()) == 0 {
 		return
 	}
-	m.resync.Do(func() {
-		go func() {
-			slog.Info("meili: 0-result broad query detected, triggering background resync", "index", m.indexUID, "docs", len(idx))
-			docs := MapToMeiliDocuments(idx, m.svc.trendingScores)
-			if err := SyncMeiliIndex(m.client, m.indexUID, docs); err != nil {
-				slog.Error("meili: background resync failed", "index", m.indexUID, "error", err)
-			} else {
-				slog.Info("meili: background resync complete", "index", m.indexUID, "docs", len(docs))
-			}
-		}()
-	})
+	m.resyncMu.Lock()
+	defer m.resyncMu.Unlock()
+	if m.resyncEnqueue == nil {
+		return
+	}
+	if time.Since(m.lastResync) < resyncTriggerCooldown {
+		return
+	}
+	m.lastResync = time.Now()
+	slog.Info("meili: 0-result broad query detected, enqueueing index rebuild", "index", m.indexUID)
+	m.resyncEnqueue()
 }
 
 // escapeMeiliString escapes double quotes in filter values.
