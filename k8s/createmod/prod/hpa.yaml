@@ -12,18 +12,17 @@ spec:
   minReplicas: 4
   maxReplicas: 16
   metrics:
+    # CPU only — deliberately no memory metric. Each pod carries the full
+    # in-memory search/similarity indexes, so per-pod memory does not go
+    # down when pods are added; memory-triggered scale-up during a balloon
+    # just creates more ballooning pods (2026-07-24 OOM cascade: HPA scaled
+    # 5 -> 9 and all 9 OOMed).
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
           averageUtilization: 70
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: 85
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 900

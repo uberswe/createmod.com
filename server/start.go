@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/meilisearch/meilisearch-go"
 	"github.com/redis/go-redis/v9"
+	"github.com/riverqueue/river"
 	"log"
 	"log/slog"
 	"math/rand"
@@ -370,6 +371,26 @@ func (s *Server) Start() {
 		// handled by River periodic jobs with UniqueOpts deduplication, so
 		// only one pod executes each job even when running multiple replicas.
 		s.startJobWorker(trendingWindowDays)
+
+		// Wire the Meilisearch 0-result resync trigger to enqueue the
+		// existing rebuild job instead of resyncing in-process. River's
+		// unique opts make this a cluster-wide singleton with a cooldown:
+		// during a Meilisearch outage every replica sees the same 0-result
+		// condition, and before 2026-07-24 each ran its own full-corpus
+		// resync — five synchronized memory balloons OOMKilled the whole
+		// deployment at flat traffic.
+		if me, ok := searchEngine.(*search.MeiliEngine); ok && s.jobWorker != nil {
+			jw := s.jobWorker
+			me.SetResyncEnqueuer(func() {
+				err := jw.Insert(context.Background(), jobs.SearchIndexArgs{}, &river.InsertOpts{
+					Queue:      "search",
+					UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 15 * time.Minute},
+				})
+				if err != nil {
+					slog.Warn("failed to enqueue meili resync rebuild", "error", err)
+				}
+			})
+		}
 	} else {
 		slog.Info("maintenance mode active — deferring background jobs until migration completes")
 	}
