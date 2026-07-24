@@ -336,8 +336,10 @@ func SyncMeiliIndex(client meilisearch.ServiceManager, indexUID string, docs []M
 
 	index := client.Index(indexUID)
 
-	// Batch in groups of 1000.
-	const batchSize = 1000
+	// Small batches keep the transient JSON marshal buffers bounded — with
+	// large description fields a 1000-doc batch could balloon to hundreds of
+	// MB in flight during a rebuild.
+	const batchSize = 250
 	for start := 0; start < len(docs); start += batchSize {
 		end := start + batchSize
 		if end > len(docs) {
