@@ -30,9 +30,15 @@
                         <span class="dim" data-cm-toggle="tooltip" data-cm-placement="top" title="{{ .Schematic.CreatedFormatted }}">{{ T .Language "Uploaded" }} {{ .Schematic.CreatedHumanReadable }}</span>
                     </div>
                     </div>
-                    <!-- 728x90 banner to the right of the title/byline (xl+ only,
-                         where the row is wide enough to fit it beside the title). -->
-                    <div id="schematic-top-banner" class="d-none d-xl-block flex-shrink-0"></div>
+                    <!-- 728x90 banner (xl+). A fixed-width slot reserves the
+                         horizontal space so the title never wraps under it; the
+                         banner is anchored to the slot's bottom (byline line) and
+                         extends upward, so it adds no height to the row (no
+                         content push-down) and, on short titles, rises to sit
+                         level with the breadcrumb row above. -->
+                    <div class="cm-top-banner-slot d-none d-xl-block">
+                        <div id="schematic-top-banner" class="cm-top-banner"></div>
+                    </div>
                 </div>
                 {{ .SchematicJSONLD }}
                 {{ if eq .ModerationBanner "auto_review" }}
