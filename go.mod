@@ -2,6 +2,8 @@ module createmod
 
 go 1.25.0
 
+toolchain go1.26.5
+
 require (
 	github.com/KimMachineGun/automemlimit v0.7.5
 	github.com/Tnze/go-mc v1.20.2

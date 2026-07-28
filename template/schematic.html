@@ -14,7 +14,8 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <div class="mb-3">
+                <div class="d-flex align-items-start gap-3 mb-3">
+                    <div class="flex-grow-1 min-width-0">
                     <h1 class="h2 mb-2" style="max-width: 1100px;">{{ .Schematic.Title }}</h1>
                     <div class="cm-byline">
                         {{ if .Schematic.Author }}
@@ -28,6 +29,10 @@
                         {{ end }}
                         <span class="dim" data-cm-toggle="tooltip" data-cm-placement="top" title="{{ .Schematic.CreatedFormatted }}">{{ T .Language "Uploaded" }} {{ .Schematic.CreatedHumanReadable }}</span>
                     </div>
+                    </div>
+                    <!-- 728x90 banner to the right of the title/byline (xl+ only,
+                         where the row is wide enough to fit it beside the title). -->
+                    <div id="schematic-top-banner" class="d-none d-xl-block flex-shrink-0"></div>
                 </div>
                 {{ .SchematicJSONLD }}
                 {{ if eq .ModerationBanner "auto_review" }}
@@ -1624,6 +1629,26 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "gameVersion": "{{ .Schematic.MinecraftVersion }}",
     "modVersion": "{{ .Schematic.CreatemodVersion }}"
   };
+
+  // Top leaderboard: 728x90 to the right of the title/byline. xl+ only
+  // (mediaQuery + d-none d-xl-block) because only there is the title row
+  // wide enough to fit a 728 beside the title.
+  window['nitroAds'].createAd('schematic-top-banner', {
+    "refreshTime": 30,
+    "refreshVisibleOnly": true,
+    "renderVisibleOnly": true,
+    "visibleMargin": 300,
+    "sizes": [["728", "90"]],
+    "keywords": kwString,
+    "targeting": targeting,
+    "report": {
+      "enabled": true,
+      "icon": true,
+      "wording": "Report Ad",
+      "position": "top-right"
+    },
+    "mediaQuery": "(min-width: 1200px)"
+  });
 
   // Narrow ad rail (lg only: 992-1199px)
   window['nitroAds'].createAd('schematic-sticky-adrail-lg', {

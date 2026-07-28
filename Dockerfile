@@ -1,4 +1,6 @@
-FROM golang:alpine
+# Pinned to match the toolchain directive in go.mod. Bump both together
+# when moving to a newer Go patch (clears Go stdlib CVEs reproducibly).
+FROM golang:1.26.5-alpine
 
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh wget

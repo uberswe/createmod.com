@@ -169,7 +169,7 @@ window.setTheme=function(theme){
         } catch(e) {}
       }
       document.addEventListener('click', function(ev) {
-        var adEl = ev.target.closest('[id*="-smart-flex"], [id*="-sticky-adrail"], [id*="_sticky"], [id*="-mobile"], [id*="outstream-player"], [id*="editor-banner"], .cm-outstream, .cm-anchor');
+        var adEl = ev.target.closest('[id*="-smart-flex"], [id*="-sticky-adrail"], [id*="_sticky"], [id*="-mobile"], [id*="outstream-player"], [id*="editor-banner"], [id*="-top-banner"], .cm-outstream, .cm-anchor');
         if (adEl) {
           trackAdClick(adEl.id || (adEl.classList.contains('cm-anchor') ? 'cm-anchor' : 'cm-outstream'), '');
         }
