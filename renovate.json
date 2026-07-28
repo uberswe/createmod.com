@@ -7,5 +7,22 @@
     "managerFilePatterns": [
       "/k8s/meilisearch/.+\\.ya?ml$/"
     ]
-  }
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "Group non-major Go updates into one PR to cut noise",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go non-major"
+    },
+    {
+      "description": "Group non-major npm updates into one PR to cut noise",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm non-major"
+    }
+  ]
 }

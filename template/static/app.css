@@ -421,6 +421,17 @@ a:hover {
 }
 
 /***************
+  Layout: Schematic top leaderboard
+  The slot reserves a fixed 728px in the title row so the title never
+  wraps under the banner. The banner is absolutely anchored to the
+  slot's bottom edge (the byline line) and extends upward, so it
+  contributes no height to the row (content below is not pushed down)
+  and, on short titles, rises to sit level with the breadcrumb row.
+***************/
+.cm-top-banner-slot { position: relative; flex: 0 0 728px; align-self: stretch; }
+.cm-top-banner { position: absolute; right: 0; bottom: 0; width: 728px; height: 90px; }
+
+/***************
   Layout: Ad rail
   NitroPay sticky-stack handles its own sticky positioning.
   We only set width and flex so the column stretches to full
