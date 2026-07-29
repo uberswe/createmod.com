@@ -28,12 +28,19 @@ spec:
                 secretKeyRef:
                   name: meilisearch-secret
                   key: MEILI_MASTER_KEY
-            # Migrate the index database in place on version bumps instead
-            # of refusing to start ("database version X is incompatible with
-            # engine version Y" -> CrashLoopBackOff). No-op when versions
-            # already match, so it stays on permanently. Env form because the
-            # image's entrypoint is tini and container args replace the CMD
-            # (tini would exec the flag as a program).
+            # Migrate the index database in place on version bumps instead of
+            # refusing to start ("database version X is incompatible with
+            # engine version Y" -> CrashLoopBackOff, which took prod search
+            # down on the v1.50 -> v1.51 bump, 2026-07-29). Meili RENAMED this
+            # flag in v1.51 (MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE ->
+            # MEILI_UPGRADE_DB) and silently ignores the old name, so set BOTH:
+            # whichever the running engine version honors triggers the in-place
+            # upgrade, the other is ignored. No-op when versions already match,
+            # so they stay on permanently. Env form because the image's
+            # entrypoint is tini and container args replace the CMD (tini would
+            # exec the flag as a program).
+            - name: MEILI_UPGRADE_DB
+              value: "true"
             - name: MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE
               value: "true"
             - name: MEILI_ENV
