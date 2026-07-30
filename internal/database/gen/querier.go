@@ -14,6 +14,13 @@ type Querier interface {
 	AddSchematicModpack(ctx context.Context, arg AddSchematicModpackParams) error
 	AddSchematicTag(ctx context.Context, arg AddSchematicTagParams) error
 	AddSchematicToCollection(ctx context.Context, arg AddSchematicToCollectionParams) error
+	// Queries for the pre-aggregated per-day, per-term search counts
+	// (search_term_daily). The write query is run by a daily background job; the
+	// read queries back the site-stats page and all exclude the current partial
+	// day (day < today, in UTC) so charts show only complete days.
+	// Aggregate raw searches in [start_ts, end_ts) into per-UTC-day, per-term
+	// counts. Idempotent: re-running the same range refreshes the counts.
+	AggregateSearchTermDaily(ctx context.Context, arg AggregateSearchTermDailyParams) error
 	ApproveCategoryByID(ctx context.Context, id string) error
 	ApproveComment(ctx context.Context, id string) error
 	ApproveTagByID(ctx context.Context, id string) error
@@ -105,7 +112,11 @@ type Querier interface {
 	CreateUserWebhook(ctx context.Context, arg CreateUserWebhookParams) (UserWebhook, error)
 	DailySchematicUploads(ctx context.Context, created time.Time) ([]DailySchematicUploadsRow, error)
 	DailySearchTermVolume(ctx context.Context, arg DailySearchTermVolumeParams) ([]DailySearchTermVolumeRow, error)
+	// Per-day counts for the given terms over the last @days complete days.
+	DailySearchTermVolumeAgg(ctx context.Context, arg DailySearchTermVolumeAggParams) ([]DailySearchTermVolumeAggRow, error)
 	DailySearchVolume(ctx context.Context, created time.Time) ([]DailySearchVolumeRow, error)
+	// Total searches per complete day over the last @days days (current day excluded).
+	DailySearchVolumeAgg(ctx context.Context, days int32) ([]DailySearchVolumeAggRow, error)
 	DeleteAPIKey(ctx context.Context, arg DeleteAPIKeyParams) error
 	DeleteCategoryByID(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
@@ -370,6 +381,8 @@ type Querier interface {
 	ListTempUploadsByUser(ctx context.Context, arg ListTempUploadsByUserParams) ([]ListTempUploadsByUserRow, error)
 	ListTopSearches(ctx context.Context, limit int32) ([]SearchQueryCount, error)
 	ListTopSearchesSince(ctx context.Context, arg ListTopSearchesSinceParams) ([]ListTopSearchesSinceRow, error)
+	// Top terms by total count over the last @days complete days (current excluded).
+	ListTopSearchesSinceAgg(ctx context.Context, arg ListTopSearchesSinceAggParams) ([]ListTopSearchesSinceAggRow, error)
 	ListTopSuccessfulQueries(ctx context.Context, limit int32) ([]string, error)
 	ListTopUsersByPoints(ctx context.Context, arg ListTopUsersByPointsParams) ([]User, error)
 	ListTopViewedSchematicsSince(ctx context.Context, arg ListTopViewedSchematicsSinceParams) ([]ListTopViewedSchematicsSinceRow, error)
@@ -398,6 +411,8 @@ type Querier interface {
 	MonthlyUserUploads(ctx context.Context, arg MonthlyUserUploadsParams) ([]MonthlyUserUploadsRow, error)
 	MonthlyUserViews(ctx context.Context, arg MonthlyUserViewsParams) ([]MonthlyUserViewsRow, error)
 	PruneOldSearches(ctx context.Context) (int64, error)
+	// Drop aggregated days older than the raw-search retention window.
+	PruneSearchTermDaily(ctx context.Context) (int64, error)
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RecordSchematicEvent(ctx context.Context, arg RecordSchematicEventParams) error
@@ -418,6 +433,10 @@ type Querier interface {
 	RollupDailyToMonthly(ctx context.Context, period string) error
 	SchematicNameExists(ctx context.Context, name string) (bool, error)
 	SearchModpacks(ctx context.Context, arg SearchModpacksParams) ([]Modpack, error)
+	// How many complete UTC days (through yesterday) are not yet aggregated: 0 when
+	// yesterday is already stored, N when the last stored day is N days before
+	// yesterday, and a large sentinel when the table is empty (first backfill).
+	SearchTermDailyDaysBehind(ctx context.Context) (int32, error)
 	SetDisplayedBadge(ctx context.Context, arg SetDisplayedBadgeParams) error
 	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error

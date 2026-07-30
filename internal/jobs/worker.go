@@ -137,6 +137,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &SearchStatsFilterWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &FeedOGImageWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &AdClickRollupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &SearchStatsAggregateWorker{deps: cfg.Deps})
 
 	riverClient, err := river.NewClient(riverpgxv5.New(cfg.Pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
@@ -429,6 +430,19 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 					}
 				},
 				nil,
+			),
+			// Hourly, but only aggregates newly-complete days (usually a
+			// no-op) — rolls raw searches into per-day, per-term counts so
+			// the site-stats page reads a small table instead of scanning
+			// the searches table. RunOnStart backfills on first deploy.
+			river.NewPeriodicJob(
+				river.PeriodicInterval(1*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return SearchStatsAggregateArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 1 * time.Hour},
+					}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
 			),
 		},
 	})

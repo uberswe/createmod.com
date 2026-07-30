@@ -1110,6 +1110,15 @@ type SearchTrackingStore interface {
 	ListTopViewedSchematicsSince(ctx context.Context, since time.Time, limit int) ([]TopViewedSchematic, error)
 	DailySearchVolume(ctx context.Context, since time.Time) ([]DailyCount, error)
 	DailySearchTermVolume(ctx context.Context, since time.Time, terms []string) ([]SearchTermDailyCount, error)
+	// Pre-aggregated per-day, per-term search stats (search_term_daily),
+	// populated by the daily aggregation job. The *Agg reads exclude the
+	// current partial day; `days` is the number of complete days back.
+	AggregateSearchTermDaily(ctx context.Context, start, end time.Time) error
+	SearchTermDailyDaysBehind(ctx context.Context) (int, error)
+	PruneSearchTermDaily(ctx context.Context) (int64, error)
+	DailySearchVolumeAgg(ctx context.Context, days int) ([]DailyCount, error)
+	ListTopSearchesSinceAgg(ctx context.Context, days, limit int) ([]SearchEntry, error)
+	DailySearchTermVolumeAgg(ctx context.Context, days int, terms []string) ([]SearchTermDailyCount, error)
 	UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error
 	ListCleanSearchTerms(ctx context.Context, terms []string) ([]string, error)
 	ListDirtySearchTerms(ctx context.Context, terms []string) ([]string, error)

@@ -701,6 +701,12 @@ type SearchQueryCount struct {
 	ZeroResultCount int64  `json:"zero_result_count"`
 }
 
+type SearchTermDaily struct {
+	Day         pgtype.Date `json:"day"`
+	Query       string      `json:"query"`
+	SearchCount int64       `json:"search_count"`
+}
+
 type SearchTermModeration struct {
 	Query     string    `json:"query"`
 	IsClean   bool      `json:"is_clean"`
