@@ -120,10 +120,18 @@
         {{template "header.html" .}}
         <main class="page-body">
             <div class="container-wide">
-                <!-- Page heading -->
-                <div class="mb-3">
-                    <h1 class="h2 mb-1">{{ if .HeadingText }}{{ .HeadingText }}{{ else }}{{ T .Language "Search schematics" }}{{ end }}</h1>
-                    <p class="text-secondary mb-0">{{ T .Language "Find community-built schematics by name, mod, or tag." }}</p>
+                <!-- Page heading + top leaderboard (same treatment as schematic
+                     pages): the banner sits in a fixed-width slot so the heading
+                     never wraps under it, anchored to the slot bottom and
+                     extending up to the breadcrumb row so it adds no height. -->
+                <div class="d-flex align-items-start gap-3 mb-3">
+                    <div class="flex-grow-1 min-width-0">
+                        <h1 class="h2 mb-1">{{ if .HeadingText }}{{ .HeadingText }}{{ else }}{{ T .Language "Search schematics" }}{{ end }}</h1>
+                        <p class="text-secondary mb-0">{{ T .Language "Find community-built schematics by name, mod, or tag." }}</p>
+                    </div>
+                    <div class="cm-top-banner-slot d-none d-xl-block">
+                        <div id="search-top-banner" class="cm-top-banner"></div>
+                    </div>
                 </div>
 
                 <!-- Results layout: full width + ad rail -->
@@ -253,6 +261,19 @@
         <script>
             // Desktop right-rail ads (xl+) are built by adrail.js via the
             // data-cm-adrail container above.
+
+            // Top leaderboard (xl+ only), matching the schematic page unit.
+            window['nitroAds'].createAd('search-top-banner', {
+                "refreshTime": 30,
+                "refreshVisibleOnly": true,
+                "renderVisibleOnly": true,
+                "visibleMargin": 300,
+                "sizes": [["728", "90"]],
+                "keywords": "minecraft,create-mod,search,schematics",
+                "targeting": { "pageType": "search" },
+                "report": { "enabled": true, "icon": true, "wording": "Report Ad", "position": "top-right" },
+                "mediaQuery": "(min-width: 1200px)"
+            });
 
             // Infinite scroll via IntersectionObserver
             (function() {

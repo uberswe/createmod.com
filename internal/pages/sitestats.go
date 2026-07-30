@@ -54,8 +54,8 @@ type SiteStatsData struct {
 	TotalDownloads30d int
 	GlobalVDRatio     string
 
-	TotalSchematics int64
-	TotalDrafts     int64
+	TotalSchematics  int64
+	TotalDrafts      int64
 	DailyUploadsJSON html.JS
 
 	ShowYourStatsLink bool
@@ -92,9 +92,9 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.ActiveWindow = window
 
 		type cachedGlobal struct {
-			Views, Downloads       string
-			TotalViews, TotalDL    int
-			VDRatio                string
+			Views, Downloads    string
+			TotalViews, TotalDL int
+			VDRatio             string
 		}
 
 		cacheKey := "site_stats_global"
@@ -111,7 +111,10 @@ func SiteStatsHandler(registry *server.Registry, cacheService *cache.Service, ap
 			var wg sync.WaitGroup
 			wg.Add(3)
 			go func() { defer wg.Done(); hViews, _ = appStore.Stats.HourlyStats(ctx, "schematic_views", since30d) }()
-			go func() { defer wg.Done(); hDownloads, _ = appStore.Stats.HourlyStats(ctx, "schematic_downloads", since30d) }()
+			go func() {
+				defer wg.Done()
+				hDownloads, _ = appStore.Stats.HourlyStats(ctx, "schematic_downloads", since30d)
+			}()
 			go func() {
 				defer wg.Done()
 				if cached, ok := cacheService.GetFloat("site_avg_vd_ratio_v2"); ok {
@@ -275,8 +278,10 @@ func WarmSearchStatsCache(ctx context.Context, cacheService *cache.Service, appS
 
 	now := time.Now().UTC()
 	var windowSince time.Time
+	windowDays := 30
 	if window == "7d" {
 		windowSince = now.AddDate(0, 0, -7)
+		windowDays = 7
 	} else {
 		windowSince = now.AddDate(0, 0, -30)
 	}
@@ -291,7 +296,7 @@ func WarmSearchStatsCache(ctx context.Context, cacheService *cache.Service, appS
 	// Group A: top searches (sequential chain internally)
 	go func() {
 		defer wg.Done()
-		raw, _ := appStore.SearchTracking.ListTopSearchesSince(ctx, windowSince, 200)
+		raw, _ := appStore.SearchTracking.ListTopSearchesSinceAgg(ctx, windowDays, 200)
 		if len(raw) == 0 {
 			return
 		}
@@ -340,7 +345,7 @@ func WarmSearchStatsCache(ctx context.Context, cacheService *cache.Service, appS
 	// Group C: daily search volume (independent)
 	go func() {
 		defer wg.Done()
-		vol, _ := appStore.SearchTracking.DailySearchVolume(ctx, windowSince)
+		vol, _ := appStore.SearchTracking.DailySearchVolumeAgg(ctx, windowDays)
 		volJSON = dailyCountsJSON(vol)
 	}()
 
@@ -357,7 +362,7 @@ func WarmSearchStatsCache(ctx context.Context, cacheService *cache.Service, appS
 		for i := 0; i < limit; i++ {
 			terms[i] = topSearches[i].Query
 		}
-		termVol, _ := appStore.SearchTracking.DailySearchTermVolume(ctx, windowSince, terms)
+		termVol, _ := appStore.SearchTracking.DailySearchTermVolumeAgg(ctx, windowDays, terms)
 		trendJSON = searchTermSeriesJSON(terms, termVol)
 	} else {
 		trendJSON = "[]"

@@ -3536,6 +3536,64 @@ func (st *SearchTrackingStoreImpl) DailySearchTermVolume(ctx context.Context, si
 	return result, nil
 }
 
+func (st *SearchTrackingStoreImpl) AggregateSearchTermDaily(ctx context.Context, start, end time.Time) error {
+	return st.q.AggregateSearchTermDaily(ctx, db.AggregateSearchTermDailyParams{
+		StartTs: start,
+		EndTs:   end,
+	})
+}
+
+func (st *SearchTrackingStoreImpl) SearchTermDailyDaysBehind(ctx context.Context) (int, error) {
+	n, err := st.q.SearchTermDailyDaysBehind(ctx)
+	return int(n), err
+}
+
+func (st *SearchTrackingStoreImpl) PruneSearchTermDaily(ctx context.Context) (int64, error) {
+	return st.q.PruneSearchTermDaily(ctx)
+}
+
+func (st *SearchTrackingStoreImpl) DailySearchVolumeAgg(ctx context.Context, days int) ([]store.DailyCount, error) {
+	rows, err := st.q.DailySearchVolumeAgg(ctx, int32(days))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.DailyCount, len(rows))
+	for i, r := range rows {
+		result[i] = store.DailyCount{Day: r.Day, Count: r.Count}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) ListTopSearchesSinceAgg(ctx context.Context, days, limit int) ([]store.SearchEntry, error) {
+	rows, err := st.q.ListTopSearchesSinceAgg(ctx, db.ListTopSearchesSinceAggParams{
+		Days: int32(days),
+		Lim:  int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchEntry, len(rows))
+	for i, r := range rows {
+		result[i] = store.SearchEntry{Query: r.Query, ResultsCount: int(r.SearchCount)}
+	}
+	return result, nil
+}
+
+func (st *SearchTrackingStoreImpl) DailySearchTermVolumeAgg(ctx context.Context, days int, terms []string) ([]store.SearchTermDailyCount, error) {
+	rows, err := st.q.DailySearchTermVolumeAgg(ctx, db.DailySearchTermVolumeAggParams{
+		Days:  int32(days),
+		Terms: terms,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]store.SearchTermDailyCount, len(rows))
+	for i, r := range rows {
+		result[i] = store.SearchTermDailyCount{Query: r.Query, Day: r.Day, Count: r.SearchCount}
+	}
+	return result, nil
+}
+
 func (st *SearchTrackingStoreImpl) UpsertSearchTermModeration(ctx context.Context, query string, isClean bool) error {
 	return st.q.UpsertSearchTermModeration(ctx, db.UpsertSearchTermModerationParams{
 		Query:   query,
