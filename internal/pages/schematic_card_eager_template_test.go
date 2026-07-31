@@ -56,13 +56,14 @@ func Test_Schematic_Card_Eager_Image_Loading(t *testing.T) {
 	if got := strings.Count(out, `fetchpriority="high"`); got != 12 {
 		t.Fatalf("expected 12 fetchpriority=high thumbnails, got %d", got)
 	}
-	// Each eager card has two eager imgs (placeholder + thumbnail).
-	if got := strings.Count(out, `loading="eager"`); got != 24 {
-		t.Fatalf("expected 24 eager-loading imgs, got %d", got)
+	// Placeholders are now CSS backgrounds (not indexable <img>), so each card
+	// renders a single thumbnail <img>: 12 eager for the above-the-fold cards.
+	if got := strings.Count(out, `loading="eager"`); got != 12 {
+		t.Fatalf("expected 12 eager-loading imgs, got %d", got)
 	}
-	// The remaining 2 cards stay lazy (2 imgs each).
-	if got := strings.Count(out, `loading="lazy"`); got != 4 {
-		t.Fatalf("expected 4 lazy-loading imgs, got %d", got)
+	// The remaining 2 cards stay lazy (one img each).
+	if got := strings.Count(out, `loading="lazy"`); got != 2 {
+		t.Fatalf("expected 2 lazy-loading imgs, got %d", got)
 	}
 }
 
