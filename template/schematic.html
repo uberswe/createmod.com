@@ -341,8 +341,7 @@
                             {{ else if ne .Schematic.FeaturedImage "" }}
                             <a data-fslightbox="gallery" hx-boost="false"
                                href="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}">
-                                <div class="ratio ratio-16x9">
-                                <img src="{{ PlaceholderImg .Schematic.ID }}" alt="" class="object-fit-cover" width="1920" height="1080" style="z-index:0;">
+                                <div class="ratio ratio-16x9" style="background-image:url('{{ PlaceholderImg .Schematic.ID }}');background-size:cover;background-position:center;">
                                 <img
                                         src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2"
                                         srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360&v=2 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080&v=2 1920w"
@@ -352,9 +351,7 @@
                                 </div>
                             </a>
                             {{ else }}
-                            <div class="ratio ratio-16x9">
-                                <img src="{{ PlaceholderImg .Schematic.ID }}" class="object-fit-cover" width="1920" height="1080" alt="">
-                            </div>
+                            <div class="ratio ratio-16x9" style="background-image:url('{{ PlaceholderImg .Schematic.ID }}');background-size:cover;background-position:center;"></div>
                             {{ end }}
                             <div class="card-body">
                                 {{/* Gallery thumbnails — horizontally scrollable strip */}}
