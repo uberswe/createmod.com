@@ -192,34 +192,42 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 	}
 
 	// Dimension and block count range filters
+	// Upper-bound (max) size filters apply ONLY when the slider sits below its
+	// cap. The filter form always submits the size sliders, and their maxima
+	// (sliderMaxDimX/Y/Z, sliderMaxBlockCount) are hardcoded BELOW the largest
+	// builds in the corpus. Treating "slider at its max" as an upper bound
+	// silently hid every schematic bigger than the cap — e.g. Sea Laboratory
+	// (215x215x63, ~280k blocks) never appeared in a normal search (#1604). At
+	// the cap we apply no upper bound so large builds still match; the min side
+	// is naturally 0 = unbounded already.
 	if q.MinBlockCount > 0 {
 		parts = append(parts, fmt.Sprintf("block_count >= %d", q.MinBlockCount))
 	}
-	if q.MaxBlockCount > 0 {
+	if q.MaxBlockCount > 0 && q.MaxBlockCount < sliderMaxBlockCount {
 		parts = append(parts, fmt.Sprintf("block_count <= %d", q.MaxBlockCount))
 	}
 	if q.MinHorizontal > 0 {
 		parts = append(parts, fmt.Sprintf("(dim_x >= %d OR dim_z >= %d)", q.MinHorizontal, q.MinHorizontal))
 	}
-	if q.MaxHorizontal > 0 {
+	if q.MaxHorizontal > 0 && q.MaxHorizontal < sliderMaxDimX {
 		parts = append(parts, fmt.Sprintf("(dim_x <= %d AND dim_z <= %d)", q.MaxHorizontal, q.MaxHorizontal))
 	}
 	if q.MinDimX > 0 {
 		parts = append(parts, fmt.Sprintf("dim_x >= %d", q.MinDimX))
 	}
-	if q.MaxDimX > 0 {
+	if q.MaxDimX > 0 && q.MaxDimX < sliderMaxDimX {
 		parts = append(parts, fmt.Sprintf("dim_x <= %d", q.MaxDimX))
 	}
 	if q.MinDimY > 0 {
 		parts = append(parts, fmt.Sprintf("dim_y >= %d", q.MinDimY))
 	}
-	if q.MaxDimY > 0 {
+	if q.MaxDimY > 0 && q.MaxDimY < sliderMaxDimY {
 		parts = append(parts, fmt.Sprintf("dim_y <= %d", q.MaxDimY))
 	}
 	if q.MinDimZ > 0 {
 		parts = append(parts, fmt.Sprintf("dim_z >= %d", q.MinDimZ))
 	}
-	if q.MaxDimZ > 0 {
+	if q.MaxDimZ > 0 && q.MaxDimZ < sliderMaxDimZ {
 		parts = append(parts, fmt.Sprintf("dim_z <= %d", q.MaxDimZ))
 	}
 
