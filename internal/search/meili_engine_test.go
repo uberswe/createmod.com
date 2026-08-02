@@ -55,9 +55,28 @@ func TestMeiliEngine_BuildFilter(t *testing.T) {
 			expect: "block_count >= 10 AND block_count <= 500",
 		},
 		{
-			name:   "dimension filter",
-			query:  SearchQuery{Category: "all", Rating: -1, MinDimY: 5, MaxDimY: 100},
-			expect: "dim_y >= 5 AND dim_y <= 100",
+			name:   "dimension filter below cap",
+			query:  SearchQuery{Category: "all", Rating: -1, MinDimY: 5, MaxDimY: 80},
+			expect: "dim_y >= 5 AND dim_y <= 80",
+		},
+		{
+			// #1604: sliders parked at their maxima must NOT add an upper bound,
+			// or builds larger than the cap (e.g. Sea Laboratory) are excluded.
+			name: "max sliders at cap add no upper bound",
+			query: SearchQuery{
+				Category: "all", Rating: -1,
+				MaxBlockCount: sliderMaxBlockCount,
+				MaxHorizontal: sliderMaxDimX,
+				MaxDimY:       sliderMaxDimY,
+				MaxDimX:       sliderMaxDimX,
+				MaxDimZ:       sliderMaxDimZ,
+			},
+			expect: "",
+		},
+		{
+			name:   "min bounds still apply at max cap",
+			query:  SearchQuery{Category: "all", Rating: -1, MinBlockCount: 100, MaxBlockCount: sliderMaxBlockCount},
+			expect: "block_count >= 100",
 		},
 		{
 			name:   "mod filter",

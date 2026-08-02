@@ -85,7 +85,7 @@
                         {{ if gt .MaxDimYAll 0 }}
                         {{ if gt .MaxHorizontalAll 0 }}
                         <div>
-                            <label class="form-label small text-secondary mb-1">{{ T .Language "Horizontal Size" }} (X/Z): <span id="hz-label">{{ if and (gt .MinHorizontal 0) (gt .MaxHorizontal 0) }}{{ .MinHorizontal }}–{{ .MaxHorizontal }}{{ else if gt .MinHorizontal 0 }}{{ .MinHorizontal }}+{{ else if gt .MaxHorizontal 0 }}0–{{ .MaxHorizontal }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Horizontal Size" }} (X/Z): <span id="hz-label">{{ $open := or (le .MaxHorizontal 0) (ge .MaxHorizontal .MaxHorizontalAll) }}{{ if and (le .MinHorizontal 0) $open }}{{ T .Language "Any" }}{{ else if $open }}{{ .MinHorizontal }}–∞{{ else if le .MinHorizontal 0 }}0–{{ .MaxHorizontal }}{{ else }}{{ .MinHorizontal }}–{{ .MaxHorizontal }}{{ end }}</span></label>
                             <div class="d-flex gap-2 align-items-center">
                                 <input type="range" class="form-range flex-grow-1" name="minhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ .MinHorizontal }}" oninput="updateRangeLabel('hz',this.value,document.querySelector('[name=maxhz]').value,{{ .MaxHorizontalAll }})">
                                 <input type="range" class="form-range flex-grow-1" name="maxhz" min="0" max="{{ .MaxHorizontalAll }}" step="1" value="{{ if gt .MaxHorizontal 0 }}{{ .MaxHorizontal }}{{ else }}{{ .MaxHorizontalAll }}{{ end }}" oninput="updateRangeLabel('hz',document.querySelector('[name=minhz]').value,this.value,{{ .MaxHorizontalAll }})">
@@ -93,7 +93,7 @@
                         </div>
                         {{ end }}
                         <div>
-                            <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y): <span id="dimy-label">{{ if and (gt .MinDimY 0) (gt .MaxDimY 0) }}{{ .MinDimY }}–{{ .MaxDimY }}{{ else if gt .MinDimY 0 }}{{ .MinDimY }}+{{ else if gt .MaxDimY 0 }}0–{{ .MaxDimY }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Height" }} (Y): <span id="dimy-label">{{ $open := or (le .MaxDimY 0) (ge .MaxDimY .MaxDimYAll) }}{{ if and (le .MinDimY 0) $open }}{{ T .Language "Any" }}{{ else if $open }}{{ .MinDimY }}–∞{{ else if le .MinDimY 0 }}0–{{ .MaxDimY }}{{ else }}{{ .MinDimY }}–{{ .MaxDimY }}{{ end }}</span></label>
                             <div class="d-flex gap-2 align-items-center">
                                 <input type="range" class="form-range flex-grow-1" name="miny" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ .MinDimY }}" oninput="updateRangeLabel('dimy',this.value,document.querySelector('[name=maxy]').value,{{ .MaxDimYAll }})">
                                 <input type="range" class="form-range flex-grow-1" name="maxy" min="0" max="{{ .MaxDimYAll }}" step="1" value="{{ if gt .MaxDimY 0 }}{{ .MaxDimY }}{{ else }}{{ .MaxDimYAll }}{{ end }}" oninput="updateRangeLabel('dimy',document.querySelector('[name=miny]').value,this.value,{{ .MaxDimYAll }})">
@@ -102,7 +102,7 @@
                         {{ end }}
                         {{ if gt .MaxBlockCountAll 0 }}
                         <div>
-                            <label class="form-label small text-secondary mb-1">{{ T .Language "Block Count" }}: <span id="bc-label">{{ if and (gt .MinBlockCount 0) (gt .MaxBlockCount 0) }}{{ .MinBlockCount }}–{{ .MaxBlockCount }}{{ else if gt .MinBlockCount 0 }}{{ .MinBlockCount }}+{{ else if gt .MaxBlockCount 0 }}0–{{ .MaxBlockCount }}{{ else }}{{ T .Language "Any" }}{{ end }}</span></label>
+                            <label class="form-label small text-secondary mb-1">{{ T .Language "Block Count" }}: <span id="bc-label">{{ $open := or (le .MaxBlockCount 0) (ge .MaxBlockCount .MaxBlockCountAll) }}{{ if and (le .MinBlockCount 0) $open }}{{ T .Language "Any" }}{{ else if $open }}{{ .MinBlockCount }}–∞{{ else if le .MinBlockCount 0 }}0–{{ .MaxBlockCount }}{{ else }}{{ .MinBlockCount }}–{{ .MaxBlockCount }}{{ end }}</span></label>
                             <div class="d-flex gap-2 align-items-center">
                                 <input type="range" class="form-range flex-grow-1" name="minbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ .MinBlockCount }}" oninput="updateRangeLabel('bc',this.value,document.querySelector('[name=maxbc]').value,{{ .MaxBlockCountAll }})">
                                 <input type="range" class="form-range flex-grow-1" name="maxbc" min="0" max="{{ .MaxBlockCountAll }}" step="100" value="{{ if gt .MaxBlockCount 0 }}{{ .MaxBlockCount }}{{ else }}{{ .MaxBlockCountAll }}{{ end }}" oninput="updateRangeLabel('bc',document.querySelector('[name=minbc]').value,this.value,{{ .MaxBlockCountAll }})">
@@ -147,7 +147,9 @@
       if (mn === 0 && mx >= globalMax) {
         el.textContent = '{{ T .Language "Any" }}';
       } else if (mn > 0 && mx >= globalMax) {
-        el.textContent = mn + '+';
+        // Slider at its cap means no upper bound (larger builds still match),
+        // so show ∞ rather than the cap number.
+        el.textContent = mn + '–∞';
       } else if (mn === 0 && mx < globalMax) {
         el.textContent = '0–' + mx;
       } else {
