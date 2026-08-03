@@ -84,6 +84,14 @@ func TestMeiliEngine_BuildFilter(t *testing.T) {
 			expect: `mod_names = "Create" AND mod_names = "Minecraft"`,
 		},
 		{
+			// Vanilla schematics are indexed with mod_names omitted (nil slice
+			// + omitempty), so NOT EXISTS catches them; IS EMPTY guards against
+			// future indexing that emits an explicit empty array.
+			name:   "vanilla only",
+			query:  SearchQuery{Category: "all", Rating: -1, VanillaOnly: true},
+			expect: "(mod_names IS EMPTY OR mod_names NOT EXISTS)",
+		},
+		{
 			name:   "combined",
 			query:  SearchQuery{Category: "automation", Rating: 3, Tags: []string{"redstone"}, MinecraftVersion: "1.20.1"},
 			expect: `rating >= 3 AND categories = "automation" AND tags = "redstone" AND minecraft_version = "1.20.1"`,

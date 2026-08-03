@@ -34,7 +34,8 @@ type SearchQuery struct {
 	MaxDimY          int
 	MinDimZ          int
 	MaxDimZ          int
-	MinHorizontal    int // combined X/Z minimum: matches dim_x >= N OR dim_z >= N
-	MaxHorizontal    int // combined X/Z maximum: matches dim_x <= N AND dim_z <= N
+	MinHorizontal    int      // combined X/Z minimum: matches dim_x >= N OR dim_z >= N
+	MaxHorizontal    int      // combined X/Z maximum: matches dim_x <= N AND dim_z <= N
 	Mods             []string // mod display names to filter by (AND — all must be present)
+	VanillaOnly      bool     // when true, match only schematics with no mods ("Vanilla Create")
 }
