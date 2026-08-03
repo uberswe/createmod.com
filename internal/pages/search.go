@@ -3,13 +3,13 @@ package pages
 import (
 	"context"
 	"createmod/internal/cache"
-	"encoding/json"
 	"createmod/internal/i18n"
 	"createmod/internal/metrics"
 	"createmod/internal/models"
 	"createmod/internal/search"
 	"createmod/internal/store"
 	"createmod/internal/translation"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gosimple/slug"
 	"createmod/internal/server"
+	"github.com/gosimple/slug"
 )
 
 var searchTemplates = append([]string{
@@ -40,8 +40,8 @@ type ModOption struct {
 
 // CreateVersionGroup holds a major version group label and its child versions.
 type CreateVersionGroup struct {
-	Label    string                   // e.g. "6.0.x", "0.5.x"
-	Value    string                   // e.g. "~6.0", "~0.5"  (prefix marker)
+	Label    string                    // e.g. "6.0.x", "0.5.x"
+	Value    string                    // e.g. "~6.0", "~0.5"  (prefix marker)
 	Versions []models.CreatemodVersion // individual versions
 }
 
@@ -382,30 +382,83 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 			"latency_ms", searchDuration.Milliseconds(),
 		)
 
-		// Fetch schematics from store by IDs
+		// Meilisearch has already filtered and ordered the matches, so for the
+		// common case we page the ID list and fetch ONLY the current page's rows.
+		// Previously every match was fetched here — an empty/broad query pulled
+		// thousands of full rows on each request, which saturated the per-pod DB
+		// pool and starved the readiness probe (search-degradation incident,
+		// 2026-08-03).
 		ctx := context.Background()
-		storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
-		if err != nil {
-			return err
+
+		// Pagination target: path value first, then ?p=.
+		page := 1
+		if pathPage := e.Request.PathValue("page"); pathPage != "" {
+			if p, err := strconv.Atoi(pathPage); err == nil && p > 0 {
+				page = p
+			}
+		} else if e.Request.URL.Query().Get("p") != "" {
+			if p, err := strconv.Atoi(e.Request.URL.Query().Get("p")); err == nil && p > 0 {
+				page = p
+			}
 		}
-		// Build a lookup map for ordering
-		byID := make(map[string]store.Schematic, len(storeSchematics))
-		for _, s := range storeSchematics {
-			byID[s.ID] = s
+		pageSize := 8
+		if infiniteScroll {
+			pageSize = 64
+		} else if perPage > 0 {
+			pageSize = perPage
 		}
-		// Preserve search result order and filter to approved only
-		orderedSchematics := make([]store.Schematic, 0, len(ids))
-		for _, id := range ids {
-			if s, ok := byID[id]; ok {
-				if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
-					continue
+
+		// orderByIDs returns rows in the order of ids, dropping any that are
+		// deleted or not in a public moderation state (a safety re-check — the
+		// index is public-only).
+		orderByIDs := func(order []string, rows []store.Schematic) []store.Schematic {
+			byID := make(map[string]store.Schematic, len(rows))
+			for _, s := range rows {
+				byID[s.ID] = s
+			}
+			out := make([]store.Schematic, 0, len(order))
+			for _, id := range order {
+				if s, ok := byID[id]; ok {
+					if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
+						continue
+					}
+					out = append(out, s)
 				}
-				orderedSchematics = append(orderedSchematics, s)
+			}
+			return out
+		}
+
+		// computeBounds clamps page to the last page and derives the slice range.
+		var total, startIdx, endIdx int
+		computeBounds := func(t int) {
+			total = t
+			maxPage := 0
+			if pageSize > 0 {
+				maxPage = (t + pageSize - 1) / pageSize
+			}
+			if maxPage > 0 && page > maxPage {
+				page = maxPage
+			}
+			startIdx = (page - 1) * pageSize
+			if startIdx < 0 {
+				startIdx = 0
+			}
+			endIdx = startIdx + pageSize
+			if endIdx > t {
+				endIdx = t
 			}
 		}
 
-		// "Has only these mods" post-filter: exclude schematics with mods not in the selected set
+		// The "has only these mods" post-filter must evaluate every match, so it
+		// needs the full result set. It's an uncommon filter; every other query
+		// (including empty/broad browse) takes the cheap paged path below.
+		var pageSlice []store.Schematic
 		if modMatch == "all" && len(selectedMods) > 0 {
+			storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
+			if err != nil {
+				return err
+			}
+			orderedSchematics := orderByIDs(ids, storeSchematics)
 			allowedSet := make(map[string]bool, len(meiliModNames))
 			for _, dn := range meiliModNames {
 				allowedSet[dn] = true
@@ -430,45 +483,21 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 					filtered = append(filtered, s)
 				}
 			}
-			orderedSchematics = filtered
-		}
-
-		// Pagination: check path value first, fall back to ?p= query param
-		page := 1
-		if pathPage := e.Request.PathValue("page"); pathPage != "" {
-			if p, err := strconv.Atoi(pathPage); err == nil && p > 0 {
-				page = p
+			computeBounds(len(filtered))
+			if total > 0 {
+				pageSlice = filtered[startIdx:endIdx]
 			}
-		} else if e.Request.URL.Query().Get("p") != "" {
-			if p, err := strconv.Atoi(e.Request.URL.Query().Get("p")); err == nil && p > 0 {
-				page = p
+		} else {
+			computeBounds(len(ids))
+			var pageIDs []string
+			if startIdx < endIdx {
+				pageIDs = ids[startIdx:endIdx]
 			}
-		}
-		pageSize := 8
-		if infiniteScroll {
-			pageSize = 64
-		} else if perPage > 0 {
-			pageSize = perPage
-		}
-		total := len(orderedSchematics)
-		maxPage := 0
-		if pageSize > 0 {
-			maxPage = (total + pageSize - 1) / pageSize
-		}
-		if maxPage > 0 && page > maxPage {
-			page = maxPage
-		}
-		startIdx := (page - 1) * pageSize
-		if startIdx < 0 {
-			startIdx = 0
-		}
-		endIdx := startIdx + pageSize
-		if endIdx > total {
-			endIdx = total
-		}
-		pageSlice := orderedSchematics
-		if total > 0 {
-			pageSlice = orderedSchematics[startIdx:endIdx]
+			storeSchematics, err := appStore.Schematics.ListByIDs(ctx, pageIDs)
+			if err != nil {
+				return err
+			}
+			pageSlice = orderByIDs(pageIDs, storeSchematics)
 		}
 
 		schematicModels := MapStoreSchematics(appStore, pageSlice, cacheService)
@@ -615,57 +644,62 @@ func SearchHandler(searchEngine search.SearchEngine, searchService *search.Servi
 
 		cvAll := allCreatemodVersionsFromStore(appStore)
 		d := SearchData{
-			Schematics:          schematicModels,
-			Tags:                allTagsFromStore(appStore),
-			TagsWithCount:       allTagsWithCountFromStore(appStore, cacheService),
-			SelectedTags:        selectedTags,
-			MinecraftVersions:   allMinecraftVersionsFromStore(appStore),
-			CreateVersions:      cvAll,
-			CreateVersionGroups: groupCreateVersions(cvAll),
-			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
-			SearchResultCount: total,
-			TotalResults:      total,
-			TotalPages:        totalPages,
-			PageNumbers:       computePageNumbers(page, totalPages),
-			Term:              term,
-			TermSlug:          slugTerm,
-			Sort:              order,
-			DisplaySort:       displaySort,
-			Rating:            rating,
-			Category:          category,
-			Tag:               tagURLParam,
+			Schematics:           schematicModels,
+			Tags:                 allTagsFromStore(appStore),
+			TagsWithCount:        allTagsWithCountFromStore(appStore, cacheService),
+			SelectedTags:         selectedTags,
+			MinecraftVersions:    allMinecraftVersionsFromStore(appStore),
+			CreateVersions:       cvAll,
+			CreateVersionGroups:  groupCreateVersions(cvAll),
+			SearchSpeed:          fmt.Sprintf("%.6f", duration.Seconds()),
+			SearchResultCount:    total,
+			TotalResults:         total,
+			TotalPages:           totalPages,
+			PageNumbers:          computePageNumbers(page, totalPages),
+			Term:                 term,
+			TermSlug:             slugTerm,
+			Sort:                 order,
+			DisplaySort:          displaySort,
+			Rating:               rating,
+			Category:             category,
+			Tag:                  tagURLParam,
 			MinecraftVersion:     mcVersion,
 			CreateVersion:        createVersion,
 			CreateVersionDisplay: createVersionDisplay(createVersion),
 			Page:                 page,
-			PageSize:          pageSize,
-			HasPrev:           prevURL != "",
-			HasNext:           nextURL != "",
-			PrevURL:           prevURL,
-			NextURL:           nextURL,
-			FirstURL:          buildPageURL(1),
-			LastURL:           func() string { if totalPages > 0 { return buildPageURL(totalPages) }; return "" }(),
-			ViewMode:          viewMode,
-			MinBlockCount:     minBlockCount,
-			MaxBlockCount:     maxBlockCount,
-			MinDimX:           minDimX,
-			MaxDimX:           maxDimX,
-			MinDimY:           minDimY,
-			MaxDimY:           maxDimY,
-			MinDimZ:           minDimZ,
-			MaxDimZ:           maxDimZ,
-			MinHorizontal:     minHorizontal,
-			MaxHorizontal:     maxHorizontal,
-			SelectedMods:      selectedMods,
-			AllMods:           allMods,
-			ModMatch:          modMatch,
-			MaxBlockCountAll:  maxStats.BlockCount,
-			MaxDimXAll:        maxStats.DimX,
-			MaxDimYAll:        maxStats.DimY,
-			MaxDimZAll:        maxStats.DimZ,
-			MaxHorizontalAll:  max(maxStats.DimX, maxStats.DimZ),
-			InfiniteScroll:    infiniteScroll,
-			PerPage:           pageSize,
+			PageSize:             pageSize,
+			HasPrev:              prevURL != "",
+			HasNext:              nextURL != "",
+			PrevURL:              prevURL,
+			NextURL:              nextURL,
+			FirstURL:             buildPageURL(1),
+			LastURL: func() string {
+				if totalPages > 0 {
+					return buildPageURL(totalPages)
+				}
+				return ""
+			}(),
+			ViewMode:         viewMode,
+			MinBlockCount:    minBlockCount,
+			MaxBlockCount:    maxBlockCount,
+			MinDimX:          minDimX,
+			MaxDimX:          maxDimX,
+			MinDimY:          minDimY,
+			MaxDimY:          maxDimY,
+			MinDimZ:          minDimZ,
+			MaxDimZ:          maxDimZ,
+			MinHorizontal:    minHorizontal,
+			MaxHorizontal:    maxHorizontal,
+			SelectedMods:     selectedMods,
+			AllMods:          allMods,
+			ModMatch:         modMatch,
+			MaxBlockCountAll: maxStats.BlockCount,
+			MaxDimXAll:       maxStats.DimX,
+			MaxDimYAll:       maxStats.DimY,
+			MaxDimZAll:       maxStats.DimZ,
+			MaxHorizontalAll: max(maxStats.DimX, maxStats.DimZ),
+			InfiniteScroll:   infiniteScroll,
+			PerPage:          pageSize,
 		}
 		d.Populate(e)
 		translateSchematicTitles(d.Schematics, translationService, cacheService, d.Language)

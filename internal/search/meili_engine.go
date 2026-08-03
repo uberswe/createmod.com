@@ -236,6 +236,14 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 		parts = append(parts, fmt.Sprintf(`mod_names = "%s"`, escapeMeiliString(mod)))
 	}
 
+	// Vanilla filter: match only schematics with no mods. These are indexed
+	// with mod_names omitted entirely (nil slice + omitempty), so NOT EXISTS
+	// is what catches them; IS EMPTY is kept as a guard in case indexing ever
+	// starts emitting an explicit empty array.
+	if q.VanillaOnly {
+		parts = append(parts, "(mod_names IS EMPTY OR mod_names NOT EXISTS)")
+	}
+
 	return strings.Join(parts, " AND ")
 }
 

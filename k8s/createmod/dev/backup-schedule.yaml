@@ -42,14 +42,8 @@ spec:
     failedJobsHistoryLimit: 2
     successfulJobsHistoryLimit: 2
 
-  # Check schedule - weekly on Sunday at 00:30
-  check:
-    schedule: "30 0 * * 0"
-
-  # Prune old backups - weekly on Sunday at 01:30
-  prune:
-    schedule: "30 1 * * 0"
-    retention:
-      keepDaily: 30      # Keep last 30 days
-      keepWeekly: 4      # Keep last 4 weeks
-      keepMonthly: 12    # Keep last 12 months
+  # check + prune are handled cluster-wide by the repo-maintenance Schedule in
+  # k8up-system (all namespaces share one restic repo; a single owner avoids the
+  # weekly lock contention that failed these jobs on 2026-07-26). The union
+  # retention there (keepDaily 30 / keepWeekly 4 / keepMonthly 12 / keepLast 7)
+  # covers this namespace's previous policy.

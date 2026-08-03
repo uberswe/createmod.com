@@ -70,20 +70,20 @@ type ModDetailData struct {
 	TotalPages int
 
 	// Filter fields
-	Term                string
-	ActiveTab           string // "trending", "rated", "latest"
-	Category            string
-	MinecraftVersion    string
-	CreateVersion       string
-	Rating              int
-	MinBlockCount       int
-	MaxBlockCount       int
-	MinDimY             int
-	MaxDimY             int
-	MinHorizontal       int
-	MaxHorizontal       int
-	SearchResultCount   int
-	SearchSpeed         string
+	Term              string
+	ActiveTab         string // "trending", "rated", "latest"
+	Category          string
+	MinecraftVersion  string
+	CreateVersion     string
+	Rating            int
+	MinBlockCount     int
+	MaxBlockCount     int
+	MinDimY           int
+	MaxDimY           int
+	MinHorizontal     int
+	MaxHorizontal     int
+	SearchResultCount int
+	SearchSpeed       string
 
 	// Filter options
 	MinecraftVersions   []models.MinecraftVersion
@@ -285,29 +285,18 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 			MinHorizontal:    minHorizontal,
 			MaxHorizontal:    maxHorizontal,
 			Mods:             meiliModNames,
+			VanillaOnly:      isVanilla,
 		}
 
 		ids, _ := searchEngine.Search(e.Request.Context(), sq)
 
-		storeSchematics, err := appStore.Schematics.ListByIDs(ctx, ids)
-		if err != nil {
-			return err
-		}
-		byID := make(map[string]store.Schematic, len(storeSchematics))
-		for _, s := range storeSchematics {
-			byID[s.ID] = s
-		}
-		orderedSchematics := make([]store.Schematic, 0, len(ids))
-		for _, id := range ids {
-			if s, ok := byID[id]; ok {
-				if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
-					continue
-				}
-				orderedSchematics = append(orderedSchematics, s)
-			}
-		}
-
-		// Pagination
+		// Meilisearch has already filtered and ordered the matches — including
+		// the vanilla "only Create" case via VanillaOnly, which previously had
+		// no filter at all and let non-vanilla schematics leak onto the page.
+		// So we page the ID list and fetch ONLY the current page's rows.
+		// Previously every match was fetched here and paged in memory, so a
+		// broad mod page pulled thousands of full rows per request and saturated
+		// the per-pod DB pool (search-degradation incident, 2026-08-03).
 		page := 1
 		if p := q.Get("p"); p != "" {
 			if v, err := strconv.Atoi(p); err == nil && v > 0 {
@@ -321,7 +310,30 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 		} else if perPage > 0 {
 			pageSize = perPage
 		}
-		total := len(orderedSchematics)
+
+		// orderByIDs returns rows in the order of ids, dropping any that are
+		// deleted or not in a public moderation state (a safety re-check — the
+		// index is public-only).
+		orderByIDs := func(order []string, rows []store.Schematic) []store.Schematic {
+			byID := make(map[string]store.Schematic, len(rows))
+			for _, s := range rows {
+				byID[s.ID] = s
+			}
+			out := make([]store.Schematic, 0, len(order))
+			for _, id := range order {
+				if s, ok := byID[id]; ok {
+					if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
+						continue
+					}
+					out = append(out, s)
+				}
+			}
+			return out
+		}
+
+		// Clamp page to the last page and derive the slice range. total is the
+		// Meilisearch match count (the index is public-only).
+		total := len(ids)
 		maxPage := 0
 		if pageSize > 0 {
 			maxPage = (total + pageSize - 1) / pageSize
@@ -337,10 +349,16 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 		if endIdx > total {
 			endIdx = total
 		}
-		pageSlice := orderedSchematics
-		if total > 0 {
-			pageSlice = orderedSchematics[startIdx:endIdx]
+
+		var pageIDs []string
+		if startIdx < endIdx {
+			pageIDs = ids[startIdx:endIdx]
 		}
+		storeSchematics, err := appStore.Schematics.ListByIDs(ctx, pageIDs)
+		if err != nil {
+			return err
+		}
+		pageSlice := orderByIDs(pageIDs, storeSchematics)
 
 		// Build filter query string for pagination URLs
 		queryParts := []string{}
@@ -419,31 +437,36 @@ func ModDetailHandler(searchEngine search.SearchEngine, searchService *search.Se
 
 		duration := time.Since(start)
 		d := ModDetailData{
-			Mod:               mod,
-			Schematics:        MapStoreSchematics(appStore, pageSlice, cacheService),
-			Page:              page,
-			HasPrev:           prevURL != "",
-			HasNext:           nextURL != "",
-			PrevURL:           prevURL,
-			NextURL:           nextURL,
-			FirstURL:          buildPageURL(1),
-			LastURL:           func() string { if totalPages > 0 { return buildPageURL(totalPages) }; return "" }(),
-			TotalCount:        total,
-			TotalPages:        totalPages,
-			Term:              term,
-			ActiveTab:         activeTab,
-			Category:          category,
-			MinecraftVersion:  mcVersion,
-			CreateVersion:     createVersion,
-			Rating:            rating,
-			MinBlockCount:     minBlockCount,
-			MaxBlockCount:     maxBlockCount,
-			MinDimY:           minDimY,
-			MaxDimY:           maxDimY,
-			MinHorizontal:     minHorizontal,
-			MaxHorizontal:     maxHorizontal,
-			SearchResultCount: total,
-			SearchSpeed:       fmt.Sprintf("%.6f", duration.Seconds()),
+			Mod:        mod,
+			Schematics: MapStoreSchematics(appStore, pageSlice, cacheService),
+			Page:       page,
+			HasPrev:    prevURL != "",
+			HasNext:    nextURL != "",
+			PrevURL:    prevURL,
+			NextURL:    nextURL,
+			FirstURL:   buildPageURL(1),
+			LastURL: func() string {
+				if totalPages > 0 {
+					return buildPageURL(totalPages)
+				}
+				return ""
+			}(),
+			TotalCount:          total,
+			TotalPages:          totalPages,
+			Term:                term,
+			ActiveTab:           activeTab,
+			Category:            category,
+			MinecraftVersion:    mcVersion,
+			CreateVersion:       createVersion,
+			Rating:              rating,
+			MinBlockCount:       minBlockCount,
+			MaxBlockCount:       maxBlockCount,
+			MinDimY:             minDimY,
+			MaxDimY:             maxDimY,
+			MinHorizontal:       minHorizontal,
+			MaxHorizontal:       maxHorizontal,
+			SearchResultCount:   total,
+			SearchSpeed:         fmt.Sprintf("%.6f", duration.Seconds()),
 			MinecraftVersions:   allMinecraftVersionsFromStore(appStore),
 			CreateVersionGroups: groupCreateVersions(cvAll),
 			MaxBlockCountAll:    maxStats.BlockCount,
