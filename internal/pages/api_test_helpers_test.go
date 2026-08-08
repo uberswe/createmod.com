@@ -32,6 +32,12 @@ func (f *fakeLimiter) Allow(ctx context.Context, key string, limit int, window t
 	}
 	return false, 0
 }
+func (f *fakeLimiter) Incr(ctx context.Context, key string, window time.Duration) int {
+	if f.allow {
+		return 1
+	}
+	return 1 << 30 // effectively "way over any threshold" for deny-mode tests
+}
 func (f *fakeLimiter) Check(ctx context.Context, key string) bool { return f.marks[key] }
 func (f *fakeLimiter) Mark(ctx context.Context, key string, ttl time.Duration) {
 	f.marks[key] = true

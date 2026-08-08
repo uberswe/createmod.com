@@ -71,6 +71,19 @@ func (r *RedisLimiter) Allow(ctx context.Context, key string, limit int, window 
 	return result <= limit, remaining
 }
 
+func (r *RedisLimiter) Incr(ctx context.Context, key string, window time.Duration) int {
+	windowSec := int(window.Seconds())
+	if windowSec < 1 {
+		windowSec = 1
+	}
+	n, err := allowScript.Run(ctx, r.client, []string{key}, windowSec).Int()
+	if err != nil {
+		// Fail open: no signal, caller treats 0 as "do not throttle".
+		return 0
+	}
+	return n
+}
+
 func (r *RedisLimiter) Check(ctx context.Context, key string) bool {
 	n, err := r.client.Exists(ctx, key).Result()
 	if err != nil {

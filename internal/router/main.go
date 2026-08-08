@@ -762,23 +762,30 @@ func Register(p RegisterParams) chi.Router {
 	r.Post("/search", Adapt(pages.SearchPostHandler(p.CacheService, registry, p.AppStore)))
 	r.Get("/generators", Adapt(pages.GeneratorsLandingHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/tools", Adapt(pages.ToolsLandingHandler(registry, p.CacheService, p.AppStore)))
-	// Schematic editor
+	// Schematic editor.
+	// editorDump throttles a source that pulls many DISTINCT editor sessions
+	// (a worklist dump); the per-session capability token is the primary guard
+	// on unpublished editor contents, this is defense in depth.
+	editorDump := dumpBackoffMiddleware(p.RateLimiter, "editor", "id", 30, 10*time.Minute, time.Hour)
 	r.Get("/tools/editor", Adapt(pages.EditorPageHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/editor/sessions", Adapt(pages.EditorCreateSessionHandler(p.AppStore, p.StorageService)))
-	r.Get("/api/editor/{id}", Adapt(pages.EditorStateHandler(p.AppStore, p.StorageService)))
+	r.With(editorDump).Get("/api/editor/{id}", Adapt(pages.EditorStateHandler(p.AppStore, p.StorageService)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/op", Adapt(pages.EditorOpHandler(p.AppStore, p.StorageService)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/undo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, false)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/redo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, true)))
-	r.Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
-	r.Get("/api/editor/{id}/download", Adapt(pages.EditorDownloadHandler(p.AppStore, p.StorageService)))
-	r.Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
+	r.With(editorDump).Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
+	r.With(editorDump).Get("/api/editor/{id}/download", Adapt(pages.EditorDownloadHandler(p.AppStore, p.StorageService)))
+	r.With(editorDump).Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
 	// NBT viewer
 	r.Get("/tools/nbt-viewer", Adapt(pages.NBTViewerToolHandler(registry, p.CacheService, p.AppStore)))
-	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Get("/api/schematics/{name}/nbt-tree", Adapt(pages.SchematicNBTTreeHandler(p.AppStore, p.CacheService, p.StorageService)))
+	// nbtDump throttles bulk harvesting of raw NBT across many DISTINCT
+	// published schematics (the viewer page and the tree API that feeds it).
+	nbtDump := dumpBackoffMiddleware(p.RateLimiter, "nbt", "name", 60, 10*time.Minute, time.Hour)
+	r.With(nbtDump, rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Get("/api/schematics/{name}/nbt-tree", Adapt(pages.SchematicNBTTreeHandler(p.AppStore, p.CacheService, p.StorageService)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/nbt-tree", Adapt(pages.NBTTreeUploadHandler()))
 	// Similarity search
 	r.Get("/schematics/{name}/similar", Adapt(pages.SimilarSchematicsHandler(registry, p.CacheService, p.AppStore, p.SimilarityService)))
-	r.Get("/schematics/{name}/nbt-data", Adapt(pages.SchematicNBTDataHandler(registry, p.CacheService, p.AppStore)))
+	r.With(nbtDump).Get("/schematics/{name}/nbt-data", Adapt(pages.SchematicNBTDataHandler(registry, p.CacheService, p.AppStore)))
 	r.Get("/tools/similar", Adapt(pages.SimilarToolHandler(registry, p.CacheService, p.AppStore)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 10, time.Minute)).Post("/api/similar", Adapt(pages.SimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
 	r.Get("/api/schematics/{name}/similar", Adapt(pages.GetSimilarAPIHandler(p.CacheService, p.AppStore, p.SimilarityService)))
@@ -1348,6 +1355,77 @@ func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duratio
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
 				return
 			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// baseDumpDelay is the first backoff step; it doubles for each distinct
+// resource a source pulls past the threshold.
+const baseDumpDelay = time.Second
+
+// dumpBackoffMiddleware slows a single source draining a worklist of DISTINCT
+// resources — the signature of an automated dump — while leaving heavy use of a
+// single resource (e.g. an active editor session refreshing its own preview)
+// untouched.
+//
+// It counts distinct resource ids seen per client IP in a rolling window
+// (deduped, so re-fetching the same id is free) and, once that count crosses
+// softLimit, rejects each further NEW id with 429 and a Retry-After that
+// doubles with each id past the threshold, capped at maxDelay. Both the count
+// and the throttle decay when the source stops, as the window keys expire.
+// idParam is the chi path parameter naming the resource ("id", "name", …).
+//
+// This is defense in depth. It catches fast or single-IP dumps (including ones
+// laundered through a partner proxy, which arrive from one IP). A deliberately
+// slow, IP-rotating dump can stay under the per-IP distinct threshold — for
+// unpublished editor state the per-session capability token is the real
+// control; for public pages an edge (Cloudflare) rule is the place to catch
+// distributed slow scraping.
+func dumpBackoffMiddleware(rl ratelimit.Limiter, class, idParam string, softLimit int, window, maxDelay time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, idParam)
+			if id == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			ip := extractClientIP(r)
+			seenKey := "dumpseen:" + class + ":" + ip + ":" + id
+			// Only a NEW (ip,id) pair advances the distinct counter, so repeat
+			// access to one's own resource is never throttled.
+			if rl.Check(r.Context(), seenKey) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			n := rl.Incr(r.Context(), "dumpcount:"+class+":"+ip, window)
+			if n > softLimit {
+				shift := n - softLimit - 1
+				if shift > 30 {
+					shift = 30
+				}
+				delay := baseDumpDelay << uint(shift)
+				if delay <= 0 || delay > maxDelay {
+					delay = maxDelay
+				}
+				secs := int(delay.Seconds())
+				if secs < 1 {
+					secs = 1
+				}
+				// Log once, when the wall first goes up for this IP+window, to
+				// flag the dump without flooding logs for every blocked request.
+				if n == softLimit+1 {
+					slog.Warn("dump backoff engaged",
+						"class", class, "ip", ip, "distinct", n, "retry_after_s", secs)
+				}
+				// Deliberately do NOT mark this id as seen: a retry keeps hitting
+				// the wall (and escalates) instead of slipping through.
+				w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
+				http.Error(w, "Automated bulk access detected. Slow down and try again later.", http.StatusTooManyRequests)
+				return
+			}
+			// Under the threshold: remember this id so re-fetching it is free.
+			rl.Mark(r.Context(), seenKey, window)
 			next.ServeHTTP(w, r)
 		})
 	}

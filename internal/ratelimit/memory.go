@@ -68,6 +68,20 @@ func (m *MemoryLimiter) Allow(_ context.Context, key string, limit int, window t
 	return e.count <= limit, remaining
 }
 
+func (m *MemoryLimiter) Incr(_ context.Context, key string, window time.Duration) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+	e, ok := m.entries[key]
+	if !ok || now.After(e.expiry) {
+		m.entries[key] = &memEntry{count: 1, expiry: now.Add(window)}
+		return 1
+	}
+	e.count++
+	return e.count
+}
+
 func (m *MemoryLimiter) Check(_ context.Context, key string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
