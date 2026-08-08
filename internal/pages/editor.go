@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"time"
 
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
@@ -119,6 +120,22 @@ type editorStateView struct {
 	Cursor     int                  `json:"cursor"`
 	Materials  []editorMaterialView `json:"materials"`
 	Palette    []string             `json:"palette"`
+	// Fresh tokens, re-minted on every state response so an active session
+	// never expires. token is the edit-scope token (sent back via the
+	// X-Editor-Token header, kept out of URLs); viewToken is the read-only
+	// token the client puts in download/external-viewer URLs.
+	Token     string `json:"token"`
+	ViewToken string `json:"viewToken"`
+}
+
+// respondEditorState writes the session state with freshly minted edit and view
+// tokens, so the client's tokens roll forward on every interaction.
+func respondEditorState(e *server.RequestEvent, sess *store.EditorSession, model *schematic.Schematic, ops []schematic.Op) error {
+	st := editorState(sess, model, ops)
+	now := time.Now()
+	st.Token = mintEditorToken(sess.ID, editorScopeEdit, now)
+	st.ViewToken = mintEditorToken(sess.ID, editorScopeView, now)
+	return writeJSON(e, http.StatusOK, st)
 }
 
 func editorState(sess *store.EditorSession, model *schematic.Schematic, ops []schematic.Op) editorStateView {
@@ -188,21 +205,31 @@ func EditorCreateSessionHandler(appStore *store.Store, storageSvc *storage.Servi
 		if err != nil {
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
 		}
-		// The token is the capability for this session; the client must send it
-		// on every subsequent read/mutation. See editor_token.go.
-		return writeJSON(e, http.StatusOK, map[string]string{"id": id, "token": editorSessionToken(id)})
+		// Hand back both capability tokens for the new session. The edit token
+		// is kept in the client and sent via header; the view token rides in
+		// preview/download URLs. See editor_token.go.
+		now := time.Now()
+		return writeJSON(e, http.StatusOK, map[string]string{
+			"id":        id,
+			"token":     mintEditorToken(id, editorScopeEdit, now),
+			"viewToken": mintEditorToken(id, editorScopeView, now),
+		})
 	}
 }
 
-func loadEditorSession(e *server.RequestEvent, appStore *store.Store) (*store.EditorSession, error) {
+// loadEditorSession resolves the session for the request, requiring a valid
+// token of at least need scope (editorScopeEdit for mutations, editorScopeView
+// for read-only previews).
+func loadEditorSession(e *server.RequestEvent, appStore *store.Store, need string) (*store.EditorSession, error) {
 	id := e.Request.PathValue("id")
 	if id == "" || len(id) > 64 {
 		return nil, fmt.Errorf("missing session id")
 	}
 	// Capability token: the id alone is no longer sufficient. A leaked or
-	// enumerated id without the matching token gets the same "not found" as a
-	// bad id, so this neither confirms the id exists nor serves its contents.
-	if !editorTokenValid(id, editorTokenFromRequest(e)) {
+	// enumerated id without a valid, unexpired, sufficiently-scoped token gets
+	// the same "not found" as a bad id, so this neither confirms the id exists
+	// nor serves its contents.
+	if !editorTokenAllows(id, editorTokenFromRequest(e), need, time.Now()) {
 		return nil, fmt.Errorf("session not found")
 	}
 	sess, err := appStore.EditorSessions.GetByID(e.Request.Context(), id)
@@ -222,7 +249,7 @@ func loadEditorSession(e *server.RequestEvent, appStore *store.Store) (*store.Ed
 // GET /api/editor/{id}
 func EditorStateHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		sess, err := loadEditorSession(e, appStore)
+		sess, err := loadEditorSession(e, appStore, editorScopeEdit)
 		if err != nil {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
@@ -230,7 +257,7 @@ func EditorStateHandler(appStore *store.Store, storageSvc *storage.Service) func
 		if err != nil {
 			return writeJSON(e, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		}
-		return writeJSON(e, http.StatusOK, editorState(sess, model, ops))
+		return respondEditorState(e, sess, model, ops)
 	}
 }
 
@@ -238,7 +265,7 @@ func EditorStateHandler(appStore *store.Store, storageSvc *storage.Service) func
 // POST /api/editor/{id}/op {op}
 func EditorOpHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		sess, err := loadEditorSession(e, appStore)
+		sess, err := loadEditorSession(e, appStore, editorScopeEdit)
 		if err != nil {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
@@ -266,7 +293,7 @@ func EditorOpHandler(appStore *store.Store, storageSvc *storage.Service) func(e 
 		if err := appStore.EditorSessions.UpdateOps(e.Request.Context(), sess.ID, opsJSON, sess.Cursor); err != nil {
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to save"})
 		}
-		return writeJSON(e, http.StatusOK, editorState(sess, next, newOps))
+		return respondEditorState(e, sess, next, newOps)
 	}
 }
 
@@ -274,7 +301,7 @@ func EditorOpHandler(appStore *store.Store, storageSvc *storage.Service) func(e 
 // POST /api/editor/{id}/undo | /api/editor/{id}/redo
 func EditorUndoRedoHandler(appStore *store.Store, storageSvc *storage.Service, redo bool) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		sess, err := loadEditorSession(e, appStore)
+		sess, err := loadEditorSession(e, appStore, editorScopeEdit)
 		if err != nil {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
@@ -296,7 +323,7 @@ func EditorUndoRedoHandler(appStore *store.Store, storageSvc *storage.Service, r
 		if err != nil {
 			return writeJSON(e, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		}
-		return writeJSON(e, http.StatusOK, editorState(sess, model, ops))
+		return respondEditorState(e, sess, model, ops)
 	}
 }
 
@@ -305,7 +332,7 @@ func EditorUndoRedoHandler(appStore *store.Store, storageSvc *storage.Service, r
 // GET /api/editor/{id}/download?format=schem
 func EditorDownloadHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		sess, err := loadEditorSession(e, appStore)
+		sess, err := loadEditorSession(e, appStore, editorScopeView)
 		if err != nil {
 			return e.String(http.StatusNotFound, err.Error())
 		}
@@ -334,7 +361,7 @@ func EditorDownloadHandler(appStore *store.Store, storageSvc *storage.Service) f
 // GET /api/editor/{id}/preview.nbt
 func EditorPreviewNBTHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		sess, err := loadEditorSession(e, appStore)
+		sess, err := loadEditorSession(e, appStore, editorScopeView)
 		if err != nil {
 			return e.String(http.StatusNotFound, err.Error())
 		}
@@ -365,7 +392,7 @@ const editorPreviewBlockCap = 250000
 // GET /api/editor/{id}/preview.json
 func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		sess, err := loadEditorSession(e, appStore)
+		sess, err := loadEditorSession(e, appStore, editorScopeView)
 		if err != nil {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": err.Error()})
 		}

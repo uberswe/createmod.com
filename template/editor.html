@@ -155,15 +155,32 @@
 (function () {
   'use strict';
   var sessionID = null;
-  // Per-session capability token. Required on every editor API call; a bare
-  // session id is not enough. Issued at creation, carried in the ?t= deep-link
-  // param so a reload/resume still has it.
+  // Edit-scope capability token: required on every editor API call. Kept in
+  // localStorage and sent ONLY via the X-Editor-Token header — deliberately
+  // never placed in a URL, so it can't leak to analytics/ad scripts through the
+  // address bar or to third parties via Referer.
   var sessionToken = null;
-  // tok() appends the token to a URL that the browser will fetch without our
+  // View-scope token: read-only, short-lived. This is the one that may appear
+  // in a URL — download links and the external-viewer (Bloxelizer/Shulkr)
+  // links. Both tokens are re-minted by the server on every response.
+  var sessionViewToken = null;
+
+  function tokKey(id) { return 'cm_editor_tok_' + id; }
+  function loadToken(id) { try { return localStorage.getItem(tokKey(id)); } catch (e) { return null; } }
+  function saveToken() { try { if (sessionID && sessionToken) localStorage.setItem(tokKey(sessionID), sessionToken); } catch (e) {} }
+
+  // captureTokens absorbs freshly-minted tokens from any editor response.
+  function captureTokens(j) {
+    if (j && j.token) { sessionToken = j.token; saveToken(); }
+    if (j && j.viewToken) { sessionViewToken = j.viewToken; }
+    return j;
+  }
+
+  // tok() appends the VIEW token to a URL the browser fetches without our
   // headers — download <a href>s and the external-viewer links.
   function tok(u) {
-    if (!sessionToken) return u;
-    return u + (u.indexOf('?') < 0 ? '?' : '&') + 't=' + encodeURIComponent(sessionToken);
+    if (!sessionViewToken) return u;
+    return u + (u.indexOf('?') < 0 ? '?' : '&') + 't=' + encodeURIComponent(sessionViewToken);
   }
   var startEl = document.getElementById('ed-start');
   var mainEl = document.getElementById('ed-main');
@@ -180,7 +197,7 @@
     return fetch(path, opts).then(function (r) {
       return r.json().then(function (j) {
         if (!r.ok) throw new Error(j.error || 'request failed');
-        return j;
+        return captureTokens(j);
       });
     });
   }
@@ -316,11 +333,13 @@
 
   function openSession(id) {
     sessionID = id;
+    // Recover the edit token from storage on a plain reload/deep-link. The URL
+    // carries only the session id (never the token).
+    if (!sessionToken) { sessionToken = loadToken(id); }
+    saveToken();
     var url = new URL(location.href);
     url.searchParams.set('session', id);
-    if (sessionToken) {
-      url.searchParams.set('t', sessionToken);
-    }
+    url.searchParams.delete('t');
     url.searchParams.delete('source');
     url.searchParams.delete('upload');
     history.replaceState(null, '', url);
@@ -337,7 +356,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    }).then(function (j) { sessionToken = j.token; openSession(j.id); })
+    }).then(function (j) { openSession(j.id); })
       .catch(function (e) { startStatus.textContent = e.message; });
   }
 
@@ -420,9 +439,10 @@
   // ?upload=<temp-upload-token> edits a fresh upload (from the upload page).
   var params = new URLSearchParams(location.search);
   if (params.get('session')) {
-    // Resume: the token rides in ?t= so a reloaded/bookmarked deep link still
-    // has the capability. Without it the session load returns "not found".
-    sessionToken = params.get('t');
+    // Resume: openSession recovers the edit token from localStorage (it is
+    // never in the URL). If it is missing/expired the load fails and the user
+    // starts a new session — an idle session past the token TTL is not
+    // resumable, which is the intended trade for keeping the token out of URLs.
     openSession(params.get('session'));
   } else if (params.get('source')) {
     createSession({ source: 'schematic', ref: params.get('source') });
