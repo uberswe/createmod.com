@@ -774,6 +774,11 @@ func Register(p RegisterParams) chi.Router {
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/undo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, false)))
 	r.With(rateLimitMiddlewareNew(p.RateLimiter, 60, time.Minute)).Post("/api/editor/{id}/redo", Adapt(pages.EditorUndoRedoHandler(p.AppStore, p.StorageService, true)))
 	r.With(editorDump).Get("/api/editor/{id}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
+	// Same preview, with the view token carried as a path segment (…/{token}/preview.nbt)
+	// instead of ?t=. External viewers (Bloxelizer, Shulkr) strip the query when
+	// they re-fetch the URL we hand them, so the query form loses the token; the
+	// path form survives and the URL still ends in .nbt.
+	r.With(editorDump).Get("/api/editor/{id}/{token}/preview.nbt", Adapt(pages.EditorPreviewNBTHandler(p.AppStore, p.StorageService)))
 	r.With(editorDump).Get("/api/editor/{id}/download", Adapt(pages.EditorDownloadHandler(p.AppStore, p.StorageService)))
 	r.With(editorDump).Get("/api/editor/{id}/preview.json", Adapt(pages.EditorPreviewJSONHandler(p.AppStore, p.StorageService)))
 	// NBT viewer

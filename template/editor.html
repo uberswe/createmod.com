@@ -324,7 +324,12 @@
     document.querySelectorAll('.ed-dl').forEach(function (a) {
       a.href = tok('/api/editor/' + sessionID + '/download?format=' + a.getAttribute('data-format'));
     });
-    var previewURL = tok(location.origin + '/api/editor/' + sessionID + '/preview.nbt');
+    // External viewers strip the query string when they re-fetch the URL, so
+    // carry the view token as a path segment (…/{token}/preview.nbt) rather than
+    // ?t=. The URL still ends in .nbt so the viewer recognizes the format.
+    var previewURL = sessionViewToken
+      ? location.origin + '/api/editor/' + sessionID + '/' + encodeURIComponent(sessionViewToken) + '/preview.nbt'
+      : location.origin + '/api/editor/' + sessionID + '/preview.nbt';
     document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(previewURL);
     document.getElementById('ed-shulkr').href = 'https://www.shulkr.com/?url=' + encodeURIComponent(previewURL);
     setError('');
