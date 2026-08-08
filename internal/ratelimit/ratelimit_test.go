@@ -64,6 +64,26 @@ func TestMemoryLimiter_AllowWindowExpiry(t *testing.T) {
 	}
 }
 
+func TestMemoryLimiter_Incr(t *testing.T) {
+	m := NewMemory()
+	defer m.Close()
+
+	ctx := context.Background()
+	key := "test:incr"
+
+	for want := 1; want <= 3; want++ {
+		if got := m.Incr(ctx, key, 50*time.Millisecond); got != want {
+			t.Fatalf("Incr call %d returned %d, want %d", want, got, want)
+		}
+	}
+
+	// After the window expires the count resets to 1.
+	time.Sleep(60 * time.Millisecond)
+	if got := m.Incr(ctx, key, 50*time.Millisecond); got != 1 {
+		t.Fatalf("Incr after window expiry returned %d, want 1", got)
+	}
+}
+
 func TestMemoryLimiter_CheckAndMark(t *testing.T) {
 	m := NewMemory()
 	defer m.Close()
