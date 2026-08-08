@@ -1383,6 +1383,10 @@ const baseDumpDelay = time.Second
 // control; for public pages an edge (Cloudflare) rule is the place to catch
 // distributed slow scraping.
 func dumpBackoffMiddleware(rl ratelimit.Limiter, class, idParam string, softLimit int, window, maxDelay time.Duration) func(http.Handler) http.Handler {
+	// Per-pod fallback used only when the shared (Redis) limiter errors, so the
+	// protection degrades to per-pod instead of vanishing during an outage —
+	// the public NBT pages have only this layer.
+	fallback := ratelimit.NewMemory()
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, idParam)
@@ -1391,15 +1395,19 @@ func dumpBackoffMiddleware(rl ratelimit.Limiter, class, idParam string, softLimi
 				return
 			}
 			ip := extractClientIP(r)
+			ctx := r.Context()
 			seenKey := "dumpseen:" + class + ":" + ip + ":" + id
-			// Only a NEW (ip,id) pair advances the distinct counter, so repeat
-			// access to one's own resource is never throttled.
-			if rl.Check(r.Context(), seenKey) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			n := rl.Incr(r.Context(), "dumpcount:"+class+":"+ip, window)
-			if n > softLimit {
+			countKey := "dumpcount:" + class + ":" + ip
+
+			// throttle writes a 429 with an exponentially growing Retry-After
+			// (doubling per distinct id past the threshold, capped) and reports
+			// whether it did. It deliberately does NOT mark the id as seen, so a
+			// retry keeps hitting the wall and escalating rather than slipping
+			// through. Logs once, when the wall first goes up for this IP+window.
+			throttle := func(n int) bool {
+				if n <= softLimit {
+					return false
+				}
 				shift := n - softLimit - 1
 				if shift > 30 {
 					shift = 30
@@ -1412,20 +1420,43 @@ func dumpBackoffMiddleware(rl ratelimit.Limiter, class, idParam string, softLimi
 				if secs < 1 {
 					secs = 1
 				}
-				// Log once, when the wall first goes up for this IP+window, to
-				// flag the dump without flooding logs for every blocked request.
 				if n == softLimit+1 {
 					slog.Warn("dump backoff engaged",
 						"class", class, "ip", ip, "distinct", n, "retry_after_s", secs)
 				}
-				// Deliberately do NOT mark this id as seen: a retry keeps hitting
-				// the wall (and escalates) instead of slipping through.
 				w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
 				http.Error(w, "Automated bulk access detected. Slow down and try again later.", http.StatusTooManyRequests)
+				return true
+			}
+
+			// Only a NEW (ip,id) pair advances the distinct counter, so repeat
+			// access to one's own resource is never throttled.
+			if rl.Check(ctx, seenKey) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			lim := rl
+			n := rl.Incr(ctx, countKey, window)
+			if n == 0 {
+				// Shared limiter errored (Incr returns 0 only on backend error;
+				// a real count is >= 1). Degrade to the per-pod fallback so the
+				// backoff still applies. Redo the dedup against the fallback,
+				// and log at most once a minute.
+				if fallback.Incr(ctx, "dumpdegraded:"+class, time.Minute) == 1 {
+					slog.Warn("dump backoff degraded to per-pod fallback (rate-limit backend unavailable)", "class", class)
+				}
+				lim = fallback
+				if fallback.Check(ctx, seenKey) {
+					next.ServeHTTP(w, r)
+					return
+				}
+				n = fallback.Incr(ctx, countKey, window)
+			}
+			if throttle(n) {
 				return
 			}
 			// Under the threshold: remember this id so re-fetching it is free.
-			rl.Mark(r.Context(), seenKey, window)
+			lim.Mark(ctx, seenKey, window)
 			next.ServeHTTP(w, r)
 		})
 	}

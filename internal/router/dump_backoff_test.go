@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -67,6 +68,38 @@ func TestDumpBackoff_SameIDNeverThrottled(t *testing.T) {
 		if rec := doGet(r, "the-only-id", ip); rec.Code != http.StatusOK {
 			t.Fatalf("repeat request %d: code=%d, want 200", i, rec.Code)
 		}
+	}
+}
+
+// erroringLimiter mimics a Redis outage: Incr always returns 0 (the fail-open
+// signal) and Check always misses, so the middleware must fall back to its
+// per-pod in-memory limiter and still throttle.
+type erroringLimiter struct{}
+
+func (erroringLimiter) Allow(context.Context, string, int, time.Duration) (bool, int) {
+	return true, 0
+}
+func (erroringLimiter) Incr(context.Context, string, time.Duration) int { return 0 }
+func (erroringLimiter) Check(context.Context, string) bool              { return false }
+func (erroringLimiter) Mark(context.Context, string, time.Duration)     {}
+func (erroringLimiter) Close() error                                    { return nil }
+
+// When the shared limiter errors, protection degrades to the per-pod fallback
+// rather than disabling — distinct ids past the threshold still get 429.
+func TestDumpBackoff_DegradesToFallbackOnBackendError(t *testing.T) {
+	const soft = 3
+	mw := dumpBackoffMiddleware(erroringLimiter{}, "test", "id", soft, time.Minute, time.Hour)
+	r := chi.NewRouter()
+	r.With(mw).Get("/r/{id}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	const ip = "203.0.113.9"
+
+	for i := 0; i < soft; i++ {
+		if rec := doGet(r, "id-"+strconv.Itoa(i), ip); rec.Code != http.StatusOK {
+			t.Fatalf("request %d within threshold: code=%d, want 200", i, rec.Code)
+		}
+	}
+	if rec := doGet(r, "over", ip); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("over-threshold via fallback: code=%d, want 429", rec.Code)
 	}
 }
 
