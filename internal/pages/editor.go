@@ -236,10 +236,13 @@ func loadEditorSession(e *server.RequestEvent, appStore *store.Store, need strin
 	if err != nil || sess == nil {
 		return nil, fmt.Errorf("session not found")
 	}
-	// Sessions created by a logged-in user belong to that user. Anonymous
-	// sessions are capability-by-UUID (122-bit random id), the same model
-	// as temp upload tokens and modify previews.
-	if sess.UserID != "" && sess.UserID != authenticatedUserID(e) {
+	// The scoped token is the capability. Enforce ownership only for edit-scope
+	// access — an edit token alone should not let a third party mutate a
+	// logged-in user's session. A view token is deliberately shareable (the
+	// owner hands the preview URL to an external viewer, which fetches it
+	// unauthenticated), so a valid view token reads regardless of who presents
+	// it; the unforgeable token, not the login, is what gates access.
+	if need == editorScopeEdit && sess.UserID != "" && sess.UserID != authenticatedUserID(e) {
 		return nil, fmt.Errorf("session not found")
 	}
 	return sess, nil
