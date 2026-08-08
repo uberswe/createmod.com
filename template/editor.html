@@ -155,6 +155,16 @@
 (function () {
   'use strict';
   var sessionID = null;
+  // Per-session capability token. Required on every editor API call; a bare
+  // session id is not enough. Issued at creation, carried in the ?t= deep-link
+  // param so a reload/resume still has it.
+  var sessionToken = null;
+  // tok() appends the token to a URL that the browser will fetch without our
+  // headers — download <a href>s and the external-viewer links.
+  function tok(u) {
+    if (!sessionToken) return u;
+    return u + (u.indexOf('?') < 0 ? '?' : '&') + 't=' + encodeURIComponent(sessionToken);
+  }
   var startEl = document.getElementById('ed-start');
   var mainEl = document.getElementById('ed-main');
   var startStatus = document.getElementById('ed-start-status');
@@ -163,6 +173,10 @@
   var sceneReady = false;
 
   function api(path, opts) {
+    opts = opts || {};
+    if (sessionToken) {
+      opts.headers = Object.assign({}, opts.headers, { 'X-Editor-Token': sessionToken });
+    }
     return fetch(path, opts).then(function (r) {
       return r.json().then(function (j) {
         if (!r.ok) throw new Error(j.error || 'request failed');
@@ -289,11 +303,11 @@
       opt.value = name;
       dl.appendChild(opt);
     });
-    document.getElementById('ed-download').href = '/api/editor/' + sessionID + '/preview.nbt';
+    document.getElementById('ed-download').href = tok('/api/editor/' + sessionID + '/preview.nbt');
     document.querySelectorAll('.ed-dl').forEach(function (a) {
-      a.href = '/api/editor/' + sessionID + '/download?format=' + a.getAttribute('data-format');
+      a.href = tok('/api/editor/' + sessionID + '/download?format=' + a.getAttribute('data-format'));
     });
-    var previewURL = location.origin + '/api/editor/' + sessionID + '/preview.nbt';
+    var previewURL = tok(location.origin + '/api/editor/' + sessionID + '/preview.nbt');
     document.getElementById('ed-bloxelizer').href = 'https://bloxelizer.com/viewer?url=' + encodeURIComponent(previewURL);
     document.getElementById('ed-shulkr').href = 'https://www.shulkr.com/?url=' + encodeURIComponent(previewURL);
     setError('');
@@ -304,6 +318,9 @@
     sessionID = id;
     var url = new URL(location.href);
     url.searchParams.set('session', id);
+    if (sessionToken) {
+      url.searchParams.set('t', sessionToken);
+    }
     url.searchParams.delete('source');
     url.searchParams.delete('upload');
     history.replaceState(null, '', url);
@@ -320,7 +337,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    }).then(function (j) { openSession(j.id); })
+    }).then(function (j) { sessionToken = j.token; openSession(j.id); })
       .catch(function (e) { startStatus.textContent = e.message; });
   }
 
@@ -365,7 +382,7 @@
   document.getElementById('ed-publish').addEventListener('click', function () {
     var btn = this;
     btn.disabled = true;
-    fetch('/api/editor/' + sessionID + '/preview.nbt')
+    fetch('/api/editor/' + sessionID + '/preview.nbt', { headers: sessionToken ? { 'X-Editor-Token': sessionToken } : {} })
       .then(function (r) { if (!r.ok) throw new Error('failed to serialize'); return r.blob(); })
       .then(function (blob) {
         var fd = new FormData();
@@ -403,6 +420,9 @@
   // ?upload=<temp-upload-token> edits a fresh upload (from the upload page).
   var params = new URLSearchParams(location.search);
   if (params.get('session')) {
+    // Resume: the token rides in ?t= so a reloaded/bookmarked deep link still
+    // has the capability. Without it the session load returns "not found".
+    sessionToken = params.get('t');
     openSession(params.get('session'));
   } else if (params.get('source')) {
     createSession({ source: 'schematic', ref: params.get('source') });

@@ -188,7 +188,9 @@ func EditorCreateSessionHandler(appStore *store.Store, storageSvc *storage.Servi
 		if err != nil {
 			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to create session"})
 		}
-		return writeJSON(e, http.StatusOK, map[string]string{"id": id})
+		// The token is the capability for this session; the client must send it
+		// on every subsequent read/mutation. See editor_token.go.
+		return writeJSON(e, http.StatusOK, map[string]string{"id": id, "token": editorSessionToken(id)})
 	}
 }
 
@@ -196,6 +198,12 @@ func loadEditorSession(e *server.RequestEvent, appStore *store.Store) (*store.Ed
 	id := e.Request.PathValue("id")
 	if id == "" || len(id) > 64 {
 		return nil, fmt.Errorf("missing session id")
+	}
+	// Capability token: the id alone is no longer sufficient. A leaked or
+	// enumerated id without the matching token gets the same "not found" as a
+	// bad id, so this neither confirms the id exists nor serves its contents.
+	if !editorTokenValid(id, editorTokenFromRequest(e)) {
+		return nil, fmt.Errorf("session not found")
 	}
 	sess, err := appStore.EditorSessions.GetByID(e.Request.Context(), id)
 	if err != nil || sess == nil {
@@ -338,10 +346,11 @@ func EditorPreviewNBTHandler(appStore *store.Store, storageSvc *storage.Service)
 		if err != nil {
 			return e.String(http.StatusInternalServerError, "failed to serialize")
 		}
-		// CORS-open like modify previews: external viewers (Bloxelizer)
-		// fetch this URL. The unguessable session id is the access control;
-		// Referrer-Policy strict-origin-when-cross-origin keeps it out of
-		// cross-origin referers.
+		// CORS-open like modify previews: external viewers (Bloxelizer) fetch
+		// this URL. Access is gated by the per-session capability token (see
+		// editor_token.go, enforced in loadEditorSession), which the editor
+		// appends as ?t= to the URLs it hands out; Referrer-Policy
+		// strict-origin-when-cross-origin keeps it out of cross-origin referers.
 		e.Response.Header().Set("Access-Control-Allow-Origin", "*")
 		e.Response.Header().Set("Content-Disposition", "attachment; filename=\"edited.nbt\"")
 		return e.Blob(http.StatusOK, "application/octet-stream", data)
@@ -370,7 +379,7 @@ func EditorPreviewJSONHandler(appStore *store.Store, storageSvc *storage.Service
 			Z     int               `json:"z"`
 			Type  int               `json:"type"`
 			Color int               `json:"color"`
-			P     int               `json:"p"` // palette index into the top-level names list
+			P     int               `json:"p"`             // palette index into the top-level names list
 			Mat   string            `json:"mat,omitempty"` // block wrapped by a copycat at this position
 			Props map[string]string `json:"props,omitempty"`
 		}
