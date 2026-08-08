@@ -1,9 +1,51 @@
 package pages
 
 import (
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"createmod/internal/server"
 )
+
+func TestEditorTokenFromRequest_Sources(t *testing.T) {
+	// Header wins over path and query.
+	req := httptest.NewRequest("GET", "/api/editor/id/tok-path/preview.nbt?t=tok-query", nil)
+	req.Header.Set("X-Editor-Token", "tok-header")
+	req.SetPathValue("token", "tok-path")
+	if got := editorTokenFromRequest(&server.RequestEvent{Request: req}); got != "tok-header" {
+		t.Fatalf("header precedence: got %q, want tok-header", got)
+	}
+
+	// Path segment is used when there is no header — this is the external-viewer
+	// path form whose query would otherwise be stripped by the viewer.
+	req = httptest.NewRequest("GET", "/api/editor/id/tok-path/preview.nbt?t=tok-query", nil)
+	req.SetPathValue("token", "tok-path")
+	if got := editorTokenFromRequest(&server.RequestEvent{Request: req}); got != "tok-path" {
+		t.Fatalf("path precedence over query: got %q, want tok-path", got)
+	}
+
+	// Query is the last resort (download links).
+	req = httptest.NewRequest("GET", "/api/editor/id/preview.nbt?t=tok-query", nil)
+	if got := editorTokenFromRequest(&server.RequestEvent{Request: req}); got != "tok-query" {
+		t.Fatalf("query fallback: got %q, want tok-query", got)
+	}
+}
+
+// A view token carried in the path authorizes a view-scope read, just like one
+// in the query — this is what keeps Bloxelizer/Shulkr working.
+func TestEditorTokenFromRequest_PathViewToken(t *testing.T) {
+	const id = "abcdef01-2345-6789-abcd-ef0123456789"
+	now := time.Unix(1_700_000_000, 0)
+	view := mintEditorToken(id, editorScopeView, now)
+
+	req := httptest.NewRequest("GET", "/api/editor/"+id+"/"+view+"/preview.nbt", nil)
+	req.SetPathValue("token", view)
+	got := editorTokenFromRequest(&server.RequestEvent{Request: req})
+	if !editorTokenAllows(id, got, editorScopeView, now) {
+		t.Fatal("path-carried view token failed view-scope validation")
+	}
+}
 
 func TestEditorToken_MintAndAllow(t *testing.T) {
 	const id = "11111111-2222-3333-4444-555555555555"

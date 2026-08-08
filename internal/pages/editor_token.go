@@ -92,11 +92,19 @@ func editorTokenAllows(id, tok, need string, now time.Time) bool {
 	return true
 }
 
-// editorTokenFromRequest reads the token from the X-Editor-Token header (the
-// editor client's edit token) or the ?t= query param (view tokens on download
-// links and external-viewer URLs, which cannot set headers).
+// editorTokenFromRequest reads the token from, in order: the X-Editor-Token
+// header (the editor client's edit token), the {token} path segment, or the ?t=
+// query param.
+//
+// The path segment exists because external viewers (Bloxelizer, Shulkr) fetch
+// the preview URL we hand them but STRIP its query string, which would drop a
+// ?t= token. Carrying the view token as a path segment survives that, while the
+// URL still ends in .nbt so the viewer recognizes the format.
 func editorTokenFromRequest(e *server.RequestEvent) string {
 	if t := e.Request.Header.Get("X-Editor-Token"); t != "" {
+		return t
+	}
+	if t := e.Request.PathValue("token"); t != "" {
 		return t
 	}
 	return e.Request.URL.Query().Get("t")
