@@ -135,3 +135,28 @@ func TestMeiliEngine_BuildSort(t *testing.T) {
 		}
 	}
 }
+
+// buildFilter must resolve a category URL key to the display name the index
+// stores. Keys are curated (not slugs of the names), so a name that diverges
+// from the key — like "vehicles" -> "Vehicles & Contraptions" — only works via
+// the taxonomy lookup, not the hyphen->space guess.
+func TestMeiliEngine_BuildFilter_CategoryResolution(t *testing.T) {
+	svc := &Service{}
+	svc.SetCategoryNames(map[string]string{
+		"vehicles":  "Vehicles & Contraptions",
+		"mob-farms": "Mob Farms",
+	})
+	m := &MeiliEngine{svc: svc}
+
+	if got := m.buildFilter(SearchQuery{Category: "vehicles", Rating: -1}); got != `categories = "Vehicles & Contraptions"` {
+		t.Fatalf("known key not resolved to name: %q", got)
+	}
+	// Known key whose name matches the guess still resolves to the real name.
+	if got := m.buildFilter(SearchQuery{Category: "mob-farms", Rating: -1}); got != `categories = "Mob Farms"` {
+		t.Fatalf("mob-farms: %q", got)
+	}
+	// Unknown key falls back to the hyphen->space guess (no taxonomy entry).
+	if got := m.buildFilter(SearchQuery{Category: "unknown-cat", Rating: -1}); got != `categories = "unknown cat"` {
+		t.Fatalf("unknown key fallback: %q", got)
+	}
+}

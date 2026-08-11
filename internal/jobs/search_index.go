@@ -54,6 +54,21 @@ func (w *SearchIndexWorker) Work(ctx context.Context, job *river.Job[SearchIndex
 		slog.Warn("search index rebuild: failed to load mod metadata", "error", err)
 	}
 
+	// Load the category taxonomy so category filters can resolve the URL key
+	// (e.g. "vehicles") to the display name the index stores (e.g.
+	// "Vehicles & Contraptions").
+	if cats, err := readStore.Categories.List(ctx); err == nil {
+		categoryNames := make(map[string]string, len(cats))
+		for _, c := range cats {
+			if c.Key != "" && c.Name != "" {
+				categoryNames[c.Key] = c.Name
+			}
+		}
+		w.deps.Search.SetCategoryNames(categoryNames)
+	} else {
+		slog.Warn("search index rebuild: failed to load categories", "error", err)
+	}
+
 	mapped := pages.MapStoreSchematicsNoCache(readStore, storeSchematics, w.deps.Cache)
 	w.deps.Search.BuildIndex(mapped, modDisplayNames)
 

@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/text/cases"
@@ -50,6 +51,31 @@ type Service struct {
 	index          []schematicIndex
 	storage        *storage.Service
 	trendingScores map[string]float64
+
+	// categoryNames maps a category key (the URL slug, e.g. "vehicles") to its
+	// display name (e.g. "Vehicles & Contraptions"), which is what the search
+	// index actually stores. Keys are curated, not slugs of the names, so the
+	// name cannot be reconstructed from the key — it must be looked up here.
+	// Refreshed by the search-index rebuild job.
+	catMu         sync.RWMutex
+	categoryNames map[string]string
+}
+
+// SetCategoryNames replaces the category key->name map. Called from the search
+// index rebuild so category filters resolve against the current taxonomy.
+func (s *Service) SetCategoryNames(m map[string]string) {
+	s.catMu.Lock()
+	s.categoryNames = m
+	s.catMu.Unlock()
+}
+
+// CategoryNameByKey returns the display name for a category key, and whether it
+// was found.
+func (s *Service) CategoryNameByKey(key string) (string, bool) {
+	s.catMu.RLock()
+	name, ok := s.categoryNames[key]
+	s.catMu.RUnlock()
+	return name, ok
 }
 
 type schematicIndex struct {
