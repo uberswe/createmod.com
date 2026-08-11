@@ -165,7 +165,17 @@ func (m *MeiliEngine) buildFilter(q SearchQuery) string {
 	}
 
 	if q.Category != "" && q.Category != "all" {
+		// The index stores category display NAMES; q.Category is the URL key.
+		// Resolve key->name against the current taxonomy. Keys are curated (not
+		// slugs of the names), so guessing the name from the key breaks whenever
+		// they diverge (e.g. key "vehicles" -> name "Vehicles & Contraptions").
+		// Fall back to the old hyphen->space guess only if the key is unknown.
 		cat := strings.ReplaceAll(q.Category, "-", " ")
+		if m != nil && m.svc != nil {
+			if name, ok := m.svc.CategoryNameByKey(q.Category); ok {
+				cat = name
+			}
+		}
 		// Meilisearch filter values need quoting.
 		parts = append(parts, fmt.Sprintf(`categories = "%s"`, escapeMeiliString(cat)))
 	}
