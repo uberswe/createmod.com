@@ -244,6 +244,12 @@ window['nitroAds'].createAd('outstream-player', {
   "floating": { "position": "right" },
   "outstream": "auto",
   "className": "cm-outstream",
+  // On smaller laptop screens (1200-1440px) the corner video overlaps the right
+  // rail, so there the video runs INLINE at the top of the rail instead (see
+  // adrail.js) and the floating player is suppressed. It still floats on mobile
+  // (<=1199, above the anchor) and on larger desktops (>=1440). Keep this band
+  // in sync with LAPTOP_RAIL_VIDEO_MQ in adrail.js.
+  "mediaQuery": "not all and (min-width: 1200px) and (max-width: 1439.98px)",
   "onNavigateMin": 4000,
   "report": {
     "enabled": true,
