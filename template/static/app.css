@@ -452,6 +452,18 @@ a:hover {
 .search-ad-rail-wide > [id$="_sticky"] {
   height: 100%;
 }
+/* Smaller-laptop band (1200-1440px): the rail carries an inline video on top
+   (adrail.js "_railvideo") plus the sticky stack. The sticky keeps height:100%
+   above — it still spans the column so NitroPay can pin ads down it; the short
+   video simply sits above it. We only add spacing below the video here (in-band
+   only, so the empty slot adds no gap at other widths). Kept in sync with
+   LAPTOP_RAIL_VIDEO_MQ in adrail.js. */
+@media (min-width: 1200px) and (max-width: 1439.98px) {
+  .cm-side-rail > [id$="_railvideo"],
+  .search-ad-rail-wide > [id$="_railvideo"] {
+    margin-bottom: 1rem;
+  }
+}
 /* When the mobile/tablet anchor ad is showing, lift the floating outstream
    player above it — both are fixed to the bottom edge otherwise. The
    .cm-anchor-open class is toggled in foot.html from NitroPay's
