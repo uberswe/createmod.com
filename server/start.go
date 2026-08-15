@@ -320,9 +320,25 @@ func (s *Server) Start() {
 	if !migrating {
 		// Warm per-pod in-memory caches in the background so startup isn't
 		// blocked. Handlers tolerate cold caches (they compute on miss).
+		//
+		// Re-warm periodically too: the cache TTL is 30m but the trending
+		// refresh River job runs on only ONE pod hourly, so without a per-pod
+		// re-warm every other pod's index/trending caches expire and the next
+		// request recomputes cold — an all-catalog trending aggregation that
+		// takes ~4-6s and lands on a user (worst on /trending). The 20m interval
+		// stays under the 30m TTL; jitter desyncs pods off the read replica.
 		go func() {
-			pages.WarmIndexCache(s.cacheService, s.readStore, trendingWindowDays)
-			pages.WarmVideosCache(s.cacheService, s.readStore)
+			warm := func() {
+				pages.WarmIndexCache(s.cacheService, s.readStore, trendingWindowDays)
+				pages.WarmVideosCache(s.cacheService, s.readStore)
+			}
+			warm()
+			time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
+			ticker := time.NewTicker(20 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				warm()
+			}
 		}()
 
 		// Pre-warm site stats search cache on every pod. Uses a random

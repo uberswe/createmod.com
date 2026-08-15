@@ -20,8 +20,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/drexedam/gravatar"
 	"createmod/internal/server"
+	"github.com/drexedam/gravatar"
 	"golang.org/x/sync/singleflight"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -412,7 +412,6 @@ func renderTabPartial(cacheService *cache.Service, registry *server.Registry, ap
 	return e.HTML(http.StatusOK, html)
 }
 
-
 // trendingEpoch is a fixed reference point for the Reddit-style hot score.
 // All scores are relative to this; the exact value doesn't matter as long as it's consistent.
 var trendingEpoch = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -451,10 +450,10 @@ func WarmIndexCache(cacheService *cache.Service, appStore *store.Store, windowDa
 // warm is already in progress when the timer fires, the pending flag ensures
 // another warm runs after it completes.
 var indexRefreshDebouncer = struct {
-	mu       sync.Mutex
-	timer    *time.Timer
-	pending  bool
-	running  bool
+	mu      sync.Mutex
+	timer   *time.Timer
+	pending bool
+	running bool
 }{}
 
 const refreshDebounceDelay = 2 * time.Second
@@ -497,7 +496,6 @@ func RefreshIndexCache(cacheService *cache.Service, appStore *store.Store, windo
 		}
 	})
 }
-
 
 // ComputeTrendingScoresFromStore computes trending scores using the PostgreSQL store.
 // Returns a map of schematic ID to score. Also persists trending scores and
@@ -759,10 +757,18 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 		cacheService.Set(cache.TrendingHasNextKeyForWindow(wd), len(allTrending) > indexPageSize)
 	}
 
-	// Backward compat: also populate default (non-windowed) keys with 30-day data
+	// Backward compat: also populate default (non-windowed) keys with 30-day data.
+	// This 30-day list is exactly what the dedicated /trending page reads
+	// (getAllTrendingSchematicsFromStore -> window 30), so populate its windowed
+	// key too. Previously only window-7 was warmed, so /trending was never
+	// pre-warmed and every pod computed it cold (~4-6s, an all-catalog trending
+	// aggregation + full ListByIDs) on the first hit — and again after each OOM
+	// restart. Reusing this already-computed list adds no extra query.
 	defaultTrending := computeTrendingForWindow(appStore, cacheService, 30)
 	cacheService.SetSchematics(cache.TrendingSchematicsKey, defaultTrending)
 	cacheService.Set(cache.TrendingHasNextKey, len(defaultTrending) > indexPageSize)
+	cacheService.SetSchematics(cache.TrendingKeyForWindow(30), defaultTrending)
+	cacheService.Set(cache.TrendingHasNextKeyForWindow(30), len(defaultTrending) > indexPageSize)
 
 	// 3. Highest rated schematics (page 1)
 	highestRated, highestHasNext := getHighestRatedSchematicsPageFromStore(appStore, cacheService, 1)
@@ -803,4 +809,3 @@ func WarmIndexCacheFromStore(appStore *store.Store, cacheService *cache.Service,
 
 	logger.Debug("Index page cache warmed (store)")
 }
-
