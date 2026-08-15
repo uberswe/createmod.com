@@ -34,8 +34,11 @@ spec:
               name: http
               protocol: TCP
           env:
+            # Soft heap cap ~1Gi below the container memory limit (8Gi) so Go
+            # GCs before the kernel OOM-kills the pod. Raised with the limit to
+            # give the in-memory indexes headroom and stop the hourly OOM kills.
             - name: GOMEMLIMIT
-              value: "3500MiB"
+              value: "7168MiB"
             - name: MEILI_MASTER_KEY
               valueFrom:
                 secretKeyRef:
@@ -73,8 +76,15 @@ spec:
             failureThreshold: 3
           resources:
             requests:
+              # CPU request unchanged so HPA (utilization = usage/request)
+              # keeps scaling at the same thresholds; the higher limit just
+              # lets a pod burst to 2 cores during heavy uploads instead of
+              # being CFS-throttled to 1, which was starving concurrent
+              # requests. automaxprocs sets GOMAXPROCS from the 2-core limit.
               cpu: 300m
-              memory: 1536Mi
+              memory: 2Gi
             limits:
-              cpu: 1000m
-              memory: 4Gi
+              # ~2 CPU / 8Gi: relieves upload-time CPU throttling and the
+              # hourly OOM kills that were also churning per-pod caches.
+              cpu: "2"
+              memory: 8Gi
