@@ -42,9 +42,9 @@ func (q *Queries) CountAllTempUploads(ctx context.Context) (int64, error) {
 }
 
 const createTempUpload = `-- name: CreateTempUpload :one
-INSERT INTO temp_uploads (token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-RETURNING id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, created, updated
+INSERT INTO temp_uploads (token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, source_format, original_s3_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+RETURNING id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, source_format, original_s3_key, created, updated
 `
 
 type CreateTempUploadParams struct {
@@ -65,6 +65,8 @@ type CreateTempUploadParams struct {
 	NbtS3Key         string          `json:"nbt_s3_key"`
 	ImageS3Key       string          `json:"image_s3_key"`
 	ParsedSummary    string          `json:"parsed_summary"`
+	SourceFormat     string          `json:"source_format"`
+	OriginalS3Key    string          `json:"original_s3_key"`
 }
 
 type CreateTempUploadRow struct {
@@ -86,6 +88,8 @@ type CreateTempUploadRow struct {
 	NbtS3Key         string          `json:"nbt_s3_key"`
 	ImageS3Key       string          `json:"image_s3_key"`
 	ParsedSummary    string          `json:"parsed_summary"`
+	SourceFormat     string          `json:"source_format"`
+	OriginalS3Key    string          `json:"original_s3_key"`
 	Created          time.Time       `json:"created"`
 	Updated          time.Time       `json:"updated"`
 }
@@ -109,6 +113,8 @@ func (q *Queries) CreateTempUpload(ctx context.Context, arg CreateTempUploadPara
 		arg.NbtS3Key,
 		arg.ImageS3Key,
 		arg.ParsedSummary,
+		arg.SourceFormat,
+		arg.OriginalS3Key,
 	)
 	var i CreateTempUploadRow
 	err := row.Scan(
@@ -130,6 +136,8 @@ func (q *Queries) CreateTempUpload(ctx context.Context, arg CreateTempUploadPara
 		&i.NbtS3Key,
 		&i.ImageS3Key,
 		&i.ParsedSummary,
+		&i.SourceFormat,
+		&i.OriginalS3Key,
 		&i.Created,
 		&i.Updated,
 	)
@@ -304,7 +312,7 @@ func (q *Queries) GetTempUploadByChecksum(ctx context.Context, checksum string) 
 }
 
 const getTempUploadByToken = `-- name: GetTempUploadByToken :one
-SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, processing, created, updated
+SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, source_format, original_s3_key, processing, created, updated
 FROM temp_uploads
 WHERE token = $1
 `
@@ -328,6 +336,8 @@ type GetTempUploadByTokenRow struct {
 	NbtS3Key         string          `json:"nbt_s3_key"`
 	ImageS3Key       string          `json:"image_s3_key"`
 	ParsedSummary    string          `json:"parsed_summary"`
+	SourceFormat     string          `json:"source_format"`
+	OriginalS3Key    string          `json:"original_s3_key"`
 	Processing       bool            `json:"processing"`
 	Created          time.Time       `json:"created"`
 	Updated          time.Time       `json:"updated"`
@@ -355,6 +365,8 @@ func (q *Queries) GetTempUploadByToken(ctx context.Context, token string) (GetTe
 		&i.NbtS3Key,
 		&i.ImageS3Key,
 		&i.ParsedSummary,
+		&i.SourceFormat,
+		&i.OriginalS3Key,
 		&i.Processing,
 		&i.Created,
 		&i.Updated,
@@ -470,7 +482,7 @@ func (q *Queries) ListAllTempUploads(ctx context.Context, arg ListAllTempUploads
 }
 
 const listExpiredUnclaimedTempUploads = `-- name: ListExpiredUnclaimedTempUploads :many
-SELECT id, token, nbt_s3_key, image_s3_key
+SELECT id, token, nbt_s3_key, image_s3_key, original_s3_key
 FROM temp_uploads
 WHERE uploaded_by = '' AND created < $1
 ORDER BY created ASC
@@ -483,10 +495,11 @@ type ListExpiredUnclaimedTempUploadsParams struct {
 }
 
 type ListExpiredUnclaimedTempUploadsRow struct {
-	ID         string `json:"id"`
-	Token      string `json:"token"`
-	NbtS3Key   string `json:"nbt_s3_key"`
-	ImageS3Key string `json:"image_s3_key"`
+	ID            string `json:"id"`
+	Token         string `json:"token"`
+	NbtS3Key      string `json:"nbt_s3_key"`
+	ImageS3Key    string `json:"image_s3_key"`
+	OriginalS3Key string `json:"original_s3_key"`
 }
 
 func (q *Queries) ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListExpiredUnclaimedTempUploadsParams) ([]ListExpiredUnclaimedTempUploadsRow, error) {
@@ -503,6 +516,7 @@ func (q *Queries) ListExpiredUnclaimedTempUploads(ctx context.Context, arg ListE
 			&i.Token,
 			&i.NbtS3Key,
 			&i.ImageS3Key,
+			&i.OriginalS3Key,
 		); err != nil {
 			return nil, err
 		}

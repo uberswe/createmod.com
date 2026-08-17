@@ -91,9 +91,16 @@ type Schematic struct {
 	OldID              *int
 	Status             string
 	Type               string
-	Created            time.Time
-	Updated            time.Time
-	CreatedOverride    *time.Time // when set, Update overwrites the created timestamp
+	// SourceFormat is the format slug the schematic was uploaded as (e.g.
+	// "excraft"); empty or "nbt" means it was uploaded as Create structure NBT.
+	SourceFormat string
+	// OriginalFile is the S3 filename (under the schematic's collection) of the
+	// untouched uploaded file when it differed from .nbt, enabling a verbatim
+	// re-download. Empty when there is no preserved original.
+	OriginalFile    string
+	Created         time.Time
+	Updated         time.Time
+	CreatedOverride *time.Time // when set, Update overwrites the created timestamp
 }
 
 // Category represents a schematic category.
@@ -1321,9 +1328,15 @@ type TempUpload struct {
 	NbtS3Key         string
 	ImageS3Key       string
 	ParsedSummary    string
-	Processing       bool
-	Created          time.Time
-	Updated          time.Time
+	// SourceFormat is the detected upload format slug (e.g. "excraft"); empty
+	// or "nbt" means the upload was already Create structure NBT.
+	SourceFormat string
+	// OriginalS3Key points at the untouched uploaded file when it was converted
+	// to NBT, so the original can be preserved on publish. Empty otherwise.
+	OriginalS3Key string
+	Processing    bool
+	Created       time.Time
+	Updated       time.Time
 }
 
 // TempUploadFile represents an additional NBT file attached to a temp upload.

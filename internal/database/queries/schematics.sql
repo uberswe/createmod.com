@@ -74,13 +74,15 @@ INSERT INTO schematics (
     postdate, detected_language, featured_image, gallery, schematic_file,
     video, has_dependencies, dependencies, createmod_version_id,
     minecraft_version_id, block_count, dim_x, dim_y, dim_z,
-    materials, mods, paid, moderation_state, type, status, rotation_images, short_code, rotation_disabled
+    materials, mods, paid, moderation_state, type, status, rotation_images, short_code, rotation_disabled,
+    source_format, original_file
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     $8, $9, $10, $11, $12,
     $13, $14, $15, $16,
     $17, $18, $19, $20, $21,
-    $22, $23, $24, $25, $26, $27, $28, $29, $30
+    $22, $23, $24, $25, $26, $27, $28, $29, $30,
+    $31, $32
 )
 RETURNING *;
 

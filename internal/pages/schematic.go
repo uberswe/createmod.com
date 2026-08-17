@@ -454,7 +454,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 		}
 
 		d.Title = d.Schematic.Title
-		d.DownloadSplit = schematicDownloadSplit(d.Schematic.Name, d.Language, [3]int{d.Schematic.DimX, d.Schematic.DimY, d.Schematic.DimZ})
+		d.DownloadSplit = schematicDownloadSplit(d.Schematic.Name, d.Language, [3]int{d.Schematic.DimX, d.Schematic.DimY, d.Schematic.DimZ}, d.Schematic.OriginalFile)
 		d.Safety = safetyBadgeFor(e.Request.Context(), appStore, d.Schematic.ID)
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Schematics"), "/schematics", d.Schematic.Title)
 		d.Description = truncateMetaDescription(strip.StripTags(d.Schematic.Content))
@@ -716,6 +716,7 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		RatingCount:          ratingCount,
 		HasRating:            rating > 0,
 		SchematicFile:        schematicFile,
+		OriginalFile:         s.OriginalFile,
 		AIDescription:        s.AIDescription,
 		Featured:             s.Featured,
 		Materials:            string(s.Materials),
@@ -1012,6 +1013,7 @@ func mapSchematicFromBatch(
 		RatingCount:          ratingCount,
 		HasRating:            rating > 0,
 		SchematicFile:        schematicFile,
+		OriginalFile:         s.OriginalFile,
 		AIDescription:        s.AIDescription,
 		Featured:             s.Featured,
 		Materials:            string(s.Materials),

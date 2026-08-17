@@ -86,7 +86,7 @@ func Test_GeneratorDownload_FormatParam(t *testing.T) {
 }
 
 func Test_SchematicDownloadSplit_Model(t *testing.T) {
-	d := schematicDownloadSplit("my-build", "en", [3]int{24, 8, 5})
+	d := schematicDownloadSplit("my-build", "en", [3]int{24, 8, 5}, "")
 	if d.Primary.Href != "/get/my-build" {
 		t.Errorf("primary href = %s", d.Primary.Href)
 	}
@@ -115,8 +115,24 @@ func Test_SchematicDownloadSplit_Model(t *testing.T) {
 		t.Errorf("lossy items = %d, want 2 (legacy + building gadgets)", lossyCount)
 	}
 
+	// A preserved non-.nbt original adds a leading "original" entry that points
+	// at the verbatim-download route; .nbt uploads add nothing.
+	withOrig := schematicDownloadSplit("ship", "en", [3]int{10, 10, 40}, "ship.excraft")
+	if len(withOrig.Items) != 8 {
+		t.Fatalf("with original: items = %d, want 8", len(withOrig.Items))
+	}
+	if withOrig.Items[0].Href != "/get/ship?format=original" {
+		t.Errorf("original item href = %s", withOrig.Items[0].Href)
+	}
+	if !strings.Contains(withOrig.Items[0].Label, ".excraft") {
+		t.Errorf("original item label = %q, want it to name .excraft", withOrig.Items[0].Label)
+	}
+	if nbtOnly := schematicDownloadSplit("plain", "en", [3]int{4, 4, 4}, "plain.nbt"); len(nbtOnly.Items) != 7 {
+		t.Errorf(".nbt original should add no item; items = %d, want 7", len(nbtOnly.Items))
+	}
+
 	// Oversized build: world entry disabled with a reason, others untouched
-	big := schematicDownloadSplit("big-build", "en", [3]int{5000, 100, 5000})
+	big := schematicDownloadSplit("big-build", "en", [3]int{5000, 100, 5000}, "")
 	var worldItem *DownloadSplitItem
 	for i := range big.Items {
 		if strings.Contains(big.Items[i].Label, "world") {

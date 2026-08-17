@@ -131,6 +131,8 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		OldID:              ptrInt32ToInt(s.OldID),
 		Status:             s.Status,
 		Type:               s.Type,
+		SourceFormat:       s.SourceFormat,
+		OriginalFile:       s.OriginalFile,
 		Created:            s.Created,
 		Updated:            s.Updated,
 	}
@@ -802,6 +804,8 @@ func (ps *PostgresStore) Create(ctx context.Context, s *store.Schematic) error {
 		ModerationState:    s.ModerationState,
 		Type:               s.Type,
 		Status:             s.Status,
+		SourceFormat:       s.SourceFormat,
+		OriginalFile:       s.OriginalFile,
 	})
 	if err != nil {
 		return err
@@ -5889,6 +5893,8 @@ func (s *TempUploadStoreImpl) Create(ctx context.Context, t *store.TempUpload) e
 		NbtS3Key:         t.NbtS3Key,
 		ImageS3Key:       t.ImageS3Key,
 		ParsedSummary:    t.ParsedSummary,
+		SourceFormat:     t.SourceFormat,
+		OriginalS3Key:    t.OriginalS3Key,
 	})
 	if err != nil {
 		return err
@@ -5923,6 +5929,8 @@ func (s *TempUploadStoreImpl) GetByToken(ctx context.Context, token string) (*st
 		NbtS3Key:         row.NbtS3Key,
 		ImageS3Key:       row.ImageS3Key,
 		ParsedSummary:    row.ParsedSummary,
+		SourceFormat:     row.SourceFormat,
+		OriginalS3Key:    row.OriginalS3Key,
 		Processing:       row.Processing,
 		Created:          row.Created,
 		Updated:          row.Updated,
@@ -6086,10 +6094,11 @@ func (s *TempUploadStoreImpl) ListExpiredUnclaimed(ctx context.Context, olderTha
 	result := make([]store.TempUpload, len(rows))
 	for i, row := range rows {
 		result[i] = store.TempUpload{
-			ID:         row.ID,
-			Token:      row.Token,
-			NbtS3Key:   row.NbtS3Key,
-			ImageS3Key: row.ImageS3Key,
+			ID:            row.ID,
+			Token:         row.Token,
+			NbtS3Key:      row.NbtS3Key,
+			ImageS3Key:    row.ImageS3Key,
+			OriginalS3Key: row.OriginalS3Key,
 		}
 	}
 	return result, nil
