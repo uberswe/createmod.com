@@ -55,6 +55,9 @@ func convertLabel(f schematic.Format) string {
 	if f == schematic.FormatSable {
 		return "Sable Blueprint (read-only)"
 	}
+	if f == schematic.FormatExcraft {
+		return "Create: Aeronautics Toolgun (.excraft, read-only)"
+	}
 	return string(f)
 }
 
