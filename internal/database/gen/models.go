@@ -478,6 +478,8 @@ type Schematic struct {
 	RotationImages     []string           `json:"rotation_images"`
 	ShortCode          string             `json:"short_code"`
 	RotationDisabled   bool               `json:"rotation_disabled"`
+	SourceFormat       string             `json:"source_format"`
+	OriginalFile       string             `json:"original_file"`
 }
 
 type SchematicCategory struct {
@@ -743,6 +745,8 @@ type TempUpload struct {
 	NbtS3Key         string          `json:"nbt_s3_key"`
 	ImageS3Key       string          `json:"image_s3_key"`
 	Processing       bool            `json:"processing"`
+	SourceFormat     string          `json:"source_format"`
+	OriginalS3Key    string          `json:"original_s3_key"`
 }
 
 type TempUploadFile struct {

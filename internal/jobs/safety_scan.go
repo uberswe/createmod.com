@@ -40,8 +40,50 @@ func (w *SafetyScanWorker) Work(ctx context.Context, job *river.Job[SafetyScanAr
 	return scanSchematicSafety(ctx, w.deps.Store, w.deps.Storage, job.Args.SchematicID)
 }
 
-// scanSchematicSafety loads the schematic's primary file, runs hardening +
-// inspection, and persists the result. A failed parse is itself a result
+// fileScan is the tier-1 + tier-2 result for one stored file.
+type fileScan struct {
+	safe     bool
+	manifest *schematic.Manifest
+	checksum string
+	parseErr string
+}
+
+// scanStoredFile downloads one schematic file and runs the hardened readers
+// (tier 1) plus content inspection (tier 2). A parse failure is a result
+// (safe=false), not an error; only a download/read failure returns an error so
+// the job retries. This is the same gauntlet for every format.
+func scanStoredFile(ctx context.Context, storageSvc *storage.Service, schematicID, filename string) (fileScan, error) {
+	reader, err := storageSvc.Download(ctx, storage.CollectionPrefix("schematics"), schematicID, filename)
+	if err != nil {
+		return fileScan{}, fmt.Errorf("safety scan: download %s/%s: %w", schematicID, filename, err)
+	}
+	defer reader.Close()
+	data, err := io.ReadAll(io.LimitReader(reader, schematic.MaxDecompressedSize))
+	if err != nil {
+		return fileScan{}, fmt.Errorf("safety scan: read %s/%s: %w", schematicID, filename, err)
+	}
+	sum := sha256.Sum256(data)
+	fs := fileScan{checksum: hex.EncodeToString(sum[:])}
+
+	format, derr := schematic.Detect(data)
+	if derr == nil {
+		var model *schematic.Schematic
+		if model, derr = schematic.Read(data, format); derr == nil {
+			fs.safe = true
+			fs.manifest = schematic.Inspect(model)
+			return fs, nil
+		}
+	}
+	fs.parseErr = strings.TrimPrefix(derr.Error(), "schematic: ")
+	return fs, nil
+}
+
+// scanSchematicSafety runs the safety gauntlet over every downloadable file for
+// a schematic — the normalized .nbt and, when the upload was converted, the
+// preserved original — and persists the combined result. The schematic is only
+// file_safe when BOTH pass hardening; the manifest reports the union of their
+// findings, so an original that hides something the .nbt dropped (or is itself
+// malformed) can never be presented as safe. A failed parse is a result
 // (file_safe=false), not a job failure.
 func scanSchematicSafety(ctx context.Context, appStore *store.Store, storageSvc *storage.Service, schematicID string) error {
 	s, err := appStore.Schematics.GetByID(ctx, schematicID)
@@ -53,50 +95,105 @@ func scanSchematicSafety(ctx context.Context, appStore *store.Store, storageSvc 
 	if primary == "" {
 		return nil
 	}
-	reader, err := storageSvc.Download(ctx, storage.CollectionPrefix("schematics"), s.ID, primary)
+
+	prim, err := scanStoredFile(ctx, storageSvc, s.ID, primary)
 	if err != nil {
-		return fmt.Errorf("safety scan: download %s: %w", schematicID, err)
+		return err
 	}
-	defer reader.Close()
-	data, err := io.ReadAll(io.LimitReader(reader, schematic.MaxDecompressedSize))
-	if err != nil {
-		return fmt.Errorf("safety scan: read %s: %w", schematicID, err)
+
+	fileSafe := prim.safe
+	manifest := prim.manifest
+	parseErr := prim.parseErr
+	checksum := prim.checksum
+
+	// The preserved original is downloadable too, so it must clear the same
+	// checks; formats with no writer (e.g. Aeronautics .excraft) are only ever
+	// served as this original.
+	if orig := strings.TrimSpace(s.OriginalFile); orig != "" {
+		os, oerr := scanStoredFile(ctx, storageSvc, s.ID, orig)
+		if oerr != nil {
+			// Can't verify a file we serve — retry rather than claim safe.
+			return oerr
+		}
+		checksum = prim.checksum + ":" + os.checksum
+		fileSafe = prim.safe && os.safe
+		if os.safe {
+			manifest = mergeManifests(manifest, os.manifest)
+		} else if parseErr == "" {
+			parseErr = "original upload (" + orig + "): " + os.parseErr
+		}
 	}
-	sum := sha256.Sum256(data)
 
 	result := &store.SchematicSafety{
 		SchematicID:     schematicID,
-		Checksum:        hex.EncodeToString(sum[:]),
+		Checksum:        checksum,
 		PipelineVersion: schematic.InspectorVersion,
+		FileSafe:        fileSafe,
 	}
-
-	// Tier 1: parse through the hardened readers. A file that fails here is
-	// recorded as unsafe rather than erroring the job.
-	format, err := schematic.Detect(data)
-	if err == nil {
-		var model *schematic.Schematic
-		model, err = schematic.Read(data, format)
-		if err == nil {
-			result.FileSafe = true
-			manifest := schematic.Inspect(model)
-			if mj, jErr := json.Marshal(manifest); jErr == nil {
-				result.Manifest = mj
-			}
-		}
-	}
-	if err != nil {
-		result.FileSafe = false
-		failure := map[string]interface{}{
+	if fileSafe && manifest != nil {
+		result.Manifest, _ = json.Marshal(manifest)
+	} else {
+		result.Manifest, _ = json.Marshal(map[string]interface{}{
 			"inspectorVersion": schematic.InspectorVersion,
-			"parseError":       strings.TrimPrefix(err.Error(), "schematic: "),
-		}
-		result.Manifest, _ = json.Marshal(failure)
+			"parseError":       parseErr,
+		})
 	}
 
 	if err := appStore.SchematicSafety.Upsert(ctx, result); err != nil {
 		return fmt.Errorf("safety scan: persist %s: %w", schematicID, err)
 	}
 	return nil
+}
+
+// mergeManifests combines two file manifests into the worst case: counts are
+// the per-type maximum (the files describe the same build, so summing would
+// double-count), findings are the deduplicated union capped at MaxFindings, and
+// mod namespaces are unioned. Either argument may be nil.
+func mergeManifests(a, b *schematic.Manifest) *schematic.Manifest {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	out := &schematic.Manifest{
+		InspectorVersion:  schematic.InspectorVersion,
+		Counts:            map[schematic.FindingType]int{},
+		FindingsTruncated: a.FindingsTruncated || b.FindingsTruncated,
+	}
+	for t, n := range a.Counts {
+		out.Counts[t] = n
+	}
+	for t, n := range b.Counts {
+		if n > out.Counts[t] {
+			out.Counts[t] = n
+		}
+	}
+	seen := map[schematic.Finding]bool{}
+	for _, src := range [][]schematic.Finding{a.Findings, b.Findings} {
+		for _, f := range src {
+			if seen[f] {
+				continue
+			}
+			seen[f] = true
+			if len(out.Findings) >= schematic.MaxFindings {
+				out.FindingsTruncated = true
+				break
+			}
+			out.Findings = append(out.Findings, f)
+		}
+	}
+	nsSeen := map[string]bool{}
+	for _, ns := range append(append([]string{}, a.ModNamespaces...), b.ModNamespaces...) {
+		if !nsSeen[ns] {
+			nsSeen[ns] = true
+			out.ModNamespaces = append(out.ModNamespaces, ns)
+		}
+	}
+	if len(out.Counts) == 0 {
+		out.Counts = nil
+	}
+	return out
 }
 
 // SafetyBackfillArgs sweeps for schematics that have never been scanned or

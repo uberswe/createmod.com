@@ -100,6 +100,9 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 			if format == "world" {
 				return serveWorldExport(e, rl, storageSvc, s)
 			}
+			if format == "original" {
+				return serveOriginalUpload(e, s)
+			}
 			return serveConvertedSchematic(e, storageSvc, s, format)
 		}
 
@@ -111,6 +114,19 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 		fileURL := fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(primary))
 		return e.Redirect(http.StatusFound, fileURL)
 	}
+}
+
+// serveOriginalUpload redirects to the untouched file the schematic was
+// uploaded as (preserved when the upload was converted to .nbt). Used for
+// formats with no writer, like Aeronautics .excraft, which cannot be
+// regenerated from the stored .nbt.
+func serveOriginalUpload(e *server.RequestEvent, s *store.Schematic) error {
+	original := strings.TrimSpace(s.OriginalFile)
+	if original == "" {
+		return e.String(http.StatusNotFound, "this schematic has no original upload to download")
+	}
+	fileURL := fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(original))
+	return e.Redirect(http.StatusFound, fileURL)
 }
 
 // countSchematicDownloadStore increments download counters via the PostgreSQL store.

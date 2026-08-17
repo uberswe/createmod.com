@@ -270,10 +270,13 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
 		}
 
-		// Convert non-.nbt formats to Create/vanilla structure NBT
+		// Convert non-.nbt formats to Create/vanilla structure NBT. The
+		// untouched original is preserved below for verbatim re-download.
 		uploadFilename := header.Filename
+		originalData := data
 		var convErr error
-		data, uploadFilename, _, _, convErr = normalizeUploadToNBT(header.Filename, data)
+		var sourceFormat string
+		data, uploadFilename, sourceFormat, _, convErr = normalizeUploadToNBT(header.Filename, data)
 		if convErr != nil {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": convErr.Error()})
 		}
@@ -350,6 +353,8 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		if isHMAC {
 			uploadedBy = ""
 		}
+		originalS3Key, _ := storeOriginalUpload(e.Request.Context(), storageSvc, s3CollectionTempUploads+"/"+token, header.Filename, originalData, sourceFormat)
+
 		tempUpload := &store.TempUpload{
 			Token:         token,
 			UploadedBy:    uploadedBy,
@@ -364,6 +369,8 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 			Materials:     materialsJSON,
 			NbtS3Key:      nbtS3Key,
 			ParsedSummary: parsed,
+			SourceFormat:  sourceFormat,
+			OriginalS3Key: originalS3Key,
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {
@@ -447,10 +454,13 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
 		}
 
-		// Convert non-.nbt formats to Create/vanilla structure NBT
+		// Convert non-.nbt formats to Create/vanilla structure NBT. The
+		// untouched original is preserved below for verbatim re-download.
 		uploadFilename := header.Filename
+		originalData := data
 		var convErr error
-		data, uploadFilename, _, _, convErr = normalizeUploadToNBT(header.Filename, data)
+		var sourceFormat string
+		data, uploadFilename, sourceFormat, _, convErr = normalizeUploadToNBT(header.Filename, data)
 		if convErr != nil {
 			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": convErr.Error()})
 		}
@@ -521,6 +531,8 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			}
 		}
 
+		originalS3Key, _ := storeOriginalUpload(e.Request.Context(), storageSvc, s3CollectionTempUploads+"/"+token, header.Filename, originalData, sourceFormat)
+
 		// Persist to PostgreSQL store — UploadedBy is empty (unclaimed)
 		tempUpload := &store.TempUpload{
 			Token:         token,
@@ -536,6 +548,8 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			Materials:     materialsJSON,
 			NbtS3Key:      nbtS3Key,
 			ParsedSummary: parsed,
+			SourceFormat:  sourceFormat,
+			OriginalS3Key: originalS3Key,
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {

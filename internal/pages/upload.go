@@ -608,6 +608,19 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
+		// --- Copy the preserved original (non-.nbt uploads) so it can be
+		// re-downloaded verbatim; best-effort, the .nbt remains primary. ---
+		originalFile := ""
+		if entry.OriginalS3Key != "" && storageSvc != nil {
+			name := entry.OriginalS3Key[strings.LastIndex(entry.OriginalS3Key, "/")+1:]
+			dstKey := s3CollectionSchematics + "/" + schematicID + "/" + name
+			if copyErr := storageSvc.CopyRaw(ctx, entry.OriginalS3Key, dstKey); copyErr != nil {
+				slog.Error("make-public: failed to copy original upload", "error", copyErr, "key", entry.OriginalS3Key)
+			} else {
+				originalFile = name
+			}
+		}
+
 		// --- Copy additional files (variations) from temp uploads ---
 		tempFiles, _ := appStore.TempUploadFiles.ListByToken(ctx, token)
 		for _, tf := range tempFiles {
@@ -668,6 +681,8 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			Mods:               entry.Mods,
 			ModerationState:    store.ModerationAutoReview,
 			ScheduledAt:        scheduledAt,
+			SourceFormat:       entry.SourceFormat,
+			OriginalFile:       originalFile,
 		}
 
 		if err := appStore.Schematics.Create(ctx, schem); err != nil {
@@ -1082,8 +1097,10 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 			return e.JSON(http.StatusBadRequest, map[string]string{"error": "file too large: maximum size is 10MB"})
 		}
 		// Non-.nbt formats are converted to Create/vanilla structure NBT so
-		// the rest of the pipeline stays format-agnostic.
+		// the rest of the pipeline stays format-agnostic. The untouched original
+		// is preserved below so it can be re-downloaded verbatim.
 		uploadFilename := header.Filename
+		originalData := data
 		data, uploadFilename, sourceFormat, conversionWarnings, convErr := normalizeUploadToNBT(header.Filename, data)
 		if convErr != nil {
 			return e.JSON(http.StatusBadRequest, map[string]string{"error": convErr.Error()})
@@ -1169,6 +1186,10 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 			}
 		}
 
+		// Preserve the untouched original when the upload was converted, so it
+		// can be offered for verbatim re-download once published.
+		originalS3Key, _ := storeOriginalUpload(e.Request.Context(), storageSvc, s3CollectionTempUploads+"/"+token, header.Filename, originalData, sourceFormat)
+
 		// Persist to PostgreSQL store
 		tempUpload := &store.TempUpload{
 			Token:         token,
@@ -1184,6 +1205,8 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 			Materials:     materialsJSON,
 			NbtS3Key:      nbtS3Key,
 			ParsedSummary: parsed,
+			SourceFormat:  sourceFormat,
+			OriginalS3Key: originalS3Key,
 		}
 
 		if err := appStore.TempUploads.Create(e.Request.Context(), tempUpload); err != nil {

@@ -35,7 +35,11 @@ const MaxFindings = 200
 
 // InspectorVersion is stored with results so improved inspectors can
 // re-queue previously scanned builds.
-const InspectorVersion = 1
+//
+// v2: the safety scan also inspects the preserved original upload (not just the
+// normalized .nbt), so a schematic is only file_safe when every downloadable
+// file passes hardening, and the manifest reports the union of their findings.
+const InspectorVersion = 2
 
 // Manifest is the transparency report for one schematic.
 type Manifest struct {

@@ -1,10 +1,10 @@
 -- name: CreateTempUpload :one
-INSERT INTO temp_uploads (token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-RETURNING id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, created, updated;
+INSERT INTO temp_uploads (token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, source_format, original_s3_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+RETURNING id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, source_format, original_s3_key, created, updated;
 
 -- name: GetTempUploadByToken :one
-SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, processing, created, updated
+SELECT id, token, uploaded_by, filename, description, size, checksum, block_count, dim_x, dim_y, dim_z, mods, materials, minecraft_version, createmod_version, nbt_s3_key, image_s3_key, parsed_summary, source_format, original_s3_key, processing, created, updated
 FROM temp_uploads
 WHERE token = $1;
 
@@ -64,7 +64,7 @@ LIMIT $2 OFFSET $3;
 DELETE FROM temp_upload_files WHERE token = $1;
 
 -- name: ListExpiredUnclaimedTempUploads :many
-SELECT id, token, nbt_s3_key, image_s3_key
+SELECT id, token, nbt_s3_key, image_s3_key, original_s3_key
 FROM temp_uploads
 WHERE uploaded_by = '' AND created < $1
 ORDER BY created ASC

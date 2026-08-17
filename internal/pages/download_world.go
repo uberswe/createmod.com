@@ -114,7 +114,7 @@ func serveWorldExport(e *server.RequestEvent, rl ratelimit.Limiter, storageSvc *
 // isDownloadFormatSlug reports whether slug names a downloadable output:
 // any converter format, or the world export.
 func isDownloadFormatSlug(slug string) bool {
-	if slug == "world" {
+	if slug == "world" || slug == "original" {
 		return true
 	}
 	_, _, ok := convertFormatBySlug(slug)

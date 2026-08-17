@@ -38,6 +38,7 @@ type Schematic struct {
 	Rating               string             `json:"rating"`
 	HasRating            bool               `json:"hasRating"`
 	SchematicFile        string             `json:"schematicFile"`
+	OriginalFile         string             `json:"originalFile,omitempty"`
 	RatingCount          int                `json:"ratingCount"`
 	AIDescription        string             `json:"aiDescription"`
 	Featured             bool               `json:"featured"`

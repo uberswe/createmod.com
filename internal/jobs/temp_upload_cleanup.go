@@ -82,6 +82,9 @@ func (w *TempUploadCleanupWorker) Work(ctx context.Context, job *river.Job[TempU
 				if u.ImageS3Key != "" {
 					_ = w.deps.Storage.DeleteRaw(ctx, u.ImageS3Key)
 				}
+				if u.OriginalS3Key != "" {
+					_ = w.deps.Storage.DeleteRaw(ctx, u.OriginalS3Key)
+				}
 			}
 		}
 

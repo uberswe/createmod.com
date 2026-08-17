@@ -1,11 +1,14 @@
 package pages
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 
 	"createmod/internal/schematic"
+	"createmod/internal/storage"
 )
 
 // uploadableSchematicExts are the file extensions accepted by schematic
@@ -51,4 +54,32 @@ func normalizeUploadToNBT(filename string, data []byte) (out []byte, outName str
 		warnings = append(warnings, w.Message)
 	}
 	return res.Data, base + ".nbt", string(format), warnings, nil
+}
+
+// preservedOriginalName returns the sanitized filename under which a non-.nbt
+// upload's untouched original is stored, or "" when there is nothing to
+// preserve (the upload was already Create structure NBT).
+func preservedOriginalName(originalName, sourceFormat string) string {
+	if sourceFormat == "" || sourceFormat == string(schematic.FormatStructure) {
+		return ""
+	}
+	return sanitizeFilename(originalName)
+}
+
+// storeOriginalUpload keeps the untouched uploaded file alongside the
+// normalized .nbt (under <tokenDir>/original/<name>) so non-.nbt uploads — like
+// Aeronautics .excraft, which has no writer — can be offered back verbatim on
+// download. It returns the S3 key and stored filename, or empty strings when
+// there is nothing to preserve or storage is unavailable/failed.
+func storeOriginalUpload(ctx context.Context, storageSvc *storage.Service, tokenDir, originalName string, originalData []byte, sourceFormat string) (s3Key, filename string) {
+	filename = preservedOriginalName(originalName, sourceFormat)
+	if filename == "" || storageSvc == nil {
+		return "", ""
+	}
+	s3Key = tokenDir + "/original/" + filename
+	if err := storageSvc.UploadRawBytes(ctx, s3Key, originalData, "application/octet-stream"); err != nil {
+		slog.Error("failed to store original upload for preservation", "error", err, "format", sourceFormat)
+		return "", ""
+	}
+	return s3Key, filename
 }

@@ -133,38 +133,50 @@ type DownloadSplitData struct {
 // schematicDownloadSplit builds the split-button model for a library
 // schematic: primary = the existing interstitial .nbt flow, menu = the other
 // formats through the same interstitial with a format parameter.
-func schematicDownloadSplit(name, lang string, dims [3]int) DownloadSplitData {
+func schematicDownloadSplit(name, lang string, dims [3]int, originalFile string) DownloadSplitData {
 	get := func(format string) string {
 		if format == "" {
 			return "/get/" + name
 		}
 		return "/get/" + name + "?format=" + format
 	}
+	items := []DownloadSplitItem{}
+	// When the schematic was uploaded in a non-.nbt format, offer the untouched
+	// original first — some formats (e.g. Aeronautics .excraft) have no writer
+	// and can only be retrieved this way.
+	if ext := strings.ToLower(filepath.Ext(originalFile)); ext != "" && ext != ".nbt" {
+		items = append(items, DownloadSplitItem{
+			Label: i18n.T(lang, "Original") + " " + ext,
+			Href:  get("original"),
+			Note:  i18n.T(lang, "as uploaded"),
+		})
+	}
+	items = append(items,
+		DownloadSplitItem{Label: "Create .nbt", Href: get(""), Note: i18n.T(lang, "original")},
+		DownloadSplitItem{Label: "WorldEdit .schem", Href: get("schem")},
+		DownloadSplitItem{Label: "Litematica .litematic", Href: get("litematic")},
+		DownloadSplitItem{
+			Label:      "Legacy .schematic",
+			Href:       get("schematic"),
+			Lossy:      true,
+			LossyTitle: i18n.T(lang, "Lossy: modern blocks without a pre-1.13 equivalent become air"),
+		},
+		DownloadSplitItem{Label: "MineColonies .blueprint", Href: get("blueprint")},
+		DownloadSplitItem{
+			Label:      "Building Gadgets .json",
+			Href:       get("bg"),
+			Lossy:      true,
+			LossyTitle: i18n.T(lang, "Lossy: Building Gadgets templates cannot carry block entity data (chest contents, Create kinetics)"),
+		},
+		worldDownloadItem(name, lang, dims),
+	)
 	return DownloadSplitData{
 		Language: lang,
 		Primary: DownloadSplitItem{
 			Label: i18n.T(lang, "Download"),
 			Href:  get(""),
 		},
-		Items: []DownloadSplitItem{
-			{Label: "Create .nbt", Href: get(""), Note: i18n.T(lang, "original")},
-			{Label: "WorldEdit .schem", Href: get("schem")},
-			{Label: "Litematica .litematic", Href: get("litematic")},
-			{
-				Label:      "Legacy .schematic",
-				Href:       get("schematic"),
-				Lossy:      true,
-				LossyTitle: i18n.T(lang, "Lossy: modern blocks without a pre-1.13 equivalent become air"),
-			},
-			{Label: "MineColonies .blueprint", Href: get("blueprint")},
-			{
-				Label:      "Building Gadgets .json",
-				Href:       get("bg"),
-				Lossy:      true,
-				LossyTitle: i18n.T(lang, "Lossy: Building Gadgets templates cannot carry block entity data (chest contents, Create kinetics)"),
-			},
-			worldDownloadItem(name, lang, dims),
-		},
+		Items: items,
 	}
 }
 
