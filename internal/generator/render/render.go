@@ -106,6 +106,14 @@ func Isometric(result *generator.GenerateResult) *image.RGBA {
 		} else if b.Type == generator.BlockFence {
 			drawFenceBlock(img, project, bx, by, bz, baseColor)
 			continue
+		} else if b.Type == generator.BlockStair {
+			// Stairs were previously drawn as full cubes, which turned the
+			// chamfered hull surface into a blocky wall in the preview. Draw the
+			// actual two-box stair so the render matches the frontend's stepped
+			// silhouette. Facing comes from the generated (vanilla-semantics)
+			// props, same as the frontend and the export.
+			drawStair(img, project, bx, by, bz, b.Props["facing"], b.Props["half"], baseColor)
+			continue
 		} else if b.Type == generator.BlockTrapdoor {
 			height = 0.2
 		}
@@ -114,6 +122,41 @@ func Isometric(result *generator.GenerateResult) *image.RGBA {
 	}
 
 	return img
+}
+
+// drawStair renders a straight stair as a full half-height slab plus a
+// half-footprint step box on the facing side (the vanilla oak_stairs shape:
+// facing=east puts the tall part on +X). half=top flips which half is the full
+// slab. The two boxes are drawn back-to-front for the +X/+Z isometric camera.
+func drawStair(img *image.RGBA, project func(float64, float64, float64) (int, int),
+	bx, by, bz float64, facing, half string, base color.RGBA) {
+	slabY, stepY := by, by+0.5
+	if half == "top" {
+		slabY, stepY = by+0.5, by
+	}
+	// Step box occupies the facing half of the footprint.
+	sx, sz, sw, sd := bx, bz, 1.0, 1.0
+	switch facing {
+	case "east":
+		sx, sw = bx+0.5, 0.5
+	case "west":
+		sw = 0.5
+	case "south":
+		sz, sd = bz+0.5, 0.5
+	case "north":
+		sd = 0.5
+	}
+	drawSlab := func() { drawCube(img, project, bx, slabY, bz, 1.0, 0.5, 1.0, base) }
+	drawStep := func() { drawCube(img, project, sx, stepY, sz, sw, 0.5, sd, base) }
+	// The step sits on the facing side; when it faces the camera (+X east /
+	// +Z south) draw it last so it overdraws the slab, otherwise draw it first.
+	if facing == "east" || facing == "south" {
+		drawSlab()
+		drawStep()
+	} else {
+		drawStep()
+		drawSlab()
+	}
 }
 
 // drawCube draws a cube with three visible faces (top, left, right) using the painter's algorithm.
