@@ -2,6 +2,7 @@ package schematic
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Tnze/go-mc/nbt"
 )
@@ -17,6 +18,7 @@ const (
 	FormatSable     Format = "sable"     // Sable Blueprint v1 (detect-only for now)
 	FormatBlueprint Format = "blueprint" // Structurize / MineColonies .blueprint
 	FormatBG        Format = "bg"        // Building Gadgets template (.json / .txt)
+	FormatExcraft   Format = "excraft"   // Create: Aeronautics Toolgun blueprint (.excraft) (read-only)
 	FormatUnknown   Format = ""
 )
 
@@ -45,6 +47,10 @@ type formatProbe struct {
 	SableSubLevels nbt.RawMessage `nbt:"sub_levels"`
 	// Structurize blueprint (shares the "palette" probe field above)
 	BpSizeX nbt.RawMessage `nbt:"size_x"`
+	// Create: Aeronautics Toolgun (.excraft): a "format" string identifying the
+	// enxv plot-print version, plus a "sublevels" list.
+	AeroFormat    nbt.RawMessage `nbt:"format"`
+	AeroSubLevels nbt.RawMessage `nbt:"sublevels"`
 }
 
 // Detect identifies the format of a schematic file by content.
@@ -63,7 +69,18 @@ func Detect(data []byte) (Format, error) {
 	}
 	has := func(r nbt.RawMessage) bool { return r.Type != nbt.TagEnd && len(r.Data) > 0 }
 
+	// Create: Aeronautics Toolgun (.excraft): a distinctive "format" string
+	// ("enxv_aeronautics_plot_print_v8"/"_v9") alongside a "sublevels" list.
+	isExcraft := false
+	if has(p.AeroFormat) && has(p.AeroSubLevels) {
+		if s, ok := stringFromRaw(p.AeroFormat); ok && strings.HasPrefix(s, formatExcraftPrefix) {
+			isExcraft = true
+		}
+	}
+
 	switch {
+	case isExcraft:
+		return FormatExcraft, nil
 	// Sable Blueprint v1 sniff: lowercase version + sub_levels root tags
 	// distinguish it from vanilla structure NBT (checked first — a Sable
 	// file has no size/palette/Regions roots, but be explicit anyway).
@@ -103,6 +120,8 @@ func Read(data []byte, f Format) (*Schematic, error) {
 		return ReadBlueprint(data)
 	case FormatBG:
 		return ReadBuildingGadgets(data)
+	case FormatExcraft:
+		return ReadExcraft(data)
 	default:
 		return nil, fmt.Errorf("schematic: unknown format %q", f)
 	}

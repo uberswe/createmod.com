@@ -13,11 +13,11 @@ import (
 // to it at upload time, so the rest of the pipeline (validation, stats,
 // dedup, storage, mod downloads) keeps operating on .nbt only.
 var uploadableSchematicExts = []string{
-	".nbt", ".schem", ".litematic", ".schematic", ".blueprint", ".txt", ".json",
+	".nbt", ".schem", ".litematic", ".schematic", ".blueprint", ".txt", ".json", ".excraft",
 }
 
 // UploadAcceptAttr is the <input accept> value for schematic upload forms.
-const UploadAcceptAttr = ".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json"
+const UploadAcceptAttr = ".nbt,.schem,.litematic,.schematic,.blueprint,.txt,.json,.excraft"
 
 func isUploadableSchematicName(filename string) bool {
 	lower := strings.ToLower(filename)

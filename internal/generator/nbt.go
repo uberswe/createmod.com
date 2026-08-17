@@ -194,16 +194,12 @@ func blockToPalette(b Block, mat MaterialConfig) (string, map[string]string) {
 				props[k] = v
 			}
 		}
-		switch props["facing"] {
-		case "north":
-			props["facing"] = "south"
-		case "south":
-			props["facing"] = "north"
-		case "east":
-			props["facing"] = "west"
-		case "west":
-			props["facing"] = "east"
-		}
+		// Export the generated facing verbatim. The generator sets facing with
+		// vanilla semantics (tall side toward the supporting hull neighbour),
+		// and ExportNBT writes positions unflipped, so the exported hull matches
+		// the frontend preview (generator.js renders the same facing with the
+		// vanilla oak_stairs rotations). A 180° flip here previously pointed
+		// every stair the wrong way, reading as inverted steps on the hull.
 		return woodStairs(mat), props
 
 	case BlockFence:
