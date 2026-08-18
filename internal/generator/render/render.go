@@ -44,16 +44,23 @@ func Isometric(result *generator.GenerateResult) *image.RGBA {
 		return img
 	}
 
-	// Sort for painter's algorithm: back-to-front
-	// In isometric with camera at (+X, +Y, +Z) looking toward origin:
-	// draw blocks with smaller (x+z) first, then lower y first
+	// Sort for painter's algorithm: back-to-front.
+	// The camera at (+X, +Y, +Z) looks along (-1, -1, -1), so a block's depth is
+	// x+y+z: larger sums are closer to the camera and must be drawn last. Sorting
+	// by (x+z) then y is wrong — a tall, near block (high y) would be drawn before
+	// a lower, farther block, letting the farther block overdraw it, which reads
+	// as missing/partial/inverted blocks in the preview. Blocks sharing a depth
+	// plane cannot occlude one another, so their order is only for determinism.
 	sort.Slice(blocks, func(i, j int) bool {
-		si := blocks[i].X + blocks[i].Z
-		sj := blocks[j].X + blocks[j].Z
-		if si != sj {
-			return si < sj
+		di := blocks[i].X + blocks[i].Y + blocks[i].Z
+		dj := blocks[j].X + blocks[j].Y + blocks[j].Z
+		if di != dj {
+			return di < dj
 		}
-		return blocks[i].Y < blocks[j].Y
+		if blocks[i].Y != blocks[j].Y {
+			return blocks[i].Y < blocks[j].Y
+		}
+		return blocks[i].X < blocks[j].X
 	})
 
 	// Compute model center
@@ -180,17 +187,78 @@ func drawCube(img *image.RGBA, project func(float64, float64, float64) (int, int
 	b2x, b2y := project(x+w, y, z+d)
 	b3x, b3y := project(x, y, z+d)
 
-	// Draw left face (x=0 side, visible from left): t0, t3, b3, b0
-	fillQuad(img, t0x, t0y, t3x, t3y, b3x, b3y, b0x, b0y, leftColor)
+	// The camera at (+X,+Y,+Z) sees exactly three cube faces: +X, +Z and the top
+	// (+Y). Drawing the x=0 (-X) back face instead of the +X face left every
+	// block missing its right side, which shows up as saw-tooth gaps along Z-runs
+	// and vertical columns.
+	//
+	// +X face (x+w plane), the right-facing side: t1, t2, b2, b1
+	fillQuad(img, t1x, t1y, t2x, t2y, b2x, b2y, b1x, b1y, rightColor)
 
-	// Draw right face (z+d side, visible from right): t3, t2, b2, b3
-	fillQuad(img, t3x, t3y, t2x, t2y, b2x, b2y, b3x, b3y, rightColor)
+	// +Z face (z+d plane), the left-facing side: t3, t2, b2, b3
+	fillQuad(img, t3x, t3y, t2x, t2y, b2x, b2y, b3x, b3y, leftColor)
 
-	// Draw top face: t0, t1, t2, t3
+	// Top face (+Y): t0, t1, t2, t3
 	fillQuad(img, t0x, t0y, t1x, t1y, t2x, t2y, t3x, t3y, topColor)
 
-	_ = b1x
-	_ = b1y
+	// Outline the visible edges so adjacent same-colored blocks stay distinct,
+	// mirroring the frontend's per-block edges (EdgesGeometry). Only the seams of
+	// the three visible faces are drawn; the painter's order keeps nearer blocks
+	// overdrawing farther ones so hidden seams never show.
+	edge := darken(base, 0.5)
+	// Top face rim.
+	drawLine(img, t0x, t0y, t1x, t1y, edge)
+	drawLine(img, t1x, t1y, t2x, t2y, edge)
+	drawLine(img, t2x, t2y, t3x, t3y, edge)
+	drawLine(img, t3x, t3y, t0x, t0y, edge)
+	// The three vertical seams down from the front corners.
+	drawLine(img, t1x, t1y, b1x, b1y, edge)
+	drawLine(img, t2x, t2y, b2x, b2y, edge)
+	drawLine(img, t3x, t3y, b3x, b3y, edge)
+	// Bottom of the two side faces.
+	drawLine(img, b1x, b1y, b2x, b2y, edge)
+	drawLine(img, b2x, b2y, b3x, b3y, edge)
+
+	_ = b0x
+	_ = b0y
+}
+
+// drawLine draws a 1px line with Bresenham's algorithm, clipped to the image.
+func drawLine(img *image.RGBA, x0, y0, x1, y1 int, c color.RGBA) {
+	dx := x1 - x0
+	if dx < 0 {
+		dx = -dx
+	}
+	dy := y1 - y0
+	if dy < 0 {
+		dy = -dy
+	}
+	sx := -1
+	if x0 < x1 {
+		sx = 1
+	}
+	sy := -1
+	if y0 < y1 {
+		sy = 1
+	}
+	err := dx - dy
+	for {
+		if x0 >= 0 && x0 < imgWidth && y0 >= 0 && y0 < imgHeight {
+			img.SetRGBA(x0, y0, c)
+		}
+		if x0 == x1 && y0 == y1 {
+			break
+		}
+		e2 := 2 * err
+		if e2 > -dy {
+			err -= dy
+			x0 += sx
+		}
+		if e2 < dx {
+			err += dx
+			y0 += sy
+		}
+	}
 }
 
 func drawFenceBlock(img *image.RGBA, project func(float64, float64, float64) (int, int),
