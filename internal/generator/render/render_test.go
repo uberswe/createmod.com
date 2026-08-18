@@ -8,6 +8,56 @@ import (
 	"testing"
 )
 
+// A solid, convex build projects to a filled hexagon, so every horizontal span
+// between its first and last painted pixel must be fully covered. The old
+// renderer drew the hidden -X face instead of the visible +X face (and sorted
+// by x+z instead of x+y+z), which punched saw-tooth gaps into the surface —
+// the "missing/partial/inverted blocks" seen in ship previews. Guard against
+// any interior background holes returning.
+func TestIsometric_SolidBuildHasNoInteriorHoles(t *testing.T) {
+	var bs []generator.Block
+	for x := 0; x < 12; x++ {
+		for z := 0; z < 12; z++ {
+			for y := 0; y < 4; y++ {
+				bs = append(bs, generator.Block{X: x, Y: y, Z: z, Type: generator.BlockPlank})
+			}
+		}
+	}
+	res := &generator.GenerateResult{
+		Blocks: bs, SizeX: 12, SizeY: 4, SizeZ: 12,
+		Materials: generator.MaterialConfig{WoodType: "spruce"},
+	}
+	img := render.Isometric(res)
+
+	isBG := func(x, y int) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		return r>>8 == 58 && g>>8 == 112 && b>>8 == 152
+	}
+	w, h := img.Rect.Dx(), img.Rect.Dy()
+	holes := 0
+	for y := 0; y < h; y++ {
+		first, last := -1, -1
+		for x := 0; x < w; x++ {
+			if !isBG(x, y) {
+				if first < 0 {
+					first = x
+				}
+				last = x
+			}
+		}
+		for x := first + 1; x < last; x++ {
+			if isBG(x, y) {
+				holes++
+			}
+		}
+	}
+	// A convex solid should be gap-free; allow a tiny margin for 1px rounding at
+	// the extreme tip rows.
+	if holes > 15 {
+		t.Errorf("solid build rendered with %d interior background holes; visible faces missing", holes)
+	}
+}
+
 func TestIsometricRender(t *testing.T) {
 	// Real hash from the generator (balloon)
 	hash := "YjIuMTA0LjE1LjE2LjY1LjIwLjIwLjAuMC4xLjEuMS42LjAuMS4xLjAuNC42LmUuZ3kuYS5z"
