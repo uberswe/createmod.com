@@ -187,7 +187,7 @@ const maxGeneratedBlocks = 500000
 
 func GeneratorPropellerAPIHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		var params generator.PropellerParams
+		params := generator.DefaultPropellerParams()
 		if err := json.NewDecoder(e.Request.Body).Decode(&params); err != nil {
 			return e.BadRequestError("invalid parameters", nil)
 		}
@@ -204,7 +204,7 @@ func GeneratorPropellerAPIHandler() func(e *server.RequestEvent) error {
 
 func GeneratorBalloonAPIHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		var params generator.BalloonParams
+		params := generator.DefaultBalloonParams()
 		if err := json.NewDecoder(e.Request.Body).Decode(&params); err != nil {
 			return e.BadRequestError("invalid parameters", nil)
 		}
@@ -221,7 +221,7 @@ func GeneratorBalloonAPIHandler() func(e *server.RequestEvent) error {
 
 func GeneratorHullAPIHandler() func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		var params generator.HullParams
+		params := generator.DefaultHullParams()
 		if err := json.NewDecoder(e.Request.Body).Decode(&params); err != nil {
 			return e.BadRequestError("invalid parameters", nil)
 		}
@@ -244,7 +244,7 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 
 		switch genType {
 		case "propeller":
-			var params generator.PropellerParams
+			params := generator.DefaultPropellerParams()
 			if err := json.NewDecoder(e.Request.Body).Decode(&params); err != nil {
 				return e.BadRequestError("invalid parameters", nil)
 			}
@@ -258,7 +258,7 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 			}
 			filename = fmt.Sprintf("propeller_%dblade_r%d_%s.nbt", params.Blades, params.Length, swept)
 		case "balloon":
-			var params generator.BalloonParams
+			params := generator.DefaultBalloonParams()
 			if err := json.NewDecoder(e.Request.Body).Decode(&params); err != nil {
 				return e.BadRequestError("invalid parameters", nil)
 			}
@@ -268,7 +268,7 @@ func GeneratorDownloadHandler(genType string) func(e *server.RequestEvent) error
 			}
 			filename = fmt.Sprintf("airship_%dx%dx%d.nbt", params.LengthX, params.WidthZ, params.HeightY)
 		case "hull":
-			var params generator.HullParams
+			params := generator.DefaultHullParams()
 			if err := json.NewDecoder(e.Request.Body).Decode(&params); err != nil {
 				return e.BadRequestError("invalid parameters", nil)
 			}
