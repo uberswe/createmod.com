@@ -144,6 +144,18 @@ var schemaHull = []schemaField{
 	{"closedHull", ftBool, nil, false},
 }
 
+// DefaultBalloonParams, DefaultHullParams and DefaultPropellerParams return a
+// params struct with every field at its UI default (decoding an empty value
+// list applies the schema defaults). Seed JSON decoding with these so a request
+// that omits fields — like the build guide, which POSTs only the non-default
+// params it decoded from a share hash — keeps the defaults instead of Go zero
+// values. Without this an omitted hollow=true decodes to false and the balloon
+// generates solid (issue #1603), and other omitted fields collapse to clamped
+// minimums.
+func DefaultBalloonParams() BalloonParams     { return decodeBalloonParams(nil, CurrentVersion) }
+func DefaultHullParams() HullParams           { return decodeHullParams(nil, CurrentVersion) }
+func DefaultPropellerParams() PropellerParams { return decodePropellerParams(nil, CurrentVersion) }
+
 // DecodeHash decodes a base64url generator hash into a GenerateResult.
 // Returns the result and generator type ("propeller", "balloon", "hull").
 func DecodeHash(hash string) (*GenerateResult, string, error) {

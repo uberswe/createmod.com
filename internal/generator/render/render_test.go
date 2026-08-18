@@ -29,9 +29,10 @@ func TestIsometric_SolidBuildHasNoInteriorHoles(t *testing.T) {
 	}
 	img := render.Isometric(res)
 
+	bg := render.BackgroundColor
 	isBG := func(x, y int) bool {
 		r, g, b, _ := img.At(x, y).RGBA()
-		return r>>8 == 58 && g>>8 == 112 && b>>8 == 152
+		return uint8(r>>8) == bg.R && uint8(g>>8) == bg.G && uint8(b>>8) == bg.B
 	}
 	w, h := img.Rect.Dx(), img.Rect.Dy()
 	holes := 0
@@ -82,9 +83,10 @@ func TestIsometricRender(t *testing.T) {
 		t.Errorf("unexpected image size: %dx%d", img.Rect.Dx(), img.Rect.Dy())
 	}
 
-	// Verify corners are the background color (#3a7098)
+	// Verify corners are the background color.
+	bg := render.BackgroundColor
 	r, g, b, _ := img.At(0, 0).RGBA()
-	if r>>8 != 58 || g>>8 != 112 || b>>8 != 152 {
+	if uint8(r>>8) != bg.R || uint8(g>>8) != bg.G || uint8(b>>8) != bg.B {
 		t.Errorf("top-left corner not background color: got #%02x%02x%02x", r>>8, g>>8, b>>8)
 	}
 
