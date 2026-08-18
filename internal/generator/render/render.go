@@ -15,7 +15,9 @@ const (
 	imgHeight = 450
 )
 
-var bgColor = color.RGBA{R: 58, G: 112, B: 152, A: 255} // #3a7098
+// BackgroundColor is the dark-mode canvas the previews render on (#1f2121),
+// matching the site's dark surface so shared images sit on brand.
+var BackgroundColor = color.RGBA{R: 0x1f, G: 0x21, B: 0x21, A: 255}
 
 // Isometric renders a GenerateResult as an isometric PNG image.
 func Isometric(result *generator.GenerateResult) *image.RGBA {
@@ -24,7 +26,7 @@ func Isometric(result *generator.GenerateResult) *image.RGBA {
 	// Fill background
 	for y := 0; y < imgHeight; y++ {
 		for x := 0; x < imgWidth; x++ {
-			img.SetRGBA(x, y, bgColor)
+			img.SetRGBA(x, y, BackgroundColor)
 		}
 	}
 
@@ -155,14 +157,17 @@ func drawStair(img *image.RGBA, project func(float64, float64, float64) (int, in
 	}
 	drawSlab := func() { drawCube(img, project, bx, slabY, bz, 1.0, 0.5, 1.0, base) }
 	drawStep := func() { drawCube(img, project, sx, stepY, sz, sw, 0.5, sd, base) }
-	// The step sits on the facing side; when it faces the camera (+X east /
-	// +Z south) draw it last so it overdraws the slab, otherwise draw it first.
-	if facing == "east" || facing == "south" {
+	// The two sub-boxes are stacked, so the upper one is closer to the
+	// (+X,+Y,+Z) camera and must be drawn last (painter's order by height, the
+	// same x+y+z rule as whole blocks). Ordering by facing instead let the lower
+	// box overdraw the upper one for half=top / far-facing stairs, erasing the
+	// inside face and leaving a hollow-looking top.
+	if half == "top" { // slab is the upper box
+		drawStep()
+		drawSlab()
+	} else { // step is the upper box
 		drawSlab()
 		drawStep()
-	} else {
-		drawStep()
-		drawSlab()
 	}
 }
 
