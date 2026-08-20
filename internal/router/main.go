@@ -497,7 +497,11 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/users/{id}/follow", Adapt(pages.UnfollowHandler(p.AppStore)))
 	analyticsRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
 	r.With(analyticsRateLimit).Post("/api/analytics", Adapt(pages.AnalyticsEventHandler(p.CacheService, p.AppStore)))
-	r.With(analyticsRateLimit).Post("/api/pageview", Adapt(pages.PageviewBeaconHandler()))
+	// The pageview beacon fires on every page load, so it gets its own per-IP
+	// bucket — routing it through the shared "auth:" limiter would let normal
+	// browsing exhaust the login/analytics budget (429s on /login).
+	r.With(keyedRateLimitMiddleware(p.RateLimiter, "beacon", 120, time.Minute)).
+		Post("/api/pageview", Adapt(pages.PageviewBeaconHandler()))
 	r.With(analyticsRateLimit).Post("/api/ad-click", Adapt(pages.AdClickHandler(p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
@@ -1372,10 +1376,18 @@ func securityHeaders(next http.Handler) http.Handler {
 // rateLimitMiddlewareNew returns a middleware that limits requests per IP
 // using the shared ratelimit.Limiter (Redis or in-memory).
 func rateLimitMiddlewareNew(rl ratelimit.Limiter, limit int, window time.Duration) func(http.Handler) http.Handler {
+	// NOTE: existing callers all share the single "auth:<ip>" bucket; kept as-is
+	// to avoid changing their behavior. Use keyedRateLimitMiddleware for a route
+	// that must not drain that shared bucket (e.g. a high-frequency beacon).
+	return keyedRateLimitMiddleware(rl, "auth", limit, window)
+}
+
+// keyedRateLimitMiddleware rate-limits per IP under its own keyPrefix bucket, so
+// different route classes don't drain each other's budget.
+func keyedRateLimitMiddleware(rl ratelimit.Limiter, keyPrefix string, limit int, window time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := extractClientIP(r)
-			key := "auth:" + ip
+			key := keyPrefix + ":" + extractClientIP(r)
 			if ok, _ := rl.Allow(r.Context(), key, limit, window); !ok {
 				http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
 				return
