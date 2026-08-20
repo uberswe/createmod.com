@@ -19,6 +19,7 @@ import (
 	"createmod/internal/server"
 	"createmod/internal/storage"
 	"createmod/internal/store"
+	"createmod/internal/traffic"
 )
 
 // modDownloadRequest is the JSON body for POST /api/mod/download.
@@ -150,6 +151,7 @@ func ModDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appSt
 
 		switch req.Type {
 		case "schematic":
+			traffic.Record("download", e.Request.UserAgent(), e.Country(), "", "schematic")
 			fileBytes, err = modDownloadSchematic(e.Request.Context(), appStore, storageSvc, rl, cacheService, identifier, e.RealIP())
 		case "upload":
 			fileBytes, err = modDownloadUpload(e.Request.Context(), appStore, storageSvc, identifier)

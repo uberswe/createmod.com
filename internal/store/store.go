@@ -1696,4 +1696,23 @@ type Store struct {
 	AdClicks            AdClickStore
 	ModSecrets          ModSecretStore
 	BlockedURLs         BlockedURLStore
+	TrafficStats        TrafficStatsStore
+}
+
+// TrafficStatRow is one aggregated bucket of raw view/download hits.
+type TrafficStatRow struct {
+	Day        string // 'YYYY-MM-DD' UTC
+	EventType  string // "view" | "view_js" | "download"
+	UserAgent  string
+	Country    string
+	Resolution string // 'WxH' (view_js only); '' otherwise
+	PageClass  string // coarse page group
+	Count      int64
+}
+
+// TrafficStatsStore persists raw per-(day,type,UA,country) hit counts for
+// bot-traffic analysis. Written by the in-memory aggregator's periodic flush.
+type TrafficStatsStore interface {
+	UpsertBatch(ctx context.Context, rows []TrafficStatRow) error
+	DeleteBefore(ctx context.Context, day string) error
 }

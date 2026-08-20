@@ -9,18 +9,18 @@ import (
 	"createmod/internal/nbtparser"
 
 	"createmod/internal/search"
+	"createmod/internal/server"
 	"createmod/internal/storage"
 	"createmod/internal/store"
 	"createmod/internal/translation"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/gosimple/slug"
+	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/mergestat/timediff"
-	"createmod/internal/server"
 	"github.com/sym01/htmlsanitizer"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,9 +57,9 @@ type SchematicData struct {
 	Comments      []models.Comment
 	AuthorHasMore bool
 	// IsAuthor of the current schematic, for edit and delete actions
-	IsAuthor        bool
-	FromAuthor      []models.Schematic
-	Similar         []models.Schematic
+	IsAuthor   bool
+	FromAuthor []models.Schematic
+	Similar    []models.Schematic
 
 	Versions        []models.SchematicVersion
 	HasVersions     bool
@@ -335,7 +335,7 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			host := e.Request.Host
 			fileURL := fmt.Sprintf("%s://%s/api/files/schematics/%s/%s", scheme, host, d.Schematic.ID, url.PathEscape(s.SchematicFile))
 			d.BloxelizerURL = "https://bloxelizer.com/viewer?url=" + url.QueryEscape(fileURL)
-				d.ShulkrURL = "https://www.shulkr.com/?url=" + url.QueryEscape(fileURL)
+			d.ShulkrURL = "https://www.shulkr.com/?url=" + url.QueryEscape(fileURL)
 		}
 
 		// Load collections for the current user (for Add to collection dropdown)
@@ -495,7 +495,6 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 	}
 }
 
-
 // extractSearchTermFromReferer parses the HTTP Referer header and returns the
 // search term if the referrer is a local search results page (e.g. /search/trains).
 func extractSearchTermFromReferer(referer string) string {
@@ -546,11 +545,9 @@ func cleanSlugName(name string) string {
 	return clean
 }
 
-
 // ---------------------------------------------------------------------------
 // Store-based mapping and helper functions (PostgreSQL migration - Group 1)
 // ---------------------------------------------------------------------------
-
 
 // MapStoreSchematicToModel converts a store.Schematic to a models.Schematic,
 // using the store for all lookups (user, categories, tags, versions, views,
@@ -772,10 +769,19 @@ func MapStoreSchematics(appStore *store.Store, schematics []store.Schematic, cac
 		var wg sync.WaitGroup
 		wg.Add(5)
 		go func() { defer wg.Done(); viewCounts, _ = appStore.ViewRatings.BatchGetViewCounts(ctx, uncachedIDs) }()
-		go func() { defer wg.Done(); downloadCounts, _ = appStore.ViewRatings.BatchGetDownloadCounts(ctx, uncachedIDs) }()
+		go func() {
+			defer wg.Done()
+			downloadCounts, _ = appStore.ViewRatings.BatchGetDownloadCounts(ctx, uncachedIDs)
+		}()
 		go func() { defer wg.Done(); ratings, _ = appStore.ViewRatings.BatchGetRatings(ctx, uncachedIDs) }()
-		go func() { defer wg.Done(); batchCategories, _ = appStore.Schematics.BatchGetCategoriesForSchematics(ctx, uncachedIDs) }()
-		go func() { defer wg.Done(); batchTags, _ = appStore.Schematics.BatchGetTagsForSchematics(ctx, uncachedIDs) }()
+		go func() {
+			defer wg.Done()
+			batchCategories, _ = appStore.Schematics.BatchGetCategoriesForSchematics(ctx, uncachedIDs)
+		}()
+		go func() {
+			defer wg.Done()
+			batchTags, _ = appStore.Schematics.BatchGetTagsForSchematics(ctx, uncachedIDs)
+		}()
 		wg.Wait()
 	}
 
@@ -822,7 +828,10 @@ func MapStoreSchematicsNoCache(appStore *store.Store, schematics []store.Schemat
 		go func() { defer wg.Done(); viewCounts, _ = appStore.ViewRatings.BatchGetViewCounts(ctx, ids) }()
 		go func() { defer wg.Done(); downloadCounts, _ = appStore.ViewRatings.BatchGetDownloadCounts(ctx, ids) }()
 		go func() { defer wg.Done(); ratings, _ = appStore.ViewRatings.BatchGetRatings(ctx, ids) }()
-		go func() { defer wg.Done(); batchCategories, _ = appStore.Schematics.BatchGetCategoriesForSchematics(ctx, ids) }()
+		go func() {
+			defer wg.Done()
+			batchCategories, _ = appStore.Schematics.BatchGetCategoriesForSchematics(ctx, ids)
+		}()
 		go func() { defer wg.Done(); batchTags, _ = appStore.Schematics.BatchGetTagsForSchematics(ctx, ids) }()
 		wg.Wait()
 	}

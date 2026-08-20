@@ -21,6 +21,7 @@ import (
 	"createmod/internal/slowlog"
 	"createmod/internal/storage"
 	"createmod/internal/store"
+	"createmod/internal/traffic"
 	"createmod/internal/translation"
 	"fmt"
 	"runtime"
@@ -418,6 +419,11 @@ func (s *Server) Start() {
 	// so it runs against the replica when one is configured.
 	similarityService := similarity.New(s.readStore)
 	go similarityService.Start(context.Background())
+
+	// Per-pod traffic aggregator: buffers raw view/download hits by
+	// (day, UA, country) and flushes deltas to Postgres periodically for
+	// bot-traffic analysis. Retention is handled by a River cleanup job.
+	traffic.Init(context.Background(), s.store.TrafficStats)
 
 	chiRouter := irouter.Register(irouter.RegisterParams{
 		SimilarityService:  similarityService,
