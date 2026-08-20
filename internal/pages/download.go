@@ -12,6 +12,7 @@ import (
 	"createmod/internal/ratelimit"
 	"createmod/internal/storage"
 	"createmod/internal/store"
+	"createmod/internal/traffic"
 
 	"createmod/internal/server"
 )
@@ -82,6 +83,7 @@ func DownloadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore
 		}
 
 		// Increment download counter (best-effort, IP-deduped)
+		traffic.Record("download", e.Request.UserAgent(), e.Country(), "", "schematic")
 		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
 
 		// Variation file download

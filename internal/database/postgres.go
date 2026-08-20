@@ -4321,6 +4321,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		AdClicks:            &AdClickStoreImpl{q: q},
 		ModSecrets:          &ModSecretStoreImpl{pool: pool},
 		BlockedURLs:         &BlockedURLStoreImpl{pool: pool},
+		TrafficStats:        &TrafficStatsStoreImpl{q: q},
 	}
 }
 
@@ -6639,4 +6640,32 @@ func (s *AdClickStoreImpl) RollupAndClean(ctx context.Context, cutoffDay string)
 		return err
 	}
 	return s.q.DeleteOldDailyAdClicks(ctx, cutoffDay)
+}
+
+// TrafficStatsStoreImpl persists aggregated raw hit counts. Upserts are done
+// one row at a time; the caller batches only a handful of distinct
+// (day,type,UA,country) buckets per flush, so this stays cheap.
+type TrafficStatsStoreImpl struct{ q *db.Queries }
+
+var _ store.TrafficStatsStore = (*TrafficStatsStoreImpl)(nil)
+
+func (s *TrafficStatsStoreImpl) UpsertBatch(ctx context.Context, rows []store.TrafficStatRow) error {
+	for _, r := range rows {
+		if err := s.q.UpsertTrafficStat(ctx, db.UpsertTrafficStatParams{
+			Day:        r.Day,
+			EventType:  r.EventType,
+			UserAgent:  r.UserAgent,
+			Country:    r.Country,
+			Resolution: r.Resolution,
+			PageClass:  r.PageClass,
+			Count:      r.Count,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *TrafficStatsStoreImpl) DeleteBefore(ctx context.Context, day string) error {
+	return s.q.DeleteTrafficStatsBefore(ctx, day)
 }

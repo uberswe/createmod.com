@@ -6,6 +6,7 @@ import (
 	"createmod/internal/ratelimit"
 	"createmod/internal/server"
 	"createmod/internal/store"
+	"createmod/internal/traffic"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -48,6 +49,7 @@ func APISchematicDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Servi
 			if sfErr != nil || sf == nil || sf.SchematicID != s.ID {
 				return writeJSON(e, http.StatusNotFound, map[string]string{"error": "variation file not found"})
 			}
+			traffic.Record("download", e.Request.UserAgent(), e.Country(), "", "schematic")
 			countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
 			return e.Redirect(http.StatusFound, fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(sf.Filename)))
 		}
@@ -57,6 +59,7 @@ func APISchematicDownloadHandler(rl ratelimit.Limiter, cacheService *cache.Servi
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic file not found"})
 		}
 		// Count the download (best-effort, IP-deduped) only once we know we can serve it.
+		traffic.Record("download", e.Request.UserAgent(), e.Country(), "", "schematic")
 		countSchematicDownloadStore(appStore, s.ID, e.RealIP(), rl, cacheService)
 		return e.Redirect(http.StatusFound, fmt.Sprintf("/api/files/schematics/%s/%s", s.ID, url.PathEscape(primary)))
 	}

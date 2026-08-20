@@ -154,6 +154,7 @@ type Querier interface {
 	DeleteTempUploadFilesByToken(ctx context.Context, token string) error
 	DeleteTempUploadImage(ctx context.Context, id string) error
 	DeleteTempUploadImagesByToken(ctx context.Context, token string) error
+	DeleteTrafficStatsBefore(ctx context.Context, day string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
 	DeleteUserWebhook(ctx context.Context, userID string) error
 	DeleteZeroResultSuggestion(ctx context.Context, id string) error
@@ -508,6 +509,7 @@ type Querier interface {
 	UpsertSecuritySettings(ctx context.Context, arg UpsertSecuritySettingsParams) (UserSecuritySetting, error)
 	UpsertSocialLink(ctx context.Context, arg UpsertSocialLinkParams) error
 	UpsertTOTP(ctx context.Context, arg UpsertTOTPParams) (UserTotp, error)
+	UpsertTrafficStat(ctx context.Context, arg UpsertTrafficStatParams) error
 	UpsertUserWebhook(ctx context.Context, arg UpsertUserWebhookParams) error
 	UpsertZeroResultSuggestion(ctx context.Context, arg UpsertZeroResultSuggestionParams) (ZeroResultSuggestion, error)
 	VerifyKnownIP(ctx context.Context, arg VerifyKnownIPParams) error

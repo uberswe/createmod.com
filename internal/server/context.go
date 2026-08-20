@@ -144,6 +144,12 @@ func (e *RequestEvent) Flush() error {
 
 // RealIP extracts the client IP from common proxy headers, falling back
 // to RemoteAddr.
+// Country returns the visitor's two-letter country from Cloudflare's
+// CF-IPCountry header, or "" when absent (direct/health-check requests).
+func (e *RequestEvent) Country() string {
+	return e.Request.Header.Get("CF-IPCountry")
+}
+
 func (e *RequestEvent) RealIP() string {
 	if ip := e.Request.Header.Get("CF-Connecting-IP"); ip != "" {
 		return ip

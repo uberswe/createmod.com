@@ -113,6 +113,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &FingerprintWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &FingerprintBackfillWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &TempUploadCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &TrafficStatsCleanupWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &ModerationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &CommentModerationWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SearchCleanupWorker{deps: cfg.Deps})
@@ -171,6 +172,15 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 				func() (river.JobArgs, *river.InsertOpts) {
 					return SafetyBackfillArgs{}, &river.InsertOpts{
 						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 15 * time.Minute},
+					}
+				},
+				&river.PeriodicJobOpts{RunOnStart: true},
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(24*time.Hour),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return TrafficStatsCleanupArgs{}, &river.InsertOpts{
+						UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 24 * time.Hour},
 					}
 				},
 				&river.PeriodicJobOpts{RunOnStart: true},

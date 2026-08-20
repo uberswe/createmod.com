@@ -777,6 +777,16 @@ type TempUploadImage struct {
 	Category  string    `json:"category"`
 }
 
+type TrafficStat struct {
+	Day        string `json:"day"`
+	EventType  string `json:"event_type"`
+	UserAgent  string `json:"user_agent"`
+	Country    string `json:"country"`
+	Resolution string `json:"resolution"`
+	PageClass  string `json:"page_class"`
+	Count      int64  `json:"count"`
+}
+
 type User struct {
 	ID             string             `json:"id"`
 	Email          string             `json:"email"`
