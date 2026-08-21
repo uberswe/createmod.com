@@ -68,6 +68,41 @@ func suppressAds(s BotSignals) bool {
 	return strongBotSignals(s) || s.Langs == 0
 }
 
+// trustedCrawlerUAs are lowercased substrings of ad/search crawlers and
+// ad-verification bots that MUST always be served ads: the AdSense crawler
+// (Mediapartners-Google) renders via headless Chrome, so it would otherwise
+// fingerprint as a bot and get a no-ads page — hurting ad targeting — and
+// blocking IAS/DoubleVerify/Moat breaks ad-viewability verification scores.
+var trustedCrawlerUAs = []string{
+	"mediapartners-google", // AdSense content crawler (renders via headless Chrome)
+	"adsbot-google",        // Google Ads landing-page crawler
+	"googlebot",            // Google Search (also renders via headless Chrome)
+	"google-inspectiontool",
+	"apis-google",
+	"bingbot",
+	"adidxbot",
+	// Ad-verification vendors.
+	"ias_crawler", "ias-va", "ias-ie", "integralads", "admantx", // Integral Ad Science
+	"doubleverify",
+	"moatbot", "moat.com",
+	"grapeshot",
+	"proximic",
+}
+
+// IsTrustedCrawler reports whether ua is a known ad/search crawler that must
+// always be served ads. Such clients may still be flagged (so a UA-spoofing bot
+// can't borrow these names to evade the download 403), but the ads decision is
+// forced on for them.
+func IsTrustedCrawler(ua string) bool {
+	l := strings.ToLower(ua)
+	for _, s := range trustedCrawlerUAs {
+		if strings.Contains(l, s) {
+			return true
+		}
+	}
+	return false
+}
+
 // botFlagKey is the (salted, hashed) Redis key for an IP — raw IPs are never
 // stored.
 func botFlagKey(ip string) string {

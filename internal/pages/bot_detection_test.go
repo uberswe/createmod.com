@@ -42,6 +42,42 @@ func TestSuppressAds(t *testing.T) {
 	}
 }
 
+func TestIsTrustedCrawler(t *testing.T) {
+	// These must always be served ads even though they fingerprint as headless.
+	trusted := []string{
+		"Mediapartners-Google",
+		"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+		"AdsBot-Google (+http://www.google.com/adsbot.html)",
+		"IAS Crawler (ias_crawler; http://integralads.com/site-indexing/)",
+		"ias-va/3.3 (former https://www.admantx.com)",
+		"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+		"DoubleVerify Crawler",
+	}
+	for _, ua := range trusted {
+		if !IsTrustedCrawler(ua) {
+			t.Errorf("IsTrustedCrawler(%q) = false, want true", ua)
+		}
+	}
+	notTrusted := []string{
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+		"Java-http-client/21.0.11",
+		"",
+	}
+	for _, ua := range notTrusted {
+		if IsTrustedCrawler(ua) {
+			t.Errorf("IsTrustedCrawler(%q) = true, want false", ua)
+		}
+	}
+	// A trusted crawler with headless signals must still be served ads (this is
+	// the guard against no-ads pages breaking AdSense/IAS).
+	if !IsTrustedCrawler("Mediapartners-Google") {
+		t.Fatal("precondition")
+	}
+	if !strongBotSignals(BotSignals{WD: true}) {
+		t.Fatal("precondition: webdriver should be a strong signal")
+	}
+}
+
 func TestIsSchematicDownloadPath(t *testing.T) {
 	yes := []string{
 		"/download/steam-train",

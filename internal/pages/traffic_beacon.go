@@ -87,7 +87,10 @@ func AdsCheckHandler(rl ratelimit.Limiter) func(e *server.RequestEvent) error {
 			FlagBotIP(e.Request.Context(), rl, e.RealIP())
 			traffic.Record("bot_flag", ua, country, res, pageClass)
 		}
-		serve := !suppressAds(sig) && !IsBotFlaggedIP(e.Request.Context(), rl, e.RealIP())
+		// Ad/search crawlers and ad-verification bots must always get ads —
+		// suppressing them breaks AdSense targeting and IAS/DoubleVerify scores.
+		serve := IsTrustedCrawler(ua) ||
+			(!suppressAds(sig) && !IsBotFlaggedIP(e.Request.Context(), rl, e.RealIP()))
 		return e.JSON(http.StatusOK, map[string]bool{"ads": serve})
 	}
 }
