@@ -183,20 +183,38 @@ window.setTheme=function(theme){
     <script src="/assets/x/webmcp.js?v={{ AssetVer }}" defer></script>
     {{ if not .IsDev }}
     <script>
-    // Track NitroPay ad instances and clear them on HTMX navigation so
-    // new page ad scripts can call createAd() on fresh DOM containers.
+    // Track every NitroPay ad instance and tear them down on HTMX navigation so
+    // the incoming page's ad scripts call createAd() on fresh containers.
+    //
+    // The real NitroPay script (loaded lazily) REASSIGNS window.nitroAds.createAd,
+    // which drops a plain wrapper — leaving every ad created afterwards untracked,
+    // so htmx:beforeSwap tears down nothing and the stale ad survives the body
+    // swap (the new page then renders over it: the "double ad, one behind the
+    // background"). Intercept the property with a getter/setter so we always
+    // re-wrap whatever createAd the library installs.
     (function(){
-      window._nitroAdInstances = window._nitroAdInstances || [];
-      var origCreateAd = window.nitroAds.createAd.bind(window.nitroAds);
-      window.nitroAds.createAd = function() {
-        var p = origCreateAd.apply(window.nitroAds, arguments);
-        window._nitroAdInstances.push(p);
-        return p;
-      };
+      var instances = window._nitroAdInstances = window._nitroAdInstances || [];
+      function wrap(fn){
+        return function(){
+          var p = fn.apply(window.nitroAds, arguments);
+          if (p && typeof p.then === 'function') { instances.push(p); }
+          return p;
+        };
+      }
+      var current = wrap(window.nitroAds.createAd);
+      try {
+        Object.defineProperty(window.nitroAds, 'createAd', {
+          configurable: true,
+          get: function(){ return current; },
+          set: function(fn){ current = wrap(fn); } // library reassigns → re-wrap
+        });
+      } catch (e) {
+        window.nitroAds.createAd = current; // best-effort fallback
+      }
       document.addEventListener('htmx:beforeSwap', function() {
-        var instances = window._nitroAdInstances;
-        window._nitroAdInstances = [];
-        instances.forEach(function(p) {
+        // splice(0) drains the list; onNavigate still fires if a promise resolves
+        // after the swap (handles navigating before an ad finished initialising).
+        instances.splice(0).forEach(function(p) {
           p.then(function(ad) {
             if (ad && typeof ad.onNavigate === 'function') { ad.onNavigate(); }
           }).catch(function(){});
