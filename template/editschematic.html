@@ -655,6 +655,25 @@
     // --- Delete handler ---
     var schematicID = "{{ .Schematic.ID }}";
 
+    // errorMessage turns a failed fetch Response into a message safe to show the
+    // user. Gateway/maintenance failures (502/503/504) are served by the ingress
+    // (Traefik/Cloudflare) as full HTML pages, not app error text — never render
+    // their body. Only a short, plain-text app message is surfaced verbatim;
+    // anything HTML-looking or oversized falls back to a generic message.
+    async function errorMessage(resp, fallback) {
+        fallback = fallback || "An unexpected error occurred, please try again";
+        if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
+            return "The server is temporarily unavailable. Your description was not saved — please wait a moment and try again.";
+        }
+        var body = "";
+        try { body = (await resp.text() || "").trim(); } catch (e) {}
+        var ct = (resp.headers.get("content-type") || "").toLowerCase();
+        if (body && ct.indexOf("text/html") === -1 && body.charAt(0) !== "<" && body.length <= 300) {
+            return body;
+        }
+        return fallback;
+    }
+
     document.getElementById('delete-schematic-btn').addEventListener("click", async function () {
         try {
             var resp = await fetch('/schematics/' + schematicID, { method: 'DELETE' });
@@ -821,11 +840,11 @@
                 progressBar.classList.add("progress-bar-indeterminate");
                 var resp = await fetch('/schematics/' + schematicID + '/update', { method: 'POST', body: formData });
                 if (!resp.ok) {
-                    var errText = await resp.text().catch(function(){ return ''; });
+                    var errText = await errorMessage(resp);
                     var div = document.createElement('div');
                     div.classList.add("invalid-feedback");
                     div.style.display = "block";
-                    div.innerText = errText ? errText.trim() : "An unexpected error occurred, please try again";
+                    div.innerText = errText;
                     btn.parentNode.insertAdjacentElement("beforeend", div);
                     btn.disabled = false;
                     progressBar.classList.remove("progress-bar-indeterminate");
@@ -954,8 +973,7 @@
         try {
             var resp = await fetch('/api/schematics/' + schematicID + '/files', { method: 'POST', body: fd });
             if (!resp.ok) {
-                var errText = await resp.text().catch(function(){ return ''; });
-                errorDiv.textContent = errText ? errText.trim() : 'Upload failed';
+                errorDiv.textContent = await errorMessage(resp, 'Upload failed');
                 errorDiv.style.display = 'block';
                 this.disabled = false;
                 return;
@@ -1032,8 +1050,7 @@
                         document.getElementById(listId).appendChild(createContentRow(attrName, data.id, fd.label, fd.sublabel));
                         if (fd.reset) fd.reset();
                     } else {
-                        var errText = await resp.text().catch(function(){ return ''; });
-                        alert(errText || 'Failed to add');
+                        alert(await errorMessage(resp, 'Failed to add'));
                     }
                 } catch(err) { alert('Failed to add'); }
                 this.disabled = false;
