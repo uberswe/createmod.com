@@ -45,27 +45,43 @@ type BotSignals struct {
 	Path  string `json:"path"`
 }
 
-// strongBotSignals reports near-certain headless/automation tells. These flag
-// the IP (driving the download 403 + view-count skip), so the bar is high:
+// botSignalCount tallies independent near-certain headless/automation tells:
 // navigator.webdriver, a software WebGL renderer (headless Chrome falls back to
-// SwiftShader/llvmpipe), or the 800x600/square screen fingerprint.
-func strongBotSignals(s BotSignals) bool {
+// SwiftShader/llvmpipe), and the 800x600/square screen fingerprint. Each is
+// counted at most once.
+func botSignalCount(s BotSignals) int {
+	n := 0
 	if s.WD {
-		return true
+		n++
 	}
 	gl := strings.ToLower(s.GL)
 	if strings.Contains(gl, "swiftshader") || strings.Contains(gl, "llvmpipe") || strings.Contains(gl, "mesa offscreen") {
-		return true
+		n++
 	}
-	return isBotResolution(sanitizeResolution(s.Res))
+	if isBotResolution(sanitizeResolution(s.Res)) {
+		n++
+	}
+	return n
 }
 
-// suppressAds is broader than strongBotSignals — it also treats absent language
-// preferences as bot-like. Used ONLY for the fail-open ads/analytics decision,
-// never to flag or block, so a false positive costs at most one missed ad
-// impression, never access.
+// flagWorthy reports whether the fingerprint is strong enough to FLAG the IP —
+// which drives the download 403 and view-count skip. It requires >=2 independent
+// tells on purpose. Any single signal can come from a real user (a browser with
+// GPU acceleration off reports SwiftShader identically to headless Chrome) or
+// from one bot sharing an IP with real users (CGNAT, mobile carrier, office,
+// household) — flagging on it would then deny downloads to everyone behind that
+// IP. Requiring two independent tells makes a genuine headless client
+// overwhelmingly likely before we block anything.
+func flagWorthy(s BotSignals) bool {
+	return botSignalCount(s) >= 2
+}
+
+// suppressAds is the softer, fail-safe ads/analytics decision. A SINGLE tell (or
+// absent language preferences) is enough, because a false positive here costs at
+// most one missed ad impression, never access — so the bar is deliberately lower
+// than flagWorthy.
 func suppressAds(s BotSignals) bool {
-	return strongBotSignals(s) || s.Langs == 0
+	return botSignalCount(s) >= 1 || s.Langs == 0
 }
 
 // trustedCrawlerUAs are lowercased substrings of ad/search crawlers and
