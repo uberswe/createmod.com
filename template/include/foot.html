@@ -232,22 +232,6 @@ if (!window._searchScrollInit) {
   document.addEventListener('htmx:afterSettle', function() { close(); });
 })();
 </script>
-<script>
-// Traffic beacon: reports screen resolution once per page load so bot traffic
-// can be analysed (headless clients report telltale/square resolutions, or
-// none). Fire-and-forget; any failure is ignored.
-(function(){
-  try {
-    var res = (window.screen && screen.width && screen.height) ? (screen.width + 'x' + screen.height) : '';
-    fetch('/api/pageview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ res: res, path: location.pathname }),
-      keepalive: true
-    }).catch(function(){});
-  } catch (e) {}
-})();
-</script>
 {{ if not .HideOutstream }}
 <!-- Floating outstream video player (bottom-right) — no container div needed;
      NitroPay creates its own fixed-position wrapper for the floating format.
