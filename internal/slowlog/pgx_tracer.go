@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"time"
 
+	"createmod/internal/textutil"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -42,10 +44,7 @@ func (t *PgxTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.Tra
 		return
 	}
 
-	sql := td.sql
-	if len(sql) > 200 {
-		sql = sql[:200] + "..."
-	}
+	sql := textutil.TruncateRunesEllipsis(td.sql, 200, "...")
 
 	var errVal any
 	if data.Err != nil {

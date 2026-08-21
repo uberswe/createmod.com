@@ -8,6 +8,7 @@ import (
 	"createmod/internal/server"
 	"createmod/internal/session"
 	"createmod/internal/store"
+	"createmod/internal/textutil"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -21,15 +22,15 @@ var adminReportsTemplates = append([]string{
 }, commonTemplates...)
 
 type AdminReportItem struct {
-	ID             string
-	TargetType     string
-	TargetID       string
-	TargetURL      string // clickable link to the reported item
-	TargetLabel    string // human-readable label for the link
-	Reason         string
-	Reporter       string
-	ReporterName   string // username if the reporter was logged in
-	Created        time.Time
+	ID           string
+	TargetType   string
+	TargetID     string
+	TargetURL    string // clickable link to the reported item
+	TargetLabel  string // human-readable label for the link
+	Reason       string
+	Reporter     string
+	ReporterName string // username if the reporter was logged in
+	Created      time.Time
 }
 
 type AdminReportsData struct {
@@ -122,12 +123,18 @@ func resolveReportTarget(appStore *store.Store, targetType, targetID string) (st
 	return "", targetID
 }
 
+// truncate trims s and caps it to max runes, appending "..." when truncated.
 func truncate(s string, max int) string {
-	s = strings.TrimSpace(s)
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "..."
+	return textutil.TruncateRunesEllipsis(strings.TrimSpace(s), max, "...")
+}
+
+// truncateRunes / truncateRunesEllipsis are package-local shorthands over
+// textutil so the many call sites read cleanly. See textutil for why byte-slice
+// truncation of user text must never be used (Postgres SQLSTATE 22021).
+func truncateRunes(s string, n int) string { return textutil.TruncateRunes(s, n) }
+
+func truncateRunesEllipsis(s string, n int) string {
+	return textutil.TruncateRunesEllipsis(s, n, "...")
 }
 
 // AdminReportResolveHandler resolves a report: deletes it, optionally emails the reporter.

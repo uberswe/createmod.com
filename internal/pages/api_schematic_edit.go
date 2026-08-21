@@ -115,11 +115,7 @@ func SchematicUpdateHandler(
 				return e.BadRequestError(err.Error(), nil)
 			}
 
-			if len(plainText) > 180 {
-				schem.Excerpt = plainText[:180] + "..."
-			} else {
-				schem.Excerpt = plainText
-			}
+			schem.Excerpt = truncateRunesEllipsis(plainText, 180)
 		}
 
 		if video != "" || e.Request.FormValue("video") != "" {
@@ -738,10 +734,7 @@ func SchematicFileAddHandler(
 			}
 		}
 
-		description := strings.TrimSpace(e.Request.FormValue("description"))
-		if len(description) > 200 {
-			description = description[:200]
-		}
+		description := truncateRunes(strings.TrimSpace(e.Request.FormValue("description")), 200)
 
 		sf := &store.SchematicFile{
 			SchematicID:  schematicID,

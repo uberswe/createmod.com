@@ -146,11 +146,7 @@ func GuidesUpdateHandler(cacheService *cache.Service, appStore *store.Store, sto
 		if excerpt != "" {
 			guide.Excerpt = excerpt
 		} else if content != "" {
-			ex := stripHTMLTags(content)
-			if len(ex) > 180 {
-				ex = ex[:180] + "..."
-			}
-			guide.Excerpt = ex
+			guide.Excerpt = truncateRunesEllipsis(stripHTMLTags(content), 180)
 		}
 
 		// Process banner image upload

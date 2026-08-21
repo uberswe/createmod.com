@@ -132,10 +132,7 @@ func UploadAddFileHandler(appStore *store.Store, storageSvc *storage.Service) fu
 			mods = append(mods, mod)
 		}
 
-		description := strings.TrimSpace(e.Request.FormValue("description"))
-		if len(description) > 200 {
-			description = description[:200]
-		}
+		description := truncateRunes(strings.TrimSpace(e.Request.FormValue("description")), 200)
 
 		// Marshal materials and mods to JSON
 		materialsJSON, _ := json.Marshal(parsedMaterials)
