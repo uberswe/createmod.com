@@ -83,7 +83,7 @@ func AdsCheckHandler(rl ratelimit.Limiter) func(e *server.RequestEvent) error {
 		ua, country, pageClass := e.Request.UserAgent(), e.Country(), PageClass(sig.Path)
 
 		traffic.Record("view_js", ua, country, res, pageClass)
-		if strongBotSignals(sig) {
+		if flagWorthy(sig) {
 			FlagBotIP(e.Request.Context(), rl, e.RealIP())
 			traffic.Record("bot_flag", ua, country, res, pageClass)
 		}
