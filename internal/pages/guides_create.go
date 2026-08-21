@@ -100,10 +100,7 @@ func GuidesCreateHandler(cacheService *cache.Service, appStore *store.Store, sto
 		authorID := authenticatedUserID(e)
 		excerpt := ""
 		if content != "" {
-			excerpt = stripHTMLTags(content)
-			if len(excerpt) > 180 {
-				excerpt = excerpt[:180] + "..."
-			}
+			excerpt = truncateRunesEllipsis(stripHTMLTags(content), 180)
 		}
 
 		ctx := context.Background()

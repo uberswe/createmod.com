@@ -384,9 +384,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			return e.BadRequestError(err.Error(), nil)
 		}
 
-		if len(excerpt) > 180 {
-			excerpt = excerpt[:180]
-		}
+		excerpt = truncateRunes(excerpt, 180)
 
 		// Resolve categories and tags
 		var catIDs []string

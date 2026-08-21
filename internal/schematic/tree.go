@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"createmod/internal/textutil"
+
 	"github.com/Tnze/go-mc/nbt"
 )
 
@@ -180,10 +182,7 @@ func scalarValue(n rawNode) string {
 			ln := int(binary.BigEndian.Uint16(p))
 			if len(p) >= 2+ln {
 				s := string(p[2 : 2+ln])
-				if len(s) > 200 {
-					s = s[:200] + "…"
-				}
-				return s
+				return textutil.TruncateRunesEllipsis(s, 200, "…")
 			}
 		}
 	}
@@ -279,9 +278,9 @@ func descend(raw []byte, path string) (rawNode, string, error) {
 }
 
 const (
-	treeMaxLimit    = 1000
-	treeMaxDepth    = 4
-	treeMaxNodes    = 20000
+	treeMaxLimit = 1000
+	treeMaxDepth = 4
+	treeMaxNodes = 20000
 )
 
 // NBTTreePage lists the children of the node at path (index path), paged.

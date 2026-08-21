@@ -3,6 +3,8 @@ package schematic
 import (
 	"sort"
 	"strings"
+
+	"createmod/internal/textutil"
 )
 
 // Tier-2 content inspection: surface everything in a schematic that can act
@@ -43,10 +45,10 @@ const InspectorVersion = 2
 
 // Manifest is the transparency report for one schematic.
 type Manifest struct {
-	InspectorVersion int                 `json:"inspectorVersion"`
-	Counts           map[FindingType]int `json:"counts,omitempty"`
-	Findings         []Finding           `json:"findings,omitempty"`
-	FindingsTruncated bool               `json:"findingsTruncated,omitempty"`
+	InspectorVersion  int                 `json:"inspectorVersion"`
+	Counts            map[FindingType]int `json:"counts,omitempty"`
+	Findings          []Finding           `json:"findings,omitempty"`
+	FindingsTruncated bool                `json:"findingsTruncated,omitempty"`
 	// ModNamespaces lists non-vanilla block namespaces (informational).
 	ModNamespaces []string `json:"modNamespaces,omitempty"`
 }
@@ -73,9 +75,7 @@ func Inspect(s *Schematic) *Manifest {
 	add := func(t FindingType, pos [3]int, detail string) {
 		m.Counts[t]++
 		if len(m.Findings) < MaxFindings {
-			if len(detail) > 256 {
-				detail = detail[:256] + "…"
-			}
+			detail = textutil.TruncateRunesEllipsis(detail, 256, "…")
 			m.Findings = append(m.Findings, Finding{Type: t, Pos: pos, Detail: detail})
 		} else {
 			m.FindingsTruncated = true
