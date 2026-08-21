@@ -474,7 +474,9 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			return serveMarkdown(e, schematicMarkdown(d))
 		}
 
-		countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
+		if !IsFlaggedBot(e.Request.Context()) {
+			countSchematicViewStore(appStore, d.Schematic.ID, discordService, e.RealIP(), cacheService, webhookSecret, slog.Default())
+		}
 
 		if searchQuery := extractSearchTermFromReferer(e.Request.Header.Get("Referer")); searchQuery != "" {
 			go func() {

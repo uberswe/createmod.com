@@ -108,29 +108,73 @@ window.setTheme=function(theme){
     <script src="/assets/x/dev-ads.js?v={{ AssetVer }}" defer></script>
     {{ else }}
     <script data-cfasync="false">
-    // Defer the NitroPay loader until DOMContentLoaded and the main thread is
-    // idle: its initial evaluation is a ~1.4s main-thread task (the site's
-    // dominant INP contributor on mobile), and running it during the critical
-    // window makes early taps wait behind it. Anchoring on DOMContentLoaded
-    // (not the load event) starts the first ad auctions several seconds
-    // earlier on image-heavy pages, so short visits still get an impression.
-    // The queue shim above buffers createAd calls until the real script
-    // arrives.
+    // Load NitroPay + Google Analytics only after a fast server check
+    // (/api/ads-check) clears this client. The HTML is identical for everyone so
+    // it stays fully cacheable (including at Cloudflare); the ad/GA decision is
+    // made here, client-side, and FAILS OPEN — any timeout or error loads
+    // ads/GA, so real users never lose ads. Detected bots (headless
+    // fingerprints) simply never initialise them. The queue shim above buffers
+    // createAd calls until the real NitroPay script arrives.
     (function () {
-      function loadNitro() {
-        var s = document.createElement('script');
-        s.setAttribute('data-cfasync', 'false');
-        s.async = true;
-        s.src = 'https://s.nitropay.com/ads-2143.js';
-        s.onerror = function () { window._nitroBlocked = true; };
-        document.head.appendChild(s);
-      }
-      function whenIdle() {
+      // Always-safe gtag shim so gtag(...) calls elsewhere never throw; the real
+      // gtag.js is only appended when tracking is enabled.
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = window.gtag || function () { dataLayer.push(arguments); };
+
+      function loadTracking() {
+        // NitroPay — deferred to idle (its init is a heavy main-thread task).
+        function loadNitro() {
+          var s = document.createElement('script');
+          s.setAttribute('data-cfasync', 'false');
+          s.async = true;
+          s.src = 'https://s.nitropay.com/ads-2143.js';
+          s.onerror = function () { window._nitroBlocked = true; };
+          document.head.appendChild(s);
+        }
         if (window.requestIdleCallback) requestIdleCallback(loadNitro, { timeout: 2000 });
         else setTimeout(loadNitro, 800);
+        // Google Analytics.
+        var g = document.createElement('script');
+        g.async = true;
+        g.src = 'https://www.googletagmanager.com/gtag/js?id=G-HG8QRCK47M';
+        document.head.appendChild(g);
+        gtag('js', new Date());
+        gtag('config', 'G-HG8QRCK47M');
       }
-      if (document.readyState !== 'loading') whenIdle();
-      else document.addEventListener('DOMContentLoaded', whenIdle, { once: true });
+
+      // No-permission fingerprint: nothing here triggers a browser prompt.
+      function fingerprint() {
+        var s = { path: location.pathname };
+        try { s.res = (screen.width || 0) + 'x' + (screen.height || 0); } catch (e) {}
+        try { s.wd = navigator.webdriver === true; } catch (e) {}
+        try { s.langs = (navigator.languages || []).length; } catch (e) {}
+        try { s.hc = navigator.hardwareConcurrency || 0; } catch (e) {}
+        try { s.dm = navigator.deviceMemory || 0; } catch (e) {}
+        try { s.tp = navigator.maxTouchPoints || 0; } catch (e) {}
+        try {
+          var cv = document.createElement('canvas');
+          var gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
+          if (gl) { var dbg = gl.getExtension('WEBGL_debug_renderer_info'); if (dbg) { s.gl = ('' + gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)).slice(0, 80); } }
+        } catch (e) {}
+        try { s.tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').slice(0, 48); } catch (e) {}
+        return s;
+      }
+
+      var done = false;
+      function decide(serve) { if (done) return; done = true; if (serve) loadTracking(); }
+      try {
+        var ctrl = ('AbortController' in window) ? new AbortController() : null;
+        var to = setTimeout(function () { if (ctrl) ctrl.abort(); decide(true); }, 800); // fail open
+        fetch('/api/ads-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fingerprint()),
+          signal: ctrl ? ctrl.signal : undefined
+        })
+          .then(function (r) { return r.ok ? r.json() : { ads: true }; })
+          .then(function (j) { clearTimeout(to); decide(!j || j.ads !== false); })
+          .catch(function () { clearTimeout(to); decide(true); }); // fail open
+      } catch (e) { decide(true); }
     })();
     </script>
     {{ end }}
@@ -177,14 +221,6 @@ window.setTheme=function(theme){
     })();
     </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HG8QRCK47M"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-HG8QRCK47M');
-    </script>
 
     <style>
       /* HTMX loading indicator bar */

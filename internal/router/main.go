@@ -306,6 +306,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Use(legacyCategoryCompat)
 	r.Use(legacyTagCompat)
 	r.Use(cookieAuth(p.SessionStore))
+	r.Use(botEnforcementMiddleware(p.RateLimiter))
 	r.Use(csrfOriginCheck)
 
 	// Health check endpoint — excluded from maintenance mode via the middleware itself.
@@ -497,11 +498,11 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/users/{id}/follow", Adapt(pages.UnfollowHandler(p.AppStore)))
 	analyticsRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 30, time.Minute)
 	r.With(analyticsRateLimit).Post("/api/analytics", Adapt(pages.AnalyticsEventHandler(p.CacheService, p.AppStore)))
-	// The pageview beacon fires on every page load, so it gets its own per-IP
+	// The ads-check beacon fires on every page load, so it gets its own per-IP
 	// bucket — routing it through the shared "auth:" limiter would let normal
 	// browsing exhaust the login/analytics budget (429s on /login).
 	r.With(keyedRateLimitMiddleware(p.RateLimiter, "beacon", 120, time.Minute)).
-		Post("/api/pageview", Adapt(pages.PageviewBeaconHandler()))
+		Post("/api/ads-check", Adapt(pages.AdsCheckHandler(p.RateLimiter)))
 	r.With(analyticsRateLimit).Post("/api/ad-click", Adapt(pages.AdClickHandler(p.AppStore)))
 	// User profile API (replaces PB REST endpoints)
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
@@ -1084,6 +1085,30 @@ func headMethodSupport(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// botEnforcementMiddleware soft-throttles IPs flagged by the pageview beacon
+// (bot resolutions like 800x600 / square). Flagged, non-logged-in requests get
+// a 403 on schematic-file downloads and a context flag on pages that drops
+// ads/analytics/view-counting. Logged-in users are always exempt, and it fails
+// open (never blocks) when Redis is unavailable.
+func botEnforcementMiddleware(rl ratelimit.Limiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if session.UserFromContext(r.Context()) != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if pages.IsBotFlaggedIP(r.Context(), rl, extractClientIP(r)) {
+				if pages.IsSchematicDownloadPath(r.URL.Path) {
+					http.Error(w, "Forbidden", http.StatusForbidden)
+					return
+				}
+				r = r.WithContext(pages.WithBotFlag(r.Context()))
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // trafficViewMiddleware records a "view" for every successful HTML page load

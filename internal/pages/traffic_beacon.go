@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"createmod/internal/ratelimit"
 	"createmod/internal/server"
 	"createmod/internal/traffic"
 )
@@ -68,18 +69,25 @@ func sanitizeResolution(res string) string {
 	return ""
 }
 
-// PageviewBeaconHandler records the client-side pageview beacon
-// (POST /api/pageview, body {res, path}). It captures screen resolution — which
-// only JS-capable clients can report — as event_type "view_js" for
-// bot-traffic analysis. Best-effort: always 204, never errors the client.
-func PageviewBeaconHandler() func(e *server.RequestEvent) error {
+// AdsCheckHandler backs POST /api/ads-check. The client sends a no-permission
+// fingerprint on page load; the server (1) records observability, (2) flags the
+// IP when the signals are near-certain bot tells — which drives the server-side
+// download 403 + view-count skip — and (3) tells the client whether to load ads
+// and analytics. The client fails open (loads them on timeout/error), so the
+// HTML stays identical/cacheable and real users never lose ads.
+func AdsCheckHandler(rl ratelimit.Limiter) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
-		var body struct {
-			Res  string `json:"res"`
-			Path string `json:"path"`
+		var sig BotSignals
+		_ = json.NewDecoder(http.MaxBytesReader(e.Response, e.Request.Body, 1024)).Decode(&sig)
+		res := sanitizeResolution(sig.Res)
+		ua, country, pageClass := e.Request.UserAgent(), e.Country(), PageClass(sig.Path)
+
+		traffic.Record("view_js", ua, country, res, pageClass)
+		if strongBotSignals(sig) {
+			FlagBotIP(e.Request.Context(), rl, e.RealIP())
+			traffic.Record("bot_flag", ua, country, res, pageClass)
 		}
-		_ = json.NewDecoder(http.MaxBytesReader(e.Response, e.Request.Body, 512)).Decode(&body)
-		traffic.Record("view_js", e.Request.UserAgent(), e.Country(), sanitizeResolution(body.Res), PageClass(body.Path))
-		return e.NoContent(http.StatusNoContent)
+		serve := !suppressAds(sig) && !IsBotFlaggedIP(e.Request.Context(), rl, e.RealIP())
+		return e.JSON(http.StatusOK, map[string]bool{"ads": serve})
 	}
 }
