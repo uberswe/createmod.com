@@ -92,49 +92,52 @@ func userFromDB(u db.User) *store.User {
 
 func schematicFromDB(s db.Schematic) store.Schematic {
 	return store.Schematic{
-		ID:                 s.ID,
-		AuthorID:           derefStr(s.AuthorID),
-		Name:               s.Name,
-		Title:              s.Title,
-		Description:        s.Description,
-		Excerpt:            s.Excerpt,
-		Content:            s.Content,
-		Postdate:           fromPgTimestamptz(s.Postdate),
-		Modified:           fromPgTimestamptz(s.Modified),
-		DetectedLanguage:   s.DetectedLanguage,
-		FeaturedImage:      s.FeaturedImage,
-		Gallery:            s.Gallery,
-		RotationImages:     s.RotationImages,
-		RotationDisabled:   s.RotationDisabled,
-		ShortCode:          s.ShortCode,
-		SchematicFile:      s.SchematicFile,
-		Video:              s.Video,
-		HasDependencies:    s.HasDependencies,
-		Dependencies:       s.Dependencies,
-		CreatemodVersionID: s.CreatemodVersionID,
-		MinecraftVersionID: s.MinecraftVersionID,
-		Views:              int(s.Views),
-		Downloads:          int(s.Downloads),
-		BlockCount:         int(s.BlockCount),
-		DimX:               int(s.DimX),
-		DimY:               int(s.DimY),
-		DimZ:               int(s.DimZ),
-		Materials:          json.RawMessage(s.Materials),
-		Mods:               json.RawMessage(s.Mods),
-		ExternalURL:        s.ExternalUrl,
-		Featured:           s.Featured,
-		AIDescription:      s.AiDescription,
-		ModerationState:    s.ModerationState,
-		ModerationReason:   s.ModerationReason,
-		ScheduledAt:        fromPgTimestamptz(s.ScheduledAt),
-		Deleted:            fromPgTimestamptz(s.Deleted),
-		OldID:              ptrInt32ToInt(s.OldID),
-		Status:             s.Status,
-		Type:               s.Type,
-		SourceFormat:       s.SourceFormat,
-		OriginalFile:       s.OriginalFile,
-		Created:            s.Created,
-		Updated:            s.Updated,
+		ID:                      s.ID,
+		AuthorID:                derefStr(s.AuthorID),
+		Name:                    s.Name,
+		Title:                   s.Title,
+		Description:             s.Description,
+		Excerpt:                 s.Excerpt,
+		Content:                 s.Content,
+		Postdate:                fromPgTimestamptz(s.Postdate),
+		Modified:                fromPgTimestamptz(s.Modified),
+		DetectedLanguage:        s.DetectedLanguage,
+		FeaturedImage:           s.FeaturedImage,
+		Gallery:                 s.Gallery,
+		RotationImages:          s.RotationImages,
+		HeldImages:              s.HeldImages,
+		RemovedImages:           s.RemovedImages,
+		RotationDisabled:        s.RotationDisabled,
+		ShortCode:               s.ShortCode,
+		SchematicFile:           s.SchematicFile,
+		Video:                   s.Video,
+		HasDependencies:         s.HasDependencies,
+		Dependencies:            s.Dependencies,
+		CreatemodVersionID:      s.CreatemodVersionID,
+		MinecraftVersionID:      s.MinecraftVersionID,
+		Views:                   int(s.Views),
+		Downloads:               int(s.Downloads),
+		BlockCount:              int(s.BlockCount),
+		DimX:                    int(s.DimX),
+		DimY:                    int(s.DimY),
+		DimZ:                    int(s.DimZ),
+		Materials:               json.RawMessage(s.Materials),
+		Mods:                    json.RawMessage(s.Mods),
+		ExternalURL:             s.ExternalUrl,
+		Featured:                s.Featured,
+		AIDescription:           s.AiDescription,
+		ModerationState:         s.ModerationState,
+		ModerationReason:        s.ModerationReason,
+		ModerationResubmitCount: int(s.ModerationResubmitCount),
+		ScheduledAt:             fromPgTimestamptz(s.ScheduledAt),
+		Deleted:                 fromPgTimestamptz(s.Deleted),
+		OldID:                   ptrInt32ToInt(s.OldID),
+		Status:                  s.Status,
+		Type:                    s.Type,
+		SourceFormat:            s.SourceFormat,
+		OriginalFile:            s.OriginalFile,
+		Created:                 s.Created,
+		Updated:                 s.Updated,
 	}
 }
 
@@ -817,34 +820,37 @@ func (ps *PostgresStore) Create(ctx context.Context, s *store.Schematic) error {
 
 func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 	_, err := ps.q.UpdateSchematic(ctx, db.UpdateSchematicParams{
-		ID:                 s.ID,
-		Title:              ptrStr(s.Title),
-		Description:        ptrStr(s.Description),
-		Excerpt:            ptrStr(s.Excerpt),
-		Content:            ptrStr(s.Content),
-		FeaturedImage:      ptrStr(s.FeaturedImage),
-		Gallery:            s.Gallery,
-		RotationImages:     s.RotationImages,
-		Video:              ptrStr(s.Video),
-		HasDependencies:    ptrBool(s.HasDependencies),
-		Dependencies:       ptrStr(s.Dependencies),
-		CreatemodVersionID: s.CreatemodVersionID,
-		MinecraftVersionID: s.MinecraftVersionID,
-		AiDescription:      ptrStr(s.AIDescription),
-		ModerationState:    ptrStr(s.ModerationState),
-		ModerationReason:   ptrStr(s.ModerationReason),
-		Featured:           ptrBool(s.Featured),
-		ScheduledAt:        toPgTimestamptz(s.ScheduledAt),
-		BlockCount:         ptrInt32(int32(s.BlockCount)),
-		DimX:               ptrInt32(int32(s.DimX)),
-		DimY:               ptrInt32(int32(s.DimY)),
-		DimZ:               ptrInt32(int32(s.DimZ)),
-		Materials:          s.Materials,
-		Mods:               s.Mods,
-		ExternalUrl:        ptrStr(s.ExternalURL),
-		SchematicFile:      ptrStr(s.SchematicFile),
-		Created:            toPgTimestamptz(s.CreatedOverride),
-		RotationDisabled:   ptrBool(s.RotationDisabled),
+		ID:                      s.ID,
+		Title:                   ptrStr(s.Title),
+		Description:             ptrStr(s.Description),
+		Excerpt:                 ptrStr(s.Excerpt),
+		Content:                 ptrStr(s.Content),
+		FeaturedImage:           ptrStr(s.FeaturedImage),
+		Gallery:                 s.Gallery,
+		RotationImages:          s.RotationImages,
+		HeldImages:              s.HeldImages,
+		RemovedImages:           s.RemovedImages,
+		ModerationResubmitCount: ptrInt32(int32(s.ModerationResubmitCount)),
+		Video:                   ptrStr(s.Video),
+		HasDependencies:         ptrBool(s.HasDependencies),
+		Dependencies:            ptrStr(s.Dependencies),
+		CreatemodVersionID:      s.CreatemodVersionID,
+		MinecraftVersionID:      s.MinecraftVersionID,
+		AiDescription:           ptrStr(s.AIDescription),
+		ModerationState:         ptrStr(s.ModerationState),
+		ModerationReason:        ptrStr(s.ModerationReason),
+		Featured:                ptrBool(s.Featured),
+		ScheduledAt:             toPgTimestamptz(s.ScheduledAt),
+		BlockCount:              ptrInt32(int32(s.BlockCount)),
+		DimX:                    ptrInt32(int32(s.DimX)),
+		DimY:                    ptrInt32(int32(s.DimY)),
+		DimZ:                    ptrInt32(int32(s.DimZ)),
+		Materials:               s.Materials,
+		Mods:                    s.Mods,
+		ExternalUrl:             ptrStr(s.ExternalURL),
+		SchematicFile:           ptrStr(s.SchematicFile),
+		Created:                 toPgTimestamptz(s.CreatedOverride),
+		RotationDisabled:        ptrBool(s.RotationDisabled),
 	})
 	return err
 }
@@ -4267,6 +4273,92 @@ func (s *NBTHashStoreImpl) IsBlacklisted(ctx context.Context, hash string) (bool
 // Updated NewStore that uses separate impl types to avoid method collisions
 // --------------------------------------------------------------------------
 
+// ModerationChecklistStoreImpl persists moderation checklist items. (#1646)
+type ModerationChecklistStoreImpl struct{ q *db.Queries }
+
+var _ store.ModerationChecklistStore = (*ModerationChecklistStoreImpl)(nil)
+
+func checklistItemFromDB(i db.ModerationChecklistItem) store.ModerationChecklistItem {
+	return store.ModerationChecklistItem{
+		ID:          i.ID,
+		SchematicID: i.SchematicID,
+		Kind:        i.Kind,
+		Source:      i.Source,
+		Note:        i.Note,
+		Status:      i.Status,
+		CreatedAt:   i.CreatedAt,
+		ResolvedAt:  fromPgTimestamptz(i.ResolvedAt),
+	}
+}
+
+func checklistSliceFromDB(rows []db.ModerationChecklistItem) []store.ModerationChecklistItem {
+	out := make([]store.ModerationChecklistItem, len(rows))
+	for i, r := range rows {
+		out[i] = checklistItemFromDB(r)
+	}
+	return out
+}
+
+func (s *ModerationChecklistStoreImpl) Create(ctx context.Context, item *store.ModerationChecklistItem) error {
+	source := item.Source
+	if source == "" {
+		source = store.ChecklistSourceAuto
+	}
+	var status interface{}
+	if item.Status != "" {
+		status = item.Status
+	}
+	created, err := s.q.CreateModerationChecklistItem(ctx, db.CreateModerationChecklistItemParams{
+		SchematicID: item.SchematicID,
+		Kind:        item.Kind,
+		Source:      source,
+		Note:        item.Note,
+		Status:      status,
+	})
+	if err != nil {
+		return err
+	}
+	*item = checklistItemFromDB(created)
+	return nil
+}
+
+func (s *ModerationChecklistStoreImpl) ListBySchematic(ctx context.Context, schematicID string) ([]store.ModerationChecklistItem, error) {
+	rows, err := s.q.ListModerationChecklistBySchematic(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	return checklistSliceFromDB(rows), nil
+}
+
+func (s *ModerationChecklistStoreImpl) ListOpenBySchematic(ctx context.Context, schematicID string) ([]store.ModerationChecklistItem, error) {
+	rows, err := s.q.ListOpenModerationChecklistBySchematic(ctx, schematicID)
+	if err != nil {
+		return nil, err
+	}
+	return checklistSliceFromDB(rows), nil
+}
+
+func (s *ModerationChecklistStoreImpl) CountOpenBySchematic(ctx context.Context, schematicID string) (int, error) {
+	n, err := s.q.CountOpenModerationChecklistBySchematic(ctx, schematicID)
+	return int(n), err
+}
+
+func (s *ModerationChecklistStoreImpl) Resolve(ctx context.Context, id string) error {
+	return s.q.ResolveModerationChecklistItem(ctx, id)
+}
+
+func (s *ModerationChecklistStoreImpl) ResolveOpenByKind(ctx context.Context, schematicID, kind string) (int, error) {
+	n, err := s.q.ResolveOpenModerationChecklistByKind(ctx, db.ResolveOpenModerationChecklistByKindParams{
+		SchematicID: schematicID,
+		Kind:        kind,
+	})
+	return int(n), err
+}
+
+func (s *ModerationChecklistStoreImpl) DeleteBySchematic(ctx context.Context, schematicID string) error {
+	return s.q.DeleteModerationChecklistBySchematic(ctx, schematicID)
+}
+
 // NewStoreFromPool returns a store.Store backed by PostgreSQL.
 func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 	q := db.New(pool)
@@ -4306,6 +4398,7 @@ func NewStoreFromPool(pool *pgxpool.Pool) *store.Store {
 		SchematicVariations: &SchematicVariationStoreImpl{q: q},
 		ModerationChats:     &ModerationChatStoreImpl{q: q},
 		ModerationLog:       &ModerationLogStoreImpl{q: q},
+		ModerationChecklist: &ModerationChecklistStoreImpl{q: q},
 		Badges:              &BadgeStoreImpl{q: q},
 		SocialLinks:         &SocialLinkStoreImpl{q: q},
 		Follows:             &FollowStoreImpl{q: q},

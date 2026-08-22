@@ -16,11 +16,43 @@ const (
 	ModerationApproved   = "approved"
 	ModerationRejected   = "rejected"
 	ModerationDeleted    = "deleted"
+
+	// States added by the moderation overhaul (#1646). See the two visibility
+	// gates below for how each behaves.
+	//
+	// ModerationPublishedLimited: fully published and reachable at its direct
+	// link with downloads enabled, but EXCLUDED from Latest, search and category
+	// listings until an open quality checklist is resolved. Auto-promotes to
+	// published when the checklist clears.
+	ModerationPublishedLimited = "published_limited"
+	// ModerationChangesRequested: a moderator asked for changes; unlisted and
+	// viewable only by the owner (and admins) until the checklist resolves.
+	ModerationChangesRequested = "changes_requested"
+	// ModerationRejectedFixable: rejected with a checklist; the author may
+	// resubmit exactly once.
+	ModerationRejectedFixable = "rejected_fixable"
+	// ModerationRejectedFinal: severe violation; no resubmission, appeal only via
+	// the moderation chat thread. (Supersedes the legacy "rejected".)
+	ModerationRejectedFinal = "rejected_final"
 )
 
-// IsPublicState returns true if the moderation state means the schematic is publicly visible.
+// IsPublicState reports whether the state means the schematic is LISTED — shown
+// in Latest, the search index (Meilisearch + in-memory), category and other
+// public listings. Deliberately excludes published_limited, which is reachable
+// by direct link but must stay out of listings. This is the gate the ~20 SQL
+// `moderation_state IN ('published','approved')` clauses encode, so its meaning
+// must not drift.
 func IsPublicState(state string) bool {
 	return state == ModerationPublished || state == ModerationApproved
+}
+
+// IsViewableState reports whether a NON-owner reaching the schematic by its
+// direct link may view it. This is broader than IsPublicState: it also includes
+// published_limited (link works, just unlisted). Owner-only states
+// (changes_requested, rejected_*) are NOT viewable here — callers grant the
+// owner/admins access separately.
+func IsViewableState(state string) bool {
+	return IsPublicState(state) || state == ModerationPublishedLimited
 }
 
 // User represents a user account.
@@ -52,19 +84,26 @@ type Session struct {
 
 // Schematic represents a Create mod schematic.
 type Schematic struct {
-	ID                 string
-	AuthorID           string
-	Name               string
-	Title              string
-	Description        string
-	Excerpt            string
-	Content            string
-	Postdate           *time.Time
-	Modified           *time.Time
-	DetectedLanguage   string
-	FeaturedImage      string
-	Gallery            []string
-	RotationImages     []string
+	ID               string
+	AuthorID         string
+	Name             string
+	Title            string
+	Description      string
+	Excerpt          string
+	Content          string
+	Postdate         *time.Time
+	Modified         *time.Time
+	DetectedLanguage string
+	FeaturedImage    string
+	Gallery          []string
+	RotationImages   []string
+	// HeldImages are gallery/featured filenames an automated or manual check put
+	// on hold: hidden from visitors, shown to the owner as a placeholder, and
+	// NOT affecting the schematic's moderation state. (#1646)
+	HeldImages []string
+	// RemovedImages are filenames a moderator removed after review. Kept for
+	// audit/messaging; never rendered.
+	RemovedImages      []string
 	RotationDisabled   bool
 	ShortCode          string
 	SchematicFile      string
@@ -86,11 +125,14 @@ type Schematic struct {
 	AIDescription      string
 	ModerationState    string
 	ModerationReason   string
-	ScheduledAt        *time.Time
-	Deleted            *time.Time
-	OldID              *int
-	Status             string
-	Type               string
+	// ModerationResubmitCount counts how many times the author has resubmitted
+	// after a rejected_fixable outcome. Exactly one resubmit is allowed. (#1646)
+	ModerationResubmitCount int
+	ScheduledAt             *time.Time
+	Deleted                 *time.Time
+	OldID                   *int
+	Status                  string
+	Type                    string
 	// SourceFormat is the format slug the schematic was uploaded as (e.g.
 	// "excraft"); empty or "nbt" means it was uploaded as Create structure NBT.
 	SourceFormat string
@@ -1481,6 +1523,48 @@ type ModerationLogStore interface {
 	ListAutoApprovedSince(ctx context.Context, since, until time.Time) ([]AutoApprovedSchematic, error)
 }
 
+// Moderation checklist item kinds and sources. (#1646)
+const (
+	ChecklistKindDescription = "description"
+	ChecklistKindTitle       = "title"
+	ChecklistKindImages      = "images"
+	ChecklistKindTags        = "tags"
+	ChecklistKindCategory    = "category"
+
+	ChecklistSourceAuto      = "auto"
+	ChecklistSourceModerator = "moderator"
+
+	ChecklistStatusOpen     = "open"
+	ChecklistStatusResolved = "resolved"
+)
+
+// ModerationChecklistItem is one actionable item a user must resolve to unlock
+// full visibility. Auto items come from failed quality checks; moderator items
+// from the review UI. When a schematic has no open items it auto-promotes.
+type ModerationChecklistItem struct {
+	ID          string
+	SchematicID string
+	Kind        string // description | title | images | tags | category
+	Source      string // auto | moderator
+	Note        string
+	Status      string // open | resolved
+	CreatedAt   time.Time
+	ResolvedAt  *time.Time
+}
+
+// ModerationChecklistStore persists per-schematic moderation checklist items.
+type ModerationChecklistStore interface {
+	Create(ctx context.Context, item *ModerationChecklistItem) error
+	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
+	ListOpenBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
+	CountOpenBySchematic(ctx context.Context, schematicID string) (int, error)
+	Resolve(ctx context.Context, id string) error
+	// ResolveOpenByKind resolves all open items of a kind (e.g. after a
+	// successful re-check of the description). Returns how many were resolved.
+	ResolveOpenByKind(ctx context.Context, schematicID, kind string) (int, error)
+	DeleteBySchematic(ctx context.Context, schematicID string) error
+}
+
 // SchematicVideoStore handles videos linked to schematics.
 type SchematicVideoStore interface {
 	Create(ctx context.Context, v *SchematicVideo) error
@@ -1681,6 +1765,7 @@ type Store struct {
 	SchematicVariations SchematicVariationStore
 	ModerationChats     ModerationChatStore
 	ModerationLog       ModerationLogStore
+	ModerationChecklist ModerationChecklistStore
 	Badges              BadgeStore
 	SocialLinks         SocialLinkStore
 	Follows             FollowStore

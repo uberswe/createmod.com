@@ -249,8 +249,10 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 				d.IsAdmin = viewerUser.IsAdmin
 			}
 		}
-		// Non-owners (and non-admins) cannot view non-public schematics
-		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
+		// Non-owners (and non-admins) cannot view non-viewable schematics.
+		// published_limited is viewable by direct link; owner-only states
+		// (changes_requested, rejected_*) remain hidden from non-owners.
+		if !store.IsViewableState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
 			nd := DefaultData{}
 			nd.Populate(e)
 			nd.Title = i18n.T(nd.Language, "Page Not Found")

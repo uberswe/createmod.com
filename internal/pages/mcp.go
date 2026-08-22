@@ -200,7 +200,7 @@ func mcpToolCall(e *server.RequestEvent, req jsonRPCRequest, searchEngine search
 			return mcpToolError(e, req, "name is required")
 		}
 		s, err := appStore.Schematics.GetByName(context.Background(), args.Name)
-		if err != nil || s == nil || !store.IsPublicState(s.ModerationState) {
+		if err != nil || s == nil || !store.IsViewableState(s.ModerationState) {
 			return mcpToolError(e, req, "schematic not found")
 		}
 		items := MapStoreSchematics(appStore, []store.Schematic{*s}, cacheService)

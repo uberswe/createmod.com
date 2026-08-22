@@ -45,7 +45,7 @@ func editorSourceModel(ctx context.Context, appStore *store.Store, storageSvc *s
 		return s, nil
 	case "schematic":
 		s, err := appStore.Schematics.GetByName(ctx, sess.SourceRef)
-		if err != nil || s == nil || !store.IsPublicState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
+		if err != nil || s == nil || !store.IsViewableState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
 			return nil, fmt.Errorf("source schematic not found")
 		}
 		primary := strings.TrimSpace(s.SchematicFile)

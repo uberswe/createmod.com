@@ -117,6 +117,9 @@ UPDATE schematics SET
     short_code = COALESCE(sqlc.narg('short_code'), short_code),
     created = COALESCE(sqlc.narg('created'), created),
     rotation_disabled = COALESCE(sqlc.narg('rotation_disabled'), rotation_disabled),
+    held_images = COALESCE(sqlc.narg('held_images'), held_images),
+    removed_images = COALESCE(sqlc.narg('removed_images'), removed_images),
+    moderation_resubmit_count = COALESCE(sqlc.narg('moderation_resubmit_count'), moderation_resubmit_count),
     modified = NOW()
 WHERE id = $1
 RETURNING *;

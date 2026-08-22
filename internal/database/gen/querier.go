@@ -50,6 +50,7 @@ type Querier interface {
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
 	CountGuidesForAdmin(ctx context.Context, filter string) (int64, error)
+	CountOpenModerationChecklistBySchematic(ctx context.Context, schematicID string) (int64, error)
 	CountPointLogByReason(ctx context.Context, arg CountPointLogByReasonParams) (int32, error)
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
@@ -80,6 +81,7 @@ type Querier interface {
 	CreateFollow(ctx context.Context, arg CreateFollowParams) error
 	CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error)
 	CreateIPVerificationCode(ctx context.Context, arg CreateIPVerificationCodeParams) (IpVerificationCode, error)
+	CreateModerationChecklistItem(ctx context.Context, arg CreateModerationChecklistItemParams) (ModerationChecklistItem, error)
 	CreateModerationLog(ctx context.Context, arg CreateModerationLogParams) (ModerationLog, error)
 	CreateModerationMessage(ctx context.Context, arg CreateModerationMessageParams) (ModerationMessage, error)
 	CreateModerationThread(ctx context.Context, arg CreateModerationThreadParams) (ModerationThread, error)
@@ -127,6 +129,7 @@ type Querier interface {
 	DeleteFollow(ctx context.Context, arg DeleteFollowParams) error
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteKnownIP(ctx context.Context, arg DeleteKnownIPParams) error
+	DeleteModerationChecklistBySchematic(ctx context.Context, schematicID string) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
 	DeleteOldDailyAdClicks(ctx context.Context, period string) error
 	DeleteOldNotifications(ctx context.Context, created time.Time) error
@@ -330,6 +333,7 @@ type Querier interface {
 	ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error)
 	ListModMetadataAll(ctx context.Context) ([]ModMetadatum, error)
 	ListModMetadataStale(ctx context.Context, limit int32) ([]ModMetadatum, error)
+	ListModerationChecklistBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
 	ListModerationLogBySchematic(ctx context.Context, schematicID string) ([]ListModerationLogBySchematicRow, error)
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
 	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
@@ -339,6 +343,7 @@ type Querier interface {
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
 	ListNewsletterIssues(ctx context.Context, arg ListNewsletterIssuesParams) ([]NewsletterIssue, error)
 	ListNotificationsByUser(ctx context.Context, arg ListNotificationsByUserParams) ([]Notification, error)
+	ListOpenModerationChecklistBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
 	ListPasskeys(ctx context.Context, userID string) ([]UserPasskey, error)
 	ListPendingCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListPendingTags(ctx context.Context) ([]SchematicTag, error)
@@ -424,6 +429,8 @@ type Querier interface {
 	RemoveBadge(ctx context.Context, arg RemoveBadgeParams) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
+	ResolveModerationChecklistItem(ctx context.Context, id string) error
+	ResolveOpenModerationChecklistByKind(ctx context.Context, arg ResolveOpenModerationChecklistByKindParams) (int64, error)
 	RestoreCollectionsByAuthor(ctx context.Context, authorID *string) error
 	RestoreComment(ctx context.Context, id string) error
 	RestoreCommentsByAuthor(ctx context.Context, authorID *string) error

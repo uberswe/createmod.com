@@ -258,6 +258,17 @@ type ModSecret struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type ModerationChecklistItem struct {
+	ID          string             `json:"id"`
+	SchematicID string             `json:"schematic_id"`
+	Kind        string             `json:"kind"`
+	Source      string             `json:"source"`
+	Note        string             `json:"note"`
+	Status      string             `json:"status"`
+	CreatedAt   time.Time          `json:"created_at"`
+	ResolvedAt  pgtype.Timestamptz `json:"resolved_at"`
+}
+
 type ModerationLog struct {
 	ID          string    `json:"id"`
 	SchematicID string    `json:"schematic_id"`
@@ -432,54 +443,57 @@ type Report struct {
 }
 
 type Schematic struct {
-	ID                 string             `json:"id"`
-	AuthorID           *string            `json:"author_id"`
-	Name               string             `json:"name"`
-	Title              string             `json:"title"`
-	Description        string             `json:"description"`
-	Excerpt            string             `json:"excerpt"`
-	Content            string             `json:"content"`
-	Postdate           pgtype.Timestamptz `json:"postdate"`
-	Modified           pgtype.Timestamptz `json:"modified"`
-	DetectedLanguage   string             `json:"detected_language"`
-	FeaturedImage      string             `json:"featured_image"`
-	Gallery            []string           `json:"gallery"`
-	SchematicFile      string             `json:"schematic_file"`
-	Video              string             `json:"video"`
-	HasDependencies    bool               `json:"has_dependencies"`
-	Dependencies       string             `json:"dependencies"`
-	CreatemodVersionID *string            `json:"createmod_version_id"`
-	MinecraftVersionID *string            `json:"minecraft_version_id"`
-	Views              int32              `json:"views"`
-	Downloads          int32              `json:"downloads"`
-	BlockCount         int32              `json:"block_count"`
-	DimX               int32              `json:"dim_x"`
-	DimY               int32              `json:"dim_y"`
-	DimZ               int32              `json:"dim_z"`
-	Materials          json.RawMessage    `json:"materials"`
-	Mods               json.RawMessage    `json:"mods"`
-	Paid               bool               `json:"paid"`
-	Featured           bool               `json:"featured"`
-	AiDescription      string             `json:"ai_description"`
-	ModerationReason   string             `json:"moderation_reason"`
-	ScheduledAt        pgtype.Timestamptz `json:"scheduled_at"`
-	Deleted            pgtype.Timestamptz `json:"deleted"`
-	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
-	OldID              *int32             `json:"old_id"`
-	Status             string             `json:"status"`
-	Type               string             `json:"type"`
-	Created            time.Time          `json:"created"`
-	Updated            time.Time          `json:"updated"`
-	ExternalUrl        string             `json:"external_url"`
-	TrendingScore      float32            `json:"trending_score"`
-	AvgRating          float32            `json:"avg_rating"`
-	RatingCount        int32              `json:"rating_count"`
-	ModerationState    string             `json:"moderation_state"`
-	RotationImages     []string           `json:"rotation_images"`
-	ShortCode          string             `json:"short_code"`
-	RotationDisabled   bool               `json:"rotation_disabled"`
-	SourceFormat       string             `json:"source_format"`
-	OriginalFile       string             `json:"original_file"`
+	ID                      string             `json:"id"`
+	AuthorID                *string            `json:"author_id"`
+	Name                    string             `json:"name"`
+	Title                   string             `json:"title"`
+	Description             string             `json:"description"`
+	Excerpt                 string             `json:"excerpt"`
+	Content                 string             `json:"content"`
+	Postdate                pgtype.Timestamptz `json:"postdate"`
+	Modified                pgtype.Timestamptz `json:"modified"`
+	DetectedLanguage        string             `json:"detected_language"`
+	FeaturedImage           string             `json:"featured_image"`
+	Gallery                 []string           `json:"gallery"`
+	SchematicFile           string             `json:"schematic_file"`
+	Video                   string             `json:"video"`
+	HasDependencies         bool               `json:"has_dependencies"`
+	Dependencies            string             `json:"dependencies"`
+	CreatemodVersionID      *string            `json:"createmod_version_id"`
+	MinecraftVersionID      *string            `json:"minecraft_version_id"`
+	Views                   int32              `json:"views"`
+	Downloads               int32              `json:"downloads"`
+	BlockCount              int32              `json:"block_count"`
+	DimX                    int32              `json:"dim_x"`
+	DimY                    int32              `json:"dim_y"`
+	DimZ                    int32              `json:"dim_z"`
+	Materials               json.RawMessage    `json:"materials"`
+	Mods                    json.RawMessage    `json:"mods"`
+	Paid                    bool               `json:"paid"`
+	Featured                bool               `json:"featured"`
+	AiDescription           string             `json:"ai_description"`
+	ModerationReason        string             `json:"moderation_reason"`
+	ScheduledAt             pgtype.Timestamptz `json:"scheduled_at"`
+	Deleted                 pgtype.Timestamptz `json:"deleted"`
+	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	OldID                   *int32             `json:"old_id"`
+	Status                  string             `json:"status"`
+	Type                    string             `json:"type"`
+	Created                 time.Time          `json:"created"`
+	Updated                 time.Time          `json:"updated"`
+	ExternalUrl             string             `json:"external_url"`
+	TrendingScore           float32            `json:"trending_score"`
+	AvgRating               float32            `json:"avg_rating"`
+	RatingCount             int32              `json:"rating_count"`
+	ModerationState         string             `json:"moderation_state"`
+	RotationImages          []string           `json:"rotation_images"`
+	ShortCode               string             `json:"short_code"`
+	RotationDisabled        bool               `json:"rotation_disabled"`
+	SourceFormat            string             `json:"source_format"`
+	OriginalFile            string             `json:"original_file"`
+	HeldImages              []string           `json:"held_images"`
+	RemovedImages           []string           `json:"removed_images"`
+	ModerationResubmitCount int32              `json:"moderation_resubmit_count"`
 }
 
 type SchematicCategory struct {

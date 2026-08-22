@@ -35,7 +35,7 @@ func DownloadInterstitialHandler(registry *server.Registry, cacheService *cache.
 
 		// Load the schematic so we can validate a requested file variation.
 		var schematic *store.Schematic
-		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && store.IsPublicState(s.ModerationState) && (s.Deleted == nil || s.Deleted.IsZero()) {
+		if s, err := appStore.Schematics.GetByName(context.Background(), name); err == nil && s != nil && store.IsViewableState(s.ModerationState) && (s.Deleted == nil || s.Deleted.IsZero()) {
 			schematic = s
 		}
 
