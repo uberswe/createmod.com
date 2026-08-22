@@ -2,7 +2,7 @@ module createmod
 
 go 1.25.0
 
-toolchain go1.26.6
+toolchain go1.27.0
 
 require (
 	github.com/KimMachineGun/automemlimit v0.7.5
@@ -11,7 +11,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/drexedam/gravatar v0.0.0-20210327211422-e94eea8c338e
 	github.com/gen2brain/webp v0.6.4
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-ego/gse v1.0.2
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/golang-migrate/migrate/v4 v4.19.1
@@ -28,8 +28,8 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.22.0
-	github.com/riverqueue/river v0.43.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.43.0
+	github.com/riverqueue/river v0.44.1
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.44.1
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.15
 	github.com/sym01/htmlsanitizer v1.1.1
@@ -83,9 +83,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.43.0 // indirect
-	github.com/riverqueue/river/rivershared v0.43.0 // indirect
-	github.com/riverqueue/river/rivertype v0.43.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.44.1 // indirect
+	github.com/riverqueue/river/rivershared v0.44.1 // indirect
+	github.com/riverqueue/river/rivertype v0.44.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/sunshineplan/pdf v1.0.8 // indirect
