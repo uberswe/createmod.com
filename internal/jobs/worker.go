@@ -107,6 +107,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &ModMetadataWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SitemapWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SessionCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ChecklistRecheckWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SafetyScanWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SafetyBackfillWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &ConvCacheCleanupWorker{deps: cfg.Deps})

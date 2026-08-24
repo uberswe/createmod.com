@@ -96,14 +96,12 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			if qualityErr != nil {
 				slog.Warn("moderation job: quality check unavailable", "error", qualityErr, "schematic_id", args.SchematicID)
 			} else if !qualityResult.Approved {
-				oldState := schem.ModerationState
-				schem.ModerationState = store.ModerationFlagged
-				schem.ModerationReason = qualityResult.Reason
-				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-					slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
-				} else {
-					logStateChange(oldState, schem.ModerationState, "quality check failed: "+qualityResult.Reason)
-				}
+				// Quality failure is NOT a policy violation: publish-first with
+				// limits instead of holding for manual review. The schematic is
+				// reachable by its link but excluded from Latest/search until the
+				// author improves the description; a checklist item tells them how,
+				// and resolving it auto-promotes (no moderator needed). (#1646)
+				pages.EnterPublishedLimited(ctx, w.deps.Store, schem, qualityResult.Reason)
 			} else {
 				// Both checks passed
 				oldState := schem.ModerationState

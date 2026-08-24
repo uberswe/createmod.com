@@ -60,6 +60,11 @@ type SearchIndexEnqueuer func(ctx context.Context, schematicID string) error
 // Nil means scans happen only via the periodic backfill.
 type SafetyScanEnqueuer func(ctx context.Context, schematicID string) error
 
+// ChecklistRecheckEnqueuer enqueues a moderation checklist re-evaluation after
+// an author edits a limited/changes-requested schematic. Nil means no async
+// recheck (the schematic simply stays limited until something else promotes it).
+type ChecklistRecheckEnqueuer func(ctx context.Context, schematicID string) error
+
 const uploadPendingTemplate = "./template/upload_pending.html"
 
 // maxUploadSize is the maximum allowed NBT file size (10 MB).

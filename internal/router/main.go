@@ -467,6 +467,13 @@ func Register(p RegisterParams) chi.Router {
 			return jw.Insert(ctx, jobs.SafetyScanArgs{SchematicID: schematicID}, nil)
 		}
 	}
+	var enqueueChecklistRecheck pages.ChecklistRecheckEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueChecklistRecheck = func(ctx context.Context, schematicID string) error {
+			return jw.Insert(ctx, jobs.ChecklistRecheckArgs{SchematicID: schematicID}, &river.InsertOpts{Queue: "ai"})
+		}
+	}
 	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
@@ -508,7 +515,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
-	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, enqueueSearchUpsert)))
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, enqueueSearchUpsert, enqueueChecklistRecheck)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	// Schematic content management APIs (videos, references, modpacks, reddit links)
 	r.Post("/api/schematics/{id}/videos", Adapt(pages.AddSchematicVideoHandler(p.AppStore)))

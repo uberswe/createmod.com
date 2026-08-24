@@ -39,6 +39,7 @@ func SchematicUpdateHandler(
 	appStore *store.Store,
 	moderationSvc *moderation.Service,
 	enqueueSearchUpsert SearchIndexEnqueuer,
+	enqueueChecklistRecheck ChecklistRecheckEnqueuer,
 ) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
@@ -398,6 +399,17 @@ func SchematicUpdateHandler(
 		// --- Enqueue incremental search index update ---
 		if enqueueSearchUpsert != nil {
 			_ = enqueueSearchUpsert(ctx, schematicID)
+		}
+
+		// --- Re-check moderation checklist for limited schematics ---
+		// If the author just edited a schematic that is published_limited or has
+		// changes requested, re-evaluate its checklist: a now-passing description
+		// resolves its item and, when nothing remains open, auto-promotes it to
+		// fully published (reindexed + author emailed) with no moderator step.
+		if enqueueChecklistRecheck != nil &&
+			(schem.ModerationState == store.ModerationPublishedLimited ||
+				schem.ModerationState == store.ModerationChangesRequested) {
+			_ = enqueueChecklistRecheck(ctx, schematicID)
 		}
 
 		// --- Respond ---
