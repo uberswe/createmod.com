@@ -55,6 +55,81 @@ func IsViewableState(state string) bool {
 	return IsPublicState(state) || state == ModerationPublishedLimited
 }
 
+// VisibleGallery returns the gallery filenames a viewer should see. Removed
+// images are always excluded; held images are excluded for visitors but kept for
+// the owner/admin (rendered as "in review" placeholders). (#1646)
+func VisibleGallery(s *Schematic, ownerOrAdmin bool) []string {
+	return filterImages(s.Gallery, s.HeldImages, s.RemovedImages, ownerOrAdmin)
+}
+
+// VisibleRotationImages is the rotation set minus held/removed for the viewer.
+func VisibleRotationImages(s *Schematic, ownerOrAdmin bool) []string {
+	return filterImages(s.RotationImages, s.HeldImages, s.RemovedImages, ownerOrAdmin)
+}
+
+// HeldGallery returns the held (not removed) filenames — the owner's "in review"
+// placeholder tiles.
+func HeldGallery(s *Schematic) []string {
+	rem := sliceSet(s.RemovedImages)
+	out := make([]string, 0, len(s.HeldImages))
+	for _, f := range s.HeldImages {
+		if _, removed := rem[f]; !removed {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// IsImageHeld reports whether a filename is currently held (and not removed).
+func IsImageHeld(s *Schematic, filename string) bool {
+	for _, r := range s.RemovedImages {
+		if r == filename {
+			return false
+		}
+	}
+	for _, h := range s.HeldImages {
+		if h == filename {
+			return true
+		}
+	}
+	return false
+}
+
+func filterImages(all, held, removed []string, includeHeld bool) []string {
+	if len(all) == 0 {
+		return all
+	}
+	rem := sliceSet(removed)
+	var hel map[string]struct{}
+	if !includeHeld {
+		hel = sliceSet(held)
+	}
+	out := make([]string, 0, len(all))
+	for _, f := range all {
+		if _, removed := rem[f]; removed {
+			continue
+		}
+		if hel != nil {
+			if _, h := hel[f]; h {
+				continue
+			}
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+func sliceSet(xs []string) map[string]struct{} {
+	if len(xs) == 0 {
+		return nil
+	}
+	m := make(map[string]struct{}, len(xs))
+	for _, x := range xs {
+		m[x] = struct{}{}
+	}
+	return m
+}
+
 // User represents a user account.
 type User struct {
 	ID             string
@@ -865,6 +940,11 @@ type SchematicStore interface {
 	Create(ctx context.Context, s *Schematic) error
 	Update(ctx context.Context, s *Schematic) error
 	SetModerationState(ctx context.Context, id, state, reason string) error
+	// HoldImages marks filenames as held (merged into held_images, deduped) and,
+	// if the featured image ends up held/removed, reassigns featured to the first
+	// still-visible gallery image (or clears it). Atomic — safe against the
+	// concurrent gallery/featured moderation goroutines. Returns the fresh row.
+	HoldImages(ctx context.Context, schematicID string, filenames []string) (*Schematic, error)
 	SoftDelete(ctx context.Context, id string) error
 	// Relations
 	GetCategoryIDs(ctx context.Context, schematicID string) ([]string, error)

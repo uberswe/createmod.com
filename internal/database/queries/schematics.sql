@@ -138,6 +138,27 @@ WHERE author_id = $1 AND deleted IS NULL;
 UPDATE schematics SET deleted = NULL, deleted_at = NULL, moderation_state = 'approved'
 WHERE author_id = $1 AND deleted IS NOT NULL;
 
+-- name: AddHeldImages :exec
+-- Atomically merge filenames into held_images (deduped), so concurrent image
+-- moderation goroutines (gallery vs featured) never clobber each other. (#1646)
+UPDATE schematics
+SET held_images = ARRAY(SELECT DISTINCT unnest(held_images || @filenames::text[])),
+    modified = NOW()
+WHERE id = @id;
+
+-- name: ReassignFeaturedIfHeld :exec
+-- If the featured image is now held or removed, fall back to the first
+-- still-visible gallery image (or clear it). Atomic and idempotent. (#1646)
+UPDATE schematics
+SET featured_image = COALESCE(
+      (SELECT g FROM unnest(gallery) AS g
+       WHERE g <> ALL(held_images) AND g <> ALL(removed_images)
+       LIMIT 1), ''),
+    modified = NOW()
+WHERE id = @id
+  AND featured_image <> ''
+  AND (featured_image = ANY(held_images) OR featured_image = ANY(removed_images));
+
 -- name: UpdateSchematicViews :exec
 UPDATE schematics SET views = $2 WHERE id = $1;
 

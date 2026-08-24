@@ -10,6 +10,9 @@ import (
 )
 
 type Querier interface {
+	// Atomically merge filenames into held_images (deduped), so concurrent image
+	// moderation goroutines (gallery vs featured) never clobber each other. (#1646)
+	AddHeldImages(ctx context.Context, arg AddHeldImagesParams) error
 	AddSchematicCategory(ctx context.Context, arg AddSchematicCategoryParams) error
 	AddSchematicModpack(ctx context.Context, arg AddSchematicModpackParams) error
 	AddSchematicTag(ctx context.Context, arg AddSchematicTagParams) error
@@ -419,6 +422,9 @@ type Querier interface {
 	PruneOldSearches(ctx context.Context) (int64, error)
 	// Drop aggregated days older than the raw-search retention window.
 	PruneSearchTermDaily(ctx context.Context) (int64, error)
+	// If the featured image is now held or removed, fall back to the first
+	// still-visible gallery image (or clear it). Atomic and idempotent. (#1646)
+	ReassignFeaturedIfHeld(ctx context.Context, id string) error
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RecordSchematicEvent(ctx context.Context, arg RecordSchematicEventParams) error

@@ -89,6 +89,38 @@ func moderateGuideBanner(moderationSvc *moderation.Service, appStore *store.Stor
 	}()
 }
 
+// HoldSchematicImages marks filenames as held on a schematic — hidden from
+// visitors, shown to the owner as "in review" placeholders — WITHOUT changing
+// the schematic's moderation state. If the featured image is held it falls back
+// to the first still-visible gallery image. The hold is atomic, so it is safe
+// against the concurrent gallery/featured moderation goroutines. Writes a
+// moderation-log entry. (#1646)
+func HoldSchematicImages(ctx context.Context, appStore *store.Store, schematicID string, filenames []string, reason string) {
+	if appStore == nil || len(filenames) == 0 {
+		return
+	}
+	updated, err := appStore.Schematics.HoldImages(ctx, schematicID, filenames)
+	if err != nil || updated == nil {
+		slog.Error("moderation: failed to hold images", "schematic_id", schematicID, "error", err)
+		return
+	}
+	slog.Info("moderation: held images", "schematic_id", schematicID, "filenames", filenames, "reason", reason)
+	if appStore.ModerationLog != nil {
+		note := reason
+		if note == "" {
+			note = "held images: " + strings.Join(filenames, ", ")
+		}
+		_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+			SchematicID: schematicID,
+			ActorType:   "system",
+			Action:      "image_hold",
+			OldState:    updated.ModerationState,
+			NewState:    updated.ModerationState,
+			Reason:      note,
+		})
+	}
+}
+
 // moderateSchematicImages runs OpenAI image moderation on a schematic's
 // featured image and gallery images asynchronously. Flagged images are removed
 // from the schematic record and logged. Only the filenames in imagesToCheck
@@ -137,43 +169,10 @@ func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.
 		if len(flaggedImages) == 0 {
 			return
 		}
-
-		flaggedSet := make(map[string]struct{}, len(flaggedImages))
-		for _, f := range flaggedImages {
-			flaggedSet[f] = struct{}{}
-		}
-
-		ctx := context.Background()
-		schem, getErr := appStore.Schematics.GetByID(ctx, schematicID)
-		if getErr != nil || schem == nil {
-			slog.Error("schematic image moderation: failed to load schematic",
-				"schematic_id", schematicID, "error", getErr)
-			return
-		}
-
-		// Collect reasons for flagged images
-		var flaggedReasons []string
-		if _, flagged := flaggedSet[schem.FeaturedImage]; flagged {
-			slog.Warn("schematic image moderation: featured image flagged",
-				"schematic_id", schematicID, "filename", schem.FeaturedImage)
-			flaggedReasons = append(flaggedReasons, "featured image flagged: "+schem.FeaturedImage)
-		}
-		for _, g := range schem.Gallery {
-			if _, flagged := flaggedSet[g]; flagged {
-				slog.Warn("schematic image moderation: gallery image flagged",
-					"schematic_id", schematicID, "filename", g)
-				flaggedReasons = append(flaggedReasons, "gallery image flagged: "+g)
-			}
-		}
-
-		if len(flaggedReasons) > 0 {
-			// Hold the schematic for manual review instead of removing images
-			schem.ModerationState = store.ModerationFlagged
-			schem.ModerationReason = "Images flagged by automated moderation: " + strings.Join(flaggedReasons, "; ")
-			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
-				slog.Error("schematic image moderation: failed to update schematic",
-					"schematic_id", schematicID, "error", updateErr)
-			}
-		}
+		// Per-image hold: hide just the flagged images and keep the schematic
+		// published (falling back to a visible featured image if needed), instead
+		// of holding the whole schematic for manual review. (#1646)
+		HoldSchematicImages(context.Background(), appStore, schematicID, flaggedImages,
+			"Held by automated image moderation: "+strings.Join(flaggedImages, ", "))
 	}()
 }

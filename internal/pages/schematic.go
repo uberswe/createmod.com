@@ -685,6 +685,11 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		categoryID = categories[0].ID
 	}
 
+	// Visitors never see held/removed images; held images are surfaced to the
+	// owner separately as placeholder tiles. (#1646)
+	visibleGallery := store.VisibleGallery(&s, false)
+	visibleRotation := store.VisibleRotationImages(&s, false)
+
 	result := models.Schematic{
 		ID:                   s.ID,
 		Created:              s.Created,
@@ -695,10 +700,11 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		HTMLContent:          template.HTML(sanitizedHTML),
 		Excerpt:              s.Excerpt,
 		FeaturedImage:        s.FeaturedImage,
-		Gallery:              s.Gallery,
-		HasGallery:           len(s.Gallery) > 0,
-		RotationImages:       s.RotationImages,
-		HasRotationImages:    len(s.RotationImages) > 0 && !s.RotationDisabled,
+		Gallery:              visibleGallery,
+		HasGallery:           len(visibleGallery) > 0,
+		RotationImages:       visibleRotation,
+		HasRotationImages:    len(visibleRotation) > 0 && !s.RotationDisabled,
+		HeldImages:           store.HeldGallery(&s),
 		Title:                s.Title,
 		Name:                 s.Name,
 		Video:                s.Video,
@@ -994,6 +1000,9 @@ func mapSchematicFromBatch(
 		categoryID = categories[0].ID
 	}
 
+	visibleGallery := store.VisibleGallery(&s, false)
+	visibleRotation := store.VisibleRotationImages(&s, false)
+
 	return models.Schematic{
 		ID:                   s.ID,
 		Created:              s.Created,
@@ -1004,10 +1013,11 @@ func mapSchematicFromBatch(
 		HTMLContent:          template.HTML(sanitizedHTML),
 		Excerpt:              s.Excerpt,
 		FeaturedImage:        s.FeaturedImage,
-		Gallery:              s.Gallery,
-		HasGallery:           len(s.Gallery) > 0,
-		RotationImages:       s.RotationImages,
-		HasRotationImages:    len(s.RotationImages) > 0 && !s.RotationDisabled,
+		Gallery:              visibleGallery,
+		HasGallery:           len(visibleGallery) > 0,
+		RotationImages:       visibleRotation,
+		HasRotationImages:    len(visibleRotation) > 0 && !s.RotationDisabled,
+		HeldImages:           store.HeldGallery(&s),
 		Title:                s.Title,
 		Name:                 s.Name,
 		Video:                s.Video,

@@ -855,6 +855,18 @@ func (ps *PostgresStore) Update(ctx context.Context, s *store.Schematic) error {
 	return err
 }
 
+func (ps *PostgresStore) HoldImages(ctx context.Context, id string, filenames []string) (*store.Schematic, error) {
+	if len(filenames) > 0 {
+		if err := ps.q.AddHeldImages(ctx, db.AddHeldImagesParams{ID: id, Filenames: filenames}); err != nil {
+			return nil, err
+		}
+		if err := ps.q.ReassignFeaturedIfHeld(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+	return ps.GetByID(ctx, id)
+}
+
 func (ps *PostgresStore) SoftDelete(ctx context.Context, id string) error {
 	return ps.q.SoftDeleteSchematic(ctx, id)
 }

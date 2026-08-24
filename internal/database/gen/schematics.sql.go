@@ -13,6 +13,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addHeldImages = `-- name: AddHeldImages :exec
+UPDATE schematics
+SET held_images = ARRAY(SELECT DISTINCT unnest(held_images || $1::text[])),
+    modified = NOW()
+WHERE id = $2
+`
+
+type AddHeldImagesParams struct {
+	Filenames []string `json:"filenames"`
+	ID        string   `json:"id"`
+}
+
+// Atomically merge filenames into held_images (deduped), so concurrent image
+// moderation goroutines (gallery vs featured) never clobber each other. (#1646)
+func (q *Queries) AddHeldImages(ctx context.Context, arg AddHeldImagesParams) error {
+	_, err := q.db.Exec(ctx, addHeldImages, arg.Filenames, arg.ID)
+	return err
+}
+
 const addSchematicCategory = `-- name: AddSchematicCategory :exec
 INSERT INTO schematics_categories (schematic_id, category_id)
 VALUES ($1, $2)
@@ -1858,6 +1877,25 @@ func (q *Queries) ListSchematicsForSitemap(ctx context.Context) ([]ListSchematic
 		return nil, err
 	}
 	return items, nil
+}
+
+const reassignFeaturedIfHeld = `-- name: ReassignFeaturedIfHeld :exec
+UPDATE schematics
+SET featured_image = COALESCE(
+      (SELECT g FROM unnest(gallery) AS g
+       WHERE g <> ALL(held_images) AND g <> ALL(removed_images)
+       LIMIT 1), ''),
+    modified = NOW()
+WHERE id = $1
+  AND featured_image <> ''
+  AND (featured_image = ANY(held_images) OR featured_image = ANY(removed_images))
+`
+
+// If the featured image is now held or removed, fall back to the first
+// still-visible gallery image (or clear it). Atomic and idempotent. (#1646)
+func (q *Queries) ReassignFeaturedIfHeld(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, reassignFeaturedIfHeld, id)
+	return err
 }
 
 const refreshSchematicRatingAggregates = `-- name: RefreshSchematicRatingAggregates :exec

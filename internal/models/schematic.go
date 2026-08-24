@@ -6,56 +6,59 @@ import (
 )
 
 type Schematic struct {
-	ID                   string             `json:"id"`
-	Created              time.Time          `json:"created"`
-	CreatedFormatted     string             `json:"createdFormatted"`
-	CreatedHumanReadable string             `json:"createdHumanReadable"`
-	Author               *User              `json:"author"`
-	CommentCount         int                `json:"commentCount"`
-	CommentStatus        bool               `json:"commentStatus"`
-	Content              string             `json:"content"`
-	HTMLContent          template.HTML      `json:"htmlContent"`
-	Excerpt              string             `json:"excerpt"`
-	FeaturedImage        string             `json:"featuredImage"`
-	HasGallery           bool               `json:"hasGallery"`
-	Gallery              []string           `json:"gallery"`
-	RotationImages       []string           `json:"rotationImages,omitempty"`
-	HasRotationImages    bool               `json:"hasRotationImages"`
-	Title                string             `json:"title"`
-	Name                 string             `json:"name"`
-	Video                string             `json:"video"`
-	HasDependencies      bool               `json:"hasDependencies"`
-	Dependencies         string             `json:"dependencies"`
-	HTMLDependencies     template.HTML      `json:"htmlDependencies"`
-	Categories           []SchematicCategory `json:"categories"`
-	CategoryId           string             `json:"categoryId"`
-	Tags                 []SchematicTag     `json:"tags"`
-	CreatemodVersion     string             `json:"createmodVersion"`
-	MinecraftVersion     string             `json:"minecraftVersion"`
-	Views                int                `json:"views"`
-	Downloads            int                `json:"downloads"`
-	HasTags              bool               `json:"hasTags"`
-	Rating               string             `json:"rating"`
-	HasRating            bool               `json:"hasRating"`
-	SchematicFile        string             `json:"schematicFile"`
-	OriginalFile         string             `json:"originalFile,omitempty"`
-	RatingCount          int                `json:"ratingCount"`
-	AIDescription        string             `json:"aiDescription"`
-	Featured             bool               `json:"featured"`
-	Materials            string             `json:"materials"`
-	ExternalURL          string             `json:"externalURL"`
-	BlockCount           int                `json:"blockCount"`
-	DimX                 int                `json:"dimX"`
-	DimY                 int                `json:"dimY"`
-	DimZ                 int                `json:"dimZ"`
-	Mods                 []string           `json:"mods"`
-	DetectedLanguage     string             `json:"detectedLanguage,omitempty"`
-	ShortCode            string             `json:"shortCode,omitempty"`
-	ModerationState      string             `json:"-"`
-	Language             string             `json:"-"`
+	ID                   string        `json:"id"`
+	Created              time.Time     `json:"created"`
+	CreatedFormatted     string        `json:"createdFormatted"`
+	CreatedHumanReadable string        `json:"createdHumanReadable"`
+	Author               *User         `json:"author"`
+	CommentCount         int           `json:"commentCount"`
+	CommentStatus        bool          `json:"commentStatus"`
+	Content              string        `json:"content"`
+	HTMLContent          template.HTML `json:"htmlContent"`
+	Excerpt              string        `json:"excerpt"`
+	FeaturedImage        string        `json:"featuredImage"`
+	HasGallery           bool          `json:"hasGallery"`
+	Gallery              []string      `json:"gallery"`
+	RotationImages       []string      `json:"rotationImages,omitempty"`
+	HasRotationImages    bool          `json:"hasRotationImages"`
+	// HeldImages are filenames on hold pending review — rendered as "in review"
+	// placeholder tiles for the owner only, never shown to visitors. (#1646)
+	HeldImages       []string            `json:"-"`
+	Title            string              `json:"title"`
+	Name             string              `json:"name"`
+	Video            string              `json:"video"`
+	HasDependencies  bool                `json:"hasDependencies"`
+	Dependencies     string              `json:"dependencies"`
+	HTMLDependencies template.HTML       `json:"htmlDependencies"`
+	Categories       []SchematicCategory `json:"categories"`
+	CategoryId       string              `json:"categoryId"`
+	Tags             []SchematicTag      `json:"tags"`
+	CreatemodVersion string              `json:"createmodVersion"`
+	MinecraftVersion string              `json:"minecraftVersion"`
+	Views            int                 `json:"views"`
+	Downloads        int                 `json:"downloads"`
+	HasTags          bool                `json:"hasTags"`
+	Rating           string              `json:"rating"`
+	HasRating        bool                `json:"hasRating"`
+	SchematicFile    string              `json:"schematicFile"`
+	OriginalFile     string              `json:"originalFile,omitempty"`
+	RatingCount      int                 `json:"ratingCount"`
+	AIDescription    string              `json:"aiDescription"`
+	Featured         bool                `json:"featured"`
+	Materials        string              `json:"materials"`
+	ExternalURL      string              `json:"externalURL"`
+	BlockCount       int                 `json:"blockCount"`
+	DimX             int                 `json:"dimX"`
+	DimY             int                 `json:"dimY"`
+	DimZ             int                 `json:"dimZ"`
+	Mods             []string            `json:"mods"`
+	DetectedLanguage string              `json:"detectedLanguage,omitempty"`
+	ShortCode        string              `json:"shortCode,omitempty"`
+	ModerationState  string              `json:"-"`
+	Language         string              `json:"-"`
 	// EagerImage marks cards rendered above the fold: their thumbnails get
 	// loading="eager" fetchpriority="high" instead of lazy-loading.
-	EagerImage           bool               `json:"-"`
+	EagerImage bool `json:"-"`
 }
 
 // ModerationChatMessage holds a single message in the moderation discussion thread.
