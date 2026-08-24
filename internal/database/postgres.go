@@ -867,6 +867,26 @@ func (ps *PostgresStore) HoldImages(ctx context.Context, id string, filenames []
 	return ps.GetByID(ctx, id)
 }
 
+func (ps *PostgresStore) ApproveHeldImage(ctx context.Context, id, filename string) error {
+	return ps.q.ApproveHeldImage(ctx, db.ApproveHeldImageParams{ID: id, Filename: filename})
+}
+
+func (ps *PostgresStore) RemoveHeldImage(ctx context.Context, id, filename string) error {
+	return ps.q.RemoveHeldImage(ctx, db.RemoveHeldImageParams{ID: id, Filename: filename})
+}
+
+func (ps *PostgresStore) ListModerationQueue(ctx context.Context, limit, offset int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListModerationQueue(ctx, db.ListModerationQueueParams{Limit: int32(limit), Offset: int32(offset)})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
+func (ps *PostgresStore) CountModerationQueue(ctx context.Context) (int64, error) {
+	return ps.q.CountModerationQueue(ctx)
+}
+
 func (ps *PostgresStore) SoftDelete(ctx context.Context, id string) error {
 	return ps.q.SoftDeleteSchematic(ctx, id)
 }

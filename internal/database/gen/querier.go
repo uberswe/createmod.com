@@ -26,6 +26,8 @@ type Querier interface {
 	AggregateSearchTermDaily(ctx context.Context, arg AggregateSearchTermDailyParams) error
 	ApproveCategoryByID(ctx context.Context, id string) error
 	ApproveComment(ctx context.Context, id string) error
+	// Un-hold an image: it becomes visible to everyone again. (#1646)
+	ApproveHeldImage(ctx context.Context, arg ApproveHeldImageParams) error
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
 	AwardBadge(ctx context.Context, arg AwardBadgeParams) error
@@ -53,6 +55,7 @@ type Querier interface {
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
 	CountGuidesForAdmin(ctx context.Context, filter string) (int64, error)
+	CountModerationQueue(ctx context.Context) (int64, error)
 	CountOpenModerationChecklistBySchematic(ctx context.Context, schematicID string) (int64, error)
 	CountPointLogByReason(ctx context.Context, arg CountPointLogByReasonParams) (int32, error)
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
@@ -339,6 +342,9 @@ type Querier interface {
 	ListModerationChecklistBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
 	ListModerationLogBySchematic(ctx context.Context, schematicID string) ([]ListModerationLogBySchematicRow, error)
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
+	// Schematics needing a moderator's attention: policy-flagged, or with one or
+	// more held images awaiting an approve/remove decision. (#1646)
+	ListModerationQueue(ctx context.Context, arg ListModerationQueueParams) ([]Schematic, error)
 	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
 	ListModpacks(ctx context.Context) ([]Modpack, error)
 	ListMonthlyAdClicks(ctx context.Context) ([]ListMonthlyAdClicksRow, error)
@@ -433,6 +439,9 @@ type Querier interface {
 	// on the matview (idx_search_query_counts_query), which already exists.
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveBadge(ctx context.Context, arg RemoveBadgeParams) error
+	// A moderator removed a held image after review: drop it from held and record it
+	// in removed_images (never rendered again). (#1646)
+	RemoveHeldImage(ctx context.Context, arg RemoveHeldImageParams) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
 	ResolveModerationChecklistItem(ctx context.Context, id string) error

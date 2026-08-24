@@ -1,0 +1,179 @@
+{{template "head.html" .}}
+<div class="page">
+    {{template "sidebar.html" .}}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="cm-mod-layout">
+
+                    <!-- Queue -->
+                    <aside class="cm-queue">
+                        <div class="cm-queue__head">
+                            <span class="cm-queue__title">Review queue</span>
+                            <span class="cm-queue__count">{{ .Total }}</span>
+                        </div>
+                        {{ if .Queue }}
+                        {{ range .Queue }}
+                        <a class="cm-qcard{{ if .Selected }} cm-qcard--sel{{ end }}" href="/admin/moderation?id={{ .ID }}">
+                            <div class="cm-qcard__title">{{ .Title }}</div>
+                            <div class="cm-qcard__meta">by {{ .Author }} · {{ .Approvals }}✓ {{ .Removals }}✕ · {{ .Age }}</div>
+                            {{ if .Flags }}
+                            <div class="cm-qcard__flags">
+                                {{ range .Flags }}<span class="cm-flag cm-flag--{{ .Level }}">{{ .Label }}</span>{{ end }}
+                            </div>
+                            {{ end }}
+                        </a>
+                        {{ end }}
+                        {{ else }}
+                        <div class="cm-queue__empty">Nothing to review. Items auto-publish with limited visibility while they wait, so nothing is silently stuck.</div>
+                        {{ end }}
+                    </aside>
+
+                    <!-- Detail -->
+                    <section class="cm-detail">
+                        {{ if .HasDetail }}
+                        {{ with .Detail }}
+                        <div class="cm-detail__head">
+                            <div>
+                                <h1 class="cm-detail__title">{{ .Title }}</h1>
+                                <div class="cm-detail__meta">by {{ .Author }} · {{ .Approvals }} published · {{ .Removals }} removed · {{ .Age }}</div>
+                            </div>
+                            <a class="btn btn-outline-secondary btn-sm" href="/schematics/{{ .Name }}" target="_blank" rel="noopener">Open schematic ↗</a>
+                        </div>
+
+                        <!-- Media viewer -->
+                        {{ if .Images }}
+                        <div class="card mb-3"><div class="card-body">
+                            <div class="cm-card-title">Images</div>
+                            <div class="cm-media">
+                                {{ range .Images }}
+                                <div class="cm-modimg{{ if .Held }} cm-modimg--held{{ end }}{{ if .Removed }} cm-modimg--removed{{ end }}">
+                                    <div class="cm-modimg__thumb" style="background-image:url('{{ .URL }}?thumb=400x400&v=2')"></div>
+                                    {{ if .Featured }}<span class="cm-modimg__tag cm-modimg__tag--feat">Featured</span>{{ end }}
+                                    {{ if .Held }}<span class="cm-modimg__tag cm-modimg__tag--held">Flagged</span>{{ end }}
+                                    {{ if .Removed }}<span class="cm-modimg__tag cm-modimg__tag--removed">Removed</span>{{ end }}
+                                    {{ if .Held }}
+                                    <form class="cm-modimg__actions" hx-post="/admin/moderation/{{ $.Detail.ID }}/image" hx-swap="none" method="post">
+                                        <input type="hidden" name="filename" value="{{ .Filename }}">
+                                        <button class="btn btn-sm cm-btn-approve" name="action" value="approve" type="submit">Approve image</button>
+                                        <button class="btn btn-sm cm-btn-reject" name="action" value="remove" type="submit">Remove image</button>
+                                    </form>
+                                    {{ end }}
+                                </div>
+                                {{ end }}
+                            </div>
+                        </div></div>
+                        {{ end }}
+
+                        <!-- Description -->
+                        <div class="card mb-3"><div class="card-body">
+                            <div class="cm-detail__deschead">
+                                <span class="cm-card-title" style="margin:0">Description</span>
+                                {{ if .DetectedLanguage }}<span class="cm-badge cm-badge--upper">{{ .DetectedLanguage }} detected</span>{{ end }}
+                            </div>
+                            <div class="cm-desc">{{ .Description }}</div>
+                        </div></div>
+
+                        <!-- Auto-moderation flags -->
+                        {{ if .HasAutoReason }}
+                        <div class="card mb-3"><div class="card-body">
+                            <div class="cm-card-title">Automated moderation flag</div>
+                            <div class="cm-desc" style="color:var(--cm-text-muted)">{{ .AutoReason }}</div>
+                        </div></div>
+                        {{ end }}
+
+                        <!-- Materials -->
+                        {{ if .Materials }}
+                        <div class="card mb-3"><div class="card-body">
+                            <div class="cm-card-title">Materials</div>
+                            <div class="cm-materials">
+                                {{ range .Materials }}
+                                <div class="cm-materials__row"><span>{{ .BlockID }}</span><span class="cm-materials__n">{{ .Count }}</span></div>
+                                {{ end }}
+                            </div>
+                        </div></div>
+                        {{ end }}
+
+                        <!-- Action bar + composer -->
+                        <div class="card cm-actioncard"><div class="card-body">
+                            <div class="cm-actionbar">
+                                <button type="button" class="btn cm-btn-approve" onclick="modAction('approve_full')">Approve &amp; publish fully</button>
+                                <button type="button" class="btn cm-btn-gold" onclick="modAction('publish_notes')">Publish with notes…</button>
+                                <button type="button" class="btn cm-btn-warn" onclick="modAction('request_changes')">Request changes…</button>
+                                <button type="button" class="btn cm-btn-reject" onclick="modAction('reject')">Reject…</button>
+                            </div>
+
+                            <form id="decision-form" class="cm-composer" method="post"
+                                  hx-post="/admin/moderation/{{ .ID }}/decision" hx-swap="none" style="display:none">
+                                <input type="hidden" name="action" id="decision-action" value="">
+                                <div class="cm-composer__label" id="composer-kinds-label">What needs fixing?</div>
+                                <div class="cm-kinds" id="composer-kinds">
+                                    <label><input type="checkbox" name="kinds" value="description"> Description</label>
+                                    <label><input type="checkbox" name="kinds" value="title"> Title</label>
+                                    <label><input type="checkbox" name="kinds" value="images"> Images</label>
+                                    <label><input type="checkbox" name="kinds" value="tags"> Tags</label>
+                                    <label><input type="checkbox" name="kinds" value="category"> Category</label>
+                                </div>
+                                <textarea name="note" id="composer-note" class="form-control" rows="3" maxlength="1000"
+                                          placeholder="Note to the author. Be specific about what to change. This appears as a checklist item on their schematic and in the notification email."></textarea>
+                                <div class="cm-severity" id="composer-severity" style="display:none">
+                                    <label><input type="radio" name="severity" value="fixable" checked onchange="modSeverity()"> Fixable: allow one resubmission</label>
+                                    <label><input type="radio" name="severity" value="final" onchange="modSeverity()"> Severe: final removal (appeal only)</label>
+                                </div>
+                                <div class="cm-composer__foot">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="modCancel()">Cancel</button>
+                                    <button type="submit" class="btn btn-sm cm-btn-gold" id="composer-submit">Send</button>
+                                </div>
+                            </form>
+                        </div></div>
+                        {{ end }}
+                        {{ else }}
+                        <div class="cm-detail__empty">Select an item from the queue to review it.</div>
+                        {{ end }}
+                    </section>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+<script>
+(function () {
+    var form = document.getElementById('decision-form');
+    if (!form) return;
+    var actionInput = document.getElementById('decision-action');
+    var kinds = document.getElementById('composer-kinds');
+    var kindsLabel = document.getElementById('composer-kinds-label');
+    var severity = document.getElementById('composer-severity');
+    var submit = document.getElementById('composer-submit');
+    var note = document.getElementById('composer-note');
+    var mode = '';
+
+    window.modAction = function (action) {
+        mode = action;
+        if (action === 'approve_full') {
+            // No note needed — approve immediately.
+            actionInput.value = 'approve_full';
+            form.requestSubmit ? form.requestSubmit() : form.submit();
+            return;
+        }
+        form.style.display = '';
+        kinds.style.display = (action === 'reject') ? 'none' : '';
+        kindsLabel.style.display = (action === 'reject') ? 'none' : '';
+        severity.style.display = (action === 'reject') ? '' : 'none';
+        if (action === 'publish_notes') { actionInput.value = 'publish_notes'; submit.textContent = 'Publish with notes & notify author'; }
+        else if (action === 'request_changes') { actionInput.value = 'request_changes'; submit.textContent = 'Send request & unlist'; }
+        else if (action === 'reject') { modSeverity(); }
+        note.focus();
+    };
+    window.modSeverity = function () {
+        var final = form.querySelector('input[name="severity"]:checked');
+        var isFinal = final && final.value === 'final';
+        actionInput.value = isFinal ? 'reject_final' : 'reject_fixable';
+        submit.textContent = isFinal ? 'Reject permanently & notify' : 'Reject with second chance & notify';
+    };
+    window.modCancel = function () { form.style.display = 'none'; mode = ''; };
+})();
+</script>
+{{template "foot.html" .}}

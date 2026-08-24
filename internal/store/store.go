@@ -945,6 +945,14 @@ type SchematicStore interface {
 	// still-visible gallery image (or clears it). Atomic — safe against the
 	// concurrent gallery/featured moderation goroutines. Returns the fresh row.
 	HoldImages(ctx context.Context, schematicID string, filenames []string) (*Schematic, error)
+	// ApproveHeldImage un-holds an image so it is visible to everyone again.
+	ApproveHeldImage(ctx context.Context, id, filename string) error
+	// RemoveHeldImage drops a held image and records it in removed_images.
+	RemoveHeldImage(ctx context.Context, id, filename string) error
+	// ListModerationQueue returns schematics needing a moderator's attention
+	// (policy-flagged or with held images), oldest first.
+	ListModerationQueue(ctx context.Context, limit, offset int) ([]Schematic, error)
+	CountModerationQueue(ctx context.Context) (int64, error)
 	SoftDelete(ctx context.Context, id string) error
 	// Relations
 	GetCategoryIDs(ctx context.Context, schematicID string) ([]string, error)

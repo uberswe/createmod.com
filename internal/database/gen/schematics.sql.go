@@ -64,6 +64,23 @@ func (q *Queries) AddSchematicTag(ctx context.Context, arg AddSchematicTagParams
 	return err
 }
 
+const approveHeldImage = `-- name: ApproveHeldImage :exec
+UPDATE schematics
+SET held_images = array_remove(held_images, $1::text), modified = NOW()
+WHERE id = $2
+`
+
+type ApproveHeldImageParams struct {
+	Filename string `json:"filename"`
+	ID       string `json:"id"`
+}
+
+// Un-hold an image: it becomes visible to everyone again. (#1646)
+func (q *Queries) ApproveHeldImage(ctx context.Context, arg ApproveHeldImageParams) error {
+	_, err := q.db.Exec(ctx, approveHeldImage, arg.Filename, arg.ID)
+	return err
+}
+
 const batchGetSchematicCategories = `-- name: BatchGetSchematicCategories :many
 SELECT sc.schematic_id, c.id, c.key, c.name
 FROM schematics_categories sc
@@ -150,6 +167,20 @@ WHERE moderation_state IN ('published', 'approved')
 
 func (q *Queries) CountApprovedSchematics(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countApprovedSchematics)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countModerationQueue = `-- name: CountModerationQueue :one
+SELECT COUNT(*) FROM schematics
+WHERE deleted IS NULL
+  AND (moderation_state = 'flagged'
+       OR COALESCE(array_length(held_images, 1), 0) > 0)
+`
+
+func (q *Queries) CountModerationQueue(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countModerationQueue)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -1149,6 +1180,94 @@ func (q *Queries) ListHighestRatedSchematics(ctx context.Context, arg ListHighes
 	return items, nil
 }
 
+const listModerationQueue = `-- name: ListModerationQueue :many
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+WHERE deleted IS NULL
+  AND (moderation_state = 'flagged'
+       OR COALESCE(array_length(held_images, 1), 0) > 0)
+ORDER BY created ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListModerationQueueParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+// Schematics needing a moderator's attention: policy-flagged, or with one or
+// more held images awaiting an approve/remove decision. (#1646)
+func (q *Queries) ListModerationQueue(ctx context.Context, arg ListModerationQueueParams) ([]Schematic, error) {
+	rows, err := q.db.Query(ctx, listModerationQueue, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Schematic{}
+	for rows.Next() {
+		var i Schematic
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Name,
+			&i.Title,
+			&i.Description,
+			&i.Excerpt,
+			&i.Content,
+			&i.Postdate,
+			&i.Modified,
+			&i.DetectedLanguage,
+			&i.FeaturedImage,
+			&i.Gallery,
+			&i.SchematicFile,
+			&i.Video,
+			&i.HasDependencies,
+			&i.Dependencies,
+			&i.CreatemodVersionID,
+			&i.MinecraftVersionID,
+			&i.Views,
+			&i.Downloads,
+			&i.BlockCount,
+			&i.DimX,
+			&i.DimY,
+			&i.DimZ,
+			&i.Materials,
+			&i.Mods,
+			&i.Paid,
+			&i.Featured,
+			&i.AiDescription,
+			&i.ModerationReason,
+			&i.ScheduledAt,
+			&i.Deleted,
+			&i.DeletedAt,
+			&i.OldID,
+			&i.Status,
+			&i.Type,
+			&i.Created,
+			&i.Updated,
+			&i.ExternalUrl,
+			&i.TrendingScore,
+			&i.AvgRating,
+			&i.RatingCount,
+			&i.ModerationState,
+			&i.RotationImages,
+			&i.ShortCode,
+			&i.RotationDisabled,
+			&i.SourceFormat,
+			&i.OriginalFile,
+			&i.HeldImages,
+			&i.RemovedImages,
+			&i.ModerationResubmitCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRandomApprovedSchematics = `-- name: ListRandomApprovedSchematics :many
 SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
 WHERE moderation_state IN ('published', 'approved')
@@ -1908,6 +2027,26 @@ WHERE schematics.id = $1
 
 func (q *Queries) RefreshSchematicRatingAggregates(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, refreshSchematicRatingAggregates, id)
+	return err
+}
+
+const removeHeldImage = `-- name: RemoveHeldImage :exec
+UPDATE schematics
+SET held_images = array_remove(held_images, $1::text),
+    removed_images = ARRAY(SELECT DISTINCT unnest(removed_images || ARRAY[$1::text])),
+    modified = NOW()
+WHERE id = $2
+`
+
+type RemoveHeldImageParams struct {
+	Filename string `json:"filename"`
+	ID       string `json:"id"`
+}
+
+// A moderator removed a held image after review: drop it from held and record it
+// in removed_images (never rendered again). (#1646)
+func (q *Queries) RemoveHeldImage(ctx context.Context, arg RemoveHeldImageParams) error {
+	_, err := q.db.Exec(ctx, removeHeldImage, arg.Filename, arg.ID)
 	return err
 }
 

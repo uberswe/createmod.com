@@ -159,6 +159,37 @@ WHERE id = @id
   AND featured_image <> ''
   AND (featured_image = ANY(held_images) OR featured_image = ANY(removed_images));
 
+-- name: ListModerationQueue :many
+-- Schematics needing a moderator's attention: policy-flagged, or with one or
+-- more held images awaiting an approve/remove decision. (#1646)
+SELECT * FROM schematics
+WHERE deleted IS NULL
+  AND (moderation_state = 'flagged'
+       OR COALESCE(array_length(held_images, 1), 0) > 0)
+ORDER BY created ASC
+LIMIT $1 OFFSET $2;
+
+-- name: CountModerationQueue :one
+SELECT COUNT(*) FROM schematics
+WHERE deleted IS NULL
+  AND (moderation_state = 'flagged'
+       OR COALESCE(array_length(held_images, 1), 0) > 0);
+
+-- name: ApproveHeldImage :exec
+-- Un-hold an image: it becomes visible to everyone again. (#1646)
+UPDATE schematics
+SET held_images = array_remove(held_images, @filename::text), modified = NOW()
+WHERE id = @id;
+
+-- name: RemoveHeldImage :exec
+-- A moderator removed a held image after review: drop it from held and record it
+-- in removed_images (never rendered again). (#1646)
+UPDATE schematics
+SET held_images = array_remove(held_images, @filename::text),
+    removed_images = ARRAY(SELECT DISTINCT unnest(removed_images || ARRAY[@filename::text])),
+    modified = NOW()
+WHERE id = @id;
+
 -- name: UpdateSchematicViews :exec
 UPDATE schematics SET views = $2 WHERE id = $1;
 
