@@ -77,6 +77,10 @@ type SchematicData struct {
 	ModerationBanner string
 	// ModerationReason is the reason for moderation action, shown to the author.
 	ModerationReason string
+	// OwnerModeration holds the owner-only banners + checklist (#1646). Populated
+	// for the author (and admins) on any non-fully-public state or held/removed
+	// images.
+	OwnerModeration OwnerModeration
 	// ScheduledFor is set when the schematic is scheduled for future publication and the viewer is the author.
 	ScheduledFor *time.Time
 	// Translation fields
@@ -262,13 +266,24 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			}
 			return e.HTML(http.StatusNotFound, html)
 		}
-		// Show moderation banner to the author for non-public states
-		if d.IsAuthor && !store.IsPublicState(s.ModerationState) {
-			d.ModerationBanner = s.ModerationState
+		// Owner-only moderation view model: stacked status banners + the
+		// "unlock full visibility" checklist. Computed for the author (and admins
+		// for context) whenever the schematic isn't fully clean-published, or has
+		// held/removed images. (#1646)
+		hasImageAction := len(store.HeldGallery(s)) > 0 || len(s.RemovedImages) > 0
+		if (d.IsAuthor || d.IsAdmin) && (!store.IsPublicState(s.ModerationState) || hasImageAction) {
+			var openItems []store.ModerationChecklistItem
+			if appStore.ModerationChecklist != nil {
+				openItems, _ = appStore.ModerationChecklist.ListOpenBySchematic(ctx, s.ID)
+			}
+			d.OwnerModeration = computeOwnerModeration(s, openItems)
+			d.ModerationBanner = s.ModerationState // kept for any legacy references
 			d.ModerationReason = s.ModerationReason
 		}
-		// Load moderation chat for owner or admin when schematic is non-public
-		if (d.IsAuthor || d.IsAdmin) && !store.IsPublicState(s.ModerationState) {
+		// Load moderation chat for owner or admin when the schematic is not fully
+		// public, or has an image action pending (so they can ask about a hold).
+		if (d.IsAuthor || d.IsAdmin) && (!store.IsPublicState(s.ModerationState) || hasImageAction) {
+			d.OwnerModeration.ChatEnabled = true
 			d.ModerationChatEnabled = true
 			thread, threadErr := appStore.ModerationChats.GetThreadByContent(ctx, "schematic", s.ID)
 			if threadErr == nil && thread != nil {

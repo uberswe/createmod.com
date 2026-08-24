@@ -3340,3 +3340,48 @@ body.sidebar-ready .generator-overlay {
 .cm-rowlink > svg { width: 16px; height: 16px; color: var(--cm-text-muted); flex: none; }
 .cm-rowlink .t { font-size: 15px; font-weight: 600; color: var(--cm-heading-color); white-space: nowrap; }
 .cm-rowlink .d { font-size: 13.5px; color: var(--cm-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== Moderation overhaul: owner view (#1646) ===== */
+/* Stacked status banners */
+.cm-owner-banners { display: flex; flex-direction: column; gap: 8px; }
+.cm-owner-banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px; border-radius: 8px; border: 1px solid transparent;
+}
+.cm-owner-banner__dot { flex: none; width: 11px; height: 11px; border-radius: 999px; margin-top: 5px; background: var(--cm-text-faint, #7b715c); }
+.cm-owner-banner__title { font-weight: 600; font-size: 14.5px; }
+.cm-owner-banner__body { font-size: 13px; color: var(--cm-text-muted); margin-top: 3px; line-height: 1.55; }
+.cm-owner-banner--ok { background: rgba(47,179,68,0.08); border-color: rgba(47,179,68,0.35); }
+.cm-owner-banner--ok .cm-owner-banner__dot { background: #2fb344; } .cm-owner-banner--ok .cm-owner-banner__title { color: #2fb344; }
+.cm-owner-banner--warn { background: rgba(245,159,0,0.08); border-color: rgba(245,159,0,0.35); }
+.cm-owner-banner--warn .cm-owner-banner__dot { background: #f59f00; } .cm-owner-banner--warn .cm-owner-banner__title { color: #f59f00; }
+.cm-owner-banner--bad { background: rgba(214,57,57,0.08); border-color: rgba(214,57,57,0.35); }
+.cm-owner-banner--bad .cm-owner-banner__dot { background: #d63939; } .cm-owner-banner--bad .cm-owner-banner__title { color: #e57373; }
+.cm-owner-banner--info { background: rgba(66,153,225,0.08); border-color: rgba(66,153,225,0.35); }
+.cm-owner-banner--info .cm-owner-banner__dot { background: #4299e1; } .cm-owner-banner--info .cm-owner-banner__title { color: #4299e1; }
+
+/* "To unlock full visibility" checklist card */
+.cm-modlist { border-color: rgba(245,159,0,0.35); }
+.cm-modlist__title { font-size: 16px; font-weight: 600; color: var(--cm-heading-color); margin-bottom: 14px; }
+.cm-modlist__row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; }
+.cm-modlist__row + .cm-modlist__row { border-top: 1px solid var(--cm-border-color); }
+.cm-modlist__dot { flex: none; width: 10px; height: 10px; border-radius: 999px; margin-top: 5px; background: #f59f00; }
+.cm-modlist__text { flex: 1 1 auto; min-width: 0; }
+.cm-modlist__note { font-size: 13.5px; color: var(--cm-body-color); line-height: 1.5; margin-top: 4px; }
+.cm-modlist__cta { flex: none; white-space: nowrap; align-self: center; }
+.cm-modlist__foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--cm-border-color); font-size: 12.5px; color: var(--cm-text-muted); line-height: 1.5; }
+/* Source pill */
+.cm-src { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid; }
+.cm-src--auto { color: #f59f00; border-color: rgba(245,159,0,0.55); }
+.cm-src--moderator { color: #e08c3a; border-color: rgba(224,140,58,0.6); }
+
+/* Held-image placeholder tile (owner only) */
+.cm-held-tile {
+  position: relative; aspect-ratio: 1; border-radius: 8px;
+  border: 2px dashed rgba(245,159,0,0.6);
+  background: repeating-linear-gradient(45deg, #242727, #242727 8px, #2a2d2d 8px, #2a2d2d 16px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  color: #f59f00; text-align: center; padding: 8px;
+}
+.cm-held-tile svg { width: 26px; height: 26px; }
+.cm-held-tile__label { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
