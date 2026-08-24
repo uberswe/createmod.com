@@ -10,6 +10,7 @@ import (
 
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
+	"createmod/internal/mailer"
 	"createmod/internal/nbtparser"
 	"createmod/internal/server"
 	"createmod/internal/store"
@@ -174,7 +175,11 @@ func buildModDetail(ctx context.Context, appStore *store.Store, id string) *ModD
 	if u := findUserFromStore(appStore, s.AuthorID); u != nil {
 		author = u.Username
 	}
-	sanitized := s.Content
+	// Fail CLOSED: on a sanitizer error, never render the raw author HTML as
+	// trusted template.HTML (that would be stored XSS against the moderator).
+	// Fall back to the content escaped as plain text so it stays visible but
+	// inert.
+	sanitized := template.HTMLEscapeString(s.Content)
 	if san, err := htmlsanitizer.NewHTMLSanitizer().SanitizeString(s.Content); err == nil {
 		sanitized = san
 	}
@@ -241,8 +246,9 @@ func buildModDetail(ctx context.Context, appStore *store.Store, id string) *ModD
 }
 
 // ModeratorDecisionHandler applies a moderator's decision (approve fully /
-// publish with notes / request changes / reject fixable|final). (#1646)
-func ModeratorDecisionHandler(appStore *store.Store, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
+// publish with notes / request changes / reject fixable|final), reindexes, and
+// emails the author. (#1646)
+func ModeratorDecisionHandler(appStore *store.Store, mailService *mailer.Service, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if !isSuperAdmin(e) {
 			return e.String(http.StatusForbidden, "forbidden")
@@ -265,6 +271,17 @@ func ModeratorDecisionHandler(appStore *store.Store, enqueueSearchUpsert SearchI
 		// Reindex when the schematic became listed; drop from index otherwise.
 		if enqueueSearchUpsert != nil {
 			_ = enqueueSearchUpsert(ctx, id)
+		}
+		// Notify the author to match the decision.
+		switch action {
+		case DecisionApproveFull:
+			SendSchematicLiveEmail(ctx, mailService, appStore, id)
+		case DecisionPublishNotes, DecisionRequestChanges:
+			SendSchematicActionNeededEmail(ctx, mailService, appStore, id)
+		case DecisionRejectFixable:
+			SendSchematicNotPublishedEmail(ctx, mailService, appStore, id, true)
+		case DecisionRejectFinal:
+			SendSchematicNotPublishedEmail(ctx, mailService, appStore, id, false)
 		}
 		_ = newState
 

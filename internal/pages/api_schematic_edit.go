@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"createmod/internal/cache"
+	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
 	"createmod/internal/storage"
@@ -38,6 +39,7 @@ func SchematicUpdateHandler(
 	storageSvc *storage.Service,
 	appStore *store.Store,
 	moderationSvc *moderation.Service,
+	mailService *mailer.Service,
 	enqueueSearchUpsert SearchIndexEnqueuer,
 	enqueueChecklistRecheck ChecklistRecheckEnqueuer,
 ) func(e *server.RequestEvent) error {
@@ -385,7 +387,7 @@ func SchematicUpdateHandler(
 		}
 
 		// --- Async image moderation for any newly uploaded images ---
-		moderateSchematicImages(moderationSvc, appStore, schematicID, newImageFilenames)
+		moderateSchematicImages(moderationSvc, mailService, appStore, schematicID, newImageFilenames)
 
 		// --- Create version snapshot ---
 		createVersionSnapshot(appStore, schematicID, prevSnapshot, schem)

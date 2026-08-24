@@ -101,7 +101,9 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				// reachable by its link but excluded from Latest/search until the
 				// author improves the description; a checklist item tells them how,
 				// and resolving it auto-promotes (no moderator needed). (#1646)
-				pages.EnterPublishedLimited(ctx, w.deps.Store, schem, qualityResult.Reason)
+				if pages.EnterPublishedLimited(ctx, w.deps.Store, schem, qualityResult.Reason) {
+					pages.SendSchematicActionNeededEmail(ctx, w.deps.Mail, w.deps.Store, args.SchematicID)
+				}
 			} else {
 				// Both checks passed
 				oldState := schem.ModerationState
@@ -138,7 +140,7 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		}
 		if len(holdReasons) > 0 {
 			slog.Warn("moderation job: holding featured image", "schematic_id", args.SchematicID, "reasons", holdReasons)
-			pages.HoldSchematicImages(ctx, w.deps.Store, args.SchematicID, []string{args.ImageURL}, strings.Join(holdReasons, "; "))
+			pages.HoldSchematicImages(ctx, w.deps.Mail, w.deps.Store, args.SchematicID, []string{args.ImageURL}, strings.Join(holdReasons, "; "))
 		}
 	}
 

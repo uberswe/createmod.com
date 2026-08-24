@@ -786,7 +786,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 
 		// Async image moderation for gallery images (featured is handled by the moderation job).
-		moderateSchematicImages(moderationSvc, appStore, schem.ID, galleryFilenames)
+		moderateSchematicImages(moderationSvc, mailService, appStore, schem.ID, galleryFilenames)
 
 		// Pre-generate thumbnails so the first listing page load doesn't pay the resize cost.
 		go PrewarmThumbnails(storageSvc, schem.ID, featuredFilename)

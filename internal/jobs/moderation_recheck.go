@@ -2,12 +2,8 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"net/mail"
-	"os"
 
-	"createmod/internal/mailer"
 	"createmod/internal/pages"
 	"createmod/internal/store"
 
@@ -81,40 +77,6 @@ func (w *ChecklistRecheckWorker) Work(ctx context.Context, job *river.Job[Checkl
 	if w.deps.MeiliClient != nil {
 		upsertSchematicToMeili(ctx, w.deps, id)
 	}
-	w.sendNowLiveEmail(ctx, id)
+	pages.SendSchematicLiveEmail(ctx, w.deps.Mail, w.deps.Store, id)
 	return nil
-}
-
-// sendNowLiveEmail notifies the author that their schematic is now fully live.
-// Best-effort; failures are logged, not returned.
-func (w *ChecklistRecheckWorker) sendNowLiveEmail(ctx context.Context, schematicID string) {
-	if w.deps.Mail == nil || w.deps.Store == nil {
-		return
-	}
-	schem, err := w.deps.Store.Schematics.GetByID(ctx, schematicID)
-	if err != nil || schem == nil || schem.AuthorID == "" {
-		return
-	}
-	author, err := w.deps.Store.Users.GetUserByID(ctx, schem.AuthorID)
-	if err != nil || author == nil || author.Email == "" {
-		return
-	}
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = "https://createmod.com"
-	}
-	schematicURL := fmt.Sprintf("%s/schematics/%s", baseURL, schem.Name)
-	subject := fmt.Sprintf("Your schematic %s is live", schem.Title)
-	body := "Thanks for improving your description — everything checks out. " +
-		"Your schematic is now fully published and appears in Latest and search."
-	htmlBody := mailer.SchematicEmailHTML(subject, "", schematicURL, body)
-	msg := &mailer.Message{
-		From:    w.deps.Mail.DefaultFrom(),
-		To:      []mail.Address{{Address: author.Email}},
-		Subject: subject,
-		HTML:    htmlBody,
-	}
-	if err := w.deps.Mail.Send(msg); err != nil {
-		slog.Error("checklist recheck: failed to send now-live email", "schematic_id", schematicID, "error", err)
-	}
 }

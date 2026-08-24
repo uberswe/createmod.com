@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -94,8 +95,9 @@ func moderateGuideBanner(moderationSvc *moderation.Service, appStore *store.Stor
 // the schematic's moderation state. If the featured image is held it falls back
 // to the first still-visible gallery image. The hold is atomic, so it is safe
 // against the concurrent gallery/featured moderation goroutines. Writes a
-// moderation-log entry. (#1646)
-func HoldSchematicImages(ctx context.Context, appStore *store.Store, schematicID string, filenames []string, reason string) {
+// moderation-log entry and, on the schematic's FIRST hold, emails the author
+// (best-effort). (#1646)
+func HoldSchematicImages(ctx context.Context, mailService *mailer.Service, appStore *store.Store, schematicID string, filenames []string, reason string) {
 	if appStore == nil || len(filenames) == 0 {
 		return
 	}
@@ -119,6 +121,15 @@ func HoldSchematicImages(ctx context.Context, appStore *store.Store, schematicID
 			Reason:      note,
 		})
 	}
+	// Notify the author only on the FIRST hold (all held images are exactly the
+	// ones just added), so the concurrent featured/gallery paths don't both mail.
+	uniq := make(map[string]struct{}, len(filenames))
+	for _, f := range filenames {
+		uniq[f] = struct{}{}
+	}
+	if mailService != nil && len(store.HeldGallery(updated)) == len(uniq) {
+		SendSchematicImageReviewEmail(ctx, mailService, appStore, schematicID)
+	}
 }
 
 // moderateSchematicImages runs OpenAI image moderation on a schematic's
@@ -126,7 +137,7 @@ func HoldSchematicImages(ctx context.Context, appStore *store.Store, schematicID
 // from the schematic record and logged. Only the filenames in imagesToCheck
 // are moderated (pass only newly uploaded filenames to avoid re-checking
 // existing images on every update).
-func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
+func moderateSchematicImages(moderationSvc *moderation.Service, mailService *mailer.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
 	if moderationSvc == nil || len(imagesToCheck) == 0 {
 		return
 	}
@@ -172,7 +183,7 @@ func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.
 		// Per-image hold: hide just the flagged images and keep the schematic
 		// published (falling back to a visible featured image if needed), instead
 		// of holding the whole schematic for manual review. (#1646)
-		HoldSchematicImages(context.Background(), appStore, schematicID, flaggedImages,
+		HoldSchematicImages(context.Background(), mailService, appStore, schematicID, flaggedImages,
 			"Held by automated image moderation: "+strings.Join(flaggedImages, ", "))
 	}()
 }
