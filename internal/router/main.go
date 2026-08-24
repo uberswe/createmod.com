@@ -516,6 +516,7 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
 	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, p.MailService, enqueueSearchUpsert, enqueueChecklistRecheck)))
+	r.Post("/schematics/{id}/description", Adapt(pages.SchematicDescriptionRecheckHandler(registry, p.AppStore, p.ModerationService, p.MailService, enqueueSearchUpsert)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	// Schematic content management APIs (videos, references, modpacks, reddit links)
 	r.Post("/api/schematics/{id}/videos", Adapt(pages.AddSchematicVideoHandler(p.AppStore)))

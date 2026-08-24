@@ -2,8 +2,11 @@ package pages
 
 import (
 	"strconv"
+	"strings"
 
 	"createmod/internal/store"
+
+	strip "github.com/grokify/html-strip-tags-go"
 )
 
 // OwnerBanner is one stacked status banner shown to a schematic's owner. (#1646)
@@ -15,6 +18,7 @@ type OwnerBanner struct {
 
 // OwnerChecklistRow is one "To unlock full visibility" item for the owner.
 type OwnerChecklistRow struct {
+	Kind        string // description | title | images | tags | category
 	Note        string
 	SourceLabel string // "Auto-check" | "Moderator"
 	SourceLevel string // auto | moderator
@@ -24,13 +28,16 @@ type OwnerChecklistRow struct {
 
 // OwnerModeration is the owner-only moderation view model for the schematic page.
 type OwnerModeration struct {
-	Banners        []OwnerBanner
-	Checklist      []OwnerChecklistRow
-	HasChecklist   bool
-	IsFinalReject  bool // drives the chat "appeal" empty-state copy
-	ChatEnabled    bool
-	AppealOnly     bool
-	FullyPublished bool
+	Banners      []OwnerBanner
+	Checklist    []OwnerChecklistRow
+	HasChecklist bool
+	// DescriptionText is the current description as plain text, prefilled into
+	// the inline "Fix now" editor. (#1646)
+	DescriptionText string
+	IsFinalReject   bool // drives the chat "appeal" empty-state copy
+	ChatEnabled     bool
+	AppealOnly      bool
+	FullyPublished  bool
 }
 
 // computeOwnerModeration builds the owner's banners + checklist from the
@@ -127,9 +134,11 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 		})
 	}
 
+	om.DescriptionText = strings.TrimSpace(strip.StripTags(schem.Content))
+
 	// --- Checklist ---
 	for _, it := range openItems {
-		row := OwnerChecklistRow{Note: it.Note, CTAURL: page + "/edit"}
+		row := OwnerChecklistRow{Kind: it.Kind, Note: it.Note, CTAURL: page + "/edit"}
 		if it.Source == store.ChecklistSourceModerator {
 			row.SourceLabel = "Moderator"
 			row.SourceLevel = "moderator"

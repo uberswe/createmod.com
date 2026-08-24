@@ -41,6 +41,7 @@ var schematicTemplates = append([]string{
 	"./template/include/schematic_card.html",
 	"./template/include/schematic_card_full.html",
 	"./template/include/download_split.html",
+	schematicModerationFragment,
 }, commonTemplates...)
 
 type CollectionOption struct {
