@@ -8,24 +8,29 @@
                 <div class="d-flex gap-3">
                 <div class="flex-grow-1 min-width-0">
                 <div id="schematics-results">
-                    {{ if .Schematics }}
+                    {{ if .Cards }}
+                    {{ if .AttentionCount }}
+                    <div class="cm-attention">
+                        <span class="cm-attention__dot"></span>
+                        <div>
+                            <div class="cm-attention__title">{{ .AttentionCount }} schematic{{ if ne .AttentionCount 1 }}s{{ end }} need{{ if eq .AttentionCount 1 }}s{{ end }} your attention</div>
+                            <div class="cm-attention__body">Fixing them takes a minute and unlocks full visibility — with no waiting for a moderator.</div>
+                        </div>
+                    </div>
+                    {{ end }}
                     <div class="row row-cards">
-                        {{range .Schematics }}
+                        {{range .Cards }}
                         <div class="col-sm-6 col-md-4 col-lg-3">
                             <div style="position:relative;">
-                                {{ if eq .ModerationState "published" }}
-                                <span class="badge bg-green" style="position:absolute;top:8px;right:8px;z-index:2;">Published</span>
-                                {{ else if eq .ModerationState "approved" }}
-                                <span class="badge bg-green" style="position:absolute;top:8px;right:8px;z-index:2;">Published</span>
-                                {{ else if eq .ModerationState "auto_review" }}
-                                <span class="badge bg-blue" style="position:absolute;top:8px;right:8px;z-index:2;">Under Review</span>
-                                {{ else if eq .ModerationState "flagged" }}
-                                <span class="badge bg-yellow" style="position:absolute;top:8px;right:8px;z-index:2;">Flagged</span>
-                                {{ else if eq .ModerationState "rejected" }}
-                                <span class="badge bg-red" style="position:absolute;top:8px;right:8px;z-index:2;">Rejected</span>
-                                {{ end }}
-                                {{ template "schematic_card.html" . }}
+                                <span class="cm-cardbadge cm-cardbadge--{{ .BadgeLevel }}">{{ .Badge }}</span>
+                                {{ template "schematic_card.html" .Schematic }}
                             </div>
+                            {{ if .StatusText }}
+                            <div class="cm-cardstatus">
+                                <span>{{ .StatusText }}</span>
+                                {{ if .StatusLabel }}<a href="{{ .StatusLink }}" class="cm-cardstatus__link">{{ .StatusLabel }} &rarr;</a>{{ end }}
+                            </div>
+                            {{ end }}
                         </div>
                         {{end}}
                     </div>

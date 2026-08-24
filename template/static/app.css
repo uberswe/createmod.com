@@ -3385,3 +3385,27 @@ body.sidebar-ready .generator-overlay {
 }
 .cm-held-tile svg { width: 26px; height: 26px; }
 .cm-held-tile__label { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* My Schematics: moderation card badge + status (#1646) */
+.cm-cardbadge {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px; color: #fff; line-height: 1.4;
+}
+.cm-cardbadge--green { background: #2fb344; color: #08270f; }
+.cm-cardbadge--yellow { background: #f59f00; color: #241803; }
+.cm-cardbadge--blue { background: #4299e1; color: #04121f; }
+.cm-cardbadge--orange { background: #e08c3a; color: #241403; }
+.cm-cardbadge--red { background: #d63939; color: #fff; }
+/* Attention banner + per-card status row */
+.cm-attention {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px; border-radius: 8px; margin-bottom: 16px;
+  background: rgba(245,159,0,0.08); border: 1px solid rgba(245,159,0,0.35);
+}
+.cm-attention__dot { flex: none; width: 11px; height: 11px; border-radius: 999px; margin-top: 5px; background: #f59f00; }
+.cm-attention__title { font-weight: 600; font-size: 14px; color: #f59f00; }
+.cm-attention__body { font-size: 13px; color: var(--cm-text-muted); margin-top: 2px; }
+.cm-cardstatus { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; color: var(--cm-text-muted); }
+.cm-cardstatus__link { margin-left: auto; color: var(--cm-link); font-weight: 600; white-space: nowrap; text-decoration: none; }
+.cm-cardstatus__link:hover { color: var(--cm-link-hover); }
