@@ -603,6 +603,9 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics/{name}/comments", Adapt(pages.APISchematicCommentsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
+	// Poll the content-moderation status of API-uploaded images (60/min per IP). (#1646)
+	r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 60, time.Minute)).
+		Get("/api/schematics/upload/{token}/images", Adapt(pages.APIUploadImageStatusHandler(p.RateLimiter, p.AppStore)))
 	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Reports

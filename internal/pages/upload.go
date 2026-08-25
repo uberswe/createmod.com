@@ -1044,6 +1044,10 @@ func UploadDownloadHandler(appStore *store.Store, storageSvc *storage.Service) f
 type uploadImageResponse struct {
 	Filename string `json:"filename"`
 	URL      string `json:"url"`
+	// ModerationStatus is the content-moderation state: "pending" right after
+	// upload (the URL 404s until it becomes "approved"), then "approved" or
+	// "rejected". Poll GET /api/schematics/upload/{token}/images for updates. (#1646)
+	ModerationStatus string `json:"moderation_status"`
 }
 
 // uploadNBTResponse is the JSON response for a successful NBT upload.

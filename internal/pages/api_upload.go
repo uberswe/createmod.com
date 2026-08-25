@@ -131,8 +131,9 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 			results = append(results, result{
 				index: idx,
 				resp: uploadImageResponse{
-					Filename: filename,
-					URL:      "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(filename),
+					Filename:         filename,
+					URL:              "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(filename),
+					ModerationStatus: store.TempImagePending,
 				},
 			})
 			mu.Unlock()
@@ -209,11 +210,47 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 		ModerateTempUploadImageAsync(moderationSvc, storageSvc, appStore, img.ID, s3Key, data, contentType)
 
 		images = append(images, uploadImageResponse{
-			Filename: filename,
-			URL:      "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(filename),
+			Filename:         filename,
+			URL:              "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(filename),
+			ModerationStatus: store.TempImagePending,
 		})
 	}
 	return images
+}
+
+// uploadImageStatusItem is one image in the status-poll response.
+type uploadImageStatusItem struct {
+	Filename         string `json:"filename"`
+	URL              string `json:"url"`
+	Category         string `json:"category"`
+	ModerationStatus string `json:"moderation_status"`
+}
+
+// APIUploadImageStatusHandler serves GET /api/schematics/upload/{token}/images so
+// a client can poll the content-moderation status of images it uploaded. An
+// image's URL only serves once its status is "approved"; "rejected" images were
+// removed from storage. The upload token is the capability (unguessable). (#1646)
+func APIUploadImageStatusHandler(rl ratelimit.Limiter, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		token := e.Request.PathValue("token")
+		if token == "" {
+			return writeJSON(e, http.StatusBadRequest, map[string]string{"error": "missing token"})
+		}
+		imgs, err := appStore.TempUploadImages.ListByToken(e.Request.Context(), token)
+		if err != nil {
+			return writeJSON(e, http.StatusInternalServerError, map[string]string{"error": "failed to load images"})
+		}
+		items := make([]uploadImageStatusItem, 0, len(imgs))
+		for _, img := range imgs {
+			items = append(items, uploadImageStatusItem{
+				Filename:         img.Filename,
+				URL:              "/api/files/" + s3CollectionTempUploads + "/" + token + "/" + url.PathEscape(img.Filename),
+				Category:         img.Category,
+				ModerationStatus: img.ModerationStatus,
+			})
+		}
+		return writeJSON(e, http.StatusOK, map[string]any{"images": items})
+	}
 }
 
 // APIUploadHandler serves POST /api/schematics/upload as a JSON API for uploading schematics.
