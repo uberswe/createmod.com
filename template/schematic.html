@@ -386,7 +386,7 @@
                                         </a>
                                         {{ else if .Safety.FileSafe }}
                                         <details class="d-inline-block" style="position: relative;">
-                                            <summary class="badge bg-yellow-lt" style="cursor: pointer; list-style: none;" title="{{ T .Language "Valid file; content inspection found notable blocks — click for details" }}">
+                                            <summary class="badge bg-yellow-lt" style="cursor: pointer; list-style: none;" title="{{ T .Language "Valid file; content inspection found notable blocks. Click for details" }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></svg>
                                                 {{ T .Language "Contains" }} {{ .Safety.Summary }}
                                             </summary>
@@ -394,7 +394,7 @@
                                                 <div class="text-secondary mb-1">{{ T .Language "The file itself is valid and passed hardening. These blocks act on the world once pasted:" }}</div>
                                                 <ul class="mb-1 ps-3">
                                                     {{ range .Safety.Findings }}
-                                                    <li><code>{{ .Type }}</code> @ {{ index .Pos 0 }},{{ index .Pos 1 }},{{ index .Pos 2 }}{{ if .Detail }} — <code>{{ .Detail }}</code>{{ end }}</li>
+                                                    <li><code>{{ .Type }}</code> @ {{ index .Pos 0 }},{{ index .Pos 1 }},{{ index .Pos 2 }}{{ if .Detail }}: <code>{{ .Detail }}</code>{{ end }}</li>
                                                     {{ end }}
                                                     {{ if .Safety.Truncated }}<li class="text-secondary">{{ T .Language "…more findings truncated; counts are exact." }}</li>{{ end }}
                                                 </ul>
@@ -1394,7 +1394,7 @@ function copyMaterialsAsMarkdown() {
         if (count) count.textContent = words + (words === 1 ? ' word' : ' words');
         var level = 'empty', text2 = 'Add more detail to unlock full visibility.', block = true;
         if (words >= 25) { level = 'ok'; text2 = 'Looks good. This will unlock Latest and search.'; block = false; }
-        else if (words >= 5) { level = 'warn'; text2 = 'Better — but add more detail to appear in Latest and search.'; block = false; }
+        else if (words >= 5) { level = 'warn'; text2 = 'Better, but add more detail to appear in Latest and search.'; block = false; }
         else if (words > 0) { level = 'bad'; text2 = 'Too short. Write at least 5 words.'; block = true; }
         if (meter) meter.setAttribute('data-level', level);
         if (msg) msg.textContent = text2;

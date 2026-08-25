@@ -675,7 +675,7 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (words < 5) {
             meter.setAttribute('data-level', 'bad');
             meterMsg.textContent = 'Too short. Write at least 5 words.';
-            setCheck('description', 'bad', 'Too short — write at least 5 words.');
+            setCheck('description', 'bad', 'Too short. Write at least 5 words.');
             descBlocks = true;
         } else if (words < 25) {
             meter.setAttribute('data-level', 'warn');
@@ -710,7 +710,7 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (descLimited) {
             panel.classList.add('cm-expect--warn');
             eTitle.textContent = 'Publishes with limits';
-            eBody.textContent = 'Your schematic goes live at its direct link and downloads work, but it stays out of Latest and search until you add more detail to the description. Fixing it later promotes it automatically — no re-review.';
+            eBody.textContent = 'Your schematic goes live at its direct link and downloads work, but it stays out of Latest and search until you add more detail to the description. Fixing it later promotes it automatically. No re-review.';
         } else {
             panel.classList.add('cm-expect--ok');
             eTitle.textContent = 'Publishes fully, right away';

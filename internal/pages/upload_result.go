@@ -93,7 +93,7 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 		d.OpenItems = append(d.OpenItems, ChecklistItemView{
 			Kind:     store.ChecklistKindImages,
 			NoAction: true,
-			Note:     "Nothing to do — a moderator is double-checking your " + word + ". Shaders sometimes confuse the scanner; this is normal. Visitors don't see the hidden tile meanwhile.",
+			Note:     "Nothing to do. A moderator is double-checking your " + word + ". Shaders sometimes confuse the scanner; this is normal. Visitors don't see the hidden tile meanwhile.",
 		})
 	}
 
@@ -120,7 +120,7 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 			if d.HeldImageCount > 1 {
 				d.HeroTitle = "Published! Some images are being double-checked"
 			}
-			d.HeroBody = "Your schematic is live everywhere. A moderator will review the flagged image within " + strconv.Itoa(d.SLAHours) + " hours — visitors don't see it meanwhile, and it returns automatically if approved."
+			d.HeroBody = "Your schematic is live everywhere. A moderator will review the flagged image within " + strconv.Itoa(d.SLAHours) + " hours. Visitors do not see it meanwhile, and it returns automatically if approved."
 		} else {
 			d.Outcome = "full"
 			d.HeroLevel = "ok"
@@ -137,12 +137,12 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 			d.HeroTitle = "Published, with one note"
 		}
 		d.HeroLevel = "warn"
-		d.HeroBody = "Your schematic is live at its direct link and downloads work, but it stays out of Latest and search until the note below is resolved. Fixing it promotes it automatically — no re-review needed."
+		d.HeroBody = "Your schematic is published and people can view and download it via the link, but it isn't shown anywhere else on the site until you fix the note below. Once you do, it goes fully live on its own. You don't need to resubmit."
 
 	case store.ModerationRejectedFixable:
 		d.Outcome = "rejected_fixable"
 		d.HeroLevel = "bad"
-		d.HeroTitle = "Not published — but you can fix it"
+		d.HeroTitle = "Not published, but you can fix it"
 		d.HeroBody = "This upload broke a content rule. Address the note below and resubmit once. If you think this is a mistake, reply in the moderation thread on the schematic page."
 
 	case store.ModerationRejectedFinal, store.ModerationRejected:
@@ -152,7 +152,7 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 		if schem.ModerationReason != "" {
 			d.HeroBody = schem.ModerationReason + " "
 		}
-		d.HeroBody += "A human confirms every removal. You can appeal in the moderation thread on the schematic page."
+		d.HeroBody += "A moderator reviews every removal. You can appeal in the moderation thread on the schematic page."
 
 	default: // flagged and any legacy state: awaiting human review
 		d.Outcome = "flagged"

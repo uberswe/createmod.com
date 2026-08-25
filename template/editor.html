@@ -7,7 +7,7 @@
             <div class="container-wide">
                 <div class="page-header d-print-none">
                     <h1 class="h2 page-title">{{ T .Language "Schematic Editor" }}</h1>
-                    <div class="text-secondary">{{ T .Language "Crop, expand, rotate, mirror, fill, hollow, replace and delete — with undo and a live 3D preview. Publish the result back to the library in one click." }}</div>
+                    <div class="text-secondary">{{ T .Language "Crop, expand, rotate, mirror, fill, hollow, replace and delete, with undo and a live 3D preview. Publish the result back to the library in one click." }}</div>
                 </div>
 
                 <!-- Start chooser -->
@@ -213,7 +213,7 @@
       }
       GeneratorApp.renderBlocks(p);
       document.getElementById('ed-truncated').textContent = p.truncated
-        ? '{{ T .Language "Preview truncated for performance — the full build is intact in downloads." }}' : '';
+        ? '{{ T .Language "Preview truncated for performance. The full build is intact in downloads." }}' : '';
     }).catch(function (e) { setError(e.message); });
   }
 
