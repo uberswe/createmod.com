@@ -4,12 +4,14 @@ import (
 	"context"
 	"createmod/internal/mailer"
 	"createmod/internal/pages"
+	"createmod/internal/ratelimit"
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
 	"net/mail"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/riverqueue/river"
@@ -95,13 +97,13 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			if qualityErr != nil {
 				slog.Warn("moderation job: quality check unavailable", "error", qualityErr, "schematic_id", args.SchematicID)
 			} else if !qualityResult.Approved {
-				oldState := schem.ModerationState
-				schem.ModerationState = store.ModerationFlagged
-				schem.ModerationReason = qualityResult.Reason
-				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-					slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
-				} else {
-					logStateChange(oldState, schem.ModerationState, "quality check failed: "+qualityResult.Reason)
+				// Quality failure is NOT a policy violation: publish-first with
+				// limits instead of holding for manual review. The schematic is
+				// reachable by its link but excluded from Latest/search until the
+				// author improves the description; a checklist item tells them how,
+				// and resolving it auto-promotes (no moderator needed). (#1646)
+				if pages.EnterPublishedLimited(ctx, w.deps.Store, schem, qualityResult.Reason) {
+					pages.SendSchematicActionNeededEmail(ctx, w.deps.Mail, w.deps.Store, args.SchematicID)
 				}
 			} else {
 				// Both checks passed
@@ -119,50 +121,41 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		}
 	}
 
-	// Always run image safety check (even for trusted/pre-approved users).
-	// This catches policy-violating images that bypassed moderation via auto-approval.
-	if w.deps.Moderation != nil && imageFullURL != "" && schem.ModerationState != store.ModerationDeleted {
-		imgResult, imgErr := w.deps.Moderation.CheckImage(imageFullURL)
-		if imgErr != nil {
+	// Featured-image safety + quality checks run even for trusted/pre-approved
+	// users, catching policy-violating or off-topic images that bypassed
+	// moderation via auto-approval. A failure no longer holds the whole
+	// schematic: the individual featured image is put on hold (hidden from
+	// visitors, placeholder for the owner) and featured falls back to a visible
+	// gallery image, so the schematic stays published. (#1646)
+	if w.deps.Moderation != nil && imageFullURL != "" && args.ImageURL != "" && schem.ModerationState != store.ModerationDeleted {
+		var holdReasons []string
+		if imgResult, imgErr := w.deps.Moderation.CheckImage(imageFullURL); imgErr != nil {
 			slog.Warn("moderation job: image safety check unavailable", "error", imgErr, "schematic_id", args.SchematicID)
 		} else if !imgResult.Approved {
-			slog.Warn("moderation job: featured image flagged, holding for review",
-				"schematic_id", args.SchematicID, "reason", imgResult.Reason)
-			oldState := schem.ModerationState
-			schem.ModerationState = store.ModerationFlagged
-			schem.ModerationReason = fmt.Sprintf("Featured image flagged by automated moderation: %s", imgResult.Reason)
-			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
-			} else {
-				logStateChange(oldState, schem.ModerationState, "image safety check failed: "+imgResult.Reason)
-			}
+			holdReasons = append(holdReasons, "featured image flagged by automated moderation: "+imgResult.Reason)
 		}
-	}
-
-	// Always run image quality check (even for trusted/pre-approved users).
-	// This verifies the featured image depicts an actual Minecraft build, catching
-	// off-topic uploads like anime characters or unrelated photos.
-	if w.deps.Moderation != nil && imageFullURL != "" && schem.ModerationState != store.ModerationDeleted {
-		qualResult, qualErr := w.deps.Moderation.CheckImageQuality(imageFullURL)
-		if qualErr != nil {
+		if qualResult, qualErr := w.deps.Moderation.CheckImageQuality(imageFullURL); qualErr != nil {
 			slog.Warn("moderation job: image quality check unavailable", "error", qualErr, "schematic_id", args.SchematicID)
 		} else if !qualResult.Approved {
-			slog.Warn("moderation job: featured image not a Minecraft build, holding for review",
-				"schematic_id", args.SchematicID, "reason", qualResult.Reason)
-			oldState := schem.ModerationState
-			schem.ModerationState = store.ModerationFlagged
-			schem.ModerationReason = fmt.Sprintf("Featured image is not a Minecraft build: %s", qualResult.Reason)
-			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-				slog.Error("moderation job: failed to hold schematic for review", "error", updateErr, "schematic_id", args.SchematicID)
-			} else {
-				logStateChange(oldState, schem.ModerationState, "image quality check failed: "+qualResult.Reason)
-			}
+			holdReasons = append(holdReasons, "featured image is not a Minecraft build: "+qualResult.Reason)
+		}
+		if len(holdReasons) > 0 {
+			slog.Warn("moderation job: holding featured image", "schematic_id", args.SchematicID, "reasons", holdReasons)
+			pages.HoldSchematicImages(ctx, w.deps.Mail, w.deps.Store, args.SchematicID, []string{args.ImageURL}, strings.Join(holdReasons, "; "))
 		}
 	}
 
-	// Run language detection and translation (regardless of moderation outcome)
+	// Language detection + translation is a paid OpenAI call, so it draws on the
+	// author's hourly paid-AI budget. Over budget we DEFER: the bounded, deduped
+	// translation backfill reconciles the missing translation on a later cycle,
+	// so rapid uploads/edits can't run up translation cost. (#1646)
 	if w.deps.Translation != nil {
-		w.deps.Translation.DetectAndTranslate(args.SchematicID)
+		if ratelimit.AllowPaidAI(ctx, w.deps.RateLimiter, schem.AuthorID) {
+			w.deps.Translation.DetectAndTranslate(args.SchematicID)
+		} else {
+			slog.Info("moderation: over paid-AI budget, deferring translation to backfill",
+				"schematic_id", args.SchematicID, "author_id", schem.AuthorID)
+		}
 	}
 
 	if schem.ModerationState == store.ModerationPublished {

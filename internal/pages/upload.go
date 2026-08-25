@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"createmod/internal/server"
-	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/gosimple/slug"
+	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/sym01/htmlsanitizer"
 )
 
@@ -60,6 +60,11 @@ type SearchIndexEnqueuer func(ctx context.Context, schematicID string) error
 // Nil means scans happen only via the periodic backfill.
 type SafetyScanEnqueuer func(ctx context.Context, schematicID string) error
 
+// ChecklistRecheckEnqueuer enqueues a moderation checklist re-evaluation after
+// an author edits a limited/changes-requested schematic. Nil means no async
+// recheck (the schematic simply stays limited until something else promotes it).
+type ChecklistRecheckEnqueuer func(ctx context.Context, schematicID string) error
+
 const uploadPendingTemplate = "./template/upload_pending.html"
 
 // maxUploadSize is the maximum allowed NBT file size (10 MB).
@@ -81,6 +86,7 @@ var uploadTemplates = append([]string{
 
 var uploadPendingTemplates = append([]string{
 	uploadPendingTemplate,
+	uploadResultTemplate,
 }, commonTemplates...)
 
 const uploadPreviewTemplate = "./template/upload_preview.html"
@@ -103,35 +109,35 @@ type UploadData struct {
 
 type UploadPublishData struct {
 	DefaultData
-	UploadStep        int
-	Token             string
-	Filename          string
-	Size              int64
-	BlockCount        int
-	DimX, DimY, DimZ  int
-	MinecraftVersions []models.MinecraftVersion
-	CreatemodVersions []models.CreatemodVersion
-	Tags              []models.SchematicTag
-	AdditionalFiles   []tempUploadFile    // extra NBT files (variations/sets)
-	PreUploadedImages    []store.TempUploadImage // gallery images uploaded via API
-	PreUploadedRotation  []store.TempUploadImage // rotation images uploaded via API
-	TrustedUser          bool                    // true if user has previously approved schematics
+	UploadStep          int
+	Token               string
+	Filename            string
+	Size                int64
+	BlockCount          int
+	DimX, DimY, DimZ    int
+	MinecraftVersions   []models.MinecraftVersion
+	CreatemodVersions   []models.CreatemodVersion
+	Tags                []models.SchematicTag
+	AdditionalFiles     []tempUploadFile        // extra NBT files (variations/sets)
+	PreUploadedImages   []store.TempUploadImage // gallery images uploaded via API
+	PreUploadedRotation []store.TempUploadImage // rotation images uploaded via API
+	TrustedUser         bool                    // true if user has previously approved schematics
 }
 
 type UploadPreviewData struct {
 	DefaultData
-	UploadStep       int
-	Token            string
-	Filename         string
-	Size             int64
-	Checksum         string
-	UploadedAt       time.Time
-	ParsedSummary    string
-	BlockCount       int
-	Materials        []string
-	ParsedMaterials  []nbtparser.Material
-	DimX, DimY, DimZ int
-	Mods             []string
+	UploadStep        int
+	Token             string
+	Filename          string
+	Size              int64
+	Checksum          string
+	UploadedAt        time.Time
+	ParsedSummary     string
+	BlockCount        int
+	Materials         []string
+	ParsedMaterials   []nbtparser.Material
+	DimX, DimY, DimZ  int
+	Mods              []string
 	FileURL           string           // path to the NBT file in S3 storage
 	IsOwner           bool             // true if current user uploaded this
 	IsUnclaimed       bool             // true if UploadedBy is empty (no owner yet)
@@ -192,82 +198,82 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 	}
 }
 
-// UploadPendingData holds data for the upload pending confirmation page.
+// UploadPendingData holds data for the publish result page (and its HTMX poll
+// fragment). The outcome fields are filled by computePublishOutcome. (#1646)
 type UploadPendingData struct {
 	DefaultData
-	SchematicName string
-	SchematicURL  string
-	SchematicID   string
-	AutoApproved  bool
+	SchematicName    string
+	SchematicURL     string // "/schematics/{name}"
+	SchematicFullURL string // absolute URL for the copy-link field
+	SchematicID      string
+	AutoApproved     bool
+
+	// Outcome view model (see computePublishOutcome).
+	Outcome        string // pending|full|held|limited|limited_held|rejected_fixable|rejected_final|flagged
+	HeroLevel      string // ok|warn|bad|pending
+	HeroTitle      string
+	HeroBody       string
+	HeldImageCount int
+	OpenItems      []ChecklistItemView
+	Checks         []PublishCheckRow
+	Appears        []AppearRow
+	SLAHours       int
+	PollActive     bool
 }
 
-// UploadPendingHandler renders a simple moderation pending confirmation page.
-// When called with HX-Request and an "id" param, returns a partial HTML fragment
-// showing the current moderation status for HTMX polling.
+// UploadPendingHandler renders the publish result page: a transparent outcome
+// (fully published / published with limits / image held / rejected) computed
+// from the schematic's moderation state, its open checklist and any held images.
+// While the automated checks are still running (auto_review) the page HTMX-polls
+// this same endpoint; the poll returns just the result fragment. (#1646)
 func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		schematicID := e.Request.URL.Query().Get("id")
+		name := e.Request.URL.Query().Get("name")
 
-		// HTMX poll: return moderation status fragment
-		if schematicID != "" && e.Request.Header.Get("HX-Request") != "" {
-			schem, err := appStore.Schematics.GetByID(e.Request.Context(), schematicID)
-			if err != nil || schem == nil {
-				return e.HTML(http.StatusOK, `<div id="moderation-status" class="text-secondary"><span class="spinner-border spinner-border-sm me-2"></span>Checking moderation status...</div>`)
-			}
-
-			name := e.Request.URL.Query().Get("name")
-			schematicURL := ""
+		buildData := func() UploadPendingData {
+			d := UploadPendingData{}
+			d.Populate(e)
+			d.SchematicID = schematicID
 			if name != "" {
-				schematicURL = "/schematics/" + name
+				d.SchematicName = name
+				d.SchematicURL = "/schematics/" + name
+				d.SchematicFullURL = "https://createmod.com/schematics/" + name
 			}
+			d.AutoApproved = e.Request.URL.Query().Get("auto") == "true"
 
-			if store.IsPublicState(schem.ModerationState) {
-				return e.HTML(http.StatusOK, fmt.Sprintf(`<div id="moderation-status">
-<div class="d-flex align-items-center mb-3">
-<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-success me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-<span class="h3 mb-0">Your schematic has been published!</span>
-</div>
-<p>Your schematic passed moderation and is now live on the site.</p>
-<div class="mt-3"><a href="%s" class="btn btn-primary">View Schematic</a></div>
-</div>`, schematicURL))
+			var schem *store.Schematic
+			var openItems []store.ModerationChecklistItem
+			if schematicID != "" {
+				schem, _ = appStore.Schematics.GetByID(e.Request.Context(), schematicID)
+				if appStore.ModerationChecklist != nil {
+					openItems, _ = appStore.ModerationChecklist.ListOpenBySchematic(e.Request.Context(), schematicID)
+				}
 			}
-			if schem.ModerationState == store.ModerationFlagged || schem.ModerationState == store.ModerationRejected {
-				return e.HTML(http.StatusOK, `<div id="moderation-status">
-<div class="d-flex align-items-center mb-3">
-<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-warning me-2" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
-<span class="h3 mb-0">Held for moderation</span>
-</div>
-<p>`+ModerationHeldUserMessage+`</p>
-</div>`)
-			}
-
-			// Still pending — keep polling
-			return e.HTML(http.StatusOK, fmt.Sprintf(`<div id="moderation-status"
-     hx-get="/upload/pending?id=%s&name=%s"
-     hx-trigger="load delay:3s"
-     hx-target="#moderation-status"
-     hx-swap="outerHTML">
-<span class="spinner-border spinner-border-sm me-2"></span>Checking moderation status...
-</div>`, url.QueryEscape(schematicID), url.QueryEscape(name)))
+			computePublishOutcome(&d, schem, openItems)
+			return d
 		}
 
-		d := UploadPendingData{}
-		d.Populate(e)
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Pending"))
-		d.Title = i18n.T(d.Language, "Upload Pending Moderation")
+		// HTMX poll: return only the result fragment (same view model, so the
+		// page and the poll always agree). The fragment stops polling once the
+		// outcome is final.
+		if schematicID != "" && e.Request.Header.Get("HX-Request") != "" {
+			d := buildData()
+			html, err := registry.LoadFiles(uploadResultTemplate).Render(d)
+			if err != nil {
+				return err
+			}
+			return e.HTML(http.StatusOK, html)
+		}
+
+		d := buildData()
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Upload"), "/upload", i18n.T(d.Language, "Published"))
+		d.Title = i18n.T(d.Language, "Schematic Published")
 		d.Description = i18n.T(d.Language, "page.upload_pending.description")
 		d.Slug = "/upload/pending"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.HideOutstream = true
-
-		// Read schematic name, ID, and auto-approved status from query params
-		if name := e.Request.URL.Query().Get("name"); name != "" {
-			d.SchematicName = name
-			d.SchematicURL = "/schematics/" + name
-		}
-		d.SchematicID = schematicID
-		d.AutoApproved = e.Request.URL.Query().Get("auto") == "true"
 
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
 		if err != nil {
@@ -780,7 +786,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 
 		// Async image moderation for gallery images (featured is handled by the moderation job).
-		moderateSchematicImages(moderationSvc, appStore, schem.ID, galleryFilenames)
+		moderateSchematicImages(moderationSvc, mailService, appStore, schem.ID, galleryFilenames)
 
 		// Pre-generate thumbnails so the first listing page load doesn't pay the resize cost.
 		go PrewarmThumbnails(storageSvc, schem.ID, featuredFilename)
@@ -902,8 +908,8 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		d.IsUnclaimed = entry.UploadedBy == ""
 		d.AdditionalFiles = additionalFiles
 
-		// Load rotation images for 360° viewer
-		if rotImgs, rErr := appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation"); rErr == nil && len(rotImgs) > 0 {
+		// Load rotation images for 360° viewer (approved only). (#1646)
+		if rotImgs := approvedTempImages(appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation")); len(rotImgs) > 0 {
 			rotURLs := make([]string, len(rotImgs))
 			for i, img := range rotImgs {
 				rotURLs[i] = "/api/files/" + img.S3Key
@@ -920,7 +926,7 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 }
 
 // UploadClaimHandler allows an authenticated user to claim an unclaimed temp upload.
-// Uses an atomic conditional UPDATE (uploaded_by = '' guard) to prevent race conditions
+// Uses an atomic conditional UPDATE (uploaded_by = ” guard) to prevent race conditions
 // and ensure a claimed upload cannot be stolen by another user.
 // POST /u/{token}/claim
 func UploadClaimHandler(appStore *store.Store) func(e *server.RequestEvent) error {
@@ -1038,26 +1044,30 @@ func UploadDownloadHandler(appStore *store.Store, storageSvc *storage.Service) f
 type uploadImageResponse struct {
 	Filename string `json:"filename"`
 	URL      string `json:"url"`
+	// ModerationStatus is the content-moderation state: "pending" right after
+	// upload (the URL 404s until it becomes "approved"), then "approved" or
+	// "rejected". Poll GET /api/schematics/upload/{token}/images for updates. (#1646)
+	ModerationStatus string `json:"moderation_status"`
 }
 
 // uploadNBTResponse is the JSON response for a successful NBT upload.
 type uploadNBTResponse struct {
 	SourceFormat       string   `json:"sourceFormat,omitempty"`
 	ConversionWarnings []string `json:"conversionWarnings,omitempty"`
-	Token    string `json:"token"`
-	URL      string `json:"url"`
-	Checksum string `json:"checksum"`
-	Filename string `json:"filename"`
-	Size     int64  `json:"size"`
-	FileURL  string `json:"file_url,omitempty"`
-	Dimensions struct {
+	Token              string   `json:"token"`
+	URL                string   `json:"url"`
+	Checksum           string   `json:"checksum"`
+	Filename           string   `json:"filename"`
+	Size               int64    `json:"size"`
+	FileURL            string   `json:"file_url,omitempty"`
+	Dimensions         struct {
 		X int `json:"x"`
 		Y int `json:"y"`
 		Z int `json:"z"`
 	} `json:"dimensions"`
-	BlockCount int                  `json:"block_count"`
-	Materials  []nbtparser.Material `json:"materials"`
-	Mods       []string             `json:"mods"`
+	BlockCount     int                   `json:"block_count"`
+	Materials      []nbtparser.Material  `json:"materials"`
+	Mods           []string              `json:"mods"`
 	Images         []uploadImageResponse `json:"images,omitempty"`
 	RotationImages []uploadImageResponse `json:"rotation_images,omitempty"`
 }

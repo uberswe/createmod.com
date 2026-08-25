@@ -10,6 +10,7 @@ import (
 	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
 	"createmod/internal/pointlog"
+	"createmod/internal/ratelimit"
 	"createmod/internal/search"
 	"createmod/internal/session"
 	"createmod/internal/sitemap"
@@ -46,6 +47,7 @@ type Deps struct {
 	SessionStore       *session.Store
 	Moderation         *moderation.Service
 	Mail               *mailer.Service
+	RateLimiter        ratelimit.Limiter
 	MeiliClient        meilisearch.ServiceManager
 	TwitchClientID     string
 	TwitchClientSecret string
@@ -107,6 +109,7 @@ func New(ctx context.Context, cfg Config) (*Worker, error) {
 	river.AddWorker(workers, &ModMetadataWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SitemapWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SessionCleanupWorker{deps: cfg.Deps})
+	river.AddWorker(workers, &ChecklistRecheckWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SafetyScanWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &SafetyBackfillWorker{deps: cfg.Deps})
 	river.AddWorker(workers, &ConvCacheCleanupWorker{deps: cfg.Deps})

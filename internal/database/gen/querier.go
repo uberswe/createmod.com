@@ -10,6 +10,9 @@ import (
 )
 
 type Querier interface {
+	// Atomically merge filenames into held_images (deduped), so concurrent image
+	// moderation goroutines (gallery vs featured) never clobber each other. (#1646)
+	AddHeldImages(ctx context.Context, arg AddHeldImagesParams) error
 	AddSchematicCategory(ctx context.Context, arg AddSchematicCategoryParams) error
 	AddSchematicModpack(ctx context.Context, arg AddSchematicModpackParams) error
 	AddSchematicTag(ctx context.Context, arg AddSchematicTagParams) error
@@ -23,6 +26,8 @@ type Querier interface {
 	AggregateSearchTermDaily(ctx context.Context, arg AggregateSearchTermDailyParams) error
 	ApproveCategoryByID(ctx context.Context, id string) error
 	ApproveComment(ctx context.Context, id string) error
+	// Un-hold an image: it becomes visible to everyone again. (#1646)
+	ApproveHeldImage(ctx context.Context, arg ApproveHeldImageParams) error
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
 	AwardBadge(ctx context.Context, arg AwardBadgeParams) error
@@ -50,6 +55,8 @@ type Querier interface {
 	CountCommentsBySchematic(ctx context.Context, schematicID *string) (int64, error)
 	CountCommentsForAdmin(ctx context.Context, arg CountCommentsForAdminParams) (int64, error)
 	CountGuidesForAdmin(ctx context.Context, filter string) (int64, error)
+	CountModerationQueue(ctx context.Context) (int64, error)
+	CountOpenModerationChecklistBySchematic(ctx context.Context, schematicID string) (int64, error)
 	CountPointLogByReason(ctx context.Context, arg CountPointLogByReasonParams) (int32, error)
 	CountSchematicVariationsBySchematicAndUser(ctx context.Context, arg CountSchematicVariationsBySchematicAndUserParams) (int32, error)
 	CountSchematicsByAuthor(ctx context.Context, authorID *string) (int64, error)
@@ -80,6 +87,7 @@ type Querier interface {
 	CreateFollow(ctx context.Context, arg CreateFollowParams) error
 	CreateGuide(ctx context.Context, arg CreateGuideParams) (Guide, error)
 	CreateIPVerificationCode(ctx context.Context, arg CreateIPVerificationCodeParams) (IpVerificationCode, error)
+	CreateModerationChecklistItem(ctx context.Context, arg CreateModerationChecklistItemParams) (ModerationChecklistItem, error)
 	CreateModerationLog(ctx context.Context, arg CreateModerationLogParams) (ModerationLog, error)
 	CreateModerationMessage(ctx context.Context, arg CreateModerationMessageParams) (ModerationMessage, error)
 	CreateModerationThread(ctx context.Context, arg CreateModerationThreadParams) (ModerationThread, error)
@@ -127,6 +135,7 @@ type Querier interface {
 	DeleteFollow(ctx context.Context, arg DeleteFollowParams) error
 	DeleteGuide(ctx context.Context, id string) error
 	DeleteKnownIP(ctx context.Context, arg DeleteKnownIPParams) error
+	DeleteModerationChecklistBySchematic(ctx context.Context, schematicID string) error
 	DeleteNBTHash(ctx context.Context, arg DeleteNBTHashParams) error
 	DeleteOldDailyAdClicks(ctx context.Context, period string) error
 	DeleteOldNotifications(ctx context.Context, created time.Time) error
@@ -241,6 +250,8 @@ type Querier interface {
 	GetTempUploadByChecksum(ctx context.Context, checksum string) (GetTempUploadByChecksumRow, error)
 	GetTempUploadByToken(ctx context.Context, token string) (GetTempUploadByTokenRow, error)
 	GetTempUploadFileByID(ctx context.Context, id string) (TempUploadFile, error)
+	// Used by the file server to 404 temp images that aren't approved yet. (#1646)
+	GetTempUploadImageModerationStatus(ctx context.Context, arg GetTempUploadImageModerationStatusParams) (string, error)
 	GetTotalViewCount(ctx context.Context, schematicID string) (int32, error)
 	// Case-insensitive; an exact-casing match wins so accounts in pre-existing
 	// duplicate groups keep resolving to themselves, then oldest account.
@@ -330,8 +341,12 @@ type Querier interface {
 	ListMinecraftVersions(ctx context.Context) ([]MinecraftVersion, error)
 	ListModMetadataAll(ctx context.Context) ([]ModMetadatum, error)
 	ListModMetadataStale(ctx context.Context, limit int32) ([]ModMetadatum, error)
+	ListModerationChecklistBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
 	ListModerationLogBySchematic(ctx context.Context, schematicID string) ([]ListModerationLogBySchematicRow, error)
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
+	// Schematics needing a moderator's attention: policy-flagged, or with one or
+	// more held images awaiting an approve/remove decision. (#1646)
+	ListModerationQueue(ctx context.Context, arg ListModerationQueueParams) ([]Schematic, error)
 	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
 	ListModpacks(ctx context.Context) ([]Modpack, error)
 	ListMonthlyAdClicks(ctx context.Context) ([]ListMonthlyAdClicksRow, error)
@@ -339,6 +354,7 @@ type Querier interface {
 	ListNews(ctx context.Context, arg ListNewsParams) ([]News, error)
 	ListNewsletterIssues(ctx context.Context, arg ListNewsletterIssuesParams) ([]NewsletterIssue, error)
 	ListNotificationsByUser(ctx context.Context, arg ListNotificationsByUserParams) ([]Notification, error)
+	ListOpenModerationChecklistBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
 	ListPasskeys(ctx context.Context, userID string) ([]UserPasskey, error)
 	ListPendingCategories(ctx context.Context) ([]SchematicCategory, error)
 	ListPendingTags(ctx context.Context) ([]SchematicTag, error)
@@ -414,6 +430,9 @@ type Querier interface {
 	PruneOldSearches(ctx context.Context) (int64, error)
 	// Drop aggregated days older than the raw-search retention window.
 	PruneSearchTermDaily(ctx context.Context) (int64, error)
+	// If the featured image is now held or removed, fall back to the first
+	// still-visible gallery image (or clear it). Atomic and idempotent. (#1646)
+	ReassignFeaturedIfHeld(ctx context.Context, id string) error
 	RecordOutgoingClick(ctx context.Context, arg RecordOutgoingClickParams) error
 	RecordSchematicDownload(ctx context.Context, arg RecordSchematicDownloadParams) error
 	RecordSchematicEvent(ctx context.Context, arg RecordSchematicEventParams) error
@@ -422,8 +441,13 @@ type Querier interface {
 	// on the matview (idx_search_query_counts_query), which already exists.
 	RefreshSearchQueryCounts(ctx context.Context) error
 	RemoveBadge(ctx context.Context, arg RemoveBadgeParams) error
+	// A moderator removed a held image after review: drop it from held and record it
+	// in removed_images (never rendered again). (#1646)
+	RemoveHeldImage(ctx context.Context, arg RemoveHeldImageParams) error
 	RemoveSchematicFromCollection(ctx context.Context, arg RemoveSchematicFromCollectionParams) error
 	ResetWebhookFailures(ctx context.Context, id string) error
+	ResolveModerationChecklistItem(ctx context.Context, id string) error
+	ResolveOpenModerationChecklistByKind(ctx context.Context, arg ResolveOpenModerationChecklistByKindParams) (int64, error)
 	RestoreCollectionsByAuthor(ctx context.Context, authorID *string) error
 	RestoreComment(ctx context.Context, id string) error
 	RestoreCommentsByAuthor(ctx context.Context, authorID *string) error
@@ -486,6 +510,7 @@ type Querier interface {
 	UpdateSearchAlertLastChecked(ctx context.Context, id string) error
 	UpdateSearchAlertLastNotified(ctx context.Context, id string) error
 	UpdateTempUpload(ctx context.Context, arg UpdateTempUploadParams) error
+	UpdateTempUploadImageModerationStatus(ctx context.Context, arg UpdateTempUploadImageModerationStatusParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error

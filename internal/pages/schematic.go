@@ -41,6 +41,7 @@ var schematicTemplates = append([]string{
 	"./template/include/schematic_card.html",
 	"./template/include/schematic_card_full.html",
 	"./template/include/download_split.html",
+	schematicModerationFragment,
 }, commonTemplates...)
 
 type CollectionOption struct {
@@ -77,6 +78,10 @@ type SchematicData struct {
 	ModerationBanner string
 	// ModerationReason is the reason for moderation action, shown to the author.
 	ModerationReason string
+	// OwnerModeration holds the owner-only banners + checklist (#1646). Populated
+	// for the author (and admins) on any non-fully-public state or held/removed
+	// images.
+	OwnerModeration OwnerModeration
 	// ScheduledFor is set when the schematic is scheduled for future publication and the viewer is the author.
 	ScheduledFor *time.Time
 	// Translation fields
@@ -249,8 +254,10 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 				d.IsAdmin = viewerUser.IsAdmin
 			}
 		}
-		// Non-owners (and non-admins) cannot view non-public schematics
-		if !store.IsPublicState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
+		// Non-owners (and non-admins) cannot view non-viewable schematics.
+		// published_limited is viewable by direct link; owner-only states
+		// (changes_requested, rejected_*) remain hidden from non-owners.
+		if !store.IsViewableState(s.ModerationState) && !d.IsAuthor && !d.IsAdmin {
 			nd := DefaultData{}
 			nd.Populate(e)
 			nd.Title = i18n.T(nd.Language, "Page Not Found")
@@ -260,13 +267,24 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 			}
 			return e.HTML(http.StatusNotFound, html)
 		}
-		// Show moderation banner to the author for non-public states
-		if d.IsAuthor && !store.IsPublicState(s.ModerationState) {
-			d.ModerationBanner = s.ModerationState
+		// Owner-only moderation view model: stacked status banners + the
+		// "unlock full visibility" checklist. Computed for the author (and admins
+		// for context) whenever the schematic isn't fully clean-published, or has
+		// held/removed images. (#1646)
+		hasImageAction := len(store.HeldGallery(s)) > 0 || len(s.RemovedImages) > 0
+		if (d.IsAuthor || d.IsAdmin) && (!store.IsPublicState(s.ModerationState) || hasImageAction) {
+			var openItems []store.ModerationChecklistItem
+			if appStore.ModerationChecklist != nil {
+				openItems, _ = appStore.ModerationChecklist.ListOpenBySchematic(ctx, s.ID)
+			}
+			d.OwnerModeration = computeOwnerModeration(s, openItems)
+			d.ModerationBanner = s.ModerationState // kept for any legacy references
 			d.ModerationReason = s.ModerationReason
 		}
-		// Load moderation chat for owner or admin when schematic is non-public
-		if (d.IsAuthor || d.IsAdmin) && !store.IsPublicState(s.ModerationState) {
+		// Load moderation chat for owner or admin when the schematic is not fully
+		// public, or has an image action pending (so they can ask about a hold).
+		if (d.IsAuthor || d.IsAdmin) && (!store.IsPublicState(s.ModerationState) || hasImageAction) {
+			d.OwnerModeration.ChatEnabled = true
 			d.ModerationChatEnabled = true
 			thread, threadErr := appStore.ModerationChats.GetThreadByContent(ctx, "schematic", s.ID)
 			if threadErr == nil && thread != nil {
@@ -683,6 +701,11 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		categoryID = categories[0].ID
 	}
 
+	// Visitors never see held/removed images; held images are surfaced to the
+	// owner separately as placeholder tiles. (#1646)
+	visibleGallery := store.VisibleGallery(&s, false)
+	visibleRotation := store.VisibleRotationImages(&s, false)
+
 	result := models.Schematic{
 		ID:                   s.ID,
 		Created:              s.Created,
@@ -693,10 +716,11 @@ func MapStoreSchematicToModel(appStore *store.Store, s store.Schematic, cacheSer
 		HTMLContent:          template.HTML(sanitizedHTML),
 		Excerpt:              s.Excerpt,
 		FeaturedImage:        s.FeaturedImage,
-		Gallery:              s.Gallery,
-		HasGallery:           len(s.Gallery) > 0,
-		RotationImages:       s.RotationImages,
-		HasRotationImages:    len(s.RotationImages) > 0 && !s.RotationDisabled,
+		Gallery:              visibleGallery,
+		HasGallery:           len(visibleGallery) > 0,
+		RotationImages:       visibleRotation,
+		HasRotationImages:    len(visibleRotation) > 0 && !s.RotationDisabled,
+		HeldImages:           store.HeldGallery(&s),
 		Title:                s.Title,
 		Name:                 s.Name,
 		Video:                s.Video,
@@ -992,6 +1016,9 @@ func mapSchematicFromBatch(
 		categoryID = categories[0].ID
 	}
 
+	visibleGallery := store.VisibleGallery(&s, false)
+	visibleRotation := store.VisibleRotationImages(&s, false)
+
 	return models.Schematic{
 		ID:                   s.ID,
 		Created:              s.Created,
@@ -1002,10 +1029,11 @@ func mapSchematicFromBatch(
 		HTMLContent:          template.HTML(sanitizedHTML),
 		Excerpt:              s.Excerpt,
 		FeaturedImage:        s.FeaturedImage,
-		Gallery:              s.Gallery,
-		HasGallery:           len(s.Gallery) > 0,
-		RotationImages:       s.RotationImages,
-		HasRotationImages:    len(s.RotationImages) > 0 && !s.RotationDisabled,
+		Gallery:              visibleGallery,
+		HasGallery:           len(visibleGallery) > 0,
+		RotationImages:       visibleRotation,
+		HasRotationImages:    len(visibleRotation) > 0 && !s.RotationDisabled,
+		HeldImages:           store.HeldGallery(&s),
 		Title:                s.Title,
 		Name:                 s.Name,
 		Video:                s.Video,

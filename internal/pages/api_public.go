@@ -604,7 +604,7 @@ func APISchematicDetailHandler(rl ratelimit.Limiter, cacheService *cache.Service
 			_, _ = e.Response.Write([]byte(`{"error":"not found"}`))
 			return nil
 		}
-		if s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
+		if s.Deleted != nil || !store.IsViewableState(s.ModerationState) {
 			e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 			e.Response.WriteHeader(http.StatusNotFound)
 			_, _ = e.Response.Write([]byte(`{"error":"not found"}`))

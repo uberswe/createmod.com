@@ -346,7 +346,7 @@ func Register(p RegisterParams) chi.Router {
 		Post("/api/mod/download", Adapt(pages.ModDownloadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
 
 	// Custom file serving (replaces PB's /api/files/ handler with image resizing support)
-	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService)))
+	r.Get("/api/files/{collection}/{recordID}/{filename}", Adapt(pages.FileServingHandler(p.StorageService, p.AppStore)))
 
 	// Frontend routes
 	// Serve sitemaps from S3 storage
@@ -467,6 +467,18 @@ func Register(p RegisterParams) chi.Router {
 			return jw.Insert(ctx, jobs.SafetyScanArgs{SchematicID: schematicID}, nil)
 		}
 	}
+	var enqueueChecklistRecheck pages.ChecklistRecheckEnqueuer
+	if p.JobWorker != nil {
+		jw := p.JobWorker
+		enqueueChecklistRecheck = func(ctx context.Context, schematicID string) error {
+			// Dedup by schematic over a short window so rapid edits collapse to a
+			// single pending re-check (which snoozes if over the paid-AI budget).
+			return jw.Insert(ctx, jobs.ChecklistRecheckArgs{SchematicID: schematicID}, &river.InsertOpts{
+				Queue:      "ai",
+				UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 2 * time.Minute},
+			})
+		}
+	}
 	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
@@ -508,7 +520,11 @@ func Register(p RegisterParams) chi.Router {
 	r.Patch("/api/users/{id}", Adapt(pages.UserUpdateHandler(p.AppStore)))
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
-	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, enqueueSearchUpsert)))
+	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, p.MailService, enqueueSearchUpsert, enqueueChecklistRecheck)))
+	// Moderation check endpoints are rate-limited to 100/min per IP (own bucket)
+	// so a script can't hammer the re-check path. (#1646)
+	r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+		Post("/schematics/{id}/description", Adapt(pages.SchematicDescriptionRecheckHandler(registry, p.AppStore, p.ModerationService, p.MailService, p.RateLimiter, enqueueChecklistRecheck, enqueueSearchUpsert)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	// Schematic content management APIs (videos, references, modpacks, reddit links)
 	r.Post("/api/schematics/{id}/videos", Adapt(pages.AddSchematicVideoHandler(p.AppStore)))
@@ -586,8 +602,11 @@ func Register(p RegisterParams) chi.Router {
 	r.Get("/api/schematics/{name}/guide", Adapt(pages.SchematicGuideAPIHandler(p.AppStore, p.StorageService)))
 	r.Get("/api/schematics/{name}/stats", Adapt(pages.APISchematicStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	r.Get("/api/schematics/{name}/comments", Adapt(pages.APISchematicCommentsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
-	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
-	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService)))
+	r.Post("/api/schematics/upload", Adapt(pages.APIUploadHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
+	// Poll the content-moderation status of API-uploaded images (60/min per IP). (#1646)
+	r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 60, time.Minute)).
+		Get("/api/schematics/upload/{token}/images", Adapt(pages.APIUploadImageStatusHandler(p.RateLimiter, p.AppStore)))
+	r.Post("/api/schematics/upload-anonymous", Adapt(pages.APIUploadAnonymousHandler(p.RateLimiter, p.CacheService, p.AppStore, p.StorageService, p.ModerationService)))
 	r.Get("/api/user/stats", Adapt(pages.APIUserStatsHandler(p.RateLimiter, p.CacheService, p.AppStore)))
 	// Reports
 	reportRateLimit := rateLimitMiddlewareNew(p.RateLimiter, 5, time.Hour)
@@ -600,6 +619,11 @@ func Register(p RegisterParams) chi.Router {
 		r.Post("/admin/reports/{id}/resolve", Adapt(pages.AdminReportResolveHandler(p.AppStore, p.MailService)))
 		r.Post("/admin/reports/{id}/delete-target", Adapt(pages.AdminReportDeleteTargetHandler(p.AppStore)))
 		r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
+		r.Get("/admin/moderation", Adapt(pages.ModeratorReviewHandler(registry, p.CacheService, p.AppStore)))
+		r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+			Post("/admin/moderation/{id}/decision", Adapt(pages.ModeratorDecisionHandler(p.AppStore, p.MailService, enqueueSearchUpsert)))
+		r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+			Post("/admin/moderation/{id}/image", Adapt(pages.ModeratorImageHandler(p.AppStore)))
 		r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
 		r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService, p.StorageService, enqueueSearchUpsert)))

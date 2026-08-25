@@ -16,11 +16,118 @@ const (
 	ModerationApproved   = "approved"
 	ModerationRejected   = "rejected"
 	ModerationDeleted    = "deleted"
+
+	// States added by the moderation overhaul (#1646). See the two visibility
+	// gates below for how each behaves.
+	//
+	// ModerationPublishedLimited: fully published and reachable at its direct
+	// link with downloads enabled, but EXCLUDED from Latest, search and category
+	// listings until an open quality checklist is resolved. Auto-promotes to
+	// published when the checklist clears.
+	ModerationPublishedLimited = "published_limited"
+	// ModerationChangesRequested: a moderator asked for changes; unlisted and
+	// viewable only by the owner (and admins) until the checklist resolves.
+	ModerationChangesRequested = "changes_requested"
+	// ModerationRejectedFixable: rejected with a checklist; the author may
+	// resubmit exactly once.
+	ModerationRejectedFixable = "rejected_fixable"
+	// ModerationRejectedFinal: severe violation; no resubmission, appeal only via
+	// the moderation chat thread. (Supersedes the legacy "rejected".)
+	ModerationRejectedFinal = "rejected_final"
 )
 
-// IsPublicState returns true if the moderation state means the schematic is publicly visible.
+// IsPublicState reports whether the state means the schematic is LISTED — shown
+// in Latest, the search index (Meilisearch + in-memory), category and other
+// public listings. Deliberately excludes published_limited, which is reachable
+// by direct link but must stay out of listings. This is the gate the ~20 SQL
+// `moderation_state IN ('published','approved')` clauses encode, so its meaning
+// must not drift.
 func IsPublicState(state string) bool {
 	return state == ModerationPublished || state == ModerationApproved
+}
+
+// IsViewableState reports whether a NON-owner reaching the schematic by its
+// direct link may view it. This is broader than IsPublicState: it also includes
+// published_limited (link works, just unlisted). Owner-only states
+// (changes_requested, rejected_*) are NOT viewable here — callers grant the
+// owner/admins access separately.
+func IsViewableState(state string) bool {
+	return IsPublicState(state) || state == ModerationPublishedLimited
+}
+
+// VisibleGallery returns the gallery filenames a viewer should see. Removed
+// images are always excluded; held images are excluded for visitors but kept for
+// the owner/admin (rendered as "in review" placeholders). (#1646)
+func VisibleGallery(s *Schematic, ownerOrAdmin bool) []string {
+	return filterImages(s.Gallery, s.HeldImages, s.RemovedImages, ownerOrAdmin)
+}
+
+// VisibleRotationImages is the rotation set minus held/removed for the viewer.
+func VisibleRotationImages(s *Schematic, ownerOrAdmin bool) []string {
+	return filterImages(s.RotationImages, s.HeldImages, s.RemovedImages, ownerOrAdmin)
+}
+
+// HeldGallery returns the held (not removed) filenames — the owner's "in review"
+// placeholder tiles.
+func HeldGallery(s *Schematic) []string {
+	rem := sliceSet(s.RemovedImages)
+	out := make([]string, 0, len(s.HeldImages))
+	for _, f := range s.HeldImages {
+		if _, removed := rem[f]; !removed {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// IsImageHeld reports whether a filename is currently held (and not removed).
+func IsImageHeld(s *Schematic, filename string) bool {
+	for _, r := range s.RemovedImages {
+		if r == filename {
+			return false
+		}
+	}
+	for _, h := range s.HeldImages {
+		if h == filename {
+			return true
+		}
+	}
+	return false
+}
+
+func filterImages(all, held, removed []string, includeHeld bool) []string {
+	if len(all) == 0 {
+		return all
+	}
+	rem := sliceSet(removed)
+	var hel map[string]struct{}
+	if !includeHeld {
+		hel = sliceSet(held)
+	}
+	out := make([]string, 0, len(all))
+	for _, f := range all {
+		if _, removed := rem[f]; removed {
+			continue
+		}
+		if hel != nil {
+			if _, h := hel[f]; h {
+				continue
+			}
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+func sliceSet(xs []string) map[string]struct{} {
+	if len(xs) == 0 {
+		return nil
+	}
+	m := make(map[string]struct{}, len(xs))
+	for _, x := range xs {
+		m[x] = struct{}{}
+	}
+	return m
 }
 
 // User represents a user account.
@@ -52,19 +159,26 @@ type Session struct {
 
 // Schematic represents a Create mod schematic.
 type Schematic struct {
-	ID                 string
-	AuthorID           string
-	Name               string
-	Title              string
-	Description        string
-	Excerpt            string
-	Content            string
-	Postdate           *time.Time
-	Modified           *time.Time
-	DetectedLanguage   string
-	FeaturedImage      string
-	Gallery            []string
-	RotationImages     []string
+	ID               string
+	AuthorID         string
+	Name             string
+	Title            string
+	Description      string
+	Excerpt          string
+	Content          string
+	Postdate         *time.Time
+	Modified         *time.Time
+	DetectedLanguage string
+	FeaturedImage    string
+	Gallery          []string
+	RotationImages   []string
+	// HeldImages are gallery/featured filenames an automated or manual check put
+	// on hold: hidden from visitors, shown to the owner as a placeholder, and
+	// NOT affecting the schematic's moderation state. (#1646)
+	HeldImages []string
+	// RemovedImages are filenames a moderator removed after review. Kept for
+	// audit/messaging; never rendered.
+	RemovedImages      []string
 	RotationDisabled   bool
 	ShortCode          string
 	SchematicFile      string
@@ -86,11 +200,14 @@ type Schematic struct {
 	AIDescription      string
 	ModerationState    string
 	ModerationReason   string
-	ScheduledAt        *time.Time
-	Deleted            *time.Time
-	OldID              *int
-	Status             string
-	Type               string
+	// ModerationResubmitCount counts how many times the author has resubmitted
+	// after a rejected_fixable outcome. Exactly one resubmit is allowed. (#1646)
+	ModerationResubmitCount int
+	ScheduledAt             *time.Time
+	Deleted                 *time.Time
+	OldID                   *int
+	Status                  string
+	Type                    string
 	// SourceFormat is the format slug the schematic was uploaded as (e.g.
 	// "excraft"); empty or "nbt" means it was uploaded as Create structure NBT.
 	SourceFormat string
@@ -823,6 +940,19 @@ type SchematicStore interface {
 	Create(ctx context.Context, s *Schematic) error
 	Update(ctx context.Context, s *Schematic) error
 	SetModerationState(ctx context.Context, id, state, reason string) error
+	// HoldImages marks filenames as held (merged into held_images, deduped) and,
+	// if the featured image ends up held/removed, reassigns featured to the first
+	// still-visible gallery image (or clears it). Atomic — safe against the
+	// concurrent gallery/featured moderation goroutines. Returns the fresh row.
+	HoldImages(ctx context.Context, schematicID string, filenames []string) (*Schematic, error)
+	// ApproveHeldImage un-holds an image so it is visible to everyone again.
+	ApproveHeldImage(ctx context.Context, id, filename string) error
+	// RemoveHeldImage drops a held image and records it in removed_images.
+	RemoveHeldImage(ctx context.Context, id, filename string) error
+	// ListModerationQueue returns schematics needing a moderator's attention
+	// (policy-flagged or with held images), oldest first.
+	ListModerationQueue(ctx context.Context, limit, offset int) ([]Schematic, error)
+	CountModerationQueue(ctx context.Context) (int64, error)
 	SoftDelete(ctx context.Context, id string) error
 	// Relations
 	GetCategoryIDs(ctx context.Context, schematicID string) ([]string, error)
@@ -1405,6 +1535,13 @@ type TempUploadFileStore interface {
 	DeleteByToken(ctx context.Context, token string) error
 }
 
+// Temp upload image moderation statuses. (#1646)
+const (
+	TempImagePending  = "pending"
+	TempImageApproved = "approved"
+	TempImageRejected = "rejected"
+)
+
 // TempUploadImage represents an image file attached to a temp upload.
 type TempUploadImage struct {
 	ID        string
@@ -1414,7 +1551,10 @@ type TempUploadImage struct {
 	S3Key     string
 	SortOrder int
 	Category  string
-	Created   time.Time
+	// ModerationStatus gates whether the image is served/displayed: pending
+	// (awaiting the async check), approved, or rejected (S3 object deleted). (#1646)
+	ModerationStatus string
+	Created          time.Time
 }
 
 // TempUploadImageStore manages images attached to temp uploads.
@@ -1422,6 +1562,11 @@ type TempUploadImageStore interface {
 	Create(ctx context.Context, img *TempUploadImage) error
 	ListByToken(ctx context.Context, token string) ([]TempUploadImage, error)
 	ListByTokenAndCategory(ctx context.Context, token, category string) ([]TempUploadImage, error)
+	// UpdateModerationStatus sets an image's moderation status after the async check.
+	UpdateModerationStatus(ctx context.Context, id, status string) error
+	// GetModerationStatus returns the status for a (token, filename) pair, used
+	// by the file server to gate serving. Empty string when no such image.
+	GetModerationStatus(ctx context.Context, token, filename string) (string, error)
 	Delete(ctx context.Context, id string) error
 	DeleteByToken(ctx context.Context, token string) error
 	CountByToken(ctx context.Context, token string) (int, error)
@@ -1479,6 +1624,48 @@ type ModerationLogStore interface {
 	Create(ctx context.Context, entry *ModerationLogEntry) error
 	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationLogEntry, error)
 	ListAutoApprovedSince(ctx context.Context, since, until time.Time) ([]AutoApprovedSchematic, error)
+}
+
+// Moderation checklist item kinds and sources. (#1646)
+const (
+	ChecklistKindDescription = "description"
+	ChecklistKindTitle       = "title"
+	ChecklistKindImages      = "images"
+	ChecklistKindTags        = "tags"
+	ChecklistKindCategory    = "category"
+
+	ChecklistSourceAuto      = "auto"
+	ChecklistSourceModerator = "moderator"
+
+	ChecklistStatusOpen     = "open"
+	ChecklistStatusResolved = "resolved"
+)
+
+// ModerationChecklistItem is one actionable item a user must resolve to unlock
+// full visibility. Auto items come from failed quality checks; moderator items
+// from the review UI. When a schematic has no open items it auto-promotes.
+type ModerationChecklistItem struct {
+	ID          string
+	SchematicID string
+	Kind        string // description | title | images | tags | category
+	Source      string // auto | moderator
+	Note        string
+	Status      string // open | resolved
+	CreatedAt   time.Time
+	ResolvedAt  *time.Time
+}
+
+// ModerationChecklistStore persists per-schematic moderation checklist items.
+type ModerationChecklistStore interface {
+	Create(ctx context.Context, item *ModerationChecklistItem) error
+	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
+	ListOpenBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
+	CountOpenBySchematic(ctx context.Context, schematicID string) (int, error)
+	Resolve(ctx context.Context, id string) error
+	// ResolveOpenByKind resolves all open items of a kind (e.g. after a
+	// successful re-check of the description). Returns how many were resolved.
+	ResolveOpenByKind(ctx context.Context, schematicID, kind string) (int, error)
+	DeleteBySchematic(ctx context.Context, schematicID string) error
 }
 
 // SchematicVideoStore handles videos linked to schematics.
@@ -1681,6 +1868,7 @@ type Store struct {
 	SchematicVariations SchematicVariationStore
 	ModerationChats     ModerationChatStore
 	ModerationLog       ModerationLogStore
+	ModerationChecklist ModerationChecklistStore
 	Badges              BadgeStore
 	SocialLinks         SocialLinkStore
 	Follows             FollowStore

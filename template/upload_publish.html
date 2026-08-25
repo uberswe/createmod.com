@@ -10,8 +10,8 @@
                 <!-- Progress Steps -->
                 {{ template "upload_steps.html" . }}
 
-                <div class="row row-cards justify-content-center">
-                    <div class="col-lg-8 col-xl-6">
+                <div class="cm-publish-layout">
+                    <div class="cm-publish-main">
 
                         <!-- Schematic Summary -->
                         <div class="card mb-3">
@@ -79,8 +79,14 @@
                                     <label class="form-label required">Description</label>
                                     <textarea id="tinymce-schematic" class="form-control"
                                               style="min-height: 300px;"
-                                              placeholder="Describe your schematic and include any details on how to get it running."></textarea>
-                                    <small class="form-hint mt-2 d-block text-secondary">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
+                                              placeholder="This is a beginner workshop build that I made. It features a compact, smelter, washer, haunter and cooker setup which is easy to use. There is also a space with a press, mixer and deployer for crafting!"></textarea>
+                                    <!-- Live quality meter: reflects the same thresholds the server uses -->
+                                    <div class="cm-meter" id="desc-meter" data-level="empty">
+                                        <span class="cm-meter__dot"></span>
+                                        <span class="cm-meter__msg" id="desc-meter-msg">Add a description to see how it will publish.</span>
+                                        <span class="cm-meter__count" id="desc-meter-count">0 words</span>
+                                    </div>
+                                    <small class="form-hint mt-2 d-block text-secondary">Explain what your build is and how to use it. A detailed description helps your schematic appear in Latest and search.</small>
                                 </div>
                                 <div class="row">
                                     <div class="mb-3 col-md-12 col-lg-6">
@@ -150,7 +156,7 @@
 
                                 <div class="mb-3">
                                     <label class="form-label required">Images</label>
-                                    <small class="form-hint mb-2">Upload screenshots of your build. Click an image to set it as the featured image. The first image is featured by default.</small>
+                                    <small class="form-hint mb-2">Images must show the Minecraft build itself. Reference images or screenshots from outside Minecraft are not accepted. Anything the scanner is unsure about is published behind a placeholder until a human checks it. Click an image to set it as featured.</small>
                                     <div class="image-upload-grid" id="image-upload-grid">
                                         <div class="image-upload-add" id="image-upload-add">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
@@ -160,29 +166,21 @@
                                     <input type="file" id="image-file-input" accept="image/*" multiple style="display:none;">
                                 </div>
 
-                                {{ if .TrustedUser }}
-                                <div class="alert alert-success mt-3" id="trusted-notice">
-                                    <div class="d-flex align-items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                                        <div>
-                                            <span id="trusted-notice-text">{{ T .Language "This schematic will be auto-approved and published immediately." }}</span>
-                                        </div>
+                                <!-- Dynamic expectation panel: tells the user exactly how this will
+                                     publish based on the live checks. Updated by JS. -->
+                                <div class="cm-expect cm-expect--ok mt-3" id="expectation-panel">
+                                    <span class="cm-expect__dot"></span>
+                                    <div>
+                                        <div class="cm-expect__title" id="expectation-title">Publishes fully, right away</div>
+                                        <div class="cm-expect__body" id="expectation-body">All checks pass. Your schematic goes live everywhere: direct link, Latest, and search.</div>
                                     </div>
                                 </div>
-                                {{ else }}
-                                <div class="alert alert-info mt-3">
-                                    <div class="d-flex align-items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
-                                        <div>{{ T .Language "Your schematic will be reviewed before it appears publicly." }}</div>
-                                    </div>
-                                </div>
-                                {{ end }}
 
                                 <div class="mt-4">
                                     <p class="text-secondary small mb-3">{{ T .Language "By publishing, you agree that your upload follows the" }} <a href="{{ LangURL .Language "/rules" }}">{{ T .Language "rules" }}</a>.</p>
                                     <div id="publish-error" class="alert alert-danger mt-2 mb-2" style="display: none;" role="alert"></div>
                                     <button class="btn btn-primary w-100" id="publish-schematic-btn">
-                                        Publish
+                                        <span id="publish-btn-label">Publish</span>
                                     </button>
                                     <div id="progress-upload" style="display: none;" class="progress mt-2">
                                         <div class="progress-bar bg-green"></div>
@@ -193,7 +191,7 @@
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                             </div>
                                             <div>
-                                                Schematic has been published! It may take up to 24 hours for moderation.
+                                                Schematic published! Taking you to the details…
                                             </div>
                                         </div>
                                     </div>
@@ -201,8 +199,54 @@
                             </div>
                         </div>
 
-                    </div>
-                </div>
+                    </div><!-- /cm-publish-main -->
+
+                    <!-- Pre-publish checks rail (sticky) -->
+                    <aside class="cm-publish-rail">
+                        <div class="card cm-prepub" id="prepublish-card">
+                            <div class="card-body">
+                                <div class="cm-prepub__title">Pre-publish checks</div>
+                                <div class="cm-check" data-check="file" data-state="ok">
+                                    <span class="cm-check__dot"></span>
+                                    <div class="cm-check__text">
+                                        <div class="cm-check__name">Schematic file</div>
+                                        <div class="cm-check__note" id="check-file-note">Valid Create .nbt uploaded.</div>
+                                    </div>
+                                </div>
+                                <div class="cm-check" data-check="title" data-state="pending">
+                                    <span class="cm-check__dot"></span>
+                                    <div class="cm-check__text">
+                                        <div class="cm-check__name">Title</div>
+                                        <div class="cm-check__note" id="check-title-note">Give your schematic a title.</div>
+                                    </div>
+                                </div>
+                                <div class="cm-check" data-check="description" data-state="pending">
+                                    <span class="cm-check__dot"></span>
+                                    <div class="cm-check__text">
+                                        <div class="cm-check__name">Description</div>
+                                        <div class="cm-check__note" id="check-desc-note">Add a description.</div>
+                                    </div>
+                                </div>
+                                <div class="cm-check" data-check="images" data-state="pending">
+                                    <span class="cm-check__dot"></span>
+                                    <div class="cm-check__text">
+                                        <div class="cm-check__name">Images</div>
+                                        <div class="cm-check__note" id="check-images-note">Add at least one image.</div>
+                                    </div>
+                                </div>
+                                <div class="cm-check" data-check="content" data-state="neutral">
+                                    <span class="cm-check__dot"></span>
+                                    <div class="cm-check__text">
+                                        <div class="cm-check__name">Content scan</div>
+                                        <div class="cm-check__note">Runs automatically the moment you publish.</div>
+                                    </div>
+                                </div>
+                                <div class="cm-prepub__foot">Checks run live as you type. Fixing everything here means your schematic goes fully live the moment you publish.</div>
+                            </div>
+                        </div>
+                    </aside>
+
+                </div><!-- /cm-publish-layout -->
             </div>
         </main>
         {{template "footer.html" .}}
@@ -293,6 +337,78 @@
         border-color: #bf9045;
         background: rgba(191,144,69,0.1);
     }
+
+    /* ---- Moderation overhaul: publish form (#1646) ---- */
+    /* Two-column layout: centered main + sticky rail. */
+    .cm-publish-layout {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        justify-content: center;
+    }
+    .cm-publish-main { flex: 1 1 auto; max-width: 780px; min-width: 0; }
+    .cm-publish-rail { flex: 0 0 300px; width: 300px; }
+    .cm-publish-rail .cm-prepub { position: sticky; top: 120px; }
+    @media (max-width: 991px) {
+        .cm-publish-layout { flex-direction: column; align-items: stretch; }
+        .cm-publish-main, .cm-publish-rail { max-width: none; width: auto; flex-basis: auto; }
+        .cm-publish-rail .cm-prepub { position: static; }
+    }
+
+    /* Status dot shared by meter/checks/expectation. */
+    .cm-meter__dot, .cm-check__dot, .cm-expect__dot {
+        flex: none; width: 10px; height: 10px; border-radius: 999px;
+        background: var(--cm-text-faint, #7b715c);
+    }
+
+    /* Live description quality meter. */
+    .cm-meter {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 8px; font-size: 13px;
+    }
+    .cm-meter__msg { color: var(--cm-text-muted); }
+    .cm-meter__count { margin-left: auto; color: var(--cm-text-faint); font-variant-numeric: tabular-nums; }
+    .cm-meter[data-level="bad"] .cm-meter__dot { background: #d63939; }
+    .cm-meter[data-level="bad"] .cm-meter__msg { color: #e57373; }
+    .cm-meter[data-level="warn"] .cm-meter__dot { background: #f59f00; }
+    .cm-meter[data-level="warn"] .cm-meter__msg { color: #f59f00; }
+    .cm-meter[data-level="ok"] .cm-meter__dot { background: #2fb344; }
+    .cm-meter[data-level="ok"] .cm-meter__msg { color: #2fb344; }
+
+    /* Pre-publish checks rail. */
+    .cm-prepub__title { font-size: 16px; font-weight: 600; margin-bottom: 14px; color: var(--cm-heading-color); }
+    .cm-check { display: flex; gap: 10px; padding: 8px 0; align-items: flex-start; }
+    .cm-check + .cm-check { border-top: 1px solid var(--cm-border-color); }
+    .cm-check__dot { margin-top: 5px; }
+    .cm-check__name { font-size: 13.5px; font-weight: 600; color: var(--cm-body-color); }
+    .cm-check__note { font-size: 12.5px; color: var(--cm-text-muted); }
+    .cm-check[data-state="ok"] .cm-check__dot { background: #2fb344; }
+    .cm-check[data-state="warn"] .cm-check__dot { background: #f59f00; }
+    .cm-check[data-state="bad"] .cm-check__dot { background: #d63939; }
+    .cm-check[data-state="neutral"] .cm-check__dot { background: #4299e1; }
+    .cm-prepub__foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--cm-border-color);
+        font-size: 12px; color: var(--cm-text-faint); line-height: 1.5; }
+
+    /* Dynamic expectation panel. */
+    .cm-expect {
+        display: flex; gap: 12px; align-items: flex-start;
+        padding: 12px 14px; border-radius: 8px; border: 1px solid transparent;
+    }
+    .cm-expect__dot { margin-top: 5px; }
+    .cm-expect__title { font-weight: 600; font-size: 14px; }
+    .cm-expect__body { font-size: 13px; color: var(--cm-text-muted); margin-top: 2px; }
+    .cm-expect--ok { background: rgba(47,179,68,0.08); border-color: rgba(47,179,68,0.35); }
+    .cm-expect--ok .cm-expect__dot { background: #2fb344; }
+    .cm-expect--ok .cm-expect__title { color: #2fb344; }
+    .cm-expect--warn { background: rgba(245,159,0,0.08); border-color: rgba(245,159,0,0.35); }
+    .cm-expect--warn .cm-expect__dot { background: #f59f00; }
+    .cm-expect--warn .cm-expect__title { color: #f59f00; }
+    .cm-expect--bad { background: rgba(214,57,57,0.08); border-color: rgba(214,57,57,0.35); }
+    .cm-expect--bad .cm-expect__dot { background: #d63939; }
+    .cm-expect--bad .cm-expect__title { color: #e57373; }
+    @media (prefers-reduced-motion: no-preference) {
+        .cm-meter__dot, .cm-check__dot, .cm-expect { transition: background 0.15s ease-in-out, border-color 0.15s ease-in-out; }
+    }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.2/dist/js/tom-select.base.min.js" defer crossorigin="anonymous"></script>
 <script>
@@ -330,7 +446,11 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 <script>
 cmEditorEnsure(function () {
-    window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600 });
+    window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', {
+        preset: 'standard', minHeight: 300, maxHeight: 600,
+        onUpdate: function () { if (window.cmUpdateChecks) window.cmUpdateChecks(); }
+    });
+    if (window.cmUpdateChecks) window.cmUpdateChecks();
 });
 </script>
 <script>
@@ -420,7 +540,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         // Hide add button if max reached
         addBtn.style.display = uploadedImages.length >= maxImages ? 'none' : '';
+        if (window.cmUpdateChecks) window.cmUpdateChecks();
     }
+
+    // Expose the current image count to the live pre-publish checks.
+    window.cmImageCount = function () { return uploadedImages.length; };
 
     function addFiles(files) {
         var validExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
@@ -480,15 +604,13 @@ document.addEventListener("DOMContentLoaded", function() {
     // Schedule toggle
     document.getElementById('schedule-toggle').addEventListener('change', function() {
         document.getElementById('schedule-group').style.display = this.checked ? '' : 'none';
-        {{ if .TrustedUser }}
-        var noticeText = document.getElementById('trusted-notice-text');
-        if (noticeText) {
-            noticeText.textContent = this.checked
-                ? "{{ T .Language "This schematic will be auto-approved and published at the scheduled time." }}"
-                : "{{ T .Language "This schematic will be auto-approved and published immediately." }}";
-        }
-        {{ end }}
     });
+
+    // Live pre-publish checks: recompute on title edits, and once on load.
+    document.getElementById('schematic-title').addEventListener('input', function () {
+        if (window.cmUpdateChecks) window.cmUpdateChecks();
+    });
+    if (window.cmUpdateChecks) window.cmUpdateChecks();
 
     function validateDescriptionClient(html) {
         if (!html) return "A schematic must have a description";
@@ -512,6 +634,100 @@ document.addEventListener("DOMContentLoaded", function() {
         return null;
     }
 
+    // Plain-text word count from the editor HTML (whitespace-split non-empty
+    // tokens), matching the server's word-count rule.
+    function descWordCount() {
+        var html = (document.getElementById('tinymce-schematic').value) || '';
+        var text = (new DOMParser().parseFromString(html, 'text/html').body.textContent || '').trim();
+        if (!text) return 0;
+        return text.split(/\s+/).filter(function (w) { return w.length > 0; }).length;
+    }
+
+    function setCheck(name, state, note) {
+        var row = document.querySelector('.cm-check[data-check="' + name + '"]');
+        if (!row) return;
+        row.setAttribute('data-state', state);
+        if (note != null) {
+            var noteEl = document.getElementById('check-' + name + '-note');
+            if (noteEl) noteEl.textContent = note;
+        }
+    }
+
+    // Recompute the live meter, pre-publish rail, expectation panel and publish
+    // button state from the current form. Thresholds mirror the server:
+    // <5 words hard-block, 5-24 publishes limited, >=25 publishes fully.
+    window.cmUpdateChecks = function () {
+        var words = descWordCount();
+        var title = (document.getElementById('schematic-title').value || '').trim();
+        var imageCount = (window.cmImageCount ? window.cmImageCount() : 0);
+
+        // Meter + description rail row.
+        var meter = document.getElementById('desc-meter');
+        var meterMsg = document.getElementById('desc-meter-msg');
+        var meterCount = document.getElementById('desc-meter-count');
+        meterCount.textContent = words + (words === 1 ? ' word' : ' words');
+        var descBlocks = false, descLimited = false;
+        if (words === 0) {
+            meter.setAttribute('data-level', 'empty');
+            meterMsg.textContent = 'Add a description to see how it will publish.';
+            setCheck('description', 'pending', 'Add a description.');
+            descBlocks = true;
+        } else if (words < 5) {
+            meter.setAttribute('data-level', 'bad');
+            meterMsg.textContent = 'Too short. Write at least 5 words.';
+            setCheck('description', 'bad', 'Too short — write at least 5 words.');
+            descBlocks = true;
+        } else if (words < 25) {
+            meter.setAttribute('data-level', 'warn');
+            meterMsg.textContent = 'Will publish, but stays out of Latest and search until you add more detail.';
+            setCheck('description', 'warn', 'Publishes, but limited until you add more detail.');
+            descLimited = true;
+        } else {
+            meter.setAttribute('data-level', 'ok');
+            meterMsg.textContent = 'Looks good. Detailed enough for search and Latest.';
+            setCheck('description', 'ok', 'Detailed enough for Latest and search.');
+        }
+
+        // Title + images rail rows.
+        setCheck('title', title ? 'ok' : 'pending', title ? 'Looks good.' : 'Give your schematic a title.');
+        setCheck('images', imageCount > 0 ? 'ok' : 'pending',
+            imageCount > 0 ? (imageCount === 1 ? '1 image ready.' : imageCount + ' images ready.') : 'Add at least one image.');
+
+        // Expectation panel.
+        var panel = document.getElementById('expectation-panel');
+        var eTitle = document.getElementById('expectation-title');
+        var eBody = document.getElementById('expectation-body');
+        panel.classList.remove('cm-expect--ok', 'cm-expect--warn', 'cm-expect--bad');
+        if (descBlocks || !title || imageCount === 0) {
+            panel.classList.add('cm-expect--bad');
+            eTitle.textContent = 'Not ready to publish yet';
+            var missing = [];
+            if (!title) missing.push('a title');
+            if (words === 0) missing.push('a description');
+            else if (words < 5) missing.push('a longer description (at least 5 words)');
+            if (imageCount === 0) missing.push('at least one image');
+            eBody.textContent = 'Add ' + missing.join(', ') + ' to publish.';
+        } else if (descLimited) {
+            panel.classList.add('cm-expect--warn');
+            eTitle.textContent = 'Publishes with limits';
+            eBody.textContent = 'Your schematic goes live at its direct link and downloads work, but it stays out of Latest and search until you add more detail to the description. Fixing it later promotes it automatically — no re-review.';
+        } else {
+            panel.classList.add('cm-expect--ok');
+            eTitle.textContent = 'Publishes fully, right away';
+            eBody.textContent = 'All checks pass. Your schematic goes live everywhere: direct link, Latest, and search.';
+        }
+
+        // Publish button: hard-blocked only when the description is under 5 words.
+        // Other missing fields are validated on submit so the user still gets a
+        // clear message. Never fight the in-flight submit state.
+        if (!window._cmPublishing) {
+            var btn = document.getElementById('publish-schematic-btn');
+            var label = document.getElementById('publish-btn-label');
+            btn.disabled = descBlocks;
+            label.textContent = descBlocks ? 'Fix the description to publish' : 'Publish';
+        }
+    };
+
     function showPublishError(msg) {
         var errDiv = document.getElementById('publish-error');
         if (errDiv) {
@@ -525,11 +741,20 @@ document.addEventListener("DOMContentLoaded", function() {
         if (errDiv) errDiv.style.display = 'none';
     }
 
-    document.getElementById('publish-schematic-btn').addEventListener("click", function (e) {
+    var publishBtn = document.getElementById('publish-schematic-btn');
+    var publishLabel = document.getElementById('publish-btn-label');
+    function setPublishing(on) {
+        window._cmPublishing = on;
+        publishBtn.disabled = on;
+        publishLabel.textContent = on ? 'Running checks…' : 'Publish';
+        if (!on && window.cmUpdateChecks) window.cmUpdateChecks();
+    }
+
+    publishBtn.addEventListener("click", function (e) {
         e.preventDefault();
         hidePublishError();
         var titleElement = document.getElementById("schematic-title");
-        document.getElementById("publish-schematic-btn").disabled = true;
+        setPublishing(true);
 
         var errors = [];
 
@@ -644,7 +869,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         setTimeout(function() { window.location.href = redirect; }, 1500);
                     }
                 } else {
-                    document.getElementById("publish-schematic-btn").disabled = false;
+                    setPublishing(false);
                     var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
                     showPublishError(errMsg);
                 }
@@ -652,18 +877,18 @@ document.addEventListener("DOMContentLoaded", function() {
             xhr.onerror = function() {
                 progressBar.classList.remove("progress-bar-indeterminate");
                 progressBar.style.display = "none";
-                document.getElementById("publish-schematic-btn").disabled = false;
+                setPublishing(false);
                 showPublishError('Network error. Please try again.');
             };
             xhr.ontimeout = function() {
                 progressBar.classList.remove("progress-bar-indeterminate");
                 progressBar.style.display = "none";
-                document.getElementById("publish-schematic-btn").disabled = false;
+                setPublishing(false);
                 showPublishError('Request timed out. Please try again.');
             };
             xhr.send(formData);
         } else {
-            document.getElementById("publish-schematic-btn").disabled = false;
+            setPublishing(false);
             showPublishError(errors.join('. '));
         }
     });

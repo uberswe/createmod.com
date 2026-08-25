@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"createmod/internal/mailer"
 	"createmod/internal/moderation"
 	"createmod/internal/storage"
 	"createmod/internal/store"
@@ -89,12 +90,108 @@ func moderateGuideBanner(moderationSvc *moderation.Service, appStore *store.Stor
 	}()
 }
 
+// approvedTempImages filters a temp-image list to those that passed content
+// moderation, for display. Pending images aren't servable yet and rejected ones
+// were removed, so neither is shown. Takes the (slice, err) result of a store
+// call directly for convenience. (#1646)
+func approvedTempImages(imgs []store.TempUploadImage, _ error) []store.TempUploadImage {
+	out := make([]store.TempUploadImage, 0, len(imgs))
+	for _, img := range imgs {
+		if img.ModerationStatus == store.TempImageApproved {
+			out = append(out, img)
+		}
+	}
+	return out
+}
+
+// ModerateTempUploadImageAsync runs the free, violence-tolerant content check on
+// a just-uploaded temp image (nudity/hate/harassment/self-harm blocked; violence
+// allowed) and records the outcome. Approved images become servable/displayable;
+// flagged images are deleted from storage and marked rejected. Runs in its own
+// goroutine so the upload response returns immediately. (#1646)
+func ModerateTempUploadImageAsync(moderationSvc *moderation.Service, storageSvc *storage.Service, appStore *store.Store, imageID, s3Key string, data []byte, mimeType string) {
+	if appStore == nil || imageID == "" {
+		return
+	}
+	// No moderation configured (e.g. dev): approve so images still work.
+	if moderationSvc == nil {
+		_ = appStore.TempUploadImages.UpdateModerationStatus(context.Background(), imageID, store.TempImageApproved)
+		return
+	}
+	go func() {
+		ctx := context.Background()
+		res, err := moderationSvc.CheckUserImageContent(data, mimeType)
+		if err != nil {
+			// Moderation unavailable — fail OPEN (approve) so an OpenAI outage
+			// doesn't break uploads; the post-publish image checks remain a
+			// backstop for anything published.
+			slog.Warn("temp image moderation unavailable, approving", "image_id", imageID, "error", err)
+			_ = appStore.TempUploadImages.UpdateModerationStatus(ctx, imageID, store.TempImageApproved)
+			return
+		}
+		if res.Approved {
+			_ = appStore.TempUploadImages.UpdateModerationStatus(ctx, imageID, store.TempImageApproved)
+			return
+		}
+		// Rejected: delete the object so it is never served, mark the record.
+		slog.Warn("temp image rejected by content moderation, removing", "image_id", imageID, "reason", res.Reason)
+		if storageSvc != nil && s3Key != "" {
+			if delErr := storageSvc.DeleteRaw(ctx, s3Key); delErr != nil {
+				slog.Error("temp image moderation: failed to delete rejected image", "image_id", imageID, "s3_key", s3Key, "error", delErr)
+			}
+		}
+		_ = appStore.TempUploadImages.UpdateModerationStatus(ctx, imageID, store.TempImageRejected)
+	}()
+}
+
+// HoldSchematicImages marks filenames as held on a schematic — hidden from
+// visitors, shown to the owner as "in review" placeholders — WITHOUT changing
+// the schematic's moderation state. If the featured image is held it falls back
+// to the first still-visible gallery image. The hold is atomic, so it is safe
+// against the concurrent gallery/featured moderation goroutines. Writes a
+// moderation-log entry and, on the schematic's FIRST hold, emails the author
+// (best-effort). (#1646)
+func HoldSchematicImages(ctx context.Context, mailService *mailer.Service, appStore *store.Store, schematicID string, filenames []string, reason string) {
+	if appStore == nil || len(filenames) == 0 {
+		return
+	}
+	updated, err := appStore.Schematics.HoldImages(ctx, schematicID, filenames)
+	if err != nil || updated == nil {
+		slog.Error("moderation: failed to hold images", "schematic_id", schematicID, "error", err)
+		return
+	}
+	slog.Info("moderation: held images", "schematic_id", schematicID, "filenames", filenames, "reason", reason)
+	if appStore.ModerationLog != nil {
+		note := reason
+		if note == "" {
+			note = "held images: " + strings.Join(filenames, ", ")
+		}
+		_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+			SchematicID: schematicID,
+			ActorType:   "system",
+			Action:      "image_hold",
+			OldState:    updated.ModerationState,
+			NewState:    updated.ModerationState,
+			Reason:      note,
+		})
+	}
+	// Notify the author only on the FIRST hold (all held images are exactly the
+	// ones just added), so the concurrent featured/gallery paths don't both mail.
+	uniq := make(map[string]struct{}, len(filenames))
+	for _, f := range filenames {
+		uniq[f] = struct{}{}
+	}
+	if mailService != nil && len(store.HeldGallery(updated)) == len(uniq) {
+		SendSchematicImageReviewEmail(ctx, mailService, appStore, schematicID)
+	}
+}
+
 // moderateSchematicImages runs OpenAI image moderation on a schematic's
 // featured image and gallery images asynchronously. Flagged images are removed
 // from the schematic record and logged. Only the filenames in imagesToCheck
 // are moderated (pass only newly uploaded filenames to avoid re-checking
 // existing images on every update).
-func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
+func moderateSchematicImages(moderationSvc *moderation.Service, mailService *mailer.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
 	if moderationSvc == nil || len(imagesToCheck) == 0 {
 		return
 	}
@@ -137,43 +234,10 @@ func moderateSchematicImages(moderationSvc *moderation.Service, appStore *store.
 		if len(flaggedImages) == 0 {
 			return
 		}
-
-		flaggedSet := make(map[string]struct{}, len(flaggedImages))
-		for _, f := range flaggedImages {
-			flaggedSet[f] = struct{}{}
-		}
-
-		ctx := context.Background()
-		schem, getErr := appStore.Schematics.GetByID(ctx, schematicID)
-		if getErr != nil || schem == nil {
-			slog.Error("schematic image moderation: failed to load schematic",
-				"schematic_id", schematicID, "error", getErr)
-			return
-		}
-
-		// Collect reasons for flagged images
-		var flaggedReasons []string
-		if _, flagged := flaggedSet[schem.FeaturedImage]; flagged {
-			slog.Warn("schematic image moderation: featured image flagged",
-				"schematic_id", schematicID, "filename", schem.FeaturedImage)
-			flaggedReasons = append(flaggedReasons, "featured image flagged: "+schem.FeaturedImage)
-		}
-		for _, g := range schem.Gallery {
-			if _, flagged := flaggedSet[g]; flagged {
-				slog.Warn("schematic image moderation: gallery image flagged",
-					"schematic_id", schematicID, "filename", g)
-				flaggedReasons = append(flaggedReasons, "gallery image flagged: "+g)
-			}
-		}
-
-		if len(flaggedReasons) > 0 {
-			// Hold the schematic for manual review instead of removing images
-			schem.ModerationState = store.ModerationFlagged
-			schem.ModerationReason = "Images flagged by automated moderation: " + strings.Join(flaggedReasons, "; ")
-			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
-				slog.Error("schematic image moderation: failed to update schematic",
-					"schematic_id", schematicID, "error", updateErr)
-			}
-		}
+		// Per-image hold: hide just the flagged images and keep the schematic
+		// published (falling back to a visible featured image if needed), instead
+		// of holding the whole schematic for manual review. (#1646)
+		HoldSchematicImages(context.Background(), mailService, appStore, schematicID, flaggedImages,
+			"Held by automated image moderation: "+strings.Join(flaggedImages, ", "))
 	}()
 }

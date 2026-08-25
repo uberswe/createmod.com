@@ -3,8 +3,8 @@ package pages
 import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
-	"createmod/internal/store"
 	"createmod/internal/server"
+	"createmod/internal/store"
 	"net/http"
 )
 
@@ -38,9 +38,11 @@ func UploadPublishHandler(registry *server.Registry, cacheService *cache.Service
 		storeFiles, _ := appStore.TempUploadFiles.ListByToken(e.Request.Context(), token)
 		additionalFiles := mapStoreTempUploadFiles(storeFiles)
 
-		// Load pre-uploaded images from store (gallery and rotation separately)
-		preUploadedImages, _ := appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "gallery")
-		preUploadedRotation, _ := appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation")
+		// Load pre-uploaded images from store (gallery and rotation separately).
+		// Only show images that passed content moderation; pending ones aren't
+		// servable yet and rejected ones were removed. (#1646)
+		preUploadedImages := approvedTempImages(appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "gallery"))
+		preUploadedRotation := approvedTempImages(appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation"))
 
 		d := UploadPublishData{}
 		d.Populate(e)

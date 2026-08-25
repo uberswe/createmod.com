@@ -54,7 +54,7 @@ func ModifyHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		// Must be published (moderated) or the user is the owner
 		userID := authenticatedUserID(e)
 		isOwner := userID != "" && s.AuthorID == userID
-		isPublished := s.Deleted == nil && (store.IsPublicState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
+		isPublished := s.Deleted == nil && (store.IsViewableState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
 		if !isPublished && !isOwner {
 			return e.NotFoundError("Schematic not found", nil)
 		}
@@ -144,7 +144,7 @@ func ModifyDownloadHandler(appStore *store.Store, storageService *storage.Servic
 		// Must be published (moderated) or the user is the owner
 		userID := authenticatedUserID(e)
 		isOwner := userID != "" && s.AuthorID == userID
-		isPublished := s.Deleted == nil && (store.IsPublicState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
+		isPublished := s.Deleted == nil && (store.IsViewableState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
 		if !isPublished && !isOwner {
 			return e.NotFoundError("Schematic not found", nil)
 		}
@@ -221,7 +221,7 @@ func ModifyPreviewHandler(appStore *store.Store, storageService *storage.Service
 		// Must be published (moderated) or the user is the owner
 		userID := authenticatedUserID(e)
 		isOwner := userID != "" && s.AuthorID == userID
-		isPublished := s.Deleted == nil && (store.IsPublicState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
+		isPublished := s.Deleted == nil && (store.IsViewableState(s.ModerationState) || s.ModerationState == store.ModerationRejected)
 		if !isPublished && !isOwner {
 			return e.NotFoundError("Schematic not found", nil)
 		}

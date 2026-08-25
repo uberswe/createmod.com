@@ -20,6 +20,7 @@ import (
 
 	"createmod/internal/server"
 	"createmod/internal/storage"
+	"createmod/internal/store"
 
 	"github.com/disintegration/imaging"
 )
@@ -41,7 +42,7 @@ func thumbS3Key(s3Collection, recordID string, w, h int, filename string) string
 
 // FileServingHandler serves files from S3 with optional ?thumb=WxH image resizing.
 // URL pattern: GET /api/files/{collection}/{recordID}/{filename}
-func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func FileServingHandler(storageSvc *storage.Service, appStore *store.Store) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if storageSvc == nil {
 			return e.String(http.StatusServiceUnavailable, "file storage not configured")
@@ -53,6 +54,15 @@ func FileServingHandler(storageSvc *storage.Service) func(e *server.RequestEvent
 
 		if collection == "" || recordID == "" || filename == "" {
 			return e.String(http.StatusBadRequest, "missing path parameters")
+		}
+
+		// Gate API-uploaded temp images: don't serve until content moderation has
+		// approved them (rejected images are deleted, pending ones aren't public
+		// yet). recordID is the upload token. (#1646)
+		if appStore != nil && collection == s3CollectionTempUploads {
+			if status, err := appStore.TempUploadImages.GetModerationStatus(e.Request.Context(), recordID, filename); err == nil && status != "" && status != store.TempImageApproved {
+				return e.String(http.StatusNotFound, "not found")
+			}
 		}
 
 		// Map collection name to legacy PB collection ID for S3 key lookup

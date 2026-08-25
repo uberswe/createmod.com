@@ -1,0 +1,59 @@
+<div id="owner-moderation">
+    {{ if .OwnerModeration.Banners }}
+    <div class="cm-owner-banners mb-3">
+        {{ range .OwnerModeration.Banners }}
+        <div class="cm-owner-banner cm-owner-banner--{{ .Level }}">
+            <span class="cm-owner-banner__dot"></span>
+            <div>
+                <div class="cm-owner-banner__title">{{ .Title }}</div>
+                <div class="cm-owner-banner__body">{{ .Body }}</div>
+            </div>
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
+    {{ if .OwnerModeration.HasChecklist }}
+    <div class="card cm-modlist mb-3">
+        <div class="card-body">
+            <div class="cm-modlist__title">To unlock full visibility</div>
+            {{ range .OwnerModeration.Checklist }}
+            <div class="cm-modlist__row">
+                <span class="cm-modlist__dot"></span>
+                <div class="cm-modlist__text">
+                    <span class="cm-src cm-src--{{ .SourceLevel }}">{{ .SourceLabel }}</span>
+                    <div class="cm-modlist__note">{{ .Note }}</div>
+                    {{ if eq .Kind "description" }}
+                    <div class="cm-fixinline" id="fix-description" style="display:none">
+                        <textarea name="description" id="fix-desc-ta" class="form-control" rows="4"
+                                  oninput="cmFixMeter()">{{ $.OwnerModeration.DescriptionText }}</textarea>
+                        <div class="cm-meter" id="fix-desc-meter" data-level="empty">
+                            <span class="cm-meter__dot"></span>
+                            <span class="cm-meter__msg" id="fix-desc-msg">Add more detail to unlock full visibility.</span>
+                            <span class="cm-meter__count" id="fix-desc-count">0 words</span>
+                        </div>
+                        <div class="cm-fixinline__foot">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="cmFixCancel()">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="fix-desc-save"
+                                    hx-post="/schematics/{{ $.Schematic.ID }}/description"
+                                    hx-include="#fix-desc-ta"
+                                    hx-target="#owner-moderation" hx-swap="outerHTML"
+                                    hx-indicator="#fix-desc-spin">Save &amp; re-check</button>
+                            <span id="fix-desc-spin" class="htmx-indicator cm-recheck">
+                                <span class="spinner-border spinner-border-sm"></span> Re-checking your description…
+                            </span>
+                        </div>
+                    </div>
+                    {{ end }}
+                </div>
+                {{ if eq .Kind "description" }}
+                <button type="button" class="btn btn-primary btn-sm cm-modlist__cta" id="fix-desc-open" onclick="cmFixOpen()">Fix now</button>
+                {{ else }}
+                <a href="{{ .CTAURL }}" class="btn btn-primary btn-sm cm-modlist__cta">{{ .CTALabel }}</a>
+                {{ end }}
+            </div>
+            {{ end }}
+            <div class="cm-modlist__foot">Your schematic stays reachable at its link the whole time. As soon as everything is resolved it appears in Latest and search automatically — no re-submission needed.</div>
+        </div>
+    </div>
+    {{ end }}
+</div>

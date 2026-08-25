@@ -96,7 +96,7 @@ func SchematicNBTTreeHandler(appStore *store.Store, cacheService *cache.Service,
 		}
 		name := e.Request.PathValue("name")
 		s, err := appStore.Schematics.GetByName(e.Request.Context(), name)
-		if err != nil || s == nil || !store.IsPublicState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
+		if err != nil || s == nil || !store.IsViewableState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "schematic not found"})
 		}
 		primary := strings.TrimSpace(s.SchematicFile)
@@ -276,7 +276,7 @@ func SchematicNBTDataHandler(registry *server.Registry, cacheService *cache.Serv
 	return func(e *server.RequestEvent) error {
 		name := e.Request.PathValue("name")
 		s, err := appStore.Schematics.GetByName(e.Request.Context(), name)
-		if err != nil || s == nil || !store.IsPublicState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
+		if err != nil || s == nil || !store.IsViewableState(s.ModerationState) || (s.Deleted != nil && !s.Deleted.IsZero()) {
 			return FourOhFourHandler(registry, appStore)(e)
 		}
 		d := nbtDataPageData{}

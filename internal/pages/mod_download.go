@@ -193,7 +193,7 @@ func modDownloadSchematic(ctx context.Context, appStore *store.Store, storageSvc
 		}
 	}
 
-	if !store.IsPublicState(s.ModerationState) {
+	if !store.IsViewableState(s.ModerationState) {
 		return nil, &modDownloadError{http.StatusNotFound, "schematic not found"}
 	}
 

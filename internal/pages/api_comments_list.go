@@ -47,7 +47,7 @@ func APISchematicCommentsHandler(rl ratelimit.Limiter, cacheService *cache.Servi
 
 		ctx := context.Background()
 		s, err := appStore.Schematics.GetByName(ctx, name)
-		if err != nil || s == nil || s.Deleted != nil || !store.IsPublicState(s.ModerationState) {
+		if err != nil || s == nil || s.Deleted != nil || !store.IsViewableState(s.ModerationState) {
 			return writeJSON(e, http.StatusNotFound, map[string]string{"error": "not found"})
 		}
 

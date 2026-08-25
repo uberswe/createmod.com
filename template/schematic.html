@@ -41,40 +41,7 @@
                     </div>
                 </div>
                 {{ .SchematicJSONLD }}
-                {{ if eq .ModerationBanner "auto_review" }}
-                <div class="alert alert-info mb-3" role="alert">
-                    <div class="d-flex align-items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 7l0 5l3 3" /></svg>
-                        <div>
-                            <h4 class="alert-title mb-0">{{ T .Language "Under Review" }}</h4>
-                            <div class="text-secondary">{{ T .Language "Your schematic is being reviewed. This usually takes a few minutes." }}</div>
-                        </div>
-                    </div>
-                </div>
-                {{ else if eq .ModerationBanner "flagged" }}
-                <div class="alert alert-warning mb-3" role="alert">
-                    <div class="d-flex align-items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" /></svg>
-                        <div>
-                            <h4 class="alert-title mb-0">{{ T .Language "Flagged for Review" }}</h4>
-                            <div class="text-secondary">{{ T .Language "Your submission was caught by automated moderation, a human moderator will review this within 48 hours before it is published and visible on the site." }}</div>
-                        </div>
-                    </div>
-                </div>
-                {{ else if eq .ModerationBanner "rejected" }}
-                <div class="alert alert-danger mb-3" role="alert">
-                    <div class="d-flex align-items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
-                        <div>
-                            <h4 class="alert-title mb-0">{{ T .Language "Did Not Pass Moderation" }}</h4>
-                            <div class="text-secondary">{{ T .Language "Your schematic did not pass moderation and is not publicly listed." }}</div>
-                            <div class="mt-2">
-                                <a href="/schematics/{{ .Schematic.Name }}/edit" class="btn btn-sm btn-outline-danger">{{ T .Language "Edit Schematic" }}</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {{ end }}
+                {{ template "schematic_moderation.html" . }}
                 {{ if .ScheduledFor }}
                 <div class="alert alert-info mb-3" role="alert">
                     <div class="d-flex align-items-center">
@@ -90,7 +57,7 @@
                     <div class="card-header">
                         <h3 class="card-title">
                             <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1" /></svg>
-                            {{ T .Language "Moderation Discussion" }}
+                            {{ T .Language "Questions? Message the moderators" }}
                         </h3>
                     </div>
                     <div class="card-body">
@@ -119,7 +86,7 @@
                             {{ end }}
                         </div>
                         {{ else }}
-                        <p class="text-secondary mb-0">{{ T .Language "No messages yet. Start a conversation about this schematic's moderation status." }}</p>
+                        <p class="text-secondary mb-0">{{ if .OwnerModeration.AppealOnly }}{{ T .Language "No messages yet. Use this thread to ask a question or to appeal this decision." }}{{ else }}{{ T .Language "No messages yet. Ask the moderators anything about your schematic's status." }}{{ end }}</p>
                         {{ end }}
                     </div>
                     {{ if .CanPostMessage }}
@@ -355,7 +322,7 @@
                             {{ end }}
                             <div class="card-body">
                                 {{/* Gallery thumbnails — horizontally scrollable strip */}}
-                                {{ if or .Schematic.HasGallery (and .Schematic.HasRotationImages (ne .Schematic.FeaturedImage "")) }}
+                                {{ if or .Schematic.HasGallery (and .Schematic.HasRotationImages (ne .Schematic.FeaturedImage "")) (and .IsAuthor .Schematic.HeldImages) }}
                                 <div class="gallery-strip-wrapper">
                                     <button class="gallery-strip-arrow gallery-strip-arrow-left" aria-label="{{ T .Language "gallery.scroll_left" }}" style="display:none">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -374,6 +341,14 @@
                                             <div class="gallery-strip-thumb"
                                                  style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=300x300&v=2')"></div>
                                         </a>
+                                        {{ end }}
+                                        {{ if .IsAuthor }}
+                                        {{ range .Schematic.HeldImages }}
+                                        <div class="gallery-strip-item cm-held-tile" title="This image is hidden from visitors while a moderator reviews it. It returns automatically if approved.">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" /><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" /><path d="M3 3l18 18" /></svg>
+                                            <span class="cm-held-tile__label">In review</span>
+                                        </div>
+                                        {{ end }}
                                         {{ end }}
                                     </div>
                                     <button class="gallery-strip-arrow gallery-strip-arrow-right" aria-label="{{ T .Language "gallery.scroll_right" }}" style="display:none">
@@ -1385,6 +1360,51 @@ function copyMaterialsAsMarkdown() {
         animateCopyButton(btn);
     }
 }
+</script>
+<script>
+// Inline "Fix now" description editor on the owner moderation checklist (#1646).
+// Defined at page level so it survives the HTMX swap of #owner-moderation.
+(function () {
+    window.cmFixOpen = function () {
+        var box = document.getElementById('fix-description');
+        var open = document.getElementById('fix-desc-open');
+        if (box) box.style.display = '';
+        if (open) open.style.display = 'none';
+        cmFixMeter();
+        var ta = document.getElementById('fix-desc-ta');
+        if (ta) ta.focus();
+    };
+    window.cmFixCancel = function () {
+        var box = document.getElementById('fix-description');
+        var open = document.getElementById('fix-desc-open');
+        if (box) box.style.display = 'none';
+        if (open) open.style.display = '';
+    };
+    // Live meter mirroring the publish form thresholds: <5 blocks Save, 5-24
+    // publishes limited, >=25 unlocks full visibility.
+    window.cmFixMeter = function () {
+        var ta = document.getElementById('fix-desc-ta');
+        if (!ta) return;
+        var text = (ta.value || '').trim();
+        var words = text ? text.split(/\s+/).filter(function (w) { return w.length > 0; }).length : 0;
+        var meter = document.getElementById('fix-desc-meter');
+        var msg = document.getElementById('fix-desc-msg');
+        var count = document.getElementById('fix-desc-count');
+        var save = document.getElementById('fix-desc-save');
+        if (count) count.textContent = words + (words === 1 ? ' word' : ' words');
+        var level = 'empty', text2 = 'Add more detail to unlock full visibility.', block = true;
+        if (words >= 25) { level = 'ok'; text2 = 'Looks good. This will unlock Latest and search.'; block = false; }
+        else if (words >= 5) { level = 'warn'; text2 = 'Better — but add more detail to appear in Latest and search.'; block = false; }
+        else if (words > 0) { level = 'bad'; text2 = 'Too short. Write at least 5 words.'; block = true; }
+        if (meter) meter.setAttribute('data-level', level);
+        if (msg) msg.textContent = text2;
+        if (save) save.disabled = block;
+    };
+})();
+// Re-init the meter after HTMX swaps the region back in.
+document.body.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.target && evt.target.id === 'owner-moderation' && window.cmFixMeter) window.cmFixMeter();
+});
 </script>
 {{template "foot.html" .}}
 

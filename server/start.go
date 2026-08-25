@@ -597,6 +597,7 @@ func (s *Server) startJobWorker(windowDays []int) {
 			SessionStore:       s.sessionStore,
 			Moderation:         s.moderationService,
 			Mail:               s.mailService,
+			RateLimiter:        s.rateLimiter,
 			MeiliClient:        s.meiliClient,
 			TwitchClientID:     s.conf.TwitchClientID,
 			TwitchClientSecret: s.conf.TwitchClientSecret,
