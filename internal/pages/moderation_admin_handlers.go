@@ -65,12 +65,16 @@ type ModDetail struct {
 	State            string
 	DetectedLanguage string
 	Description      template.HTML
-	AutoReason       string
-	HasAutoReason    bool
-	Images           []ModImage
-	Materials        []nbtparser.Material
-	Category         string
-	Tags             []string
+	// DescriptionEN is the stored English auto-translation, shown via the
+	// Original / English toggle when the schematic isn't already English. (#1646)
+	DescriptionEN  template.HTML
+	HasTranslation bool
+	AutoReason     string
+	HasAutoReason  bool
+	Images         []ModImage
+	Materials      []nbtparser.Material
+	Category       string
+	Tags           []string
 }
 
 type ModeratorReviewData struct {
@@ -101,10 +105,18 @@ func ModeratorReviewHandler(registry *server.Registry, cacheService *cache.Servi
 			selID = rows[0].ID
 		}
 
+		// Batch-load categories + tags for the whole queue in two queries.
+		ids := make([]string, len(rows))
+		for i := range rows {
+			ids[i] = rows[i].ID
+		}
+		cats, _ := appStore.Schematics.BatchGetCategoriesForSchematics(ctx, ids)
+		tags, _ := appStore.Schematics.BatchGetTagsForSchematics(ctx, ids)
+
 		d := ModeratorReviewData{Total: total, SLAHours: moderationSLAHours()}
 		d.Queue = make([]ModQueueCard, 0, len(rows))
 		for i := range rows {
-			d.Queue = append(d.Queue, buildModQueueCard(ctx, appStore, &rows[i], selID))
+			d.Queue = append(d.Queue, buildModQueueCard(ctx, appStore, &rows[i], selID, cats[rows[i].ID], tags[rows[i].ID]))
 		}
 		if selID != "" {
 			d.Detail = buildModDetail(ctx, appStore, selID)
@@ -146,11 +158,15 @@ func schemFlags(s *store.Schematic) []ModFlag {
 	return flags
 }
 
-func buildModQueueCard(ctx context.Context, appStore *store.Store, s *store.Schematic, selID string) ModQueueCard {
+func buildModQueueCard(ctx context.Context, appStore *store.Store, s *store.Schematic, selID string, cats []store.SchematicCategoryInfo, tags []store.SchematicTagInfo) ModQueueCard {
 	approvals, removals := authorTrust(ctx, appStore, s.AuthorID)
 	author := ""
 	if u := findUserFromStore(appStore, s.AuthorID); u != nil {
 		author = u.Username
+	}
+	category := ""
+	if len(cats) > 0 {
+		category = cats[0].Name
 	}
 	return ModQueueCard{
 		ID:        s.ID,
@@ -160,9 +176,19 @@ func buildModQueueCard(ctx context.Context, appStore *store.Store, s *store.Sche
 		Approvals: approvals,
 		Removals:  removals,
 		Age:       timediff.TimeDiff(s.Created),
+		Category:  category,
+		Tags:      tagNames(tags),
 		Flags:     schemFlags(s),
 		Selected:  s.ID == selID,
 	}
+}
+
+func tagNames(tags []store.SchematicTagInfo) []string {
+	out := make([]string, 0, len(tags))
+	for _, t := range tags {
+		out = append(out, t.Name)
+	}
+	return out
 }
 
 func buildModDetail(ctx context.Context, appStore *store.Store, id string) *ModDetail {
@@ -242,6 +268,29 @@ func buildModDetail(ctx context.Context, appStore *store.Store, id string) *ModD
 		_ = json.Unmarshal(s.Materials, &mats)
 	}
 	d.Materials = mats
+
+	// Category + tags for the header badges.
+	if cats, err := appStore.Schematics.BatchGetCategoriesForSchematics(ctx, []string{s.ID}); err == nil {
+		if list := cats[s.ID]; len(list) > 0 {
+			d.Category = list[0].Name
+		}
+	}
+	if tg, err := appStore.Schematics.BatchGetTagsForSchematics(ctx, []string{s.ID}); err == nil {
+		d.Tags = tagNames(tg[s.ID])
+	}
+
+	// English auto-translation for the Original / English toggle (only when the
+	// content isn't already English and a translation exists).
+	if appStore.Translations != nil && s.DetectedLanguage != "" && s.DetectedLanguage != "en" {
+		if tr, err := appStore.Translations.GetSchematicTranslation(ctx, s.ID, "en"); err == nil && tr != nil && tr.Content != "" {
+			enSan := template.HTMLEscapeString(tr.Content)
+			if san, sErr := htmlsanitizer.NewHTMLSanitizer().SanitizeString(tr.Content); sErr == nil {
+				enSan = san
+			}
+			d.DescriptionEN = template.HTML(enSan)
+			d.HasTranslation = true
+		}
+	}
 	return d
 }
 

@@ -3473,3 +3473,11 @@ body.sidebar-ready .generator-overlay {
 .cm-recheck { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #4299e1; }
 .htmx-indicator { opacity: 0; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+
+/* Moderator review: category/tag chips + translation toggle (#1646) */
+.cm-qcard__tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.cm-tagchip { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--cm-border-strong); color: var(--cm-text-muted); }
+.cm-tagchip--cat { color: var(--cm-link); border-color: var(--cm-border-gold); }
+.cm-transtoggle { display: inline-flex; margin-left: auto; border: 1px solid var(--cm-border-color); border-radius: 999px; overflow: hidden; }
+.cm-transtoggle__btn { padding: 3px 12px; font-size: 12px; background: transparent; color: var(--cm-text-muted); border: 0; cursor: pointer; }
+.cm-transtoggle__btn.is-active { background: var(--cm-primary); color: #20160a; font-weight: 600; }

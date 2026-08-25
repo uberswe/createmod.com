@@ -18,6 +18,12 @@
                         <a class="cm-qcard{{ if .Selected }} cm-qcard--sel{{ end }}" href="/admin/moderation?id={{ .ID }}">
                             <div class="cm-qcard__title">{{ .Title }}</div>
                             <div class="cm-qcard__meta">by {{ .Author }} · {{ .Approvals }}✓ {{ .Removals }}✕ · {{ .Age }}</div>
+                            {{ if or .Category .Tags }}
+                            <div class="cm-qcard__tags">
+                                {{ if .Category }}<span class="cm-tagchip cm-tagchip--cat">{{ .Category }}</span>{{ end }}
+                                {{ range .Tags }}<span class="cm-tagchip">{{ . }}</span>{{ end }}
+                            </div>
+                            {{ end }}
                             {{ if .Flags }}
                             <div class="cm-qcard__flags">
                                 {{ range .Flags }}<span class="cm-flag cm-flag--{{ .Level }}">{{ .Label }}</span>{{ end }}
@@ -38,6 +44,12 @@
                             <div>
                                 <h1 class="cm-detail__title">{{ .Title }}</h1>
                                 <div class="cm-detail__meta">by {{ .Author }} · {{ .Approvals }} published · {{ .Removals }} removed · {{ .Age }}</div>
+                                {{ if or .Category .Tags }}
+                                <div class="cm-qcard__tags" style="margin-top:8px">
+                                    {{ if .Category }}<span class="cm-tagchip cm-tagchip--cat">{{ .Category }}</span>{{ end }}
+                                    {{ range .Tags }}<span class="cm-tagchip">{{ . }}</span>{{ end }}
+                                </div>
+                                {{ end }}
                             </div>
                             <a class="btn btn-outline-secondary btn-sm" href="/schematics/{{ .Name }}" target="_blank" rel="noopener">Open schematic ↗</a>
                         </div>
@@ -71,8 +83,15 @@
                             <div class="cm-detail__deschead">
                                 <span class="cm-card-title" style="margin:0">Description</span>
                                 {{ if .DetectedLanguage }}<span class="cm-badge cm-badge--upper">{{ .DetectedLanguage }} detected</span>{{ end }}
+                                {{ if .HasTranslation }}
+                                <div class="cm-transtoggle" role="group">
+                                    <button type="button" class="cm-transtoggle__btn is-active" data-trans="orig" onclick="cmTrans('orig')">Original</button>
+                                    <button type="button" class="cm-transtoggle__btn" data-trans="en" onclick="cmTrans('en')">English (auto)</button>
+                                </div>
+                                {{ end }}
                             </div>
-                            <div class="cm-desc">{{ .Description }}</div>
+                            <div class="cm-desc" id="desc-orig">{{ .Description }}</div>
+                            {{ if .HasTranslation }}<div class="cm-desc" id="desc-en" style="display:none">{{ .DescriptionEN }}</div>{{ end }}
                         </div></div>
 
                         <!-- Auto-moderation flags -->
@@ -175,5 +194,16 @@
     };
     window.modCancel = function () { form.style.display = 'none'; mode = ''; };
 })();
+// Original / English (auto) description toggle.
+window.cmTrans = function (which) {
+    var orig = document.getElementById('desc-orig');
+    var en = document.getElementById('desc-en');
+    if (!orig || !en) return;
+    orig.style.display = (which === 'orig') ? '' : 'none';
+    en.style.display = (which === 'en') ? '' : 'none';
+    document.querySelectorAll('.cm-transtoggle__btn').forEach(function (b) {
+        b.classList.toggle('is-active', b.getAttribute('data-trans') === which);
+    });
+};
 </script>
 {{template "foot.html" .}}
