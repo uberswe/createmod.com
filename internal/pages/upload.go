@@ -908,8 +908,8 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		d.IsUnclaimed = entry.UploadedBy == ""
 		d.AdditionalFiles = additionalFiles
 
-		// Load rotation images for 360° viewer
-		if rotImgs, rErr := appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation"); rErr == nil && len(rotImgs) > 0 {
+		// Load rotation images for 360° viewer (approved only). (#1646)
+		if rotImgs := approvedTempImages(appStore.TempUploadImages.ListByTokenAndCategory(e.Request.Context(), token, "rotation")); len(rotImgs) > 0 {
 			rotURLs := make([]string, len(rotImgs))
 			for i, img := range rotImgs {
 				rotURLs[i] = "/api/files/" + img.S3Key

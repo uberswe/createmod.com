@@ -90,6 +90,60 @@ func moderateGuideBanner(moderationSvc *moderation.Service, appStore *store.Stor
 	}()
 }
 
+// approvedTempImages filters a temp-image list to those that passed content
+// moderation, for display. Pending images aren't servable yet and rejected ones
+// were removed, so neither is shown. Takes the (slice, err) result of a store
+// call directly for convenience. (#1646)
+func approvedTempImages(imgs []store.TempUploadImage, _ error) []store.TempUploadImage {
+	out := make([]store.TempUploadImage, 0, len(imgs))
+	for _, img := range imgs {
+		if img.ModerationStatus == store.TempImageApproved {
+			out = append(out, img)
+		}
+	}
+	return out
+}
+
+// ModerateTempUploadImageAsync runs the free, violence-tolerant content check on
+// a just-uploaded temp image (nudity/hate/harassment/self-harm blocked; violence
+// allowed) and records the outcome. Approved images become servable/displayable;
+// flagged images are deleted from storage and marked rejected. Runs in its own
+// goroutine so the upload response returns immediately. (#1646)
+func ModerateTempUploadImageAsync(moderationSvc *moderation.Service, storageSvc *storage.Service, appStore *store.Store, imageID, s3Key string, data []byte, mimeType string) {
+	if appStore == nil || imageID == "" {
+		return
+	}
+	// No moderation configured (e.g. dev): approve so images still work.
+	if moderationSvc == nil {
+		_ = appStore.TempUploadImages.UpdateModerationStatus(context.Background(), imageID, store.TempImageApproved)
+		return
+	}
+	go func() {
+		ctx := context.Background()
+		res, err := moderationSvc.CheckUserImageContent(data, mimeType)
+		if err != nil {
+			// Moderation unavailable — fail OPEN (approve) so an OpenAI outage
+			// doesn't break uploads; the post-publish image checks remain a
+			// backstop for anything published.
+			slog.Warn("temp image moderation unavailable, approving", "image_id", imageID, "error", err)
+			_ = appStore.TempUploadImages.UpdateModerationStatus(ctx, imageID, store.TempImageApproved)
+			return
+		}
+		if res.Approved {
+			_ = appStore.TempUploadImages.UpdateModerationStatus(ctx, imageID, store.TempImageApproved)
+			return
+		}
+		// Rejected: delete the object so it is never served, mark the record.
+		slog.Warn("temp image rejected by content moderation, removing", "image_id", imageID, "reason", res.Reason)
+		if storageSvc != nil && s3Key != "" {
+			if delErr := storageSvc.DeleteRaw(ctx, s3Key); delErr != nil {
+				slog.Error("temp image moderation: failed to delete rejected image", "image_id", imageID, "s3_key", s3Key, "error", delErr)
+			}
+		}
+		_ = appStore.TempUploadImages.UpdateModerationStatus(ctx, imageID, store.TempImageRejected)
+	}()
+}
+
 // HoldSchematicImages marks filenames as held on a schematic — hidden from
 // visitors, shown to the owner as "in review" placeholders — WITHOUT changing
 // the schematic's moderation state. If the featured image is held it falls back

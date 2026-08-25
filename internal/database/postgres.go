@@ -6344,7 +6344,26 @@ func (s *TempUploadImageStoreImpl) Create(ctx context.Context, img *store.TempUp
 	}
 	img.ID = row.ID
 	img.Created = row.Created
+	img.ModerationStatus = row.ModerationStatus
 	return nil
+}
+
+func (s *TempUploadImageStoreImpl) UpdateModerationStatus(ctx context.Context, id, status string) error {
+	return s.q.UpdateTempUploadImageModerationStatus(ctx, db.UpdateTempUploadImageModerationStatusParams{
+		ID:               id,
+		ModerationStatus: status,
+	})
+}
+
+func (s *TempUploadImageStoreImpl) GetModerationStatus(ctx context.Context, token, filename string) (string, error) {
+	status, err := s.q.GetTempUploadImageModerationStatus(ctx, db.GetTempUploadImageModerationStatusParams{
+		Token:    token,
+		Filename: filename,
+	})
+	if err != nil {
+		return "", err
+	}
+	return status, nil
 }
 
 func (s *TempUploadImageStoreImpl) ListByToken(ctx context.Context, token string) ([]store.TempUploadImage, error) {
@@ -6355,14 +6374,15 @@ func (s *TempUploadImageStoreImpl) ListByToken(ctx context.Context, token string
 	result := make([]store.TempUploadImage, len(rows))
 	for i, r := range rows {
 		result[i] = store.TempUploadImage{
-			ID:        r.ID,
-			Token:     r.Token,
-			Filename:  r.Filename,
-			Size:      r.Size,
-			S3Key:     r.S3Key,
-			SortOrder: int(r.SortOrder),
-			Category:  r.Category,
-			Created:   r.Created,
+			ID:               r.ID,
+			Token:            r.Token,
+			Filename:         r.Filename,
+			Size:             r.Size,
+			S3Key:            r.S3Key,
+			SortOrder:        int(r.SortOrder),
+			Category:         r.Category,
+			ModerationStatus: r.ModerationStatus,
+			Created:          r.Created,
 		}
 	}
 	return result, nil
@@ -6379,14 +6399,15 @@ func (s *TempUploadImageStoreImpl) ListByTokenAndCategory(ctx context.Context, t
 	result := make([]store.TempUploadImage, len(rows))
 	for i, r := range rows {
 		result[i] = store.TempUploadImage{
-			ID:        r.ID,
-			Token:     r.Token,
-			Filename:  r.Filename,
-			Size:      r.Size,
-			S3Key:     r.S3Key,
-			SortOrder: int(r.SortOrder),
-			Category:  r.Category,
-			Created:   r.Created,
+			ID:               r.ID,
+			Token:            r.Token,
+			Filename:         r.Filename,
+			Size:             r.Size,
+			S3Key:            r.S3Key,
+			SortOrder:        int(r.SortOrder),
+			Category:         r.Category,
+			ModerationStatus: r.ModerationStatus,
+			Created:          r.Created,
 		}
 	}
 	return result, nil

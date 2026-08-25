@@ -250,6 +250,8 @@ type Querier interface {
 	GetTempUploadByChecksum(ctx context.Context, checksum string) (GetTempUploadByChecksumRow, error)
 	GetTempUploadByToken(ctx context.Context, token string) (GetTempUploadByTokenRow, error)
 	GetTempUploadFileByID(ctx context.Context, id string) (TempUploadFile, error)
+	// Used by the file server to 404 temp images that aren't approved yet. (#1646)
+	GetTempUploadImageModerationStatus(ctx context.Context, arg GetTempUploadImageModerationStatusParams) (string, error)
 	GetTotalViewCount(ctx context.Context, schematicID string) (int32, error)
 	// Case-insensitive; an exact-casing match wins so accounts in pre-existing
 	// duplicate groups keep resolving to themselves, then oldest account.
@@ -508,6 +510,7 @@ type Querier interface {
 	UpdateSearchAlertLastChecked(ctx context.Context, id string) error
 	UpdateSearchAlertLastNotified(ctx context.Context, id string) error
 	UpdateTempUpload(ctx context.Context, arg UpdateTempUploadParams) error
+	UpdateTempUploadImageModerationStatus(ctx context.Context, arg UpdateTempUploadImageModerationStatusParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error

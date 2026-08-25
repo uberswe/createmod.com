@@ -1535,6 +1535,13 @@ type TempUploadFileStore interface {
 	DeleteByToken(ctx context.Context, token string) error
 }
 
+// Temp upload image moderation statuses. (#1646)
+const (
+	TempImagePending  = "pending"
+	TempImageApproved = "approved"
+	TempImageRejected = "rejected"
+)
+
 // TempUploadImage represents an image file attached to a temp upload.
 type TempUploadImage struct {
 	ID        string
@@ -1544,7 +1551,10 @@ type TempUploadImage struct {
 	S3Key     string
 	SortOrder int
 	Category  string
-	Created   time.Time
+	// ModerationStatus gates whether the image is served/displayed: pending
+	// (awaiting the async check), approved, or rejected (S3 object deleted). (#1646)
+	ModerationStatus string
+	Created          time.Time
 }
 
 // TempUploadImageStore manages images attached to temp uploads.
@@ -1552,6 +1562,11 @@ type TempUploadImageStore interface {
 	Create(ctx context.Context, img *TempUploadImage) error
 	ListByToken(ctx context.Context, token string) ([]TempUploadImage, error)
 	ListByTokenAndCategory(ctx context.Context, token, category string) ([]TempUploadImage, error)
+	// UpdateModerationStatus sets an image's moderation status after the async check.
+	UpdateModerationStatus(ctx context.Context, id, status string) error
+	// GetModerationStatus returns the status for a (token, filename) pair, used
+	// by the file server to gate serving. Empty string when no such image.
+	GetModerationStatus(ctx context.Context, token, filename string) (string, error)
 	Delete(ctx context.Context, id string) error
 	DeleteByToken(ctx context.Context, token string) error
 	CountByToken(ctx context.Context, token string) (int, error)

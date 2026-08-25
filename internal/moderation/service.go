@@ -3,6 +3,7 @@ package moderation
 import (
 	"createmod/internal/openai"
 	"createmod/internal/slowlog"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -174,6 +175,56 @@ func (s *Service) CheckImage(imageURL string) (*ModerationResult, error) {
 	}
 	if s.logger != nil {
 		s.logger.Debug("Image moderation check passed", "url", imageURL)
+	}
+	return &ModerationResult{Approved: true}, nil
+}
+
+// CheckUserImageContent moderates a user-uploaded image (raw bytes) with a
+// Minecraft-aware policy: it flags nudity/sexual, hate, harassment and self-harm
+// content but deliberately ALLOWS violence (violence, violence/graphic), since
+// Create-mod builds are frequently weapons and military vehicles — tanks,
+// cannons, nukes — which the model reports as violent. It moderates the bytes as
+// a base64 data URI (no public fetch), so a temp image can be checked while it
+// is still gated from public serving. (#1646)
+func (s *Service) CheckUserImageContent(imageData []byte, mimeType string) (*ModerationResult, error) {
+	if len(imageData) == 0 {
+		return &ModerationResult{Approved: true}, nil
+	}
+	if mimeType == "" {
+		mimeType = "image/webp"
+	}
+	dataURI := "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(imageData)
+	response, err := s.openaiClient.ModerateTextAndImage("", dataURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to moderate image: %w", err)
+	}
+	if len(response.Results) == 0 {
+		return &ModerationResult{Approved: true}, nil
+	}
+	c := response.Results[0].Categories
+	var flagged []string
+	if c.Sexual {
+		flagged = append(flagged, "sexual content")
+	}
+	if c.SexualMinors {
+		flagged = append(flagged, "sexual content involving minors")
+	}
+	if c.Hate || c.HateThreatening {
+		flagged = append(flagged, "hate")
+	}
+	if c.Harassment || c.HarassmentThreatening {
+		flagged = append(flagged, "harassment")
+	}
+	if c.SelfHarm || c.SelfHarmIntent || c.SelfHarmInstructions {
+		flagged = append(flagged, "self-harm")
+	}
+	// Violence and violence/graphic are intentionally NOT flagged.
+	if len(flagged) > 0 {
+		reason := "Image violates policy: " + strings.Join(flagged, ", ")
+		if s.logger != nil {
+			s.logger.Debug("User image content check failed", "reason", reason)
+		}
+		return &ModerationResult{Approved: false, Reason: reason}, nil
 	}
 	return &ModerationResult{Approved: true}, nil
 }

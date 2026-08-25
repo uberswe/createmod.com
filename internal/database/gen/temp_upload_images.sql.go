@@ -24,7 +24,7 @@ func (q *Queries) CountTempUploadImagesByToken(ctx context.Context, token string
 const createTempUploadImage = `-- name: CreateTempUploadImage :one
 INSERT INTO temp_upload_images (token, filename, size, s3_key, sort_order, category)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, token, filename, size, s3_key, sort_order, category, created
+RETURNING id, token, filename, size, s3_key, sort_order, category, moderation_status, created
 `
 
 type CreateTempUploadImageParams struct {
@@ -37,14 +37,15 @@ type CreateTempUploadImageParams struct {
 }
 
 type CreateTempUploadImageRow struct {
-	ID        string    `json:"id"`
-	Token     string    `json:"token"`
-	Filename  string    `json:"filename"`
-	Size      int64     `json:"size"`
-	S3Key     string    `json:"s3_key"`
-	SortOrder int32     `json:"sort_order"`
-	Category  string    `json:"category"`
-	Created   time.Time `json:"created"`
+	ID               string    `json:"id"`
+	Token            string    `json:"token"`
+	Filename         string    `json:"filename"`
+	Size             int64     `json:"size"`
+	S3Key            string    `json:"s3_key"`
+	SortOrder        int32     `json:"sort_order"`
+	Category         string    `json:"category"`
+	ModerationStatus string    `json:"moderation_status"`
+	Created          time.Time `json:"created"`
 }
 
 func (q *Queries) CreateTempUploadImage(ctx context.Context, arg CreateTempUploadImageParams) (CreateTempUploadImageRow, error) {
@@ -65,6 +66,7 @@ func (q *Queries) CreateTempUploadImage(ctx context.Context, arg CreateTempUploa
 		&i.S3Key,
 		&i.SortOrder,
 		&i.Category,
+		&i.ModerationStatus,
 		&i.Created,
 	)
 	return i, err
@@ -88,22 +90,42 @@ func (q *Queries) DeleteTempUploadImagesByToken(ctx context.Context, token strin
 	return err
 }
 
+const getTempUploadImageModerationStatus = `-- name: GetTempUploadImageModerationStatus :one
+SELECT moderation_status FROM temp_upload_images
+WHERE token = $1 AND filename = $2
+LIMIT 1
+`
+
+type GetTempUploadImageModerationStatusParams struct {
+	Token    string `json:"token"`
+	Filename string `json:"filename"`
+}
+
+// Used by the file server to 404 temp images that aren't approved yet. (#1646)
+func (q *Queries) GetTempUploadImageModerationStatus(ctx context.Context, arg GetTempUploadImageModerationStatusParams) (string, error) {
+	row := q.db.QueryRow(ctx, getTempUploadImageModerationStatus, arg.Token, arg.Filename)
+	var moderation_status string
+	err := row.Scan(&moderation_status)
+	return moderation_status, err
+}
+
 const listTempUploadImagesByToken = `-- name: ListTempUploadImagesByToken :many
-SELECT id, token, filename, size, s3_key, sort_order, category, created
+SELECT id, token, filename, size, s3_key, sort_order, category, moderation_status, created
 FROM temp_upload_images
 WHERE token = $1
 ORDER BY sort_order ASC
 `
 
 type ListTempUploadImagesByTokenRow struct {
-	ID        string    `json:"id"`
-	Token     string    `json:"token"`
-	Filename  string    `json:"filename"`
-	Size      int64     `json:"size"`
-	S3Key     string    `json:"s3_key"`
-	SortOrder int32     `json:"sort_order"`
-	Category  string    `json:"category"`
-	Created   time.Time `json:"created"`
+	ID               string    `json:"id"`
+	Token            string    `json:"token"`
+	Filename         string    `json:"filename"`
+	Size             int64     `json:"size"`
+	S3Key            string    `json:"s3_key"`
+	SortOrder        int32     `json:"sort_order"`
+	Category         string    `json:"category"`
+	ModerationStatus string    `json:"moderation_status"`
+	Created          time.Time `json:"created"`
 }
 
 func (q *Queries) ListTempUploadImagesByToken(ctx context.Context, token string) ([]ListTempUploadImagesByTokenRow, error) {
@@ -123,6 +145,7 @@ func (q *Queries) ListTempUploadImagesByToken(ctx context.Context, token string)
 			&i.S3Key,
 			&i.SortOrder,
 			&i.Category,
+			&i.ModerationStatus,
 			&i.Created,
 		); err != nil {
 			return nil, err
@@ -136,7 +159,7 @@ func (q *Queries) ListTempUploadImagesByToken(ctx context.Context, token string)
 }
 
 const listTempUploadImagesByTokenAndCategory = `-- name: ListTempUploadImagesByTokenAndCategory :many
-SELECT id, token, filename, size, s3_key, sort_order, category, created
+SELECT id, token, filename, size, s3_key, sort_order, category, moderation_status, created
 FROM temp_upload_images
 WHERE token = $1 AND category = $2
 ORDER BY sort_order ASC
@@ -148,14 +171,15 @@ type ListTempUploadImagesByTokenAndCategoryParams struct {
 }
 
 type ListTempUploadImagesByTokenAndCategoryRow struct {
-	ID        string    `json:"id"`
-	Token     string    `json:"token"`
-	Filename  string    `json:"filename"`
-	Size      int64     `json:"size"`
-	S3Key     string    `json:"s3_key"`
-	SortOrder int32     `json:"sort_order"`
-	Category  string    `json:"category"`
-	Created   time.Time `json:"created"`
+	ID               string    `json:"id"`
+	Token            string    `json:"token"`
+	Filename         string    `json:"filename"`
+	Size             int64     `json:"size"`
+	S3Key            string    `json:"s3_key"`
+	SortOrder        int32     `json:"sort_order"`
+	Category         string    `json:"category"`
+	ModerationStatus string    `json:"moderation_status"`
+	Created          time.Time `json:"created"`
 }
 
 func (q *Queries) ListTempUploadImagesByTokenAndCategory(ctx context.Context, arg ListTempUploadImagesByTokenAndCategoryParams) ([]ListTempUploadImagesByTokenAndCategoryRow, error) {
@@ -175,6 +199,7 @@ func (q *Queries) ListTempUploadImagesByTokenAndCategory(ctx context.Context, ar
 			&i.S3Key,
 			&i.SortOrder,
 			&i.Category,
+			&i.ModerationStatus,
 			&i.Created,
 		); err != nil {
 			return nil, err
@@ -185,4 +210,18 @@ func (q *Queries) ListTempUploadImagesByTokenAndCategory(ctx context.Context, ar
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateTempUploadImageModerationStatus = `-- name: UpdateTempUploadImageModerationStatus :exec
+UPDATE temp_upload_images SET moderation_status = $2 WHERE id = $1
+`
+
+type UpdateTempUploadImageModerationStatusParams struct {
+	ID               string `json:"id"`
+	ModerationStatus string `json:"moderation_status"`
+}
+
+func (q *Queries) UpdateTempUploadImageModerationStatus(ctx context.Context, arg UpdateTempUploadImageModerationStatusParams) error {
+	_, err := q.db.Exec(ctx, updateTempUploadImageModerationStatus, arg.ID, arg.ModerationStatus)
+	return err
 }

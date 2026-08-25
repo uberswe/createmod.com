@@ -781,14 +781,15 @@ type TempUploadFile struct {
 }
 
 type TempUploadImage struct {
-	ID        string    `json:"id"`
-	Token     string    `json:"token"`
-	Filename  string    `json:"filename"`
-	Size      int64     `json:"size"`
-	S3Key     string    `json:"s3_key"`
-	SortOrder int32     `json:"sort_order"`
-	Created   time.Time `json:"created"`
-	Category  string    `json:"category"`
+	ID               string    `json:"id"`
+	Token            string    `json:"token"`
+	Filename         string    `json:"filename"`
+	Size             int64     `json:"size"`
+	S3Key            string    `json:"s3_key"`
+	SortOrder        int32     `json:"sort_order"`
+	Created          time.Time `json:"created"`
+	Category         string    `json:"category"`
+	ModerationStatus string    `json:"moderation_status"`
 }
 
 type TrafficStat struct {

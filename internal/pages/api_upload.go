@@ -3,6 +3,7 @@ package pages
 import (
 	"context"
 	"createmod/internal/cache"
+	"createmod/internal/moderation"
 	"createmod/internal/nbtparser"
 	"createmod/internal/ratelimit"
 	"createmod/internal/storage"
@@ -43,11 +44,11 @@ var allowedImageExts = map[string]bool{
 	".gif":  true,
 }
 
-func processUploadImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
-	return processFormImages(ctx, r, "images", "gallery", maxGalleryImages, token, appStore, storageSvc)
+func processUploadImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) []uploadImageResponse {
+	return processFormImages(ctx, r, "images", "gallery", maxGalleryImages, token, appStore, storageSvc, moderationSvc)
 }
 
-func processUploadRotationImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
+func processUploadRotationImages(ctx context.Context, r *http.Request, token string, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) []uploadImageResponse {
 	if r.MultipartForm == nil || r.MultipartForm.File == nil {
 		return nil
 	}
@@ -124,6 +125,7 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 				slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token[:8])
 				return
 			}
+			ModerateTempUploadImageAsync(moderationSvc, storageSvc, appStore, img.ID, s3Key, converted, contentType)
 
 			mu.Lock()
 			results = append(results, result{
@@ -146,7 +148,7 @@ func processUploadRotationImages(ctx context.Context, r *http.Request, token str
 	return images
 }
 
-func processFormImages(ctx context.Context, r *http.Request, formField, category string, maxImages int, token string, appStore *store.Store, storageSvc *storage.Service) []uploadImageResponse {
+func processFormImages(ctx context.Context, r *http.Request, formField, category string, maxImages int, token string, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) []uploadImageResponse {
 	if r.MultipartForm == nil || r.MultipartForm.File == nil {
 		return nil
 	}
@@ -202,6 +204,9 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 			slog.Error("api upload: failed to create temp upload image record", "error", err, "token", token[:8])
 			continue
 		}
+		// Async content moderation (nudity/hate/etc; violence allowed). The image
+		// stays 'pending' — gated from serving — until this approves it. (#1646)
+		ModerateTempUploadImageAsync(moderationSvc, storageSvc, appStore, img.ID, s3Key, data, contentType)
 
 		images = append(images, uploadImageResponse{
 			Filename: filename,
@@ -217,7 +222,7 @@ func processFormImages(ctx context.Context, r *http.Request, formField, category
 // Accepts multipart/form-data with an .nbt file.
 // The upload goes through the same pipeline as web uploads -- returns a preview token, not a published schematic.
 // Uses PostgreSQL store for metadata and direct S3 for file storage.
-func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		const endpoint = "POST /api/schematics/upload"
 
@@ -379,8 +384,8 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 		}
 
 		// Process optional image uploads
-		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
-		uploadedRotation := processUploadRotationImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
+		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc, moderationSvc)
+		uploadedRotation := processUploadRotationImages(e.Request.Context(), e.Request, token, appStore, storageSvc, moderationSvc)
 
 		// Build response
 		resp := uploadNBTResponse{
@@ -414,7 +419,7 @@ func APIUploadHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStor
 // unauthenticated JSON API for uploading schematics. No API key is required.
 // Rate-limited by client IP (10 uploads/min). The upload is created with an
 // empty UploadedBy so it can later be claimed via /u/{token}/claim.
-func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service) func(e *server.RequestEvent) error {
+func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		// Rate limit by IP instead of API key
 		clientIP := e.RealIP()
@@ -558,8 +563,8 @@ func APIUploadAnonymousHandler(rl ratelimit.Limiter, cacheService *cache.Service
 		}
 
 		// Process optional image uploads
-		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
-		uploadedRotation := processUploadRotationImages(e.Request.Context(), e.Request, token, appStore, storageSvc)
+		uploadedImages := processUploadImages(e.Request.Context(), e.Request, token, appStore, storageSvc, moderationSvc)
+		uploadedRotation := processUploadRotationImages(e.Request.Context(), e.Request, token, appStore, storageSvc, moderationSvc)
 
 		// Build response
 		resp := uploadNBTResponse{
