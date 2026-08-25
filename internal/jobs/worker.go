@@ -10,6 +10,7 @@ import (
 	"createmod/internal/moderation"
 	"createmod/internal/modmeta"
 	"createmod/internal/pointlog"
+	"createmod/internal/ratelimit"
 	"createmod/internal/search"
 	"createmod/internal/session"
 	"createmod/internal/sitemap"
@@ -46,6 +47,7 @@ type Deps struct {
 	SessionStore       *session.Store
 	Moderation         *moderation.Service
 	Mail               *mailer.Service
+	RateLimiter        ratelimit.Limiter
 	MeiliClient        meilisearch.ServiceManager
 	TwitchClientID     string
 	TwitchClientSecret string

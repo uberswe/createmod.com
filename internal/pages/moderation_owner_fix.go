@@ -8,6 +8,7 @@ import (
 	"createmod/internal/mailer"
 	"createmod/internal/models"
 	"createmod/internal/moderation"
+	"createmod/internal/ratelimit"
 	"createmod/internal/server"
 	"createmod/internal/store"
 
@@ -31,7 +32,7 @@ type ownerModFragmentData struct {
 // check, resolves the description checklist item on pass, auto-promotes when
 // nothing is left open (reindex + "live" email), and returns the refreshed
 // moderation region so HTMX swaps it in place — no page reload. (#1646)
-func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *store.Store, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
+func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *store.Store, moderationSvc *moderation.Service, mailService *mailer.Service, rl ratelimit.Limiter, enqueueChecklistRecheck ChecklistRecheckEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if ok, err := requireAuth(e); !ok {
 			return err
@@ -67,18 +68,26 @@ func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *sto
 		}
 
 		// Re-check + promote only for the limited/changes-requested states.
+		// The quality re-check is a paid OpenAI call, so it draws on the user's
+		// hourly paid-AI budget. Under budget we run it now for instant feedback;
+		// over budget we DEFER to the deduped recheck job (which snoozes until the
+		// budget frees), so rapid editing can't run up cost. (#1646)
 		if schem.ModerationState == store.ModerationPublishedLimited ||
 			schem.ModerationState == store.ModerationChangesRequested {
-			if moderationSvc != nil && appStore.ModerationChecklist != nil {
+			if moderationSvc != nil && appStore.ModerationChecklist != nil && ratelimit.AllowPaidAI(ctx, rl, userID) {
 				if q, qErr := moderationSvc.CheckSchematicQuality(schem.Title, schem.Content); qErr == nil && q.Approved {
 					_, _ = appStore.ModerationChecklist.ResolveOpenByKind(ctx, id, store.ChecklistKindDescription)
 				}
-			}
-			if promoted, _ := PromoteIfChecklistResolved(ctx, appStore, id); promoted {
-				if enqueueSearchUpsert != nil {
-					_ = enqueueSearchUpsert(ctx, id)
+				if promoted, _ := PromoteIfChecklistResolved(ctx, appStore, id); promoted {
+					if enqueueSearchUpsert != nil {
+						_ = enqueueSearchUpsert(ctx, id)
+					}
+					SendSchematicLiveEmail(ctx, mailService, appStore, id)
 				}
-				SendSchematicLiveEmail(ctx, mailService, appStore, id)
+			} else if enqueueChecklistRecheck != nil {
+				// Over budget (or no moderation svc): the description is saved;
+				// defer the re-check. The job dedupes and snoozes until budget frees.
+				_ = enqueueChecklistRecheck(ctx, id)
 			}
 		}
 

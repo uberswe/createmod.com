@@ -4,6 +4,7 @@ import (
 	"context"
 	"createmod/internal/mailer"
 	"createmod/internal/pages"
+	"createmod/internal/ratelimit"
 	"createmod/internal/store"
 	"fmt"
 	"log/slog"
@@ -144,9 +145,17 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		}
 	}
 
-	// Run language detection and translation (regardless of moderation outcome)
+	// Language detection + translation is a paid OpenAI call, so it draws on the
+	// author's hourly paid-AI budget. Over budget we DEFER: the bounded, deduped
+	// translation backfill reconciles the missing translation on a later cycle,
+	// so rapid uploads/edits can't run up translation cost. (#1646)
 	if w.deps.Translation != nil {
-		w.deps.Translation.DetectAndTranslate(args.SchematicID)
+		if ratelimit.AllowPaidAI(ctx, w.deps.RateLimiter, schem.AuthorID) {
+			w.deps.Translation.DetectAndTranslate(args.SchematicID)
+		} else {
+			slog.Info("moderation: over paid-AI budget, deferring translation to backfill",
+				"schematic_id", args.SchematicID, "author_id", schem.AuthorID)
+		}
 	}
 
 	if schem.ModerationState == store.ModerationPublished {

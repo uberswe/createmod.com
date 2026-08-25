@@ -471,7 +471,12 @@ func Register(p RegisterParams) chi.Router {
 	if p.JobWorker != nil {
 		jw := p.JobWorker
 		enqueueChecklistRecheck = func(ctx context.Context, schematicID string) error {
-			return jw.Insert(ctx, jobs.ChecklistRecheckArgs{SchematicID: schematicID}, &river.InsertOpts{Queue: "ai"})
+			// Dedup by schematic over a short window so rapid edits collapse to a
+			// single pending re-check (which snoozes if over the paid-AI budget).
+			return jw.Insert(ctx, jobs.ChecklistRecheckArgs{SchematicID: schematicID}, &river.InsertOpts{
+				Queue:      "ai",
+				UniqueOpts: river.UniqueOpts{ByArgs: true, ByPeriod: 2 * time.Minute},
+			})
 		}
 	}
 	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
@@ -516,7 +521,10 @@ func Register(p RegisterParams) chi.Router {
 	r.Delete("/api/users/{id}", Adapt(pages.UserDeleteHandler(p.AppStore, p.CacheService, p.SessionStore)))
 	// Schematic edit/delete API (replaces PB REST endpoints)
 	r.Post("/schematics/{id}/update", Adapt(pages.SchematicUpdateHandler(p.CacheService, p.StorageService, p.AppStore, p.ModerationService, p.MailService, enqueueSearchUpsert, enqueueChecklistRecheck)))
-	r.Post("/schematics/{id}/description", Adapt(pages.SchematicDescriptionRecheckHandler(registry, p.AppStore, p.ModerationService, p.MailService, enqueueSearchUpsert)))
+	// Moderation check endpoints are rate-limited to 100/min per IP (own bucket)
+	// so a script can't hammer the re-check path. (#1646)
+	r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+		Post("/schematics/{id}/description", Adapt(pages.SchematicDescriptionRecheckHandler(registry, p.AppStore, p.ModerationService, p.MailService, p.RateLimiter, enqueueChecklistRecheck, enqueueSearchUpsert)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	// Schematic content management APIs (videos, references, modpacks, reddit links)
 	r.Post("/api/schematics/{id}/videos", Adapt(pages.AddSchematicVideoHandler(p.AppStore)))
@@ -609,8 +617,10 @@ func Register(p RegisterParams) chi.Router {
 		r.Post("/admin/reports/{id}/delete-target", Adapt(pages.AdminReportDeleteTargetHandler(p.AppStore)))
 		r.Post("/admin/reports/{id}/ignore", Adapt(pages.AdminReportIgnoreHandler(p.AppStore)))
 		r.Get("/admin/moderation", Adapt(pages.ModeratorReviewHandler(registry, p.CacheService, p.AppStore)))
-		r.Post("/admin/moderation/{id}/decision", Adapt(pages.ModeratorDecisionHandler(p.AppStore, p.MailService, enqueueSearchUpsert)))
-		r.Post("/admin/moderation/{id}/image", Adapt(pages.ModeratorImageHandler(p.AppStore)))
+		r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+			Post("/admin/moderation/{id}/decision", Adapt(pages.ModeratorDecisionHandler(p.AppStore, p.MailService, enqueueSearchUpsert)))
+		r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+			Post("/admin/moderation/{id}/image", Adapt(pages.ModeratorImageHandler(p.AppStore)))
 		r.Get("/admin/schematics", Adapt(pages.AdminSchematicsHandler(registry, p.CacheService, p.AppStore)))
 		r.Get("/admin/schematics/{id}", Adapt(pages.AdminSchematicEditHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/schematics/{id}", Adapt(pages.AdminSchematicUpdateHandler(p.CacheService, p.AppStore, p.MailService, p.StorageService, enqueueSearchUpsert)))

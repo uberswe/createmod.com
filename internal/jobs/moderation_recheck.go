@@ -3,12 +3,19 @@ package jobs
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"createmod/internal/pages"
+	"createmod/internal/ratelimit"
 	"createmod/internal/store"
 
 	"github.com/riverqueue/river"
 )
+
+// paidAISnooze is how long a paid-AI job waits when the author is over their
+// hourly budget before River re-runs it. Comfortably longer than the 1h budget
+// window so the retry lands with budget available. (#1646)
+const paidAISnooze = 65 * time.Minute
 
 // ChecklistRecheckArgs re-evaluates a schematic's open moderation checklist
 // after the author edits it (e.g. improved the description). If the relevant
@@ -41,6 +48,15 @@ func (w *ChecklistRecheckWorker) Work(ctx context.Context, job *river.Job[Checkl
 	if schem.ModerationState != store.ModerationPublishedLimited &&
 		schem.ModerationState != store.ModerationChangesRequested {
 		return nil
+	}
+
+	// The quality re-check is a paid OpenAI call. If the author is over their
+	// hourly paid-AI budget, DELAY: snooze the job (deduped by UniqueOpts, so
+	// repeated edits collapse to this one pending job) until the window frees.
+	// (#1646)
+	if !ratelimit.AllowPaidAI(ctx, w.deps.RateLimiter, schem.AuthorID) {
+		slog.Info("checklist recheck: over paid-AI budget, snoozing", "schematic_id", id, "author_id", schem.AuthorID)
+		return river.JobSnooze(paidAISnooze)
 	}
 
 	// Re-run the description quality check; resolve the auto description item(s)
