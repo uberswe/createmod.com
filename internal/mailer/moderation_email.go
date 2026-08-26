@@ -128,7 +128,7 @@ func SchematicLiveEmail(title, schematicURL string) string {
 	return ModerationEmailHTML(ModerationEmail{
 		Accent:   moderationGreen,
 		Heading:  fmt.Sprintf("Your schematic %s is live", title),
-		Body:     "Everything passed and your schematic is fully published. It shows up in Latest and in search like any other build. Thanks for sharing it!",
+		Body:     `All checks passed and your schematic is now fully published. It will now show under the "Latest Schematics" category and in search results. Thanks for sharing your creation!`,
 		CTALabel: "View your schematic",
 		CTAURL:   schematicURL,
 	})
@@ -158,7 +158,7 @@ func SchematicImageReviewEmail(title, schematicURL string, slaHours int) string 
 	return ModerationEmailHTML(ModerationEmail{
 		Accent:   moderationBlue,
 		Heading:  fmt.Sprintf("One image on %s is being reviewed", title),
-		Body:     fmt.Sprintf("Your schematic is live. One of your images tripped the automated scanner, so we've hidden it while a person takes a look, usually within %d hours. Shaders throw the scanner off sometimes, so this is often a false alarm. Visitors don't see the hidden image, and it comes back on its own if it passes.", slaHours),
+		Body:     fmt.Sprintf("Your schematic is live but one of your images tripped the automated scanner and is hidden until a real human can review it, usually within %d hours. Shaders throw the scanner off sometimes, so this is often a false alarm. Visitors don't see the hidden image, and it will automatically show again if it passes review.", slaHours),
 		CTALabel: "View your schematic",
 		CTAURL:   schematicURL,
 		Footer:   "If we do remove it, we'll tell you exactly why so you can upload a replacement.",
@@ -168,9 +168,9 @@ func SchematicImageReviewEmail(title, schematicURL string, slaHours int) string 
 // SchematicNotPublishedEmail: a schematic was rejected. fixable toggles the
 // second-chance vs appeal-only copy. (red)
 func SchematicNotPublishedEmail(title, schematicURL, reason string, fixable bool) string {
-	body := fmt.Sprintf("%s wasn't published because it broke one of our content rules.", title)
+	reasonSuffix := ""
 	if reason != "" {
-		body += " " + reason
+		reasonSuffix = " " + reason
 	}
 	m := ModerationEmail{
 		Accent:   moderationRed,
@@ -179,11 +179,11 @@ func SchematicNotPublishedEmail(title, schematicURL, reason string, fixable bool
 		CTAURL:   schematicURL,
 	}
 	if fixable {
-		m.Body = body + " You can fix it and resubmit once. The checklist on your schematic page tells you what to change."
+		m.Body = fmt.Sprintf("%s wasn't published because it contained wording that violates our content rules.%s You can fix it and resubmit your schematic. The checklist on your schematic page tells you what you need to change.", title, reasonSuffix)
 		m.CTALabel = "Fix and resubmit"
 		m.Footer = "Got questions? Reply in the moderation thread on your schematic page."
 	} else {
-		m.Body = body + " A moderator reviewed this and it won't go back up."
+		m.Body = fmt.Sprintf("%s wasn't published because it broke one of our content rules.%s This decision was made by a human moderator.", title, reasonSuffix)
 		m.Footer = "If a rejection is fixable, we include a checklist and a one-time resubmit button instead."
 	}
 	return ModerationEmailHTML(m)

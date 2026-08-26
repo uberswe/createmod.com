@@ -83,3 +83,41 @@ func EmailHTMLRaw(title, imageURL, linkURL, buttonLabel, bodyHTML string) string
 func SchematicEmailHTML(title, imageURL, schematicURL, bodyText string) string {
 	return EmailHTML(title, imageURL, schematicURL, "View Schematic", bodyText)
 }
+
+// NewsletterSchematic is one build listed in the trending newsletter. (#1646)
+type NewsletterSchematic struct {
+	Title    string
+	URL      string // absolute link to the schematic page
+	ImageURL string // absolute featured-image URL; empty renders a placeholder
+	Views    int64
+}
+
+// TrendingNewsletterHTML renders the weekly trending newsletter: an intro line
+// followed by each schematic as a row with its featured image, title and view
+// count, a "Browse All Schematics" button, and an optional unsubscribe link. It
+// uses the same dark brand layout as every other email. (#1646)
+func TrendingNewsletterHTML(title, intro string, items []NewsletterSchematic, browseURL, unsubURL string) string {
+	var rows strings.Builder
+	for _, it := range items {
+		thumb := fmt.Sprintf(`<div style="width:120px;height:80px;border-radius:6px;background-color:%s"></div>`, emailBox)
+		if it.ImageURL != "" {
+			thumb = fmt.Sprintf(`<img src="%s" width="120" height="80" alt="" style="width:120px;height:80px;object-fit:cover;border-radius:6px;display:block;border:0" />`, html.EscapeString(it.ImageURL))
+		}
+		rows.WriteString(fmt.Sprintf(`<tr>
+<td width="120" style="padding:8px 0;vertical-align:top"><a href="%s" style="text-decoration:none">%s</a></td>
+<td style="padding:8px 0 8px 14px;vertical-align:middle">
+<a href="%s" style="color:%s;font-size:15px;font-weight:bold;text-decoration:none">%s</a>
+<div style="color:%s;font-size:12.5px;padding-top:4px">%d views this week</div>
+</td>
+</tr>`, html.EscapeString(it.URL), thumb, html.EscapeString(it.URL), emailHeading, html.EscapeString(it.Title), emailMuted, it.Views))
+	}
+
+	body := fmt.Sprintf(`%s
+<table width="100%%" cellpadding="0" cellspacing="0" style="margin-top:8px">%s</table>`,
+		strings.ReplaceAll(html.EscapeString(intro), "\n", "<br>"), rows.String())
+	if unsubURL != "" {
+		body += fmt.Sprintf(`<div style="padding-top:18px;font-size:12px;color:%s"><a href="%s" style="color:%s">Unsubscribe from these emails</a></div>`,
+			emailMuted, html.EscapeString(unsubURL), emailMuted)
+	}
+	return genericEmailHTML(title, "", browseURL, "Browse All Schematics", body, false)
+}
