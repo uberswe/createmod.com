@@ -286,22 +286,22 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 // UploadMakePublicHandler accepts POSTs to publish a previously uploaded temp schematic.
 // Creates a real Schematic record, uploads images and copies NBT files from temp to
 // schematics S3 prefix, handles additional files (variations), then cleans up temp data.
-// checkDuplicateChecksum returns a user-facing error message when the given
-// checksum matches a live schematic (published/approved and not deleted) or a
-// creator-blacklisted hash. Rejected and deleted schematics do not block.
-// Returns "" when publishing may proceed. Skipped in dev mode (DEV=true).
-func checkDuplicateChecksum(ctx context.Context, appStore *store.Store, checksum string) string {
+// isDuplicateChecksum reports whether the given checksum matches a live
+// schematic (published/approved and not deleted) or a creator-blacklisted hash.
+// Rejected and deleted schematics do not count. Skipped in dev mode (DEV=true).
+// The author may still publish a duplicate via "submit anyway"; it then goes to
+// published_limited + human review rather than being auto-approved. (#1646)
+func isDuplicateChecksum(ctx context.Context, appStore *store.Store, checksum string) bool {
 	if checksum == "" || appStore == nil || os.Getenv("DEV") == "true" {
-		return ""
+		return false
 	}
-	const dupMsg = "This schematic already exists (duplicate upload detected by checksum). It may be blacklisted by the original creator. If you need more help contact us: /contact"
 	if existingID, err := appStore.Schematics.GetByChecksum(ctx, checksum); err == nil && existingID != "" {
-		return dupMsg
+		return true
 	}
 	if blacklisted, err := appStore.NBTHashes.IsBlacklisted(ctx, checksum); err == nil && blacklisted {
-		return dupMsg
+		return true
 	}
-	return ""
+	return false
 }
 
 func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer, enqueueSafetyScan SafetyScanEnqueuer) func(e *server.RequestEvent) error {
@@ -335,10 +335,17 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// Duplicate detection runs here at publish time rather than at
 		// upload: private temp uploads and editor/converter sessions may
 		// legitimately match existing files. Only live (published/approved,
-		// not deleted) schematics and creator-blacklisted hashes block
-		// publishing.
-		if dupErr := checkDuplicateChecksum(ctx, appStore, entry.Checksum); dupErr != "" {
-			return e.String(http.StatusConflict, dupErr)
+		// not deleted) schematics and creator-blacklisted hashes count.
+		//
+		// A duplicate no longer hard-blocks: the first attempt returns a 409 with
+		// an X-Duplicate header so the form can offer "submit anyway". Submitting
+		// anyway publishes the schematic link-only and queues it for a moderator
+		// (see the isDuplicate override after creation). (#1646)
+		isDuplicate := isDuplicateChecksum(ctx, appStore, entry.Checksum)
+		submitAnyway := e.Request.FormValue("submit_anyway") == "true"
+		if isDuplicate && !submitAnyway {
+			e.Response.Header().Set("X-Duplicate", "1")
+			return e.String(http.StatusConflict, "This schematic appears to be a duplicate.")
 		}
 
 		// Parse the multipart form (up to 100 MB in memory; the rest spills to
@@ -736,7 +743,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
-		if trustedUser {
+		if trustedUser && !isDuplicate {
 			// Trusted users skip moderation and are auto-approved
 			schem.ModerationState = store.ModerationPublished
 			if scheduledAt != nil && scheduledAt.After(time.Now()) {
@@ -756,6 +763,31 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 						Reason:      "trusted user auto-approval",
 					})
 				}
+			}
+		}
+
+		// A duplicate the author chose to submit anyway is published link-only
+		// (published_limited) and queued for a moderator; duplicates are not
+		// allowed, so a human decides whether it stays. Overrides any trusted
+		// auto-approval above. (#1646)
+		if isDuplicate {
+			schem.ModerationState = store.ModerationPublishedLimited
+			schem.ModerationReason = "Possible duplicate: this schematic's file matches an existing one. It is published via direct link only until a moderator reviews it."
+			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("make-public: failed to set duplicate to published_limited", "error", updateErr, "id", schem.ID)
+			}
+			_ = appStore.Schematics.SetModerationReviewedBy(ctx, schem.ID, store.ReviewedBySystem)
+			_ = appStore.Schematics.SetHumanReviewRequested(ctx, schem.ID, true)
+			autoApproved = false
+			if appStore.ModerationLog != nil {
+				_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+					SchematicID: schem.ID,
+					ActorType:   "system",
+					Action:      "state_change",
+					OldState:    store.ModerationAutoReview,
+					NewState:    store.ModerationPublishedLimited,
+					Reason:      "duplicate submit-anyway: link-only, pending manual moderator review",
+				})
 			}
 		}
 
@@ -1129,7 +1161,7 @@ func UploadNBTHandler(registry *server.Registry, cacheService *cache.Service, ap
 		// Duplicate detection intentionally does NOT happen here: temp
 		// uploads are private, and tools like the editor and converter
 		// accept files that match existing schematics. The checksum check
-		// runs at the publish step (checkDuplicateChecksum in
+		// runs at the publish step (isDuplicateChecksum in
 		// UploadMakePublicHandler) instead.
 
 		// Generate a random token

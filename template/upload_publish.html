@@ -740,6 +740,33 @@ document.addEventListener("DOMContentLoaded", function() {
         var errDiv = document.getElementById('publish-error');
         if (errDiv) errDiv.style.display = 'none';
     }
+    // Shown when the server flags a checksum duplicate (X-Duplicate header). The
+    // author can still submit; it publishes link-only and goes to a moderator.
+    function showDuplicatePrompt() {
+        var errDiv = document.getElementById('publish-error');
+        if (!errDiv) return;
+        while (errDiv.firstChild) errDiv.removeChild(errDiv.firstChild);
+        var p = document.createElement('div');
+        p.appendChild(document.createTextNode("This schematic looks like a duplicate: its file matches an existing schematic. Duplicate schematics are not allowed. You can submit it anyway and it will be published, visible via its direct link only, until a moderator reviews it. If you need help, "));
+        var a = document.createElement('a');
+        a.href = '/contact';
+        a.textContent = 'contact us';
+        p.appendChild(a);
+        p.appendChild(document.createTextNode('.'));
+        errDiv.appendChild(p);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-warning btn-sm mt-2';
+        btn.textContent = 'Submit anyway';
+        btn.addEventListener('click', function () {
+            window._cmSubmitAnyway = true;
+            hidePublishError();
+            publishBtn.click();
+        });
+        errDiv.appendChild(btn);
+        errDiv.style.display = '';
+        if (typeof showToast === 'function') { showToast('This schematic appears to be a duplicate.', 'warning'); }
+    }
 
     var publishBtn = document.getElementById('publish-schematic-btn');
     var publishLabel = document.getElementById('publish-btn-label');
@@ -761,6 +788,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var formData = new FormData();
         var token = document.getElementById('publish-token').value;
         formData.append("upload_token", token);
+        if (window._cmSubmitAnyway) { formData.append("submit_anyway", "true"); }
 
         // Append featured image
         if (uploadedImages.length > 0) {
@@ -870,8 +898,12 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 } else {
                     setPublishing(false);
-                    var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
-                    showPublishError(errMsg);
+                    if (xhr.getResponseHeader('X-Duplicate') === '1') {
+                        showDuplicatePrompt();
+                    } else {
+                        var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
+                        showPublishError(errMsg);
+                    }
                 }
             };
             xhr.onerror = function() {
