@@ -16,14 +16,41 @@ type OwnerBanner struct {
 	Body  string
 }
 
-// OwnerChecklistRow is one "To unlock full visibility" item for the owner.
+// OwnerChecklistKind is one affected section within a grouped checklist note:
+// its display label ("Title") and the action-button label ("Edit title").
+type OwnerChecklistKind struct {
+	Kind     string // description | title | images | tags | category
+	Label    string // "Description" | "Title" | "Images" | "Tags" | "Category"
+	CTALabel string // "Fix now" | "Edit title" | "Review images" ...
+}
+
+// OwnerChecklistRow is one "To unlock full visibility" note for the owner. A
+// moderator who selects several sections with one note produces a single row
+// tagged with every affected section instead of the note repeated per section.
 type OwnerChecklistRow struct {
-	Kind        string // description | title | images | tags | category
 	Note        string
 	SourceLabel string // "Auto-check" | "Moderator"
 	SourceLevel string // auto | moderator
-	CTALabel    string
-	CTAURL      string
+	Kinds       []OwnerChecklistKind
+}
+
+// checklistKindDisplay maps a checklist kind to its section label and action
+// button label.
+func checklistKindDisplay(kind string) (label, cta string) {
+	switch kind {
+	case store.ChecklistKindDescription:
+		return "Description", "Fix now"
+	case store.ChecklistKindTitle:
+		return "Title", "Edit title"
+	case store.ChecklistKindTags:
+		return "Tags", "Edit tags"
+	case store.ChecklistKindCategory:
+		return "Category", "Change category"
+	case store.ChecklistKindImages:
+		return "Images", "Review images"
+	default:
+		return kind, "Fix now"
+	}
 }
 
 // OwnerModeration is the owner-only moderation view model for the schematic page.
@@ -44,6 +71,12 @@ type OwnerModeration struct {
 	CanRequestHumanReview bool
 	// HumanReviewRequested is true once the author has asked for a human to look. (#1646)
 	HumanReviewRequested bool
+	// EditURL is the schematic edit page, used by the non-description checklist
+	// action buttons (title/images/tags/category).
+	EditURL string
+	// HasOpenDescription is true when any open checklist item targets the
+	// description, so the single inline "Fix now" editor is rendered once.
+	HasOpenDescription bool
 }
 
 // computeOwnerModeration builds the owner's banners + checklist from the
@@ -143,30 +176,42 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 	om.DescriptionText = strings.TrimSpace(strip.StripTags(schem.Content))
 
 	// --- Checklist ---
+	// Collapse items that share a note + source into one row tagged with every
+	// affected section, so a moderator selecting Title + Description + Images with
+	// one message shows once (tags + a button each) rather than three identical
+	// bullets. Keeps first-seen order. (#1646)
+	om.EditURL = page + "/edit"
+	groups := map[string]int{} // "source\x00note" -> index into om.Checklist
 	for _, it := range openItems {
-		row := OwnerChecklistRow{Kind: it.Kind, Note: it.Note, CTAURL: page + "/edit"}
+		sourceLevel, sourceLabel := "auto", "Auto-check"
 		if it.Source == store.ChecklistSourceModerator {
-			row.SourceLabel = "Moderator"
-			row.SourceLevel = "moderator"
-		} else {
-			row.SourceLabel = "Auto-check"
-			row.SourceLevel = "auto"
+			sourceLevel, sourceLabel = "moderator", "Moderator"
 		}
-		switch it.Kind {
-		case store.ChecklistKindDescription:
-			row.CTALabel = "Fix description"
-		case store.ChecklistKindTitle:
-			row.CTALabel = "Edit title"
-		case store.ChecklistKindTags:
-			row.CTALabel = "Edit tags"
-		case store.ChecklistKindCategory:
-			row.CTALabel = "Change category"
-		case store.ChecklistKindImages:
-			row.CTALabel = "Review images"
-		default:
-			row.CTALabel = "Fix now"
+		if it.Kind == store.ChecklistKindDescription {
+			om.HasOpenDescription = true
 		}
-		om.Checklist = append(om.Checklist, row)
+		label, cta := checklistKindDisplay(it.Kind)
+		kind := OwnerChecklistKind{Kind: it.Kind, Label: label, CTALabel: cta}
+
+		key := sourceLevel + "\x00" + it.Note
+		if idx, ok := groups[key]; ok {
+			dup := false
+			for _, k := range om.Checklist[idx].Kinds {
+				if k.Kind == it.Kind {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				om.Checklist[idx].Kinds = append(om.Checklist[idx].Kinds, kind)
+			}
+			continue
+		}
+		groups[key] = len(om.Checklist)
+		om.Checklist = append(om.Checklist, OwnerChecklistRow{
+			Note: it.Note, SourceLabel: sourceLabel, SourceLevel: sourceLevel,
+			Kinds: []OwnerChecklistKind{kind},
+		})
 	}
 	om.HasChecklist = len(om.Checklist) > 0
 

@@ -24,8 +24,31 @@ func TestComputeOwnerModeration(t *testing.T) {
 		if !om.HasChecklist || len(om.Checklist) != 1 {
 			t.Fatalf("checklist = %d, want 1", len(om.Checklist))
 		}
-		if om.Checklist[0].SourceLabel != "Auto-check" || om.Checklist[0].CTALabel != "Fix description" {
+		if om.Checklist[0].SourceLabel != "Auto-check" || len(om.Checklist[0].Kinds) != 1 || om.Checklist[0].Kinds[0].CTALabel != "Fix now" {
 			t.Errorf("checklist row = %+v", om.Checklist[0])
+		}
+	})
+
+	t.Run("several sections with one note collapse into one tagged row", func(t *testing.T) {
+		s := &store.Schematic{Name: "x", ModerationState: store.ModerationPublishedLimited}
+		note := "All three sections need more work"
+		items := []store.ModerationChecklistItem{
+			{Kind: store.ChecklistKindTitle, Source: store.ChecklistSourceModerator, Note: note, Status: store.ChecklistStatusOpen},
+			{Kind: store.ChecklistKindDescription, Source: store.ChecklistSourceModerator, Note: note, Status: store.ChecklistStatusOpen},
+			{Kind: store.ChecklistKindImages, Source: store.ChecklistSourceModerator, Note: note, Status: store.ChecklistStatusOpen},
+		}
+		om := computeOwnerModeration(s, items)
+		if len(om.Checklist) != 1 {
+			t.Fatalf("rows = %d, want 1 grouped row (note shown once)", len(om.Checklist))
+		}
+		if len(om.Checklist[0].Kinds) != 3 {
+			t.Fatalf("kinds = %d, want 3 section tags", len(om.Checklist[0].Kinds))
+		}
+		if !om.HasOpenDescription {
+			t.Error("HasOpenDescription should be true (description is one of the sections)")
+		}
+		if om.EditURL != "/schematics/x/edit" {
+			t.Errorf("EditURL = %q, want /schematics/x/edit", om.EditURL)
 		}
 	})
 

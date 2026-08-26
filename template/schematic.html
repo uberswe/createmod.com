@@ -1367,20 +1367,19 @@ function copyMaterialsAsMarkdown() {
 // Inline "Fix now" description editor on the owner moderation checklist (#1646).
 // Defined at page level so it survives the HTMX swap of #owner-moderation.
 (function () {
+    function cmFixDescBtns() { return document.querySelectorAll('.cm-fix-desc-btn'); }
     window.cmFixOpen = function () {
         var box = document.getElementById('fix-description');
-        var open = document.getElementById('fix-desc-open');
         if (box) box.style.display = '';
-        if (open) open.style.display = 'none';
+        cmFixDescBtns().forEach(function (b) { b.style.display = 'none'; });
         cmFixMeter();
         var ta = document.getElementById('fix-desc-ta');
         if (ta) ta.focus();
     };
     window.cmFixCancel = function () {
         var box = document.getElementById('fix-description');
-        var open = document.getElementById('fix-desc-open');
         if (box) box.style.display = 'none';
-        if (open) open.style.display = '';
+        cmFixDescBtns().forEach(function (b) { b.style.display = ''; });
     };
     // Live meter mirroring the publish form thresholds: <5 blocks Save, 5-24
     // publishes limited, >=25 unlocks full visibility.

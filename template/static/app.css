@@ -3394,6 +3394,17 @@ body.sidebar-ready .generator-overlay {
 .cm-src { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid; }
 .cm-src--auto { color: #f59f00; border-color: rgba(245,159,0,0.55); }
 .cm-src--moderator { color: #e08c3a; border-color: rgba(224,140,58,0.6); }
+/* Section tags on a checklist note: which parts the note is about. */
+.cm-modlist__head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.cm-modtag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--cm-border-color); background: var(--cm-bg-subtle, rgba(255,255,255,0.04)); color: var(--cm-body-color); }
+.cm-modtag--description { color: #4da3e0; border-color: rgba(77,163,224,0.5); }
+.cm-modtag--title { color: #b784e0; border-color: rgba(183,132,224,0.5); }
+.cm-modtag--images { color: #3fb9a6; border-color: rgba(63,185,166,0.5); }
+.cm-modtag--tags { color: #e0b84d; border-color: rgba(224,184,77,0.5); }
+.cm-modtag--category { color: #6fbf73; border-color: rgba(111,191,115,0.5); }
+/* Action buttons for a grouped note (one per affected section). */
+.cm-modlist__ctas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cm-modlist__ctas .cm-modlist__cta { align-self: auto; }
 
 /* Held-image placeholder tile (owner only) */
 .cm-held-tile {
