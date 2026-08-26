@@ -20,3 +20,17 @@ LEFT JOIN users u ON ml.actor_id = u.id
 WHERE ml.schematic_id = $1
 ORDER BY ml.created_at DESC
 LIMIT 50;
+
+-- name: ListModerationViolationsByAuthor :many
+SELECT ml.*, COALESCE(u.username, '') AS actor_username,
+       s.title AS schematic_title, s.name AS schematic_name
+FROM moderation_log ml
+JOIN schematics s ON s.id = ml.schematic_id
+LEFT JOIN users u ON ml.actor_id = u.id
+WHERE s.author_id = $1
+  AND (
+    ml.new_state IN ('rejected', 'rejected_final', 'rejected_fixable', 'flagged', 'changes_requested', 'published_limited', 'deleted')
+    OR ml.action = 'soft_delete'
+  )
+ORDER BY ml.created_at DESC
+LIMIT 300;

@@ -653,6 +653,7 @@ func Register(p RegisterParams) chi.Router {
 		r.Post("/admin/comments/{id}/restore", Adapt(pages.AdminCommentRestoreHandler(p.AppStore)))
 		r.Post("/admin/comments/{id}/approve", Adapt(pages.AdminCommentApproveHandler(p.AppStore)))
 		r.Get("/admin/users", Adapt(pages.AdminUsersHandler(registry, p.CacheService, p.AppStore)))
+		r.Get("/admin/user/{username}", Adapt(pages.AdminUserHandler(registry, p.CacheService, p.AppStore)))
 		r.Post("/admin/users/{id}/delete", Adapt(pages.AdminUserDeleteHandler(p.AppStore)))
 		r.Post("/admin/users/{id}/restore", Adapt(pages.AdminUserRestoreHandler(p.AppStore)))
 	})

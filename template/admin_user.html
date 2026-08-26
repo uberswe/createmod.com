@@ -1,0 +1,112 @@
+{{template "head.html" .}}
+<div class="page">
+  {{template "sidebar.html" .}}
+  <div class="page-wrapper">
+    {{template "header.html" .}}
+    <main class="page-body">
+      <div class="container-wide">
+        {{template "admin_nav.html" .}}
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <div class="mb-1">
+                <a href="/admin/users" class="text-secondary">&larr; {{ T .Language "Back to users" }}</a>
+              </div>
+              <h2 class="page-title">{{ T .Language "User" }}: {{ .ProfileUsername }}</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-4">
+            <div class="card mb-3">
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  {{ if .ProfileAvatar }}
+                  <span class="avatar avatar-lg" style="background-image:url({{ .ProfileAvatar }})"></span>
+                  {{ else }}
+                  <span class="avatar avatar-lg">{{ printf "%.1s" .ProfileUsername }}</span>
+                  {{ end }}
+                  <div>
+                    <div class="h3 mb-0">{{ .ProfileUsername }}</div>
+                    {{ if .IsBanned }}<span class="badge bg-red-lt">banned</span>{{ end }}
+                  </div>
+                </div>
+                <div class="mb-2"><strong>{{ T .Language "ID:" }}</strong> <code>{{ .ProfileID }}</code></div>
+                <div class="mb-2"><strong>{{ T .Language "Email:" }}</strong> {{ .ProfileEmail }}</div>
+                <div class="mb-2"><strong>{{ T .Language "Joined:" }}</strong> {{ HumanDate .JoinedAt }}</div>
+                <a href="/author/{{ ToLower .ProfileUsername }}" class="btn btn-sm btn-outline-primary w-100 mt-2" target="_blank">{{ T .Language "View public profile" }}</a>
+              </div>
+            </div>
+            <div class="row row-cards">
+              <div class="col-6">
+                <div class="card mb-3"><div class="card-body text-center">
+                  <div class="h1 mb-0">{{ .PublishedCount }}</div>
+                  <div class="subheader">{{ T .Language "Published" }}</div>
+                </div></div>
+              </div>
+              <div class="col-6">
+                <div class="card mb-3"><div class="card-body text-center">
+                  <div class="h1 mb-0 {{ if .RemovedCount }}text-danger{{ end }}">{{ .RemovedCount }}</div>
+                  <div class="subheader">{{ T .Language "Removed" }}</div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="card mb-3">
+              <div class="card-header">
+                <h3 class="card-title">{{ T .Language "Moderation violations" }}</h3>
+                <span class="badge bg-secondary-lt ms-2">{{ .ViolationCount }}</span>
+              </div>
+              {{ if .Violations }}
+              <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                  <thead>
+                    <tr>
+                      <th>{{ T .Language "When" }}</th>
+                      <th>{{ T .Language "Schematic" }}</th>
+                      <th>{{ T .Language "Violation" }}</th>
+                      <th>{{ T .Language "By" }}</th>
+                      <th>{{ T .Language "Reason" }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{ range .Violations }}
+                    <tr>
+                      <td class="text-nowrap text-secondary" style="font-size:0.85rem;">{{ HumanDate .When }}</td>
+                      <td><a href="/admin/schematics/{{ .SchematicName }}">{{ .SchematicTitle }}</a></td>
+                      <td>
+                        {{ if eq .Kind "rejected" }}<span class="badge bg-red-lt">{{ .KindLabel }}</span>
+                        {{ else if eq .Kind "removed" }}<span class="badge bg-red-lt">{{ .KindLabel }}</span>
+                        {{ else if eq .Kind "flagged" }}<span class="badge bg-orange-lt">{{ .KindLabel }}</span>
+                        {{ else if eq .Kind "changes" }}<span class="badge bg-yellow-lt">{{ .KindLabel }}</span>
+                        {{ else if eq .Kind "limited" }}<span class="badge bg-yellow-lt">{{ .KindLabel }}</span>
+                        {{ else }}<span class="badge bg-secondary-lt">{{ .KindLabel }}</span>{{ end }}
+                      </td>
+                      <td style="font-size:0.85rem;">
+                        {{ if eq .ActorType "system" }}<span class="badge bg-cyan-lt">system</span>
+                        {{ else if eq .ActorType "admin" }}<span class="badge bg-purple-lt">admin</span>{{ if .ActorUsername }} <span class="text-secondary">{{ .ActorUsername }}</span>{{ end }}
+                        {{ else }}<span class="badge bg-blue-lt">user</span>{{ end }}
+                      </td>
+                      <td style="font-size:0.85rem; max-width:320px;">{{ if .Reason }}{{ .Reason }}{{ else }}<span class="text-secondary">{{ T .Language "None" }}</span>{{ end }}</td>
+                    </tr>
+                    {{ end }}
+                  </tbody>
+                </table>
+              </div>
+              {{ else }}
+              <div class="card-body">
+                <p class="text-secondary mb-0">{{ T .Language "No moderation violations. This user's uploads have a clean record." }}</p>
+              </div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    {{template "footer.html" .}}
+  </div>
+</div>
+{{template "foot.html" .}}

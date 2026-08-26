@@ -348,6 +348,7 @@ type Querier interface {
 	// more held images awaiting an approve/remove decision. (#1646)
 	ListModerationQueue(ctx context.Context, arg ListModerationQueueParams) ([]Schematic, error)
 	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
+	ListModerationViolationsByAuthor(ctx context.Context, authorID *string) ([]ListModerationViolationsByAuthorRow, error)
 	ListModpacks(ctx context.Context) ([]Modpack, error)
 	ListMonthlyAdClicks(ctx context.Context) ([]ListMonthlyAdClicksRow, error)
 	ListNBTHashesByUser(ctx context.Context, uploadedBy *string) ([]NbtHash, error)

@@ -4806,6 +4806,33 @@ func (s *ModerationLogStoreImpl) ListBySchematic(ctx context.Context, schematicI
 	return entries, nil
 }
 
+func (s *ModerationLogStoreImpl) ListViolationsByAuthor(ctx context.Context, authorID string) ([]store.ModerationViolation, error) {
+	rows, err := s.q.ListModerationViolationsByAuthor(ctx, &authorID)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]store.ModerationViolation, len(rows))
+	for i, r := range rows {
+		entries[i] = store.ModerationViolation{
+			ModerationLogEntry: store.ModerationLogEntry{
+				ID:            r.ID,
+				SchematicID:   r.SchematicID,
+				ActorID:       r.ActorID,
+				ActorType:     r.ActorType,
+				ActorUsername: r.ActorUsername,
+				Action:        r.Action,
+				OldState:      r.OldState,
+				NewState:      r.NewState,
+				Reason:        r.Reason,
+				CreatedAt:     r.CreatedAt,
+			},
+			SchematicTitle: r.SchematicTitle,
+			SchematicName:  r.SchematicName,
+		}
+	}
+	return entries, nil
+}
+
 func (s *ModerationLogStoreImpl) ListAutoApprovedSince(ctx context.Context, since, until time.Time) ([]store.AutoApprovedSchematic, error) {
 	rows, err := s.q.ListAutoApprovedSchematicsSince(ctx, db.ListAutoApprovedSchematicsSinceParams{
 		Since: since,

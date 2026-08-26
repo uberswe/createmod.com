@@ -28,6 +28,8 @@ var adminSchematicsTemplates = append([]string{
 
 var adminSchematicEditTemplates = append([]string{
 	"./template/admin_schematic_edit.html",
+	"./template/include/moderation_detail.html",
+	"./template/include/moderation_detail_script.html",
 }, commonTemplates...)
 
 type AdminSchematicItem struct {
@@ -70,7 +72,7 @@ type AdminSchematicsData struct {
 type AdminSchematicEditData struct {
 	DefaultData
 	Schematic           store.Schematic
-	AuthorUsername       string
+	AuthorUsername      string
 	MinecraftVersions   []models.MinecraftVersion
 	CreatemodVersions   []models.CreatemodVersion
 	Tags                []models.SchematicTag
@@ -81,6 +83,9 @@ type AdminSchematicEditData struct {
 	MinecraftVersionID  string
 	Success             bool
 	ModerationLog       []store.ModerationLogEntry
+	// Detail powers the review-queue-style moderation panel at the top of the
+	// page (media viewer, description, flags, materials, action bar). (#1646)
+	Detail *ModDetail
 }
 
 const adminSchematicsPerPage = 20
@@ -260,7 +265,7 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 
 		d := AdminSchematicEditData{
 			Schematic:           *schem,
-			AuthorUsername:       authorUsername,
+			AuthorUsername:      authorUsername,
 			MinecraftVersions:   allMinecraftVersionsFromStore(appStore),
 			CreatemodVersions:   allCreatemodVersionsFromStore(appStore),
 			Tags:                allTagsFromStore(appStore),
@@ -271,11 +276,12 @@ func AdminSchematicEditHandler(registry *server.Registry, cacheService *cache.Se
 			MinecraftVersionID:  mcVersionID,
 			Success:             e.Request.URL.Query().Get("success") == "1",
 			ModerationLog:       moderationLog,
+			Detail:              buildModDetail(ctx, appStore, id),
 		}
 		d.Populate(e)
-		d.AdminSection = "schematics"
-		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Schematics"), "/admin/schematics", i18n.T(d.Language, "Edit"))
-		d.Title = fmt.Sprintf("Admin: Edit — %s", schem.Title)
+		d.AdminSection = "moderation"
+		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Moderation"), "/admin/moderation", i18n.T(d.Language, "Review"))
+		d.Title = fmt.Sprintf("Review: %s", schem.Title)
 		d.SubCategory = "Admin"
 
 		html, err := registry.LoadFiles(adminSchematicEditTemplates...).Render(d)

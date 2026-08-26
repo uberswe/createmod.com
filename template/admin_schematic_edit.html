@@ -10,9 +10,9 @@
           <div class="row align-items-center">
             <div class="col">
               <div class="mb-1">
-                <a href="/admin/schematics" class="text-secondary">&larr; {{ T .Language "Back to schematics" }}</a>
+                <a href="/admin/moderation" class="text-secondary">&larr; {{ T .Language "Back to moderation queue" }}</a>
               </div>
-              <h2 class="page-title">Admin: Edit — {{ .Schematic.Title }}</h2>
+              <h2 class="page-title">{{ T .Language "Review" }}: {{ .Schematic.Title }}</h2>
             </div>
           </div>
         </div>
@@ -22,237 +22,232 @@
           <a class="btn-close" data-cm-dismiss="alert" aria-label="close"></a>
         </div>
         {{end}}
-        <form method="post" action="/admin/schematics/{{.Schematic.ID}}">
-          <div class="row">
-            <div class="col-lg-8">
-              <div class="card mb-3">
-                <div class="card-header"><h3 class="card-title">{{ T .Language "Content" }}</h3></div>
-                <div class="card-body">
-                  <div class="mb-3">
-                    <label class="form-label required">{{ T .Language "Title" }}</label>
-                    <input type="text" class="form-control" name="title" value="{{.Schematic.Title}}">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "Description / Content" }}</label>
-                    <textarea class="form-control" name="content" rows="8">{{.Schematic.Content}}</textarea>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "Video URL" }}</label>
-                    <input type="text" class="form-control" name="video" value="{{.Schematic.Video}}">
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label">{{ T .Language "Category" }}</label>
-                      <select name="categories" class="form-select">
-                        <option value="">— none —</option>
-                        {{range .Categories}}
-                        <option value="{{.ID}}" {{if tagSelected $.SchematicCategories .ID}}selected{{end}}>{{.Name}}</option>
-                        {{end}}
-                      </select>
+
+        <!-- Review-queue-style moderation detail (no queue list) -->
+        <section class="cm-detail cm-detail--solo">
+          {{ if .Detail }}
+          {{ template "moderation_detail.html" .Detail }}
+          {{ else }}
+          <div class="cm-detail__empty">{{ T .Language "No moderation detail available for this schematic." }}</div>
+          {{ end }}
+        </section>
+
+        <!-- Moderation history -->
+        {{if .ModerationLog}}
+        <div class="card mb-3 cm-detail--solo">
+          <div class="card-header"><h3 class="card-title">{{ T .Language "Moderation Log" }}</h3></div>
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table table-sm">
+              <thead>
+                <tr>
+                  <th>{{ T .Language "Time" }}</th>
+                  <th>{{ T .Language "Actor" }}</th>
+                  <th>{{ T .Language "Action" }}</th>
+                  <th>{{ T .Language "State Change" }}</th>
+                  <th>{{ T .Language "Reason" }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .ModerationLog}}
+                <tr>
+                  <td class="text-nowrap" style="font-size:0.8rem;">{{ HumanDate .CreatedAt }}</td>
+                  <td>
+                    {{if eq .ActorType "system"}}
+                      <span class="badge bg-cyan-lt">system</span>
+                    {{else if eq .ActorType "admin"}}
+                      <span class="badge bg-purple-lt">admin</span>
+                      {{if .ActorUsername}}<span class="text-secondary ms-1" style="font-size:0.8rem;">{{.ActorUsername}}</span>{{end}}
+                    {{else}}
+                      <span class="badge bg-blue-lt">user</span>
+                      {{if .ActorUsername}}<span class="text-secondary ms-1" style="font-size:0.8rem;">{{.ActorUsername}}</span>{{end}}
+                    {{end}}
+                  </td>
+                  <td>
+                    {{if eq .Action "upload"}}
+                      <span class="badge bg-green-lt">upload</span>
+                    {{else if eq .Action "soft_delete"}}
+                      <span class="badge bg-red-lt">delete</span>
+                    {{else}}
+                      <span class="badge bg-yellow-lt">state change</span>
+                    {{end}}
+                  </td>
+                  <td style="font-size:0.8rem;">
+                    {{if .OldState}}<code>{{.OldState}}</code> &rarr; {{end}}<code>{{.NewState}}</code>
+                  </td>
+                  <td style="font-size:0.8rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{.Reason}}">{{.Reason}}</td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {{end}}
+
+        <!-- Advanced: direct field editing + danger zone (admin only) -->
+        <details class="cm-advanced cm-detail--solo">
+          <summary class="cm-advanced__summary">{{ T .Language "Advanced: edit fields directly" }}</summary>
+          <form method="post" action="/admin/schematics/{{.Schematic.ID}}">
+            <div class="row mt-3">
+              <div class="col-lg-8">
+                <div class="card mb-3">
+                  <div class="card-header"><h3 class="card-title">{{ T .Language "Content" }}</h3></div>
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label required">{{ T .Language "Title" }}</label>
+                      <input type="text" class="form-control" name="title" value="{{.Schematic.Title}}">
                     </div>
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label">{{ T .Language "Tags" }}</label>
-                      <select name="tags" class="form-select" multiple size="5">
-                        {{range .Tags}}
-                        <option value="{{.ID}}" {{if tagSelected $.SchematicTags .ID}}selected{{end}}>{{.Name}}</option>
-                        {{end}}
-                      </select>
+                    <div class="mb-3">
+                      <label class="form-label">{{ T .Language "Description / Content" }}</label>
+                      <textarea class="form-control" name="content" rows="8">{{.Schematic.Content}}</textarea>
                     </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label">{{ T .Language "Create Mod Version" }}</label>
-                      <select name="createmod_version" class="form-select">
-                        <option value="">— none —</option>
-                        {{range .CreatemodVersions}}
-                        <option value="{{.ID}}" {{if eq $.CreatemodVersionID .ID}}selected{{end}}>{{.Version}}</option>
-                        {{end}}
-                      </select>
+                    <div class="mb-3">
+                      <label class="form-label">{{ T .Language "Video URL" }}</label>
+                      <input type="text" class="form-control" name="video" value="{{.Schematic.Video}}">
                     </div>
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label">{{ T .Language "Minecraft Version" }}</label>
-                      <select name="minecraft_version" class="form-select">
-                        <option value="">— none —</option>
-                        {{range .MinecraftVersions}}
-                        <option value="{{.ID}}" {{if eq $.MinecraftVersionID .ID}}selected{{end}}>{{.Version}}</option>
-                        {{end}}
-                      </select>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ T .Language "Category" }}</label>
+                        <select name="categories" class="form-select">
+                          <option value="">{{ T .Language "None" }}</option>
+                          {{range .Categories}}
+                          <option value="{{.ID}}" {{if tagSelected $.SchematicCategories .ID}}selected{{end}}>{{.Name}}</option>
+                          {{end}}
+                        </select>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ T .Language "Tags" }}</label>
+                        <select name="tags" class="form-select" multiple size="5">
+                          {{range .Tags}}
+                          <option value="{{.ID}}" {{if tagSelected $.SchematicTags .ID}}selected{{end}}>{{.Name}}</option>
+                          {{end}}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ T .Language "Create Mod Version" }}</label>
+                        <select name="createmod_version" class="form-select">
+                          <option value="">{{ T .Language "None" }}</option>
+                          {{range .CreatemodVersions}}
+                          <option value="{{.ID}}" {{if eq $.CreatemodVersionID .ID}}selected{{end}}>{{.Version}}</option>
+                          {{end}}
+                        </select>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ T .Language "Minecraft Version" }}</label>
+                        <select name="minecraft_version" class="form-select">
+                          <option value="">{{ T .Language "None" }}</option>
+                          {{range .MinecraftVersions}}
+                          <option value="{{.ID}}" {{if eq $.MinecraftVersionID .ID}}selected{{end}}>{{.Version}}</option>
+                          {{end}}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="col-lg-4">
-              <div class="card mb-3">
-                <div class="card-header"><h3 class="card-title">{{ T .Language "Info" }}</h3></div>
-                <div class="card-body">
-                  <div class="mb-2">
-                    <strong>{{ T .Language "ID:" }}</strong> <code>{{.Schematic.ID}}</code>
+              <div class="col-lg-4">
+                <div class="card mb-3">
+                  <div class="card-header"><h3 class="card-title">{{ T .Language "Info" }}</h3></div>
+                  <div class="card-body">
+                    <div class="mb-2"><strong>{{ T .Language "ID:" }}</strong> <code>{{.Schematic.ID}}</code></div>
+                    <div class="mb-2"><strong>{{ T .Language "Slug:" }}</strong> {{.Schematic.Name}}</div>
+                    <div class="mb-2">
+                      <strong>{{ T .Language "Author:" }}</strong>
+                      {{if .AuthorUsername}}
+                      <a href="/admin/user/{{ToLower .AuthorUsername}}">{{.AuthorUsername}}</a>
+                      {{else}}
+                      <span class="text-secondary">{{ T .Language "unknown" }}</span>
+                      {{end}}
+                    </div>
+                    <div class="mb-2"><strong>{{ T .Language "Created:" }}</strong> {{HumanDate .Schematic.Created}}</div>
+                    <div class="mb-2"><strong>{{ T .Language "Views:" }}</strong> {{.Schematic.Views}} | <strong>{{ T .Language "Downloads:" }}</strong> {{.Schematic.Downloads}}</div>
+                    <div class="mb-2"><strong>{{ T .Language "Blocks:" }}</strong> {{.Schematic.BlockCount}} | <strong>{{ T .Language "Size:" }}</strong> {{.Schematic.DimX}}x{{.Schematic.DimY}}x{{.Schematic.DimZ}}</div>
+                    <div class="mb-2">
+                      <a href="/schematics/{{.Schematic.Name}}" class="btn btn-sm btn-outline-primary w-100" target="_blank">{{ T .Language "View public page" }}</a>
+                    </div>
                   </div>
-                  <div class="mb-2">
-                    <strong>{{ T .Language "Slug:" }}</strong> {{.Schematic.Name}}
-                  </div>
-                  <div class="mb-2">
-                    <strong>{{ T .Language "Author:" }}</strong>
-                    {{if .AuthorUsername}}
-                    <a href="/author/{{ToLower .AuthorUsername}}">{{.AuthorUsername}}</a>
-                    {{else}}
-                    <span class="text-secondary">{{ T .Language "unknown" }}</span>
+                </div>
+                {{if or .Schematic.FeaturedImage .Schematic.Gallery}}
+                <div class="card mb-3">
+                  <div class="card-header"><h3 class="card-title">{{ T .Language "Images" }}</h3></div>
+                  <div class="card-body">
+                    {{if .Schematic.FeaturedImage}}
+                    <div class="mb-3">
+                      <label class="form-label">{{ T .Language "Featured Image" }}</label>
+                      <div class="d-flex align-items-start gap-2">
+                        <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=120x120&v=2" class="rounded" alt="Featured" style="max-width:120px;max-height:120px;">
+                        <label class="form-check">
+                          <input type="checkbox" class="form-check-input" name="remove_featured_image" value="true">
+                          <span class="form-check-label text-danger">{{ T .Language "Remove" }}</span>
+                        </label>
+                      </div>
+                    </div>
+                    {{end}}
+                    {{if .Schematic.Gallery}}
+                    <div class="mb-2">
+                      <label class="form-label">{{ T .Language "Gallery" }}</label>
+                      <div class="d-flex flex-wrap gap-2">
+                        {{range .Schematic.Gallery}}
+                        <div class="position-relative">
+                          <img src="/api/files/schematics/{{$.Schematic.ID}}/{{urlPathEscape .}}?thumb=80x80&v=2" class="rounded" alt="Gallery" style="width:80px;height:80px;object-fit:cover;">
+                          <div class="mt-1">
+                            <label class="form-check" style="font-size:0.75rem;">
+                              <input type="checkbox" class="form-check-input" name="remove_gallery_images" value="{{.}}">
+                              <span class="form-check-label text-danger">{{ T $.Language "Remove" }}</span>
+                            </label>
+                          </div>
+                        </div>
+                        {{end}}
+                      </div>
+                    </div>
                     {{end}}
                   </div>
-                  <div class="mb-2">
-                    <strong>{{ T .Language "Created:" }}</strong> {{HumanDate .Schematic.Created}}
-                  </div>
-                  <div class="mb-2">
-                    <strong>{{ T .Language "Views:" }}</strong> {{.Schematic.Views}} | <strong>{{ T .Language "Downloads:" }}</strong> {{.Schematic.Downloads}}
-                  </div>
-                  <div class="mb-2">
-                    <strong>{{ T .Language "Blocks:" }}</strong> {{.Schematic.BlockCount}} | <strong>{{ T .Language "Size:" }}</strong> {{.Schematic.DimX}}x{{.Schematic.DimY}}x{{.Schematic.DimZ}}
-                  </div>
-                  {{if .Schematic.FeaturedImage}}
-                  <div class="mb-2">
-                    <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=200x200&v=2" class="img-fluid rounded" alt="thumbnail">
-                  </div>
-                  {{end}}
-                  <div class="mb-2">
-                    <a href="/schematics/{{.Schematic.Name}}" class="btn btn-sm btn-outline-primary w-100" target="_blank">{{ T .Language "View public page" }}</a>
-                  </div>
                 </div>
-              </div>
-              {{if or .Schematic.FeaturedImage .Schematic.Gallery}}
-              <div class="card mb-3">
-                <div class="card-header"><h3 class="card-title">{{ T .Language "Images" }}</h3></div>
-                <div class="card-body">
-                  {{if .Schematic.FeaturedImage}}
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "Featured Image" }}</label>
-                    <div class="d-flex align-items-start gap-2">
-                      <img src="/api/files/schematics/{{.Schematic.ID}}/{{urlPathEscape .Schematic.FeaturedImage}}?thumb=120x120&v=2" class="rounded" alt="Featured" style="max-width:120px;max-height:120px;">
-                      <label class="form-check">
-                        <input type="checkbox" class="form-check-input" name="remove_featured_image" value="true">
-                        <span class="form-check-label text-danger">{{ T .Language "Remove" }}</span>
+                {{end}}
+                <div class="card mb-3 border-warning">
+                  <div class="card-header bg-warning-lt"><h3 class="card-title">{{ T .Language "Moderation state override" }}</h3></div>
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label">{{ T .Language "Moderation State" }}</label>
+                      <select name="moderation_state" class="form-select">
+                        <option value="auto_review" {{if eq .Schematic.ModerationState "auto_review"}}selected{{end}}>Auto Review (Pending)</option>
+                        <option value="published" {{if eq .Schematic.ModerationState "published"}}selected{{end}}>Published</option>
+                        <option value="approved" {{if eq .Schematic.ModerationState "approved"}}selected{{end}}>Approved</option>
+                        <option value="flagged" {{if eq .Schematic.ModerationState "flagged"}}selected{{end}}>Flagged</option>
+                        <option value="rejected" {{if eq .Schematic.ModerationState "rejected"}}selected{{end}}>Rejected</option>
+                        <option value="deleted" {{if eq .Schematic.ModerationState "deleted"}}selected{{end}}>Deleted</option>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">{{ T .Language "Update Moderation Reason" }}</label>
+                      <textarea class="form-control" name="moderation_reason" rows="3" placeholder="Optional reason...">{{.Schematic.ModerationReason}}</textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" name="featured" {{if .Schematic.Featured}}checked{{end}}>
+                        <span class="form-check-label">{{ T .Language "Featured" }}</span>
                       </label>
                     </div>
                   </div>
-                  {{end}}
-                  {{if .Schematic.Gallery}}
-                  <div class="mb-2">
-                    <label class="form-label">{{ T .Language "Gallery" }}</label>
-                    <div class="d-flex flex-wrap gap-2">
-                      {{range .Schematic.Gallery}}
-                      <div class="position-relative">
-                        <img src="/api/files/schematics/{{$.Schematic.ID}}/{{urlPathEscape .}}?thumb=80x80&v=2" class="rounded" alt="Gallery" style="width:80px;height:80px;object-fit:cover;">
-                        <div class="mt-1">
-                          <label class="form-check" style="font-size:0.75rem;">
-                            <input type="checkbox" class="form-check-input" name="remove_gallery_images" value="{{.}}">
-                            <span class="form-check-label text-danger">{{ T $.Language "Remove" }}</span>
-                          </label>
-                        </div>
-                      </div>
-                      {{end}}
-                    </div>
-                  </div>
-                  {{end}}
                 </div>
-              </div>
-              {{end}}
-              <div class="card mb-3 border-warning">
-                <div class="card-header bg-warning-lt"><h3 class="card-title">{{ T .Language "Moderation" }}</h3></div>
-                <div class="card-body">
-                  {{if .Schematic.ModerationReason}}
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "AI Moderation Reason" }}</label>
-                    <div class="text-secondary" style="white-space: pre-wrap; font-size: 0.85rem;">{{.Schematic.ModerationReason}}</div>
+                <div class="card mb-3 border-danger">
+                  <div class="card-header bg-danger-lt"><h3 class="card-title">{{ T .Language "Danger Zone" }}</h3></div>
+                  <div class="card-body">
+                    <button type="button" class="btn btn-danger w-100" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
+                      {{ T .Language "Soft Delete Schematic" }}
+                    </button>
                   </div>
-                  {{end}}
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "Moderation State" }}</label>
-                    <select name="moderation_state" class="form-select">
-                      <option value="auto_review" {{if eq .Schematic.ModerationState "auto_review"}}selected{{end}}>Auto Review (Pending)</option>
-                      <option value="published" {{if eq .Schematic.ModerationState "published"}}selected{{end}}>Published</option>
-                      <option value="approved" {{if eq .Schematic.ModerationState "approved"}}selected{{end}}>Approved</option>
-                      <option value="flagged" {{if eq .Schematic.ModerationState "flagged"}}selected{{end}}>Flagged</option>
-                      <option value="rejected" {{if eq .Schematic.ModerationState "rejected"}}selected{{end}}>Rejected</option>
-                      <option value="deleted" {{if eq .Schematic.ModerationState "deleted"}}selected{{end}}>Deleted</option>
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">{{ T .Language "Update Moderation Reason" }}</label>
-                    <textarea class="form-control" name="moderation_reason" rows="3" placeholder="Optional reason...">{{.Schematic.ModerationReason}}</textarea>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-check form-switch">
-                      <input type="checkbox" class="form-check-input" name="featured" {{if .Schematic.Featured}}checked{{end}}>
-                      <span class="form-check-label">{{ T .Language "Featured" }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              {{if .ModerationLog}}
-              <div class="card mb-3">
-                <div class="card-header"><h3 class="card-title">{{ T .Language "Moderation Log" }}</h3></div>
-                <div class="table-responsive">
-                  <table class="table table-vcenter card-table table-sm">
-                    <thead>
-                      <tr>
-                        <th>{{ T .Language "Time" }}</th>
-                        <th>{{ T .Language "Actor" }}</th>
-                        <th>{{ T .Language "Action" }}</th>
-                        <th>{{ T .Language "State Change" }}</th>
-                        <th>{{ T .Language "Reason" }}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {{range .ModerationLog}}
-                      <tr>
-                        <td class="text-nowrap" style="font-size:0.8rem;">{{ HumanDate .CreatedAt }}</td>
-                        <td>
-                          {{if eq .ActorType "system"}}
-                            <span class="badge bg-cyan-lt">system</span>
-                          {{else if eq .ActorType "admin"}}
-                            <span class="badge bg-purple-lt">admin</span>
-                            {{if .ActorUsername}}<span class="text-secondary ms-1" style="font-size:0.8rem;">{{.ActorUsername}}</span>{{end}}
-                          {{else}}
-                            <span class="badge bg-blue-lt">user</span>
-                            {{if .ActorUsername}}<span class="text-secondary ms-1" style="font-size:0.8rem;">{{.ActorUsername}}</span>{{end}}
-                          {{end}}
-                        </td>
-                        <td>
-                          {{if eq .Action "upload"}}
-                            <span class="badge bg-green-lt">upload</span>
-                          {{else if eq .Action "soft_delete"}}
-                            <span class="badge bg-red-lt">delete</span>
-                          {{else}}
-                            <span class="badge bg-yellow-lt">state change</span>
-                          {{end}}
-                        </td>
-                        <td style="font-size:0.8rem;">
-                          {{if .OldState}}<code>{{.OldState}}</code> &rarr; {{end}}<code>{{.NewState}}</code>
-                        </td>
-                        <td style="font-size:0.8rem; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{.Reason}}">{{.Reason}}</td>
-                      </tr>
-                      {{end}}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {{end}}
-              <div class="card mb-3 border-danger">
-                <div class="card-header bg-danger-lt"><h3 class="card-title">{{ T .Language "Danger Zone" }}</h3></div>
-                <div class="card-body">
-                  <button type="button" class="btn btn-danger w-100" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
-                    {{ T .Language "Soft Delete Schematic" }}
-                  </button>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="row mb-4">
-            <div class="col-lg-8">
-              <button type="submit" class="btn btn-primary w-100">{{ T .Language "Save Changes" }}</button>
+            <div class="row mb-4">
+              <div class="col-lg-8">
+                <button type="submit" class="btn btn-primary w-100">{{ T .Language "Save Changes" }}</button>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </details>
       </div>
     </main>
     {{template "footer.html" .}}
@@ -274,4 +269,5 @@
     </div>
   </div>
 </div>
+{{template "moderation_detail_script.html" .}}
 {{template "foot.html" .}}

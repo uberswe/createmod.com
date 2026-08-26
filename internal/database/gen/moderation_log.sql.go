@@ -151,3 +151,66 @@ func (q *Queries) ListModerationLogBySchematic(ctx context.Context, schematicID 
 	}
 	return items, nil
 }
+
+const listModerationViolationsByAuthor = `-- name: ListModerationViolationsByAuthor :many
+SELECT ml.id, ml.schematic_id, ml.actor_id, ml.actor_type, ml.action, ml.old_state, ml.new_state, ml.reason, ml.created_at, COALESCE(u.username, '') AS actor_username,
+       s.title AS schematic_title, s.name AS schematic_name
+FROM moderation_log ml
+JOIN schematics s ON s.id = ml.schematic_id
+LEFT JOIN users u ON ml.actor_id = u.id
+WHERE s.author_id = $1
+  AND (
+    ml.new_state IN ('rejected', 'rejected_final', 'rejected_fixable', 'flagged', 'changes_requested', 'published_limited', 'deleted')
+    OR ml.action = 'soft_delete'
+  )
+ORDER BY ml.created_at DESC
+LIMIT 300
+`
+
+type ListModerationViolationsByAuthorRow struct {
+	ID             string    `json:"id"`
+	SchematicID    string    `json:"schematic_id"`
+	ActorID        string    `json:"actor_id"`
+	ActorType      string    `json:"actor_type"`
+	Action         string    `json:"action"`
+	OldState       string    `json:"old_state"`
+	NewState       string    `json:"new_state"`
+	Reason         string    `json:"reason"`
+	CreatedAt      time.Time `json:"created_at"`
+	ActorUsername  string    `json:"actor_username"`
+	SchematicTitle string    `json:"schematic_title"`
+	SchematicName  string    `json:"schematic_name"`
+}
+
+func (q *Queries) ListModerationViolationsByAuthor(ctx context.Context, authorID *string) ([]ListModerationViolationsByAuthorRow, error) {
+	rows, err := q.db.Query(ctx, listModerationViolationsByAuthor, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListModerationViolationsByAuthorRow{}
+	for rows.Next() {
+		var i ListModerationViolationsByAuthorRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SchematicID,
+			&i.ActorID,
+			&i.ActorType,
+			&i.Action,
+			&i.OldState,
+			&i.NewState,
+			&i.Reason,
+			&i.CreatedAt,
+			&i.ActorUsername,
+			&i.SchematicTitle,
+			&i.SchematicName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -69,7 +69,7 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 		om.Banners = append(om.Banners, OwnerBanner{
 			Level: "warn",
 			Title: "Published with notes: visible via direct link only",
-			Body:  "Anyone with the link can view and download it, but it stays out of Latest and search until the checklist below is resolved. Fixing it promotes it automatically — no re-submission needed.",
+			Body:  "Your schematic is published and people can view it via the link, but it isn't shown anywhere else on the site until you fix the issues below. Once you do, it goes fully live on its own. You don't need to resubmit.",
 		})
 	case store.ModerationChangesRequested:
 		om.Banners = append(om.Banners, OwnerBanner{
@@ -80,8 +80,8 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 	case store.ModerationRejectedFixable:
 		om.Banners = append(om.Banners, OwnerBanner{
 			Level: "bad",
-			Title: "Not published — but you can fix it",
-			Body:  "This upload broke a content rule. Resolve the checklist below and resubmit once. Questions? Use the moderation thread below.",
+			Title: "Not published, but you can fix it",
+			Body:  "This upload broke a content rule. Clear the checklist below and resubmit once. If you have questions, use the moderation thread below.",
 		})
 	case store.ModerationRejectedFinal, store.ModerationRejected:
 		body := "This schematic was removed for violating the rules and won't be republished. "
@@ -91,7 +91,7 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 		om.Banners = append(om.Banners, OwnerBanner{
 			Level: "bad",
 			Title: "Removed: rule violation",
-			Body:  body + "A human confirmed this decision. You can appeal in the moderation thread below.",
+			Body:  body + "A moderator confirmed this decision. You can appeal in the moderation thread below.",
 		})
 		om.IsFinalReject = true
 		om.AppealOnly = true
@@ -119,7 +119,7 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 			Level: "info",
 			Title: strconv.Itoa(heldCount) + " " + word + " hidden pending review",
 			Body: "A moderator will check " + verb + " within " + sla + " hours. Shaders sometimes confuse the scanner; this is normal. " +
-				"Visitors simply don't see the hidden tile meanwhile — it returns automatically if approved.",
+				"Visitors simply don't see the hidden tile meanwhile. It returns automatically if approved.",
 		})
 	}
 	if removedCount > 0 {

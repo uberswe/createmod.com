@@ -18,15 +18,15 @@ func TestModerationEmailsRender(t *testing.T) {
 		want []string
 	}{
 		{"1-live", SchematicLiveEmail("Steam Train", "https://createmod.com/schematics/steam-train"),
-			[]string{"Steam Train is live", "View your schematic", "#2f9e44"}},
+			[]string{"Steam Train is live", "View your schematic", "#2fb344"}},
 		{"2-action", SchematicActionNeededEmail("Windmill", "https://createmod.com/schematics/windmill", []string{"Add more detail.", "Add the Create version."}),
-			[]string{"Action needed", "Add more detail.", "Add the Create version.", "Fix it now", "No deadline"}},
+			[]string{"Action needed", "Add more detail.", "Add the Create version.", "Fix it now", "visible via direct link only"}},
 		{"3-image", SchematicImageReviewEmail("Airship", "https://createmod.com/schematics/airship", 48),
-			[]string{"being reviewed", "48 hours", "Shaders sometimes", "upload a replacement"}},
+			[]string{"being reviewed", "48 hours", "Shaders throw the scanner off", "upload a replacement"}},
 		{"4a-reject-fixable", SchematicNotPublishedEmail("Odd", "https://createmod.com/schematics/odd", "Bad words.", true),
 			[]string{"was not published", "resubmit once", "Bad words."}},
 		{"4b-reject-final", SchematicNotPublishedEmail("Bad", "https://createmod.com/schematics/bad", "Not a build.", false),
-			[]string{"was not published", "A human confirmed", "Not a build."}},
+			[]string{"was not published", "go back up", "Not a build."}},
 	}
 	for _, c := range cases {
 		if strings.Contains(c.html, "%!") {
