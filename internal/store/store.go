@@ -1619,11 +1619,23 @@ type AutoApprovedSchematic struct {
 	ApprovedAt  time.Time
 }
 
+// ModerationViolation is a moderation-log entry that counts as a violation for
+// one of a user's uploads (rejection, flag, changes-requested, limited publish,
+// or removal), joined with the schematic's title/slug for the admin user page.
+type ModerationViolation struct {
+	ModerationLogEntry
+	SchematicTitle string
+	SchematicName  string
+}
+
 // ModerationLogStore handles moderation audit log persistence.
 type ModerationLogStore interface {
 	Create(ctx context.Context, entry *ModerationLogEntry) error
 	ListBySchematic(ctx context.Context, schematicID string) ([]ModerationLogEntry, error)
 	ListAutoApprovedSince(ctx context.Context, since, until time.Time) ([]AutoApprovedSchematic, error)
+	// ListViolationsByAuthor returns violation-type log entries across all of an
+	// author's schematics, newest first. (#1646)
+	ListViolationsByAuthor(ctx context.Context, authorID string) ([]ModerationViolation, error)
 }
 
 // Moderation checklist item kinds and sources. (#1646)
