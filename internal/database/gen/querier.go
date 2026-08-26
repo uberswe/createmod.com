@@ -390,6 +390,10 @@ type Querier interface {
 	ListSocialLinksByUser(ctx context.Context, userID string) ([]UserSocialLink, error)
 	ListStaleRedditLinks(ctx context.Context, limit int32) ([]SchematicRedditLink, error)
 	ListStaleReferences(ctx context.Context, limit int32) ([]SchematicReference, error)
+	// Schematics stranded in auto_review past the cutoff: their async moderation
+	// job never ran (legacy rows from the 026 migration) or was discarded. The
+	// auto_review backfill re-enqueues the moderation check for each. (#1646)
+	ListStuckAutoReview(ctx context.Context, arg ListStuckAutoReviewParams) ([]Schematic, error)
 	ListTOTPBackupCodes(ctx context.Context, userID string) ([]UserTotpBackupCode, error)
 	ListTags(ctx context.Context) ([]SchematicTag, error)
 	ListTagsWithCount(ctx context.Context) ([]ListTagsWithCountRow, error)

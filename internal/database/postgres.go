@@ -887,6 +887,14 @@ func (ps *PostgresStore) CountModerationQueue(ctx context.Context) (int64, error
 	return ps.q.CountModerationQueue(ctx)
 }
 
+func (ps *PostgresStore) ListStuckAutoReview(ctx context.Context, olderThan time.Time, limit int) ([]store.Schematic, error) {
+	rows, err := ps.q.ListStuckAutoReview(ctx, db.ListStuckAutoReviewParams{OlderThan: olderThan, Lim: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	return schematicSliceFromDB(rows), nil
+}
+
 func (ps *PostgresStore) SoftDelete(ctx context.Context, id string) error {
 	return ps.q.SoftDeleteSchematic(ctx, id)
 }
