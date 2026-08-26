@@ -73,8 +73,9 @@ func SendSchematicActionNeededEmail(ctx context.Context, mailService *mailer.Ser
 			}
 		}
 	}
+	automated := schem.ModerationReviewedBy == store.ReviewedBySystem
 	sendModerationEmail(mailService, email, "Action needed: unlock full visibility for "+schem.Title,
-		mailer.SchematicActionNeededEmail(schem.Title, url, items))
+		mailer.SchematicActionNeededEmail(schem.Title, url, items, automated))
 }
 
 // SendSchematicImageReviewEmail tells the author an image is under review.

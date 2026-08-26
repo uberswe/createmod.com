@@ -19,14 +19,16 @@ func TestModerationEmailsRender(t *testing.T) {
 	}{
 		{"1-live", SchematicLiveEmail("Steam Train", "https://createmod.com/schematics/steam-train"),
 			[]string{"Steam Train is live", "View your schematic", "#2fb344"}},
-		{"2-action", SchematicActionNeededEmail("Windmill", "https://createmod.com/schematics/windmill", []string{"Add more detail.", "Add the Create version."}),
+		{"2-action", SchematicActionNeededEmail("Windmill", "https://createmod.com/schematics/windmill", []string{"Add more detail.", "Add the Create version."}, false),
 			[]string{"Action needed", "Add more detail.", "Add the Create version.", "Fix it now", "visible via direct link only"}},
+		{"2b-action-auto", SchematicActionNeededEmail("Windmill", "https://createmod.com/schematics/windmill", []string{"Add more detail."}, true),
+			[]string{"Action needed", "Add more detail.", "automated review sometimes makes mistakes", "human review without changes"}},
 		{"3-image", SchematicImageReviewEmail("Airship", "https://createmod.com/schematics/airship", 48),
 			[]string{"being reviewed", "48 hours", "Shaders throw the scanner off", "upload a replacement"}},
 		{"4a-reject-fixable", SchematicNotPublishedEmail("Odd", "https://createmod.com/schematics/odd", "Bad words.", true),
-			[]string{"was not published", "resubmit once", "Bad words."}},
+			[]string{"was not published", "resubmit your schematic", "Bad words."}},
 		{"4b-reject-final", SchematicNotPublishedEmail("Bad", "https://createmod.com/schematics/bad", "Not a build.", false),
-			[]string{"was not published", "go back up", "Not a build."}},
+			[]string{"was not published", "human moderator", "Not a build."}},
 	}
 	for _, c := range cases {
 		if strings.Contains(c.html, "%!") {

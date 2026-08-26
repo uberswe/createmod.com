@@ -176,6 +176,7 @@ const countModerationQueue = `-- name: CountModerationQueue :one
 SELECT COUNT(*) FROM schematics
 WHERE deleted IS NULL
   AND (moderation_state = 'flagged'
+       OR human_review_requested = true
        OR COALESCE(array_length(held_images, 1), 0) > 0)
 `
 
@@ -271,7 +272,7 @@ INSERT INTO schematics (
     $22, $23, $24, $25, $26, $27, $28, $29, $30,
     $31, $32
 )
-RETURNING id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count
+RETURNING id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested
 `
 
 type CreateSchematicParams struct {
@@ -397,6 +398,8 @@ func (q *Queries) CreateSchematic(ctx context.Context, arg CreateSchematicParams
 		&i.HeldImages,
 		&i.RemovedImages,
 		&i.ModerationResubmitCount,
+		&i.ModerationReviewedBy,
+		&i.HumanReviewRequested,
 	)
 	return i, err
 }
@@ -418,7 +421,7 @@ func (q *Queries) GetSchematicByChecksum(ctx context.Context, hash string) (*str
 }
 
 const getSchematicByID = `-- name: GetSchematicByID :one
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics WHERE id = $1 AND moderation_state != 'deleted'
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics WHERE id = $1 AND moderation_state != 'deleted'
 `
 
 func (q *Queries) GetSchematicByID(ctx context.Context, id string) (Schematic, error) {
@@ -476,12 +479,14 @@ func (q *Queries) GetSchematicByID(ctx context.Context, id string) (Schematic, e
 		&i.HeldImages,
 		&i.RemovedImages,
 		&i.ModerationResubmitCount,
+		&i.ModerationReviewedBy,
+		&i.HumanReviewRequested,
 	)
 	return i, err
 }
 
 const getSchematicByIDAdmin = `-- name: GetSchematicByIDAdmin :one
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics WHERE id = $1
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics WHERE id = $1
 `
 
 func (q *Queries) GetSchematicByIDAdmin(ctx context.Context, id string) (Schematic, error) {
@@ -539,12 +544,14 @@ func (q *Queries) GetSchematicByIDAdmin(ctx context.Context, id string) (Schemat
 		&i.HeldImages,
 		&i.RemovedImages,
 		&i.ModerationResubmitCount,
+		&i.ModerationReviewedBy,
+		&i.HumanReviewRequested,
 	)
 	return i, err
 }
 
 const getSchematicByName = `-- name: GetSchematicByName :one
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE name = $1
   AND moderation_state != 'deleted'
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
@@ -606,12 +613,14 @@ func (q *Queries) GetSchematicByName(ctx context.Context, name string) (Schemati
 		&i.HeldImages,
 		&i.RemovedImages,
 		&i.ModerationResubmitCount,
+		&i.ModerationReviewedBy,
+		&i.HumanReviewRequested,
 	)
 	return i, err
 }
 
 const getSchematicByShortCode = `-- name: GetSchematicByShortCode :one
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE short_code = $1
   AND moderation_state != 'deleted'
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
@@ -673,6 +682,8 @@ func (q *Queries) GetSchematicByShortCode(ctx context.Context, shortCode string)
 		&i.HeldImages,
 		&i.RemovedImages,
 		&i.ModerationResubmitCount,
+		&i.ModerationReviewedBy,
+		&i.HumanReviewRequested,
 	)
 	return i, err
 }
@@ -735,7 +746,7 @@ func (q *Queries) IncrementSchematicDownloads(ctx context.Context, id string) er
 }
 
 const listAllApprovedSchematicsForIndex = `-- name: ListAllApprovedSchematicsForIndex :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE moderation_state IN ('published', 'approved')
 ORDER BY created DESC
 `
@@ -801,6 +812,8 @@ func (q *Queries) ListAllApprovedSchematicsForIndex(ctx context.Context) ([]Sche
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -843,7 +856,7 @@ func (q *Queries) ListApprovedSchematicIDsAndCreated(ctx context.Context) ([]Lis
 }
 
 const listApprovedSchematics = `-- name: ListApprovedSchematics :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY created DESC
@@ -916,6 +929,8 @@ func (q *Queries) ListApprovedSchematics(ctx context.Context, arg ListApprovedSc
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -928,7 +943,7 @@ func (q *Queries) ListApprovedSchematics(ctx context.Context, arg ListApprovedSc
 }
 
 const listApprovedSchematicsWithVideo = `-- name: ListApprovedSchematicsWithVideo :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE moderation_state IN ('published', 'approved')
   AND video != ''
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
@@ -1002,6 +1017,8 @@ func (q *Queries) ListApprovedSchematicsWithVideo(ctx context.Context, arg ListA
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1014,7 +1031,7 @@ func (q *Queries) ListApprovedSchematicsWithVideo(ctx context.Context, arg ListA
 }
 
 const listFeaturedSchematics = `-- name: ListFeaturedSchematics :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE moderation_state IN ('published', 'approved')
   AND featured = true
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
@@ -1083,6 +1100,8 @@ func (q *Queries) ListFeaturedSchematics(ctx context.Context, limit int32) ([]Sc
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1095,7 +1114,7 @@ func (q *Queries) ListFeaturedSchematics(ctx context.Context, limit int32) ([]Sc
 }
 
 const listHighestRatedSchematics = `-- name: ListHighestRatedSchematics :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE moderation_state IN ('published', 'approved')
   AND rating_count > 0
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
@@ -1169,6 +1188,8 @@ func (q *Queries) ListHighestRatedSchematics(ctx context.Context, arg ListHighes
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1181,9 +1202,10 @@ func (q *Queries) ListHighestRatedSchematics(ctx context.Context, arg ListHighes
 }
 
 const listModerationQueue = `-- name: ListModerationQueue :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE deleted IS NULL
   AND (moderation_state = 'flagged'
+       OR human_review_requested = true
        OR COALESCE(array_length(held_images, 1), 0) > 0)
 ORDER BY created ASC
 LIMIT $1 OFFSET $2
@@ -1194,8 +1216,9 @@ type ListModerationQueueParams struct {
 	Offset int32 `json:"offset"`
 }
 
-// Schematics needing a moderator's attention: policy-flagged, or with one or
-// more held images awaiting an approve/remove decision. (#1646)
+// Schematics needing a moderator's attention: policy-flagged, with one or more
+// held images awaiting an approve/remove decision, or where the author asked a
+// human to re-check an automated outcome. (#1646)
 func (q *Queries) ListModerationQueue(ctx context.Context, arg ListModerationQueueParams) ([]Schematic, error) {
 	rows, err := q.db.Query(ctx, listModerationQueue, arg.Limit, arg.Offset)
 	if err != nil {
@@ -1257,6 +1280,8 @@ func (q *Queries) ListModerationQueue(ctx context.Context, arg ListModerationQue
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1269,7 +1294,7 @@ func (q *Queries) ListModerationQueue(ctx context.Context, arg ListModerationQue
 }
 
 const listRandomApprovedSchematics = `-- name: ListRandomApprovedSchematics :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 ORDER BY RANDOM()
@@ -1337,6 +1362,8 @@ func (q *Queries) ListRandomApprovedSchematics(ctx context.Context, limit int32)
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1349,7 +1376,7 @@ func (q *Queries) ListRandomApprovedSchematics(ctx context.Context, limit int32)
 }
 
 const listSchematicsByAuthor = `-- name: ListSchematicsByAuthor :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE author_id = $1
   AND moderation_state IN ('published', 'approved')
   AND (scheduled_at IS NULL OR scheduled_at <= NOW())
@@ -1424,6 +1451,8 @@ func (q *Queries) ListSchematicsByAuthor(ctx context.Context, arg ListSchematics
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1436,7 +1465,7 @@ func (q *Queries) ListSchematicsByAuthor(ctx context.Context, arg ListSchematics
 }
 
 const listSchematicsByAuthorAll = `-- name: ListSchematicsByAuthorAll :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE author_id = $1
   AND moderation_state != 'deleted'
 ORDER BY created DESC
@@ -1511,6 +1540,8 @@ func (q *Queries) ListSchematicsByAuthorAll(ctx context.Context, arg ListSchemat
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1523,7 +1554,7 @@ func (q *Queries) ListSchematicsByAuthorAll(ctx context.Context, arg ListSchemat
 }
 
 const listSchematicsByAuthorExcluding = `-- name: ListSchematicsByAuthorExcluding :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE author_id = $1
   AND id != $2
   AND moderation_state IN ('published', 'approved')
@@ -1599,6 +1630,8 @@ func (q *Queries) ListSchematicsByAuthorExcluding(ctx context.Context, arg ListS
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1611,7 +1644,7 @@ func (q *Queries) ListSchematicsByAuthorExcluding(ctx context.Context, arg ListS
 }
 
 const listSchematicsByCategoryIDs = `-- name: ListSchematicsByCategoryIDs :many
-SELECT DISTINCT s.id, s.author_id, s.name, s.title, s.description, s.excerpt, s.content, s.postdate, s.modified, s.detected_language, s.featured_image, s.gallery, s.schematic_file, s.video, s.has_dependencies, s.dependencies, s.createmod_version_id, s.minecraft_version_id, s.views, s.downloads, s.block_count, s.dim_x, s.dim_y, s.dim_z, s.materials, s.mods, s.paid, s.featured, s.ai_description, s.moderation_reason, s.scheduled_at, s.deleted, s.deleted_at, s.old_id, s.status, s.type, s.created, s.updated, s.external_url, s.trending_score, s.avg_rating, s.rating_count, s.moderation_state, s.rotation_images, s.short_code, s.rotation_disabled, s.source_format, s.original_file, s.held_images, s.removed_images, s.moderation_resubmit_count FROM schematics s
+SELECT DISTINCT s.id, s.author_id, s.name, s.title, s.description, s.excerpt, s.content, s.postdate, s.modified, s.detected_language, s.featured_image, s.gallery, s.schematic_file, s.video, s.has_dependencies, s.dependencies, s.createmod_version_id, s.minecraft_version_id, s.views, s.downloads, s.block_count, s.dim_x, s.dim_y, s.dim_z, s.materials, s.mods, s.paid, s.featured, s.ai_description, s.moderation_reason, s.scheduled_at, s.deleted, s.deleted_at, s.old_id, s.status, s.type, s.created, s.updated, s.external_url, s.trending_score, s.avg_rating, s.rating_count, s.moderation_state, s.rotation_images, s.short_code, s.rotation_disabled, s.source_format, s.original_file, s.held_images, s.removed_images, s.moderation_resubmit_count, s.moderation_reviewed_by, s.human_review_requested FROM schematics s
 JOIN schematics_categories sc ON sc.schematic_id = s.id
 WHERE sc.category_id = ANY($1::text[])
   AND s.id != ALL($2::text[])
@@ -1688,6 +1721,8 @@ func (q *Queries) ListSchematicsByCategoryIDs(ctx context.Context, arg ListSchem
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1700,7 +1735,7 @@ func (q *Queries) ListSchematicsByCategoryIDs(ctx context.Context, arg ListSchem
 }
 
 const listSchematicsByIDs = `-- name: ListSchematicsByIDs :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE id = ANY($1::text[])
   AND moderation_state != 'deleted'
 `
@@ -1766,6 +1801,8 @@ func (q *Queries) ListSchematicsByIDs(ctx context.Context, dollar_1 []string) ([
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1778,7 +1815,7 @@ func (q *Queries) ListSchematicsByIDs(ctx context.Context, dollar_1 []string) ([
 }
 
 const listSchematicsByNamePattern = `-- name: ListSchematicsByNamePattern :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE name LIKE $1
   AND moderation_state != 'deleted'
 LIMIT $2
@@ -1850,6 +1887,8 @@ func (q *Queries) ListSchematicsByNamePattern(ctx context.Context, arg ListSchem
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1862,7 +1901,7 @@ func (q *Queries) ListSchematicsByNamePattern(ctx context.Context, arg ListSchem
 }
 
 const listSchematicsForAdmin = `-- name: ListSchematicsForAdmin :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE
   CASE
     WHEN $3::text = 'pending' THEN moderation_state IN ('auto_review', 'flagged')
@@ -1954,6 +1993,8 @@ func (q *Queries) ListSchematicsForAdmin(ctx context.Context, arg ListSchematics
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -1999,7 +2040,7 @@ func (q *Queries) ListSchematicsForSitemap(ctx context.Context) ([]ListSchematic
 }
 
 const listStuckAutoReview = `-- name: ListStuckAutoReview :many
-SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested FROM schematics
 WHERE deleted IS NULL
   AND moderation_state = 'auto_review'
   AND created < $1
@@ -2076,6 +2117,8 @@ func (q *Queries) ListStuckAutoReview(ctx context.Context, arg ListStuckAutoRevi
 			&i.HeldImages,
 			&i.RemovedImages,
 			&i.ModerationResubmitCount,
+			&i.ModerationReviewedBy,
+			&i.HumanReviewRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -2160,6 +2203,34 @@ func (q *Queries) SchematicNameExists(ctx context.Context, name string) (bool, e
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const setHumanReviewRequested = `-- name: SetHumanReviewRequested :exec
+UPDATE schematics SET human_review_requested = $2, updated = NOW() WHERE id = $1
+`
+
+type SetHumanReviewRequestedParams struct {
+	ID                   string `json:"id"`
+	HumanReviewRequested bool   `json:"human_review_requested"`
+}
+
+func (q *Queries) SetHumanReviewRequested(ctx context.Context, arg SetHumanReviewRequestedParams) error {
+	_, err := q.db.Exec(ctx, setHumanReviewRequested, arg.ID, arg.HumanReviewRequested)
+	return err
+}
+
+const setModerationReviewedBy = `-- name: SetModerationReviewedBy :exec
+UPDATE schematics SET moderation_reviewed_by = $2, updated = NOW() WHERE id = $1
+`
+
+type SetModerationReviewedByParams struct {
+	ID                   string `json:"id"`
+	ModerationReviewedBy string `json:"moderation_reviewed_by"`
+}
+
+func (q *Queries) SetModerationReviewedBy(ctx context.Context, arg SetModerationReviewedByParams) error {
+	_, err := q.db.Exec(ctx, setModerationReviewedBy, arg.ID, arg.ModerationReviewedBy)
+	return err
 }
 
 const setModerationState = `-- name: SetModerationState :exec
@@ -2275,7 +2346,7 @@ UPDATE schematics SET
     moderation_resubmit_count = COALESCE($33, moderation_resubmit_count),
     modified = NOW()
 WHERE id = $1
-RETURNING id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count
+RETURNING id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count, moderation_reviewed_by, human_review_requested
 `
 
 type UpdateSchematicParams struct {
@@ -2403,6 +2474,8 @@ func (q *Queries) UpdateSchematic(ctx context.Context, arg UpdateSchematicParams
 		&i.HeldImages,
 		&i.RemovedImages,
 		&i.ModerationResubmitCount,
+		&i.ModerationReviewedBy,
+		&i.HumanReviewRequested,
 	)
 	return i, err
 }

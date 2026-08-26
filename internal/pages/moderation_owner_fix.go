@@ -74,7 +74,11 @@ func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *sto
 		// budget frees), so rapid editing can't run up cost. (#1646)
 		if schem.ModerationState == store.ModerationPublishedLimited ||
 			schem.ModerationState == store.ModerationChangesRequested {
-			if moderationSvc != nil && appStore.ModerationChecklist != nil && ratelimit.AllowPaidAI(ctx, rl, userID) {
+			if schem.ModerationReviewedBy == store.ReviewedByHuman {
+				// A human made this decision, so the author's change must go back
+				// to a human for re-review; it never auto-promotes. Re-queue it. (#1646)
+				_ = appStore.Schematics.SetHumanReviewRequested(ctx, id, true)
+			} else if moderationSvc != nil && appStore.ModerationChecklist != nil && ratelimit.AllowPaidAI(ctx, rl, userID) {
 				if q, qErr := moderationSvc.CheckSchematicQuality(schem.Title, schem.Content); qErr == nil && q.Approved {
 					_, _ = appStore.ModerationChecklist.ResolveOpenByKind(ctx, id, store.ChecklistKindDescription)
 				}
@@ -82,7 +86,9 @@ func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *sto
 					if enqueueSearchUpsert != nil {
 						_ = enqueueSearchUpsert(ctx, id)
 					}
-					SendSchematicLiveEmail(ctx, mailService, appStore, id)
+					// SMTP send is slow; run it off the request path with a
+					// background context so it isn't tied to the response. (#1646)
+					go SendSchematicLiveEmail(context.Background(), mailService, appStore, id)
 				}
 			} else if enqueueChecklistRecheck != nil {
 				// Over budget (or no moderation svc): the description is saved;
@@ -92,6 +98,65 @@ func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *sto
 		}
 
 		// Render the refreshed region from the fresh state.
+		fresh, err := appStore.Schematics.GetByID(ctx, id)
+		if err != nil || fresh == nil {
+			fresh = schem
+		}
+		var open []store.ModerationChecklistItem
+		if appStore.ModerationChecklist != nil {
+			open, _ = appStore.ModerationChecklist.ListOpenBySchematic(ctx, id)
+		}
+		data := ownerModFragmentData{
+			OwnerModeration: computeOwnerModeration(fresh, open),
+			Schematic:       models.Schematic{ID: fresh.ID, Name: fresh.Name},
+		}
+		html, err := registry.LoadFiles(schematicModerationFragment).Render(data)
+		if err != nil {
+			return err
+		}
+		return e.HTML(http.StatusOK, html)
+	}
+}
+
+// RequestHumanReviewHandler lets an author ask a human to re-check an automated
+// moderation outcome without changing the schematic. It flags the schematic for
+// the moderator queue (visibility unchanged) and returns the refreshed owner
+// moderation region so HTMX swaps it in place. (#1646)
+func RequestHumanReviewHandler(registry *server.Registry, appStore *store.Store) func(e *server.RequestEvent) error {
+	return func(e *server.RequestEvent) error {
+		if ok, err := requireAuth(e); !ok {
+			return err
+		}
+		userID := authenticatedUserID(e)
+		id := e.Request.PathValue("id")
+		if id == "" {
+			return e.BadRequestError("schematic id is required", nil)
+		}
+		ctx := context.Background()
+		schem, err := appStore.Schematics.GetByID(ctx, id)
+		if err != nil || schem == nil {
+			return e.NotFoundError("schematic not found", nil)
+		}
+		if schem.AuthorID != userID {
+			return e.ForbiddenError("you are not the author of this schematic", nil)
+		}
+		// Only meaningful for an automated outcome the author hasn't already
+		// escalated. A human decision is final until a human revisits it, so we
+		// never let this override one.
+		eligible := schem.ModerationReviewedBy == store.ReviewedBySystem && !schem.HumanReviewRequested &&
+			(schem.ModerationState == store.ModerationPublishedLimited || schem.ModerationState == store.ModerationChangesRequested)
+		if eligible {
+			if err := appStore.Schematics.SetHumanReviewRequested(ctx, id, true); err != nil {
+				return e.InternalServerError("failed to request human review", err)
+			}
+			if appStore.ModerationLog != nil {
+				_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+					SchematicID: id, ActorID: userID, ActorType: "user",
+					Action: "request_human_review", Reason: "author requested human review of an automated outcome",
+				})
+			}
+		}
+
 		fresh, err := appStore.Schematics.GetByID(ctx, id)
 		if err != nil || fresh == nil {
 			fresh = schem

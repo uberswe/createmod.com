@@ -89,6 +89,18 @@ func (m *memSchematics) Update(_ context.Context, s *store.Schematic) error {
 	m.row = s
 	return nil
 }
+func (m *memSchematics) SetModerationReviewedBy(_ context.Context, id, by string) error {
+	if m.row != nil && m.row.ID == id {
+		m.row.ModerationReviewedBy = by
+	}
+	return nil
+}
+func (m *memSchematics) SetHumanReviewRequested(_ context.Context, id string, requested bool) error {
+	if m.row != nil && m.row.ID == id {
+		m.row.HumanReviewRequested = requested
+	}
+	return nil
+}
 
 func TestChecklistLifecycle(t *testing.T) {
 	ctx := context.Background()

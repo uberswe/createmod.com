@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/mail"
+	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"createmod/internal/mailer"
@@ -48,10 +48,11 @@ func (w *TrendingNewsletterWorker) Work(ctx context.Context, job *river.Job[Tren
 		return nil
 	}
 
-	subject := fmt.Sprintf("Trending on CreateMod.com — %s", now.Format("Jan 2, 2006"))
-	bodyText := buildNewsletterBody(topSchematics, baseURL)
+	subject := fmt.Sprintf("Trending on CreateMod.com for %s", now.Format("Jan 2, 2006"))
+	intro := "Here are this week's most popular Create builds:"
+	items := newsletterItems(topSchematics, baseURL)
 
-	htmlBody := mailer.EmailHTML(subject, "", baseURL, "Browse All Schematics", bodyText)
+	htmlBody := mailer.TrendingNewsletterHTML(subject, intro, items, baseURL, "")
 
 	issue := &store.NewsletterIssue{
 		Type:     "trending",
@@ -77,8 +78,7 @@ func (w *TrendingNewsletterWorker) Work(ctx context.Context, job *river.Job[Tren
 
 		for _, sub := range subscribers {
 			unsubLink := fmt.Sprintf("%s/unsubscribe?token=%s", baseURL, sub.UnsubscribeToken)
-			personalBody := bodyText + fmt.Sprintf("\n\nTo unsubscribe: %s", unsubLink)
-			personalHTML := mailer.EmailHTML(subject, "", baseURL, "Browse All Schematics", personalBody)
+			personalHTML := mailer.TrendingNewsletterHTML(subject, intro, items, baseURL, unsubLink)
 
 			msg := &mailer.Message{
 				From:    w.deps.Mail.DefaultFrom(),
@@ -102,16 +102,23 @@ func (w *TrendingNewsletterWorker) Work(ctx context.Context, job *river.Job[Tren
 	return nil
 }
 
-func buildNewsletterBody(schematics []store.TopViewedSchematic, baseURL string) string {
-	var lines []string
-	lines = append(lines, "Here are this week's most popular schematics:\n")
-	for i, s := range schematics {
+func newsletterItems(schematics []store.TopViewedSchematic, baseURL string) []mailer.NewsletterSchematic {
+	items := make([]mailer.NewsletterSchematic, 0, len(schematics))
+	for _, s := range schematics {
 		title := s.Title
 		if title == "" {
 			title = s.Name
 		}
-		url := fmt.Sprintf("%s/schematics/%s", baseURL, s.Name)
-		lines = append(lines, fmt.Sprintf("%d. %s (%d views)\n   %s", i+1, title, s.TotalViews, url))
+		img := ""
+		if s.FeaturedImage != "" {
+			img = fmt.Sprintf("%s/api/files/schematics/%s/%s?thumb=240x160&v=2", baseURL, s.ID, url.PathEscape(s.FeaturedImage))
+		}
+		items = append(items, mailer.NewsletterSchematic{
+			Title:    title,
+			URL:      fmt.Sprintf("%s/schematics/%s", baseURL, s.Name),
+			ImageURL: img,
+			Views:    s.TotalViews,
+		})
 	}
-	return strings.Join(lines, "\n")
+	return items
 }

@@ -324,17 +324,22 @@ func ModeratorDecisionHandler(appStore *store.Store, mailService *mailer.Service
 		if enqueueSearchUpsert != nil {
 			_ = enqueueSearchUpsert(ctx, id)
 		}
-		// Notify the author to match the decision.
-		switch action {
-		case DecisionApproveFull:
-			SendSchematicLiveEmail(ctx, mailService, appStore, id)
-		case DecisionPublishNotes, DecisionRequestChanges:
-			SendSchematicActionNeededEmail(ctx, mailService, appStore, id)
-		case DecisionRejectFixable:
-			SendSchematicNotPublishedEmail(ctx, mailService, appStore, id, true)
-		case DecisionRejectFinal:
-			SendSchematicNotPublishedEmail(ctx, mailService, appStore, id, false)
-		}
+		// Notify the author to match the decision. The email send does a
+		// synchronous SMTP dial/TLS/send, so run it off the request path to keep
+		// the moderator's action snappy. ctx is already context.Background(), so
+		// it outlives the response. (#1646)
+		go func() {
+			switch action {
+			case DecisionApproveFull:
+				SendSchematicLiveEmail(ctx, mailService, appStore, id)
+			case DecisionPublishNotes, DecisionRequestChanges:
+				SendSchematicActionNeededEmail(ctx, mailService, appStore, id)
+			case DecisionRejectFixable:
+				SendSchematicNotPublishedEmail(ctx, mailService, appStore, id, true)
+			case DecisionRejectFinal:
+				SendSchematicNotPublishedEmail(ctx, mailService, appStore, id, false)
+			}
+		}()
 		_ = newState
 
 		dest := "/admin/moderation"

@@ -160,11 +160,13 @@ WHERE id = @id
   AND (featured_image = ANY(held_images) OR featured_image = ANY(removed_images));
 
 -- name: ListModerationQueue :many
--- Schematics needing a moderator's attention: policy-flagged, or with one or
--- more held images awaiting an approve/remove decision. (#1646)
+-- Schematics needing a moderator's attention: policy-flagged, with one or more
+-- held images awaiting an approve/remove decision, or where the author asked a
+-- human to re-check an automated outcome. (#1646)
 SELECT * FROM schematics
 WHERE deleted IS NULL
   AND (moderation_state = 'flagged'
+       OR human_review_requested = true
        OR COALESCE(array_length(held_images, 1), 0) > 0)
 ORDER BY created ASC
 LIMIT $1 OFFSET $2;
@@ -173,7 +175,14 @@ LIMIT $1 OFFSET $2;
 SELECT COUNT(*) FROM schematics
 WHERE deleted IS NULL
   AND (moderation_state = 'flagged'
+       OR human_review_requested = true
        OR COALESCE(array_length(held_images, 1), 0) > 0);
+
+-- name: SetModerationReviewedBy :exec
+UPDATE schematics SET moderation_reviewed_by = $2, updated = NOW() WHERE id = $1;
+
+-- name: SetHumanReviewRequested :exec
+UPDATE schematics SET human_review_requested = $2, updated = NOW() WHERE id = $1;
 
 -- name: ListStuckAutoReview :many
 -- Schematics stranded in auto_review past the cutoff: their async moderation

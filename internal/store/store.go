@@ -203,11 +203,20 @@ type Schematic struct {
 	// ModerationResubmitCount counts how many times the author has resubmitted
 	// after a rejected_fixable outcome. Exactly one resubmit is allowed. (#1646)
 	ModerationResubmitCount int
-	ScheduledAt             *time.Time
-	Deleted                 *time.Time
-	OldID                   *int
-	Status                  string
-	Type                    string
+	// ModerationReviewedBy records who set the current moderation outcome:
+	// ReviewedBySystem (automated) or ReviewedByHuman (moderator). Drives the
+	// "automated review" email note, the request-human-review affordance, and the
+	// rule that a human-reviewed schematic is always re-reviewed by a human. (#1646)
+	ModerationReviewedBy string
+	// HumanReviewRequested is set when the author asks a human to re-check an
+	// automated outcome; it puts the schematic in the moderator queue without
+	// changing its visibility. (#1646)
+	HumanReviewRequested bool
+	ScheduledAt          *time.Time
+	Deleted              *time.Time
+	OldID                *int
+	Status               string
+	Type                 string
 	// SourceFormat is the format slug the schematic was uploaded as (e.g.
 	// "excraft"); empty or "nbt" means it was uploaded as Create structure NBT.
 	SourceFormat string
@@ -955,6 +964,10 @@ type SchematicStore interface {
 	// ListStuckAutoReview returns schematics stranded in auto_review created
 	// before olderThan (their moderation job never ran or was discarded). (#1646)
 	ListStuckAutoReview(ctx context.Context, olderThan time.Time, limit int) ([]Schematic, error)
+	// SetModerationReviewedBy records who set the current outcome (system/human). (#1646)
+	SetModerationReviewedBy(ctx context.Context, id, by string) error
+	// SetHumanReviewRequested toggles the author's request for a human re-check. (#1646)
+	SetHumanReviewRequested(ctx context.Context, id string, requested bool) error
 	CountModerationQueue(ctx context.Context) (int64, error)
 	SoftDelete(ctx context.Context, id string) error
 	// Relations
@@ -1651,6 +1664,10 @@ const (
 
 	ChecklistSourceAuto      = "auto"
 	ChecklistSourceModerator = "moderator"
+
+	// Moderation review sources, stored in Schematic.ModerationReviewedBy. (#1646)
+	ReviewedBySystem = "system"
+	ReviewedByHuman  = "human"
 
 	ChecklistStatusOpen     = "open"
 	ChecklistStatusResolved = "resolved"

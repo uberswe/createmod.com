@@ -15,10 +15,17 @@ type ModerationEmail struct {
 	Heading   string   // e.g. "Your schematic Steam Train is live"
 	Body      string   // one paragraph (plain text; newlines -> <br>)
 	Checklist []string // optional checklist box items
-	CTALabel  string   // optional gold button label
-	CTAURL    string   // optional gold button URL
-	Footer    string   // optional small note under the button
+	// Note is an optional callout under the checklist, e.g. telling the author an
+	// automated review may be wrong and they can ask for a human. (#1646)
+	Note     string
+	CTALabel string // optional gold button label
+	CTAURL   string // optional gold button URL
+	Footer   string // optional small note under the button
 }
+
+// automatedReviewNote is shown on emails whose feedback came from the automated
+// review, so authors know they can escalate to a human. (#1646)
+const automatedReviewNote = "Our automated review sometimes makes mistakes, if you believe the message above is wrong you can submit your schematic for human review without changes."
 
 // Moderation email colours. Dark scheme matching the site (page #1f2121, card
 // #2d3030, gold #bf9045, muted text), plus email-safe accent hexes.
@@ -62,6 +69,14 @@ func ModerationEmailHTML(m ModerationEmail) string {
 </td></tr></table></td></tr>`, emailBox, emailBorder, rows.String())
 	}
 
+	noteBlock := ""
+	if m.Note != "" {
+		noteBlock = fmt.Sprintf(`<tr><td style="padding:16px 0 0 0">
+<table width="100%%" cellpadding="0" cellspacing="0" style="background-color:%s;border:1px solid %s;border-radius:8px">
+<tr><td style="padding:12px 16px;font-size:13px;line-height:1.5;color:%s">%s</td></tr>
+</table></td></tr>`, emailBox, emailBorder, emailMuted, strings.ReplaceAll(html.EscapeString(m.Note), "\n", "<br>"))
+	}
+
 	ctaBlock := ""
 	if m.CTALabel != "" && m.CTAURL != "" {
 		ctaBlock = fmt.Sprintf(`<tr><td style="padding:22px 0 0 0">
@@ -95,6 +110,7 @@ func ModerationEmailHTML(m ModerationEmail) string {
 %s
 %s
 %s
+%s
 </table>
 </td></tr>
 <tr><td style="padding:16px 28px;text-align:center;font-size:12px;color:%s;border-top:1px solid %s">
@@ -104,7 +120,7 @@ CreateMod.com &bull; Minecraft Create mod schematics
 </td></tr>
 </table>
 </body>
-</html>`, emailBg, emailBg, emailCard, emailBorder, accent, moderationGold, emailHeading, html.EscapeString(m.Heading), emailText, body, checklistBlock, ctaBlock, footerNote, emailMuted, emailBorder)
+</html>`, emailBg, emailBg, emailCard, emailBorder, accent, moderationGold, emailHeading, html.EscapeString(m.Heading), emailText, body, checklistBlock, noteBlock, ctaBlock, footerNote, emailMuted, emailBorder)
 }
 
 // SchematicLiveEmail: a schematic reached full visibility. (green)
@@ -112,16 +128,17 @@ func SchematicLiveEmail(title, schematicURL string) string {
 	return ModerationEmailHTML(ModerationEmail{
 		Accent:   moderationGreen,
 		Heading:  fmt.Sprintf("Your schematic %s is live", title),
-		Body:     "Everything passed and your schematic is fully published. It shows up in Latest and in search like any other build. Thanks for sharing it!",
+		Body:     `All checks passed and your schematic is now fully published. It will now show under the "Latest Schematics" category and in search results. Thanks for sharing your creation!`,
 		CTALabel: "View your schematic",
 		CTAURL:   schematicURL,
 	})
 }
 
 // SchematicActionNeededEmail: published with limits; the checklist unlocks full
-// visibility. (yellow)
-func SchematicActionNeededEmail(title, schematicURL string, checklist []string) string {
-	return ModerationEmailHTML(ModerationEmail{
+// visibility. (yellow) When automated, includes the note telling the author they
+// can escalate to a human review. (#1646)
+func SchematicActionNeededEmail(title, schematicURL string, checklist []string, automated bool) string {
+	m := ModerationEmail{
 		Accent:    moderationYellow,
 		Heading:   fmt.Sprintf("Action needed: unlock full visibility for %s", title),
 		Body:      "Your schematic is published and users can view it via the link, but it is not shown anywhere on the website until you fix the following issues.",
@@ -129,7 +146,11 @@ func SchematicActionNeededEmail(title, schematicURL string, checklist []string) 
 		CTALabel:  "Fix it now",
 		CTAURL:    schematicURL,
 		Footer:    "Your schematic is visible via direct link only.",
-	})
+	}
+	if automated {
+		m.Note = automatedReviewNote
+	}
+	return ModerationEmailHTML(m)
 }
 
 // SchematicImageReviewEmail: one or more images are being reviewed. (blue)
@@ -137,7 +158,7 @@ func SchematicImageReviewEmail(title, schematicURL string, slaHours int) string 
 	return ModerationEmailHTML(ModerationEmail{
 		Accent:   moderationBlue,
 		Heading:  fmt.Sprintf("One image on %s is being reviewed", title),
-		Body:     fmt.Sprintf("Your schematic is live. One of your images tripped the automated scanner, so we've hidden it while a person takes a look, usually within %d hours. Shaders throw the scanner off sometimes, so this is often a false alarm. Visitors don't see the hidden image, and it comes back on its own if it passes.", slaHours),
+		Body:     fmt.Sprintf("Your schematic is live but one of your images tripped the automated scanner and is hidden until a real human can review it, usually within %d hours. Shaders throw the scanner off sometimes, so this is often a false alarm. Visitors don't see the hidden image, and it will automatically show again if it passes review.", slaHours),
 		CTALabel: "View your schematic",
 		CTAURL:   schematicURL,
 		Footer:   "If we do remove it, we'll tell you exactly why so you can upload a replacement.",
@@ -147,9 +168,9 @@ func SchematicImageReviewEmail(title, schematicURL string, slaHours int) string 
 // SchematicNotPublishedEmail: a schematic was rejected. fixable toggles the
 // second-chance vs appeal-only copy. (red)
 func SchematicNotPublishedEmail(title, schematicURL, reason string, fixable bool) string {
-	body := fmt.Sprintf("%s wasn't published because it broke one of our content rules.", title)
+	reasonSuffix := ""
 	if reason != "" {
-		body += " " + reason
+		reasonSuffix = " " + reason
 	}
 	m := ModerationEmail{
 		Accent:   moderationRed,
@@ -158,11 +179,11 @@ func SchematicNotPublishedEmail(title, schematicURL, reason string, fixable bool
 		CTAURL:   schematicURL,
 	}
 	if fixable {
-		m.Body = body + " You can fix it and resubmit once. The checklist on your schematic page tells you what to change."
+		m.Body = fmt.Sprintf("%s wasn't published because it contained wording that violates our content rules.%s You can fix it and resubmit your schematic. The checklist on your schematic page tells you what you need to change.", title, reasonSuffix)
 		m.CTALabel = "Fix and resubmit"
 		m.Footer = "Got questions? Reply in the moderation thread on your schematic page."
 	} else {
-		m.Body = body + " A moderator reviewed this and it won't go back up."
+		m.Body = fmt.Sprintf("%s wasn't published because it broke one of our content rules.%s This decision was made by a human moderator.", title, reasonSuffix)
 		m.Footer = "If a rejection is fixable, we include a checklist and a one-time resubmit button instead."
 	}
 	return ModerationEmailHTML(m)

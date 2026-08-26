@@ -38,6 +38,12 @@ type OwnerModeration struct {
 	ChatEnabled     bool
 	AppealOnly      bool
 	FullyPublished  bool
+	// CanRequestHumanReview is true when the current outcome was automated and
+	// the author hasn't already asked for a human, so the schematic page offers a
+	// "request human review without changes" button. (#1646)
+	CanRequestHumanReview bool
+	// HumanReviewRequested is true once the author has asked for a human to look. (#1646)
+	HumanReviewRequested bool
 }
 
 // computeOwnerModeration builds the owner's banners + checklist from the
@@ -163,5 +169,14 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 		om.Checklist = append(om.Checklist, row)
 	}
 	om.HasChecklist = len(om.Checklist) > 0
+
+	// Offer "request human review" only when the current outcome was automated
+	// (a human hasn't decided) and the author hasn't already asked. A human
+	// decision is final until a human revisits it. (#1646)
+	om.HumanReviewRequested = schem.HumanReviewRequested
+	switch schem.ModerationState {
+	case store.ModerationPublishedLimited, store.ModerationChangesRequested:
+		om.CanRequestHumanReview = schem.ModerationReviewedBy == store.ReviewedBySystem && !schem.HumanReviewRequested
+	}
 	return om
 }

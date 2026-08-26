@@ -119,6 +119,7 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to flag schematic", "error", updateErr, "schematic_id", args.SchematicID)
 			} else {
+				_ = w.deps.Store.Schematics.SetModerationReviewedBy(ctx, args.SchematicID, store.ReviewedBySystem)
 				logStateChange(oldState, schem.ModerationState, "policy check failed: "+policyResult.Reason)
 			}
 		} else if qualityResult, qualityErr := w.deps.Moderation.CheckSchematicQuality(args.Title, args.Description); qualityErr != nil {
