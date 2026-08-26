@@ -3463,6 +3463,12 @@ body.sidebar-ready .generator-overlay {
 .cm-modmaterials__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-modmaterials__n { flex: 0 0 auto; color: var(--cm-text-muted); font-variant-numeric: tabular-nums; }
 
+/* Full-size image lightbox for admin moderation review. */
+.cm-modimg__thumb[data-cm-lightbox] { cursor: zoom-in; }
+.cm-lightbox { position: fixed; inset: 0; z-index: 3000; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.85); cursor: zoom-out; }
+.cm-lightbox.is-open { display: flex; }
+.cm-lightbox__img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6); }
+
 /* Standalone moderation detail (admin schematic page: review layout, no queue). */
 .cm-detail--solo { max-width: 920px; margin-left: auto; margin-right: auto; }
 .cm-advanced { max-width: 920px; margin: 24px auto 40px; }

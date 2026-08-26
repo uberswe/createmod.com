@@ -20,7 +20,9 @@
     <div class="cm-media">
         {{ range .Images }}
         <div class="cm-modimg{{ if .Held }} cm-modimg--held{{ end }}{{ if .Removed }} cm-modimg--removed{{ end }}">
-            <div class="cm-modimg__thumb" style="background-image:url('{{ .URL }}?thumb=400x400&v=2')"></div>
+            <div class="cm-modimg__thumb" style="background-image:url('{{ .URL }}?thumb=400x400&v=2')"
+                 role="button" tabindex="0" title="View full size"
+                 data-cm-lightbox="{{ .URL }}?thumb=1600x1600&v=2"></div>
             {{ if .Featured }}<span class="cm-modimg__tag cm-modimg__tag--feat">Featured</span>{{ end }}
             {{ if .Held }}<span class="cm-modimg__tag cm-modimg__tag--held">Flagged</span>{{ end }}
             {{ if .Removed }}<span class="cm-modimg__tag cm-modimg__tag--removed">Removed</span>{{ end }}

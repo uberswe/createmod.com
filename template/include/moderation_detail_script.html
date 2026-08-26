@@ -36,6 +36,42 @@
     };
     window.modCancel = function () { form.style.display = 'none'; mode = ''; };
 })();
+// Click a review image to view it full size in a lightbox. Delegated on
+// document so it keeps working after HTMX body swaps; the overlay is (re)created
+// lazily because hx-boost replaces <body>. (#1646)
+(function () {
+    var overlay = null;
+    function ensureOverlay() {
+        if (overlay && document.body.contains(overlay)) { return overlay; }
+        overlay = document.createElement('div');
+        overlay.className = 'cm-lightbox';
+        var img = document.createElement('img');
+        img.className = 'cm-lightbox__img';
+        img.alt = '';
+        overlay.appendChild(img);
+        overlay.addEventListener('click', function () { overlay.classList.remove('is-open'); });
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+    function openLightbox(url) {
+        var o = ensureOverlay();
+        o.querySelector('.cm-lightbox__img').src = url;
+        o.classList.add('is-open');
+    }
+    if (!window._cmModLightbox) {
+        window._cmModLightbox = true;
+        document.addEventListener('click', function (ev) {
+            var el = ev.target.closest('[data-cm-lightbox]');
+            if (el) { ev.preventDefault(); openLightbox(el.getAttribute('data-cm-lightbox')); }
+        });
+        document.addEventListener('keydown', function (ev) {
+            if ((ev.key === 'Enter' || ev.key === ' ') && document.activeElement && document.activeElement.hasAttribute && document.activeElement.hasAttribute('data-cm-lightbox')) {
+                ev.preventDefault(); openLightbox(document.activeElement.getAttribute('data-cm-lightbox'));
+            }
+            if (ev.key === 'Escape' && overlay) { overlay.classList.remove('is-open'); }
+        });
+    }
+})();
 // Original / English (auto) description toggle.
 window.cmTrans = function (which) {
     var orig = document.getElementById('desc-orig');
