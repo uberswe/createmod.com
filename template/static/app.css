@@ -473,6 +473,26 @@ html.cm-anchor-open [id*="outstream-player"] {
   bottom: 110px !important;
 }
 
+/* The floating outstream video renders at NitroPay's fixed 300x169, which looks
+   small on large desktops. Scale it up visually on wider screens, anchored to
+   the bottom-right corner so it stays in place. transform preserves the aspect
+   ratio and does not change the ad's reported size; NitroPay sets no transform
+   of its own, so there is nothing to fight. The player only floats at >=1440px
+   (1200-1439 runs it inline in the rail instead). */
+@media (min-width: 1600px) {
+  .cm-outstream,
+  [id*="outstream-player"].nitro-floating-container {
+    transform: scale(1.3);
+    transform-origin: bottom right;
+  }
+}
+@media (min-width: 1920px) {
+  .cm-outstream,
+  [id*="outstream-player"].nitro-floating-container {
+    transform: scale(1.6);
+  }
+}
+
 /***************
   Featured cards
 ***************/
