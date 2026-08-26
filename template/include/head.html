@@ -102,6 +102,9 @@ window.setTheme=function(theme){
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" defer crossorigin="anonymous"></script>
     <!-- Framework JS (dropdown, modal, collapse, tabs) — in <head> to prevent re-execution on HTMX body swaps -->
     <script src="/assets/x/framework.js?v={{ AssetVer }}" defer></script>
+    <!-- Shared helpers (fetchBlockNames, formatBlockName, etc.). Loaded blocking in
+         <head> so body inline scripts that call them are never a step ahead. -->
+    <script src="/assets/x/utils.js?v={{ AssetVer }}"></script>
 
     <!-- gtag shim always defined so gtag(...) calls never throw, even where ads/GA are suppressed. -->
     <script data-cfasync="false">window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){dataLayer.push(arguments);};</script>
