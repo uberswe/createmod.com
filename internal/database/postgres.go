@@ -129,6 +129,8 @@ func schematicFromDB(s db.Schematic) store.Schematic {
 		ModerationState:         s.ModerationState,
 		ModerationReason:        s.ModerationReason,
 		ModerationResubmitCount: int(s.ModerationResubmitCount),
+		ModerationReviewedBy:    s.ModerationReviewedBy,
+		HumanReviewRequested:    s.HumanReviewRequested,
 		ScheduledAt:             fromPgTimestamptz(s.ScheduledAt),
 		Deleted:                 fromPgTimestamptz(s.Deleted),
 		OldID:                   ptrInt32ToInt(s.OldID),
@@ -885,6 +887,14 @@ func (ps *PostgresStore) ListModerationQueue(ctx context.Context, limit, offset 
 
 func (ps *PostgresStore) CountModerationQueue(ctx context.Context) (int64, error) {
 	return ps.q.CountModerationQueue(ctx)
+}
+
+func (ps *PostgresStore) SetModerationReviewedBy(ctx context.Context, id, by string) error {
+	return ps.q.SetModerationReviewedBy(ctx, db.SetModerationReviewedByParams{ID: id, ModerationReviewedBy: by})
+}
+
+func (ps *PostgresStore) SetHumanReviewRequested(ctx context.Context, id string, requested bool) error {
+	return ps.q.SetHumanReviewRequested(ctx, db.SetHumanReviewRequestedParams{ID: id, HumanReviewRequested: requested})
 }
 
 func (ps *PostgresStore) ListStuckAutoReview(ctx context.Context, olderThan time.Time, limit int) ([]store.Schematic, error) {

@@ -56,4 +56,22 @@
         </div>
     </div>
     {{ end }}
+    {{ if .OwnerModeration.HumanReviewRequested }}
+    <div class="cm-owner-banner cm-owner-banner--info mb-3">
+        <span class="cm-owner-banner__dot"></span>
+        <div>
+            <div class="cm-owner-banner__title">Human review requested</div>
+            <div class="cm-owner-banner__body">A moderator will take another look at this schematic. We will email you once they have decided.</div>
+        </div>
+    </div>
+    {{ else if .OwnerModeration.CanRequestHumanReview }}
+    <div class="card cm-modlist mb-3">
+        <div class="card-body">
+            <div class="cm-modlist__note" style="margin-bottom:12px">Our automated review sometimes makes mistakes. If you believe the feedback above is wrong, you can ask a human to review this schematic without making any changes.</div>
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    hx-post="/schematics/{{ .Schematic.ID }}/request-human-review"
+                    hx-target="#owner-moderation" hx-swap="outerHTML">Request human review</button>
+        </div>
+    </div>
+    {{ end }}
 </div>

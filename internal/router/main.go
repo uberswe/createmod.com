@@ -525,6 +525,8 @@ func Register(p RegisterParams) chi.Router {
 	// so a script can't hammer the re-check path. (#1646)
 	r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
 		Post("/schematics/{id}/description", Adapt(pages.SchematicDescriptionRecheckHandler(registry, p.AppStore, p.ModerationService, p.MailService, p.RateLimiter, enqueueChecklistRecheck, enqueueSearchUpsert)))
+	r.With(keyedRateLimitMiddleware(p.RateLimiter, "modcheck", 100, time.Minute)).
+		Post("/schematics/{id}/request-human-review", Adapt(pages.RequestHumanReviewHandler(registry, p.AppStore)))
 	r.Delete("/schematics/{id}", Adapt(pages.SchematicDeleteHandler(p.CacheService, p.AppStore, enqueueSearchDelete)))
 	// Schematic content management APIs (videos, references, modpacks, reddit links)
 	r.Post("/api/schematics/{id}/videos", Adapt(pages.AddSchematicVideoHandler(p.AppStore)))

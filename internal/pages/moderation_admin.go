@@ -64,6 +64,11 @@ func applyModeratorDecision(ctx context.Context, appStore *store.Store, schemati
 	if err := appStore.Schematics.Update(ctx, schem); err != nil {
 		return "", "", err
 	}
+	// A moderator decided, so this is now a human review and any pending author
+	// request for human review is satisfied. A later fix by the author must
+	// therefore come back to a human, never auto-promote. (#1646)
+	_ = appStore.Schematics.SetModerationReviewedBy(ctx, schematicID, store.ReviewedByHuman)
+	_ = appStore.Schematics.SetHumanReviewRequested(ctx, schematicID, false)
 	logModeratorDecision(ctx, appStore, schematicID, moderatorID, oldState, schem.ModerationState, action, note)
 	if strings.TrimSpace(note) != "" {
 		postModeratorChat(ctx, appStore, schematicID, moderatorID, note)

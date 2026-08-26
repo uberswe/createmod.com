@@ -494,6 +494,8 @@ type Schematic struct {
 	HeldImages              []string           `json:"held_images"`
 	RemovedImages           []string           `json:"removed_images"`
 	ModerationResubmitCount int32              `json:"moderation_resubmit_count"`
+	ModerationReviewedBy    string             `json:"moderation_reviewed_by"`
+	HumanReviewRequested    bool               `json:"human_review_requested"`
 }
 
 type SchematicCategory struct {

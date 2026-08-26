@@ -344,8 +344,9 @@ type Querier interface {
 	ListModerationChecklistBySchematic(ctx context.Context, schematicID string) ([]ModerationChecklistItem, error)
 	ListModerationLogBySchematic(ctx context.Context, schematicID string) ([]ListModerationLogBySchematicRow, error)
 	ListModerationMessagesByThread(ctx context.Context, threadID string) ([]ModerationMessage, error)
-	// Schematics needing a moderator's attention: policy-flagged, or with one or
-	// more held images awaiting an approve/remove decision. (#1646)
+	// Schematics needing a moderator's attention: policy-flagged, with one or more
+	// held images awaiting an approve/remove decision, or where the author asked a
+	// human to re-check an automated outcome. (#1646)
 	ListModerationQueue(ctx context.Context, arg ListModerationQueueParams) ([]Schematic, error)
 	ListModerationThreadsByModerator(ctx context.Context, arg ListModerationThreadsByModeratorParams) ([]ModerationThread, error)
 	ListModerationViolationsByAuthor(ctx context.Context, authorID *string) ([]ListModerationViolationsByAuthorRow, error)
@@ -468,6 +469,8 @@ type Querier interface {
 	// yesterday, and a large sentinel when the table is empty (first backfill).
 	SearchTermDailyDaysBehind(ctx context.Context) (int32, error)
 	SetDisplayedBadge(ctx context.Context, arg SetDisplayedBadgeParams) error
+	SetHumanReviewRequested(ctx context.Context, arg SetHumanReviewRequestedParams) error
+	SetModerationReviewedBy(ctx context.Context, arg SetModerationReviewedByParams) error
 	SetModerationState(ctx context.Context, arg SetModerationStateParams) error
 	SetSchematicCategories(ctx context.Context, schematicID string) error
 	SetSchematicModpacks(ctx context.Context, schematicID string) error

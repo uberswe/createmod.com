@@ -15,10 +15,17 @@ type ModerationEmail struct {
 	Heading   string   // e.g. "Your schematic Steam Train is live"
 	Body      string   // one paragraph (plain text; newlines -> <br>)
 	Checklist []string // optional checklist box items
-	CTALabel  string   // optional gold button label
-	CTAURL    string   // optional gold button URL
-	Footer    string   // optional small note under the button
+	// Note is an optional callout under the checklist, e.g. telling the author an
+	// automated review may be wrong and they can ask for a human. (#1646)
+	Note     string
+	CTALabel string // optional gold button label
+	CTAURL   string // optional gold button URL
+	Footer   string // optional small note under the button
 }
+
+// automatedReviewNote is shown on emails whose feedback came from the automated
+// review, so authors know they can escalate to a human. (#1646)
+const automatedReviewNote = "Our automated review sometimes makes mistakes, if you believe the message above is wrong you can submit your schematic for human review without changes."
 
 // Moderation email colours. Dark scheme matching the site (page #1f2121, card
 // #2d3030, gold #bf9045, muted text), plus email-safe accent hexes.
@@ -62,6 +69,14 @@ func ModerationEmailHTML(m ModerationEmail) string {
 </td></tr></table></td></tr>`, emailBox, emailBorder, rows.String())
 	}
 
+	noteBlock := ""
+	if m.Note != "" {
+		noteBlock = fmt.Sprintf(`<tr><td style="padding:16px 0 0 0">
+<table width="100%%" cellpadding="0" cellspacing="0" style="background-color:%s;border:1px solid %s;border-radius:8px">
+<tr><td style="padding:12px 16px;font-size:13px;line-height:1.5;color:%s">%s</td></tr>
+</table></td></tr>`, emailBox, emailBorder, emailMuted, strings.ReplaceAll(html.EscapeString(m.Note), "\n", "<br>"))
+	}
+
 	ctaBlock := ""
 	if m.CTALabel != "" && m.CTAURL != "" {
 		ctaBlock = fmt.Sprintf(`<tr><td style="padding:22px 0 0 0">
@@ -95,6 +110,7 @@ func ModerationEmailHTML(m ModerationEmail) string {
 %s
 %s
 %s
+%s
 </table>
 </td></tr>
 <tr><td style="padding:16px 28px;text-align:center;font-size:12px;color:%s;border-top:1px solid %s">
@@ -104,7 +120,7 @@ CreateMod.com &bull; Minecraft Create mod schematics
 </td></tr>
 </table>
 </body>
-</html>`, emailBg, emailBg, emailCard, emailBorder, accent, moderationGold, emailHeading, html.EscapeString(m.Heading), emailText, body, checklistBlock, ctaBlock, footerNote, emailMuted, emailBorder)
+</html>`, emailBg, emailBg, emailCard, emailBorder, accent, moderationGold, emailHeading, html.EscapeString(m.Heading), emailText, body, checklistBlock, noteBlock, ctaBlock, footerNote, emailMuted, emailBorder)
 }
 
 // SchematicLiveEmail: a schematic reached full visibility. (green)
@@ -119,9 +135,10 @@ func SchematicLiveEmail(title, schematicURL string) string {
 }
 
 // SchematicActionNeededEmail: published with limits; the checklist unlocks full
-// visibility. (yellow)
-func SchematicActionNeededEmail(title, schematicURL string, checklist []string) string {
-	return ModerationEmailHTML(ModerationEmail{
+// visibility. (yellow) When automated, includes the note telling the author they
+// can escalate to a human review. (#1646)
+func SchematicActionNeededEmail(title, schematicURL string, checklist []string, automated bool) string {
+	m := ModerationEmail{
 		Accent:    moderationYellow,
 		Heading:   fmt.Sprintf("Action needed: unlock full visibility for %s", title),
 		Body:      "Your schematic is published and users can view it via the link, but it is not shown anywhere on the website until you fix the following issues.",
@@ -129,7 +146,11 @@ func SchematicActionNeededEmail(title, schematicURL string, checklist []string) 
 		CTALabel:  "Fix it now",
 		CTAURL:    schematicURL,
 		Footer:    "Your schematic is visible via direct link only.",
-	})
+	}
+	if automated {
+		m.Note = automatedReviewNote
+	}
+	return ModerationEmailHTML(m)
 }
 
 // SchematicImageReviewEmail: one or more images are being reviewed. (blue)

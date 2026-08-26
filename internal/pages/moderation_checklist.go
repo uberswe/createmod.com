@@ -59,6 +59,9 @@ func EnterPublishedLimited(ctx context.Context, appStore *store.Store, schem *st
 		slog.Error("moderation: failed to enter published_limited", "schematic_id", schem.ID, "error", err)
 		return false
 	}
+	// This is the automated quality outcome, so mark it as a system review: it
+	// drives the "automated review" email note and the request-human-review CTA.
+	_ = appStore.Schematics.SetModerationReviewedBy(ctx, schem.ID, store.ReviewedBySystem)
 	CreateAutoChecklistItem(ctx, appStore, schem.ID, store.ChecklistKindDescription, note)
 	logModerationState(ctx, appStore, schem.ID, old, schem.ModerationState, "quality check failed, published with limits: "+note)
 	return true
