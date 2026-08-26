@@ -5,7 +5,7 @@ go 1.25.0
 toolchain go1.26.6
 
 require (
-	github.com/KimMachineGun/automemlimit v0.7.5
+	github.com/KimMachineGun/automemlimit v1.0.0
 	github.com/Tnze/go-mc v1.20.2
 	github.com/apokalyptik/phpass v0.0.0-20140806224508-cd4a744fe20c
 	github.com/disintegration/imaging v1.6.2
