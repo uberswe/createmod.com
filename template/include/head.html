@@ -262,6 +262,42 @@ window.setTheme=function(theme){
       });
     })();
     </script>
+    <script>
+    // NitroPay sometimes renders TWO ad iframes into a single display slot: one
+    // createAd() call, two stacked iframes (seen on the schematic top banner and
+    // the floating outstream player). Keep exactly one ad iframe per single-ad
+    // container. A debounced MutationObserver heals it whenever an extra iframe is
+    // added (the initial double-render, or a later re-render). It only ever
+    // REMOVES nodes and never reacts to its own removals, so it can't loop with
+    // NitroPay. (#double-ad)
+    (function(){
+      if (window.__cmAdDedup) return;
+      window.__cmAdDedup = true;
+      var SEL = '.cm-top-banner,[id*="-top-banner"],[id*="editor-banner"],[id$="-mobile"],.nitro-floating-container';
+      function dedup(c){
+        if (!c || !c.matches || !c.matches(SEL)) return;
+        var f = c.querySelectorAll(':scope > iframe');
+        for (var i = 0; i < f.length - 1; i++) { try { f[i].remove(); } catch (e) {} } // keep the last
+      }
+      var pending = false;
+      function sweep(){ pending = false; var els = document.querySelectorAll(SEL); for (var i = 0; i < els.length; i++) { dedup(els[i]); } }
+      function schedule(){ if (!pending) { pending = true; setTimeout(sweep, 50); } }
+      function start(){
+        if (!document.body) { document.addEventListener('DOMContentLoaded', start); return; }
+        new MutationObserver(function(muts){
+          for (var m = 0; m < muts.length; m++) {
+            var a = muts[m].addedNodes;
+            for (var i = 0; i < a.length; i++) {
+              var n = a[i];
+              if (n.nodeType === 1 && (n.tagName === 'IFRAME' || (n.querySelector && n.querySelector('iframe')))) { schedule(); break; }
+            }
+          }
+        }).observe(document.body, { childList: true, subtree: true });
+        sweep();
+      }
+      start();
+    })();
+    </script>
     {{ end }}
     <script>
     (function(){
