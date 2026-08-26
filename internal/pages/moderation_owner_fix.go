@@ -82,7 +82,9 @@ func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *sto
 					if enqueueSearchUpsert != nil {
 						_ = enqueueSearchUpsert(ctx, id)
 					}
-					SendSchematicLiveEmail(ctx, mailService, appStore, id)
+					// SMTP send is slow; run it off the request path with a
+					// background context so it isn't tied to the response. (#1646)
+					go SendSchematicLiveEmail(context.Background(), mailService, appStore, id)
 				}
 			} else if enqueueChecklistRecheck != nil {
 				// Over budget (or no moderation svc): the description is saved;
