@@ -1998,6 +1998,95 @@ func (q *Queries) ListSchematicsForSitemap(ctx context.Context) ([]ListSchematic
 	return items, nil
 }
 
+const listStuckAutoReview = `-- name: ListStuckAutoReview :many
+SELECT id, author_id, name, title, description, excerpt, content, postdate, modified, detected_language, featured_image, gallery, schematic_file, video, has_dependencies, dependencies, createmod_version_id, minecraft_version_id, views, downloads, block_count, dim_x, dim_y, dim_z, materials, mods, paid, featured, ai_description, moderation_reason, scheduled_at, deleted, deleted_at, old_id, status, type, created, updated, external_url, trending_score, avg_rating, rating_count, moderation_state, rotation_images, short_code, rotation_disabled, source_format, original_file, held_images, removed_images, moderation_resubmit_count FROM schematics
+WHERE deleted IS NULL
+  AND moderation_state = 'auto_review'
+  AND created < $1
+ORDER BY created ASC
+LIMIT $2
+`
+
+type ListStuckAutoReviewParams struct {
+	OlderThan time.Time `json:"older_than"`
+	Lim       int32     `json:"lim"`
+}
+
+// Schematics stranded in auto_review past the cutoff: their async moderation
+// job never ran (legacy rows from the 026 migration) or was discarded. The
+// auto_review backfill re-enqueues the moderation check for each. (#1646)
+func (q *Queries) ListStuckAutoReview(ctx context.Context, arg ListStuckAutoReviewParams) ([]Schematic, error) {
+	rows, err := q.db.Query(ctx, listStuckAutoReview, arg.OlderThan, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Schematic{}
+	for rows.Next() {
+		var i Schematic
+		if err := rows.Scan(
+			&i.ID,
+			&i.AuthorID,
+			&i.Name,
+			&i.Title,
+			&i.Description,
+			&i.Excerpt,
+			&i.Content,
+			&i.Postdate,
+			&i.Modified,
+			&i.DetectedLanguage,
+			&i.FeaturedImage,
+			&i.Gallery,
+			&i.SchematicFile,
+			&i.Video,
+			&i.HasDependencies,
+			&i.Dependencies,
+			&i.CreatemodVersionID,
+			&i.MinecraftVersionID,
+			&i.Views,
+			&i.Downloads,
+			&i.BlockCount,
+			&i.DimX,
+			&i.DimY,
+			&i.DimZ,
+			&i.Materials,
+			&i.Mods,
+			&i.Paid,
+			&i.Featured,
+			&i.AiDescription,
+			&i.ModerationReason,
+			&i.ScheduledAt,
+			&i.Deleted,
+			&i.DeletedAt,
+			&i.OldID,
+			&i.Status,
+			&i.Type,
+			&i.Created,
+			&i.Updated,
+			&i.ExternalUrl,
+			&i.TrendingScore,
+			&i.AvgRating,
+			&i.RatingCount,
+			&i.ModerationState,
+			&i.RotationImages,
+			&i.ShortCode,
+			&i.RotationDisabled,
+			&i.SourceFormat,
+			&i.OriginalFile,
+			&i.HeldImages,
+			&i.RemovedImages,
+			&i.ModerationResubmitCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const reassignFeaturedIfHeld = `-- name: ReassignFeaturedIfHeld :exec
 UPDATE schematics
 SET featured_image = COALESCE(

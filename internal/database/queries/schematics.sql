@@ -175,6 +175,17 @@ WHERE deleted IS NULL
   AND (moderation_state = 'flagged'
        OR COALESCE(array_length(held_images, 1), 0) > 0);
 
+-- name: ListStuckAutoReview :many
+-- Schematics stranded in auto_review past the cutoff: their async moderation
+-- job never ran (legacy rows from the 026 migration) or was discarded. The
+-- auto_review backfill re-enqueues the moderation check for each. (#1646)
+SELECT * FROM schematics
+WHERE deleted IS NULL
+  AND moderation_state = 'auto_review'
+  AND created < @older_than
+ORDER BY created ASC
+LIMIT @lim;
+
 -- name: ApproveHeldImage :exec
 -- Un-hold an image: it becomes visible to everyone again. (#1646)
 UPDATE schematics
