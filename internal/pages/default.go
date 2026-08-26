@@ -5,6 +5,7 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/i18n"
 	"createmod/internal/models"
+	"createmod/internal/server"
 	"createmod/internal/session"
 	"createmod/internal/store"
 	"crypto/rand"
@@ -12,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/drexedam/gravatar"
-	"createmod/internal/server"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"html/template"
@@ -50,25 +50,28 @@ type DefaultData struct {
 	LangPrefix      string
 	CanonicalURL    string
 	// OGType overrides the Open Graph type; empty renders "website".
-	OGType      string
-	PrevPageURL string
-	NextPageURL string
-	NoIndex     bool
-	Breadcrumbs     []BreadcrumbItem
-	BreadcrumbOverlay  bool
-	HideOutstream      bool
-	AdminSection       string
-	SettingsPage         string
-	DiscordOAuthEnabled    bool
-	GithubOAuthEnabled     bool
-	TwitchOAuthEnabled     bool
-	PatreonOAuthEnabled    bool
-	RedditOAuthEnabled     bool
-	GoogleOAuthEnabled     bool
-	MicrosoftOAuthEnabled  bool
-	SteamOAuthEnabled      bool
-	OAuthError             string
-	IsDev                  bool
+	OGType            string
+	PrevPageURL       string
+	NextPageURL       string
+	NoIndex           bool
+	Breadcrumbs       []BreadcrumbItem
+	BreadcrumbOverlay bool
+	HideOutstream     bool
+	// NoAds suppresses the whole ad stack (NitroPay + ads-check + anchor). Set
+	// automatically for admin and settings pages. (#1646)
+	NoAds                 bool
+	AdminSection          string
+	SettingsPage          string
+	DiscordOAuthEnabled   bool
+	GithubOAuthEnabled    bool
+	TwitchOAuthEnabled    bool
+	PatreonOAuthEnabled   bool
+	RedditOAuthEnabled    bool
+	GoogleOAuthEnabled    bool
+	MicrosoftOAuthEnabled bool
+	SteamOAuthEnabled     bool
+	OAuthError            string
+	IsDev                 bool
 }
 
 // NewBreadcrumbs builds a breadcrumb trail starting with Home.
@@ -161,6 +164,16 @@ func (d *DefaultData) Populate(e *server.RequestEvent) {
 	// Populate from PostgreSQL session (set by cookieAuth middleware)
 	if sessUser := session.UserFromContext(e.Request.Context()); sessUser != nil {
 		d.populateFromSession(e, sessUser)
+	}
+
+	// No ads on admin or settings pages. (#1646)
+	p := e.Request.URL.Path
+	if d.LangPrefix != "" && strings.HasPrefix(p, "/"+d.LangPrefix+"/") {
+		p = strings.TrimPrefix(p, "/"+d.LangPrefix)
+	}
+	if strings.HasPrefix(p, "/admin") || strings.HasPrefix(p, "/settings") {
+		d.NoAds = true
+		d.HideOutstream = true
 	}
 }
 
@@ -265,7 +278,6 @@ func requireAuth(e *server.RequestEvent) (bool, error) {
 	}
 	return false, e.Redirect(http.StatusSeeOther, LangRedirectURL(e, "/login"))
 }
-
 
 func allCategoriesFromStoreOnly(appStore *store.Store, cacheService *cache.Service) []models.SchematicCategory {
 	categories, found := cacheService.GetCategories(cache.AllCategoriesKey)

@@ -15,6 +15,7 @@ var adminDashboardTemplates = append([]string{
 
 type AdminDashboardData struct {
 	DefaultData
+	ModQueueCount    int64
 	PendingCount     int64
 	ModeratedCount   int64
 	DeletedCount     int64
@@ -34,6 +35,7 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 
 		ctx := context.Background()
 
+		modQueueCount, _ := appStore.Schematics.CountModerationQueue(ctx)
 		pendingCount, _ := appStore.Schematics.CountForAdmin(ctx, "pending", "")
 		moderatedCount, _ := appStore.Schematics.CountForAdmin(ctx, "published", "")
 		deletedCount, _ := appStore.Schematics.CountForAdmin(ctx, "deleted", "")
@@ -57,7 +59,7 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 				ID:               s.ID,
 				Title:            s.Title,
 				Name:             s.Name,
-				AuthorUsername:    username,
+				AuthorUsername:   username,
 				ModerationState:  s.ModerationState,
 				ModerationReason: s.ModerationReason,
 				Created:          s.Created,
@@ -66,6 +68,7 @@ func AdminDashboardHandler(registry *server.Registry, cacheService *cache.Servic
 		}
 
 		d := AdminDashboardData{
+			ModQueueCount:    modQueueCount,
 			PendingCount:     pendingCount,
 			ModeratedCount:   moderatedCount,
 			DeletedCount:     deletedCount,

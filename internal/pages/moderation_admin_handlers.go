@@ -124,6 +124,7 @@ func ModeratorReviewHandler(registry *server.Registry, cacheService *cache.Servi
 		}
 
 		d.Populate(e)
+		d.AdminSection = "moderation"
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Admin"), "/admin", i18n.T(d.Language, "Moderation"))
 		d.Title = i18n.T(d.Language, "Moderation Review")
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
