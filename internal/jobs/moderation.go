@@ -77,11 +77,41 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 	// via the twice-daily moderation summary email, not per-event emails:
 	// approvals appear in the auto-approved section, flagged and
 	// still-in-auto-review schematics in the pending list.
-	if schem.ModerationState == store.ModerationAutoReview && w.deps.Moderation != nil {
-		// Step 1: Policy check (text + image if available)
-		policyResult, policyErr := w.deps.Moderation.CheckSchematic(args.Title, args.Description, imageFullURL)
-		if policyErr != nil {
-			slog.Warn("moderation job: policy check unavailable", "error", policyErr, "schematic_id", args.SchematicID)
+	//
+	// A completed run MUST leave a terminal state: auto_review is invisible to
+	// everyone and absent from the moderator queue, so a schematic stranded
+	// there (nil moderation service, or a check that keeps erroring) is silently
+	// lost. Every branch below therefore resolves the schematic, and transient
+	// check failures retry a few times before failing open. (#1646)
+	if schem.ModerationState == store.ModerationAutoReview {
+		// publish moves the schematic to its live state (honouring a scheduled
+		// publish time) and logs why.
+		publish := func(reason string) {
+			oldState := schem.ModerationState
+			schem.ModerationState = store.ModerationPublished
+			if schem.ScheduledAt != nil && schem.ScheduledAt.After(time.Now()) {
+				schem.CreatedOverride = schem.ScheduledAt
+			}
+			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("moderation job: failed to publish schematic", "error", updateErr, "schematic_id", args.SchematicID)
+			} else {
+				logStateChange(oldState, schem.ModerationState, reason)
+			}
+		}
+
+		if w.deps.Moderation == nil {
+			// No moderation service configured: fail open so nothing is stranded.
+			publish("auto-published: moderation service unavailable")
+		} else if policyResult, policyErr := w.deps.Moderation.CheckSchematic(args.Title, args.Description, imageFullURL); policyErr != nil {
+			// Transient failure: retry a few times (River backoff), then fail open
+			// so a persistent outage can't strand the schematic. The periodic
+			// auto_review backfill is the long-stop if a run is ever discarded.
+			const maxPolicyAttempts = 3
+			if job.Attempt < maxPolicyAttempts {
+				return fmt.Errorf("moderation policy check for %s failed on attempt %d, retrying: %w", args.SchematicID, job.Attempt, policyErr)
+			}
+			slog.Error("moderation job: policy check still failing, publishing to avoid stranding", "error", policyErr, "schematic_id", args.SchematicID, "attempt", job.Attempt)
+			publish("auto-published: policy check unavailable after retries")
 		} else if !policyResult.Approved {
 			oldState := schem.ModerationState
 			schem.ModerationState = store.ModerationFlagged
@@ -91,33 +121,22 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			} else {
 				logStateChange(oldState, schem.ModerationState, "policy check failed: "+policyResult.Reason)
 			}
-		} else {
-			// Step 2: Quality check
-			qualityResult, qualityErr := w.deps.Moderation.CheckSchematicQuality(args.Title, args.Description)
-			if qualityErr != nil {
-				slog.Warn("moderation job: quality check unavailable", "error", qualityErr, "schematic_id", args.SchematicID)
-			} else if !qualityResult.Approved {
-				// Quality failure is NOT a policy violation: publish-first with
-				// limits instead of holding for manual review. The schematic is
-				// reachable by its link but excluded from Latest/search until the
-				// author improves the description; a checklist item tells them how,
-				// and resolving it auto-promotes (no moderator needed). (#1646)
-				if pages.EnterPublishedLimited(ctx, w.deps.Store, schem, qualityResult.Reason) {
-					pages.SendSchematicActionNeededEmail(ctx, w.deps.Mail, w.deps.Store, args.SchematicID)
-				}
-			} else {
-				// Both checks passed
-				oldState := schem.ModerationState
-				schem.ModerationState = store.ModerationPublished
-				if schem.ScheduledAt != nil && schem.ScheduledAt.After(time.Now()) {
-					schem.CreatedOverride = schem.ScheduledAt
-				}
-				if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
-					slog.Error("moderation job: failed to approve schematic", "error", updateErr, "schematic_id", args.SchematicID)
-				} else {
-					logStateChange(oldState, schem.ModerationState, "auto-approved: policy and quality checks passed")
-				}
+		} else if qualityResult, qualityErr := w.deps.Moderation.CheckSchematicQuality(args.Title, args.Description); qualityErr != nil {
+			// Quality only gates Latest/search visibility, not policy, so an
+			// inability to check it publishes rather than strands the schematic.
+			slog.Warn("moderation job: quality check unavailable, publishing", "error", qualityErr, "schematic_id", args.SchematicID)
+			publish("auto-published: quality check unavailable")
+		} else if !qualityResult.Approved {
+			// Quality failure is NOT a policy violation: publish-first with
+			// limits instead of holding for manual review. The schematic is
+			// reachable by its link but excluded from Latest/search until the
+			// author improves the description; a checklist item tells them how,
+			// and resolving it auto-promotes (no moderator needed). (#1646)
+			if pages.EnterPublishedLimited(ctx, w.deps.Store, schem, qualityResult.Reason) {
+				pages.SendSchematicActionNeededEmail(ctx, w.deps.Mail, w.deps.Store, args.SchematicID)
 			}
+		} else {
+			publish("auto-approved: policy and quality checks passed")
 		}
 	}
 

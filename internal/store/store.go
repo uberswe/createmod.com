@@ -952,6 +952,9 @@ type SchematicStore interface {
 	// ListModerationQueue returns schematics needing a moderator's attention
 	// (policy-flagged or with held images), oldest first.
 	ListModerationQueue(ctx context.Context, limit, offset int) ([]Schematic, error)
+	// ListStuckAutoReview returns schematics stranded in auto_review created
+	// before olderThan (their moderation job never ran or was discarded). (#1646)
+	ListStuckAutoReview(ctx context.Context, olderThan time.Time, limit int) ([]Schematic, error)
 	CountModerationQueue(ctx context.Context) (int64, error)
 	SoftDelete(ctx context.Context, id string) error
 	// Relations
