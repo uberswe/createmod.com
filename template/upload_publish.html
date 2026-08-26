@@ -731,6 +731,7 @@ document.addEventListener("DOMContentLoaded", function() {
     function showPublishError(msg) {
         var errDiv = document.getElementById('publish-error');
         if (errDiv) {
+            errDiv.className = 'alert alert-danger mt-2 mb-2';
             errDiv.textContent = msg;
             errDiv.style.display = '';
         }
@@ -739,6 +740,51 @@ document.addEventListener("DOMContentLoaded", function() {
     function hidePublishError() {
         var errDiv = document.getElementById('publish-error');
         if (errDiv) errDiv.style.display = 'none';
+    }
+    // Shown when the server flags a checksum duplicate (X-Duplicate header). The
+    // author can still submit; it publishes link-only and goes to a moderator.
+    // Contact link appended to a prompt paragraph.
+    function appendContactLink(p, lead) {
+        p.appendChild(document.createTextNode(lead));
+        var a = document.createElement('a');
+        a.href = '/contact';
+        a.textContent = 'contact us';
+        p.appendChild(a);
+        p.appendChild(document.createTextNode('.'));
+    }
+    // Blacklisted hash: the original creator asked for it not to be reposted.
+    // Hard block -- no "submit anyway".
+    function showBlacklistedPrompt() {
+        var errDiv = document.getElementById('publish-error');
+        if (!errDiv) return;
+        errDiv.className = 'alert alert-danger mt-2 mb-2';
+        while (errDiv.firstChild) errDiv.removeChild(errDiv.firstChild);
+        var p = document.createElement('div');
+        appendContactLink(p, "This schematic was blacklisted by its original creator and can't be published. If you believe this is a mistake, ");
+        errDiv.appendChild(p);
+        errDiv.style.display = '';
+        if (typeof showToast === 'function') { showToast('This schematic has been blacklisted by its creator.', 'danger'); }
+    }
+    function showDuplicatePrompt() {
+        var errDiv = document.getElementById('publish-error');
+        if (!errDiv) return;
+        errDiv.className = 'alert alert-warning mt-2 mb-2';
+        while (errDiv.firstChild) errDiv.removeChild(errDiv.firstChild);
+        var p = document.createElement('div');
+        appendContactLink(p, "This schematic looks like a duplicate: its file matches an existing schematic. Duplicate schematics are not allowed. You can submit it anyway and it will be published, visible via its direct link only, until a moderator reviews it. If you need help, ");
+        errDiv.appendChild(p);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-warning btn-sm mt-2';
+        btn.textContent = 'Submit anyway';
+        btn.addEventListener('click', function () {
+            window._cmSubmitAnyway = true;
+            hidePublishError();
+            publishBtn.click();
+        });
+        errDiv.appendChild(btn);
+        errDiv.style.display = '';
+        if (typeof showToast === 'function') { showToast('This schematic appears to be a duplicate.', 'warning'); }
     }
 
     var publishBtn = document.getElementById('publish-schematic-btn');
@@ -761,6 +807,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var formData = new FormData();
         var token = document.getElementById('publish-token').value;
         formData.append("upload_token", token);
+        if (window._cmSubmitAnyway) { formData.append("submit_anyway", "true"); }
 
         // Append featured image
         if (uploadedImages.length > 0) {
@@ -870,8 +917,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 } else {
                     setPublishing(false);
-                    var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
-                    showPublishError(errMsg);
+                    if (xhr.getResponseHeader('X-Blacklisted') === '1') {
+                        showBlacklistedPrompt();
+                    } else if (xhr.getResponseHeader('X-Duplicate') === '1') {
+                        showDuplicatePrompt();
+                    } else {
+                        var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
+                        showPublishError(errMsg);
+                    }
                 }
             };
             xhr.onerror = function() {

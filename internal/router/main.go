@@ -479,7 +479,7 @@ func Register(p RegisterParams) chi.Router {
 			})
 		}
 	}
-	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
+	r.Post("/u/{token}/make-public", Adapt(pages.UploadMakePublicHandler(registry, p.CacheService, p.AppStore, p.StorageService, p.ModerationService, p.MailService, p.RateLimiter, enqueueModeration, enqueueSearchUpsert, enqueueSafetyScan)))
 	// Publish form for temporary uploads (requires auth)
 	r.Get("/u/{token}/publish", Adapt(pages.UploadPublishHandler(registry, p.CacheService, p.AppStore)))
 	// Upload moderation pending confirmation page
