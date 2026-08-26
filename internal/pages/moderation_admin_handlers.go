@@ -21,6 +21,8 @@ import (
 
 var moderatorReviewTemplates = append([]string{
 	"./template/moderator_review.html",
+	"./template/include/moderation_detail.html",
+	"./template/include/moderation_detail_script.html",
 }, commonTemplates...)
 
 // ModFlag is a color-coded flag chip on a queue card. Level ∈ content|image|severe.

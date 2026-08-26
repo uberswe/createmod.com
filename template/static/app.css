@@ -3454,6 +3454,21 @@ body.sidebar-ready .generator-overlay {
 .cm-materials__row { display: flex; justify-content: space-between; font-size: 13px; color: var(--cm-body-color); padding: 3px 0; border-bottom: 1px solid var(--cm-border-color); }
 .cm-materials__n { color: var(--cm-text-muted); font-variant-numeric: tabular-nums; }
 
+/* Materials with block icons (mirrors the public schematic page's list). */
+.cm-modmaterials { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 2px 18px; }
+.cm-modmaterials__row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--cm-body-color); padding: 5px 0; border-bottom: 1px solid var(--cm-border-color); }
+.cm-modmaterials__icon { flex: 0 0 auto; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+.cm-modmaterials__icon img { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; }
+.cm-modmaterials__ph { display: inline-block; width: 32px; height: 32px; background: var(--cm-border-color); border-radius: 2px; }
+.cm-modmaterials__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-modmaterials__n { flex: 0 0 auto; color: var(--cm-text-muted); font-variant-numeric: tabular-nums; }
+
+/* Standalone moderation detail (admin schematic page: review layout, no queue). */
+.cm-detail--solo { max-width: 920px; margin-left: auto; margin-right: auto; }
+.cm-advanced { max-width: 920px; margin: 24px auto 40px; }
+.cm-advanced__summary { cursor: pointer; font-weight: 600; color: var(--cm-text-muted); padding: 10px 0; }
+.cm-advanced__summary:hover { color: var(--cm-body-color); }
+
 .cm-actioncard .card-body { display: flex; flex-direction: column; gap: 14px; }
 .cm-actionbar { display: flex; flex-wrap: wrap; gap: 8px; }
 .cm-btn-approve { background: #2fb344; color: #08270f; border: 1px solid #2fb344; font-weight: 600; }

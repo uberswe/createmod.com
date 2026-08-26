@@ -1,0 +1,51 @@
+{{ define "moderation_detail_script.html" }}
+<script>
+(function () {
+    var form = document.getElementById('decision-form');
+    if (!form) return;
+    var actionInput = document.getElementById('decision-action');
+    var kinds = document.getElementById('composer-kinds');
+    var kindsLabel = document.getElementById('composer-kinds-label');
+    var severity = document.getElementById('composer-severity');
+    var submit = document.getElementById('composer-submit');
+    var note = document.getElementById('composer-note');
+    var mode = '';
+
+    window.modAction = function (action) {
+        mode = action;
+        if (action === 'approve_full') {
+            // No note needed. Approve immediately.
+            actionInput.value = 'approve_full';
+            form.requestSubmit ? form.requestSubmit() : form.submit();
+            return;
+        }
+        form.style.display = '';
+        kinds.style.display = (action === 'reject') ? 'none' : '';
+        kindsLabel.style.display = (action === 'reject') ? 'none' : '';
+        severity.style.display = (action === 'reject') ? '' : 'none';
+        if (action === 'publish_notes') { actionInput.value = 'publish_notes'; submit.textContent = 'Publish with notes & notify author'; }
+        else if (action === 'request_changes') { actionInput.value = 'request_changes'; submit.textContent = 'Send request & unlist'; }
+        else if (action === 'reject') { modSeverity(); }
+        note.focus();
+    };
+    window.modSeverity = function () {
+        var final = form.querySelector('input[name="severity"]:checked');
+        var isFinal = final && final.value === 'final';
+        actionInput.value = isFinal ? 'reject_final' : 'reject_fixable';
+        submit.textContent = isFinal ? 'Reject permanently & notify' : 'Reject with second chance & notify';
+    };
+    window.modCancel = function () { form.style.display = 'none'; mode = ''; };
+})();
+// Original / English (auto) description toggle.
+window.cmTrans = function (which) {
+    var orig = document.getElementById('desc-orig');
+    var en = document.getElementById('desc-en');
+    if (!orig || !en) return;
+    orig.style.display = (which === 'orig') ? '' : 'none';
+    en.style.display = (which === 'en') ? '' : 'none';
+    document.querySelectorAll('.cm-transtoggle__btn').forEach(function (b) {
+        b.classList.toggle('is-active', b.getAttribute('data-trans') === which);
+    });
+};
+</script>
+{{ end }}
