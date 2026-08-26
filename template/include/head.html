@@ -191,17 +191,37 @@ window.setTheme=function(theme){
     // the incoming page's ad scripts call createAd() on fresh containers.
     //
     // The real NitroPay script (loaded lazily) REASSIGNS window.nitroAds.createAd,
-    // which drops a plain wrapper — leaving every ad created afterwards untracked,
-    // so htmx:beforeSwap tears down nothing and the stale ad survives the body
-    // swap (the new page then renders over it: the "double ad, one behind the
-    // background"). Intercept the property with a getter/setter so we always
-    // re-wrap whatever createAd the library installs.
+    // which drops a plain wrapper — leaving every ad created afterwards untracked.
+    // Intercept the property with a getter/setter so we always re-wrap whatever
+    // createAd the library installs.
+    //
+    // Teardown MUST be synchronous and happen BEFORE the body swap. hx-boost
+    // replaces <body>, and NitroPay reparents loaded ads out of their container
+    // (to escape overflow/stacking) so they can survive an innerHTML swap. The
+    // old code called ad.onNavigate() from a promise .then(), a microtask that
+    // runs only AFTER HTMX has already swapped the body and the new page's ads
+    // were created -- too late, so the stale ad lingered and rendered behind the
+    // incoming page (the "double ad, one behind the background"). We now keep the
+    // RESOLVED ad objects and destroy them synchronously on htmx:beforeSwap.
     (function(){
-      var instances = window._nitroAdInstances = window._nitroAdInstances || [];
+      var live    = window._nitroAdLive    = window._nitroAdLive    || []; // resolved ad objects
+      var pending = window._nitroAdPending = window._nitroAdPending || []; // still initialising
+      function drop(list, item){ var i = list.indexOf(item); if (i >= 0) list.splice(i, 1); }
       function wrap(fn){
         return function(){
+          // Idempotency: never stack a second ad into a container that already
+          // holds one (re-running the page's inline ad script must not double).
+          var id = arguments[0];
+          if (typeof id === 'string') {
+            var el = document.getElementById(id);
+            if (el && el.firstChild) { el.textContent = ''; }
+          }
           var p = fn.apply(window.nitroAds, arguments);
-          if (p && typeof p.then === 'function') { instances.push(p); }
+          if (p && typeof p.then === 'function') {
+            pending.push(p);
+            p.then(function(ad){ drop(pending, p); if (ad) { live.push(ad); } })
+             .catch(function(){ drop(pending, p); });
+          }
           return p;
         };
       }
@@ -215,13 +235,29 @@ window.setTheme=function(theme){
       } catch (e) {
         window.nitroAds.createAd = current; // best-effort fallback
       }
+      function destroy(ad){ try { if (ad && typeof ad.onNavigate === 'function') { ad.onNavigate(); } } catch (e) {} }
       document.addEventListener('htmx:beforeSwap', function() {
-        // splice(0) drains the list; onNavigate still fires if a promise resolves
-        // after the swap (handles navigating before an ad finished initialising).
-        instances.splice(0).forEach(function(p) {
-          p.then(function(ad) {
-            if (ad && typeof ad.onNavigate === 'function') { ad.onNavigate(); }
-          }).catch(function(){});
+        // Synchronously destroy every already-loaded ad before the swap.
+        live.splice(0).forEach(destroy);
+        // Ads mid-initialisation: destroy as soon as they resolve.
+        pending.splice(0).forEach(function(p){ p.then(destroy).catch(function(){}); });
+      });
+      // Safety net: after the new page settles, remove any stale ad container
+      // that survived as a duplicate id (invalid, and the visible symptom of a
+      // survivor). Keep the last one (the freshly created slot).
+      document.addEventListener('htmx:afterSettle', function(){
+        var seen = {};
+        var slots = document.querySelectorAll(
+          '[id*="-top-banner"],[id*="-sticky-adrail"],[id$="_sticky"],[id*="-smart-flex"],[id$="-mobile"],[id$="-railvideo"],[id*="editor-banner"]');
+        for (var i = 0; i < slots.length; i++) {
+          var id = slots[i].id; if (!id) continue;
+          (seen[id] = seen[id] || []).push(slots[i]);
+        }
+        Object.keys(seen).forEach(function(id){
+          var els = seen[id];
+          for (var j = 0; j < els.length - 1; j++) {
+            if (els[j].parentNode) { els[j].parentNode.removeChild(els[j]); }
+          }
         });
       });
     })();
