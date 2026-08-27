@@ -107,7 +107,7 @@ func computeOwnerModeration(schem *store.Schematic, openItems []store.Moderation
 	case store.ModerationPublishedLimited:
 		om.Banners = append(om.Banners, OwnerBanner{
 			Level: "warn",
-			Title: "Published with notes: visible via direct link only",
+			Title: "Published with issues: visible via direct link only",
 			Body:  "Your schematic is published and people can view it via the link, but it isn't shown anywhere else on the site until you fix the issues below. Once you do, it goes fully live on its own. You don't need to resubmit.",
 		})
 	case store.ModerationChangesRequested:

@@ -70,7 +70,7 @@ func buildMySchematicCard(s *store.Schematic, m models.Schematic) MySchematicCar
 	case store.ModerationRejectedFixable:
 		c.Badge, c.BadgeLevel = "Rejected", "orange"
 		c.NeedsAction = true
-		c.StatusText, c.StatusLabel, c.StatusLink = "Fixable. Resolve the note and resubmit once.", "See why", page
+		c.StatusText, c.StatusLabel, c.StatusLink = "Fixable. Resolve the issue and resubmit once.", "See why", page
 	case store.ModerationRejectedFinal, store.ModerationRejected:
 		c.Badge, c.BadgeLevel = "Removed", "red"
 		c.StatusText, c.StatusLabel, c.StatusLink = "Removed for a rule violation.", "See why", page

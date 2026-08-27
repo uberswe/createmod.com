@@ -20,8 +20,8 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-// oneOrN renders a small count as an English word for hero copy ("one note",
-// "two notes"), falling back to digits past what reads naturally.
+// oneOrN renders a small count as an English word for hero copy ("one issue",
+// "two issues"), falling back to digits past what reads naturally.
 func oneOrN(n int) string {
 	switch n {
 	case 1:
@@ -157,7 +157,7 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 		case notes == 0 && !held:
 			// Limited while a human decision is pending (e.g. a duplicate the
 			// author submitted anyway, or a requested human re-check). There is
-			// no checklist note for them to fix, so don't tell them to fix one.
+			// no checklist issue for them to fix, so don't tell them to fix one.
 			d.Outcome = "limited"
 			d.HeroTitle = "Published, pending a human review"
 			d.HeroBody = "Your schematic is published and people can view and download it via the link, but it isn't shown in Latest or search until a moderator reviews it, usually within " + strconv.Itoa(d.SLAHours) + " hours. There's nothing you need to do; we'll email you once it's decided."
@@ -166,9 +166,9 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 			d.HeroTitle = "Published, with an image being reviewed"
 			d.HeroBody = "Your schematic is published and reachable via the link. A moderator is double-checking a flagged image, which stays hidden until they do. There's nothing else you need to do."
 		default:
-			word, resolveIt := "note", "fix the note below"
+			word, resolveIt := "issue", "fix the issue below"
 			if notes > 1 || held {
-				word, resolveIt = "notes", "resolve the notes below"
+				word, resolveIt = "issues", "resolve the issues below"
 			}
 			if held {
 				d.Outcome = "limited_held"
@@ -183,7 +183,7 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 		d.Outcome = "rejected_fixable"
 		d.HeroLevel = "bad"
 		d.HeroTitle = "Not published, but you can fix it"
-		d.HeroBody = "This upload broke a content rule. Address the note below and resubmit once. If you think this is a mistake, reply in the moderation thread on the schematic page."
+		d.HeroBody = "This upload broke a content rule. Address the issue below and resubmit once. If you think this is a mistake, reply in the moderation thread on the schematic page."
 
 	case store.ModerationRejectedFinal, store.ModerationRejected:
 		d.Outcome = "rejected_final"
@@ -243,7 +243,7 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 	case !listed && len(openItems) == 0 && !held:
 		listState, listNote = "warn", "Hidden from Latest and search until a moderator reviews it."
 	case !listed:
-		listState, listNote = "warn", "Hidden from Latest and search until the note is resolved."
+		listState, listNote = "warn", "Hidden from Latest and search until the issue is resolved."
 	}
 	dlState, dlNote := "ok", "Available to download."
 	if !viewable {

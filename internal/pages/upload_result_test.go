@@ -38,8 +38,8 @@ func TestComputePublishOutcome(t *testing.T) {
 		{"auto_review", &store.Schematic{ModerationState: store.ModerationAutoReview}, nil, "pending", "pending", "", "", ""},
 		{"full", &store.Schematic{ModerationState: store.ModerationPublished}, nil, "full", "ok", "ok", "ok", ""},
 		{"held", &store.Schematic{ModerationState: store.ModerationPublished, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, nil, "held", "ok", "ok", "ok", ""},
-		{"limited", &store.Schematic{ModerationState: store.ModerationPublishedLimited}, openDescItem(), "limited", "warn", "warn", "ok", "one note"},
-		{"limited_held", &store.Schematic{ModerationState: store.ModerationPublishedLimited, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, openDescItem(), "limited_held", "warn", "warn", "ok", "notes"},
+		{"limited", &store.Schematic{ModerationState: store.ModerationPublishedLimited}, openDescItem(), "limited", "warn", "warn", "ok", "one issue"},
+		{"limited_held", &store.Schematic{ModerationState: store.ModerationPublishedLimited, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, openDescItem(), "limited_held", "warn", "warn", "ok", "issues"},
 		// Duplicate submitted anyway / requested human re-check: published_limited
 		// with no checklist items. The hero must not tell the author to fix a note.
 		{"limited-human-review", &store.Schematic{ModerationState: store.ModerationPublishedLimited, HumanReviewRequested: true}, nil, "limited", "warn", "warn", "ok", "pending a human review"},
