@@ -303,6 +303,26 @@ func (s *Service) CheckImageQuality(featuredImagePath string) (*ModerationResult
 	}, nil
 }
 
+// CheckImageQualityBytes checks whether raw image bytes depict a Minecraft
+// build, sending the image as a base64 data URI so no public fetch is required.
+// This works for images the OpenAI servers can't reach (dev behind an auth
+// gate, private hosts) where the URL-based CheckImageQuality silently passes.
+// (#1646)
+func (s *Service) CheckImageQualityBytes(imageData []byte, mimeType string) (*ModerationResult, error) {
+	if len(imageData) == 0 {
+		return &ModerationResult{Approved: true}, nil
+	}
+	if mimeType == "" {
+		mimeType = "image/webp"
+	}
+	dataURI := "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(imageData)
+	isValid, reason, err := s.openaiClient.CheckMinecraftBuildImage(dataURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check image quality: %w", err)
+	}
+	return &ModerationResult{Approved: isValid, Reason: reason}, nil
+}
+
 // isValidURL checks if the provided string is a valid URL and if it resolves
 // by making a HEAD request without downloading the full content
 func (s *Service) isValidURL(urlString string) bool {
