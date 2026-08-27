@@ -550,13 +550,24 @@ func (c *Client) GenerateImageDescriptionFromFile(imagePath string) (string, err
 }
 
 // CheckSchematicQuality sends a request to the OpenAI chat completion API to check if a schematic is low-effort spam
-func (c *Client) CheckSchematicQuality(title, description string) (bool, string, error) {
+// CheckSchematicQuality decides whether a submission is a genuine build worth
+// auto-publishing or low-effort/off-topic. blocksSummary, when non-empty, is a
+// compact air-excluded list of the actual blocks in the uploaded structure; it
+// is supplied as positive evidence of a real build so a genuine build with a
+// thin description isn't mistaken for spam. It never overrides a clearly
+// test/placeholder/spam/off-topic title or description.
+func (c *Client) CheckSchematicQuality(title, description, blocksSummary string) (bool, string, error) {
 	if c.apiKey == "" {
 		return false, "", fmt.Errorf("OpenAI API key is required")
 	}
 
+	blocksSection := ""
+	if strings.TrimSpace(blocksSummary) != "" {
+		blocksSection = fmt.Sprintf("\n\nThe uploaded structure is built from these blocks (air excluded, most common first):\n%s\n\nA structure made of a real variety of Minecraft/Create building blocks in meaningful quantity is strong evidence of a genuine build: approve it even when the description is short or plain. The blocks only count in FAVOUR of approval — they never override a clearly test, placeholder, spam, or off-topic title or description.", blocksSummary)
+	}
+
 	// Format the prompt as specified
-	prompt := fmt.Sprintf("Title: %s\nDescription: %s\n\nThis text accompanies a shared Minecraft Create-mod schematic. Respond with exactly 'true' ONLY if it clearly looks like a genuine schematic submission. Do NOT approve — return a brief reason instead — if it looks like a test or placeholder (e.g. 'test', 'asdf', 'untitled', 'aaa'), a joke, spam or advertising, or if it is off-topic for sharing a Minecraft build, such as roleplay/RP content, a request, or unrelated text. A short description is fine if it plainly describes a build, but anything test-like, placeholder, or off-topic must NOT be approved. When you are not confident it is a genuine build submission, do NOT approve. Respond with exactly 'true' to approve, otherwise a brief reason.", title, description)
+	prompt := fmt.Sprintf("Title: %s\nDescription: %s%s\n\nThis text accompanies a shared Minecraft Create-mod schematic. Respond with exactly 'true' ONLY if it clearly looks like a genuine schematic submission. Do NOT approve — return a brief reason instead — if it looks like a test or placeholder (e.g. 'test', 'asdf', 'untitled', 'aaa'), a joke, spam or advertising, or if it is off-topic for sharing a Minecraft build, such as roleplay/RP content, a request, or unrelated text. A short description is fine if it plainly describes a build, but anything test-like, placeholder, or off-topic must NOT be approved. When you are not confident it is a genuine build submission, do NOT approve. Respond with exactly 'true' to approve, otherwise a brief reason.", title, description, blocksSection)
 
 	// Create the request
 	request := ChatCompletionRequest{

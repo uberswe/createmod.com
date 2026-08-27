@@ -63,7 +63,7 @@ func (w *ChecklistRecheckWorker) Work(ctx context.Context, job *river.Job[Checkl
 	// when it passes. (Moderator-authored items are resolved from the review UI,
 	// not here.)
 	if w.deps.Moderation != nil {
-		qual, qErr := w.deps.Moderation.CheckSchematicQuality(schem.Title, schem.Description)
+		qual, qErr := w.deps.Moderation.CheckSchematicQuality(schem.Title, schem.Description, "")
 		if qErr != nil {
 			slog.Warn("checklist recheck: quality check unavailable", "schematic_id", id, "error", qErr)
 		} else if qual.Approved && w.deps.Store.ModerationChecklist != nil {
