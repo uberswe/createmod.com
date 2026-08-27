@@ -387,7 +387,7 @@ func SchematicUpdateHandler(
 		}
 
 		// --- Async image moderation for any newly uploaded images ---
-		moderateSchematicImages(moderationSvc, mailService, appStore, schematicID, newImageFilenames)
+		moderateSchematicImages(moderationSvc, storageSvc, mailService, appStore, schematicID, newImageFilenames)
 
 		// --- Create version snapshot ---
 		createVersionSnapshot(appStore, schematicID, prevSnapshot, schem)

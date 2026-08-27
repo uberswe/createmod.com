@@ -179,21 +179,33 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 	// schematic: the individual featured image is put on hold (hidden from
 	// visitors, placeholder for the owner) and featured falls back to a visible
 	// gallery image, so the schematic stays published. (#1646)
-	if w.deps.Moderation != nil && imageFullURL != "" && args.ImageURL != "" && schem.ModerationState != store.ModerationDeleted {
-		var holdReasons []string
-		if imgResult, imgErr := w.deps.Moderation.CheckImage(imageFullURL); imgErr != nil {
-			slog.Warn("moderation job: image safety check unavailable", "error", imgErr, "schematic_id", args.SchematicID)
-		} else if !imgResult.Approved {
-			holdReasons = append(holdReasons, "featured image flagged by automated moderation: "+imgResult.Reason)
-		}
-		if qualResult, qualErr := w.deps.Moderation.CheckImageQuality(imageFullURL); qualErr != nil {
-			slog.Warn("moderation job: image quality check unavailable", "error", qualErr, "schematic_id", args.SchematicID)
-		} else if !qualResult.Approved {
-			holdReasons = append(holdReasons, "featured image is not a Minecraft build: "+qualResult.Reason)
-		}
-		if len(holdReasons) > 0 {
-			slog.Warn("moderation job: holding featured image", "schematic_id", args.SchematicID, "reasons", holdReasons)
-			pages.HoldSchematicImages(ctx, w.deps.Mail, w.deps.Store, args.SchematicID, []string{args.ImageURL}, strings.Join(holdReasons, "; "))
+	//
+	// The checks moderate the image BYTES (downloaded from S3) rather than a
+	// public URL: the URL-based path silently passes whenever the OpenAI servers
+	// can't fetch the image (dev behind an auth gate, private hosts, a wrong
+	// BASE_URL), which let a policy-violating featured image publish unchecked.
+	if w.deps.Moderation != nil && args.ImageURL != "" && schem.ModerationState != store.ModerationDeleted {
+		imgData, imgMime := w.loadSchematicImage(ctx, args.SchematicID, args.ImageURL)
+		if imgData == nil {
+			slog.Warn("moderation job: featured image unavailable for byte moderation", "schematic_id", args.SchematicID, "image", args.ImageURL)
+		} else {
+			var holdReasons []string
+			// Content policy (nudity/hate/harassment/self-harm; violence allowed,
+			// matching the schematic policy check and CheckUserImageContent).
+			if imgResult, imgErr := w.deps.Moderation.CheckUserImageContent(imgData, imgMime); imgErr != nil {
+				slog.Warn("moderation job: image safety check unavailable", "error", imgErr, "schematic_id", args.SchematicID)
+			} else if !imgResult.Approved {
+				holdReasons = append(holdReasons, "featured image flagged by automated moderation: "+imgResult.Reason)
+			}
+			if qualResult, qualErr := w.deps.Moderation.CheckImageQualityBytes(imgData, imgMime); qualErr != nil {
+				slog.Warn("moderation job: image quality check unavailable", "error", qualErr, "schematic_id", args.SchematicID)
+			} else if !qualResult.Approved {
+				holdReasons = append(holdReasons, "featured image is not a Minecraft build: "+qualResult.Reason)
+			}
+			if len(holdReasons) > 0 {
+				slog.Warn("moderation job: holding featured image", "schematic_id", args.SchematicID, "reasons", holdReasons)
+				pages.HoldSchematicImages(ctx, w.deps.Mail, w.deps.Store, args.SchematicID, []string{args.ImageURL}, strings.Join(holdReasons, "; "))
+			}
 		}
 	}
 
@@ -222,6 +234,45 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 
 	slog.Info("async moderation complete", "schematic_id", args.SchematicID, "moderation_state", schem.ModerationState)
 	return nil
+}
+
+// maxModerationImageBytes caps how much of a schematic image the moderation job
+// reads before moderating its bytes. Uploaded images are capped well below this.
+const maxModerationImageBytes = 12 << 20
+
+// loadSchematicImage downloads a schematic image from S3 and returns its bytes
+// and MIME type for byte-based moderation. Any failure returns (nil, "") so the
+// caller can log and skip rather than strand the schematic.
+func (w *ModerationWorker) loadSchematicImage(ctx context.Context, schematicID, filename string) ([]byte, string) {
+	if w.deps.Storage == nil || schematicID == "" || filename == "" {
+		return nil, ""
+	}
+	reader, err := w.deps.Storage.Download(ctx, storage.CollectionPrefix("schematics"), schematicID, filename)
+	if err != nil {
+		slog.Warn("moderation: could not download image for byte moderation", "schematic_id", schematicID, "image", filename, "error", err)
+		return nil, ""
+	}
+	defer reader.Close()
+	data, err := io.ReadAll(io.LimitReader(reader, maxModerationImageBytes))
+	if err != nil || len(data) == 0 {
+		return nil, ""
+	}
+	return data, imageMimeFromFilename(filename)
+}
+
+// imageMimeFromFilename maps a stored image filename to a MIME type for the
+// data URI sent to OpenAI. Uploaded featured images are converted to WebP.
+func imageMimeFromFilename(filename string) string {
+	switch {
+	case strings.HasSuffix(strings.ToLower(filename), ".png"):
+		return "image/png"
+	case strings.HasSuffix(strings.ToLower(filename), ".jpg"), strings.HasSuffix(strings.ToLower(filename), ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(strings.ToLower(filename), ".gif"):
+		return "image/gif"
+	default:
+		return "image/webp"
+	}
 }
 
 // blockPaletteSummary downloads the schematic's uploaded NBT and returns a
