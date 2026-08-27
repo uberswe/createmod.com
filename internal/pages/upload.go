@@ -87,6 +87,7 @@ var uploadTemplates = append([]string{
 
 var uploadPendingTemplates = append([]string{
 	uploadPendingTemplate,
+	uploadStepsTemplate, // upload_pending.html renders the step indicator
 	uploadResultTemplate,
 }, commonTemplates...)
 
