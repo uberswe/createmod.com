@@ -204,6 +204,7 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 // fragment). The outcome fields are filled by computePublishOutcome. (#1646)
 type UploadPendingData struct {
 	DefaultData
+	UploadStep       int
 	SchematicName    string
 	SchematicURL     string // "/schematics/{name}"
 	SchematicFullURL string // absolute URL for the copy-link field
@@ -236,6 +237,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 		buildData := func() UploadPendingData {
 			d := UploadPendingData{}
 			d.Populate(e)
+			d.UploadStep = 3 // Publish (final step in the upload flow)
 			d.SchematicID = schematicID
 			if name != "" {
 				d.SchematicName = name
