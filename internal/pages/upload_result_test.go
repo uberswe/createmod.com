@@ -43,6 +43,7 @@ func TestComputePublishOutcome(t *testing.T) {
 		// Duplicate submitted anyway / requested human re-check: published_limited
 		// with no checklist items. The hero must not tell the author to fix a note.
 		{"limited-human-review", &store.Schematic{ModerationState: store.ModerationPublishedLimited, HumanReviewRequested: true}, nil, "limited", "warn", "warn", "ok", "pending a human review"},
+		{"limited-duplicate", &store.Schematic{ModerationState: store.ModerationPublishedLimited, HumanReviewRequested: true, ModerationReason: "Possible duplicate: this schematic's file matches an existing one."}, nil, "limited", "warn", "warn", "ok", "pending a human review"},
 		{"limited-held-noitems", &store.Schematic{ModerationState: store.ModerationPublishedLimited, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, nil, "limited_held", "warn", "warn", "ok", "image being reviewed"},
 		{"rejected_fixable", &store.Schematic{ModerationState: store.ModerationRejectedFixable, ModerationReason: "nope"}, nil, "rejected_fixable", "bad", "bad", "bad", ""},
 		{"rejected_final", &store.Schematic{ModerationState: store.ModerationRejectedFinal, ModerationReason: "severe"}, nil, "rejected_final", "bad", "bad", "bad", ""},
@@ -80,6 +81,19 @@ func TestComputePublishOutcome(t *testing.T) {
 			}
 			if c.heroContains != "" && !strings.Contains(d.HeroTitle+" "+d.HeroBody, c.heroContains) {
 				t.Errorf("hero = %q / %q, want it to contain %q", d.HeroTitle, d.HeroBody, c.heroContains)
+			}
+			// A duplicate awaiting human review must flag the file check yellow
+			// rather than claiming the file is clean.
+			if c.name == "limited-duplicate" {
+				var fileState string
+				for _, r := range d.Checks {
+					if r.Name == "Schematic file" {
+						fileState = r.State
+					}
+				}
+				if fileState != "warn" {
+					t.Errorf("Schematic file check state = %q, want warn for a duplicate", fileState)
+				}
 			}
 			// Sanity: a limited outcome that was given checklist items must surface
 			// an actionable description row. A limited outcome with no items (a

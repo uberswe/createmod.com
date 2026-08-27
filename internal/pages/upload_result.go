@@ -3,6 +3,7 @@ package pages
 import (
 	"os"
 	"strconv"
+	"strings"
 
 	"createmod/internal/store"
 )
@@ -206,9 +207,22 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 	viewable := store.IsViewableState(schem.ModerationState)
 	listed := store.IsPublicState(schem.ModerationState)
 
+	// A duplicate the author submitted anyway is published_limited and queued
+	// for a human (the upload path sets a "Possible duplicate" reason and
+	// requests human review). Surface that on the file check itself rather than
+	// claiming the file is clean. (#1646)
+	duplicatePending := schem.ModerationState == store.ModerationPublishedLimited &&
+		schem.HumanReviewRequested &&
+		strings.Contains(strings.ToLower(schem.ModerationReason), "duplicate")
+
 	// Automated checks card.
+	fileRow := PublishCheckRow{Name: "Schematic file", State: "ok", Note: "Valid Create .nbt."}
+	if duplicatePending {
+		fileRow.State = "warn"
+		fileRow.Note = "Matches an existing schematic. A moderator is reviewing it; published via direct link only meanwhile."
+	}
 	d.Checks = []PublishCheckRow{
-		{Name: "Schematic file", State: "ok", Note: "Valid Create .nbt."},
+		fileRow,
 		{Name: "Title", State: "ok", Note: "Looks good."},
 	}
 	if descLimited {
