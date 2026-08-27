@@ -53,23 +53,52 @@ func (s *Service) CheckSchematic(title, description, featuredImagePath string) (
 		return nil, fmt.Errorf("failed to moderate content: %w", err)
 	}
 
-	// Check if content is flagged
-	if response.IsFlagged() {
-		// Get flagged categories
-		categories := response.GetFlaggedCategories()
-		reason := fmt.Sprintf("Content violates policy: %s", strings.Join(categories, ", "))
-
-		return &ModerationResult{
-			Approved: false,
-			Reason:   reason,
-		}, nil
+	if !response.IsFlagged() {
+		return &ModerationResult{Approved: true}, nil
 	}
 
-	// Content is approved
-	return &ModerationResult{
-		Approved: true,
-		Reason:   "",
-	}, nil
+	// Allow violence for schematics: Create builds are frequently weapons and
+	// military hardware (TNT cannons, tanks, nukes) that the classifier reports
+	// as violence. Only non-violence categories can hold a schematic, matching
+	// the deliberate violence-allow already used for user images. (#1646)
+	categories := blockingSchematicCategories(response.GetFlaggedCategories())
+	if len(categories) == 0 {
+		return &ModerationResult{Approved: true}, nil
+	}
+
+	// Context-aware second pass to clear figurative/gaming-slang false positives
+	// (the same Minecraft-aware review used for comments). On error it upholds
+	// the flag so a human still reviews it.
+	uphold, reviewErr := s.openaiClient.ReviewModerationFlag(textContent, categories)
+	if reviewErr != nil && s.logger != nil {
+		s.logger.Warn("schematic moderation second-pass review failed, upholding flag",
+			"error", reviewErr, "categories", strings.Join(categories, ", "))
+	}
+	if !uphold {
+		if s.logger != nil {
+			s.logger.Debug("schematic moderation flag cleared by second-pass review",
+				"categories", strings.Join(categories, ", "))
+		}
+		return &ModerationResult{Approved: true}, nil
+	}
+
+	reason := fmt.Sprintf("Content violates policy: %s", strings.Join(categories, ", "))
+	return &ModerationResult{Approved: false, Reason: reason}, nil
+}
+
+// blockingSchematicCategories drops violence categories from a flagged-category
+// list. Create builds are legitimately weapons/military, so violence alone must
+// not hold a schematic; the remaining categories are the ones that can. (#1646)
+func blockingSchematicCategories(categories []string) []string {
+	out := make([]string, 0, len(categories))
+	for _, c := range categories {
+		switch c {
+		case "violence", "graphic violence":
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 // CheckContent is a generic function to check any text content. When the
@@ -119,15 +148,19 @@ func (s *Service) CheckContent(content string) (*ModerationResult, error) {
 	}, nil
 }
 
-// CheckSchematicQuality checks if a schematic is low-effort spam or an actual schematic
-func (s *Service) CheckSchematicQuality(title, description string) (*ModerationResult, error) {
+// CheckSchematicQuality checks if a schematic is low-effort spam or an actual
+// schematic. blocksSummary, when non-empty, is a compact air-excluded list of
+// the structure's blocks, passed as positive evidence of a genuine build so a
+// real build with a thin description isn't mistaken for spam. Pass "" when the
+// block palette is unavailable.
+func (s *Service) CheckSchematicQuality(title, description, blocksSummary string) (*ModerationResult, error) {
 	// Log that we're checking the schematic quality
 	if s.logger != nil {
 		s.logger.Debug("Checking schematic quality", "title", title)
 	}
 
 	// Send the request to OpenAI
-	isValid, reason, err := s.openaiClient.CheckSchematicQuality(title, description)
+	isValid, reason, err := s.openaiClient.CheckSchematicQuality(title, description, blocksSummary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check schematic quality: %w", err)
 	}

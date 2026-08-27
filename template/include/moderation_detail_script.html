@@ -23,7 +23,7 @@
         kinds.style.display = (action === 'reject') ? 'none' : '';
         kindsLabel.style.display = (action === 'reject') ? 'none' : '';
         severity.style.display = (action === 'reject') ? '' : 'none';
-        if (action === 'publish_notes') { actionInput.value = 'publish_notes'; submit.textContent = 'Publish with notes & notify author'; }
+        if (action === 'publish_notes') { actionInput.value = 'publish_notes'; submit.textContent = 'Publish with issues & notify author'; }
         else if (action === 'request_changes') { actionInput.value = 'request_changes'; submit.textContent = 'Send request & unlist'; }
         else if (action === 'reject') { modSeverity(); }
         note.focus();

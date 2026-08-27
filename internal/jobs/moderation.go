@@ -3,19 +3,32 @@ package jobs
 import (
 	"context"
 	"createmod/internal/mailer"
+	"createmod/internal/nbtparser"
 	"createmod/internal/pages"
 	"createmod/internal/ratelimit"
+	"createmod/internal/storage"
 	"createmod/internal/store"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/mail"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/riverqueue/river"
 )
+
+// maxModerationNBTBytes caps how much of a schematic's NBT file the moderation
+// job reads to derive its block palette, bounding memory on a pathological
+// upload. Real Create schematics are far smaller than this.
+const maxModerationNBTBytes = 64 << 20
+
+// moderationPaletteTopN caps how many block types are listed in the palette
+// summary sent to the quality check, keeping the prompt compact.
+const moderationPaletteTopN = 25
 
 // ModerationArgs are the arguments for the async schematic moderation job.
 type ModerationArgs struct {
@@ -95,8 +108,27 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to publish schematic", "error", updateErr, "schematic_id", args.SchematicID)
 			} else {
+				// Attribute the auto-approval to the system so backfilled and
+				// auto-published schematics are distinguishable from legacy
+				// pre-moderation rows (which have reviewed_by unset), matching the
+				// flagged/limited branches that already stamp this. (#1646)
+				_ = w.deps.Store.Schematics.SetModerationReviewedBy(ctx, args.SchematicID, store.ReviewedBySystem)
 				logStateChange(oldState, schem.ModerationState, reason)
 			}
+		}
+
+		// Lazily derive the air-excluded block palette from the uploaded NBT the
+		// first time the quality check needs it. Loaded on demand so a schematic
+		// that never reaches the quality check (policy-flagged, or no service)
+		// costs no S3 read. (#1646)
+		var blocksSummary string
+		var blocksLoaded bool
+		loadBlocks := func() string {
+			if !blocksLoaded {
+				blocksLoaded = true
+				blocksSummary = w.blockPaletteSummary(ctx, schem)
+			}
+			return blocksSummary
 		}
 
 		if w.deps.Moderation == nil {
@@ -122,7 +154,7 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 				_ = w.deps.Store.Schematics.SetModerationReviewedBy(ctx, args.SchematicID, store.ReviewedBySystem)
 				logStateChange(oldState, schem.ModerationState, "policy check failed: "+policyResult.Reason)
 			}
-		} else if qualityResult, qualityErr := w.deps.Moderation.CheckSchematicQuality(args.Title, args.Description); qualityErr != nil {
+		} else if qualityResult, qualityErr := w.deps.Moderation.CheckSchematicQuality(args.Title, args.Description, loadBlocks()); qualityErr != nil {
 			// Quality only gates Latest/search visibility, not policy, so an
 			// inability to check it publishes rather than strands the schematic.
 			slog.Warn("moderation job: quality check unavailable, publishing", "error", qualityErr, "schematic_id", args.SchematicID)
@@ -190,6 +222,64 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 
 	slog.Info("async moderation complete", "schematic_id", args.SchematicID, "moderation_state", schem.ModerationState)
 	return nil
+}
+
+// blockPaletteSummary downloads the schematic's uploaded NBT and returns a
+// compact, air-excluded summary of its blocks for the quality check. Any
+// failure (no storage, missing file, unparseable NBT) returns "" so moderation
+// simply proceeds without the extra signal rather than stranding the schematic.
+func (w *ModerationWorker) blockPaletteSummary(ctx context.Context, schem *store.Schematic) string {
+	if w.deps.Storage == nil || schem == nil || schem.SchematicFile == "" {
+		return ""
+	}
+	reader, err := w.deps.Storage.Download(ctx, storage.CollectionPrefix("schematics"), schem.ID, schem.SchematicFile)
+	if err != nil {
+		slog.Warn("moderation: could not load NBT for block palette", "schematic_id", schem.ID, "error", err)
+		return ""
+	}
+	defer reader.Close()
+	data, err := io.ReadAll(io.LimitReader(reader, maxModerationNBTBytes))
+	if err != nil {
+		slog.Warn("moderation: could not read NBT for block palette", "schematic_id", schem.ID, "error", err)
+		return ""
+	}
+	mats, err := nbtparser.ExtractMaterials(data)
+	if err != nil {
+		slog.Warn("moderation: could not parse NBT for block palette", "schematic_id", schem.ID, "error", err)
+		return ""
+	}
+	return summarizeBlockPalette(nbtparser.SanitizeMaterials(mats))
+}
+
+// summarizeBlockPalette renders a materials list as a compact, deterministic
+// summary (most-common blocks first) for the quality-check prompt. Air is
+// already excluded by ExtractMaterials.
+func summarizeBlockPalette(mats []nbtparser.Material) string {
+	if len(mats) == 0 {
+		return ""
+	}
+	sorted := make([]nbtparser.Material, len(mats))
+	copy(sorted, mats)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].Count != sorted[j].Count {
+			return sorted[i].Count > sorted[j].Count
+		}
+		return sorted[i].BlockID < sorted[j].BlockID
+	})
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d distinct block types, %d building blocks total.\n", len(mats), nbtparser.CountBuildableBlocks(mats))
+	limit := len(sorted)
+	if limit > moderationPaletteTopN {
+		limit = moderationPaletteTopN
+	}
+	for i := 0; i < limit; i++ {
+		fmt.Fprintf(&b, "- %s x%d\n", sorted[i].BlockID, sorted[i].Count)
+	}
+	if len(sorted) > limit {
+		fmt.Fprintf(&b, "- ...and %d more block types\n", len(sorted)-limit)
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // moderationAdminRecipients returns mail.Address entries for admin users.

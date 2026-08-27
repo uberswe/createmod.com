@@ -3,6 +3,7 @@ package pages
 import (
 	"os"
 	"strconv"
+	"strings"
 
 	"createmod/internal/store"
 )
@@ -12,6 +13,28 @@ const uploadResultTemplate = "./template/upload_result.html"
 // defaultModerationSLAHours is the promise shown wherever a human review is
 // pending. Configurable via MODERATION_SLA_HOURS. (#1646)
 const defaultModerationSLAHours = 48
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// oneOrN renders a small count as an English word for hero copy ("one issue",
+// "two issues"), falling back to digits past what reads naturally.
+func oneOrN(n int) string {
+	switch n {
+	case 1:
+		return "one"
+	case 2:
+		return "two"
+	case 3:
+		return "three"
+	default:
+		return strconv.Itoa(n)
+	}
+}
 
 func moderationSLAHours() int {
 	if v := os.Getenv("MODERATION_SLA_HOURS"); v != "" {
@@ -129,21 +152,39 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 		}
 
 	case store.ModerationPublishedLimited, store.ModerationChangesRequested:
-		if held {
-			d.Outcome = "limited_held"
-			d.HeroTitle = "Published, with two things to sort out"
-		} else {
-			d.Outcome = "limited"
-			d.HeroTitle = "Published, with one note"
-		}
+		notes := len(openItems) // actionable checklist items the author can fix
 		d.HeroLevel = "warn"
-		d.HeroBody = "Your schematic is published and people can view and download it via the link, but it isn't shown anywhere else on the site until you fix the note below. Once you do, it goes fully live on its own. You don't need to resubmit."
+		switch {
+		case notes == 0 && !held:
+			// Limited while a human decision is pending (e.g. a duplicate the
+			// author submitted anyway, or a requested human re-check). There is
+			// no checklist issue for them to fix, so don't tell them to fix one.
+			d.Outcome = "limited"
+			d.HeroTitle = "Published, pending a human review"
+			d.HeroBody = "Your schematic is published and people can view and download it via the link, but it isn't shown in Latest or search until a moderator reviews it, usually within " + strconv.Itoa(d.SLAHours) + " hours. There's nothing you need to do; we'll email you once it's decided."
+		case notes == 0 && held:
+			d.Outcome = "limited_held"
+			d.HeroTitle = "Published, with an image being reviewed"
+			d.HeroBody = "Your schematic is published and reachable via the link. A moderator is double-checking a flagged image, which stays hidden until they do. There's nothing else you need to do."
+		default:
+			word, resolveIt := "issue", "fix the issue below"
+			if notes > 1 || held {
+				word, resolveIt = "issues", "resolve the issues below"
+			}
+			if held {
+				d.Outcome = "limited_held"
+			} else {
+				d.Outcome = "limited"
+			}
+			d.HeroTitle = "Published, with " + oneOrN(notes+boolToInt(held)) + " " + word
+			d.HeroBody = "Your schematic is published and people can view and download it via the link, but it isn't shown anywhere else on the site until you " + resolveIt + ". Once you do, it goes fully live on its own. You don't need to resubmit."
+		}
 
 	case store.ModerationRejectedFixable:
 		d.Outcome = "rejected_fixable"
 		d.HeroLevel = "bad"
 		d.HeroTitle = "Not published, but you can fix it"
-		d.HeroBody = "This upload broke a content rule. Address the note below and resubmit once. If you think this is a mistake, reply in the moderation thread on the schematic page."
+		d.HeroBody = "This upload broke a content rule. Address the issue below and resubmit once. If you think this is a mistake, reply in the moderation thread on the schematic page."
 
 	case store.ModerationRejectedFinal, store.ModerationRejected:
 		d.Outcome = "rejected_final"
@@ -166,9 +207,22 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 	viewable := store.IsViewableState(schem.ModerationState)
 	listed := store.IsPublicState(schem.ModerationState)
 
+	// A duplicate the author submitted anyway is published_limited and queued
+	// for a human (the upload path sets a "Possible duplicate" reason and
+	// requests human review). Surface that on the file check itself rather than
+	// claiming the file is clean. (#1646)
+	duplicatePending := schem.ModerationState == store.ModerationPublishedLimited &&
+		schem.HumanReviewRequested &&
+		strings.Contains(strings.ToLower(schem.ModerationReason), "duplicate")
+
 	// Automated checks card.
+	fileRow := PublishCheckRow{Name: "Schematic file", State: "ok", Note: "Valid Create .nbt."}
+	if duplicatePending {
+		fileRow.State = "warn"
+		fileRow.Note = "Matches an existing schematic. A moderator is reviewing it; published via direct link only meanwhile."
+	}
 	d.Checks = []PublishCheckRow{
-		{Name: "Schematic file", State: "ok", Note: "Valid Create .nbt."},
+		fileRow,
 		{Name: "Title", State: "ok", Note: "Looks good."},
 	}
 	if descLimited {
@@ -200,8 +254,10 @@ func computePublishOutcome(d *UploadPendingData, schem *store.Schematic, openIte
 	switch {
 	case rejected || flagged || !viewable:
 		listState, listNote = "bad", "Not listed."
+	case !listed && len(openItems) == 0 && !held:
+		listState, listNote = "warn", "Hidden from Latest and search until a moderator reviews it."
 	case !listed:
-		listState, listNote = "warn", "Hidden from Latest and search until the note is resolved."
+		listState, listNote = "warn", "Hidden from Latest and search until the issue is resolved."
 	}
 	dlState, dlNote := "ok", "Available to download."
 	if !viewable {

@@ -79,7 +79,7 @@ func SchematicDescriptionRecheckHandler(registry *server.Registry, appStore *sto
 				// to a human for re-review; it never auto-promotes. Re-queue it. (#1646)
 				_ = appStore.Schematics.SetHumanReviewRequested(ctx, id, true)
 			} else if moderationSvc != nil && appStore.ModerationChecklist != nil && ratelimit.AllowPaidAI(ctx, rl, userID) {
-				if q, qErr := moderationSvc.CheckSchematicQuality(schem.Title, schem.Content); qErr == nil && q.Approved {
+				if q, qErr := moderationSvc.CheckSchematicQuality(schem.Title, schem.Content, ""); qErr == nil && q.Approved {
 					_, _ = appStore.ModerationChecklist.ResolveOpenByKind(ctx, id, store.ChecklistKindDescription)
 				}
 				if promoted, _ := PromoteIfChecklistResolved(ctx, appStore, id); promoted {

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,23 +25,29 @@ func TestComputePublishOutcome(t *testing.T) {
 		return &UploadPendingData{SchematicName: "steam-train", SchematicURL: "/schematics/steam-train"}
 	}
 	cases := []struct {
-		name      string
-		schem     *store.Schematic
-		items     []store.ModerationChecklistItem
-		outcome   string
-		heroLevel string
-		listState string // "Latest & search" rail row state
-		linkState string
+		name         string
+		schem        *store.Schematic
+		items        []store.ModerationChecklistItem
+		outcome      string
+		heroLevel    string
+		listState    string // "Latest & search" rail row state
+		linkState    string
+		heroContains string // substring the hero title/body must include (optional)
 	}{
-		{"nil-pending", nil, nil, "pending", "pending", "", ""},
-		{"auto_review", &store.Schematic{ModerationState: store.ModerationAutoReview}, nil, "pending", "pending", "", ""},
-		{"full", &store.Schematic{ModerationState: store.ModerationPublished}, nil, "full", "ok", "ok", "ok"},
-		{"held", &store.Schematic{ModerationState: store.ModerationPublished, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, nil, "held", "ok", "ok", "ok"},
-		{"limited", &store.Schematic{ModerationState: store.ModerationPublishedLimited}, openDescItem(), "limited", "warn", "warn", "ok"},
-		{"limited_held", &store.Schematic{ModerationState: store.ModerationPublishedLimited, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, openDescItem(), "limited_held", "warn", "warn", "ok"},
-		{"rejected_fixable", &store.Schematic{ModerationState: store.ModerationRejectedFixable, ModerationReason: "nope"}, nil, "rejected_fixable", "bad", "bad", "bad"},
-		{"rejected_final", &store.Schematic{ModerationState: store.ModerationRejectedFinal, ModerationReason: "severe"}, nil, "rejected_final", "bad", "bad", "bad"},
-		{"flagged", &store.Schematic{ModerationState: store.ModerationFlagged}, nil, "flagged", "pending", "bad", "bad"},
+		{"nil-pending", nil, nil, "pending", "pending", "", "", ""},
+		{"auto_review", &store.Schematic{ModerationState: store.ModerationAutoReview}, nil, "pending", "pending", "", "", ""},
+		{"full", &store.Schematic{ModerationState: store.ModerationPublished}, nil, "full", "ok", "ok", "ok", ""},
+		{"held", &store.Schematic{ModerationState: store.ModerationPublished, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, nil, "held", "ok", "ok", "ok", ""},
+		{"limited", &store.Schematic{ModerationState: store.ModerationPublishedLimited}, openDescItem(), "limited", "warn", "warn", "ok", "one issue"},
+		{"limited_held", &store.Schematic{ModerationState: store.ModerationPublishedLimited, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, openDescItem(), "limited_held", "warn", "warn", "ok", "issues"},
+		// Duplicate submitted anyway / requested human re-check: published_limited
+		// with no checklist items. The hero must not tell the author to fix a note.
+		{"limited-human-review", &store.Schematic{ModerationState: store.ModerationPublishedLimited, HumanReviewRequested: true}, nil, "limited", "warn", "warn", "ok", "pending a human review"},
+		{"limited-duplicate", &store.Schematic{ModerationState: store.ModerationPublishedLimited, HumanReviewRequested: true, ModerationReason: "Possible duplicate: this schematic's file matches an existing one."}, nil, "limited", "warn", "warn", "ok", "pending a human review"},
+		{"limited-held-noitems", &store.Schematic{ModerationState: store.ModerationPublishedLimited, Gallery: []string{"a", "b"}, HeldImages: []string{"b"}}, nil, "limited_held", "warn", "warn", "ok", "image being reviewed"},
+		{"rejected_fixable", &store.Schematic{ModerationState: store.ModerationRejectedFixable, ModerationReason: "nope"}, nil, "rejected_fixable", "bad", "bad", "bad", ""},
+		{"rejected_final", &store.Schematic{ModerationState: store.ModerationRejectedFinal, ModerationReason: "severe"}, nil, "rejected_final", "bad", "bad", "bad", ""},
+		{"flagged", &store.Schematic{ModerationState: store.ModerationFlagged}, nil, "flagged", "pending", "bad", "bad", ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -72,8 +79,26 @@ func TestComputePublishOutcome(t *testing.T) {
 					t.Errorf("Latest & search state = %q, want %q", list, c.listState)
 				}
 			}
-			// Sanity: a limited outcome must carry an actionable description item.
-			if c.outcome == "limited" {
+			if c.heroContains != "" && !strings.Contains(d.HeroTitle+" "+d.HeroBody, c.heroContains) {
+				t.Errorf("hero = %q / %q, want it to contain %q", d.HeroTitle, d.HeroBody, c.heroContains)
+			}
+			// A duplicate awaiting human review must flag the file check yellow
+			// rather than claiming the file is clean.
+			if c.name == "limited-duplicate" {
+				var fileState string
+				for _, r := range d.Checks {
+					if r.Name == "Schematic file" {
+						fileState = r.State
+					}
+				}
+				if fileState != "warn" {
+					t.Errorf("Schematic file check state = %q, want warn for a duplicate", fileState)
+				}
+			}
+			// Sanity: a limited outcome that was given checklist items must surface
+			// an actionable description row. A limited outcome with no items (a
+			// duplicate/human-review hold) must NOT invent one.
+			if c.outcome == "limited" && len(c.items) > 0 {
 				found := false
 				for _, it := range d.OpenItems {
 					if it.Kind == store.ChecklistKindDescription && !it.NoAction && it.CTALabel != "" {
@@ -83,6 +108,9 @@ func TestComputePublishOutcome(t *testing.T) {
 				if !found {
 					t.Error("limited outcome missing actionable description item")
 				}
+			}
+			if c.outcome == "limited" && len(c.items) == 0 && len(d.OpenItems) != 0 {
+				t.Errorf("no-item limited outcome should have no OpenItems, got %d", len(d.OpenItems))
 			}
 			// A held outcome must carry a no-action image note.
 			if c.outcome == "held" || c.outcome == "limited_held" {

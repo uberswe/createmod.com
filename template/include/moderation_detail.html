@@ -86,7 +86,7 @@
 <div class="card cm-actioncard"><div class="card-body">
     <div class="cm-actionbar">
         <button type="button" class="btn cm-btn-approve" onclick="modAction('approve_full')">Approve &amp; publish fully</button>
-        <button type="button" class="btn cm-btn-gold" onclick="modAction('publish_notes')">Publish with notes…</button>
+        <button type="button" class="btn cm-btn-gold" onclick="modAction('publish_notes')">Publish with issues…</button>
         <button type="button" class="btn cm-btn-warn" onclick="modAction('request_changes')">Request changes…</button>
         <button type="button" class="btn cm-btn-reject" onclick="modAction('reject')">Reject…</button>
     </div>
@@ -103,7 +103,7 @@
             <label><input type="checkbox" name="kinds" value="category"> Category</label>
         </div>
         <textarea name="note" id="composer-note" class="form-control" rows="3" maxlength="1000"
-                  placeholder="Note to the author. Be specific about what to change. This appears as a checklist item on their schematic and in the notification email."></textarea>
+                  placeholder="Issue to flag to the author. Be specific about what to change. This appears as a checklist item on their schematic and in the notification email."></textarea>
         <div class="cm-severity" id="composer-severity" style="display:none">
             <label><input type="radio" name="severity" value="fixable" checked onchange="modSeverity()"> Fixable: allow one resubmission</label>
             <label><input type="radio" name="severity" value="final" onchange="modSeverity()"> Severe: final removal (appeal only)</label>
