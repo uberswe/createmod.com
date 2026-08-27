@@ -95,6 +95,11 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to publish schematic", "error", updateErr, "schematic_id", args.SchematicID)
 			} else {
+				// Attribute the auto-approval to the system so backfilled and
+				// auto-published schematics are distinguishable from legacy
+				// pre-moderation rows (which have reviewed_by unset), matching the
+				// flagged/limited branches that already stamp this. (#1646)
+				_ = w.deps.Store.Schematics.SetModerationReviewedBy(ctx, args.SchematicID, store.ReviewedBySystem)
 				logStateChange(oldState, schem.ModerationState, reason)
 			}
 		}
