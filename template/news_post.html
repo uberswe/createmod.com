@@ -23,7 +23,7 @@
                                 {{ if .Content }}
                                     <div class="news-content">{{ .Content }}</div>
                                 {{ else }}
-                                    <p>This news post is not yet available as an individual article. Please check the news listing for updates.</p>
+                                    <p>{{ T .Language "This news post is not yet available as an individual article. Please check the news listing for updates." }}</p>
                                     <p><a href="/news" class="btn btn-primary">{{ T .Language "Back to News" }}</a></p>
                                 {{ end }}
                             </div>

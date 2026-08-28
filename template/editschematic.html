@@ -10,7 +10,7 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body">
-                                <h3 class="card-title">Edit Schematic</h3>
+                                <h3 class="card-title">{{ T .Language "Edit Schematic" }}</h3>
                                 {{ if .IsAuthenticated }}
                                 {{ if .IsAuthor }}
                                 <div class="row">
@@ -27,7 +27,7 @@
                                                       placeholder="Describe your schematic and include any details on how to get it running.">
                                                 {{ .Schematic.Content }}
                                             </textarea>
-                                            <small class="form-hint mt-2 d-block text-secondary">Please describe your schematic — explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.</small>
+                                            <small class="form-hint mt-2 d-block text-secondary">{{ T .Language "Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results." }}</small>
                                         </div>
                                         <div class="row">
                                             <div class="mb-3 col-md-12 col-lg-6">
@@ -54,7 +54,7 @@
                                         </div>
                                         <div class="row">
                                             <div class="mb-3 col-md-12 col-lg-6">
-                                                <label class="form-label required">Create Version</label>
+                                                <label class="form-label required">{{ T .Language "Create Version" }}</label>
                                                 <select id="create-version" name="" class="form-select">
                                                     {{ range .CreatemodVersions}}
                                                     <option {{ if eq .ID $.CreateModVersionId}}selected {{ end }}value="{{ .ID }}">{{ .Version }}</option>
@@ -62,7 +62,7 @@
                                                 </select>
                                             </div>
                                             <div class="mb-3 col-md-12 col-lg-6">
-                                                <label class="form-label required">Minecraft Version</label>
+                                                <label class="form-label required">{{ T .Language "Minecraft Version" }}</label>
                                                 <select id="minecraft-version" name="" class="form-select">
                                                     {{ range .MinecraftVersions}}
                                                     <option {{ if eq .ID $.MinecraftVersionId}}selected {{ end }}value="{{ .ID }}">{{ .Version }}</option>
@@ -71,7 +71,7 @@
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Schematic Video</label>
+                                            <label class="form-label">{{ T .Language "Schematic Video" }}</label>
                                             <input id="video" type="text" class="form-control" name="video"
                                                    placeholder="Schematic Video URL" value="{{ .Schematic.Video }}">
                                         </div>
@@ -79,7 +79,7 @@
                                     <div class="col-md-12 col-lg-6">
                                         <div class="mb-3">
                                             <button class="btn btn-danger w-100" data-cm-toggle="modal" data-cm-target="#confirm-delete-modal">
-                                                Delete Schematic
+                                                {{ T .Language "Delete Schematic" }}
                                             </button>
                                         </div>
                                         <div class="mb-3">
@@ -89,14 +89,14 @@
                                                     <input name="schematic-file" type="file"/>
                                                 </div>
                                                 <div class="dz-message">
-                                                    <h3 class="dropzone-msg-title">Schematic File</h3>
-                                                    <span class="dropzone-msg-desc">Leave this empty unless you want to replace the current file</span>
+                                                    <h3 class="dropzone-msg-title">{{ T .Language "Schematic File" }}</h3>
+                                                    <span class="dropzone-msg-desc">{{ T .Language "Leave this empty unless you want to replace the current file" }}</span>
                                                 </div>
                                             </form>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Images</label>
-                                            <small class="form-hint mb-2 d-block text-secondary">Click an image to set it as the featured image. The first image is featured by default.</small>
+                                            <small class="form-hint mb-2 d-block text-secondary">{{ T .Language "Click an image to set it as the featured image. The first image is featured by default." }}</small>
                                             <div class="image-upload-grid" id="edit-image-grid">
                                                 {{ if .Schematic.FeaturedImage }}
                                                 <div class="image-upload-item is-featured existing-img" data-filename="{{ .Schematic.FeaturedImage }}" data-type="featured" title="Featured image">
@@ -113,14 +113,14 @@
                                                 {{ end }}
                                                 <div class="image-upload-add" id="edit-image-add">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
-                                                    <span>Add Images</span>
+                                                    <span>{{ T .Language "Add Images" }}</span>
                                                 </div>
                                             </div>
                                             <input type="file" id="edit-image-input" accept="image/*" multiple style="display:none;">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Variations</label>
-                                            <small class="form-hint mb-2 d-block text-secondary">Add additional .nbt files as variations or sets for this schematic.</small>
+                                            <small class="form-hint mb-2 d-block text-secondary">{{ T .Language "Add additional .nbt files as variations or sets for this schematic." }}</small>
                                             <div id="variations-list">
                                                 {{ range .AdditionalFiles }}
                                                 <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-file-id="{{ .ID }}">
@@ -139,7 +139,7 @@
                                             </div>
                                             <div class="border rounded p-3 mt-2">
                                                 <div class="mb-2">
-                                                    <label class="form-label">NBT File</label>
+                                                    <label class="form-label">{{ T .Language "NBT File" }}</label>
                                                     <input type="file" id="variation-file-input" class="form-control" accept=".nbt">
                                                 </div>
                                                 <div class="mb-2">
@@ -147,7 +147,7 @@
                                                     <input type="text" id="variation-description-input" class="form-control" placeholder="e.g. Compact version, Mirror variant..." maxlength="200">
                                                 </div>
                                                 <div id="variation-upload-error" class="alert alert-danger mt-2" style="display:none;" role="alert"></div>
-                                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-variation-btn">Add Variation</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-variation-btn">{{ T .Language "Add Variation" }}</button>
                                             </div>
                                         </div>
                                     </div>
@@ -159,9 +159,9 @@
                                         <div class="mb-3">
                                             <label class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" id="rotation-disabled" {{ if .RotationDisabled }}checked{{ end }}>
-                                                <span class="form-check-label">Disable 360° Viewer</span>
+                                                <span class="form-check-label">{{ T .Language "Disable 360° Viewer" }}</span>
                                             </label>
-                                            <small class="form-hint d-block text-secondary">When enabled, the 360° rotation viewer will be hidden on the schematic page.</small>
+                                            <small class="form-hint d-block text-secondary">{{ T .Language "When enabled, the 360° rotation viewer will be hidden on the schematic page." }}</small>
                                         </div>
                                     </div>
                                 </div>
@@ -172,7 +172,7 @@
                                     <div class="col-12">
                                         <div class="card">
                                             <div class="card-header">
-                                                <h3 class="card-title">Additional Videos</h3>
+                                                <h3 class="card-title">{{ T .Language "Additional Videos" }}</h3>
                                             </div>
                                             <div class="card-body">
                                                 <div id="videos-list">
@@ -202,7 +202,7 @@
                                                             <input type="text" id="new-video-title" class="form-control form-control-sm" placeholder="Title (optional)">
                                                         </div>
                                                     </div>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-video-btn">Add Video</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-video-btn">{{ T .Language "Add Video" }}</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -214,10 +214,10 @@
                                     <div class="col-12">
                                         <div class="card">
                                             <div class="card-header">
-                                                <h3 class="card-title">Inspired By</h3>
+                                                <h3 class="card-title">{{ T .Language "Inspired By" }}</h3>
                                             </div>
                                             <div class="card-body">
-                                                <small class="form-hint mb-2 d-block text-secondary">Link to builds that inspired this schematic. Allowed: createmod.com, reddit.com, youtube.com, planetminecraft.com, and more.</small>
+                                                <small class="form-hint mb-2 d-block text-secondary">{{ T .Language "Link to builds that inspired this schematic. Allowed: createmod.com, reddit.com, youtube.com, planetminecraft.com, and more." }}</small>
                                                 <div id="references-list">
                                                     {{ range .References }}
                                                     <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-ref-id="{{ .ID }}">
@@ -238,7 +238,7 @@
                                                             <input type="text" id="new-ref-title" class="form-control form-control-sm" placeholder="Title (optional)">
                                                         </div>
                                                     </div>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-ref-btn">Add Reference</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-ref-btn">{{ T .Language "Add Reference" }}</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -250,10 +250,10 @@
                                     <div class="col-12">
                                         <div class="card">
                                             <div class="card-header">
-                                                <h3 class="card-title">Reddit Posts</h3>
+                                                <h3 class="card-title">{{ T .Language "Reddit Posts" }}</h3>
                                             </div>
                                             <div class="card-body">
-                                                <small class="form-hint mb-2 d-block text-secondary">Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft</small>
+                                                <small class="form-hint mb-2 d-block text-secondary">{{ T .Language "Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft" }}</small>
                                                 <div id="reddit-links-list">
                                                     {{ range .RedditLinks }}
                                                     <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2" data-reddit-id="{{ .ID }}">
@@ -267,7 +267,7 @@
                                                 </div>
                                                 <div class="border rounded p-3 mt-2">
                                                     <input type="url" id="new-reddit-url" class="form-control form-control-sm" placeholder="Reddit post URL">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-reddit-btn">Add Reddit Link</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-reddit-btn">{{ T .Language "Add Reddit Link" }}</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -280,7 +280,7 @@
                                     <div class="col-12">
                                         <div class="card">
                                             <div class="card-header">
-                                                <h3 class="card-title">Compatible Modpacks</h3>
+                                                <h3 class="card-title">{{ T .Language "Compatible Modpacks" }}</h3>
                                             </div>
                                             <div class="card-body">
                                                 <select id="modpack-select" class="form-select" multiple>
@@ -288,7 +288,7 @@
                                                     <option value="{{ .ID }}"{{ range $.Modpacks }}{{ if eq .ID $.AllModpacks }}{{ end }}{{ end }}>{{ .Name }}</option>
                                                     {{ end }}
                                                 </select>
-                                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="save-modpacks-btn">Save Modpacks</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="save-modpacks-btn">{{ T .Language "Save Modpacks" }}</button>
                                             </div>
                                         </div>
                                     </div>
@@ -298,7 +298,7 @@
                                 <div class="row">
                                     <div class="mt-5">
                                         <button class="btn btn-primary w-100" id="upload-schematic-btn">
-                                            Save Schematic
+                                            {{ T .Language "Save Schematic" }}
                                         </button>
                                         <div id="progress-upload" style="display: none;" class="progress">
                                             <div class="progress-bar bg-green"></div>
@@ -316,14 +316,14 @@
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    Schematic has been saved!
+                                                    {{ T .Language "Schematic has been saved!" }}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 {{ else }}
-                                <h4>You can only edit your own schematics.</h4>
+                                <h4>{{ T .Language "You can only edit your own schematics." }}</h4>
                                 {{ end }}
                                 {{ else }}
                                 <h4>You must be <a href="/login">logged in</a> to edit schematics.</h4>
@@ -341,12 +341,12 @@
     <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-body">
-                <div class="modal-title" id="confirm-delete-modal-title">Are you sure?</div>
-                <div>If you proceed, you will no longer have access to this schematic.</div>
+                <div class="modal-title" id="confirm-delete-modal-title">{{ T .Language "Are you sure?" }}</div>
+                <div>{{ T .Language "If you proceed, you will no longer have access to this schematic." }}</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-link link-secondary me-auto" data-cm-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" data-cm-dismiss="modal" id="delete-schematic-btn">Yes, delete my schematic</button>
+                <button type="button" class="btn btn-danger" data-cm-dismiss="modal" id="delete-schematic-btn">{{ T .Language "Yes, delete my schematic" }}</button>
             </div>
         </div>
     </div>
