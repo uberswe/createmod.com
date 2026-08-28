@@ -26,7 +26,13 @@ type Querier interface {
 	AggregateSearchTermDaily(ctx context.Context, arg AggregateSearchTermDailyParams) error
 	ApproveCategoryByID(ctx context.Context, id string) error
 	ApproveComment(ctx context.Context, id string) error
-	// Un-hold an image: it becomes visible to everyone again. (#1646)
+	// Un-hold an image: it becomes visible to everyone again. When the image was
+	// the featured image, holding it blanked featured_image (falling back to a
+	// gallery image, or to nothing when there was none) -- so simply removing it
+	// from held_images would orphan it. Restore visibility: make it the featured
+	// image again if there is none, otherwise return it to the gallery. All SET
+	// expressions read the pre-update row, so the CASE keys off the old
+	// featured_image. (#1646)
 	ApproveHeldImage(ctx context.Context, arg ApproveHeldImageParams) error
 	ApproveTagByID(ctx context.Context, id string) error
 	AwardAchievement(ctx context.Context, arg AwardAchievementParams) (UserAchievement, error)
