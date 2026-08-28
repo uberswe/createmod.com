@@ -5,7 +5,10 @@ import (
 	"createmod/internal/cache"
 	"createmod/internal/openai"
 	"createmod/internal/store"
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -73,6 +76,42 @@ func New(apiKey string, logger openai.Logger, appStore *store.Store) *Service {
 // Stop signals the background scheduler to stop.
 func (s *Service) Stop() {
 	close(s.stopChan)
+}
+
+// TranslateForUser translates a short moderation message into the given language
+// for display back to a user, best-effort and cached (keyed by language + a hash
+// of the text, 24h TTL). It returns the original text unchanged for English,
+// empty input, an unsupported language, or on any translation error, so callers
+// can use the result directly. Used to show moderation feedback to an author in
+// their submission's original language while moderators keep English. (#1646)
+func (s *Service) TranslateForUser(cacheService *cache.Service, text, targetLang string) string {
+	text = strings.TrimSpace(text)
+	if text == "" || targetLang == "" || targetLang == "en" {
+		return text
+	}
+	name, ok := langNames[targetLang]
+	if !ok {
+		return text
+	}
+	sum := sha256.Sum256([]byte(text))
+	key := "modmsgtr:" + targetLang + ":" + hex.EncodeToString(sum[:12])
+	if cacheService != nil {
+		if v, ok := cacheService.GetString(key); ok {
+			return v
+		}
+	}
+	out, err := s.openaiClient.TranslateText(text, name)
+	if err != nil {
+		slog.Warn("moderation message translation failed, showing original", "lang", targetLang, "error", err)
+		return text
+	}
+	if out = strings.TrimSpace(out); out == "" {
+		return text
+	}
+	if cacheService != nil {
+		cacheService.SetWithTTL(key, out, 24*time.Hour)
+	}
+	return out
 }
 
 // StartScheduler starts a background goroutine that backfills missing translations every 30 minutes.
