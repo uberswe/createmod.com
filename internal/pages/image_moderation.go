@@ -265,15 +265,22 @@ func downloadSchematicImage(ctx context.Context, storageSvc *storage.Service, sc
 	if err != nil || len(data) == 0 {
 		return nil, ""
 	}
-	mimeType := "image/webp"
+	return data, imageMimeFromName(filename)
+}
+
+// imageMimeFromName maps an image filename to a MIME type for the base64 data
+// URI sent to OpenAI. Uploaded images are converted to WebP; other extensions
+// are handled for pre-conversion checks.
+func imageMimeFromName(filename string) string {
 	lower := strings.ToLower(filename)
 	switch {
 	case strings.HasSuffix(lower, ".png"):
-		mimeType = "image/png"
+		return "image/png"
 	case strings.HasSuffix(lower, ".jpg"), strings.HasSuffix(lower, ".jpeg"):
-		mimeType = "image/jpeg"
+		return "image/jpeg"
 	case strings.HasSuffix(lower, ".gif"):
-		mimeType = "image/gif"
+		return "image/gif"
+	default:
+		return "image/webp"
 	}
-	return data, mimeType
 }
