@@ -1,7 +1,7 @@
 {{ define "moderation_detail.html" }}
 <div class="cm-detail__head">
     <div>
-        <h1 class="cm-detail__title">{{ .Title }}</h1>
+        <h1 class="cm-detail__title">{{ if .HasTranslation }}<span id="title-en">{{ .TitleEN }}</span><span id="title-orig" style="display:none">{{ .Title }}</span>{{ else }}{{ .Title }}{{ end }}</h1>
         <div class="cm-detail__meta">by {{ .Author }} · {{ .Approvals }} published · {{ .Removals }} removed · {{ .Age }}</div>
         {{ if or .Category .Tags }}
         <div class="cm-qcard__tags" style="margin-top:8px">
@@ -46,13 +46,13 @@
         {{ if .DetectedLanguage }}<span class="cm-badge cm-badge--upper">{{ .DetectedLanguage }} detected</span>{{ end }}
         {{ if .HasTranslation }}
         <div class="cm-transtoggle" role="group">
-            <button type="button" class="cm-transtoggle__btn is-active" data-trans="orig" onclick="cmTrans('orig')">Original</button>
-            <button type="button" class="cm-transtoggle__btn" data-trans="en" onclick="cmTrans('en')">English (auto)</button>
+            <button type="button" class="cm-transtoggle__btn" data-trans="orig" onclick="cmTrans('orig')">Original</button>
+            <button type="button" class="cm-transtoggle__btn is-active" data-trans="en" onclick="cmTrans('en')">English (auto)</button>
         </div>
         {{ end }}
     </div>
-    <div class="cm-desc" id="desc-orig">{{ .Description }}</div>
-    {{ if .HasTranslation }}<div class="cm-desc" id="desc-en" style="display:none">{{ .DescriptionEN }}</div>{{ end }}
+    <div class="cm-desc" id="desc-orig"{{ if .HasTranslation }} style="display:none"{{ end }}>{{ .Description }}</div>
+    {{ if .HasTranslation }}<div class="cm-desc" id="desc-en">{{ .DescriptionEN }}</div>{{ end }}
 </div></div>
 
 <!-- Auto-moderation flags -->

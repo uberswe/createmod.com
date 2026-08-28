@@ -102,8 +102,15 @@ func (w *ModerationWorker) Work(ctx context.Context, job *river.Job[ModerationAr
 		publish := func(reason string) {
 			oldState := schem.ModerationState
 			schem.ModerationState = store.ModerationPublished
+			// Surface at the top of Latest on publish: bump created to the publish
+			// time (or the scheduled time) so time spent in auto_review/the
+			// moderation queue doesn't push a freshly published schematic down the
+			// Latest feed. (#1646)
 			if schem.ScheduledAt != nil && schem.ScheduledAt.After(time.Now()) {
 				schem.CreatedOverride = schem.ScheduledAt
+			} else {
+				now := time.Now()
+				schem.CreatedOverride = &now
 			}
 			if updateErr := w.deps.Store.Schematics.Update(ctx, schem); updateErr != nil {
 				slog.Error("moderation job: failed to publish schematic", "error", updateErr, "schematic_id", args.SchematicID)

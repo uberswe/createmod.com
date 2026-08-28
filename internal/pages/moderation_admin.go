@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"createmod/internal/store"
 )
@@ -41,6 +42,10 @@ func applyModeratorDecision(ctx context.Context, appStore *store.Store, schemati
 	case DecisionApproveFull:
 		schem.ModerationState = store.ModerationPublished
 		schem.ModerationReason = ""
+		// Surface at the top of Latest on approval, so time spent waiting in the
+		// moderation queue doesn't push the schematic down the feed. (#1646)
+		now := time.Now()
+		schem.CreatedOverride = &now
 		resolveAllOpenChecklist(ctx, appStore, schematicID)
 	case DecisionPublishNotes:
 		schem.ModerationState = store.ModerationPublishedLimited

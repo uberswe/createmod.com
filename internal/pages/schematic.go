@@ -322,6 +322,24 @@ func SchematicHandler(searchEngine search.SearchEngine, cacheService *cache.Serv
 				d.CanPostMessage = true
 			}
 		}
+		// Show moderation feedback to the author in their submission's original
+		// language (moderators keep English via the review UI). Best-effort and
+		// cached; only the free-form review text is translated, not fixed chrome.
+		// Author views are never HTML-cached, so this can't leak to other viewers.
+		// (#1646)
+		if d.IsAuthor && !d.IsAdmin && translationService != nil &&
+			s.DetectedLanguage != "" && s.DetectedLanguage != "en" {
+			lang := s.DetectedLanguage
+			d.ModerationReason = translationService.TranslateForUser(cacheService, d.ModerationReason, lang)
+			for i := range d.OwnerModeration.Checklist {
+				d.OwnerModeration.Checklist[i].Note = translationService.TranslateForUser(cacheService, d.OwnerModeration.Checklist[i].Note, lang)
+			}
+			for i := range d.ModerationMessages {
+				if d.ModerationMessages[i].IsModerator {
+					d.ModerationMessages[i].Body = translationService.TranslateForUser(cacheService, d.ModerationMessages[i].Body, lang)
+				}
+			}
+		}
 		// Prevent search engine indexing of non-public schematics
 		if !store.IsPublicState(s.ModerationState) {
 			d.NoIndex = true

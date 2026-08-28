@@ -3,6 +3,7 @@ package pages
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"createmod/internal/store"
 )
@@ -94,6 +95,10 @@ func PromoteIfChecklistResolved(ctx context.Context, appStore *store.Store, sche
 	old := schem.ModerationState
 	schem.ModerationState = store.ModerationPublished
 	schem.ModerationReason = ""
+	// Surface at the top of Latest when it finally goes fully live, so time spent
+	// as published_limited doesn't leave it buried in the feed. (#1646)
+	now := time.Now()
+	schem.CreatedOverride = &now
 	if err := appStore.Schematics.Update(ctx, schem); err != nil {
 		return false, err
 	}

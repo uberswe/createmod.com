@@ -16,7 +16,7 @@
                         {{ if .Queue }}
                         {{ range .Queue }}
                         <a class="cm-qcard{{ if .Selected }} cm-qcard--sel{{ end }}" href="/admin/moderation?id={{ .ID }}">
-                            <div class="cm-qcard__title">{{ .Title }}</div>
+                            <div class="cm-qcard__title">{{ if .TitleEN }}{{ .TitleEN }}{{ else }}{{ .Title }}{{ end }}</div>
                             <div class="cm-qcard__meta">by {{ .Author }} · {{ .Approvals }}✓ {{ .Removals }}✕ · {{ .Age }}</div>
                             {{ if or .Category .Tags }}
                             <div class="cm-qcard__tags">
