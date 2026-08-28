@@ -746,6 +746,11 @@ func (c *Client) TranslateToEnglish(text string) (string, error) {
 
 // TranslateText uses Chat Completions to translate arbitrary text to the given target language.
 // It returns the original text if the API key is missing or an error occurs.
+// preserveNamesInstruction tells the translator to leave proper nouns and mod
+// names untranslated (e.g. "Create Aeronautics"), so brand and mod identifiers
+// stay intact across languages. (#1646)
+const preserveNamesInstruction = "Do not translate proper nouns, brand names, or Minecraft mod names (for example: Minecraft, Create, Create Aeronautics, Create: Above and Beyond), nor item, block, or machine names; keep them exactly as written in the original."
+
 func (c *Client) TranslateText(text, targetLang string) (string, error) {
 	if c.apiKey == "" {
 		return text, fmt.Errorf("OpenAI API key is required")
@@ -754,7 +759,7 @@ func (c *Client) TranslateText(text, targetLang string) (string, error) {
 	if trimmed == "" {
 		return text, nil
 	}
-	prompt := fmt.Sprintf("Translate the following text to %s suitable for a website.\nReturn only the translated text without quotes or extra commentary.\n\n%s", targetLang, trimmed)
+	prompt := fmt.Sprintf("Translate the following text to %s suitable for a website.\n%s\nReturn only the translated text without quotes or extra commentary.\n\n%s", targetLang, preserveNamesInstruction, trimmed)
 	request := ChatCompletionRequest{
 		Model: "gpt-3.5-turbo",
 		Messages: []ChatMessage{
@@ -838,6 +843,7 @@ func (c *Client) TranslateFields(title, description, content, targetLang string)
 	var sb strings.Builder
 	sb.WriteString("Translate the following fields to " + targetLang + ". ")
 	sb.WriteString("Return each translated field wrapped in exactly the same tags. ")
+	sb.WriteString(preserveNamesInstruction + " ")
 	sb.WriteString("If a field is empty, return it empty. Return only the tags and translated text, nothing else.\n\n")
 	sb.WriteString("[TITLE]" + title + "[/TITLE]\n")
 	sb.WriteString("[DESCRIPTION]" + description + "[/DESCRIPTION]\n")
