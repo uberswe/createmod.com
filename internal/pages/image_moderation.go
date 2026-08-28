@@ -6,8 +6,8 @@ import (
 	"createmod/internal/moderation"
 	"createmod/internal/storage"
 	"createmod/internal/store"
+	"io"
 	"log/slog"
-	"net/url"
 	"os"
 	"strings"
 )
@@ -186,46 +186,50 @@ func HoldSchematicImages(ctx context.Context, mailService *mailer.Service, appSt
 	}
 }
 
-// moderateSchematicImages runs OpenAI image moderation on a schematic's
-// featured image and gallery images asynchronously. Flagged images are removed
-// from the schematic record and logged. Only the filenames in imagesToCheck
-// are moderated (pass only newly uploaded filenames to avoid re-checking
-// existing images on every update).
-func moderateSchematicImages(moderationSvc *moderation.Service, mailService *mailer.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
-	if moderationSvc == nil || len(imagesToCheck) == 0 {
+// moderateSchematicImages runs OpenAI image moderation on a schematic's gallery
+// images asynchronously. Flagged images are held (hidden) and logged. Only the
+// filenames in imagesToCheck are moderated (pass only newly uploaded filenames
+// to avoid re-checking existing images on every update).
+//
+// Images are moderated by their BYTES (downloaded from S3), not a public URL:
+// the URL-based path silently passes whenever the OpenAI servers can't fetch the
+// image (dev behind an auth gate, private hosts, a wrong BASE_URL).
+func moderateSchematicImages(moderationSvc *moderation.Service, storageSvc *storage.Service, mailService *mailer.Service, appStore *store.Store, schematicID string, imagesToCheck []string) {
+	if moderationSvc == nil || storageSvc == nil || len(imagesToCheck) == 0 {
 		return
 	}
 	go func() {
-		baseURL := os.Getenv("BASE_URL")
-		if baseURL == "" {
-			baseURL = "https://createmod.com"
-		}
-		s3Prefix := storage.CollectionPrefix("schematics")
-
+		ctx := context.Background()
 		var flaggedImages []string
 		for _, filename := range imagesToCheck {
-			fullURL := baseURL + "/api/files/" + s3Prefix + "/" + schematicID + "/" + url.PathEscape(filename)
-			result, err := moderationSvc.CheckImage(fullURL)
+			data, mimeType := downloadSchematicImage(ctx, storageSvc, schematicID, filename)
+			if data == nil {
+				slog.Warn("schematic image unavailable for byte moderation",
+					"schematic_id", schematicID, "filename", filename)
+				continue
+			}
+			// Content policy (nudity/hate/harassment/self-harm; violence allowed).
+			result, err := moderationSvc.CheckUserImageContent(data, mimeType)
 			if err != nil {
 				slog.Warn("schematic image moderation unavailable",
 					"schematic_id", schematicID, "filename", filename, "error", err)
 				continue
 			}
 			if !result.Approved {
-				slog.Warn("schematic image flagged by moderation, will remove",
+				slog.Warn("schematic image flagged by moderation, will hold",
 					"schematic_id", schematicID, "filename", filename, "reason", result.Reason)
 				flaggedImages = append(flaggedImages, filename)
 				continue
 			}
-			// Also verify images depict actual Minecraft builds
-			qualResult, qualErr := moderationSvc.CheckImageQuality(fullURL)
+			// Also verify images depict actual Minecraft builds.
+			qualResult, qualErr := moderationSvc.CheckImageQualityBytes(data, mimeType)
 			if qualErr != nil {
 				slog.Warn("schematic image quality check unavailable",
 					"schematic_id", schematicID, "filename", filename, "error", qualErr)
 				continue
 			}
 			if !qualResult.Approved {
-				slog.Warn("schematic image not a Minecraft build, will flag",
+				slog.Warn("schematic image not a Minecraft build, will hold",
 					"schematic_id", schematicID, "filename", filename, "reason", qualResult.Reason)
 				flaggedImages = append(flaggedImages, filename)
 			}
@@ -237,7 +241,46 @@ func moderateSchematicImages(moderationSvc *moderation.Service, mailService *mai
 		// Per-image hold: hide just the flagged images and keep the schematic
 		// published (falling back to a visible featured image if needed), instead
 		// of holding the whole schematic for manual review. (#1646)
-		HoldSchematicImages(context.Background(), mailService, appStore, schematicID, flaggedImages,
+		HoldSchematicImages(ctx, mailService, appStore, schematicID, flaggedImages,
 			"Held by automated image moderation: "+strings.Join(flaggedImages, ", "))
 	}()
+}
+
+// maxModerationImageBytes caps how much of an image is read before moderating
+// its bytes. Uploaded images are capped well below this.
+const maxModerationImageBytes = 12 << 20
+
+// downloadSchematicImage fetches a schematic image's bytes and MIME type for
+// byte-based moderation. Returns (nil, "") on any failure.
+func downloadSchematicImage(ctx context.Context, storageSvc *storage.Service, schematicID, filename string) ([]byte, string) {
+	if storageSvc == nil || schematicID == "" || filename == "" {
+		return nil, ""
+	}
+	reader, err := storageSvc.Download(ctx, storage.CollectionPrefix("schematics"), schematicID, filename)
+	if err != nil {
+		return nil, ""
+	}
+	defer reader.Close()
+	data, err := io.ReadAll(io.LimitReader(reader, maxModerationImageBytes))
+	if err != nil || len(data) == 0 {
+		return nil, ""
+	}
+	return data, imageMimeFromName(filename)
+}
+
+// imageMimeFromName maps an image filename to a MIME type for the base64 data
+// URI sent to OpenAI. Uploaded images are converted to WebP; other extensions
+// are handled for pre-conversion checks.
+func imageMimeFromName(filename string) string {
+	lower := strings.ToLower(filename)
+	switch {
+	case strings.HasSuffix(lower, ".png"):
+		return "image/png"
+	case strings.HasSuffix(lower, ".jpg"), strings.HasSuffix(lower, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(lower, ".gif"):
+		return "image/gif"
+	default:
+		return "image/webp"
+	}
 }

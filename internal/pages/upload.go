@@ -311,6 +311,42 @@ func duplicateChecksumStatus(ctx context.Context, appStore *store.Store, checksu
 	return duplicate, blacklisted
 }
 
+// featuredImageBytesForCheck returns the featured image's bytes and MIME type
+// from the publish form for the pre-publish content check, whether it was
+// pre-uploaded via the API (a temp image referenced by name) or attached
+// directly to this request. Returns (nil, "") when there is nothing to check.
+func featuredImageBytesForCheck(e *server.RequestEvent, storageSvc *storage.Service, token string) ([]byte, string) {
+	const maxCheckBytes = 12 << 20
+	if preloaded := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloaded != "" && !containsPathTraversal(preloaded) {
+		if storageSvc == nil {
+			return nil, ""
+		}
+		reader, err := storageSvc.DownloadRaw(e.Request.Context(), s3CollectionTempUploads+"/"+token+"/"+preloaded)
+		if err != nil {
+			return nil, ""
+		}
+		defer reader.Close()
+		data, err := io.ReadAll(io.LimitReader(reader, maxCheckBytes))
+		if err != nil || len(data) == 0 {
+			return nil, ""
+		}
+		return data, imageMimeFromName(preloaded)
+	}
+	if file, header, err := e.Request.FormFile("featured_image"); err == nil && header != nil {
+		defer func() { _ = file.Close() }()
+		data, err := io.ReadAll(io.LimitReader(file, maxCheckBytes))
+		if err != nil || len(data) == 0 {
+			return nil, ""
+		}
+		mime := header.Header.Get("Content-Type")
+		if mime == "" {
+			mime = imageMimeFromName(header.Filename)
+		}
+		return data, mime
+	}
+	return nil, ""
+}
+
 func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, rl ratelimit.Limiter, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer, enqueueSafetyScan SafetyScanEnqueuer) func(e *server.RequestEvent) error {
 	return func(e *server.RequestEvent) error {
 		if e.Request.Method != http.MethodPost {
@@ -478,6 +514,25 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// Ensure the slug is unique among non-deleted schematics.
 		if taken, _ := appStore.Schematics.NameExists(ctx, nameSlug); taken {
 			nameSlug = makeUniqueSlug(ctx, appStore, nameSlug)
+		}
+
+		// Featured-image content check BEFORE the processing lock and any S3
+		// writes, so a rejected image never publishes and leaves the token
+		// reusable for another attempt. Moderates the image BYTES via the free
+		// moderation endpoint (works regardless of URL reachability). On an
+		// OpenAI error we fail open and rely on the async worker backstop; a
+		// clear rejection blocks the publish. The client shows a "Validating
+		// images…" state while this runs. (#1646)
+		if moderationSvc != nil {
+			if imgData, imgMime := featuredImageBytesForCheck(e, storageSvc, token); imgData != nil {
+				if res, mErr := moderationSvc.CheckUserImageContent(imgData, imgMime); mErr != nil {
+					slog.Warn("make-public: featured image content check unavailable, proceeding", "token", token, "error", mErr)
+				} else if !res.Approved {
+					slog.Warn("make-public: featured image rejected by content moderation", "token", token, "reason", res.Reason)
+					e.Response.Header().Set("X-Image-Rejected", "1")
+					return e.String(http.StatusUnprocessableEntity, "Your featured image didn't pass our content check. Please choose a different image and publish again.")
+				}
+			}
 		}
 
 		// Atomically mark as processing to prevent duplicate submissions.
@@ -844,7 +899,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		}
 
 		// Async image moderation for gallery images (featured is handled by the moderation job).
-		moderateSchematicImages(moderationSvc, mailService, appStore, schem.ID, galleryFilenames)
+		moderateSchematicImages(moderationSvc, storageSvc, mailService, appStore, schem.ID, galleryFilenames)
 
 		// Pre-generate thumbnails so the first listing page load doesn't pay the resize cost.
 		go PrewarmThumbnails(storageSvc, schem.ID, featuredFilename)

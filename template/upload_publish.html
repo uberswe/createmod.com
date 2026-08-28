@@ -921,6 +921,9 @@ document.addEventListener("DOMContentLoaded", function() {
                         showBlacklistedPrompt();
                     } else if (xhr.getResponseHeader('X-Duplicate') === '1') {
                         showDuplicatePrompt();
+                    } else if (xhr.getResponseHeader('X-Image-Rejected') === '1') {
+                        var imgMsg = xhr.responseText ? xhr.responseText.trim() : "Your featured image didn't pass our content check. Please choose a different image and publish again.";
+                        showPublishError(imgMsg);
                     } else {
                         var errMsg = xhr.responseText ? xhr.responseText.trim() : 'Publishing failed. Please try again.';
                         showPublishError(errMsg);
@@ -939,6 +942,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 setPublishing(false);
                 showPublishError('Request timed out. Please try again.');
             };
+            // The server validates the featured image first, so surface that as
+            // the in-flight state on the button.
+            publishLabel.textContent = 'Validating images…';
             xhr.send(formData);
         } else {
             setPublishing(false);
