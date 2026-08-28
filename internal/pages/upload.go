@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -311,40 +312,75 @@ func duplicateChecksumStatus(ctx context.Context, appStore *store.Store, checksu
 	return duplicate, blacklisted
 }
 
-// featuredImageBytesForCheck returns the featured image's bytes and MIME type
-// from the publish form for the pre-publish content check, whether it was
-// pre-uploaded via the API (a temp image referenced by name) or attached
-// directly to this request. Returns (nil, "") when there is nothing to check.
-func featuredImageBytesForCheck(e *server.RequestEvent, storageSvc *storage.Service, token string) ([]byte, string) {
+// imageCheckItem is one image (bytes + MIME + a label for logs) to run through
+// the pre-publish content check.
+type imageCheckItem struct {
+	data  []byte
+	mime  string
+	label string
+}
+
+// imagesToContentCheck gathers EVERY image being published -- the featured image
+// and all gallery images, whether pre-uploaded via the API (temp images
+// referenced by name) or attached directly to this request -- so nudity in any
+// of them is blocked before the schematic goes public, not just the featured
+// one. Reading attached files here is safe alongside the later per-image
+// handling, since each multipart FileHeader.Open() returns a fresh reader.
+func imagesToContentCheck(e *server.RequestEvent, storageSvc *storage.Service, token string) []imageCheckItem {
 	const maxCheckBytes = 12 << 20
-	if preloaded := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloaded != "" && !containsPathTraversal(preloaded) {
-		if storageSvc == nil {
-			return nil, ""
+	var items []imageCheckItem
+	seen := map[string]bool{}
+
+	addTemp := func(filename string) {
+		filename = strings.TrimSpace(filename)
+		if storageSvc == nil || filename == "" || containsPathTraversal(filename) || seen[filename] {
+			return
 		}
-		reader, err := storageSvc.DownloadRaw(e.Request.Context(), s3CollectionTempUploads+"/"+token+"/"+preloaded)
+		seen[filename] = true
+		reader, err := storageSvc.DownloadRaw(e.Request.Context(), s3CollectionTempUploads+"/"+token+"/"+filename)
 		if err != nil {
-			return nil, ""
+			return
 		}
 		defer reader.Close()
-		data, err := io.ReadAll(io.LimitReader(reader, maxCheckBytes))
-		if err != nil || len(data) == 0 {
-			return nil, ""
+		if data, rerr := io.ReadAll(io.LimitReader(reader, maxCheckBytes)); rerr == nil && len(data) > 0 {
+			items = append(items, imageCheckItem{data: data, mime: imageMimeFromName(filename), label: filename})
 		}
-		return data, imageMimeFromName(preloaded)
 	}
-	if file, header, err := e.Request.FormFile("featured_image"); err == nil && header != nil {
-		defer func() { _ = file.Close() }()
-		data, err := io.ReadAll(io.LimitReader(file, maxCheckBytes))
-		if err != nil || len(data) == 0 {
-			return nil, ""
+	addAttached := func(header *multipart.FileHeader) {
+		if header == nil {
+			return
 		}
-		mime := header.Header.Get("Content-Type")
-		if mime == "" {
-			mime = imageMimeFromName(header.Filename)
+		f, err := header.Open()
+		if err != nil {
+			return
 		}
-		return data, mime
+		defer func() { _ = f.Close() }()
+		if data, rerr := io.ReadAll(io.LimitReader(f, maxCheckBytes)); rerr == nil && len(data) > 0 {
+			mime := header.Header.Get("Content-Type")
+			if mime == "" {
+				mime = imageMimeFromName(header.Filename)
+			}
+			items = append(items, imageCheckItem{data: data, mime: mime, label: header.Filename})
+		}
 	}
-	return nil, ""
+
+	// Featured image (pre-uploaded name or attached file).
+	if preloaded := strings.TrimSpace(e.Request.FormValue("featured_image_preloaded")); preloaded != "" {
+		addTemp(preloaded)
+	} else if file, header, err := e.Request.FormFile("featured_image"); err == nil && header != nil {
+		_ = file.Close() // addAttached re-opens via the header
+		addAttached(header)
+	}
+	// Gallery images (pre-uploaded names + attached files).
+	for _, name := range e.Request.Form["preloaded_images"] {
+		addTemp(name)
+	}
+	if e.Request.MultipartForm != nil && e.Request.MultipartForm.File != nil {
+		for _, header := range e.Request.MultipartForm.File["gallery"] {
+			addAttached(header)
+		}
+	}
+	return items
 }
 
 func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Service, appStore *store.Store, storageSvc *storage.Service, moderationSvc *moderation.Service, mailService *mailer.Service, rl ratelimit.Limiter, enqueueModeration ModerationEnqueuer, enqueueSearchUpsert SearchIndexEnqueuer, enqueueSafetyScan SafetyScanEnqueuer) func(e *server.RequestEvent) error {
@@ -516,21 +552,24 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			nameSlug = makeUniqueSlug(ctx, appStore, nameSlug)
 		}
 
-		// Featured-image content check BEFORE the processing lock and any S3
-		// writes, so a rejected image never publishes and leaves the token
-		// reusable for another attempt. Moderates the image BYTES via the free
-		// moderation endpoint (works regardless of URL reachability). On an
-		// OpenAI error we fail open and rely on the async worker backstop; a
-		// clear rejection blocks the publish. The client shows a "Validating
-		// images…" state while this runs. (#1646)
+		// Content-check EVERY image (featured + gallery) BEFORE the processing
+		// lock and any S3 writes, so nudity in any image blocks the publish and
+		// leaves the token reusable for another attempt. Moderates the image
+		// BYTES via the free moderation endpoint (works regardless of URL
+		// reachability). On an OpenAI error we fail open per image and rely on the
+		// async worker backstop; a clear rejection blocks the publish. The client
+		// shows a "Validating images…" state while this runs. (#1646)
 		if moderationSvc != nil {
-			if imgData, imgMime := featuredImageBytesForCheck(e, storageSvc, token); imgData != nil {
-				if res, mErr := moderationSvc.CheckUserImageContent(imgData, imgMime); mErr != nil {
-					slog.Warn("make-public: featured image content check unavailable, proceeding", "token", token, "error", mErr)
-				} else if !res.Approved {
-					slog.Warn("make-public: featured image rejected by content moderation", "token", token, "reason", res.Reason)
+			for _, img := range imagesToContentCheck(e, storageSvc, token) {
+				res, mErr := moderationSvc.CheckUserImageContent(img.data, img.mime)
+				if mErr != nil {
+					slog.Warn("make-public: image content check unavailable, proceeding", "token", token, "image", img.label, "error", mErr)
+					continue
+				}
+				if !res.Approved {
+					slog.Warn("make-public: image rejected by content moderation", "token", token, "image", img.label, "reason", res.Reason)
 					e.Response.Header().Set("X-Image-Rejected", "1")
-					return e.String(http.StatusUnprocessableEntity, "Your featured image didn't pass our content check. Please choose a different image and publish again.")
+					return e.String(http.StatusUnprocessableEntity, "One of your images didn't pass our content check. Please replace it and publish again.")
 				}
 			}
 		}
