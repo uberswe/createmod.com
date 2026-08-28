@@ -66,7 +66,16 @@ func (q *Queries) AddSchematicTag(ctx context.Context, arg AddSchematicTagParams
 
 const approveHeldImage = `-- name: ApproveHeldImage :exec
 UPDATE schematics
-SET held_images = array_remove(held_images, $1::text), modified = NOW()
+SET held_images = array_remove(held_images, $1::text),
+    featured_image = CASE
+        WHEN COALESCE(featured_image, '') = '' THEN $1::text
+        ELSE featured_image END,
+    gallery = CASE
+        WHEN COALESCE(featured_image, '') = '' THEN gallery
+        WHEN $1::text = featured_image THEN gallery
+        WHEN $1::text = ANY(gallery) THEN gallery
+        ELSE array_append(gallery, $1::text) END,
+    modified = NOW()
 WHERE id = $2
 `
 
@@ -75,7 +84,13 @@ type ApproveHeldImageParams struct {
 	ID       string `json:"id"`
 }
 
-// Un-hold an image: it becomes visible to everyone again. (#1646)
+// Un-hold an image: it becomes visible to everyone again. When the image was
+// the featured image, holding it blanked featured_image (falling back to a
+// gallery image, or to nothing when there was none) -- so simply removing it
+// from held_images would orphan it. Restore visibility: make it the featured
+// image again if there is none, otherwise return it to the gallery. All SET
+// expressions read the pre-update row, so the CASE keys off the old
+// featured_image. (#1646)
 func (q *Queries) ApproveHeldImage(ctx context.Context, arg ApproveHeldImageParams) error {
 	_, err := q.db.Exec(ctx, approveHeldImage, arg.Filename, arg.ID)
 	return err

@@ -196,9 +196,24 @@ ORDER BY created ASC
 LIMIT @lim;
 
 -- name: ApproveHeldImage :exec
--- Un-hold an image: it becomes visible to everyone again. (#1646)
+-- Un-hold an image: it becomes visible to everyone again. When the image was
+-- the featured image, holding it blanked featured_image (falling back to a
+-- gallery image, or to nothing when there was none) -- so simply removing it
+-- from held_images would orphan it. Restore visibility: make it the featured
+-- image again if there is none, otherwise return it to the gallery. All SET
+-- expressions read the pre-update row, so the CASE keys off the old
+-- featured_image. (#1646)
 UPDATE schematics
-SET held_images = array_remove(held_images, @filename::text), modified = NOW()
+SET held_images = array_remove(held_images, @filename::text),
+    featured_image = CASE
+        WHEN COALESCE(featured_image, '') = '' THEN @filename::text
+        ELSE featured_image END,
+    gallery = CASE
+        WHEN COALESCE(featured_image, '') = '' THEN gallery
+        WHEN @filename::text = featured_image THEN gallery
+        WHEN @filename::text = ANY(gallery) THEN gallery
+        ELSE array_append(gallery, @filename::text) END,
+    modified = NOW()
 WHERE id = @id;
 
 -- name: RemoveHeldImage :exec

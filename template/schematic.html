@@ -248,12 +248,18 @@
                                         onerror="this.style.display='none'">
                                 </div>
                             </a>
+                            {{ else if .Schematic.HeldImages }}
+                            {{/* The only image is pending moderator review: show the public placeholder instead of a blank hero. */}}
+                            <a data-fslightbox="gallery" hx-boost="false" href="/assets/x/pending-review.svg"
+                               title="This image is pending moderator review.">
+                                <div class="ratio ratio-16x9" style="background-image:url('/assets/x/pending-review.svg');background-size:cover;background-position:center;"></div>
+                            </a>
                             {{ else }}
                             <div class="ratio ratio-16x9" style="background-image:url('{{ PlaceholderImg .Schematic.ID }}');background-size:cover;background-position:center;"></div>
                             {{ end }}
                             <div class="card-body">
                                 {{/* Gallery thumbnails — horizontally scrollable strip */}}
-                                {{ if or .Schematic.HasGallery (and .Schematic.HasRotationImages (ne .Schematic.FeaturedImage "")) (and .IsAuthor .Schematic.HeldImages) }}
+                                {{ if or .Schematic.HasGallery (and .Schematic.HasRotationImages (ne .Schematic.FeaturedImage "")) .Schematic.HeldImages }}
                                 <div class="gallery-strip-wrapper">
                                     <button class="gallery-strip-arrow gallery-strip-arrow-left" aria-label="{{ T .Language "gallery.scroll_left" }}" style="display:none">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -273,13 +279,14 @@
                                                  style="background-image: url('/api/files/schematics/{{ $.Schematic.ID }}/{{ urlPathEscape . }}?thumb=300x300&v=2')"></div>
                                         </a>
                                         {{ end }}
-                                        {{ if .IsAuthor }}
+                                        {{/* Pending images are shown to everyone as a "Pending Moderator Review" placeholder tile, clickable to read the full notice. */}}
                                         {{ range .Schematic.HeldImages }}
-                                        <div class="gallery-strip-item cm-held-tile" title="This image is hidden from visitors while a moderator reviews it. It returns automatically if approved.">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" /><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" /><path d="M3 3l18 18" /></svg>
-                                            <span class="cm-held-tile__label">In review</span>
-                                        </div>
-                                        {{ end }}
+                                        <a class="gallery-strip-item" data-fslightbox="gallery" hx-boost="false"
+                                           href="/assets/x/pending-review.svg"
+                                           title="This image is pending moderator review and will be reviewed by a human within 48 hours.">
+                                            <div class="gallery-strip-thumb"
+                                                 style="background-image:url('/assets/x/pending-review.svg')"></div>
+                                        </a>
                                         {{ end }}
                                     </div>
                                     <button class="gallery-strip-arrow gallery-strip-arrow-right" aria-label="{{ T .Language "gallery.scroll_right" }}" style="display:none">

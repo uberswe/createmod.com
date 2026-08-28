@@ -21,8 +21,10 @@ type Schematic struct {
 	Gallery              []string      `json:"gallery"`
 	RotationImages       []string      `json:"rotationImages,omitempty"`
 	HasRotationImages    bool          `json:"hasRotationImages"`
-	// HeldImages are filenames on hold pending review — rendered as "in review"
-	// placeholder tiles for the owner only, never shown to visitors. (#1646)
+	// HeldImages are filenames on hold pending review. Each is rendered to
+	// everyone as a "Pending Moderator Review" placeholder tile (never the real
+	// image) so visitors see that an image is under review rather than a gap.
+	// (#1646)
 	HeldImages       []string            `json:"-"`
 	Title            string              `json:"title"`
 	Name             string              `json:"name"`
