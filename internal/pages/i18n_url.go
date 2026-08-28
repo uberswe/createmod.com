@@ -11,6 +11,7 @@ import (
 // English maps to "" (root), other languages to their subdirectory prefix.
 var LangToPrefix = map[string]string{
 	"en":      "",
+	"de":      "de",
 	"fr":      "fr",
 	"es":      "es",
 	"pl":      "pl",
@@ -22,6 +23,7 @@ var LangToPrefix = map[string]string{
 
 // PrefixToLang maps URL path prefixes back to internal language codes.
 var PrefixToLang = map[string]string{
+	"de":    "de",
 	"fr":    "fr",
 	"es":    "es",
 	"pl":    "pl",
@@ -46,6 +48,7 @@ func (h HreflangEntry) FullPath(barePath string) string {
 // allHreflangEntries is the static list of all supported hreflang entries.
 var allHreflangEntries = []HreflangEntry{
 	{HreflangCode: "en", Prefix: "", Lang: "en"},
+	{HreflangCode: "de", Prefix: "de", Lang: "de"},
 	{HreflangCode: "fr", Prefix: "fr", Lang: "fr"},
 	{HreflangCode: "es", Prefix: "es", Lang: "es"},
 	{HreflangCode: "pl", Prefix: "pl", Lang: "pl"},

@@ -35,8 +35,8 @@
                         {{ if .AdditionalFiles }}
                         <div class="card mb-3">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title mb-0">Included Files</h3>
-                                <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline-secondary ms-auto">Edit Files</a>
+                                <h3 class="card-title mb-0">{{ T .Language "Included Files" }}</h3>
+                                <a href="/u/{{ .Token }}" class="btn btn-sm btn-outline-secondary ms-auto">{{ T .Language "Edit Files" }}</a>
                             </div>
                             <div class="card-body p-0">
                                 <div class="list-group list-group-flush">
@@ -65,7 +65,7 @@
                         <!-- Publish Form -->
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Publish Schematic</h3>
+                                <h3 class="card-title">{{ T .Language "Publish Schematic" }}</h3>
                             </div>
                             <div class="card-body">
                                 <input type="hidden" id="publish-token" value="{{ .Token }}">
@@ -83,10 +83,10 @@
                                     <!-- Live quality meter: reflects the same thresholds the server uses -->
                                     <div class="cm-meter" id="desc-meter" data-level="empty">
                                         <span class="cm-meter__dot"></span>
-                                        <span class="cm-meter__msg" id="desc-meter-msg">Add a description to see how it will publish.</span>
+                                        <span class="cm-meter__msg" id="desc-meter-msg">{{ T .Language "Add a description to see how it will publish." }}</span>
                                         <span class="cm-meter__count" id="desc-meter-count">0 words</span>
                                     </div>
-                                    <small class="form-hint mt-2 d-block text-secondary">Explain what your build is and how to use it. A detailed description helps your schematic appear in Latest and search.</small>
+                                    <small class="form-hint mt-2 d-block text-secondary">{{ T .Language "Explain what your build is and how to use it. A detailed description helps your schematic appear in Latest and search." }}</small>
                                 </div>
                                 <div class="row">
                                     <div class="mb-3 col-md-12 col-lg-6">
@@ -109,7 +109,7 @@
                                 </div>
                                 <div class="row">
                                     <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Create Version</label>
+                                        <label class="form-label required">{{ T .Language "Create Version" }}</label>
                                         <select id="create-version" name="" class="form-select">
                                             {{ range .CreatemodVersions}}
                                             <option value="{{ .ID }}">{{ .Version }}</option>
@@ -117,7 +117,7 @@
                                         </select>
                                     </div>
                                     <div class="mb-3 col-md-12 col-lg-6">
-                                        <label class="form-label required">Minecraft Version</label>
+                                        <label class="form-label required">{{ T .Language "Minecraft Version" }}</label>
                                         <select id="minecraft-version" name="" class="form-select">
                                             {{ range .MinecraftVersions}}
                                             <option value="{{ .ID }}">{{ .Version }}</option>
@@ -126,7 +126,7 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label">Schematic Video</label>
+                                    <label class="form-label">{{ T .Language "Schematic Video" }}</label>
                                     <input id="video" type="text" class="form-control" name="video"
                                            placeholder="Schematic Video URL">
                                 </div>
@@ -135,9 +135,9 @@
                                 <div class="mb-3">
                                     <label class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="rotation-disabled">
-                                        <span class="form-check-label">Disable 360° Viewer</span>
+                                        <span class="form-check-label">{{ T .Language "Disable 360° Viewer" }}</span>
                                     </label>
-                                    <small class="form-hint">When enabled, the 360° rotation viewer will be hidden on the schematic page.</small>
+                                    <small class="form-hint">{{ T .Language "When enabled, the 360° rotation viewer will be hidden on the schematic page." }}</small>
                                 </div>
                                 {{ end }}
 
@@ -156,11 +156,11 @@
 
                                 <div class="mb-3">
                                     <label class="form-label required">Images</label>
-                                    <small class="form-hint mb-2">Images must show the Minecraft build itself. Reference images or screenshots from outside Minecraft are not accepted. Anything the scanner is unsure about is published behind a placeholder until a human checks it. Click an image to set it as featured.</small>
+                                    <small class="form-hint mb-2">{{ T .Language "Images must show the Minecraft build itself. Reference images or screenshots from outside Minecraft are not accepted. Anything the scanner is unsure about is published behind a placeholder until a human checks it. Click an image to set it as featured." }}</small>
                                     <div class="image-upload-grid" id="image-upload-grid">
                                         <div class="image-upload-add" id="image-upload-add">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
-                                            <span>Add Images</span>
+                                            <span>{{ T .Language "Add Images" }}</span>
                                         </div>
                                     </div>
                                     <input type="file" id="image-file-input" accept="image/*" multiple style="display:none;">
@@ -171,8 +171,8 @@
                                 <div class="cm-expect cm-expect--ok mt-3" id="expectation-panel">
                                     <span class="cm-expect__dot"></span>
                                     <div>
-                                        <div class="cm-expect__title" id="expectation-title">Publishes fully, right away</div>
-                                        <div class="cm-expect__body" id="expectation-body">All checks pass. Your schematic goes live everywhere: direct link, Latest, and search.</div>
+                                        <div class="cm-expect__title" id="expectation-title">{{ T .Language "Publishes fully, right away" }}</div>
+                                        <div class="cm-expect__body" id="expectation-body">{{ T .Language "All checks pass. Your schematic goes live everywhere: direct link, Latest, and search." }}</div>
                                     </div>
                                 </div>
 
@@ -191,7 +191,7 @@
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
                                             </div>
                                             <div>
-                                                Schematic published! Taking you to the details…
+                                                {{ T .Language "Schematic published! Taking you to the details…" }}
                                             </div>
                                         </div>
                                     </div>
@@ -205,43 +205,43 @@
                     <aside class="cm-publish-rail">
                         <div class="card cm-prepub" id="prepublish-card">
                             <div class="card-body">
-                                <div class="cm-prepub__title">Pre-publish checks</div>
+                                <div class="cm-prepub__title">{{ T .Language "Pre-publish checks" }}</div>
                                 <div class="cm-check" data-check="file" data-state="ok">
                                     <span class="cm-check__dot"></span>
                                     <div class="cm-check__text">
-                                        <div class="cm-check__name">Schematic file</div>
-                                        <div class="cm-check__note" id="check-file-note">Valid Create .nbt uploaded.</div>
+                                        <div class="cm-check__name">{{ T .Language "Schematic file" }}</div>
+                                        <div class="cm-check__note" id="check-file-note">{{ T .Language "Valid Create .nbt uploaded." }}</div>
                                     </div>
                                 </div>
                                 <div class="cm-check" data-check="title" data-state="pending">
                                     <span class="cm-check__dot"></span>
                                     <div class="cm-check__text">
                                         <div class="cm-check__name">Title</div>
-                                        <div class="cm-check__note" id="check-title-note">Give your schematic a title.</div>
+                                        <div class="cm-check__note" id="check-title-note">{{ T .Language "Give your schematic a title." }}</div>
                                     </div>
                                 </div>
                                 <div class="cm-check" data-check="description" data-state="pending">
                                     <span class="cm-check__dot"></span>
                                     <div class="cm-check__text">
                                         <div class="cm-check__name">Description</div>
-                                        <div class="cm-check__note" id="check-desc-note">Add a description.</div>
+                                        <div class="cm-check__note" id="check-desc-note">{{ T .Language "Add a description." }}</div>
                                     </div>
                                 </div>
                                 <div class="cm-check" data-check="images" data-state="pending">
                                     <span class="cm-check__dot"></span>
                                     <div class="cm-check__text">
                                         <div class="cm-check__name">Images</div>
-                                        <div class="cm-check__note" id="check-images-note">Add at least one image.</div>
+                                        <div class="cm-check__note" id="check-images-note">{{ T .Language "Add at least one image." }}</div>
                                     </div>
                                 </div>
                                 <div class="cm-check" data-check="content" data-state="neutral">
                                     <span class="cm-check__dot"></span>
                                     <div class="cm-check__text">
-                                        <div class="cm-check__name">Content scan</div>
-                                        <div class="cm-check__note">Runs automatically the moment you publish.</div>
+                                        <div class="cm-check__name">{{ T .Language "Content scan" }}</div>
+                                        <div class="cm-check__note">{{ T .Language "Runs automatically the moment you publish." }}</div>
                                     </div>
                                 </div>
-                                <div class="cm-prepub__foot">Checks run live as you type. Fixing everything here means your schematic goes fully live the moment you publish.</div>
+                                <div class="cm-prepub__foot">{{ T .Language "Checks run live as you type. Fixing everything here means your schematic goes fully live the moment you publish." }}</div>
                             </div>
                         </div>
                     </aside>

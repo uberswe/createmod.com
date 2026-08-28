@@ -12,8 +12,8 @@ func TestPrefixedPath(t *testing.T) {
 	}{
 		{"en", "/", "/"},
 		{"en", "/schematics", "/schematics"},
-		{"de", "/", "/"},             // de unsupported, falls back
-		{"de", "/schematics", "/schematics"}, // de unsupported, falls back
+		{"de", "/", "/de"},
+		{"de", "/schematics", "/de/schematics"},
 		{"pt-BR", "/", "/pt-br"},
 		{"pt-BR", "/search/test", "/pt-br/search/test"},
 		{"pt-PT", "/upload", "/pt-pt/upload"},
@@ -35,9 +35,9 @@ func TestStripLangPrefix(t *testing.T) {
 		wantLang    string
 		wantStripped string
 	}{
-		{"/de/schematics", "", "/de/schematics"}, // de no longer a prefix
-		{"/de", "", "/de"},
-		{"/de/", "", "/de/"},
+		{"/de/schematics", "de", "/schematics"},
+		{"/de", "de", "/"},
+		{"/de/", "de", "/"},
 		{"/pt-br/search/test", "pt-BR", "/search/test"},
 		{"/pt-pt/upload", "pt-PT", "/upload"},
 		{"/zh/guides", "zh-Hans", "/guides"},
@@ -64,8 +64,8 @@ func TestStripLangPrefix(t *testing.T) {
 
 func TestAllHreflangs(t *testing.T) {
 	entries := AllHreflangs()
-	if len(entries) != 8 {
-		t.Errorf("AllHreflangs() returned %d entries, want 8", len(entries))
+	if len(entries) != 9 {
+		t.Errorf("AllHreflangs() returned %d entries, want 9", len(entries))
 	}
 	// Check English is first and has empty prefix
 	if entries[0].HreflangCode != "en" || entries[0].Prefix != "" {

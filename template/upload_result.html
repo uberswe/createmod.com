@@ -12,23 +12,23 @@
             </div>
 
             {{ if .PollActive }}
-            <div class="cm-poll"><span class="spinner-border spinner-border-sm me-2"></span>Running checks…</div>
+            <div class="cm-poll"><span class="spinner-border spinner-border-sm me-2"></span>{{ T .Language "Running checks…" }}</div>
             {{ end }}
 
             <!-- URL + actions -->
             {{ if .SchematicURL }}
             <div class="card mt-3"><div class="card-body">
-                <label class="form-label text-secondary">Schematic URL</label>
+                <label class="form-label text-secondary">{{ T .Language "Schematic URL" }}</label>
                 <div class="input-group">
                     <input type="text" class="form-control" id="schematic-url" value="{{ .SchematicFullURL }}" readonly>
                     <button class="btn btn-outline-secondary" type="button" id="copy-url-btn" onclick="copySchematicURL()">
                         <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" /><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" /></svg>
-                        <span id="copy-url-label">Copy Link</span>
+                        <span id="copy-url-label">{{ T .Language "Copy Link" }}</span>
                     </button>
                 </div>
                 <div class="mt-3">
-                    <a href="{{ .SchematicURL }}" class="btn btn-primary">View Schematic</a>
-                    <a href="/upload" class="btn btn-secondary ms-2">Upload Another</a>
+                    <a href="{{ .SchematicURL }}" class="btn btn-primary">{{ T .Language "View Schematic" }}</a>
+                    <a href="/upload" class="btn btn-secondary ms-2">{{ T .Language "Upload Another" }}</a>
                 </div>
             </div></div>
             {{ end }}
@@ -36,7 +36,7 @@
             <!-- Automated checks -->
             {{ if .Checks }}
             <div class="card mt-3"><div class="card-body">
-                <div class="cm-card-title">Automated checks</div>
+                <div class="cm-card-title">{{ T .Language "Automated checks" }}</div>
                 {{ range .Checks }}
                 <div class="cm-check" data-state="{{ .State }}">
                     <span class="cm-check__dot"></span>
@@ -52,7 +52,7 @@
             <!-- What you can do now -->
             {{ if .OpenItems }}
             <div class="card mt-3"><div class="card-body">
-                <div class="cm-card-title">What you can do now</div>
+                <div class="cm-card-title">{{ T .Language "What you can do now" }}</div>
                 {{ range .OpenItems }}
                 <div class="cm-todo">
                     <div class="cm-todo__text">{{ .Note }}</div>
@@ -67,7 +67,7 @@
         <!-- Where it appears rail -->
         <aside class="cm-result-rail">
             <div class="card"><div class="card-body">
-                <div class="cm-card-title">Where it appears</div>
+                <div class="cm-card-title">{{ T .Language "Where it appears" }}</div>
                 {{ range .Appears }}
                 <div class="cm-check" data-state="{{ .State }}">
                     <span class="cm-check__dot"></span>

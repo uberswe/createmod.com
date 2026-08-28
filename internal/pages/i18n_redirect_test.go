@@ -66,7 +66,7 @@ func TestRedirectToPreferredLang(t *testing.T) {
 			name:         "unsupported cookie does not redirect",
 			method:       http.MethodGet,
 			path:         "/",
-			cookie:       "de",
+			cookie:       "xx",
 			wantRedirect: false,
 		},
 		{

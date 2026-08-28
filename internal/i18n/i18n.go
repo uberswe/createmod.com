@@ -15,6 +15,7 @@ func init() {
 	register("ru", LangRU)
 	register("zh-Hans", LangZhHans)
 	register("fr", LangFR)
+	register("de", LangDE)
 }
 
 func register(lang string, m map[string]string) {

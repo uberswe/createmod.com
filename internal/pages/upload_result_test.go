@@ -132,7 +132,9 @@ func TestComputePublishOutcome(t *testing.T) {
 // HTML files (when CM_RENDER_FIXTURES=1) so the result page can be eyeballed in
 // a browser. Always parses the template, so a broken template fails the test.
 func TestRenderPublishResultFixtures(t *testing.T) {
-	tmpl, err := template.ParseFiles("../../template/upload_result.html")
+	tmpl, err := template.New("upload_result.html").
+		Funcs(template.FuncMap{"T": func(lang, key string) string { return key }}).
+		ParseFiles("../../template/upload_result.html")
 	if err != nil {
 		t.Fatalf("parse upload_result.html: %v", err)
 	}
