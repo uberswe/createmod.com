@@ -34,7 +34,8 @@ type ModFlag struct {
 // ModQueueCard is one item in the moderator queue column.
 type ModQueueCard struct {
 	ID        string
-	Title     string
+	Title     string // original-language title
+	TitleEN   string // English auto-translation, preferred for display (#1646)
 	Name      string
 	Author    string
 	Approvals int64
@@ -67,8 +68,10 @@ type ModDetail struct {
 	State            string
 	DetectedLanguage string
 	Description      template.HTML
-	// DescriptionEN is the stored English auto-translation, shown via the
-	// Original / English toggle when the schematic isn't already English. (#1646)
+	// TitleEN and DescriptionEN are the stored English auto-translation, shown
+	// BY DEFAULT (with an Original toggle) when the schematic isn't already
+	// English, so moderators review in English. (#1646)
+	TitleEN        string
 	DescriptionEN  template.HTML
 	HasTranslation bool
 	AutoReason     string
@@ -171,9 +174,18 @@ func buildModQueueCard(ctx context.Context, appStore *store.Store, s *store.Sche
 	if len(cats) > 0 {
 		category = cats[0].Name
 	}
+	// Prefer the English auto-translation of the title so the queue reads in
+	// English regardless of the submission language. (#1646)
+	titleEN := ""
+	if appStore.Translations != nil && s.DetectedLanguage != "" && s.DetectedLanguage != "en" {
+		if tr, err := appStore.Translations.GetSchematicTranslation(ctx, s.ID, "en"); err == nil && tr != nil && tr.Title != "" {
+			titleEN = tr.Title
+		}
+	}
 	return ModQueueCard{
 		ID:        s.ID,
 		Title:     s.Title,
+		TitleEN:   titleEN,
 		Name:      s.Name,
 		Author:    author,
 		Approvals: approvals,
@@ -291,6 +303,9 @@ func buildModDetail(ctx context.Context, appStore *store.Store, id string) *ModD
 				enSan = san
 			}
 			d.DescriptionEN = template.HTML(enSan)
+			if tr.Title != "" {
+				d.TitleEN = tr.Title
+			}
 			d.HasTranslation = true
 		}
 	}

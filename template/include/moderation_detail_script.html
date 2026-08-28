@@ -74,11 +74,14 @@
 })();
 // Original / English (auto) description toggle.
 window.cmTrans = function (which) {
-    var orig = document.getElementById('desc-orig');
-    var en = document.getElementById('desc-en');
-    if (!orig || !en) return;
-    orig.style.display = (which === 'orig') ? '' : 'none';
-    en.style.display = (which === 'en') ? '' : 'none';
+    var pairs = [['desc-orig', 'desc-en'], ['title-orig', 'title-en']];
+    pairs.forEach(function (p) {
+        var orig = document.getElementById(p[0]);
+        var en = document.getElementById(p[1]);
+        if (!orig || !en) return;
+        orig.style.display = (which === 'orig') ? '' : 'none';
+        en.style.display = (which === 'en') ? '' : 'none';
+    });
     document.querySelectorAll('.cm-transtoggle__btn').forEach(function (b) {
         b.classList.toggle('is-active', b.getAttribute('data-trans') === which);
     });
