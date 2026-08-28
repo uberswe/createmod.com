@@ -873,4 +873,7 @@ var LangRU = map[string]string{
 	"values are averages in seconds.":                                                           "значения являются средними в секундах.",
 	"First":                                                                                     "Первая",
 	"Last":                                                                                      "Последняя",
+	"Impressum":                                                                                 "Impressum",
+	"page.impressum.title":                                                                      "Impressum",
+	"page.impressum.description":                                                                "Правовая информация и сведения о поставщике CreateMod.com.",
 }

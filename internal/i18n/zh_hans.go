@@ -873,4 +873,7 @@ var LangZhHans = map[string]string{
 	"values are averages in seconds.":                                                           "值为以秒为单位的平均值。",
 	"First":                                                                                     "首页",
 	"Last":                                                                                      "末页",
+	"Impressum":                                                                                 "Impressum",
+	"page.impressum.title":                                                                      "Impressum",
+	"page.impressum.description":                                                                "CreateMod.com 的法律声明和提供商信息。",
 }

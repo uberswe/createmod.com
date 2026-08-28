@@ -862,4 +862,7 @@ var LangDE = map[string]string{
 	"posts":                           "Beiträge",
 	"request with the":                "Anfrage mit dem",
 	"values are averages in seconds.": "Werte sind Durchschnittswerte in Sekunden.",
+	"Impressum":                       "Impressum",
+	"page.impressum.title":            "Impressum",
+	"page.impressum.description":      "Impressum und Anbieterkennzeichnung für CreateMod.com.",
 }

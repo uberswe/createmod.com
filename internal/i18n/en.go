@@ -886,6 +886,9 @@ var LangEN = map[string]string{
 	"gallery.scroll_right": "Scroll right",
 
 	// ── Upload / Publish ──
-	"Select a category":    "Select a category",
-	"delete_draft.confirm": "Are you sure you want to delete this draft? This cannot be undone.",
+	"Select a category":          "Select a category",
+	"delete_draft.confirm":       "Are you sure you want to delete this draft? This cannot be undone.",
+	"Impressum":                  "Impressum",
+	"page.impressum.title":       "Impressum",
+	"page.impressum.description": "Legal notice and provider information for CreateMod.com.",
 }

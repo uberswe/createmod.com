@@ -872,4 +872,7 @@ var LangFR = map[string]string{
 	"values are averages in seconds.":                                                           "les valeurs sont des moyennes en secondes.",
 	"First":                                                                                     "Première",
 	"Last":                                                                                      "Dernière",
+	"Impressum":                                                                                 "Impressum",
+	"page.impressum.title":                                                                      "Impressum",
+	"page.impressum.description":                                                                "Mentions légales et informations sur l'éditeur de CreateMod.com.",
 }

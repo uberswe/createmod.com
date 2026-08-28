@@ -1,0 +1,56 @@
+{{ template "head.html" . }}
+<div class="page">
+    {{ template "sidebar.html" . }}
+    <div class="page-wrapper">
+        {{template "header.html" .}}
+        <main class="page-body">
+            <div class="container-wide">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10 col-xl-9">
+                        <div class="card card-lg">
+                            <div class="card-body markdown">
+                                <h1>Impressum</h1>
+
+                                <p>Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz)</p>
+
+                                <h3>Diensteanbieter</h3>
+                                <p>
+                                    9M Västerås AB<br>
+                                    Genuagatan 12<br>
+                                    723 56 Västerås<br>
+                                    Schweden
+                                </p>
+
+                                <h3>Registereintrag</h3>
+                                <p>Organisationsnummer: 559595-1608</p>
+
+                                <h3>Vertreten durch</h3>
+                                <p>Markus Tenghamn</p>
+
+                                <h3>Kontakt</h3>
+                                <p>Über unser <a href="{{ LangURL .Language "/contact" }}">Kontaktformular</a>.</p>
+
+                                <h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
+                                <p>Markus Tenghamn, Anschrift wie oben.</p>
+
+                                <hr>
+
+                                <h2>Legal Notice (English translation)</h2>
+                                <p>Information pursuant to § 5 DDG (German Digital Services Act).</p>
+                                <p>
+                                    <strong>Service provider:</strong> 9M Västerås AB, Genuagatan 12, 723 56 Västerås, Sweden<br>
+                                    <strong>Company registration number:</strong> 559595-1608<br>
+                                    <strong>Represented by:</strong> Markus Tenghamn<br>
+                                    <strong>Contact:</strong> via our <a href="{{ LangURL .Language "/contact" }}">contact form</a><br>
+                                    <strong>Responsible for content:</strong> Markus Tenghamn, address as above.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {{template "footer.html" .}}
+    </div>
+</div>
+{{ template "foot.html" . }}

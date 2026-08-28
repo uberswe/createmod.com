@@ -897,4 +897,7 @@ var LangPtPT = map[string]string{
 	"values are averages in seconds.":                                                           "os valores são médias em segundos.",
 	"First":                                                                                     "Primeira",
 	"Last":                                                                                      "Última",
+	"Impressum":                                                                                 "Impressum",
+	"page.impressum.title":                                                                      "Impressum",
+	"page.impressum.description":                                                                "Aviso legal e informações do fornecedor do CreateMod.com.",
 }
