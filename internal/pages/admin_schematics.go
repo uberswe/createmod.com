@@ -103,7 +103,7 @@ func AdminSchematicsHandler(registry *server.Registry, cacheService *cache.Servi
 		if filter == "" {
 			filter = "pending"
 		}
-		if filter != "all" && filter != "pending" && filter != "published" && filter != "flagged" && filter != "rejected" && filter != "deleted" && filter != "private" && filter != "drafts" {
+		if filter != "all" && filter != "pending" && filter != "published" && filter != "unlisted" && filter != "flagged" && filter != "rejected" && filter != "deleted" && filter != "private" && filter != "drafts" {
 			filter = "pending"
 		}
 

@@ -244,7 +244,7 @@
                                         src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2"
                                         srcset="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=640x360&v=2 640w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=960x540&v=2 960w, /api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape .Schematic.FeaturedImage }}?thumb=1920x1080&v=2 1920w"
                                         sizes="(max-width: 767px) 100vw, (max-width: 1199px) 60vw, 50vw"
-                                        class="card-img-top object-fit-cover" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high" style="z-index:1;"
+                                        class="card-img-top object-fit-cover cm-img-fill" width="1920" height="1080" alt="Featured image of {{ .Schematic.Title }}" fetchpriority="high" style="z-index:1;"
                                         onerror="this.style.display='none'">
                                 </div>
                             </a>

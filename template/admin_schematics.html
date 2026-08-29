@@ -24,6 +24,9 @@
                 <a class="nav-link{{ if eq .Filter "published" }} active{{ end }}" href="/admin/schematics?filter=published">Published</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link{{ if eq .Filter "unlisted" }} active{{ end }}" href="/admin/schematics?filter=unlisted" title="Published but unlisted: viewable by direct link only (not in Latest or search)">Unlisted</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link{{ if eq .Filter "flagged" }} active{{ end }}" href="/admin/schematics?filter=flagged">Flagged</a>
               </li>
               <li class="nav-item">
@@ -130,8 +133,16 @@
                       <span class="badge bg-green-lt">Published</span>
                     {{else if eq .ModerationState "approved"}}
                       <span class="badge bg-green-lt">Approved</span>
+                    {{else if eq .ModerationState "published_limited"}}
+                      <span class="badge bg-yellow-lt" title="Published, viewable by direct link only (not in Latest or search)">Unlisted</span>
+                    {{else if eq .ModerationState "changes_requested"}}
+                      <span class="badge bg-orange-lt">Changes requested</span>
                     {{else if eq .ModerationState "flagged"}}
                       <span class="badge bg-orange-lt">Flagged</span>
+                    {{else if eq .ModerationState "rejected_fixable"}}
+                      <span class="badge bg-red-lt">Rejected (fixable)</span>
+                    {{else if eq .ModerationState "rejected_final"}}
+                      <span class="badge bg-red-lt">Rejected</span>
                     {{else if eq .ModerationState "rejected"}}
                       <span class="badge bg-red-lt">Rejected</span>
                     {{else if eq .ModerationState "deleted"}}
