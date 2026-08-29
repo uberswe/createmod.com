@@ -234,6 +234,7 @@ WHERE
   CASE
     WHEN $1::text = 'pending' THEN moderation_state IN ('auto_review', 'flagged')
     WHEN $1::text = 'published' THEN moderation_state IN ('published', 'approved')
+    WHEN $1::text = 'unlisted' THEN moderation_state = 'published_limited'
     WHEN $1::text = 'flagged' THEN moderation_state = 'flagged'
     WHEN $1::text = 'rejected' THEN moderation_state = 'rejected'
     WHEN $1::text = 'deleted' THEN moderation_state = 'deleted'
@@ -1921,6 +1922,7 @@ WHERE
   CASE
     WHEN $3::text = 'pending' THEN moderation_state IN ('auto_review', 'flagged')
     WHEN $3::text = 'published' THEN moderation_state IN ('published', 'approved')
+    WHEN $3::text = 'unlisted' THEN moderation_state = 'published_limited'
     WHEN $3::text = 'flagged' THEN moderation_state = 'flagged'
     WHEN $3::text = 'rejected' THEN moderation_state = 'rejected'
     WHEN $3::text = 'deleted' THEN moderation_state = 'deleted'
