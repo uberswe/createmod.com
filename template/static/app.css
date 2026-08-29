@@ -157,7 +157,16 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  background-color: var(--cm-img-fill);
 }
+
+/* Fill transparent image areas with a solid gray a bit darker than the page
+   body, so a transparent PNG (e.g. a render on no background) shows a clean
+   backdrop instead of revealing the placeholder gradient behind it. The
+   surface token is not theme-aware, so set the value per theme. */
+:root { --cm-img-fill: #e6e0d3; }
+[data-cm-theme=dark] { --cm-img-fill: #191b1b; }
+.cm-img-fill { background-color: var(--cm-img-fill); }
 .gallery-strip-arrow {
   position: absolute;
   top: 50%;
