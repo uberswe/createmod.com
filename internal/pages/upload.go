@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -310,6 +311,41 @@ func duplicateChecksumStatus(ctx context.Context, appStore *store.Store, checksu
 		blacklisted = true
 	}
 	return duplicate, blacklisted
+}
+
+// allowedLinkDomains are the destinations a schematic description may link to
+// without needing human review. Everything else (Discord, file hosts like
+// Google Drive / mega.co.nz, and other off-site links) is held for a moderator.
+// (#1646)
+var allowedLinkDomains = []string{"reddit.com", "redd.it", "createmod.com", "youtube.com", "youtu.be", "youtube-nocookie.com"}
+
+var descriptionURLRegex = regexp.MustCompile(`(?i)https?://[^\s"'<>)]+`)
+
+// descriptionHasReviewableLinks reports whether the text links to any site
+// outside allowedLinkDomains. Such links require a human to review the
+// description before the schematic is shown. (#1646)
+func descriptionHasReviewableLinks(text string) bool {
+	for _, raw := range descriptionURLRegex.FindAllString(text, -1) {
+		u, err := url.Parse(raw)
+		if err != nil {
+			continue
+		}
+		host := strings.ToLower(u.Hostname())
+		if host == "" {
+			continue
+		}
+		allowed := false
+		for _, d := range allowedLinkDomains {
+			if host == d || strings.HasSuffix(host, "."+d) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return true
+		}
+	}
+	return false
 }
 
 // imageCheckItem is one image (bytes + MIME + a label for logs) to run through
@@ -863,7 +899,31 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 			}
 		}
 
-		if trustedUser && !duplicate {
+		// Descriptions that link off-site (anything other than Reddit, YouTube, or
+		// CreateMod itself, e.g. Discord invites, Google Drive, mega.co.nz) need a
+		// human to review the description before the schematic is shown, so flag
+		// and hold them unpublished regardless of author trust. (#1646)
+		externalLinks := descriptionHasReviewableLinks(sanitizedContent)
+		if externalLinks {
+			schem.ModerationState = store.ModerationFlagged
+			schem.ModerationReason = "Your description links to an external site, so a moderator will review it before your schematic is shown. This usually takes up to 48 hours."
+			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {
+				slog.Error("make-public: failed to flag schematic with external links", "error", updateErr, "id", schem.ID)
+			}
+			autoApproved = false
+			if appStore.ModerationLog != nil {
+				_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+					SchematicID: schem.ID,
+					ActorType:   "system",
+					Action:      "state_change",
+					OldState:    store.ModerationAutoReview,
+					NewState:    store.ModerationFlagged,
+					Reason:      "description links to an external site: held for human review",
+				})
+			}
+		}
+
+		if trustedUser && !duplicate && !externalLinks {
 			// Trusted users skip moderation and are auto-approved
 			schem.ModerationState = store.ModerationPublished
 			if scheduledAt != nil && scheduledAt.After(time.Now()) {
@@ -890,7 +950,7 @@ func UploadMakePublicHandler(registry *server.Registry, cacheService *cache.Serv
 		// (published_limited) and queued for a moderator; duplicates are not
 		// allowed, so a human decides whether it stays. Overrides any trusted
 		// auto-approval above. (#1646)
-		if duplicate {
+		if duplicate && !externalLinks {
 			schem.ModerationState = store.ModerationPublishedLimited
 			schem.ModerationReason = "Possible duplicate: this schematic's file matches an existing one. It is published via direct link only until a moderator reviews it."
 			if updateErr := appStore.Schematics.Update(ctx, schem); updateErr != nil {

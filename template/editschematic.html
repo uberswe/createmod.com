@@ -28,6 +28,7 @@
                                                 {{ .Schematic.Content }}
                                             </textarea>
                                             <small class="form-hint mt-2 d-block text-secondary">{{ T .Language "Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results." }}</small>
+                                            <div id="desc-link-warning" class="alert alert-warning mt-2 mb-0" style="display:none">{{ T .Language "Your description links to an external site, so a moderator will review it before your schematic is shown. Links to Reddit are fine." }}</div>
                                         </div>
                                         <div class="row">
                                             <div class="mb-3 col-md-12 col-lg-6">
@@ -510,11 +511,28 @@
     }
 
     // --- Rich text editor ---
+    // Warn (matching the server) when the description links off-site: Reddit,
+    // YouTube and CreateMod are fine; anything else is held for human review.
+    function cmEditLinkWarn() {
+        var el = document.getElementById('tinymce-schematic');
+        var w = document.getElementById('desc-link-warning');
+        if (!el || !w) return;
+        var html = el.value || '';
+        var allowed = ['reddit.com', 'redd.it', 'createmod.com', 'youtube.com', 'youtu.be', 'youtube-nocookie.com'];
+        var re = /https?:\/\/([^\/\s"'<>)]+)/gi, m, bad = false;
+        while ((m = re.exec(html)) !== null) {
+            var host = m[1].toLowerCase().replace(/:\d+$/, '');
+            if (!allowed.some(function (d) { return host === d || host.endsWith('.' + d); })) { bad = true; break; }
+        }
+        w.style.display = bad ? '' : 'none';
+    }
+
     var editorEl = document.getElementById('tinymce-schematic');
     if (editorEl) {
         cmEditorEnsure(function () {
             if (window._cmSchematicEditor) { cmEditor.destroy(window._cmSchematicEditor); }
-            window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600 });
+            window._cmSchematicEditor = cmEditor.create('#tinymce-schematic', { preset: 'standard', minHeight: 300, maxHeight: 600, onUpdate: cmEditLinkWarn });
+            cmEditLinkWarn();
         });
     }
 

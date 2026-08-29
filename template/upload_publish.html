@@ -656,6 +656,22 @@ document.addEventListener("DOMContentLoaded", function() {
     // Recompute the live meter, pre-publish rail, expectation panel and publish
     // button state from the current form. Thresholds mirror the server:
     // <5 words hard-block, 5-24 publishes limited, >=25 publishes fully.
+    // Mirrors the server allowlist: descriptions may link to Reddit, YouTube or
+    // CreateMod itself; anything else (Discord, Google Drive, mega.co.nz, ...)
+    // gets held for a human to review before the schematic is shown.
+    function descHasExternalLinks() {
+        var el = document.getElementById('tinymce-schematic');
+        var html = (el && el.value) || '';
+        var allowed = ['reddit.com', 'redd.it', 'createmod.com', 'youtube.com', 'youtu.be', 'youtube-nocookie.com'];
+        var re = /https?:\/\/([^\/\s"'<>)]+)/gi, m;
+        while ((m = re.exec(html)) !== null) {
+            var host = m[1].toLowerCase().replace(/:\d+$/, '');
+            var ok = allowed.some(function (d) { return host === d || host.endsWith('.' + d); });
+            if (!ok) return true;
+        }
+        return false;
+    }
+
     window.cmUpdateChecks = function () {
         var words = descWordCount();
         var title = (document.getElementById('schematic-title').value || '').trim();
@@ -715,6 +731,16 @@ document.addEventListener("DOMContentLoaded", function() {
             panel.classList.add('cm-expect--ok');
             eTitle.textContent = 'Publishes fully, right away';
             eBody.textContent = 'All checks pass. Your schematic goes live everywhere: direct link, Latest, and search.';
+        }
+
+        // An off-site link in the description forces a human review before the
+        // schematic is shown. Surface that once the schematic is otherwise ready
+        // to publish (missing-field messages take priority).
+        if (!descBlocks && title && imageCount > 0 && descHasExternalLinks()) {
+            panel.classList.remove('cm-expect--ok', 'cm-expect--warn', 'cm-expect--bad');
+            panel.classList.add('cm-expect--warn');
+            eTitle.textContent = 'A moderator will review this first';
+            eBody.textContent = 'Your description links to an external site, so a human will review it before your schematic is shown on the site. This usually takes up to 48 hours. Links to Reddit are fine.';
         }
 
         // Publish button: hard-blocked only when the description is under 5 words.

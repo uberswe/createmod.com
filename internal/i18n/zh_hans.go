@@ -937,4 +937,5 @@ var LangZhHans = map[string]string{
 	"You can only edit your own schematics.":                                       "你只能编辑自己的蓝图。",
 	"Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.": "请描述你的蓝图。说明它是什么。它是一列蓝色火车，还是带有客运车厢？好的描述有助于你的蓝图出现在搜索结果中。",
 	"Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft":                                                               "链接来自以下版块的相关 Reddit 帖子：r/CreateMod、r/Minecraft、r/feedthebeast、r/CreateModShowcase、r/moddedminecraft",
+	"Your description links to an external site, so a moderator will review it before your schematic is shown. Links to Reddit are fine.":                                            "你的描述中含有指向外部网站的链接，因此在你的蓝图显示之前，管理员会先进行审核。指向 Reddit 的链接是允许的。",
 }

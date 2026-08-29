@@ -952,4 +952,5 @@ var LangEN = map[string]string{
 	"You can only edit your own schematics.":                                       "You can only edit your own schematics.",
 	"Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.": "Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.",
 	"Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft":                                                               "Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft",
+	"Your description links to an external site, so a moderator will review it before your schematic is shown. Links to Reddit are fine.":                                            "Your description links to an external site, so a moderator will review it before your schematic is shown. Links to Reddit are fine.",
 }

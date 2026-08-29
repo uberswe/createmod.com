@@ -936,4 +936,5 @@ var LangES = map[string]string{
 	"You can only edit your own schematics.":                                       "Solo puedes editar tus propios esquemas.",
 	"Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.": "Describe tu esquema. Explica qué es. ¿Es un tren azul o tiene vagones de pasajeros? Una buena descripción ayuda a que tu esquema aparezca en los resultados de búsqueda.",
 	"Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft":                                                               "Enlaza publicaciones de Reddit relacionadas de: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft",
+	"Your description links to an external site, so a moderator will review it before your schematic is shown. Links to Reddit are fine.":                                            "Tu descripción enlaza a un sitio externo, por lo que un moderador la revisará antes de que se muestre tu esquema. Los enlaces a Reddit están bien.",
 }

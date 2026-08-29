@@ -937,4 +937,5 @@ var LangRU = map[string]string{
 	"You can only edit your own schematics.":                                       "Вы можете редактировать только свои схемы.",
 	"Please describe your schematic. Explain what it is. Is it a blue train, or does it have passenger carriages? A good description helps your schematic appear in search results.": "Опишите вашу схему. Объясните, что это. Это синий поезд или в нём есть пассажирские вагоны? Хорошее описание помогает схеме появиться в результатах поиска.",
 	"Link related Reddit posts from: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft":                                                               "Ссылайтесь на связанные публикации Reddit из: r/CreateMod, r/Minecraft, r/feedthebeast, r/CreateModShowcase, r/moddedminecraft",
+	"Your description links to an external site, so a moderator will review it before your schematic is shown. Links to Reddit are fine.":                                            "В вашем описании есть ссылка на внешний сайт, поэтому модератор проверит его, прежде чем ваша схема будет показана. Ссылки на Reddit разрешены.",
 }

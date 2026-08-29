@@ -119,6 +119,26 @@ func SchematicUpdateHandler(
 			}
 
 			schem.Excerpt = truncateRunesEllipsis(plainText, 180)
+
+			// A description edited to link off-site is held for human review
+			// before it stays visible, matching the upload flow. Only re-flags a
+			// currently-viewable schematic; ones already under review are left as
+			// they are. (#1646)
+			if descriptionHasReviewableLinks(sanitizedContent) && store.IsViewableState(schem.ModerationState) {
+				oldState := schem.ModerationState
+				schem.ModerationState = store.ModerationFlagged
+				schem.ModerationReason = "Your description links to an external site, so a moderator will review it before your schematic is shown."
+				if appStore.ModerationLog != nil {
+					_ = appStore.ModerationLog.Create(ctx, &store.ModerationLogEntry{
+						SchematicID: schematicID,
+						ActorType:   "system",
+						Action:      "state_change",
+						OldState:    oldState,
+						NewState:    store.ModerationFlagged,
+						Reason:      "description edited to link off-site: held for human review",
+					})
+				}
+			}
 		}
 
 		if video != "" || e.Request.FormValue("video") != "" {
