@@ -36,6 +36,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.24.17
 	github.com/uberswe/mcnbt v0.1.4
 	github.com/yuin/goldmark v1.8.5
+	github.com/yuin/goldmark/v2 v2.0.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.55.0
 	golang.org/x/image v0.45.0
