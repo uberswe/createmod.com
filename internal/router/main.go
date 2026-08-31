@@ -1630,7 +1630,10 @@ func deriveOAuthSigningSecret() string {
 }
 
 func maxBodyMiddleware(maxBytes int64) func(http.Handler) http.Handler {
-	const uploadMax int64 = 50 << 20
+	// Publish/edit requests bundle the .nbt plus several multi-MB screenshots, so
+	// they need the same headroom the make-public form parser and its error
+	// message already assume (100 MB). Per-file caps are enforced in the handlers.
+	const uploadMax int64 = 100 << 20
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Body != nil {
@@ -1650,7 +1653,20 @@ func isUploadRoute(path string) bool {
 	case "/upload/nbt", "/api/schematics/upload", "/api/schematics/upload-anonymous", "/api/images/upload":
 		return true
 	}
-	return strings.HasSuffix(path, "/add-file")
+	// Publishing (/u/{token}/make-public) and editing a schematic
+	// (/schematics/{id}/update, /admin/schematics/{id}) POST the .nbt plus
+	// inline screenshots in one multipart body, which easily exceeds the default
+	// 10 MB cap. add-file appends an extra .nbt variation.
+	if strings.HasSuffix(path, "/add-file") || strings.HasSuffix(path, "/make-public") {
+		return true
+	}
+	if strings.HasPrefix(path, "/schematics/") && strings.HasSuffix(path, "/update") {
+		return true
+	}
+	if strings.HasPrefix(path, "/admin/schematics/") {
+		return true
+	}
+	return false
 }
 
 func adminOnlyMiddleware(next http.Handler) http.Handler {
