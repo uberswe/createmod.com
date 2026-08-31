@@ -367,7 +367,7 @@ func Register(p RegisterParams) chi.Router {
 		io.Copy(w, reader)
 	})
 	// Static assets with long cache (files use ?v=hash cache-busting)
-	staticFS := http.StripPrefix("/assets/x/", http.FileServer(http.Dir("./template/static")))
+	staticFS := http.StripPrefix("/assets/x/", http.FileServer(noListFS{http.Dir("./template/static")}))
 	r.Handle("/assets/x/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// During a rolling deploy, a request for the NEW ?v= can land on an
 		// OLD pod (the file server ignores the query); with an immutable
@@ -1646,6 +1646,32 @@ func maxBodyMiddleware(maxBytes int64) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// noListFS wraps an http.FileSystem to disable directory listings: a request
+// for a directory that has no index.html returns os.ErrNotExist (a 404 from
+// http.FileServer) instead of an auto-generated listing of its files.
+type noListFS struct{ fs http.FileSystem }
+
+func (n noListFS) Open(name string) (http.File, error) {
+	f, err := n.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	if info.IsDir() {
+		index, idxErr := n.fs.Open(strings.TrimSuffix(name, "/") + "/index.html")
+		if idxErr != nil {
+			f.Close()
+			return nil, os.ErrNotExist
+		}
+		index.Close()
+	}
+	return f, nil
 }
 
 func isUploadRoute(path string) bool {
