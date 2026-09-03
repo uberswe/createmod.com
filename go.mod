@@ -2,7 +2,7 @@ module createmod
 
 go 1.26.0
 
-toolchain go1.27.0
+toolchain go1.27.1
 
 require (
 	github.com/KimMachineGun/automemlimit v1.0.0
@@ -13,7 +13,7 @@ require (
 	github.com/gen2brain/webp v0.6.4
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-ego/gse v1.0.2
-	github.com/go-webauthn/webauthn v0.17.4
+	github.com/go-webauthn/webauthn v0.18.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
@@ -28,16 +28,16 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.22.0
-	github.com/riverqueue/river v0.45.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.45.0
+	github.com/riverqueue/river v0.47.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.47.0
 	github.com/sabloger/sitemap-generator v1.3.0
 	github.com/sunshineplan/imgconv v1.1.15
 	github.com/sym01/htmlsanitizer v1.1.1
 	github.com/tdewolff/minify/v2 v2.24.17
 	github.com/uberswe/mcnbt v0.1.4
-	github.com/yuin/goldmark v1.8.5
+	github.com/yuin/goldmark v1.8.6
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/image v0.45.0
 	golang.org/x/net v0.58.0
 	golang.org/x/oauth2 v0.36.0
@@ -55,9 +55,9 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.1 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.3 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/go-webauthn/x v0.2.6 // indirect
+	github.com/go-webauthn/x v0.3.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
@@ -82,9 +82,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.45.0 // indirect
-	github.com/riverqueue/river/rivershared v0.45.0 // indirect
-	github.com/riverqueue/river/rivertype v0.45.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.47.0 // indirect
+	github.com/riverqueue/river/rivershared v0.47.0 // indirect
+	github.com/riverqueue/river/rivertype v0.47.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sunshineplan/pdf v1.0.8 // indirect
 	github.com/tdewolff/parse/v2 v2.8.16 // indirect
