@@ -7,7 +7,7 @@
         <img loading="lazy" src="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180&v=2"
              srcset="/api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=320x180&v=2 320w, /api/files/schematics/{{ .ID }}/{{ urlPathEscape .FeaturedImage }}?thumb=640x360&v=2 640w"
              sizes="(max-width: 767px) 100vw, 33vw"
-             alt="Featured image of {{ .Title }}" class="object-fit-cover" width="640" height="360" style="z-index:1;"
+             alt="Featured image of {{ .Title }}" class="object-fit-cover cm-img-fill" width="640" height="360" style="z-index:1;"
              onerror="this.style.display='none'">
         {{ end }}
       </div>
