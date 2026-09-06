@@ -54,7 +54,7 @@
                             <!-- 360° Rotation Viewer -->
                             <div class="rotation-viewer" id="rotation-viewer">
                                 <div class="ratio ratio-16x9">
-                                    <img id="rotation-img" src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape (index .Schematic.RotationImages 0) }}?thumb=960x540&v=2" alt="360° view of {{ .Schematic.Title }}" class="object-fit-cover" style="user-select:none;-webkit-user-drag:none;">
+                                    <img id="rotation-img" src="/api/files/schematics/{{ .Schematic.ID }}/{{ urlPathEscape (index .Schematic.RotationImages 0) }}?thumb=960x540&v=2" alt="360° view of {{ .Schematic.Title }}" class="object-fit-cover cm-img-fill" style="user-select:none;-webkit-user-drag:none;">
                                     <div class="rotation-loading" id="rotation-loading" style="display:none;">
                                         <div class="rotation-spinner"></div>
                                         <div class="rotation-loading-pct" id="rotation-loading-pct">0%</div>
