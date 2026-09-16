@@ -81,16 +81,27 @@ func Test_StickyFooter_IsSitewide(t *testing.T) {
 	}
 }
 
-// Test_SchematicPage_NoTopBanner guards that the schematic page's 728x90 top
-// leaderboard stays removed (replaced by the sticky footer).
-func Test_SchematicPage_NoTopBanner(t *testing.T) {
-	path := filepath.Join(projectRootFromThisFile(t), "template", "schematic.html")
-	raw, err := os.ReadFile(path)
+// Test_NoTopBanners guards that the 728x90 top leaderboards stay removed
+// sitewide: they were replaced by the sticky footer anchor. The editor's
+// in-content horizontal unit (below the 3D canvas, not a top banner) is
+// deliberately excluded — it is the editor's only desktop placement.
+func Test_NoTopBanners(t *testing.T) {
+	root := projectRootFromThisFile(t)
+	pages, err := filepath.Glob(filepath.Join(root, "template", "*.html"))
 	if err != nil {
-		t.Fatalf("read schematic.html: %v", err)
+		t.Fatalf("glob templates: %v", err)
 	}
-	s := string(raw)
-	if strings.Contains(s, "schematic-top-banner") {
-		t.Error("schematic.html still references schematic-top-banner; it was replaced by the sticky footer")
+	for _, p := range pages {
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		s := string(raw)
+		name := filepath.Base(p)
+		for _, marker := range []string{"-top-banner", "cm-top-banner"} {
+			if strings.Contains(s, marker) {
+				t.Errorf("%s still references %q; top leaderboards were replaced by the sticky footer", name, marker)
+			}
+		}
 	}
 }
