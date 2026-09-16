@@ -183,6 +183,7 @@ func OAuthCompleteHandler(registry *server.Registry, appStore *store.Store) func
 		}
 		d.Populate(e)
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Title = i18n.T(d.Language, "Complete your account")
 		d.Slug = "/auth/oauth/complete"
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
@@ -278,6 +279,7 @@ func renderOAuthCompleteWithError(e *server.RequestEvent, registry *server.Regis
 	}
 	d.Populate(e)
 	d.HideOutstream = true
+	d.HideAnchor = true
 	d.Title = i18n.T(d.Language, "Complete your account")
 	html, err := registry.LoadFiles(oauthCompleteTemplates...).Render(d)
 	if err != nil {

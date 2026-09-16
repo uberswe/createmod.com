@@ -69,6 +69,7 @@ func IPVerificationChallengeHandler(registry *server.Registry, cacheService *cac
 		d := IPVerifyData{}
 		d.Populate(e)
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Title = i18n.T(d.Language, "Verify Your Identity")
 		d.Slug = "/auth/verify-ip"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

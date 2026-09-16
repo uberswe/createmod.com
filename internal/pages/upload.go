@@ -161,6 +161,7 @@ func UploadHandler(registry *server.Registry, cacheService *cache.Service, appSt
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.HideOutstream = true
+		d.HideAnchor = true
 
 		// Load private schematics for authenticated users
 		if isAuthenticated(e) {
@@ -279,6 +280,7 @@ func UploadPendingHandler(registry *server.Registry, cacheService *cache.Service
 		d.Thumbnail = "https://createmod.com/assets/x/logo_sq_lg.png"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.HideOutstream = true
+		d.HideAnchor = true
 
 		html, err := registry.LoadFiles(uploadPendingTemplates...).Render(d)
 		if err != nil {
@@ -1042,6 +1044,7 @@ func UploadPreviewHandler(registry *server.Registry, cacheService *cache.Service
 		d.Slug = "/u/" + token
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.UploadStep = 2
 		d.Token = token
 		d.Filename = entry.Filename
