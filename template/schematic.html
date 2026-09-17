@@ -30,15 +30,6 @@
                         <span class="dim" data-cm-toggle="tooltip" data-cm-placement="top" title="{{ .Schematic.CreatedFormatted }}">{{ T .Language "Uploaded" }} {{ .Schematic.CreatedHumanReadable }}</span>
                     </div>
                     </div>
-                    <!-- 728x90 banner (xl+). A fixed-width slot reserves the
-                         horizontal space so the title never wraps under it; the
-                         banner is anchored to the slot's bottom (byline line) and
-                         extends upward, so it adds no height to the row (no
-                         content push-down) and, on short titles, rises to sit
-                         level with the breadcrumb row above. -->
-                    <div class="cm-top-banner-slot d-none d-xl-block">
-                        <div id="schematic-top-banner" class="cm-top-banner"></div>
-                    </div>
                 </div>
                 {{ .SchematicJSONLD }}
                 <div class="d-flex gap-3">
@@ -1661,25 +1652,8 @@ document.addEventListener('htmx:afterRequest', function(evt) {
     "modVersion": "{{ .Schematic.CreatemodVersion }}"
   };
 
-  // Top leaderboard: 728x90 to the right of the title/byline. xl+ only
-  // (mediaQuery + d-none d-xl-block) because only there is the title row
-  // wide enough to fit a 728 beside the title.
-  window['nitroAds'].createAd('schematic-top-banner', {
-    "refreshTime": 30,
-    "refreshVisibleOnly": true,
-    "renderVisibleOnly": true,
-    "visibleMargin": 300,
-    "sizes": [["728", "90"]],
-    "keywords": kwString,
-    "targeting": targeting,
-    "report": {
-      "enabled": true,
-      "icon": true,
-      "wording": "Report Ad",
-      "position": "top-right"
-    },
-    "mediaQuery": "(min-width: 1200px)"
-  });
+  // The former 728x90 top leaderboard was replaced by the sitewide sticky
+  // footer anchor in foot.html.
 
   // Narrow ad rail (lg only: 992-1199px)
   window['nitroAds'].createAd('schematic-sticky-adrail-lg', {

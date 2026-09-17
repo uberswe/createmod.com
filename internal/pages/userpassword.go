@@ -32,6 +32,7 @@ func UserPasswordHandler(registry *server.Registry, cacheService *cache.Service,
 		d.Populate(e)
 		d.SettingsPage = "password"
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Change Password"))
 		d.Title = i18n.T(d.Language, "Change Password")
 		d.Description = i18n.T(d.Language, "page.userpassword.description")
@@ -64,6 +65,7 @@ func UserPasswordPostHandler(registry *server.Registry, cacheService *cache.Serv
 		d.Populate(e)
 		d.SettingsPage = "password"
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Breadcrumbs = NewBreadcrumbs(d.Language, i18n.T(d.Language, "Settings"), "/settings", i18n.T(d.Language, "Change Password"))
 		d.Title = i18n.T(d.Language, "Change Password")
 		d.Description = i18n.T(d.Language, "page.userpassword.description")

@@ -57,6 +57,12 @@ type DefaultData struct {
 	Breadcrumbs       []BreadcrumbItem
 	BreadcrumbOverlay bool
 	HideOutstream     bool
+	// HideAnchor suppresses only the sitewide sticky footer (bottom anchor),
+	// independently of HideOutstream (the floating video player). Set on flows
+	// where a persistent bottom bar would sit over form controls: the upload
+	// forms and the auth/settings flows. Admin and settings pages are already
+	// covered by NoAds.
+	HideAnchor bool
 	// NoAds suppresses the whole ad stack (NitroPay + ads-check + anchor). Set
 	// automatically for admin and settings pages. (#1646)
 	NoAds                 bool

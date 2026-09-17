@@ -61,10 +61,14 @@ jobs:
 
       - name: Create MinIO bucket
         run: |
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-          chmod +x /usr/local/bin/mc
-          mc alias set ci http://localhost:9000 minioadmin minioadmin
-          mc mb --ignore-existing ci/createmod
+          # Run mc from its official image rather than downloading the binary:
+          # https://dl.min.io/client/mc/release/... now returns 410 Gone. The
+          # MinIO server above runs on the host network, so --network host lets
+          # the client reach it on localhost:9000.
+          docker run --rm --network host --entrypoint sh quay.io/minio/mc:latest -c '
+            mc alias set ci http://localhost:9000 minioadmin minioadmin &&
+            mc mb --ignore-existing ci/createmod
+          '
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

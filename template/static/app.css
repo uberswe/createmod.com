@@ -430,17 +430,6 @@ a:hover {
 }
 
 /***************
-  Layout: Schematic top leaderboard
-  The slot reserves a fixed 728px in the title row so the title never
-  wraps under the banner. The banner is absolutely anchored to the
-  slot's bottom edge (the byline line) and extends upward, so it
-  contributes no height to the row (content below is not pushed down)
-  and, on short titles, rises to sit level with the breadcrumb row.
-***************/
-.cm-top-banner-slot { position: relative; flex: 0 0 728px; align-self: stretch; }
-.cm-top-banner { position: absolute; right: 0; bottom: 0; width: 728px; height: 90px; }
-
-/***************
   Layout: Ad rail
   NitroPay sticky-stack handles its own sticky positioning.
   We only set width and flex so the column stretches to full
@@ -473,13 +462,36 @@ a:hover {
     margin-bottom: 1rem;
   }
 }
-/* When the mobile/tablet anchor ad is showing, lift the floating outstream
-   player above it — both are fixed to the bottom edge otherwise. The
+/* The sticky footer overlays the page, so reserve space at the bottom while it
+   is open; otherwise it covers the last row of the site footer. */
+html.cm-anchor-open body {
+  padding-bottom: 100px;
+}
+
+/* When the sticky footer anchor is showing, lift the floating outstream player
+   above it — both are fixed to the bottom edge otherwise. The anchor now runs
+   at every width (sitewide sticky footer), so this applies on desktop too. The
    .cm-anchor-open class is toggled in foot.html from NitroPay's
    anchorVisibility event; .cm-outstream is set via the unit's className. */
 html.cm-anchor-open .cm-outstream,
 html.cm-anchor-open [id*="outstream-player"] {
   bottom: 110px !important;
+}
+/* The player is scaled up on wide screens (see below) from its bottom-right
+   origin, so its rendered height grows past the flat offset above and would
+   overlap the anchor bar. Raise the offset in step with the scale factor:
+   the 169px-tall player gains ~0.3x/0.6x of its height at 1.3x/1.6x. */
+@media (min-width: 1600px) {
+  html.cm-anchor-open .cm-outstream,
+  html.cm-anchor-open [id*="outstream-player"] {
+    bottom: 165px !important;
+  }
+}
+@media (min-width: 1920px) {
+  html.cm-anchor-open .cm-outstream,
+  html.cm-anchor-open [id*="outstream-player"] {
+    bottom: 215px !important;
+  }
 }
 
 /* The floating outstream video renders at NitroPay's fixed 300x169, which looks

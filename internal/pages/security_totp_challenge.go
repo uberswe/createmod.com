@@ -33,6 +33,7 @@ func TOTPChallengeHandler(registry *server.Registry, cacheService *cache.Service
 		d := TOTPChallengeData{}
 		d.Populate(e)
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Title = i18n.T(d.Language, "Two-Factor Authentication")
 		d.Slug = "/auth/totp"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -106,6 +107,7 @@ func renderTOTPChallengeError(e *server.RequestEvent, registry *server.Registry,
 	}
 	d.Populate(e)
 	d.HideOutstream = true
+	d.HideAnchor = true
 	d.Title = i18n.T(d.Language, "Two-Factor Authentication")
 	d.Slug = "/auth/totp"
 	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)

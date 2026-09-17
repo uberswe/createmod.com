@@ -124,6 +124,7 @@ func convertPage(registry *server.Registry, cacheService *cache.Service, appStor
 		d.Populate(e)
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
 		d.HideOutstream = true
+		d.HideAnchor = true
 
 		if fromSlug != "" {
 			fromFormat, _, _ := convertFormatBySlug(fromSlug)

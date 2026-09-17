@@ -99,6 +99,7 @@ func TOTPSetupHandler(registry *server.Registry, cacheService *cache.Service, ap
 		d.Populate(e)
 		d.SettingsPage = "security"
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Title = i18n.T(d.Language, "Set Up Two-Factor Authentication")
 		d.Slug = "/settings/security/totp/setup"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -170,6 +171,7 @@ func TOTPSetupVerifyHandler(registry *server.Registry, cacheService *cache.Servi
 		d.Populate(e)
 		d.SettingsPage = "security"
 		d.HideOutstream = true
+		d.HideAnchor = true
 		d.Title = i18n.T(d.Language, "Backup Codes")
 		d.Slug = "/settings/security"
 		d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
@@ -295,6 +297,7 @@ func renderTOTPSetupError(e *server.RequestEvent, registry *server.Registry, cac
 	d.Populate(e)
 	d.SettingsPage = "security"
 	d.HideOutstream = true
+	d.HideAnchor = true
 	d.Title = i18n.T(d.Language, "Set Up Two-Factor Authentication")
 	d.Slug = "/settings/security/totp/setup"
 	d.Categories = allCategoriesFromStoreOnly(appStore, cacheService)
