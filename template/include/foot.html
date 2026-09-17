@@ -274,8 +274,13 @@ window['nitroAds'].createAd('cm-anchor', {
   "format": "anchor",
   "anchor": "bottom",
   "anchorClose": true,
-  "anchorPersistClose": false,
   "anchorBgColor": "rgb(31 33 33 / 90%)",
+  // Sizes must cover desktop too. NitroPay filters sizes by viewport, and with
+  // none declared the anchor fell back to mobile-only defaults: at desktop
+  // widths it created the fixed bar but could never fill it (the same "no valid
+  // sizes available" failure the mobile units log). Mobile banners first, then
+  // the leaderboards the sticky footer replaced on desktop.
+  "sizes": [["320", "50"], ["320", "100"], ["728", "90"], ["970", "90"]],
   "className": "cm-anchor",
   "onNavigateMin": 4000,
   "report": {
