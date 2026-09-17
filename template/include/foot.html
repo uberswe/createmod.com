@@ -270,17 +270,19 @@ window['nitroAds'].createAd('outstream-player', {
 // per-page top leaderboards, on mobile/tablet it is the primary placement.
 // Suppressed on upload forms, settings/auth flows (HideAnchor) and on admin +
 // settings pages (NoAds), where a persistent bottom bar covers form controls.
+// Config mirrors what NitroPay's own ad builder emits for a bottom anchor.
+// The format MUST be "anchor-v2": the legacy "anchor" format created the fixed
+// bar but never filled it (empty 3px container on desktop), and declaring
+// sizes did not help -- v2 manages its own sizing. "(min-width: 0px)" is how
+// the builder expresses "every width", which is what makes this sitewide.
 window['nitroAds'].createAd('cm-anchor', {
-  "format": "anchor",
+  "format": "anchor-v2",
   "anchor": "bottom",
-  "anchorClose": true,
   "anchorBgColor": "rgb(31 33 33 / 90%)",
-  // Sizes must cover desktop too. NitroPay filters sizes by viewport, and with
-  // none declared the anchor fell back to mobile-only defaults: at desktop
-  // widths it created the fixed bar but could never fill it (the same "no valid
-  // sizes available" failure the mobile units log). Mobile banners first, then
-  // the leaderboards the sticky footer replaced on desktop.
-  "sizes": [["320", "50"], ["320", "100"], ["728", "90"], ["970", "90"]],
+  "anchorClose": true,
+  "anchorPersistClose": true,
+  "anchorStickyOffset": 0,
+  "mediaQuery": "(min-width: 0px)",
   "className": "cm-anchor",
   "onNavigateMin": 4000,
   "report": {
