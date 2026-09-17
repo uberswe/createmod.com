@@ -60,8 +60,10 @@ func Test_StickyFooter_Visibility(t *testing.T) {
 	}
 }
 
-// Test_StickyFooter_IsSitewide guards that the anchor carries no width cap: it
-// previously ran only on mobile/tablet via a max-width mediaQuery.
+// Test_StickyFooter_IsSitewide guards the two settings that make the sticky
+// footer actually appear everywhere. It originally ran only on mobile/tablet
+// via a max-width mediaQuery, and the legacy "anchor" format created the bar
+// but never filled it, so both are pinned here.
 func Test_StickyFooter_IsSitewide(t *testing.T) {
 	out := footAnchorRendered(t, DefaultData{})
 	start := strings.Index(out, "createAd('cm-anchor'")
@@ -73,11 +75,19 @@ func Test_StickyFooter_IsSitewide(t *testing.T) {
 		t.Fatal("could not find end of cm-anchor config")
 	}
 	cfg := out[start : start+end]
-	if strings.Contains(cfg, "mediaQuery") {
-		t.Errorf("cm-anchor still has a mediaQuery cap; the sticky footer must run at all widths:\n%s", cfg)
+
+	// NitroPay's ad builder emits anchor-v2; the legacy "anchor" format does not
+	// fill (it renders an empty bar).
+	if !strings.Contains(cfg, `"format": "anchor-v2"`) {
+		t.Errorf("cm-anchor must use the anchor-v2 format:\n%s", cfg)
 	}
 	if !strings.Contains(cfg, `"anchor": "bottom"`) {
 		t.Errorf("cm-anchor is not a bottom anchor:\n%s", cfg)
+	}
+	// A max-width mediaQuery would cap the footer to mobile again. A min-width
+	// of 0 is how the builder expresses "every width" and is expected.
+	if strings.Contains(cfg, "max-width") {
+		t.Errorf("cm-anchor has a max-width cap; the sticky footer must run at all widths:\n%s", cfg)
 	}
 }
 
